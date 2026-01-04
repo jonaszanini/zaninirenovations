@@ -1,0 +1,32 @@
+{
+  "name": "pakkapati-template",
+  "version": "1.0.3",
+  "description": "Flooring Service HTML5 Template",
+  "main": "index.js",
+  "scripts": {
+    "start": "sass src:css --no-source-map --watch",
+    "build": "sass src:css --no-source-map --style expanded",
+    "watch": "sass src:css --no-source-map --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xenioushk/bwl-starter-template.git"
+  },
+  "keywords": [
+    "bootstrap5",
+    "fontawesome",
+    "starter",
+    "template"
+  ],
+  "author": "Md Mahbub Alam Khan <hkhan.cse@gmail.com> (https://bluewindlab.net/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xenioushk/bwl-starter-template/issues"
+  },
+  "homepage": "https://github.com/xenioushk/bwl-starter-template#readme",
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "6.4.2",
+    "bootstrap": "5.3.2",
+    "sass": "1.67.0"
+  }
+}

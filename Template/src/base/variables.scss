@@ -1,0 +1,62 @@
+@import url("https://fonts.googleapis.com/css?family=Lora:400,400i,700,700i|Open+Sans:300,400,500,700,800");
+
+$slider-font: "Open Sans", sans-serif;
+$body-font: "Open Sans", sans-serif;
+$menu-font: $body-font;
+$heading-font: "Open Sans", sans-serif;
+$heading-font-alt: $heading-font;
+
+$section-bg-light: #f8f9fa;
+$primary-color: #ad6844; //#FE3C47; #98cb2b
+$secondary-color: #444357; //#f6cf6a
+
+$top-bar-bg: #5c5c5c;
+$top-bar-text: #ffffff;
+$light-text-color: #ffffff;
+$dark-text-color: #111111;
+$default-font-color: #646464; //body font
+$text-color: $default-font-color;
+$pure-white-bg: #ffffff;
+$pure-black-bg: #111111;
+
+$main-top-header-2: #ffffff;
+$nav-bar-2-bg: #fafafa;
+
+$primary-bg-color: #ffffff;
+$second-bg-color: #edf0f2;
+$border-color: #eee;
+$dark-bg: #2c2c2c;
+$light-bg: #fafafa;
+$blog-bg-color: #f9fafb;
+
+$dark-color: #000000;
+
+$gray-color: #eeeeee;
+$light-color: #f8f8f8;
+
+$top-menu-background: #ffffff;
+$main-menu-background: #ffffff;
+$button-background: #399fd2;
+$blockquote-background: #f8f8f8;
+$separator-border: #808080;
+
+$background-color: #ffffff;
+$sidebar-bg: #ffffff;
+$sub-text-color: #555555;
+
+$light-border-color: #cccccc;
+$dark-border-color: #111111;
+$primary-btn-bg: $primary-color;
+$secondary-btn-bg: $secondary-color;
+
+$footer-bg: #1a1a1a;
+$footer-sidebar-bg: #333333;
+$footer-text-color: #c2c2c2;
+$footer-sidebar-border: #444444;
+
+$top-menu-bg: $footer-sidebar-bg;
+$main-menu-bg: $footer-sidebar-bg;
+
+$heading-font-color: #555555;
+$header-background-color: rgba(256, 256, 256, 1);
+$anchor-color: #272727;
