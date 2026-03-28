@@ -23,7 +23,7 @@
             <p class="contact-info">For inquiries, please contact us directly</p>
             <div class="contact-details">
                 <p class="contact-email">
-                    <a href="mailto:jonaszanini@gmail.com">jonaszanini@gmail.com</a>
+                    <a href="mailto:zaninirenovations@gmail.com">zaninirenovations@gmail.com</a>
                 </p>
                 <p class="contact-phone">
                     <a href="tel:+16478347570">(647) 834-7570</a>
