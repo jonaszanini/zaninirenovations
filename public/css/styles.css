@@ -1796,6 +1796,11 @@ a.nav-btn-highlight:hover {
   background: #edf0f2 !important;
 }
 
+.section-core-services .service-block-2 figure img {
+  width: 100%;
+  height: auto;
+}
+
 .section-primary-bg {
   background: #024768 !important;
 }
@@ -4249,6 +4254,17 @@ a.latest-date {
 }
 .cta-layout-02 a.btn + a.btn {
   margin-left: 16px;
+}
+
+.cta-layout-02.section-primary-bg a.btn-theme.btn-theme-invert {
+  color: #373435;
+  background: #ffffff;
+  border: 0;
+}
+.cta-layout-02.section-primary-bg a.btn-theme.btn-theme-invert:hover {
+  color: #024768;
+  background: #ffc31e;
+  border: 0;
 }
 
 .cta-section-overlay {

@@ -1809,6 +1809,13 @@ a.nav-btn-highlight {
   background: $second-bg-color !important;
 }
 
+.section-core-services {
+  .service-block-2 figure img {
+    width: 100%;
+    height: auto;
+  }
+}
+
 .section-primary-bg {
   background: $primary-color !important;
 }
@@ -4537,6 +4544,18 @@ a.latest-date {
 
   a.btn + a.btn {
     margin-left: 16px;
+  }
+
+  &.section-primary-bg a.btn-theme.btn-theme-invert {
+    color: #373435;
+    background: $pure-white-bg;
+    border: 0;
+
+    &:hover {
+      color: #024768;
+      background: #ffc31e;
+      border: 0;
+    }
   }
 }
 
