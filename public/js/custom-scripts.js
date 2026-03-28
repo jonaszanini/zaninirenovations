@@ -1283,9 +1283,18 @@ jQuery(function ($) {
         
     }
 
+    function bwl_refresh_testimonial_carousel() {
+        $(".testimonial-container.owl-carousel").each(function () {
+            var $carousel = $(this);
+            if ($carousel.data("owl.carousel")) {
+                $carousel.trigger("refresh.owl.carousel");
+            }
+        });
+    }
 
     //WoW Animation.
     animations();
+    setTimeout(bwl_refresh_testimonial_carousel, 0);
 
     //One Page Scrolling.
 //    smooth_scrolling();
@@ -1327,6 +1336,7 @@ jQuery(function ($) {
 
         }
         bwl_on_load_scroll();
+        bwl_refresh_testimonial_carousel();
     });
 
 });

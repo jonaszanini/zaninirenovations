@@ -4078,6 +4078,16 @@ ul.custom-bullet-list.custom-icon li:before {
   opacity: 1;
 }
 
+.section-content-block .col-lg-6.no-padding figure {
+  margin: 0;
+  line-height: 0;
+}
+.section-content-block .col-lg-6.no-padding figure img.db {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
 /*----- NEWSLETTER LAYOUT 01 ----*/
 .horizontal-newsletter {
   position: relative;
