@@ -37,21 +37,24 @@
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group">
           <label>Photos — order &amp; remove</label>
-          <p class="admin-form-hint">Set display order (0 = first). Check “Remove” to delete a photo from storage.</p>
-          <div class="admin-photo-grid">
+          <p class="admin-form-hint">Drag by the grip icon to reorder. Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
+          <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
-              <div class="admin-photo-item">
-                <img src="{{ $photo->url() }}" alt="">
-                <div class="admin-form-group">
-                  <label for="order-{{ $photo->id }}">Order</label>
-                  <input type="number" id="order-{{ $photo->id }}" name="photo_order[{{ $photo->id }}]" min="0" max="99" value="{{ old('photo_order.'.$photo->id, $photo->sort_order) }}">
+              <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
+                <span class="admin-photo-drag-handle" title="Drag to reorder"><i class="fa fa-bars"></i></span>
+                <div class="admin-photo-sortable-thumb">
+                  <img src="{{ $photo->url() }}" alt="">
                 </div>
-                <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;color:var(--admin-muted);cursor:pointer;">
+                <label class="admin-photo-remove-label">
                   <input type="checkbox" name="delete_photos[]" value="{{ $photo->id }}"> Remove
                 </label>
-              </div>
+              </li>
             @endforeach
-          </div>
+          </ul>
+          <div id="admin-photo-sequence-fields" aria-hidden="true"></div>
+          @error('photo_sequence')
+            <div class="admin-error">{{ $message }}</div>
+          @enderror
         </div>
       @endif
 
@@ -81,3 +84,40 @@
     </form>
   </div>
 @endsection
+
+@if ($project->photos->isNotEmpty())
+  @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    <script>
+      (function () {
+        var list = document.getElementById('admin-photo-sortable');
+        var form = list && list.closest('form');
+        var fields = document.getElementById('admin-photo-sequence-fields');
+        if (!list || !form || !fields || typeof Sortable === 'undefined') return;
+
+        Sortable.create(list, {
+          animation: 180,
+          handle: '.admin-photo-drag-handle',
+          ghostClass: 'admin-photo-sortable-ghost',
+          dragClass: 'admin-photo-sortable-drag',
+          forceFallback: true,
+        });
+
+        form.addEventListener('submit', function () {
+          fields.innerHTML = '';
+          list.querySelectorAll('.admin-photo-sortable-item').forEach(function (li) {
+            var cb = li.querySelector('input[name="delete_photos[]"]');
+            if (cb && cb.checked) return;
+            var id = li.getAttribute('data-photo-id');
+            if (!id) return;
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'photo_sequence[]';
+            input.value = id;
+            fields.appendChild(input);
+          });
+        });
+      })();
+    </script>
+  @endpush
+@endif

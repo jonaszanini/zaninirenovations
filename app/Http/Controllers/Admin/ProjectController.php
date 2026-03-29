@@ -76,10 +76,17 @@ class ProjectController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'category' => ['required', 'string', Rule::in(ProjectCategory::slugs())],
-            'photo_order' => ['nullable', 'array'],
-            'photo_order.*' => ['integer', 'min:0', 'max:99'],
+            'photo_sequence' => ['nullable', 'array'],
+            'photo_sequence.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('project_photos', 'id')->where(fn ($q) => $q->where('project_id', $project->id)),
+            ],
             'delete_photos' => ['nullable', 'array'],
-            'delete_photos.*' => ['integer', 'exists:project_photos,id'],
+            'delete_photos.*' => [
+                'integer',
+                Rule::exists('project_photos', 'id')->where(fn ($q) => $q->where('project_id', $project->id)),
+            ],
         ]);
 
         $project->update([
@@ -100,12 +107,23 @@ class ProjectController extends Controller
             }
         }
 
-        if (! empty($validated['photo_order'])) {
-            foreach ($validated['photo_order'] as $photoId => $order) {
+        if (! empty($validated['photo_sequence'])) {
+            $remainingIds = $project->photos()->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+            $sequenceIds = array_values(array_map('intval', $validated['photo_sequence']));
+            $remSorted = $remainingIds;
+            $seqSorted = $sequenceIds;
+            sort($remSorted);
+            sort($seqSorted);
+            if ($remSorted !== $seqSorted) {
+                return back()
+                    ->withErrors(['photo_sequence' => 'Could not save photo order. Refresh the page and try again.'])
+                    ->withInput();
+            }
+            foreach ($sequenceIds as $index => $photoId) {
                 ProjectPhoto::query()
                     ->where('project_id', $project->id)
-                    ->where('id', (int) $photoId)
-                    ->update(['sort_order' => (int) $order]);
+                    ->where('id', $photoId)
+                    ->update(['sort_order' => $index]);
             }
         }
 

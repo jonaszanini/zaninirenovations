@@ -388,6 +388,73 @@ body.admin-body {
   padding: 0.35rem;
 }
 
+/* Drag-and-drop photo order (edit project) */
+.admin-photo-sortable-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.admin-photo-sortable-item {
+  display: flex;
+  flex-direction: column;
+  width: 160px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  background: var(--admin-bg);
+  gap: 0.5rem;
+}
+
+.admin-photo-drag-handle {
+  cursor: grab;
+  text-align: center;
+  padding: 0.4rem 0.35rem;
+  color: var(--admin-muted);
+  background: var(--admin-surface-hover);
+  border-radius: 6px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.admin-photo-drag-handle:active {
+  cursor: grabbing;
+}
+
+.admin-photo-sortable-thumb img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+
+.admin-photo-sortable-ghost {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.admin-photo-sortable-drag {
+  opacity: 0.95;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.admin-photo-remove-label {
+  font-size: 0.8rem;
+  color: var(--admin-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+  margin: 0;
+}
+
 /* Login page (standalone) */
 .admin-login-page {
   min-height: 100vh;
