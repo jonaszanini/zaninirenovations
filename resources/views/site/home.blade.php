@@ -564,7 +564,7 @@
           </div>
           <!--  end .col-md-8  -->
           <div class="col-lg-3 col-md-3 col-sm-12 col-xs-12 text-center">
-            <a class="btn btn-theme btn-square btn-theme-invert wow bounceIn" href="#">CONTACT WITH US</a>
+            <a class="btn btn-theme btn-square btn-theme-invert wow bounceIn" href="#">CONTACT US</a>
           </div>
           <!--  end .col-md-4  -->
         </div>

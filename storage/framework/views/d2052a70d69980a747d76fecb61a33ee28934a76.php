@@ -37,13 +37,13 @@ endif;
 unset($__errorArgs, $__bag); ?>
       </div>
       <div class="admin-form-group">
-        <label for="category">Category</label>
-        <select id="category" name="category" required>
-          <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $slug => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-            <option value="<?php echo e($slug); ?>" <?php if(old('category', $project->category) === $slug): echo 'selected'; endif; ?>><?php echo e($label); ?></option>
+        <label for="project_category_id">Category</label>
+        <select id="project_category_id" name="project_category_id" required>
+          <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <option value="<?php echo e($cat->id); ?>" <?php if((string) old('project_category_id', $project->project_category_id) === (string) $cat->id): echo 'selected'; endif; ?>><?php echo e($cat->name); ?></option>
           <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </select>
-        <?php $__errorArgs = ['category'];
+        <?php $__errorArgs = ['project_category_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }

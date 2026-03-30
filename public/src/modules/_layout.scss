@@ -6330,11 +6330,8 @@ ul.pagination {
 /***********************************************************************************************/
 
 .section-portfolio-bg {
-  background-image: url("../images/gallery_bg.jpg");
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-size: cover;
-  background-attachment: initial;
+  background-color: #fff;
+  background-image: none;
   position: relative;
   overflow: hidden;
 }

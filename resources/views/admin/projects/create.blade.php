@@ -22,14 +22,14 @@
         @enderror
       </div>
       <div class="admin-form-group">
-        <label for="category">Category</label>
-        <select id="category" name="category" required>
+        <label for="project_category_id">Category</label>
+        <select id="project_category_id" name="project_category_id" required>
           <option value="">Select category</option>
-          @foreach ($categories as $slug => $label)
-            <option value="{{ $slug }}" @selected(old('category') === $slug)>{{ $label }}</option>
+          @foreach ($categories as $cat)
+            <option value="{{ $cat->id }}" @selected((string) old('project_category_id') === (string) $cat->id)>{{ $cat->name }}</option>
           @endforeach
         </select>
-        @error('category')
+        @error('project_category_id')
           <div class="admin-error">{{ $message }}</div>
         @enderror
       </div>

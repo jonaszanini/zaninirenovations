@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\ProjectCategory;
 use App\Models\ProjectPhoto;
-use App\Support\ProjectCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -15,6 +15,7 @@ class ProjectController extends Controller
     public function index()
     {
         $projects = Project::query()
+            ->with('category')
             ->withCount('photos')
             ->latest()
             ->paginate(15);
@@ -24,9 +25,12 @@ class ProjectController extends Controller
 
     public function create()
     {
-        return view('admin.projects.create', [
-            'categories' => ProjectCategory::options(),
-        ]);
+        $categories = ProjectCategory::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.projects.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -34,7 +38,7 @@ class ProjectController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
-            'category' => ['required', 'string', Rule::in(ProjectCategory::slugs())],
+            'project_category_id' => ['required', 'integer', 'exists:project_categories,id'],
             'photos' => ['nullable', 'array', 'max:10'],
             'photos.*' => ['file', 'mimes:webp', 'max:10240'],
         ]);
@@ -42,7 +46,7 @@ class ProjectController extends Controller
         $project = Project::create([
             'title' => $validated['title'],
             'description' => $validated['description'],
-            'category' => $validated['category'],
+            'project_category_id' => $validated['project_category_id'],
         ]);
 
         if ($request->hasFile('photos')) {
@@ -64,10 +68,12 @@ class ProjectController extends Controller
     {
         $project->load(['photos' => fn ($q) => $q->orderBy('sort_order')]);
 
-        return view('admin.projects.edit', [
-            'project' => $project,
-            'categories' => ProjectCategory::options(),
-        ]);
+        $categories = ProjectCategory::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.projects.edit', compact('project', 'categories'));
     }
 
     public function update(Request $request, Project $project)
@@ -75,7 +81,7 @@ class ProjectController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
-            'category' => ['required', 'string', Rule::in(ProjectCategory::slugs())],
+            'project_category_id' => ['required', 'integer', 'exists:project_categories,id'],
             'photo_sequence' => ['nullable', 'array'],
             'photo_sequence.*' => [
                 'integer',
@@ -92,7 +98,7 @@ class ProjectController extends Controller
         $project->update([
             'title' => $validated['title'],
             'description' => $validated['description'],
-            'category' => $validated['category'],
+            'project_category_id' => $validated['project_category_id'],
         ]);
 
         if (! empty($validated['delete_photos'])) {

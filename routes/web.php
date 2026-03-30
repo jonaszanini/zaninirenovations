@@ -1,13 +1,17 @@
 <?php
 
 use App\Http\Controllers\Admin\Auth\LoginController;
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Models\Project;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     $projects = Project::query()
-        ->with(['photos' => fn ($q) => $q->orderBy('sort_order')])
+        ->with([
+            'photos' => fn ($q) => $q->orderBy('sort_order'),
+            'category',
+        ])
         ->latest()
         ->get();
 
@@ -25,4 +29,5 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         return redirect()->route('admin.projects.index');
     });
     Route::resource('projects', ProjectController::class)->except(['show']);
+    Route::resource('categories', CategoryController::class)->except(['show']);
 });

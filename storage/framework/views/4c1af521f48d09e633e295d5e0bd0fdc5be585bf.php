@@ -5,7 +5,7 @@
 
 <?php $__env->startSection('content'); ?>
   <div class="admin-toolbar">
-    <p style="margin:0;color:var(--admin-muted);">Manage portfolio projects and photos (WebP, up to 10 per project).</p>
+    <p class="admin-toolbar-lede">Manage portfolio projects and photos (WebP, up to 10 per project).</p>
     <a href="<?php echo e(route('admin.projects.create')); ?>" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> New project
     </a>
