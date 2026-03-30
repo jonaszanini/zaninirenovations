@@ -56,6 +56,8 @@
                   <a href="#">Warranty</a>
                   <span class="separator-line"></span>
                   <a href="#">Contact</a>
+                  <span class="separator-line"></span>
+                  <a href="/admin/login">Admin</a>
                 </div>
 
               </div>
@@ -262,16 +264,7 @@
                     <i class="fa fa-facebook"></i>
                   </a>
                   <a href="#">
-                    <i class="fa fa-twitter"></i>
-                  </a>
-                  <a href="#">
-                    <i class="fa fa-linkedin"></i>
-                  </a>
-                  <a href="#">
                     <i class="fa fa-instagram"></i>
-                  </a>
-                  <a href="#">
-                    <i class="fa fa-youtube"></i>
                   </a>
                 </div>
               </div>
@@ -591,7 +584,7 @@
             <h4 class="heading-alt-style text-uppercase text-dark-color">LATEST PROJECTS</h4>
             <span class="heading-separator heading-separator-horizontal"></span>
             <h2 class="subheading-alt-style">
-              Lorem ipsum dolor sit amet consectetur adipiscing elit curabitur euante nonex lobortis posuere.
+              A selection of our recent carpentry and renovation work across the Ottawa region.
             </h2>
           </div>
           <!-- end .col-sm-12  -->
@@ -599,209 +592,7 @@
         </div>
 
         <div class="row wow fadeInUp no-gutter">
-
-          <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
-
-            <div class="portfolio-container">
-
-              <a class="portfolio-light-box text-center" href="single-portfolio.html">
-
-                <figure class="portfolio-img">
-
-                  <img src="images/gallery_1.jpg" alt="gallery image">
-
-                </figure>
-                <!-- end .cause-img  -->
-
-                <div class="portfolio-info-box">
-                  <h4>A Luxurious Life</h4>
-                  <span>Isolation</span>
-                </div>
-
-              </a>
-              <!-- end .gallery-light-box  -->
-            </div>
-
-          </div>
-          <!-- end .col-sm-3  -->
-
-          <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
-
-            <div class="portfolio-container">
-
-              <a class="portfolio-light-box text-center" href="single-portfolio.html">
-
-                <figure class="portfolio-img">
-
-                  <img src="images/gallery_2.jpg" alt="gallery image">
-
-                </figure>
-                <!-- end .cause-img  -->
-
-                <div class="portfolio-info-box">
-                  <h4>Born To Build</h4>
-                  <span>Isolation</span>
-                </div>
-
-              </a>
-
-            </div>
-
-          </div>
-          <!-- end .col-sm-3  -->
-
-          <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
-
-            <div class="portfolio-container">
-
-              <a class="portfolio-light-box text-center" href="single-portfolio.html">
-
-                <figure class="portfolio-img">
-
-                  <img src="images/gallery_3.jpg" alt="gallery image">
-
-                </figure>
-                <!-- end .cause-img  -->
-
-                <div class="portfolio-info-box">
-                  <h4>Elegance And Comfort</h4>
-                  <span>Isolation</span>
-                </div>
-
-              </a>
-              <!-- end .gallery-light-box  -->
-
-            </div>
-
-          </div>
-          <!-- end .col-sm-3  -->
-
-
-          <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
-
-            <div class="portfolio-container">
-
-              <a class="portfolio-light-box text-center" href="single-portfolio.html">
-
-                <figure class="portfolio-img">
-
-                  <img src="images/gallery_4.jpg" alt="gallery image">
-
-                </figure>
-                <!-- end .cause-img  -->
-
-                <div class="portfolio-info-box">
-                  <h4>Sea Shore settlement</h4>
-                  <span>Isolation</span>
-                </div>
-
-              </a>
-
-            </div>
-
-          </div>
-          <!-- end .col-sm-3  -->
-
-          <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
-
-            <div class="portfolio-container">
-
-              <a class="portfolio-light-box text-center" href="single-portfolio.html">
-
-                <figure class="portfolio-img">
-
-                  <img src="images/gallery_5.jpg" alt="gallery image">
-
-                </figure>
-                <!-- end .cause-img  -->
-
-                <div class="portfolio-info-box">
-                  <h4>The White House</h4>
-                  <span>Isolation</span>
-                </div>
-
-              </a>
-              <!-- end .gallery-light-box  -->
-
-            </div>
-
-          </div>
-          <!-- end .col-sm-3  -->
-
-          <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
-
-            <div class="portfolio-container">
-
-              <a class="portfolio-light-box text-center" href="single-portfolio.html">
-
-                <figure class="portfolio-img">
-
-                  <img src="images/gallery_6.jpg" alt="gallery image">
-
-                </figure>
-                <!-- end .cause-img  -->
-
-                <div class="portfolio-info-box">
-                  <h4>A Busy Day</h4>
-                  <span>Isolation</span>
-                </div>
-
-              </a>
-
-            </div>
-
-          </div>
-          <!-- end .col-sm-3  -->
-
-          <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
-
-            <div class="portfolio-container">
-
-              <a class="portfolio-light-box text-center" href="single-portfolio.html">
-
-                <figure class="portfolio-img">
-
-                  <img src="images/gallery_7.jpg" alt="gallery image">
-
-                </figure>
-                <!-- end .cause-img  -->
-
-                <div class="portfolio-info-box">
-                  <h4>Living Paradise</h4>
-                  <span>Isolation</span>
-                </div>
-
-              </a>
-              <!-- end .gallery-light-box  -->
-
-            </div>
-
-          </div>
-          <!-- end .col-sm-3  -->
-
-          <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
-
-            <div class="portfolio-container">
-
-              <a class="portfolio-light-box text-center" href="single-portfolio.html">
-                <figure class="portfolio-img">
-
-                  <img src="images/gallery_8.jpg" alt="gallery image">
-
-                </figure>
-                <!-- end .cause-img  -->
-
-                <div class="portfolio-info-box">
-                  <h4>House Over The Hills</h4>
-                  <span>Isolation</span>
-                </div>
-
-              </a>
-
-            </div>
-          </div>
-          <!-- end .col-sm-3  -->
-
+          <?php echo $__env->make('site.partials.latest-projects', ['projects' => $projects], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
         </div>
         <!-- end .row  -->
 
@@ -1519,3 +1310,4 @@
   </body>
 
 </html>
+<?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/site/home.blade.php ENDPATH**/ ?>
