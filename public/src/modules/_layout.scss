@@ -6379,18 +6379,26 @@ ul.pagination {
     }
 
     &:after {
-      font-family: FontAwesome;
-      content: "\f1c5";
+      content: "MORE";
+      font-family: "Open Sans", sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
       position: absolute;
       right: 150%;
-      margin-left: -21px;
       bottom: -64px;
-      background: $light-text-color;
-      color: $primary-color;
+      margin-left: 0;
+      background: $primary-color;
+      color: $light-text-color;
       text-align: center;
-      width: 42px;
-      height: 42px;
-      line-height: 42px;
+      min-width: 72px;
+      padding: 12px 22px;
+      line-height: 1.25;
+      height: auto;
+      white-space: nowrap;
+      box-sizing: border-box;
+      border: 0 solid transparent;
       @include round(0px);
       @include transition(all, 0.9s);
     }
@@ -6442,8 +6450,12 @@ ul.pagination {
         opacity: 1;
         top: 50%;
         left: 50%;
-        margin-top: -24px;
-        @include round(4px);
+        right: auto;
+        bottom: auto;
+        margin: 0;
+        transform: translate(-50%, -50%);
+        background: $primary-color;
+        @include round(0px);
       }
 
       img {

@@ -28,6 +28,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', function () {
         return redirect()->route('admin.projects.index');
     });
+    Route::post('projects/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])
+        ->name('projects.photos.rotate');
     Route::resource('projects', ProjectController::class)->except(['show']);
     Route::resource('categories', CategoryController::class)->except(['show']);
 });

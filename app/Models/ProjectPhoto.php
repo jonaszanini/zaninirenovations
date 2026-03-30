@@ -25,7 +25,11 @@ class ProjectPhoto extends Model
     public function url(): string
     {
         $path = ltrim(str_replace('\\', '/', $this->path), '/');
+        $url = '/storage/'.$path;
+        if ($this->updated_at !== null) {
+            $url .= '?v='.$this->updated_at->timestamp;
+        }
 
-        return '/storage/'.$path;
+        return $url;
     }
 }

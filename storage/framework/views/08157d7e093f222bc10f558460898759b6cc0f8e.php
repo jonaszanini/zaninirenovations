@@ -602,6 +602,32 @@
     </section>
     <!-- end .section-content-block  -->
 
+    <!-- Latest projects: gallery modal (Bootstrap modal + lightweight CSS track carousel) -->
+    <div class="modal fade project-gallery-modal" id="latestProjectGalleryModal" tabindex="-1" role="dialog" aria-labelledby="latestProjectGalleryModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header project-gallery-modal-header">
+            <button type="button" class="close project-gallery-close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <h4 class="modal-title" id="latestProjectGalleryModalLabel"></h4>
+          </div>
+          <div class="modal-body project-gallery-modal-body">
+            <div class="project-gallery-viewport">
+              <div class="project-gallery-track" id="projectGalleryTrack"></div>
+            </div>
+            <button type="button" class="project-gallery-nav project-gallery-nav-prev" id="projectGalleryPrev" aria-label="Previous photo">
+              <svg class="project-gallery-nav-svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+            </button>
+            <button type="button" class="project-gallery-nav project-gallery-nav-next" id="projectGalleryNext" aria-label="Next photo">
+              <svg class="project-gallery-nav-svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+            </button>
+            <ul class="project-gallery-dots" id="projectGalleryDots"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- TEAM SECTION 01 -->
 
     <section class="section-content-block section-secondary-bg">

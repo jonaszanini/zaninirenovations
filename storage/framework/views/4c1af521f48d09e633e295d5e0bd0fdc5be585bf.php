@@ -5,7 +5,7 @@
 
 <?php $__env->startSection('content'); ?>
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Manage portfolio projects and photos (WebP, up to 10 per project).</p>
+    <p class="admin-toolbar-lede">Manage portfolio projects and photos (WebP, JPEG, or PNG — stored as WebP, max edge <?php echo e((int) config('webp.max_edge_px', 1920)); ?>px; up to 10 per project).</p>
     <a href="<?php echo e(route('admin.projects.create')); ?>" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> New project
     </a>

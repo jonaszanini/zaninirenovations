@@ -37,13 +37,27 @@
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group">
           <label>Photos — order &amp; remove</label>
-          <p class="admin-form-hint">Drag by the grip icon to reorder. Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
+          <p class="admin-form-hint">Drag by the grip icon to reorder. Use rotate to fix orientation (90°). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
                 <span class="admin-photo-drag-handle" title="Drag to reorder"><i class="fa fa-bars"></i></span>
                 <div class="admin-photo-sortable-thumb">
                   <img src="{{ $photo->url() }}" alt="">
+                </div>
+                <div class="admin-photo-sortable-actions">
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-rotate-photo"
+                    title="Rotate 90° counter-clockwise"
+                    data-post-url="{{ route('admin.projects.photos.rotate', [$project, $photo]) }}"
+                    data-direction="ccw">
+                    <i class="fa fa-undo" aria-hidden="true"></i><span class="admin-sr-only"> Rotate left</span>
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-rotate-photo"
+                    title="Rotate 90° clockwise"
+                    data-post-url="{{ route('admin.projects.photos.rotate', [$project, $photo]) }}"
+                    data-direction="cw">
+                    <i class="fa fa-repeat" aria-hidden="true"></i><span class="admin-sr-only"> Rotate right</span>
+                  </button>
                 </div>
                 <label class="admin-photo-remove-label">
                   <input type="checkbox" name="delete_photos[]" value="{{ $photo->id }}"> Remove
@@ -63,9 +77,9 @@
       @endphp
       @if ($canAdd > 0)
         <div class="admin-form-group">
-          <label for="photos">Add photos (WebP)</label>
-          <input type="file" id="photos" name="photos[]" accept=".webp,image/webp" multiple>
-          <p class="admin-form-hint">You can add up to {{ $canAdd }} more (10 total).</p>
+          <label for="photos">Add photos</label>
+          <input type="file" id="photos" name="photos[]" accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png" multiple>
+          <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP and scaled so the longest side is at most {{ (int) config('webp.max_edge_px', 1920) }}px; originals are not kept. Up to {{ $canAdd }} more (10 total).</p>
           @error('photos')
             <div class="admin-error">{{ $message }}</div>
           @enderror
@@ -90,6 +104,33 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script>
       (function () {
+        var csrf = @json(csrf_token());
+
+        /* Rotate: full form POST (same as normal Laravel) — works even if Sortable CDN fails */
+        document.querySelectorAll('.js-rotate-photo').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var url = btn.getAttribute('data-post-url');
+            var direction = btn.getAttribute('data-direction');
+            if (!url || !direction) return;
+            if (btn.disabled) return;
+            btn.disabled = true;
+            var f = document.createElement('form');
+            f.method = 'POST';
+            f.action = url;
+            f.style.display = 'none';
+            var token = document.createElement('input');
+            token.name = '_token';
+            token.value = csrf;
+            var dir = document.createElement('input');
+            dir.name = 'direction';
+            dir.value = direction;
+            f.appendChild(token);
+            f.appendChild(dir);
+            document.body.appendChild(f);
+            f.submit();
+          });
+        });
+
         var list = document.getElementById('admin-photo-sortable');
         var form = list && list.closest('form');
         var fields = document.getElementById('admin-photo-sequence-fields');

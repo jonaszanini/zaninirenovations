@@ -1,13 +1,22 @@
 @forelse ($projects as $project)
   @php
-    $cover = $project->photos->sortBy('sort_order')->first();
+    $photos = $project->photos->sortBy('sort_order');
+    $galleryUrls = $photos->isNotEmpty()
+      ? $photos->map(fn ($p) => $p->url())->values()->all()
+      : ['/images/gallery_1.jpg'];
+    $cover = $photos->first();
     $coverSrc = $cover ? $cover->url() : '/images/gallery_1.jpg';
   @endphp
   <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
     <div class="portfolio-container">
-      <a class="portfolio-light-box text-center venobox" href="{{ $coverSrc }}" title="{{ $project->title }}">
+      <a
+        href="#"
+        class="portfolio-light-box text-center js-project-gallery"
+        data-project-title="{{ e($project->title) }}"
+        data-gallery='@json($galleryUrls)'
+      >
         <figure class="portfolio-img">
-          <img src="{{ $coverSrc }}" alt="{{ $project->title }}">
+          <img src="{{ $coverSrc }}" alt="{{ e($project->title) }}">
         </figure>
         <div class="portfolio-info-box">
           <h4>{{ $project->title }}</h4>

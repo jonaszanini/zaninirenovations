@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\ProjectPhoto;
+use App\Services\ProjectPhotoRotationService;
+use App\Services\ProjectPhotoWebpStorage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -40,23 +43,43 @@ class ProjectController extends Controller
             'description' => ['required', 'string'],
             'project_category_id' => ['required', 'integer', 'exists:project_categories,id'],
             'photos' => ['nullable', 'array', 'max:10'],
-            'photos.*' => ['file', 'mimes:webp', 'max:10240'],
+            'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
         ]);
 
-        $project = Project::create([
-            'title' => $validated['title'],
-            'description' => $validated['description'],
-            'project_category_id' => $validated['project_category_id'],
-        ]);
+        $converter = new ProjectPhotoWebpStorage;
+        $savedPaths = [];
 
-        if ($request->hasFile('photos')) {
-            foreach ($request->file('photos') as $index => $file) {
-                $path = $file->store("project-photos/{$project->id}", 'public');
-                $project->photos()->create([
-                    'path' => $path,
-                    'sort_order' => $index,
-                ]);
+        try {
+            DB::beginTransaction();
+
+            $project = Project::create([
+                'title' => $validated['title'],
+                'description' => $validated['description'],
+                'project_category_id' => $validated['project_category_id'],
+            ]);
+
+            if ($request->hasFile('photos')) {
+                foreach ($request->file('photos') as $index => $file) {
+                    $path = $converter->store($file, (int) $project->id);
+                    $savedPaths[] = $path;
+                    $project->photos()->create([
+                        'path' => $path,
+                        'sort_order' => $index,
+                    ]);
+                }
             }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            foreach ($savedPaths as $p) {
+                Storage::disk('public')->delete($p);
+            }
+            report($e);
+
+            return back()
+                ->withErrors(['photos' => 'Could not save images. '.$e->getMessage()])
+                ->withInput();
         }
 
         return redirect()
@@ -137,25 +160,70 @@ class ProjectController extends Controller
 
         $request->validate([
             'photos' => ['nullable', 'array', 'max:'.max(0, $slots)],
-            'photos.*' => ['file', 'mimes:webp', 'max:10240'],
+            'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
         ]);
 
         if ($slots > 0 && $request->hasFile('photos')) {
+            $converter = new ProjectPhotoWebpStorage;
             $files = array_slice($request->file('photos'), 0, $slots);
             $maxOrder = (int) $project->photos()->max('sort_order');
-            foreach ($files as $file) {
-                $path = $file->store("project-photos/{$project->id}", 'public');
-                $maxOrder++;
-                $project->photos()->create([
-                    'path' => $path,
-                    'sort_order' => $maxOrder,
-                ]);
+            $savedPaths = [];
+
+            try {
+                foreach ($files as $file) {
+                    $path = $converter->store($file, (int) $project->id);
+                    $savedPaths[] = $path;
+                    $maxOrder++;
+                    $project->photos()->create([
+                        'path' => $path,
+                        'sort_order' => $maxOrder,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                foreach ($savedPaths as $p) {
+                    Storage::disk('public')->delete($p);
+                }
+                report($e);
+
+                return back()
+                    ->withErrors(['photos' => 'Could not add images. '.$e->getMessage()])
+                    ->withInput();
             }
         }
 
         return redirect()
             ->route('admin.projects.edit', $project)
             ->with('success', 'Project updated.');
+    }
+
+    public function rotatePhoto(Request $request, Project $project, ProjectPhoto $photo)
+    {
+        abort_unless((int) $photo->project_id === (int) $project->id, 404);
+
+        $request->validate([
+            'direction' => ['required', Rule::in(['cw', 'ccw'])],
+        ]);
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($photo->path)) {
+            return back()->with('error', 'Photo file is missing on disk.');
+        }
+
+        $fullPath = $disk->path($photo->path);
+
+        try {
+            app(ProjectPhotoRotationService::class)->rotateWebp($fullPath, $request->input('direction'));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Could not rotate the photo: '.$e->getMessage());
+        }
+
+        $photo->touch();
+
+        return redirect()
+            ->route('admin.projects.edit', $project)
+            ->with('success', 'Photo rotated.');
     }
 
     public function destroy(Project $project)

@@ -55,9 +55,9 @@ endif;
 unset($__errorArgs, $__bag); ?>
       </div>
       <div class="admin-form-group">
-        <label for="photos">Photos (WebP)</label>
-        <input type="file" id="photos" name="photos[]" accept=".webp,image/webp" multiple>
-        <p class="admin-form-hint">Up to 10 files. Display order matches the order you select (first = top).</p>
+        <label for="photos">Photos</label>
+        <input type="file" id="photos" name="photos[]" accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png" multiple>
+        <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). JPEG and PNG are converted to WebP on upload; originals are not kept. Display order matches the order you select (first = top).</p>
         <?php $__errorArgs = ['photos'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :

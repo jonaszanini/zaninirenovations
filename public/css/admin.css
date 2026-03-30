@@ -535,6 +535,31 @@ body.admin-body {
   gap: 0.5rem;
 }
 
+.admin-photo-sortable-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.admin-photo-sortable-actions .admin-btn--sm {
+  min-width: 40px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.admin-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .admin-photo-drag-handle {
   cursor: grab;
   text-align: center;

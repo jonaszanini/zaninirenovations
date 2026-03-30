@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title><?php echo $__env->yieldContent('title', 'Admin'); ?> — Zanini Renovations</title>
+  <link rel="shortcut icon" href="<?php echo e(asset('images/favicon.png')); ?>">
   <link rel="stylesheet" href="<?php echo e(asset('css/font-awesome.min.css')); ?>">
   <link rel="stylesheet" href="<?php echo e(asset('css/admin.css')); ?>">
   <?php echo $__env->yieldPushContent('head'); ?>

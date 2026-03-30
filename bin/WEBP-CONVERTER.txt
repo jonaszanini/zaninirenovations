@@ -1,0 +1,20 @@
+JPEG/PNG to WebP (when PHP GD/Imagick have no WebP)
+====================================================
+
+This project can use Google's cwebp tool from the bin/ folder.
+
+- cwebp.exe in this folder is tracked in Git so Windows production servers
+  can convert uploads without extra server setup.
+
+- If the file is missing, download "Precompiled WebP codec and library"
+  (Windows x64) from: https://developers.google.com/speed/webp/download
+  and copy cwebp.exe here, then commit it.
+
+- For rotating photos in admin when PHP cannot decode WebP, copy dwebp.exe
+  from the same zip into bin/ (next to cwebp.exe), OR install FFmpeg with
+  WebP support and set FFMPEG_PATH in .env (or put ffmpeg.exe in bin/).
+
+- Linux/macOS production: place a `cwebp` binary in bin/ (no .exe) or
+  install cwebp on the server PATH, or set CWEBP_PATH in .env.
+
+Restart Apache / PHP-FPM after changing .env.
