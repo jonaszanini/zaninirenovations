@@ -1497,4 +1497,26 @@ jQuery(function ($) {
 
     bwl_project_gallery_modal();
 
+    function bwl_latest_projects_filter() {
+        var $filters = $('.latest-projects-filters');
+        if (!$filters.length) {
+            return;
+        }
+
+        $filters.on('click', '.latest-project-filter-btn', function () {
+            var $btn = $(this);
+            var filter = $btn.attr('data-filter') || 'all';
+
+            $filters.find('.latest-project-filter-btn').removeClass('is-active').attr('aria-pressed', 'false');
+            $btn.addClass('is-active').attr('aria-pressed', 'true');
+
+            $('.js-latest-project-item').each(function () {
+                var slug = $(this).attr('data-category-slug') || '';
+                $(this).toggle(filter === 'all' || slug === filter);
+            });
+        });
+    }
+
+    bwl_latest_projects_filter();
+
 });

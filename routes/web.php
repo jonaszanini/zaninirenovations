@@ -15,7 +15,14 @@ Route::get('/', function () {
         ->latest()
         ->get();
 
-    return view('site.home', compact('projects'));
+    $projectFilterCategories = $projects
+        ->map(fn (Project $p) => $p->category)
+        ->filter()
+        ->unique('id')
+        ->sortBy(fn ($c) => [$c->sort_order, strtolower($c->name)])
+        ->values();
+
+    return view('site.home', compact('projects', 'projectFilterCategories'));
 });
 
 Route::middleware('guest')->group(function () {

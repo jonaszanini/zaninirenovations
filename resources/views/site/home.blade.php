@@ -576,12 +576,12 @@
 
     <section class="section-content-block section-portfolio-bg">
 
-      <div class="container-fluid">
+      <div class="container">
 
         <div class="row section-heading-wrapper">
 
           <div class="col-md-12 col-sm-12 text-center">
-            <h4 class="heading-alt-style text-uppercase text-dark-color">LATEST PROJECTS</h4>
+            <h4 class="heading-alt-style text-capitalize text-dark-color">LATEST PROJECTS</h4>
             <span class="heading-separator heading-separator-horizontal"></span>
             <h2 class="subheading-alt-style">
               A selection of our recent carpentry and renovation work across the Ottawa region.
@@ -591,7 +591,24 @@
 
         </div>
 
-        <div class="row wow fadeInUp no-gutter">
+        @if ($projects->isNotEmpty() && $projectFilterCategories->isNotEmpty())
+        <div class="row latest-projects-filter-row wow fadeInUp">
+          <div class="col-md-12 col-sm-12 col-xs-12 text-center">
+            <div class="latest-projects-filters" role="group" aria-label="Filter projects by category">
+              <button type="button" class="latest-project-filter-btn is-active" data-filter="all" aria-pressed="true">
+                All
+              </button>
+              @foreach ($projectFilterCategories as $cat)
+                <button type="button" class="latest-project-filter-btn" data-filter="{{ $cat->slug }}" aria-pressed="false">
+                  {{ $cat->name }}
+                </button>
+              @endforeach
+            </div>
+          </div>
+        </div>
+        @endif
+
+        <div class="row wow fadeInUp">
           @include('site.partials.latest-projects', ['projects' => $projects])
         </div>
         <!-- end .row  -->
@@ -759,7 +776,7 @@
             <h4 class="heading-alt-style text-uppercase text-dark-color">Our Testimonials</h4>
             <span class="heading-separator heading-separator-horizontal"></span>
             <h2 class="subheading-alt-style">
-              Lorem ipsum dolor sit amet consectetur adipiscing elit curabitur euante nonex lobortis posuere.
+              What homeowners say about working with Zanini Renovations—sourced from real Google reviews.
             </h2>
           </div>
           <!-- end .col-sm-12  -->
@@ -780,15 +797,13 @@
                 <div class="testimony-layout-1 transparent-bg">
 
                   <p class="testimony-text">
-                    Always friendly, honest service. Comparable prices and good advice. I appreciate the ride to work too and delivered to my work the same day it broke down.
-                                                                                                                                                                                                                            Lorem ipsum dolor sit amet diam brute integre eapri. Per fugitzril apeirian cumea eaap pareat euripidi utmel graeci doming. Duo dicat apeirian facilisi ne.
+                    I highly recommend Jonas! He was very professional, friendly and did a great job dry walling and installing flooring and trim in our basement. Communication was great and price was fair as well!
                   </p>
 
-                  <div class="testimony-info">
-                    <img class="img-responsive" src="images/user_2.jpg" alt="Client Image">
-                    <h4>Brandon Munson
-                    </h4>
-                    <h6>CTO, Fulcrum Design</h6>
+                  <div class="testimony-info testimony-info--with-avatar">
+                    <div class="img-responsive testimony-avatar-initial" aria-hidden="true">A</div>
+                    <h4>Alana Hamilton</h4>
+                    <h6 class="bq-author-info">See this review on <a href="https://maps.app.goo.gl/yWkw5fWBoC9QgCpi8" target="_blank" rel="noopener noreferrer">Google</a></h6>
                   </div>
                 </div>
                 <!-- end .testimony-layout-1  -->
@@ -799,14 +814,12 @@
 
                 <div class="testimony-layout-1 transparent-bg">
                   <p class="testimony-text">
-                    Always friendly, honest service. Comparable prices and good advice. I appreciate the ride to work too and delivered to my work the same day it broke down.
-                                                                                                                                                                                                                            Lorem ipsum dolor sit amet diam brute integre eapri. Per fugitzril apeirian cumea eaap pareat euripidi utmel graeci doming. Duo dicat apeirian facilisi ne.
+                    Jonas was an excellent professional for a project we had in our home. From the very beginning, he was attentive to our needs, always available to answer questions. We especially appreciated how organized and clean he was throughout the entire process. We are happy with the results and will definitely work with him again in the future. We highly recommend his services.
                   </p>
-                  <img class="img-responsive" src="images/user_3.jpg" alt="Client Image">
-                  <div class="testimony-info">
-                    <h4>Sunnybrook Church
-                    </h4>
-                    <h6 class="bq-author-info">CEO, HW Tech Inc</h6>
+                  <div class="testimony-info testimony-info--with-avatar">
+                    <div class="img-responsive testimony-avatar-initial" aria-hidden="true">K</div>
+                    <h4>Kawana Bazzo</h4>
+                    <h6 class="bq-author-info">See this review on <a href="https://maps.app.goo.gl/VRXkNr2AFfkuuRBr8" target="_blank" rel="noopener noreferrer">Google</a></h6>
                   </div>
                 </div>
                 <!-- end .testimony-layout-1  -->
@@ -817,14 +830,12 @@
 
                 <div class="testimony-layout-1 transparent-bg">
                   <p class="testimony-text">
-                    Always friendly, honest service. Comparable prices and good advice. I appreciate the ride to work too and delivered to my work the same day it broke down.
-                                                                                                                                                                                                                            Lorem ipsum dolor sit amet diam brute integre eapri. Per fugitzril apeirian cumea eaap pareat euripidi utmel graeci doming. Duo dicat apeirian facilisi ne.
+                    Jonas, it&rsquo;s amazing to work with, he did a beautiful fence in our backyard for our dogs, amongst other projects in the house. Highly recommend his work, professional, prompt, and gets the job complete on a quick timeframe no loose ends. Highly recommend recommended.!!
                   </p>
-                  <img class="img-responsive" src="images/user_1.jpg" alt="Client Image">
-                  <div class="testimony-info">
-                    <h4>Sunnybrook Church
-                    </h4>
-                    <h6 class="bq-author-info">CEO, HW Tech Inc</h6>
+                  <div class="testimony-info testimony-info--with-avatar">
+                    <div class="img-responsive testimony-avatar-initial" aria-hidden="true">M</div>
+                    <h4>Mike Dobson</h4>
+                    <h6 class="bq-author-info">See this review on <a href="https://maps.app.goo.gl/h9NqsHKsLCRz6Gcb8" target="_blank" rel="noopener noreferrer">Google</a></h6>
                   </div>
                 </div>
                 <!-- end .testimony-layout-1  -->
@@ -834,11 +845,22 @@
             </div>
             <!-- end .testimonial-container  -->
 
+            <div class="testimonials-google-cta text-center">
+              <a
+                class="btn btn-theme btn-square"
+                href="https://www.google.com/maps/place/Zanini+Renovations/@45.0145689,-76.3839057,8z/data=!4m8!3m7!1s0x270af127fae3b7c1:0x6a89028fc92f8eda!8m2!3d45.120446!4d-76.0081985!9m1!1b1!16s%2Fg%2F11mm5zjskr?hl=en&amp;entry=ttu&amp;g_ep=EgoyMDI2MDMyOS4wIKXMDSoASAFQAw%3D%3D"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                See all reviews on Google
+              </a>
+            </div>
+
           </div>
 
           <div class="col-lg-6 hidden-md hidden-xs hidden-sm no-padding">
             <figure>
-              <img src="images/testimony_feat_img.jpg" alt="" class="db">
+              <img src="images/reviews.webp" alt="" class="db">
             </figure>
           </div>
 
