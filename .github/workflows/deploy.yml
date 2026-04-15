@@ -16,7 +16,7 @@ jobs:
     environment: PROD
 
     env:
-      DEPLOY_PATH: public_html
+      DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
 
     steps:
       - name: Checkout repository
@@ -40,36 +40,23 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          REMOTE_DEPLOY_PATH="$(ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" '
-            for d in "$HOME/files/public_html" "$HOME/public_html"; do
-              if [ -d "$d" ] && [ -f "$d/artisan" ]; then
-                echo "$d"
-                exit 0
-              fi
-            done
-            for d in "$HOME/files/public_html" "$HOME/public_html"; do
-              if [ -d "$d" ] && [ -f "$d/composer.json" ]; then
-                echo "$d"
-                exit 0
-              fi
-            done
-            for d in "$HOME/files/public_html" "$HOME/public_html"; do
-              if [ -d "$d" ] && [ -f "$d/.env" ]; then
-                echo "$d"
-                exit 0
-              fi
-            done
-            for d in "$HOME/files/public_html" "$HOME/public_html"; do
-              if [ -d "$d" ]; then
-                echo "$d"
-                exit 0
-              fi
-            done
+          REMOTE_DEPLOY_PATH="$(ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s << REMOTE_EOF
+          set -e
+          DEPLOY_ROOT="${DEPLOY_ROOT}"
+          if [ -n "\$DEPLOY_ROOT" ] && [ -d "\$DEPLOY_ROOT" ]; then
+            echo "\$DEPLOY_ROOT"
+          elif [ -d "\$HOME/files/public_html" ]; then
+            echo "\$HOME/files/public_html"
+          elif [ -d "\$HOME/public_html" ]; then
+            echo "\$HOME/public_html"
+          else
             echo "__NOT_FOUND__"
-          ')"
+          fi
+          REMOTE_EOF
+          )"
 
           if [ "${REMOTE_DEPLOY_PATH}" = "__NOT_FOUND__" ]; then
-            echo "ERROR: Could not find deploy directory. Checked \$HOME/public_html and \$HOME/files/public_html."
+            echo "ERROR: Could not find deploy directory. Set GitHub Environment variable DEPLOY_ROOT to the full path (e.g. /home/u123456789/files/public_html), or ensure \$HOME/files/public_html or \$HOME/public_html exists."
             exit 1
           fi
 
@@ -90,41 +77,17 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" << 'EOF'
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s << 'REMOTE_EOF'
           set -e
-          APP_DIR=""
-          for d in "${HOME}/files/public_html" "${HOME}/public_html"; do
-            if [ -d "$d" ] && [ -f "$d/artisan" ]; then
-              APP_DIR="$d"
-              break
-            fi
-          done
-          if [ -z "${APP_DIR}" ]; then
-            for d in "${HOME}/files/public_html" "${HOME}/public_html"; do
-              if [ -d "$d" ] && [ -f "$d/composer.json" ]; then
-                APP_DIR="$d"
-                break
-              fi
-            done
-          fi
-          if [ -z "${APP_DIR}" ]; then
-            for d in "${HOME}/files/public_html" "${HOME}/public_html"; do
-              if [ -d "$d" ] && [ -f "$d/.env" ]; then
-                APP_DIR="$d"
-                break
-              fi
-            done
-          fi
-          if [ -z "${APP_DIR}" ]; then
-            for d in "${HOME}/files/public_html" "${HOME}/public_html"; do
-              if [ -d "$d" ]; then
-                APP_DIR="$d"
-                break
-              fi
-            done
-          fi
-          if [ -z "${APP_DIR}" ]; then
-            echo "ERROR: Could not find app directory. Checked \$HOME/public_html and \$HOME/files/public_html."
+          DEPLOY_ROOT="${{ vars.DEPLOY_ROOT }}"
+          if [ -n "$DEPLOY_ROOT" ] && [ -d "$DEPLOY_ROOT" ]; then
+            APP_DIR="$DEPLOY_ROOT"
+          elif [ -d "${HOME}/files/public_html" ]; then
+            APP_DIR="${HOME}/files/public_html"
+          elif [ -d "${HOME}/public_html" ]; then
+            APP_DIR="${HOME}/public_html"
+          else
+            echo "ERROR: Could not find app directory. Set Environment variable DEPLOY_ROOT to the full path to public_html."
             exit 1
           fi
 
@@ -137,7 +100,10 @@ jobs:
 
           if [ -f artisan ]; then
             if [ ! -f .env ]; then
-              echo "ERROR: ${APP_DIR}/.env is missing. On Hostinger, copy .env.example to .env and set DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_HOST from hPanel -> Databases (then php artisan key:generate if needed)."
+              echo "ERROR: ${APP_DIR}/.env is missing."
+              echo "If you use Hostinger File Manager, .env often belongs in ~/files/public_html (not ~/public_html). Copy .env.example to .env there and set DB_* from hPanel."
+              echo "You can pin the path: GitHub repo Settings -> Environments -> PROD -> Environment variables -> DEPLOY_ROOT = /home/YOUR_USER/files/public_html"
+              ls -la "${HOME}/files/public_html/.env" "${HOME}/public_html/.env" 2>/dev/null || true
               exit 1
             fi
 
@@ -147,4 +113,4 @@ jobs:
             php artisan route:clear
             php artisan view:cache
           fi
-          EOF
+          REMOTE_EOF
