@@ -44,8 +44,15 @@ jobs:
           REMOTE_DEPLOY_PATH="$(ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s << REMOTE_EOF
           set -e
           DEPLOY_ROOT="${DEPLOY_ROOT}"
-          if [ -n "\$DEPLOY_ROOT" ] && [ -d "\$DEPLOY_ROOT" ]; then
-            echo "\$DEPLOY_ROOT"
+          echo "DEPLOY_ROOT from workflow env: [\$DEPLOY_ROOT]" 1>&2
+          if [ -n "\$DEPLOY_ROOT" ]; then
+            if [ -d "\$DEPLOY_ROOT" ]; then
+              echo "\$DEPLOY_ROOT"
+              exit 0
+            fi
+            echo "ERROR: DEPLOY_ROOT is set but does not exist on server: \$DEPLOY_ROOT" 1>&2
+            echo "Tip: run 'pwd' and 'ls -la ~ ~/files ~/files/public_html ~/public_html' over SSH to confirm exact path." 1>&2
+            exit 2
           elif [ -d "\$HOME/files/public_html" ]; then
             echo "\$HOME/files/public_html"
           elif [ -d "\$HOME/public_html" ]; then
@@ -56,7 +63,7 @@ jobs:
           REMOTE_EOF
           )"
 
-          if [ "${REMOTE_DEPLOY_PATH}" = "__NOT_FOUND__" ]; then
+          if [ "${REMOTE_DEPLOY_PATH}" = "__NOT_FOUND__" ] || [ -z "${REMOTE_DEPLOY_PATH}" ]; then
             echo "ERROR: Could not find deploy directory. Set GitHub Environment variable DEPLOY_ROOT to the full path (e.g. /home/u123456789/files/public_html), or ensure \$HOME/files/public_html or \$HOME/public_html exists."
             exit 1
           fi
@@ -81,8 +88,16 @@ jobs:
           ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s << 'REMOTE_EOF'
           set -e
           DEPLOY_ROOT="${{ vars.DEPLOY_ROOT }}"
-          if [ -n "$DEPLOY_ROOT" ] && [ -d "$DEPLOY_ROOT" ]; then
-            APP_DIR="$DEPLOY_ROOT"
+          echo "DEPLOY_ROOT from vars context: [${DEPLOY_ROOT}]"
+          if [ -n "$DEPLOY_ROOT" ]; then
+            if [ -d "$DEPLOY_ROOT" ]; then
+              APP_DIR="$DEPLOY_ROOT"
+            else
+              echo "ERROR: DEPLOY_ROOT is set but does not exist on server: ${DEPLOY_ROOT}"
+              echo "Run this over SSH to inspect paths:"
+              echo "pwd; ls -la ~ ~/files ~/files/public_html ~/public_html"
+              exit 1
+            fi
           elif [ -d "${HOME}/files/public_html" ]; then
             APP_DIR="${HOME}/files/public_html"
           elif [ -d "${HOME}/public_html" ]; then
