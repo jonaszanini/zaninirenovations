@@ -13,6 +13,30 @@ Route::post('/contact-email', [ContactFormController::class, 'submit'])
 
 Route::view('/warranty', 'site.warranty')->name('warranty');
 
+Route::view('/services/custom-kitchen-remodel', 'site.service-kitchen')->name('service.kitchen');
+
+Route::get('/sitemap.xml', function () {
+    return response()
+        ->view('site.sitemap-xml', [], 200)
+        ->header('Content-Type', 'application/xml; charset=UTF-8');
+})->name('sitemap');
+
+Route::get('/robots.txt', function () {
+    $base = rtrim((string) config('app.url'), '/');
+    $lines = [
+        'User-agent: *',
+        'Disallow: /admin',
+        'Disallow: /admin/',
+        'Allow: /',
+        '',
+        'Sitemap: '.$base.'/sitemap.xml',
+        '',
+    ];
+
+    return response(implode("\n", $lines), 200)
+        ->header('Content-Type', 'text/plain; charset=UTF-8');
+})->name('robots');
+
 Route::get('/', function () {
     $projects = Project::query()
         ->with([

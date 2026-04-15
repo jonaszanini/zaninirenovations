@@ -21,7 +21,7 @@
 
       <figure class="portfolio-img">
 
-        <img src="{{ $coverSrc }}" alt="{{ e($project->title) }}" loading="lazy" decoding="async">
+        <img src="{{ $coverSrc }}" alt="{{ e(\Illuminate\Support\Str::limit($project->title.' — Rough Carpentry Contractors; Finish Carpentry Services Ontario; O.Reg. 332/12 compliant portfolio', 200)) }}" loading="lazy" decoding="async">
 
       </figure>
       <!-- end .cause-img  -->

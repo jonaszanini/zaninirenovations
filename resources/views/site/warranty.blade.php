@@ -1,7 +1,16 @@
 @extends('site.layouts.public')
 
-@section('title', 'Warranty & Protection | Zanini Renovations')
-@section('meta_description', 'Workmanship warranty, liability insurance, WSIB compliance, and Ontario Building Code standards for Zanini Renovations in Carleton Place and the Ottawa region.')
+@section('title', 'WSIB & O.Reg. 332/12 Carpentry Warranty | Zanini Renovations')
+@section('meta_description', 'Zanini Renovations warranty: O.Reg. 332/12 compliant workmanship, WSIB Clearance Certificate, Form 1000 Compliance, General Liability Insurance $2M, Part 9 Housing & Small Buildings. Carleton Place & Ottawa.')
+@section('meta_keywords', config('seo.lsi_verbatim'))
+@section('canonical', url('/warranty'))
+
+@push('jsonld')
+<script type="application/ld+json">{!! \App\Support\SeoStructuredData::toJsonLd(array_merge(['@context' => 'https://schema.org'], \App\Support\SeoStructuredData::breadcrumb([
+    ['name' => 'Home', 'url' => url('/')],
+    ['name' => 'Warranty & Protection', 'url' => url('/warranty')],
+]))) !!}</script>
+@endpush
 
 @section('content')
   @php
@@ -34,6 +43,8 @@
 
             <p class="warranty-lead">
               At Zanini Renovations, we take pride in our craftsmanship and the durability of our work. We stand behind every cut, joint, and finish we create. To ensure your investment is protected, we provide a comprehensive warranty on all our services.
+              <br/>
+              <br/>
             </p>
 
             <h2 class="contact-title">Our Workmanship Guarantee</h2>

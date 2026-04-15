@@ -1,7 +1,16 @@
 
 
-<?php $__env->startSection('title', 'Warranty & Protection | Zanini Renovations'); ?>
-<?php $__env->startSection('meta_description', 'Workmanship warranty, liability insurance, WSIB compliance, and Ontario Building Code standards for Zanini Renovations in Carleton Place and the Ottawa region.'); ?>
+<?php $__env->startSection('title', 'WSIB & O.Reg. 332/12 Carpentry Warranty | Zanini Renovations'); ?>
+<?php $__env->startSection('meta_description', 'Zanini Renovations warranty: O.Reg. 332/12 compliant workmanship, WSIB Clearance Certificate, Form 1000 Compliance, General Liability Insurance $2M, Part 9 Housing & Small Buildings. Carleton Place & Ottawa.'); ?>
+<?php $__env->startSection('meta_keywords', config('seo.lsi_verbatim')); ?>
+<?php $__env->startSection('canonical', url('/warranty')); ?>
+
+<?php $__env->startPush('jsonld'); ?>
+<script type="application/ld+json"><?php echo \App\Support\SeoStructuredData::toJsonLd(array_merge(['@context' => 'https://schema.org'], \App\Support\SeoStructuredData::breadcrumb([
+    ['name' => 'Home', 'url' => url('/')],
+    ['name' => 'Warranty & Protection', 'url' => url('/warranty')],
+]))); ?></script>
+<?php $__env->stopPush(); ?>
 
 <?php $__env->startSection('content'); ?>
   <?php
@@ -34,6 +43,8 @@
 
             <p class="warranty-lead">
               At Zanini Renovations, we take pride in our craftsmanship and the durability of our work. We stand behind every cut, joint, and finish we create. To ensure your investment is protected, we provide a comprehensive warranty on all our services.
+              <br/>
+              <br/>
             </p>
 
             <h2 class="contact-title">Our Workmanship Guarantee</h2>
@@ -73,7 +84,6 @@
             </p>
             <p class="text-center margin-top-32 margin-bottom-0 warranty-cta-buttons">
               <a href="<?php echo e($home); ?>#contact-location" class="btn btn-theme btn-square nav_menu">Get in touch</a>
-              <a href="<?php echo e($home); ?>#contact" class="btn btn-theme btn-theme-white nav_menu">Contact</a>
             </p>
 
           </div>
