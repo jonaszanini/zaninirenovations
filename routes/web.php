@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProjectController;
+use App\Http\Controllers\ContactFormController;
 use App\Models\Project;
 use Illuminate\Support\Facades\Route;
 
@@ -41,14 +41,13 @@ Route::get('/', function () {
     $projects = Project::query()
         ->with([
             'photos' => fn ($q) => $q->orderBy('sort_order'),
-            'category',
+            'categories',
         ])
-        ->latest()
+        ->orderByCompletionLatest()
         ->get();
 
     $projectFilterCategories = $projects
-        ->map(fn (Project $p) => $p->category)
-        ->filter()
+        ->flatMap(fn (Project $p) => $p->categories)
         ->unique('id')
         ->sortBy(fn ($c) => [$c->sort_order, strtolower($c->name)])
         ->values();

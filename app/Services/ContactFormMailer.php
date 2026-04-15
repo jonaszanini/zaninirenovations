@@ -50,6 +50,42 @@ class ContactFormMailer
 
         $data = $validator->validated();
 
+        $detailHtml = self::submissionDetailHtml($data, $extended);
+
+        $to = config('mail.contact_to');
+        if (! is_string($to) || $to === '') {
+            Log::error('Contact form: MAIL_CONTACT_TO / MAIL_FROM_ADDRESS not configured.');
+
+            return ['status' => 0, 'msg' => 'Sorry, mail is not configured. Please try again later.'];
+        }
+
+        try {
+            Mail::html($detailHtml, function ($message) use ($to, $data) {
+                $message->to($to)
+                    ->replyTo($data['user_email'], $data['user_name'])
+                    ->subject('[Website contact] '.$data['email_subject']);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Contact form mail failed', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return ['status' => 0, 'msg' => 'Sorry, we could not send your message. Please try again later.'];
+        }
+
+        self::sendAutoReply($data, $detailHtml);
+
+        return [
+            'status' => 1,
+            'msg' => 'Thank you! Your message has been received. We will get back to you soon.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function submissionDetailHtml(array $data, bool $extended): string
+    {
         $extra = '';
         if ($extended) {
             $extra = '<p><strong>Location / city:</strong> '.e($data['location_city']).'</p>';
@@ -64,7 +100,7 @@ class ContactFormMailer
             $extra .= '<p><strong>Budget:</strong> '.e($budgetVal).'</p>';
         }
 
-        $html = sprintf(
+        return sprintf(
             '<p><strong>Name:</strong> %s</p><p><strong>Email:</strong> %s</p>%s<p><strong>Subject:</strong> %s</p><p><strong>Message:</strong></p><p>%s</p>',
             e($data['user_name']),
             e($data['user_email']),
@@ -72,31 +108,32 @@ class ContactFormMailer
             e($data['email_subject']),
             nl2br(e($data['email_message']))
         );
+    }
 
-        $to = config('mail.contact_to');
-        if (! is_string($to) || $to === '') {
-            Log::error('Contact form: MAIL_CONTACT_TO / MAIL_FROM_ADDRESS not configured.');
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function sendAutoReply(array $data, string $detailHtml): void
+    {
+        $siteName = (string) config('mail.from.name', 'Zanini Renovations');
+        $intro = sprintf(
+            '<p>Hi %s,</p><p>Thank you for contacting %s. We have received your message and will get in touch as soon as possible.</p><p>Below is a copy of what you submitted for your records.</p><hr style="border:none;border-top:1px solid #ddd;margin:1.25em 0;">',
+            e($data['user_name']),
+            e($siteName)
+        );
 
-            return ['status' => 0, 'msg' => 'Sorry, mail is not configured. Please try again later.'];
-        }
+        $html = $intro.$detailHtml;
 
         try {
-            Mail::html($html, function ($message) use ($to, $data) {
-                $message->to($to)
-                    ->replyTo($data['user_email'], $data['user_name'])
-                    ->subject('[Website contact] '.$data['email_subject']);
+            Mail::html($html, function ($message) use ($data, $siteName) {
+                $message->to($data['user_email'], $data['user_name'])
+                    ->subject('Thank you — '.$siteName);
             });
         } catch (\Throwable $e) {
-            Log::error('Contact form mail failed', [
+            Log::warning('Contact form auto-reply to visitor failed', [
+                'visitor_email' => $data['user_email'],
                 'message' => $e->getMessage(),
             ]);
-
-            return ['status' => 0, 'msg' => 'Sorry, we could not send your message. Please try again later.'];
         }
-
-        return [
-            'status' => 1,
-            'msg' => 'Thank you! Your message has been received. We will get back to you soon.',
-        ];
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProjectCategory extends Model
 {
@@ -17,8 +17,9 @@ class ProjectCategory extends Model
         'sort_order' => 0,
     ];
 
-    public function projects(): HasMany
+    public function projects(): BelongsToMany
     {
-        return $this->hasMany(Project::class, 'project_category_id');
+        return $this->belongsToMany(Project::class, 'project_project_category')
+            ->withTimestamps();
     }
 }

@@ -21,15 +21,32 @@
           <div class="admin-error">{{ $message }}</div>
         @enderror
       </div>
+      @php
+        $selectedCategoryIds = old('project_category_ids', []);
+      @endphp
       <div class="admin-form-group">
-        <label for="project_category_id">Category</label>
-        <select id="project_category_id" name="project_category_id" required>
-          <option value="">Select category</option>
+        <span class="admin-form-group-label">Categories</span>
+        <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
+        <div class="admin-category-checkboxes">
           @foreach ($categories as $cat)
-            <option value="{{ $cat->id }}" @selected((string) old('project_category_id') === (string) $cat->id)>{{ $cat->name }}</option>
+            <label class="admin-checkbox-tile">
+              <input type="checkbox" name="project_category_ids[]" value="{{ $cat->id }}" @checked(in_array((string) $cat->id, array_map('strval', (array) $selectedCategoryIds), true))>
+              <span>{{ $cat->name }}</span>
+            </label>
           @endforeach
-        </select>
-        @error('project_category_id')
+        </div>
+        @error('project_category_ids')
+          <div class="admin-error">{{ $message }}</div>
+        @enderror
+        @error('project_category_ids.*')
+          <div class="admin-error">{{ $message }}</div>
+        @enderror
+      </div>
+      <div class="admin-form-group">
+        <label for="completed_on">Completed on</label>
+        <input type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', now()->toDateString()) }}" required>
+        <p class="admin-form-hint">When the work was finished (used to order projects on the site — newest completion first).</p>
+        @error('completed_on')
           <div class="admin-error">{{ $message }}</div>
         @enderror
       </div>

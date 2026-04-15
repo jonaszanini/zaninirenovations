@@ -81,7 +81,7 @@ class CategoryController extends Controller
         if ($category->projects()->exists()) {
             return redirect()
                 ->route('admin.categories.index')
-                ->with('error', 'Cannot delete a category that still has projects. Reassign or delete those projects first.');
+                ->with('error', 'Cannot delete a category that is still used on one or more projects. Remove it from those projects first.');
         }
 
         $category->delete();

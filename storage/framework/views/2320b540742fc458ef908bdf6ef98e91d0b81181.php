@@ -9,7 +9,7 @@
   ?>
   <div
     class="col-md-3 col-sm-6 col-xs-12 portfolio-container js-latest-project-item"
-    data-category-slug="<?php echo e($project->category?->slug ?? ''); ?>"
+    data-category-slugs="<?php echo e($project->categories->pluck('slug')->implode(',')); ?>"
   >
 
     <a

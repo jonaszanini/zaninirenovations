@@ -416,7 +416,8 @@ body.admin-body {
   margin-bottom: 1.25rem;
 }
 
-.admin-form-group label {
+.admin-form-group label,
+.admin-form-group-label {
   display: block;
   font-size: 0.8rem;
   font-weight: 600;
@@ -429,6 +430,7 @@ body.admin-body {
 .admin-form-group input[type="text"],
 .admin-form-group input[type="email"],
 .admin-form-group input[type="password"],
+.admin-form-group input[type="date"],
 .admin-form-group input[type="file"],
 .admin-form-group select,
 .admin-form-group textarea {
@@ -455,6 +457,41 @@ body.admin-body {
   outline: none;
   border-color: var(--admin-primary);
   box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+
+.admin-category-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.admin-checkbox-tile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-bg);
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--admin-text);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.admin-checkbox-tile:focus-within {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+
+.admin-checkbox-tile input {
+  width: auto;
+  min-height: auto;
+  margin: 0;
+  accent-color: var(--admin-primary);
 }
 
 .admin-form-hint {

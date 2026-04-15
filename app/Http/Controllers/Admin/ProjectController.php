@@ -18,9 +18,9 @@ class ProjectController extends Controller
     public function index()
     {
         $projects = Project::query()
-            ->with('category')
+            ->with('categories')
             ->withCount('photos')
-            ->latest()
+            ->orderByCompletionLatest()
             ->paginate(15);
 
         return view('admin.projects.index', compact('projects'));
@@ -41,7 +41,9 @@ class ProjectController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
-            'project_category_id' => ['required', 'integer', 'exists:project_categories,id'],
+            'project_category_ids' => ['required', 'array', 'min:1'],
+            'project_category_ids.*' => ['integer', 'distinct', 'exists:project_categories,id'],
+            'completed_on' => ['required', 'date'],
             'photos' => ['nullable', 'array', 'max:10'],
             'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
         ]);
@@ -55,8 +57,10 @@ class ProjectController extends Controller
             $project = Project::create([
                 'title' => $validated['title'],
                 'description' => $validated['description'],
-                'project_category_id' => $validated['project_category_id'],
+                'completed_on' => $validated['completed_on'],
             ]);
+
+            $project->categories()->sync($validated['project_category_ids']);
 
             if ($request->hasFile('photos')) {
                 foreach ($request->file('photos') as $index => $file) {
@@ -89,7 +93,10 @@ class ProjectController extends Controller
 
     public function edit(Project $project)
     {
-        $project->load(['photos' => fn ($q) => $q->orderBy('sort_order')]);
+        $project->load([
+            'photos' => fn ($q) => $q->orderBy('sort_order'),
+            'categories',
+        ]);
 
         $categories = ProjectCategory::query()
             ->orderBy('sort_order')
@@ -104,7 +111,9 @@ class ProjectController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
-            'project_category_id' => ['required', 'integer', 'exists:project_categories,id'],
+            'project_category_ids' => ['required', 'array', 'min:1'],
+            'project_category_ids.*' => ['integer', 'distinct', 'exists:project_categories,id'],
+            'completed_on' => ['required', 'date'],
             'photo_sequence' => ['nullable', 'array'],
             'photo_sequence.*' => [
                 'integer',
@@ -121,8 +130,10 @@ class ProjectController extends Controller
         $project->update([
             'title' => $validated['title'],
             'description' => $validated['description'],
-            'project_category_id' => $validated['project_category_id'],
+            'completed_on' => $validated['completed_on'],
         ]);
+
+        $project->categories()->sync($validated['project_category_ids']);
 
         if (! empty($validated['delete_photos'])) {
             $photos = ProjectPhoto::query()

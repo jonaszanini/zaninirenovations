@@ -1652,8 +1652,10 @@ jQuery(function ($) {
             $btn.addClass('is-active').attr('aria-pressed', 'true');
 
             $('.js-latest-project-item').each(function () {
-                var slug = $(this).attr('data-category-slug') || '';
-                $(this).toggle(filter === 'all' || slug === filter);
+                var raw = $(this).attr('data-category-slugs') || '';
+                var slugs = raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+                var match = filter === 'all' || slugs.indexOf(filter) !== -1;
+                $(this).toggle(match);
             });
         });
     }

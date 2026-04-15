@@ -9,7 +9,7 @@
   @endphp
   <div
     class="col-md-3 col-sm-6 col-xs-12 portfolio-container js-latest-project-item"
-    data-category-slug="{{ $project->category?->slug ?? '' }}"
+    data-category-slugs="{{ $project->categories->pluck('slug')->implode(',') }}"
   >
 
     <a

@@ -26,7 +26,7 @@
             <th>Title</th>
             <th>Category</th>
             <th>Photos</th>
-            <th>Updated</th>
+            <th>Completed on</th>
             <th></th>
           </tr>
         </thead>
@@ -36,7 +36,7 @@
               <td><strong>{{ $project->title }}</strong></td>
               <td><span class="admin-badge">{{ $project->categoryLabel() }}</span></td>
               <td>{{ $project->photos_count }} / 10</td>
-              <td>{{ $project->updated_at->format('M j, Y') }}</td>
+              <td>{{ optional($project->completed_on)->format('M j, Y') ?? '—' }}</td>
               <td style="white-space:nowrap;">
                 <a href="{{ route('admin.projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
                 <form action="{{ route('admin.projects.destroy', $project) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this project and all photos?');">

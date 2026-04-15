@@ -35,15 +35,46 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
       </div>
+      <?php
+        $selectedCategoryIds = old('project_category_ids', []);
+      ?>
       <div class="admin-form-group">
-        <label for="project_category_id">Category</label>
-        <select id="project_category_id" name="project_category_id" required>
-          <option value="">Select category</option>
+        <span class="admin-form-group-label">Categories</span>
+        <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
+        <div class="admin-category-checkboxes">
           <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-            <option value="<?php echo e($cat->id); ?>" <?php if((string) old('project_category_id') === (string) $cat->id): echo 'selected'; endif; ?>><?php echo e($cat->name); ?></option>
+            <label class="admin-checkbox-tile">
+              <input type="checkbox" name="project_category_ids[]" value="<?php echo e($cat->id); ?>" <?php if(in_array((string) $cat->id, array_map('strval', (array) $selectedCategoryIds), true)): echo 'checked'; endif; ?>>
+              <span><?php echo e($cat->name); ?></span>
+            </label>
           <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-        </select>
-        <?php $__errorArgs = ['project_category_id'];
+        </div>
+        <?php $__errorArgs = ['project_category_ids'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+          <div class="admin-error"><?php echo e($message); ?></div>
+        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+        <?php $__errorArgs = ['project_category_ids.*'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+          <div class="admin-error"><?php echo e($message); ?></div>
+        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+      </div>
+      <div class="admin-form-group">
+        <label for="completed_on">Completed on</label>
+        <input type="date" id="completed_on" name="completed_on" value="<?php echo e(old('completed_on', now()->toDateString())); ?>" required>
+        <p class="admin-form-hint">When the work was finished (used to order projects on the site — newest completion first).</p>
+        <?php $__errorArgs = ['completed_on'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
