@@ -21,7 +21,7 @@
 
       <figure class="portfolio-img">
 
-        <img src="<?php echo e($coverSrc); ?>" alt="<?php echo e(e($project->title)); ?>">
+        <img src="<?php echo e($coverSrc); ?>" alt="<?php echo e(e($project->title)); ?>" loading="lazy" decoding="async">
 
       </figure>
       <!-- end .cause-img  -->

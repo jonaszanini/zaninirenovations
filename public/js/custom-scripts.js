@@ -1,10 +1,6 @@
-/*-------------------------------------------------------------------*/
-/* Project: Pakkapati - Flooring Service HTML5 Template */
-/* Ver: 1.0.0*/
-/* Date: 25-06-2017*/
-/* Author: xenioushk*/
-/*-------------------------------------------------------------------*/
-
+/**
+ * Zanini Renovations — front-end interactions (navigation, sliders, contact form, etc.)
+ */
 jQuery(function ($) {
 
     "use strict";
@@ -26,7 +22,7 @@ jQuery(function ($) {
      * Pixel offset for one-page anchor scroll: fixed/sticky header height plus a small buffer,
      * never less than the target section's CSS scroll-margin-top (see styles.css).
      */
-    function bwl_one_page_scroll_offset($target) {
+    function zr_one_page_scroll_offset($target) {
         var headerClearance = 0;
         var $m2 = $('.main-header-2');
         if ($m2.length) {
@@ -80,10 +76,14 @@ jQuery(function ($) {
 
                 var target = $(this.hash);
                 target = target.length ? target : $('[name=' + this.hash.slice(1) + ']');
-                var offset = bwl_one_page_scroll_offset(target);
+                var offset = zr_one_page_scroll_offset(target);
 
                 if (target.length) {
-                    var scrollTop = target.offset().top - offset;
+                    var pos = target.offset();
+                    if (!pos) {
+                        return false;
+                    }
+                    var scrollTop = pos.top - offset;
                     if (scrollTop < 0) {
                         scrollTop = 0;
                     }
@@ -1380,7 +1380,7 @@ jQuery(function ($) {
         
     }
 
-    function bwl_refresh_testimonial_carousel() {
+    function zr_refresh_testimonial_carousel() {
         $(".testimonial-container.owl-carousel").each(function () {
             var $carousel = $(this);
             if ($carousel.data("owl.carousel")) {
@@ -1391,7 +1391,7 @@ jQuery(function ($) {
 
     //WoW Animation.
     animations();
-    setTimeout(bwl_refresh_testimonial_carousel, 0);
+    setTimeout(zr_refresh_testimonial_carousel, 0);
 
     //One Page Scrolling.
     smooth_scrolling();
@@ -1414,7 +1414,7 @@ jQuery(function ($) {
     }
     
     // Go to Specific Section After Load
-    function bwl_on_load_scroll() {
+    function zr_on_load_scroll() {
 
         var urlHash = window.location.href.split("#")[1];
 
@@ -1432,7 +1432,11 @@ jQuery(function ($) {
 
         if ($target.length) {
             var $first = $target.first();
-            var top = $first.offset().top - bwl_one_page_scroll_offset($first);
+            var pos = $first.offset();
+            if (!pos) {
+                return;
+            }
+            var top = pos.top - zr_one_page_scroll_offset($first);
             if (top < 0) {
                 top = 0;
             }
@@ -1452,12 +1456,12 @@ jQuery(function ($) {
             $("#preloader").fadeOut(500);
 
         }
-        bwl_on_load_scroll();
-        bwl_refresh_testimonial_carousel();
+        zr_on_load_scroll();
+        zr_refresh_testimonial_carousel();
     });
 
     // Latest projects gallery (Bootstrap 3 modal + lightweight translate3d track)
-    function bwl_project_gallery_modal() {
+    function zr_project_gallery_modal() {
         var $modal = $('#latestProjectGalleryModal');
         if (!$modal.length) {
             return;
@@ -1487,6 +1491,20 @@ jQuery(function ($) {
             }
             index = (index + delta + urls.length) % urls.length;
             updateTransform();
+        }
+
+        function isSafeProjectImageUrl(src) {
+            if (typeof src !== 'string') {
+                return false;
+            }
+            var s = src.trim();
+            if (!s || /[\0\r\n<>]|javascript:/i.test(s)) {
+                return false;
+            }
+            if (/^https?:\/\//i.test(s)) {
+                return true;
+            }
+            return s.charAt(0) === '/' && s.charAt(1) !== '/';
         }
 
         function buildFromUrls(list, title) {
@@ -1559,8 +1577,14 @@ jQuery(function ($) {
             if (!$.isArray(list) || !list.length) {
                 return;
             }
+            var filtered = $.grep(list, function (s) {
+                return isSafeProjectImageUrl(s);
+            });
+            if (!filtered.length) {
+                return;
+            }
             var projTitle = $a.attr('data-project-title');
-            buildFromUrls(list, projTitle || '');
+            buildFromUrls(filtered, projTitle || '');
             $modal.modal('show');
         });
 
@@ -1612,9 +1636,9 @@ jQuery(function ($) {
         });
     }
 
-    bwl_project_gallery_modal();
+    zr_project_gallery_modal();
 
-    function bwl_latest_projects_filter() {
+    function zr_latest_projects_filter() {
         var $filters = $('.latest-projects-filters');
         if (!$filters.length) {
             return;
@@ -1634,6 +1658,6 @@ jQuery(function ($) {
         });
     }
 
-    bwl_latest_projects_filter();
+    zr_latest_projects_filter();
 
 });

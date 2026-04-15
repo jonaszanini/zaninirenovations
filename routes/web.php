@@ -11,6 +11,8 @@ Route::post('/contact-email', [ContactFormController::class, 'submit'])
     ->middleware('throttle:8,1')
     ->name('contact.submit');
 
+Route::view('/warranty', 'site.warranty')->name('warranty');
+
 Route::get('/', function () {
     $projects = Project::query()
         ->with([

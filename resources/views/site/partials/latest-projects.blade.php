@@ -21,7 +21,7 @@
 
       <figure class="portfolio-img">
 
-        <img src="{{ $coverSrc }}" alt="{{ e($project->title) }}">
+        <img src="{{ $coverSrc }}" alt="{{ e($project->title) }}" loading="lazy" decoding="async">
 
       </figure>
       <!-- end .cause-img  -->

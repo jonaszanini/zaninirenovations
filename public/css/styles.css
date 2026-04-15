@@ -1,17 +1,10 @@
 /**
  * File: styles.css
- * Description : Contains all necessary styling for the Pakkapati - Flooring Service HTML5 Template
- * Author: xenioushk
- * URL: https://themeforest.net/item/pakkapati-flooring-service-html5-template/22627787
- * Project: Pakkapati - Flooring Service HTML5 Template
- * Version: 1.0.3
- * Last Update: 25-10-2023
+ * Site: Zanini Renovations — public front-end styles.
  **/
 @import url("https://fonts.googleapis.com/css?family=Lora:400,400i,700,700i|Open+Sans:300,400,500,700,800");
 /**
- * html5doctor.com Reset Stylesheet (Eric Meyer's Reset Reloaded + HTML5 baseline)
- * v1.6.1 2010-09-17 | Authors: Eric Meyer & Richard Clark
- * html5doctor.com/html-5-reset-stylesheet/
+ * CSS reset / baseline (standard HTML5 document defaults).
  */
 html, body, div, span, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
@@ -106,8 +99,8 @@ td {
 
 textarea {
   overflow: auto;
-} /* www.sitepoint.com/blogs/2010/08/20/ie-remove-textarea-scrollbars/ */
-/* Align checkboxes, radios, text inputs with their label by: Thierry Koblentz tjkdesign.com/ez-css/css/base.css ; */
+}
+/* Align checkboxes, radios, and text inputs with their labels */
 input[type=radio] {
   vertical-align: text-bottom;
 }
@@ -8621,4 +8614,93 @@ footer .social-icons a:hover {
 .project-gallery-dots li.active {
   background-color: rgba(30, 30, 30, 0.9);
   background-clip: content-box;
+}
+
+/* Mobile: faster tap response on primary controls (no visual layout change) */
+.btn,
+.nav_menu,
+button,
+.latest-project-filter-btn {
+  touch-action: manipulation;
+}
+
+/* Standalone Warranty page */
+.page-warranty-hero {
+  padding-top: 48px;
+  padding-bottom: 40px;
+}
+.page-warranty-hero .heading-separator-horizontal {
+  border-top-color: rgba(255, 255, 255, 0.55);
+  border-bottom-color: rgba(255, 255, 255, 0.55);
+}
+.page-warranty-h1 {
+  font-size: 28px;
+  line-height: 1.25;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+@media (min-width: 768px) {
+  .page-warranty-h1 {
+    font-size: 34px;
+  }
+}
+.page-warranty-hero-lead {
+  max-width: 720px;
+  margin: 16px auto 0;
+  font-size: 16px;
+  line-height: 1.55;
+  opacity: 0.95;
+}
+.page-warranty-body {
+  padding-top: 48px;
+  padding-bottom: 56px;
+}
+.warranty-prose {
+  font-size: 16px;
+  line-height: 1.65;
+  color: #3a4856;
+}
+.warranty-prose .contact-title {
+  margin-top: 36px;
+  margin-bottom: 16px;
+}
+.warranty-prose .contact-title:first-of-type {
+  margin-top: 8px;
+}
+.warranty-lead {
+  font-size: 17px;
+  line-height: 1.65;
+  margin-bottom: 8px;
+}
+.warranty-list {
+  margin: 12px 0 20px;
+  padding-left: 1.2em;
+}
+.warranty-list li {
+  margin-bottom: 8px;
+}
+.warranty-list--spaced li {
+  margin-bottom: 16px;
+}
+.warranty-cta-text {
+  margin-bottom: 0;
+}
+.warranty-cta-buttons .btn + .btn {
+  margin-left: 10px;
+}
+@media (max-width: 767px) {
+  .warranty-cta-buttons .btn {
+    display: block;
+    width: 100%;
+    max-width: 280px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .warranty-cta-buttons .btn + .btn {
+    margin-top: 12px;
+    margin-left: auto;
+  }
+}
+#warranty {
+  scroll-margin-top: 100px;
 }

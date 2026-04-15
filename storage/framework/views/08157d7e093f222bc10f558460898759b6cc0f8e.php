@@ -1,199 +1,15 @@
-<!DOCTYPE html>
-<!--[if IE 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if !IE]><!-->
-  <html
-  lang="en"> <!--<![endif]-->
-  <head>
-    <meta charset="utf-8">
-    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
-    <meta name="contact-post-url" content="<?php echo e(url('/contact-email')); ?>">
-    <title>Zanini Renovations</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <meta name="description" content="Pakkapati - Flooring Service HTML5 Template">
-    <meta name="author" content="xenioushk">
-    <link rel="shortcut icon" href="images/favicon.png">
 
-    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
-    <!--[if lt IE 9]>
-                                              <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-                                            <![endif]-->
 
-    <!-- The styles -->
-    <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css"> <link href="css/font-awesome.min.css" rel="stylesheet" type="text/css">
-    <link href="css/owl.carousel.css" rel="stylesheet" type="text/css">
-    <link href="css/owl.theme.css" rel="stylesheet" type="text/css">
-    <link href="css/animate.css" rel="stylesheet" type="text/css">
-    <link href="css/venobox.css" rel="stylesheet" type="text/css">
-    <link rel="stylesheet" href="css/styles.css" type="text/css">
-  </head>
+<?php $__env->startSection('title', 'Zanini Renovations'); ?>
+<?php $__env->startSection('meta_description', 'Zanini Renovations — carpentry and renovations in Carleton Place and the Ottawa region. Decks, trim, basements, and full home projects.'); ?>
 
-  <body>
+<?php $__env->startSection('content'); ?>
 
     <?php
       $socialFacebookUrl = (string) config('social.facebook_url');
       $socialInstagramUrl = (string) config('social.instagram_url');
       $socialWhatsappUrl = (string) config('social.whatsapp_url');
     ?>
-
-    <div id="preloader">
-      <span class="margin-bottom"><img src="images/loader.gif" alt="Loading......"></span>
-    </div>
-
-    <!--  HEADER STYLE  03-->
-
-    <header class="main-header-2 clearfix" data-sticky_header="true">
-
-      <section class="header-wrapper navgiation-wrapper">
-
-        <div class="main-top-header hidden-sm hidden-xs clearfix">
-          <div class="container">
-            <div class="row">
-
-              <div class="col-lg-6 col-md-6 col-sm-6 text-left ">
-                <div class="top-bar-link">
-                  <strong>PHONE NUMBER</strong>
-                  : (647)-834-7570
-                </div>
-              </div>
-
-              <div class="col-lg-6 col-md-6 col-sm-6 text-right">
-
-                <div class="top-bar-link">
-                  <a href="#testimonials" class="nav_menu">Reviews</a>
-                  <span class="separator-line"></span>
-                  <a href="#">Warranty</a>
-                  <span class="separator-line"></span>
-                  <a href="#contact" class="nav_menu">Contact</a>
-                  <span class="separator-line"></span>
-                  <a href="/admin/login">Admin</a>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="header-top">
-          <div class="container">
-            <div class="row">
-
-              <div class="col-md-4 col-sm-12 col-xs-12 header-col-logo">
-                <div class="header-logo logo">
-                  <a href="#home" class="nav_menu" title="Zanini Renovations — Home">
-                    <img src="images/logo.png" alt="Logo">
-                  </a>
-                </div>
-                <!-- end .logo  -->
-              </div>
-              <!-- end .col-md-3  -->
-
-              <div class="col-md-8 col-sm-12 hidden-xs">
-                <div class="row">
-
-                  <div class="col-md-4 col-sm-4">
-                    <div class="header-icon-box">
-                      <div class="icon-container">
-                        <i class="fa fa-building-o"></i>
-                      </div>
-                      <div class="text">
-                        <span class="head-heading">we are located at</span>
-                        <span class="head-content">
-                          Carleton Place, ON
-                        </span>
-                      </div>
-                    </div>
-                    <!-- end .repair-icon-box  -->
-                  </div>
-                  <!-- end .col-md-4  -->
-
-                  <div class="col-md-4 col-sm-4">
-                    <div class="header-icon-box">
-                      <div class="icon-container">
-                        <i class="fa fa-calendar-check-o"></i>
-                      </div>
-                      <div class="text">
-                        <span class="head-heading">WORKING HOUR</span>
-                        <span class="head-content">
-                          Monday-Friday / 9am-6pm
-                        </span>
-                      </div>
-                    </div>
-                    <!-- end .header-icon-box  -->
-                  </div>
-                  <!-- end .col-md-4  -->
-
-                  <div class="col-md-4 col-sm-4 clearfix">
-                    <a class="btn btn-theme btn-square btn-header-cta margin-top-36 pull-right nav_menu" href="#contact-location" title="GET FREE ESTIMATE">FREE ESTIMATE</a>
-                  </div>
-                  <!-- end .col-md-4  -->
-
-                </div>
-                <!-- end .row  -->
-              </div>
-              <!-- end .col-md-8  -->
-
-            </div>
-            <!-- end .row  -->
-          </div>
-          <!-- end .container  -->
-        </div>
-        <!-- end header-top  -->
-
-        <div class="navbar navbar-default">
-          <div class="container clearfix">
-            <div class="navbar-collapse collapse pull-left">
-              <ul class="nav navbar-nav">
-                <li>
-                  <a href="#home" class="nav_menu link-active" title="Home">Home</a>
-                </li>
-                <li>
-                  <a href="#services" class="nav_menu" title="Services">Services</a>
-                </li>
-                <li>
-                  <a href="#projects" class="nav_menu" title="Latest projects">Projects</a>
-                </li>
-                <li>
-                  <a href="#about" class="nav_menu" title="About us">About</a>
-                </li>
-                <li>
-                  <a href="#testimonials" class="nav_menu" title="Testimonials">Testimonials</a>
-                </li>
-                <li>
-                  <a href="#contact" class="nav_menu" title="Contact">Contact</a>
-                </li>
-              </ul>
-              <!-- end .nav .navbar-nav  -->
-            </div>
-            <div class="navbar-header pull-right">
-              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-              </button>
-              <div class="navbar-contact">
-
-                <div class="top-bar-social margin-top-16">
-                  <a href="<?php echo e($socialFacebookUrl); ?>"<?php if(str_starts_with($socialFacebookUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>>
-                    <i class="fa fa-facebook"></i>
-                  </a>
-                  <a href="<?php echo e($socialInstagramUrl); ?>"<?php if(str_starts_with($socialInstagramUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>>
-                    <i class="fa fa-instagram"></i>
-                  </a>
-                  <a href="<?php echo e($socialWhatsappUrl); ?>"<?php if(str_starts_with($socialWhatsappUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?> title="WhatsApp">
-                    <i class="fa fa-whatsapp"></i>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- end .container  -->
-        </div>
-        <!-- end .navbar .navbar-default  -->
-
-      </section>
-
-    </header>
-    <!-- end main-header  -->
 
     <!--  HOME SLIDER BLOCK  -->
 
@@ -323,7 +139,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/fence.webp" alt="Fence installation">
+                <img src="images/services/fence.webp" alt="Fence installation" loading="lazy" decoding="async">
                 <span class="fa fa-bars"></span>
               </figure>
 
@@ -338,7 +154,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/deck.webp" alt="Deck construction">
+                <img src="images/services/deck.webp" alt="Deck construction" loading="lazy" decoding="async">
                 <span class="fa fa-tree"></span>
               </figure>
 
@@ -353,7 +169,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/basement-renovation.webp" alt="Basement renovation">
+                <img src="images/services/basement-renovation.webp" alt="Basement renovation" loading="lazy" decoding="async">
                 <span class="fa fa-home"></span>
               </figure>
 
@@ -368,7 +184,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/trim.webp" alt="Trim and moulding installation">
+                <img src="images/services/trim.webp" alt="Trim and moulding installation" loading="lazy" decoding="async">
                 <span class="fa fa-wrench"></span>
               </figure>
 
@@ -383,7 +199,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/shelves.webp" alt="Custom shelving and built-ins">
+                <img src="images/services/shelves.webp" alt="Custom shelving and built-ins" loading="lazy" decoding="async">
                 <span class="fa fa-cubes"></span>
               </figure>
 
@@ -398,7 +214,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/flooring.webp" alt="Hardwood and laminate flooring">
+                <img src="images/services/flooring.webp" alt="Hardwood and laminate flooring" loading="lazy" decoding="async">
                 <span class="fa fa-th-large"></span>
               </figure>
 
@@ -413,7 +229,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/tiles.webp" alt="Tile installation">
+                <img src="images/services/tiles.webp" alt="Tile installation" loading="lazy" decoding="async">
                 <span class="fa fa-th"></span>
               </figure>
 
@@ -428,7 +244,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/accent-walls.webp" alt="Accent wall feature">
+                <img src="images/services/accent-walls.webp" alt="Accent wall feature" loading="lazy" decoding="async">
                 <span class="fa fa-paint-brush"></span>
               </figure>
 
@@ -442,7 +258,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/stairs.webp" alt="Stair construction and repair">
+                <img src="images/services/stairs.webp" alt="Stair construction and repair" loading="lazy" decoding="async">
                 <span class="fa fa-sort-amount-asc"></span>
               </figure>
 
@@ -598,8 +414,8 @@
                   <div class="team-layout-1 text-center">
 
                     <figure class="team-member">
-                      <a href="#" title="MELISSA MUNOZ">
-                        <img src="images/about-us/jonas.webp" alt="MELISSA MUNOZ">
+                      <a href="#" title="Jonas Zanini">
+                        <img src="images/about-us/jonas.webp" alt="Jonas Zanini" loading="lazy" decoding="async">
                       </a>
                     </figure>
                     <!-- end. team-member  -->
@@ -637,8 +453,8 @@
                   <div class="team-layout-1 text-center">
 
                     <figure class="team-member">
-                      <a href="#" title="JOHN ABRAHAM">
-                        <img src="images/about-us/mayara.webp" alt="JOHN ABRAHAM">
+                      <a href="#" title="Mayara Zanini">
+                        <img src="images/about-us/mayara.webp" alt="Mayara Zanini" loading="lazy" decoding="async">
                       </a>
                     </figure>
                     <!-- end. team-member  -->
@@ -960,275 +776,6 @@
     </section>
     <!--  end contact section -->
 
-    <!-- START FOOTER  -->
+<?php $__env->stopSection(); ?>
 
-    <footer>
-
-      <section class="footer-widget-area footer-widget-area-bg section-custom-bg" data-bg_img="images/footer_bg.webp" data-bg_color="#111111" data-bg_opacity="0.80">
-
-        <div class="container">
-
-          <div class="row">
-
-            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-
-              <div class="about-footer">
-
-                <div class="row">
-
-                  <div class="col-lg-10 col-lg-offset-1 col-md-12 col-sm-12 col-xs-12">
-
-                    <figure>
-                      <img src="images/logo-footer.webp" alt="Zanini Renovations">
-                    </figure>
-                    <p class="margin-top-24">
-
-                    Zanini Renovations is Ontario’s trusted expert for general carpentry and complete renovations. From custom trim to full builds, we provide residential and commercial excellence with superior warranties and the best professional pricing.
-
-                    </p>
-                    <div class="footer-social-icons">
-
-                      <a href="<?php echo e($socialFacebookUrl); ?>"<?php if(str_starts_with($socialFacebookUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>>
-                        <i class="fa fa-facebook"></i>
-                      </a>
-
-                      <a href="<?php echo e($socialInstagramUrl); ?>"<?php if(str_starts_with($socialInstagramUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>>
-                        <i class="fa fa-instagram"></i>
-                      </a>
-
-                      <a href="<?php echo e($socialWhatsappUrl); ?>"<?php if(str_starts_with($socialWhatsappUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?> title="WhatsApp">
-                        <i class="fa fa-whatsapp"></i>
-                      </a>
-
-                    </div>
-                  </div>
-                  <!--  end .col-lg-9  -->
-
-                </div>
-                <!--  end .row -->
-
-              </div>
-              <!--  end .about-footer  -->
-
-            </div>
-            <!--  end .col-md-12  -->
-
-          </div>
-          <!--  end .row  -->
-
-          <div class="row">
-
-            <div class="col-md-4 col-sm-6 col-xs-12">
-
-              <div class="footer-widget">
-
-                <div class="sidebar-widget-wrapper">
-
-                  <div class="footer-widget-header clearfix">
-                    <h3>OFFICE ADDRESS</h3>
-                  </div>
-                  <!--  end .footer-widget-header -->
-
-
-                  <div class="textwidget footer-contact-textwidget">
-
-                    <div class="footer-contact-item">
-                      <i class="fa fa-envelope-o fa-contact" aria-hidden="true"></i>
-                      <div class="footer-contact-body">
-                        <p>
-                          <a href="mailto:<?php echo e(config('mail.from.address')); ?>"><?php echo e(config('mail.from.address')); ?></a>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div class="footer-contact-item">
-                      <i class="fa fa-location-arrow fa-contact" aria-hidden="true"></i>
-                      <div class="footer-contact-body">
-                        <p>
-                          Carleton Place, ON<br>
-                          <a href="https://maps.app.goo.gl/WsKrQcEq2KdPKoN19" target="_blank" rel="noopener noreferrer">Google Maps</a>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div class="footer-contact-item">
-                      <i class="fa fa-phone fa-contact" aria-hidden="true"></i>
-                      <div class="footer-contact-body">
-                        <p><a href="tel:+16478347570">(647) 834-7570</a></p>
-                      </div>
-                    </div>
-
-                  </div>
-
-                </div>
-                <!-- end .footer-widget-wrapper  -->
-
-              </div>
-              <!--  end .footer-widget  -->
-
-            </div>
-            <!--  end .col-md-4 col-sm-12 -->
-
-            <div class="col-md-4 col-sm-6 col-xs-12">
-
-              <div class="footer-widget">
-
-                <div class="sidebar-widget-wrapper">
-
-                  <div class="footer-widget-header clearfix">
-                    <h3>QUALITY SERVICES</h3>
-                  </div>
-                  <!--  end .footer-widget-header -->
-
-
-                  <div class="textwidget">
-
-                    <ul class="footer-useful-links clearfix">
-                      <li>
-                        <a href="#contact-location" class="nav_menu">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Fencing
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#contact-location" class="nav_menu">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Decks
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#contact-location" class="nav_menu">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Basement Renovation
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#contact-location" class="nav_menu">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Trim &amp; Moulding
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#contact-location" class="nav_menu">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Shelving
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#contact-location" class="nav_menu">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Flooring
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#contact">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Tile
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#contact-location" class="nav_menu">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Accent Walls
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#contact-location" class="nav_menu">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Stairs
-                        </a>
-                      </li>
-                    </ul>
-
-                  </div>
-
-                </div>
-                <!-- end .footer-widget-wrapper  -->
-
-              </div>
-              <!--  end .footer-widget  -->
-
-            </div>
-            <!--  end .col-md-4 col-sm-12 -->
-
-            <div class="col-md-4 col-sm-6 col-xs-12">
-
-              <div class="footer-widget">
-
-                <div class="sidebar-widget-wrapper">
-
-                  <div class="footer-widget-header clearfix">
-                    <h3>BUSINESS HOURS</h3>
-                  </div>
-                  <!--  end .footer-widget-header -->
-
-                  <div class="textwidget">
-                    <ul class="opening-shedule">
-                      <li class="clearfix">
-                        <span>Monday &ndash; Friday</span>
-                        <div class="pull-right">9am &ndash; 6pm</div>
-                      </li>
-                    </ul>
-
-                  </div>
-
-
-                </div>
-                <!-- end .footer-widget-wrapper  -->
-
-              </div>
-              <!--  end .footer-widget  -->
-
-            </div>
-
-
-          </div>
-          <!-- end row  -->
-
-        </div>
-        <!-- end .container  -->
-
-      </section>
-      <!--  end .footer-widget-area  -->
-
-      <!--FOOTER CONTENT  -->
-
-      <section class="footer-contents">
-
-        <div class="container">
-
-          <div class="row clearfix">
-            <div class="col-md-12 col-sm-12 text-center clearfix">
-              <p class="copyright-text">Copyright © <?php echo e(date('Y')); ?>. All rights reserved by Zanini Renovations</p>
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-    </footer>
-
-
-    <!-- BACK TO TOP BUTTON  -->
-
-    <a id="backTop" role="button" aria-label="Back to top">Back To Top</a>
-
-    <script src="js/jquery.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-    <script src="js/wow.min.js"></script>
-    <script src="js/jquery.backTop.min.js "></script>
-    <script src="js/waypoints.min.js"></script>
-    <script src="js/waypoints-sticky.min.js"></script>
-    <script src="js/owl.carousel.min.js"></script>
-    <script src="js/jquery.stellar.min.js"></script>
-    <script src="js/jquery.counterup.min.js"></script>
-    <script src="js/venobox.min.js"></script>
-    <!--        <script src="https://maps.google.com/maps/api/js?sensor=true&key=AIzaSyB8asWf-NyxR0dTHf_OMY9iT_lRncQG8x8 "></script>
-                                            <script src="js/jquery.gmap.min.js"></script>-->
-    <script src="js/custom-scripts.js"></script>
-  </body>
-
-</html>
-<?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/site/home.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('site.layouts.public', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/site/home.blade.php ENDPATH**/ ?>
