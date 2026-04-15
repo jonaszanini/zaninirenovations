@@ -19,6 +19,7 @@ jobs:
     env:
       DEPLOY_ROOT: /home/u372714627/domains/zaninirenovations.ca/public_html
 
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
