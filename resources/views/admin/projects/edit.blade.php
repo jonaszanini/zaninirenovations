@@ -91,13 +91,13 @@
       @endif
 
       @php
-        $canAdd = 10 - $project->photos->count();
+        $canAdd = 15 - $project->photos->count();
       @endphp
       @if ($canAdd > 0)
         <div class="admin-form-group">
           <label for="photos">Add photos</label>
           <input type="file" id="photos" name="photos[]" accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png" multiple>
-          <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP and scaled so the longest side is at most {{ (int) config('webp.max_edge_px', 1920) }}px; originals are not kept. Up to {{ $canAdd }} more (10 total).</p>
+          <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP and scaled so the longest side is at most {{ (int) config('webp.max_edge_px', 1920) }}px; originals are not kept. Up to {{ $canAdd }} more (15 total).</p>
           @error('photos')
             <div class="admin-error">{{ $message }}</div>
           @enderror
@@ -106,7 +106,7 @@
           @enderror
         </div>
       @else
-        <p class="admin-form-hint">Maximum of 10 photos reached. Remove one to add more.</p>
+        <p class="admin-form-hint">Maximum of 15 photos reached. Remove one to add more.</p>
       @endif
 
       <div class="admin-form-actions">

@@ -15,6 +15,8 @@ use Illuminate\Validation\Rule;
 
 class ProjectController extends Controller
 {
+    private const MAX_PHOTOS_PER_PROJECT = 15;
+
     public function index()
     {
         $projects = Project::query()
@@ -44,7 +46,7 @@ class ProjectController extends Controller
             'project_category_ids' => ['required', 'array', 'min:1'],
             'project_category_ids.*' => ['integer', 'distinct', 'exists:project_categories,id'],
             'completed_on' => ['required', 'date'],
-            'photos' => ['nullable', 'array', 'max:10'],
+            'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
         ]);
 
@@ -167,7 +169,7 @@ class ProjectController extends Controller
             }
         }
 
-        $slots = 10 - $project->photos()->count();
+        $slots = self::MAX_PHOTOS_PER_PROJECT - $project->photos()->count();
 
         $request->validate([
             'photos' => ['nullable', 'array', 'max:'.max(0, $slots)],

@@ -5,7 +5,7 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Manage portfolio projects and photos (WebP, JPEG, or PNG — stored as WebP, max edge {{ (int) config('webp.max_edge_px', 1920) }}px; up to 10 per project).</p>
+    <p class="admin-toolbar-lede">Manage portfolio projects and photos (WebP, JPEG, or PNG — stored as WebP, max edge {{ (int) config('webp.max_edge_px', 1920) }}px; up to 15 per project).</p>
     <a href="{{ route('admin.projects.create') }}" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> New project
     </a>
@@ -35,7 +35,7 @@
             <tr>
               <td><strong>{{ $project->title }}</strong></td>
               <td><span class="admin-badge">{{ $project->categoryLabel() }}</span></td>
-              <td>{{ $project->photos_count }} / 10</td>
+              <td>{{ $project->photos_count }} / 15</td>
               <td>{{ optional($project->completed_on)->format('M j, Y') ?? '—' }}</td>
               <td style="white-space:nowrap;">
                 <a href="{{ route('admin.projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
