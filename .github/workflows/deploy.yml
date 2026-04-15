@@ -85,6 +85,14 @@ jobs:
               exit 1
             fi
 
+            # Ensure /storage/* image URLs resolve in production.
+            php artisan storage:link || true
+            if [ ! -d public/storage ]; then
+              mkdir -p public/storage
+            fi
+            if [ -d storage/app/public ]; then
+              cp -R storage/app/public/. public/storage/ 2>/dev/null || true
+            fi
             php artisan config:clear
             php artisan migrate --force
             php artisan config:cache
