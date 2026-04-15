@@ -65,6 +65,12 @@ jobs:
           fi
 
           if [ -f artisan ]; then
+            if [ ! -f .env ]; then
+              echo "ERROR: ~/public_html/.env is missing. On Hostinger, copy .env.example to .env and set DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_HOST from hPanel → Databases (then php artisan key:generate if needed)."
+              exit 1
+            fi
+
+            php artisan config:clear
             php artisan migrate --force
             php artisan config:cache
             php artisan route:clear
