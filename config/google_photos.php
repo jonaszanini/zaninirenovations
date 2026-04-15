@@ -17,6 +17,10 @@ return [
     'allowed_google_email' => env('GOOGLE_PHOTOS_ALLOWED_EMAIL'),
 
     'scopes' => [
+        // Needed so we can read the signed-in Google account email via userinfo during connect.
+        'openid',
+        'email',
+        'profile',
         'https://www.googleapis.com/auth/photoslibrary.readonly',
     ],
 ];
