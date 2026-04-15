@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Models\Project;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/contact-email', [ContactFormController::class, 'submit'])
+    ->middleware('throttle:8,1')
+    ->name('contact.submit');
 
 Route::get('/', function () {
     $projects = Project::query()

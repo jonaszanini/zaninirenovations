@@ -5,6 +5,8 @@
   lang="en"> <!--<![endif]-->
   <head>
     <meta charset="utf-8">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+    <meta name="contact-post-url" content="<?php echo e(url('/contact-email')); ?>">
     <title>Zanini Renovations</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="description" content="Pakkapati - Flooring Service HTML5 Template">
@@ -26,6 +28,12 @@
   </head>
 
   <body>
+
+    <?php
+      $socialFacebookUrl = (string) config('social.facebook_url');
+      $socialInstagramUrl = (string) config('social.instagram_url');
+      $socialWhatsappUrl = (string) config('social.whatsapp_url');
+    ?>
 
     <div id="preloader">
       <span class="margin-bottom"><img src="images/loader.gif" alt="Loading......"></span>
@@ -51,11 +59,11 @@
               <div class="col-lg-6 col-md-6 col-sm-6 text-right">
 
                 <div class="top-bar-link">
-                  <a href="#">Reviews</a>
+                  <a href="#testimonials" class="nav_menu">Reviews</a>
                   <span class="separator-line"></span>
                   <a href="#">Warranty</a>
                   <span class="separator-line"></span>
-                  <a href="#">Contact</a>
+                  <a href="#contact" class="nav_menu">Contact</a>
                   <span class="separator-line"></span>
                   <a href="/admin/login">Admin</a>
                 </div>
@@ -71,7 +79,7 @@
 
               <div class="col-md-4 col-sm-12 col-xs-12 header-col-logo">
                 <div class="header-logo logo">
-                  <a href="index.html">
+                  <a href="#home" class="nav_menu" title="Zanini Renovations — Home">
                     <img src="images/logo.png" alt="Logo">
                   </a>
                 </div>
@@ -115,7 +123,7 @@
                   <!-- end .col-md-4  -->
 
                   <div class="col-md-4 col-sm-4 clearfix">
-                    <a class="btn btn-theme btn-square btn-header-cta margin-top-36 pull-right" href="appointment.html" title="GET FREE ESTIMATE">FREE ESTIMATE</a>
+                    <a class="btn btn-theme btn-square btn-header-cta margin-top-36 pull-right nav_menu" href="#contact-location" title="GET FREE ESTIMATE">FREE ESTIMATE</a>
                   </div>
                   <!-- end .col-md-4  -->
 
@@ -135,118 +143,23 @@
           <div class="container clearfix">
             <div class="navbar-collapse collapse pull-left">
               <ul class="nav navbar-nav">
-                <li class="drop">
-                  <a href="index.html" title="Home Layout 01" class="link-active">Home</a>
-                  <ul class="drop-down level3">
-                    <li>
-                      <a href="home-2.html" title="Home Layout 02">Home Layout 2</a>
-                    </li>
-                    <li>
-                      <a href="home-3.html" title="Home Layout 03">Home Layout 3</a>
-                    </li>
-                  </ul>
+                <li>
+                  <a href="#home" class="nav_menu link-active" title="Home">Home</a>
                 </li>
                 <li>
-                  <a href="about-us.html" title="About Us">About Us</a>
-                </li>
-                <li class="drop">
-                  <a href="service.html">Services</a>
-                  <ul class="drop-down level3">
-                    <li>
-                      <a href="service-details.html" title="Single Event">Single Service</a>
-                    </li>
-                  </ul>
-                </li>
-                <li class="drop">
-                  <a href="#">Pages</a>
-                  <ul class="drop-down">
-                    <li>
-                      <a href="element-appointment.html" title="APPOINTMENT">APPOINTMENT</a>
-                    </li>
-                    <li class="drop">
-                      <a href="#">Blog</a>
-                      <ul class="drop-down level3">
-                        <li>
-                          <a href="blog.html">All Posts</a>
-                        </li>
-                        <li>
-                          <a href="single.html">Single Page</a>
-                        </li>
-                      </ul>
-                    </li>
-                    <li class="drop">
-                      <a href="#">Gallery</a>
-                      <ul class="drop-down level3">
-                        <li>
-                          <a href="gallery-1.html">Layout 01</a>
-                        </li>
-                        <li>
-                          <a href="gallery-2.html">Layout 02</a>
-                        </li>
-                      </ul>
-                    </li>
-                    <li>
-                      <a href="faq.html" title="Faq">FAQ</a>
-                    </li>
-                    <li>
-                      <a href="coming-soon.html" title="Coming Soon">Coming Soon</a>
-                    </li>
-                    <li>
-                      <a href="404.html" title="404 Page">404 Page</a>
-                    </li>
-                    <li class="drop">
-                      <a href="#">Level 3</a>
-                      <ul class="drop-down level3">
-                        <li>
-                          <a href="#">Level 3.1</a>
-                        </li>
-                        <li>
-                          <a href="#">Level 3.2</a>
-                        </li>
-                        <li>
-                          <a href="#">Level 3.3</a>
-                        </li>
-                      </ul>
-                    </li>
-                  </ul>
-                </li>
-                <li class="drop">
-                  <a href="#">Elements</a>
-                  <ul class="drop-down level3">
-                    <li>
-                      <a href="element-counter.html" title="Counter">Counter</a>
-                    </li>
-                    <li>
-                      <a href="element-cta.html" title="CTA">CTA/Promo Box</a>
-                    </li>
-                    <li>
-                      <a href="element-testimonial.html" title="Testimonial">Testimonial</a>
-                    </li>
-                    <li>
-                      <a href="element-highlights.html" title="Highlights">Highlights</a>
-                    </li>
-                    <li>
-                      <a href="element-logos.html" title="Logos">Logos</a>
-                    </li>
-                    <li>
-                      <a href="element-pricing-table.html" title="Pricing">Pricing</a>
-                    </li>
-                    <li>
-                      <a href="element-process.html" title="Process">Process</a>
-                    </li>
-                    <li>
-                      <a href="element-service.html" title="Service">Service</a>
-                    </li>
-                    <li>
-                      <a href="element-subscribe.html" title="Subscribe">Subscribe</a>
-                    </li>
-                    <li>
-                      <a href="element-team.html" title="Teams">Teams</a>
-                    </li>
-                  </ul>
+                  <a href="#services" class="nav_menu" title="Services">Services</a>
                 </li>
                 <li>
-                  <a href="contact.html">Contact</a>
+                  <a href="#projects" class="nav_menu" title="Latest projects">Projects</a>
+                </li>
+                <li>
+                  <a href="#about" class="nav_menu" title="About us">About</a>
+                </li>
+                <li>
+                  <a href="#testimonials" class="nav_menu" title="Testimonials">Testimonials</a>
+                </li>
+                <li>
+                  <a href="#contact" class="nav_menu" title="Contact">Contact</a>
                 </li>
               </ul>
               <!-- end .nav .navbar-nav  -->
@@ -260,11 +173,14 @@
               <div class="navbar-contact">
 
                 <div class="top-bar-social margin-top-16">
-                  <a href="#">
+                  <a href="<?php echo e($socialFacebookUrl); ?>"<?php if(str_starts_with($socialFacebookUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>>
                     <i class="fa fa-facebook"></i>
                   </a>
-                  <a href="#">
+                  <a href="<?php echo e($socialInstagramUrl); ?>"<?php if(str_starts_with($socialInstagramUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>>
                     <i class="fa fa-instagram"></i>
+                  </a>
+                  <a href="<?php echo e($socialWhatsappUrl); ?>"<?php if(str_starts_with($socialWhatsappUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?> title="WhatsApp">
+                    <i class="fa fa-whatsapp"></i>
                   </a>
                 </div>
               </div>
@@ -281,7 +197,7 @@
 
     <!--  HOME SLIDER BLOCK  -->
 
-    <div class="slider-wrap">
+    <div id="home" class="slider-wrap">
       <div id="slider_1" class="owl-carousel" data-nav="true" data-dots="true" data-autoplay="false" data-autoplaytimeout="10000" data-bg_effect="true">
 
         <div class="slider_item_container" data-bg_img="images/home_1_slider_1.webp" data-bg_color="#111111" data-bg_opacity="0.5">
@@ -297,8 +213,8 @@
                         <br>
                         MAKE HOMES BEAUTIFUL
                       </h2>
-                      <a href="#" class="btn btn-theme">Get Free Estimate</a>
-                      <a href="#" class="btn btn-theme btn-theme-white">Learn More</a>
+                      <a href="#contact-location" class="btn btn-theme nav_menu">Get Free Estimate</a>
+                      <a href="#services" class="btn btn-theme btn-theme-white nav_menu">Learn More</a>
                     </div>
                   </div>
                   <!-- end .col-sm-12  -->
@@ -327,8 +243,8 @@
                       </h2>
                       <h3 class="margin-bottom-24" data-animation-in="zoomIn" data-animation-out="animate-out rollOut">Elevate Your Interior With Perfect Trimming Details</h3>
 
-                      <a href="#" class="btn btn-theme" data-animation-in="zoomInRight" data-animation-out="animate-out fadeOutRight">Learn More</a>
-                      <a href="#" class="btn btn-theme btn-theme-white" data-animation-in="zoomInLeft" data-animation-out="animate-out fadeOutRight">Get Free Estimate</a>
+                      <a href="#services" class="btn btn-theme nav_menu" data-animation-in="zoomInRight" data-animation-out="animate-out fadeOutRight">Learn More</a>
+                      <a href="#contact-location" class="btn btn-theme btn-theme-white nav_menu" data-animation-in="zoomInLeft" data-animation-out="animate-out fadeOutRight">Get Free Estimate</a>
 
 
                     </div>
@@ -360,8 +276,8 @@
                       <h3 class="margin-bottom-24">
                         Transform Your Basement With Expert Finishing Craftsmanship
                       </h3>
-                      <a href="#" class="btn btn-theme btn-theme-white">Get Free Estimate</a>
-                      <a href="#" class="btn btn-theme">Learn More</a>
+                      <a href="#contact-location" class="btn btn-theme btn-theme-white nav_menu">Get Free Estimate</a>
+                      <a href="#services" class="btn btn-theme nav_menu">Learn More</a>
 
                     </div>
                   </div>
@@ -384,7 +300,7 @@
 
     <!--  CORE SERVICES — SECTION SERVICE 04 STYLE (Template/index.html) -->
 
-    <section class="section-content-block section-core-services">
+    <section id="services" class="section-content-block section-core-services">
 
       <div class="container">
 
@@ -548,7 +464,7 @@
 
     <!--  SECTION CTA 04 -->
 
-    <section class="cta-layout-02 section-primary-bg">
+    <section id="cta" class="cta-layout-02 section-primary-bg">
       <div class="container">
         <div class="row">
           <div class="col-lg-9 col-md-9 col-sm-12 col-xs-12">
@@ -564,7 +480,7 @@
           </div>
           <!--  end .col-md-8  -->
           <div class="col-lg-3 col-md-3 col-sm-12 col-xs-12 text-center">
-            <a class="btn btn-theme btn-square btn-theme-invert wow bounceIn" href="#">CONTACT US</a>
+            <a class="btn btn-theme btn-square btn-theme-invert wow bounceIn nav_menu" href="#contact-location">CONTACT US</a>
           </div>
           <!--  end .col-md-4  -->
         </div>
@@ -574,7 +490,7 @@
 
     <!--  PORTFOLIO CONTENT  -->
 
-    <section class="section-content-block section-portfolio-bg">
+    <section id="projects" class="section-content-block section-portfolio-bg">
 
       <div class="container">
 
@@ -648,7 +564,7 @@
 
     <!-- TEAM SECTION 01 -->
 
-    <section class="section-content-block section-secondary-bg">
+    <section id="about" class="section-content-block section-secondary-bg">
 
       <div class="container">
 
@@ -665,7 +581,7 @@
 
           
                 </h2>
-                <a href="#" class="btn btn-theme margin-top-24">More about us</a>
+                <a href="#about" class="btn btn-theme margin-top-24 nav_menu">More about us</a>
               </div>
               <!-- end .col-sm-12  -->
 
@@ -694,13 +610,13 @@
                       <h4>Owner & Contractor</h4>
 
                       <div class="team-social-share clearfix">
-                        <a href="#" title="Facebook">
+                        <a href="<?php echo e($socialFacebookUrl); ?>"<?php if(str_starts_with($socialFacebookUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?> title="Facebook">
                           <i class="fa fa-facebook rectangle"></i>
                         </a>
                         <a href="#" title="Twitter">
                           <i class="fa fa-twitter rectangle"></i>
                         </a>
-                        <a href="#" title="Instagram">
+                        <a href="<?php echo e($socialInstagramUrl); ?>"<?php if(str_starts_with($socialInstagramUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?> title="Instagram">
                           <i class="fa fa-instagram rectangle"></i>
                         </a>
                         <a href="#" title="Linkedin">
@@ -731,13 +647,13 @@
                       <h3>Mayara Zanini</h3>
                       <h4>Office & Marketing</h4>
                       <div class="team-social-share clearfix">
-                        <a href="#" title="Facebook">
+                        <a href="<?php echo e($socialFacebookUrl); ?>"<?php if(str_starts_with($socialFacebookUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?> title="Facebook">
                           <i class="fa fa-facebook rectangle"></i>
                         </a>
                         <a href="#" title="Twitter">
                           <i class="fa fa-twitter rectangle"></i>
                         </a>
-                        <a href="#" title="Instagram">
+                        <a href="<?php echo e($socialInstagramUrl); ?>"<?php if(str_starts_with($socialInstagramUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?> title="Instagram">
                           <i class="fa fa-instagram rectangle"></i>
                         </a>
                         <a href="#" title="Linkedin">
@@ -768,7 +684,7 @@
 
     <!-- SECTION TESTIMONIAL  03 -->
 
-    <section class="section-content-block ">
+    <section id="testimonials" class="section-content-block ">
 
       <div class="container">
         <div class="row section-heading-wrapper">
@@ -791,7 +707,7 @@
 
           <div class="col-lg-6 col-md-12 col-sm-12">
 
-            <div class="testimonial-container owl-carousel text-left wow fadeInLeft" data-items="1">
+            <div class="testimonial-container testimonial-carousel--nav owl-carousel text-left wow fadeInLeft" data-items="1" data-nav="true" data-dots="true">
 
               <div class="col-lg-4 col-md-4 col-sm-4 col-xs-12">
 
@@ -846,17 +762,6 @@
             </div>
             <!-- end .testimonial-container  -->
 
-            <div class="testimonials-google-cta text-center">
-              <a
-                class="btn btn-theme btn-square"
-                href="https://www.google.com/maps/place/Zanini+Renovations/@45.0145689,-76.3839057,8z/data=!4m8!3m7!1s0x270af127fae3b7c1:0x6a89028fc92f8eda!8m2!3d45.120446!4d-76.0081985!9m1!1b1!16s%2Fg%2F11mm5zjskr?hl=en&amp;entry=ttu&amp;g_ep=EgoyMDI2MDMyOS4wIKXMDSoASAFQAw%3D%3D"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                See all reviews on Google
-              </a>
-            </div>
-
           </div>
 
           <div class="col-lg-6 hidden-md hidden-xs hidden-sm no-padding">
@@ -867,184 +772,199 @@
 
         </div>
 
-
       </div>
-      <!-- end .container  -->
+      <!-- end .container (testimonials + image card)  -->
+
+      <div class="container testimonials-google-cta-outer">
+        <div class="row">
+          <div class="col-md-12 col-sm-12 text-center">
+            <div class="testimonials-google-cta">
+              <a
+                class="btn btn-theme btn-square"
+                href="https://www.google.com/maps/place/Zanini+Renovations/@45.0145689,-76.3839057,8z/data=!4m8!3m7!1s0x270af127fae3b7c1:0x6a89028fc92f8eda!8m2!3d45.120446!4d-76.0081985!9m1!1b1!16s%2Fg%2F11mm5zjskr?hl=en&amp;entry=ttu&amp;g_ep=EgoyMDI2MDMyOS4wIKXMDSoASAFQAw%3D%3D"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                See all reviews on Google
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </section>
 
-    <!--  SECTION NEWSLETTER 01 -->
+    <!--  SECTION CONTACT (replaces newsletter)  -->
 
-    <section class="section-content-block section-secondary-bg">
+    <section id="contact" class="section-content-block section-secondary-bg border-bottom-1p-solid-light home-contact-palette">
 
       <div class="container">
 
-        <div class="container">
-          <div class="row section-heading-wrapper">
-
-            <div class="col-md-12 col-sm-12 text-center">
-              <h4 class="heading-alt-style text-uppercase text-dark-color">Subscribe Us</h4>
-              <span class="heading-separator heading-separator-horizontal"></span>
-              <h2 class="subheading-alt-style">
-                Lorem ipsum dolor sit amet consectetur adipiscing elit curabitur euante nonex lobortis posuere.
-              </h2>
-            </div>
-            <!-- end .col-sm-12  -->
-
-          </div>
-        </div>
-
-        <div class="row">
-
-          <div class="col-md-8 col-md-offset-2">
-            <div class="horizontal-newsletter">
-              <form id="mc-form" class="mc-form fix" action="#">
-                <div class="news-subscription">
-                  <input id="mc-email" name="EMAIL" placeholder="Email Address..." type="email">
-                  <button id="mc-submit" type="submit">
-                    Submit</button>
-                </div>
-              </form>
-            </div>
-            <!--  end .footer-widget  -->
-          </div>
-          <!--  end .col-md-3 col-sm-6 -->
-
-        </div>
-        <!--  end .row -->
-
-      </div>
-      <!--  end .container -->
-    </section>
-    <!--  end .newsletter section-->
-
-    <!-- BLOG SECTION  -->
-
-    <section class="section-content-block">
-
-      <div class="container wow fadeInUp">
-
         <div class="row section-heading-wrapper">
-
           <div class="col-md-12 col-sm-12 text-center">
-            <h4 class="heading-alt-style text-uppercase text-dark-color">Recent Blogs</h4>
+            <h4 class="heading-alt-style text-uppercase text-dark-color">Contact</h4>
             <span class="heading-separator heading-separator-horizontal"></span>
             <h2 class="subheading-alt-style">
-              Lorem ipsum dolor sit amet consectetur adipiscing elit curabitur euante nonex lobortis posuere.
+              Reach out for an estimate or any questions about your renovation or carpentry project.
             </h2>
           </div>
-          <!-- end .col-sm-12  -->
-
         </div>
-        <!-- end .row  -->
-
-
-        <div class="row clearfix">
-
-          <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
-
-            <div class="latest-blog theme-custom-box-shadow">
-
-              <div class="latest-thumbnail">
-                <a href="#">
-                  <img src="images/blog_thumb_1.jpg" alt="">
-                </a>
-              </div>
-              <div class="news-content">
-                <h4 class="latest-title">
-                  <a href="#">Luxury Plank flooring System wows homeowners</a>
-                </h4>
-                <div class="latest-details">
-                  <a class="author" href="#">
-                    <i class="fa fa-pencil-square-o"></i>
-                    Moron Bold</a>
-                  <a class="comments" href="#">
-                    <i class="fa fa-comments-o"></i>
-                    2 comments</a>
-                </div>
-                <p>In this case you can try re-seating memory modules to make sure they are making good contact with the slot.</p>
-              </div>
-
-            </div>
-            <!-- end latest  -->
-
-          </div>
-
-          <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
-
-            <div class="latest-blog theme-custom-box-shadow">
-              <div class="latest-thumbnail">
-                <a href="#">
-                  <img src="images/blog_thumb_2.jpg" alt="">
-                </a>
-              </div>
-              <div class="news-content">
-                <h4 class="latest-title">
-                  <a href="#">Best Flooring From Consumer Reports' Tests</a>
-                </h4>
-                <div class="latest-details">
-                  <a class="author" href="#">
-                    <i class="fa fa-pencil-square-o"></i>
-                    Mark Erik</a>
-                  <a class="comments" href="#">
-                    <i class="fa fa-comments-o"></i>
-                    3 comments</a>
-                </div>
-                <p>In this case you can try re-seating memory modules to make sure they are making good contact with the slot.</p>
-              </div>
-            </div>
-            <!-- end latest  -->
-
-          </div>
-
-          <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
-
-            <div class="latest-blog theme-custom-box-shadow">
-              <div class="latest-thumbnail">
-                <a href="#">
-                  <img src="images/blog_thumb_3.jpg" alt="">
-                </a>
-              </div>
-              <div class="news-content">
-                <h4 class="latest-title">
-                  <a href="#">What you should know about carpeting</a>
-                </h4>
-                <div class="latest-details">
-                  <a class="author" href="#">
-                    <i class="fa fa-pencil-square-o"></i>
-                    John Lists</a>
-                  <a class="comments" href="#">
-                    <i class="fa fa-comments-o"></i>
-                    4 comments</a>
-                </div>
-                <p>In this case you can try re-seating memory modules to make sure they are making good contact with the slot.</p>
-              </div>
-            </div>
-            <!-- end latest  -->
-
-          </div>
-
-        </div>
-        <!--  end .row  -->
 
         <div class="row">
-          <div class="col-sm-12 col-md-4 col-md-offset-4 text-center">
-            <a href="#" class="btn btn-theme margin-top-24">- Load More Blog -</a>
+
+          <div class="col-md-12">
+            <h2 class="contact-title">Get in touch</h2>
+          </div>
+
+          <div class="col-md-3 col-sm-6 col-xs-12">
+            <ul class="contact-info">
+              <li>
+                <span class="icon-container"><i class="fa fa-home"></i></span>
+                <address>Carleton Place, ON</address>
+              </li>
+            </ul>
+          </div>
+
+          <div class="col-md-3 col-sm-6 col-xs-12">
+            <ul class="contact-info">
+              <li>
+                <span class="icon-container"><i class="fa fa-phone"></i></span>
+                <address><a href="tel:+16478347570">(647) 834-7570</a></address>
+              </li>
+            </ul>
+          </div>
+
+          <div class="col-md-3 col-sm-6 col-xs-12">
+            <ul class="contact-info">
+              <li>
+                <span class="icon-container"><i class="fa fa-map-marker"></i></span>
+                <address><a href="https://maps.app.goo.gl/WsKrQcEq2KdPKoN19" target="_blank" rel="noopener noreferrer">Google Maps</a></address>
+              </li>
+            </ul>
+          </div>
+
+          <div class="col-md-3 col-sm-6 col-xs-12">
+            <ul class="contact-info">
+              <li>
+                <span class="icon-container"><i class="fa fa-clock-o"></i></span>
+                <address>Monday&ndash;Friday / 9am&ndash;6pm</address>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+
+        <div class="row home-contact-whatsapp-row">
+          <div class="col-md-12 col-sm-12 text-center">
+            <a
+              href="<?php echo e($socialWhatsappUrl); ?>"
+              class="home-contact-whatsapp-btn"
+              <?php if(str_starts_with($socialWhatsappUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>
+            >
+              <i class="fa fa-whatsapp" aria-hidden="true"></i>
+              <span>Message us on WhatsApp</span>
+            </a>
           </div>
         </div>
-        <!-- end .row  -->
 
       </div>
-      <!-- end .container  -->
 
     </section>
-    <!--  end .section-latest-blog -->
+
+    <section id="contact-location" class="section-content-block section-pure-white-bg section-contact-block home-contact-palette">
+
+      <div class="container">
+
+        <div class="row">
+
+          <div class="col-sm-6 wow fadeInRight">
+
+            <h2 class="contact-title">Our location</h2>
+
+            <div class="section-google-map-block wow fadeInUp home-google-map-embed">
+              <iframe
+                title="Zanini Renovations on Google Maps"
+                src="https://www.google.com/maps?q=Zanini+Renovations,+Carleton+Place,+ON,+Canada&amp;output=embed"
+                allowfullscreen=""
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+              ></iframe>
+              <p class="text-center margin-top-12">
+                <a href="https://maps.app.goo.gl/WsKrQcEq2KdPKoN19" target="_blank" rel="noopener noreferrer" class="text-primary-color">Open in Google Maps</a>
+              </p>
+            </div>
+
+          </div>
+
+          <div class="col-sm-6 wow fadeInLeft">
+
+            <div class="contact-form-block">
+
+              <h2 class="contact-title">Send a message</h2>
+              <p class="home-contact-form-whatsapp-note">
+                <a
+                  href="<?php echo e($socialWhatsappUrl); ?>"
+                  class="home-contact-form-whatsapp-link"
+                  <?php if(str_starts_with($socialWhatsappUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>
+                ><i class="fa fa-whatsapp" aria-hidden="true"></i> Or reach us on WhatsApp</a>
+              </p>
+
+              <form role="form" action="#" method="post" id="contact-form">
+
+                <div class="form-group">
+                  <input type="text" class="form-control" id="user_name" name="user_name" placeholder=" Name" data-msg="Please enter your name">
+                </div>
+
+                <div class="form-group">
+                  <input type="email" class="form-control" id="user_email" name="user_email" placeholder=" Email" data-msg="Please enter a valid email">
+                </div>
+
+                <div class="form-group">
+                  <input type="text" class="form-control" id="location_city" name="location_city" placeholder=" Location / city" data-msg="Please enter your location or city">
+                </div>
+
+                <div class="form-group">
+                  <label class="home-contact-date-label" for="starting_date">Starting date <span class="text-muted">(optional)</span></label>
+                  <input type="date" class="form-control home-contact-date-input" id="starting_date" name="starting_date">
+                </div>
+
+                <div class="form-group">
+                  <label class="home-contact-date-label" for="budget">What is your budget? <span class="text-muted">(optional)</span></label>
+                  <input type="text" class="form-control" id="budget" name="budget" placeholder="e.g. $10,000–$25,000 or a ballpark amount" maxlength="500" autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                  <input type="text" class="form-control" id="email_subject" name="email_subject" placeholder=" Subject" data-msg="Please enter a subject">
+                </div>
+
+                <div class="form-group">
+                  <textarea class="form-control" rows="5" name="email_message" id="email_message" placeholder=" Describe your project, timeline, and what you have in mind" data-msg="Please enter your message"></textarea>
+                </div>
+
+                <div class="form-group">
+                  <button type="submit" class="btn btn-theme btn-custom">Send now</button>
+                </div>
+
+                <div id="contact-form-feedback" class="home-contact-form-feedback" role="status" aria-live="polite"></div>
+
+              </form>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+    <!--  end contact section -->
 
     <!-- START FOOTER  -->
 
     <footer>
 
-      <section class="footer-widget-area footer-widget-area-bg section-custom-bg" data-bg_img="images/footer_bg.jpg" data-bg_color="#111111" data-bg_opacity="0.80">
+      <section class="footer-widget-area footer-widget-area-bg section-custom-bg" data-bg_img="images/footer_bg.webp" data-bg_color="#111111" data-bg_opacity="0.80">
 
         <div class="container">
 
@@ -1059,34 +979,25 @@
                   <div class="col-lg-10 col-lg-offset-1 col-md-12 col-sm-12 col-xs-12">
 
                     <figure>
-                      <img src="images/logo-footer.png" alt="">
+                      <img src="images/logo-footer.webp" alt="Zanini Renovations">
                     </figure>
                     <p class="margin-top-24">
 
-                      Pakkapati is Jasonas premier and most trusted  flooring provider, including carpet, vinyl, hardwood, laminate, and tile for both domestic and business
-                                                                                                                                                                                                                                                  spaces in all price ranges.  Our warranties are superior than the manufacturers warranties, and our pricing is the absolute best.
+                    Zanini Renovations is Ontario’s trusted expert for general carpentry and complete renovations. From custom trim to full builds, we provide residential and commercial excellence with superior warranties and the best professional pricing.
 
                     </p>
                     <div class="footer-social-icons">
 
-                      <a href="#">
+                      <a href="<?php echo e($socialFacebookUrl); ?>"<?php if(str_starts_with($socialFacebookUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>>
                         <i class="fa fa-facebook"></i>
                       </a>
 
-                      <a href="#">
-                        <i class="fa fa-twitter"></i>
-                      </a>
-
-                      <a href="#">
+                      <a href="<?php echo e($socialInstagramUrl); ?>"<?php if(str_starts_with($socialInstagramUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>>
                         <i class="fa fa-instagram"></i>
                       </a>
 
-                      <a href="#">
-                        <i class="fa fa-linkedin"></i>
-                      </a>
-
-                      <a href="#">
-                        <i class="fa fa-pinterest"></i>
+                      <a href="<?php echo e($socialWhatsappUrl); ?>"<?php if(str_starts_with($socialWhatsappUrl, 'http')): ?> target="_blank" rel="noopener noreferrer"<?php endif; ?> title="WhatsApp">
+                        <i class="fa fa-whatsapp"></i>
                       </a>
 
                     </div>
@@ -1119,18 +1030,33 @@
                   <!--  end .footer-widget-header -->
 
 
-                  <div class="textwidget">
+                  <div class="textwidget footer-contact-textwidget">
 
-                    <i class="fa fa-envelope-o fa-contact"></i>
-                    <p>
-                      <a href="#">support-us@pakkapati.com</a><br><a href="#">helpmenow@pakkapati.com</a>
-                    </p>
+                    <div class="footer-contact-item">
+                      <i class="fa fa-envelope-o fa-contact" aria-hidden="true"></i>
+                      <div class="footer-contact-body">
+                        <p>
+                          <a href="mailto:<?php echo e(config('mail.from.address')); ?>"><?php echo e(config('mail.from.address')); ?></a>
+                        </p>
+                      </div>
+                    </div>
 
-                    <i class="fa fa-location-arrow fa-contact"></i>
-                    <p>Road-2,3/A East Shibgonj<br>Sylhet-3100, Bangladesh</p>
+                    <div class="footer-contact-item">
+                      <i class="fa fa-location-arrow fa-contact" aria-hidden="true"></i>
+                      <div class="footer-contact-body">
+                        <p>
+                          Carleton Place, ON<br>
+                          <a href="https://maps.app.goo.gl/WsKrQcEq2KdPKoN19" target="_blank" rel="noopener noreferrer">Google Maps</a>
+                        </p>
+                      </div>
+                    </div>
 
-                    <i class="fa fa-phone fa-contact"></i>
-                    <p>Office:&nbsp; (+880) 0823 560 433<br>Cell:&nbsp; (+880) 0723 161 343</p>
+                    <div class="footer-contact-item">
+                      <i class="fa fa-phone fa-contact" aria-hidden="true"></i>
+                      <div class="footer-contact-body">
+                        <p><a href="tel:+16478347570">(647) 834-7570</a></p>
+                      </div>
+                    </div>
 
                   </div>
 
@@ -1159,89 +1085,59 @@
 
                     <ul class="footer-useful-links clearfix">
                       <li>
-                        <a href="#">
+                        <a href="#contact-location" class="nav_menu">
                           <i class="fa fa-caret-right fa-footer"></i>
-                          Wooden Flooring
-                        </a>
-                      </li>
-
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Complete Paving
-                        </a>
-                      </li>
-
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Interior Flooring
-                        </a>
-                      </li>
-
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Interior Flooring
-                        </a>
-                      </li>
-
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Complete Paving
-                        </a>
-                      </li>
-
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Complete Paving
-
-                        </a>
-                      </li>
-
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Carpet Installation
+                          Fencing
                         </a>
                       </li>
                       <li>
-                        <a href="#">
+                        <a href="#contact-location" class="nav_menu">
                           <i class="fa fa-caret-right fa-footer"></i>
-                          Carpet Installation
-                        </a>
-                      </li>
-
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-caret-right fa-footer"></i>
-                          Interior Flooring
-
+                          Decks
                         </a>
                       </li>
                       <li>
-                        <a href="#">
+                        <a href="#contact-location" class="nav_menu">
                           <i class="fa fa-caret-right fa-footer"></i>
-                          Carpet Installation
+                          Basement Renovation
                         </a>
                       </li>
-
                       <li>
-                        <a href="#">
+                        <a href="#contact-location" class="nav_menu">
                           <i class="fa fa-caret-right fa-footer"></i>
-                          Wooden Flooring
+                          Trim &amp; Moulding
                         </a>
                       </li>
-
                       <li>
-                        <a href="#">
+                        <a href="#contact-location" class="nav_menu">
                           <i class="fa fa-caret-right fa-footer"></i>
-                          Wooden Flooring
+                          Shelving
                         </a>
                       </li>
-
+                      <li>
+                        <a href="#contact-location" class="nav_menu">
+                          <i class="fa fa-caret-right fa-footer"></i>
+                          Flooring
+                        </a>
+                      </li>
+                      <li>
+                        <a href="#contact">
+                          <i class="fa fa-caret-right fa-footer"></i>
+                          Tile
+                        </a>
+                      </li>
+                      <li>
+                        <a href="#contact-location" class="nav_menu">
+                          <i class="fa fa-caret-right fa-footer"></i>
+                          Accent Walls
+                        </a>
+                      </li>
+                      <li>
+                        <a href="#contact-location" class="nav_menu">
+                          <i class="fa fa-caret-right fa-footer"></i>
+                          Stairs
+                        </a>
+                      </li>
                     </ul>
 
                   </div>
@@ -1269,30 +1165,8 @@
                   <div class="textwidget">
                     <ul class="opening-shedule">
                       <li class="clearfix">
-                        <span>
-                          Sat - Tues :
-                        </span>
-                        <div class="pull-right">
-                          6.00 AM - 10.00 PM</div>
-                      </li>
-                      <li>
-                        <span>
-                          Wed - Thurs :
-                        </span>
-                        <div class="pull-right">
-                          8.00 AM - 6.00 PM</div>
-                      </li>
-                      <li>
-                        <span>
-                          Friday :</span>
-                        <div class="pull-right">
-                          6.00 AM - 10.00 PM</div>
-                      </li>
-                      <li>
-                        <span>
-                          Sunday :</span>
-                        <div class="pull-right">
-                          Closed</div>
+                        <span>Monday &ndash; Friday</span>
+                        <div class="pull-right">9am &ndash; 6pm</div>
                       </li>
                     </ul>
 
@@ -1325,9 +1199,7 @@
 
           <div class="row clearfix">
             <div class="col-md-12 col-sm-12 text-center clearfix">
-              <p class="copyright-text">Copyright © 2023. All right reserved by
-                <a href="https://bluewindlab.net" target="_blank" class="color-primary">bluewindlab.net</a>
-              </p>
+              <p class="copyright-text">Copyright © <?php echo e(date('Y')); ?>. All rights reserved by Zanini Renovations</p>
             </div>
 
           </div>
@@ -1341,7 +1213,7 @@
 
     <!-- BACK TO TOP BUTTON  -->
 
-    <a id="backTop">Back To Top</a>
+    <a id="backTop" role="button" aria-label="Back to top">Back To Top</a>
 
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>

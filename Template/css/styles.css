@@ -6362,15 +6362,49 @@ footer .social-icons a:hover {
 .footer-widget-area .textwidget p {
   padding-left: 42px;
 }
+.footer-widget-area .footer-contact-textwidget p {
+  padding-left: 0;
+}
+.footer-widget-area .footer-contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.footer-widget-area .footer-contact-item:last-child {
+  margin-bottom: 0;
+}
+.footer-widget-area .footer-contact-body {
+  flex: 1;
+  min-width: 0;
+}
+.footer-widget-area .footer-contact-body p {
+  margin: 0;
+  padding: 0;
+  line-height: 1.55;
+}
 .footer-widget-area .fa-contact {
   display: inline-block;
   text-align: center;
   width: 12px;
   height: 12px;
-  color: #ba7550;
+  color: #024768;
   padding: 24px 6px 6px 0;
   margin-right: 6px;
   position: absolute;
+}
+.footer-widget-area .footer-contact-item .fa-contact {
+  display: block;
+  flex-shrink: 0;
+  text-align: center;
+  width: 18px;
+  line-height: 1.55;
+  font-size: 16px;
+  color: #024768;
+  padding: 0;
+  margin: 0;
+  margin-top: 2px;
+  position: static;
 }
 .footer-widget-area .footer-widget + .footer-widget {
   margin-top: 24px;

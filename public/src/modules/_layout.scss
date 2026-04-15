@@ -6877,15 +6877,51 @@ footer {
     }
   }
 
+  .footer-contact-textwidget p {
+    padding-left: 0;
+  }
+
+  .footer-contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 18px;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .footer-contact-body {
+    flex: 1;
+    min-width: 0;
+    p {
+      margin: 0;
+      padding: 0;
+      line-height: 1.55;
+    }
+  }
+
   .fa-contact {
     display: inline-block;
     text-align: center;
     width: 12px;
     height: 12px;
-    color: lighten($primary-color, 5%);
+    color: #024768;
     padding: 24px 6px 6px 0;
     margin-right: 6px;
     position: absolute;
+  }
+
+  .footer-contact-item .fa-contact {
+    display: block;
+    flex-shrink: 0;
+    width: 18px;
+    line-height: 1.55;
+    font-size: 16px;
+    padding: 0;
+    margin: 0;
+    margin-top: 2px;
+    position: static;
   }
 
   .footer-widget + .footer-widget {
@@ -6903,7 +6939,7 @@ footer {
 
 .footer-contents {
   padding: 32px 0;
-  background: $pure-black-bg;
+  background: #000000;
 
   .copyright-text {
     line-height: 24px;
