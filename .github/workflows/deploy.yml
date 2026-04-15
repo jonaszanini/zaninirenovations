@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure SSH known hosts
         run: |
@@ -30,7 +30,7 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
 
       - name: Load SSH private key
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -67,7 +67,7 @@ jobs:
           if [ -f artisan ]; then
             php artisan migrate --force
             php artisan config:cache
-            php artisan route:cache
+            php artisan route:clear
             php artisan view:cache
           fi
           EOF
