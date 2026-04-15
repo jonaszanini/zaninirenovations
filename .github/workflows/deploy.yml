@@ -61,10 +61,11 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
+          DEPLOY_ROOT: /home/u372714627/domains/zaninirenovations.ca/public_html
         run: |
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s << REMOTE_EOF
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "DEPLOY_ROOT='${DEPLOY_ROOT}' bash -s" << 'REMOTE_EOF'
           set -e
-          APP_DIR="${DEPLOY_ROOT}"
+          APP_DIR="$DEPLOY_ROOT"
           if [ ! -d "${APP_DIR}" ]; then
             echo "ERROR: App directory does not exist: ${APP_DIR}"
             exit 1
