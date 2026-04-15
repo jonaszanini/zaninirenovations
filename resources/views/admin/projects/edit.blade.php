@@ -105,6 +105,43 @@
             <div class="admin-error">{{ $message }}</div>
           @enderror
         </div>
+
+        <div class="admin-form-group">
+          <span class="admin-form-group-label">Google Photos</span>
+          @if (auth()->user()->googlePhotosToken)
+            <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">
+              Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.
+              <form action="{{ route('admin.google-photos.disconnect') }}" method="post" style="display:inline;margin-left:0.5rem;">
+                @csrf
+                <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Disconnect</button>
+              </form>
+            </p>
+            <div
+              class="admin-google-photos"
+              data-google-media-url="{{ route('admin.google-photos.media') }}"
+              data-max-total="{{ $canAdd }}"
+            >
+              <div class="admin-google-photos-toolbar">
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load recent photos</button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-more hidden>Load more</button>
+                <span class="admin-google-photos-status" data-google-status></span>
+              </div>
+              <div class="admin-google-photos-grid" data-google-grid></div>
+            </div>
+            <p class="admin-form-hint">You can add up to {{ $canAdd }} more photos total (uploads + Google combined).</p>
+          @else
+            <p class="admin-form-hint" style="margin-top:0;">
+              <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect') }}">Connect Google Photos</a>
+              <span style="margin-left:0.5rem;color:var(--admin-muted);">Required for importing from your library.</span>
+            </p>
+          @endif
+          @error('google_photos_media_ids')
+            <div class="admin-error">{{ $message }}</div>
+          @enderror
+          @error('google_photos_media_ids.*')
+            <div class="admin-error">{{ $message }}</div>
+          @enderror
+        </div>
       @else
         <p class="admin-form-hint">Maximum of 15 photos reached. Remove one to add more.</p>
       @endif
@@ -180,3 +217,118 @@
     </script>
   @endpush
 @endif
+
+@push('scripts')
+  <script>
+    (function () {
+      var root = document.querySelector('.admin-google-photos');
+      if (!root) return;
+
+      var mediaUrl = root.getAttribute('data-google-media-url');
+      var maxTotal = parseInt(root.getAttribute('data-max-total') || '0', 10);
+      var btnLoad = root.querySelector('[data-google-load]');
+      var btnMore = root.querySelector('[data-google-more]');
+      var grid = root.querySelector('[data-google-grid]');
+      var status = root.querySelector('[data-google-status]');
+      var nextToken = null;
+
+      function selectedCount() {
+        return grid.querySelectorAll('input[type="checkbox"][name="google_photos_media_ids[]"]:checked').length;
+      }
+
+      function refreshStatus() {
+        var fileInput = document.getElementById('photos');
+        var files = fileInput && fileInput.files ? fileInput.files.length : 0;
+        var g = selectedCount();
+        status.textContent = 'Selected: ' + g + ' Google + ' + files + ' uploads (max ' + maxTotal + ' more)';
+      }
+
+      function enforceMax(checkbox) {
+        var fileInput = document.getElementById('photos');
+        var files = fileInput && fileInput.files ? fileInput.files.length : 0;
+        var maxGoogle = Math.max(0, maxTotal - files);
+        if (!checkbox.checked) return;
+        if (selectedCount() > maxGoogle) {
+          checkbox.checked = false;
+          alert('Too many Google Photos selected for current upload count (max ' + maxTotal + ' more).');
+        }
+      }
+
+      function renderItems(items) {
+        items.forEach(function (it) {
+          if (!it || !it.id) return;
+          var url = it.baseUrl ? (it.baseUrl + '=w220-h220-c') : '';
+          var label = it.filename || 'Photo';
+
+          var tile = document.createElement('label');
+          tile.className = 'admin-google-photo-tile';
+
+          var cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.name = 'google_photos_media_ids[]';
+          cb.value = it.id;
+          cb.addEventListener('change', function () { enforceMax(cb); refreshStatus(); });
+
+          var thumb = document.createElement('div');
+          thumb.className = 'admin-google-photo-thumb';
+          if (url) {
+            var img = document.createElement('img');
+            img.src = url;
+            img.alt = '';
+            img.loading = 'lazy';
+            thumb.appendChild(img);
+          }
+
+          var cap = document.createElement('div');
+          cap.className = 'admin-google-photo-caption';
+          cap.textContent = label;
+
+          tile.appendChild(cb);
+          tile.appendChild(thumb);
+          tile.appendChild(cap);
+          grid.appendChild(tile);
+        });
+      }
+
+      async function loadPage(token) {
+        status.textContent = 'Loading…';
+        var u = new URL(mediaUrl, window.location.origin);
+        if (token) u.searchParams.set('page_token', token);
+        var res = await fetch(u.toString(), { headers: { 'Accept': 'application/json' } });
+        var data = await res.json().catch(function () { return null; });
+        if (!res.ok || !data || data.error) {
+          status.textContent = '';
+          alert((data && data.error) ? data.error : 'Could not load Google Photos.');
+          return;
+        }
+        renderItems(data.items || []);
+        nextToken = data.nextPageToken || null;
+        btnMore.hidden = !nextToken;
+        status.textContent = '';
+        refreshStatus();
+      }
+
+      btnLoad.addEventListener('click', function () {
+        grid.innerHTML = '';
+        nextToken = null;
+        btnMore.hidden = true;
+        loadPage(null);
+      });
+      btnMore.addEventListener('click', function () {
+        if (nextToken) loadPage(nextToken);
+      });
+
+      var fileInput = document.getElementById('photos');
+      if (fileInput) {
+        fileInput.addEventListener('change', function () {
+          grid.querySelectorAll('input[type="checkbox"][name="google_photos_media_ids[]"]:checked').forEach(function (cb) {
+            enforceMax(cb);
+          });
+          refreshStatus();
+        });
+      }
+
+      refreshStatus();
+    })();
+  </script>
+@endpush

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\GooglePhotosController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\ContactFormController;
 use App\Models\Project;
@@ -65,6 +66,12 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', function () {
         return redirect()->route('admin.projects.index');
     });
+
+    Route::get('google-photos/connect', [GooglePhotosController::class, 'connect'])->name('google-photos.connect');
+    Route::get('google-photos/callback', [GooglePhotosController::class, 'callback'])->name('google-photos.callback');
+    Route::post('google-photos/disconnect', [GooglePhotosController::class, 'disconnect'])->name('google-photos.disconnect');
+    Route::get('google-photos/media', [GooglePhotosController::class, 'media'])->name('google-photos.media');
+
     Route::post('projects/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])
         ->name('projects.photos.rotate');
     Route::resource('projects', ProjectController::class)->except(['show']);

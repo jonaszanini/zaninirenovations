@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\ProjectPhoto;
+use App\Models\GooglePhotosToken;
+use App\Services\GooglePhotosService;
 use App\Services\ProjectPhotoRotationService;
 use App\Services\ProjectPhotoWebpStorage;
 use Illuminate\Http\Request;
@@ -48,7 +50,17 @@ class ProjectController extends Controller
             'completed_on' => ['required', 'date'],
             'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
+            'google_photos_media_ids' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'google_photos_media_ids.*' => ['string', 'max:256', 'distinct'],
         ]);
+
+        $fileCount = $request->hasFile('photos') ? count((array) $request->file('photos')) : 0;
+        $googleIds = array_values(array_filter((array) $request->input('google_photos_media_ids', []), fn ($v) => is_string($v) && $v !== ''));
+        if ($fileCount + count($googleIds) > self::MAX_PHOTOS_PER_PROJECT) {
+            return back()
+                ->withErrors(['photos' => 'Too many images selected (max '.self::MAX_PHOTOS_PER_PROJECT.' total).'])
+                ->withInput();
+        }
 
         $converter = new ProjectPhotoWebpStorage;
         $savedPaths = [];
@@ -73,6 +85,10 @@ class ProjectController extends Controller
                         'sort_order' => $index,
                     ]);
                 }
+            }
+
+            if ($googleIds !== []) {
+                $this->importGooglePhotosMedia($request, $project, $converter, $savedPaths, (int) $project->photos()->count());
             }
 
             DB::commit();
@@ -174,7 +190,17 @@ class ProjectController extends Controller
         $request->validate([
             'photos' => ['nullable', 'array', 'max:'.max(0, $slots)],
             'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
+            'google_photos_media_ids' => ['nullable', 'array', 'max:'.max(0, $slots)],
+            'google_photos_media_ids.*' => ['string', 'max:256', 'distinct'],
         ]);
+
+        $fileCount = $request->hasFile('photos') ? count((array) $request->file('photos')) : 0;
+        $googleIds = array_values(array_filter((array) $request->input('google_photos_media_ids', []), fn ($v) => is_string($v) && $v !== ''));
+        if ($fileCount + count($googleIds) > max(0, $slots)) {
+            return back()
+                ->withErrors(['photos' => 'Too many images selected for remaining slots (max '.$slots.' more).'])
+                ->withInput();
+        }
 
         if ($slots > 0 && $request->hasFile('photos')) {
             $converter = new ProjectPhotoWebpStorage;
@@ -200,6 +226,24 @@ class ProjectController extends Controller
 
                 return back()
                     ->withErrors(['photos' => 'Could not add images. '.$e->getMessage()])
+                    ->withInput();
+            }
+        }
+
+        if ($googleIds !== [] && $slots > 0) {
+            $converter = new ProjectPhotoWebpStorage;
+            $savedPaths = [];
+
+            try {
+                $this->importGooglePhotosMedia($request, $project, $converter, $savedPaths, (int) $project->photos()->count());
+            } catch (\Throwable $e) {
+                foreach ($savedPaths as $p) {
+                    Storage::disk('public')->delete($p);
+                }
+                report($e);
+
+                return back()
+                    ->withErrors(['photos' => 'Could not import Google Photos. '.$e->getMessage()])
                     ->withInput();
             }
         }
@@ -282,5 +326,52 @@ class ProjectController extends Controller
         }
 
         @copy($source, $destination);
+    }
+
+    /**
+     * @param  list<string>  $savedPaths
+     */
+    private function importGooglePhotosMedia(Request $request, Project $project, ProjectPhotoWebpStorage $converter, array &$savedPaths, int $startSortOrder): void
+    {
+        if (! GooglePhotosToken::query()->where('user_id', $request->user()->id)->exists()) {
+            throw new \RuntimeException('Google Photos is not connected.');
+        }
+
+        $ids = array_values(array_filter((array) $request->input('google_photos_media_ids', []), fn ($v) => is_string($v) && $v !== ''));
+        $ids = array_values(array_unique($ids));
+
+        if ($ids === []) {
+            return;
+        }
+
+        $remaining = self::MAX_PHOTOS_PER_PROJECT - (int) $project->photos()->count();
+        if ($remaining < 0) {
+            $remaining = 0;
+        }
+
+        if (count($ids) > $remaining) {
+            throw new \RuntimeException('Too many Google Photos selected for remaining slots.');
+        }
+
+        $photosApi = app(GooglePhotosService::class);
+
+        $order = $startSortOrder;
+        foreach ($ids as $mediaId) {
+            [$tmp, $mime] = $photosApi->downloadMedia($request->user(), $mediaId);
+
+            try {
+                $path = $converter->storeFromPath($tmp, (int) $project->id, $mime);
+                $savedPaths[] = $path;
+                $project->photos()->create([
+                    'path' => $path,
+                    'sort_order' => $order,
+                ]);
+                $order++;
+            } finally {
+                if (is_file($tmp)) {
+                    @unlink($tmp);
+                }
+            }
+        }
     }
 }

@@ -12,6 +12,27 @@ use Throwable;
 
 class ProjectPhotoWebpStorage
 {
+    /**
+     * Store a photo that already exists on local disk (e.g. downloaded from Google Photos).
+     */
+    public function storeFromPath(string $absolutePath, int $projectId, ?string $mime = null): string
+    {
+        if (! is_file($absolutePath)) {
+            throw new RuntimeException('Image file is missing.');
+        }
+
+        $mime = $mime ? strtolower($mime) : null;
+        if (! $mime && function_exists('mime_content_type')) {
+            $detected = @mime_content_type($absolutePath);
+            $mime = is_string($detected) ? strtolower($detected) : null;
+        }
+
+        $originalName = basename($absolutePath);
+        $upload = new UploadedFile($absolutePath, $originalName, $mime, null, true);
+
+        return $this->store($upload, $projectId);
+    }
+
     public function store(UploadedFile $file, int $projectId): string
     {
         $mime = strtolower((string) $file->getMimeType());
