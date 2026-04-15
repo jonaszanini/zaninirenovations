@@ -233,6 +233,7 @@ class ProjectController extends Controller
         }
 
         $photo->touch();
+        $this->syncPublicStorageFallback($photo->path);
 
         return redirect()
             ->route('admin.projects.edit', $project)
@@ -250,5 +251,36 @@ class ProjectController extends Controller
         return redirect()
             ->route('admin.projects.index')
             ->with('success', 'Project deleted.');
+    }
+
+    /**
+     * Shared hosting fallback when symlink() is unavailable.
+     */
+    private function syncPublicStorageFallback(string $relativePath): void
+    {
+        $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
+        $publicStorageRoot = public_path('storage');
+        if (! is_dir($publicStorageRoot)) {
+            return;
+        }
+
+        $source = Storage::disk('public')->path($relativePath);
+        if (! is_file($source)) {
+            return;
+        }
+
+        $destination = public_path('storage/'.$relativePath);
+        $destinationDir = dirname($destination);
+        if (! is_dir($destinationDir) && ! @mkdir($destinationDir, 0775, true) && ! is_dir($destinationDir)) {
+            return;
+        }
+
+        $sourceReal = realpath($source);
+        $destinationReal = is_file($destination) ? realpath($destination) : false;
+        if ($sourceReal !== false && $destinationReal !== false && $sourceReal === $destinationReal) {
+            return;
+        }
+
+        @copy($source, $destination);
     }
 }

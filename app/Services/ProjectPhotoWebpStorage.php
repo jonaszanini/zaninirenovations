@@ -30,12 +30,14 @@ class ProjectPhotoWebpStorage
             if ($this->needsDownscale($realPath)) {
                 $webp = $this->reencodeWebpFromPath($realPath);
                 Storage::disk('public')->put($relativePath, $webp);
+                $this->syncPublicStorageFallback($relativePath);
             } else {
                 $bytes = file_get_contents($realPath);
                 if ($bytes === false || $bytes === '') {
                     throw new RuntimeException('Could not read the uploaded WebP file.');
                 }
                 Storage::disk('public')->put($relativePath, $bytes);
+                $this->syncPublicStorageFallback($relativePath);
             }
 
             return $relativePath;
@@ -48,8 +50,42 @@ class ProjectPhotoWebpStorage
 
         $webp = $this->convertRasterToWebp($file, $mime, $ext, $path);
         Storage::disk('public')->put($relativePath, $webp);
+        $this->syncPublicStorageFallback($relativePath);
 
         return $relativePath;
+    }
+
+    /**
+     * Shared hosting fallback when symlink() is disabled:
+     * keep a mirrored copy under public/storage so /storage/* URLs resolve.
+     */
+    private function syncPublicStorageFallback(string $relativePath): void
+    {
+        $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
+        $publicStorageRoot = public_path('storage');
+
+        if (! is_dir($publicStorageRoot)) {
+            return;
+        }
+
+        $source = Storage::disk('public')->path($relativePath);
+        if (! is_file($source)) {
+            return;
+        }
+
+        $destination = public_path('storage/'.$relativePath);
+        $destinationDir = dirname($destination);
+        if (! is_dir($destinationDir) && ! @mkdir($destinationDir, 0775, true) && ! is_dir($destinationDir)) {
+            return;
+        }
+
+        $sourceReal = realpath($source);
+        $destinationReal = is_file($destination) ? realpath($destination) : false;
+        if ($sourceReal !== false && $destinationReal !== false && $sourceReal === $destinationReal) {
+            return;
+        }
+
+        @copy($source, $destination);
     }
 
     private function quality(): int
