@@ -6223,6 +6223,17 @@ ul.pagination li:last-child {
   left: 0;
 }
 
+/* Latest projects: show only title on hover overlay */
+.js-latest-project-item .portfolio-light-box .portfolio-info-box {
+  padding: 10px 8px;
+}
+.js-latest-project-item .portfolio-light-box .portfolio-info-box h4 {
+  margin: 0;
+}
+.js-latest-project-item .portfolio-light-box .portfolio-info-box span {
+  display: none;
+}
+
 .portfolio-carousel {
   clear: both;
 }
