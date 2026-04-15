@@ -65,7 +65,7 @@ jobs:
           DEPLOY_ROOT: /home/u372714627/domains/zaninirenovations.ca/public_html
         run: |
           ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "DEPLOY_ROOT='${DEPLOY_ROOT}' bash -s" << 'REMOTE_EOF'
-          set -e
+          set -euo pipefail
           APP_DIR="$DEPLOY_ROOT"
           if [ ! -d "${APP_DIR}" ]; then
             echo "ERROR: App directory does not exist: ${APP_DIR}"
@@ -86,14 +86,17 @@ jobs:
             fi
 
             # Ensure /storage/* image URLs resolve in production.
-            php artisan storage:link || true
+            php artisan storage:link 2>/dev/null || true
             if [ ! -d public/storage ]; then
               mkdir -p public/storage
             fi
             if [ -d storage/app/public ]; then
-              cp -R storage/app/public/. public/storage/ 2>/dev/null || true
+              rsync -a storage/app/public/ public/storage/ 2>/dev/null || cp -R storage/app/public/. public/storage/ 2>/dev/null || true
             fi
-            php artisan config:clear
+            # Keep writable directories healthy on shared hosting.
+            chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+
+            php artisan optimize:clear
             php artisan migrate --force
             php artisan config:cache
             php artisan route:clear
