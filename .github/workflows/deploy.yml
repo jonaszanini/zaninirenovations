@@ -43,19 +43,45 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           echo "Deploying files to: ${DEPLOY_ROOT}"
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "test -d '${DEPLOY_ROOT}'" || {
-            echo "ERROR: Deploy path does not exist: ${DEPLOY_ROOT}"
+          SSH_ARGS="-p ${SSH_PORT} -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3"
+          connected=0
+          for attempt in 1 2 3; do
+            echo "Checking SSH connectivity (attempt ${attempt}/3)..."
+            if ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "test -d '${DEPLOY_ROOT}'"; then
+              connected=1
+              break
+            fi
+            sleep 8
+          done
+
+          if [ "${connected}" -ne 1 ]; then
+            echo "ERROR: Could not connect to SSH host after 3 attempts (or deploy path check failed)."
+            echo "Hostinger can occasionally timeout under load; retrying the workflow usually resolves it."
             exit 1
-          }
-          rsync -az \
-            --exclude ".git/" \
-            --exclude ".github/" \
-            --exclude ".env" \
-            --exclude "node_modules/" \
-            --exclude "storage/framework/" \
-            --exclude "storage/logs/" \
-            -e "ssh -p ${SSH_PORT}" \
-            ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/"
+          fi
+
+          rsynced=0
+          for attempt in 1 2 3; do
+            echo "Syncing files (attempt ${attempt}/3)..."
+            if rsync -az \
+              --exclude ".git/" \
+              --exclude ".github/" \
+              --exclude ".env" \
+              --exclude "node_modules/" \
+              --exclude "storage/framework/" \
+              --exclude "storage/logs/" \
+              -e "ssh ${SSH_ARGS}" \
+              ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/"; then
+              rsynced=1
+              break
+            fi
+            sleep 8
+          done
+
+          if [ "${rsynced}" -ne 1 ]; then
+            echo "ERROR: File sync failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Run Laravel deploy commands
         env:
@@ -64,7 +90,7 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           DEPLOY_ROOT: /home/u372714627/domains/zaninirenovations.ca/public_html
         run: |
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "DEPLOY_ROOT='${DEPLOY_ROOT}' bash -s" << 'REMOTE_EOF'
+          ssh -p "${SSH_PORT}" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 "${SSH_USER}@${SSH_HOST}" "DEPLOY_ROOT='${DEPLOY_ROOT}' bash -s" << 'REMOTE_EOF'
           set -euo pipefail
           APP_DIR="$DEPLOY_ROOT"
           if [ ! -d "${APP_DIR}" ]; then
