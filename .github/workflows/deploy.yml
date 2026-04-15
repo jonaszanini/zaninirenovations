@@ -40,7 +40,33 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          REMOTE_DEPLOY_PATH="$(ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" 'if [ -d "$HOME/public_html" ]; then echo "$HOME/public_html"; elif [ -d "$HOME/files/public_html" ]; then echo "$HOME/files/public_html"; else echo "__NOT_FOUND__"; fi')"
+          REMOTE_DEPLOY_PATH="$(ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" '
+            for d in "$HOME/files/public_html" "$HOME/public_html"; do
+              if [ -d "$d" ] && [ -f "$d/artisan" ]; then
+                echo "$d"
+                exit 0
+              fi
+            done
+            for d in "$HOME/files/public_html" "$HOME/public_html"; do
+              if [ -d "$d" ] && [ -f "$d/composer.json" ]; then
+                echo "$d"
+                exit 0
+              fi
+            done
+            for d in "$HOME/files/public_html" "$HOME/public_html"; do
+              if [ -d "$d" ] && [ -f "$d/.env" ]; then
+                echo "$d"
+                exit 0
+              fi
+            done
+            for d in "$HOME/files/public_html" "$HOME/public_html"; do
+              if [ -d "$d" ]; then
+                echo "$d"
+                exit 0
+              fi
+            done
+            echo "__NOT_FOUND__"
+          ')"
 
           if [ "${REMOTE_DEPLOY_PATH}" = "__NOT_FOUND__" ]; then
             echo "ERROR: Could not find deploy directory. Checked \$HOME/public_html and \$HOME/files/public_html."
@@ -66,15 +92,43 @@ jobs:
         run: |
           ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" << 'EOF'
           set -e
-          if [ -d "${HOME}/public_html" ]; then
-            APP_DIR="${HOME}/public_html"
-          elif [ -d "${HOME}/files/public_html" ]; then
-            APP_DIR="${HOME}/files/public_html"
-          else
+          APP_DIR=""
+          for d in "${HOME}/files/public_html" "${HOME}/public_html"; do
+            if [ -d "$d" ] && [ -f "$d/artisan" ]; then
+              APP_DIR="$d"
+              break
+            fi
+          done
+          if [ -z "${APP_DIR}" ]; then
+            for d in "${HOME}/files/public_html" "${HOME}/public_html"; do
+              if [ -d "$d" ] && [ -f "$d/composer.json" ]; then
+                APP_DIR="$d"
+                break
+              fi
+            done
+          fi
+          if [ -z "${APP_DIR}" ]; then
+            for d in "${HOME}/files/public_html" "${HOME}/public_html"; do
+              if [ -d "$d" ] && [ -f "$d/.env" ]; then
+                APP_DIR="$d"
+                break
+              fi
+            done
+          fi
+          if [ -z "${APP_DIR}" ]; then
+            for d in "${HOME}/files/public_html" "${HOME}/public_html"; do
+              if [ -d "$d" ]; then
+                APP_DIR="$d"
+                break
+              fi
+            done
+          fi
+          if [ -z "${APP_DIR}" ]; then
             echo "ERROR: Could not find app directory. Checked \$HOME/public_html and \$HOME/files/public_html."
             exit 1
           fi
 
+          echo "Running deploy commands in: ${APP_DIR}"
           cd "${APP_DIR}"
 
           if command -v composer >/dev/null 2>&1; then
