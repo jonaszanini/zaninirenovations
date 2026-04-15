@@ -40,6 +40,14 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
+          REMOTE_DEPLOY_PATH="$(ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" 'if [ -d "$HOME/public_html" ]; then echo "$HOME/public_html"; elif [ -d "$HOME/files/public_html" ]; then echo "$HOME/files/public_html"; else echo "__NOT_FOUND__"; fi')"
+
+          if [ "${REMOTE_DEPLOY_PATH}" = "__NOT_FOUND__" ]; then
+            echo "ERROR: Could not find deploy directory. Checked \$HOME/public_html and \$HOME/files/public_html."
+            exit 1
+          fi
+
+          echo "Deploying files to: ${REMOTE_DEPLOY_PATH}"
           rsync -az \
             --exclude ".git/" \
             --exclude ".github/" \
@@ -48,7 +56,7 @@ jobs:
             --exclude "storage/framework/" \
             --exclude "storage/logs/" \
             -e "ssh -p ${SSH_PORT}" \
-            ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_PATH}/"
+            ./ "${SSH_USER}@${SSH_HOST}:${REMOTE_DEPLOY_PATH}/"
 
       - name: Run Laravel deploy commands
         env:
@@ -58,7 +66,16 @@ jobs:
         run: |
           ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" << 'EOF'
           set -e
-          cd "${HOME}/public_html"
+          if [ -d "${HOME}/public_html" ]; then
+            APP_DIR="${HOME}/public_html"
+          elif [ -d "${HOME}/files/public_html" ]; then
+            APP_DIR="${HOME}/files/public_html"
+          else
+            echo "ERROR: Could not find app directory. Checked \$HOME/public_html and \$HOME/files/public_html."
+            exit 1
+          fi
+
+          cd "${APP_DIR}"
 
           if command -v composer >/dev/null 2>&1; then
             composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
@@ -66,7 +83,7 @@ jobs:
 
           if [ -f artisan ]; then
             if [ ! -f .env ]; then
-              echo "ERROR: ~/public_html/.env is missing. On Hostinger, copy .env.example to .env and set DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_HOST from hPanel → Databases (then php artisan key:generate if needed)."
+              echo "ERROR: ${APP_DIR}/.env is missing. On Hostinger, copy .env.example to .env and set DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_HOST from hPanel -> Databases (then php artisan key:generate if needed)."
               exit 1
             fi
 
