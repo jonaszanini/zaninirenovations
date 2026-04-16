@@ -55,7 +55,7 @@
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group">
           <label>Photos — order &amp; remove</label>
-          <p class="admin-form-hint">Drag by the grip icon to reorder. Use rotate to fix orientation (90°). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
+          <p class="admin-form-hint">Drag by the grip icon to reorder. Use rotate to fix orientation (90°) or crop to trim the frame (saved as WebP). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
@@ -64,6 +64,12 @@
                   <img src="{{ $photo->url() }}" alt="">
                 </div>
                 <div class="admin-photo-sortable-actions">
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-crop-photo"
+                    title="Crop photo"
+                    data-crop-url="{{ route('admin.projects.photos.crop', [$project, $photo]) }}"
+                    data-image-url="{{ $photo->url() }}">
+                    <i class="fa fa-crop" aria-hidden="true"></i><span class="admin-sr-only"> Crop</span>
+                  </button>
                   <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-rotate-photo"
                     title="Rotate 90° counter-clockwise"
                     data-post-url="{{ route('admin.projects.photos.rotate', [$project, $photo]) }}"
@@ -97,7 +103,7 @@
         <div class="admin-form-group">
           <label for="photos">Add photos</label>
           <input type="file" id="photos" name="photos[]" accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png" multiple>
-          <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP and scaled so the longest side is at most {{ (int) config('webp.max_edge_px', 1920) }}px; originals are not kept. Up to {{ $canAdd }} more (15 total).</p>
+          <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP and scaled so the longest side is at most {{ (int) config('webp.max_edge_px', 1920) }}px; originals are not kept. Up to {{ $canAdd }} more (15 total). After you save, use the crop icon on any thumbnail to trim it.</p>
           @error('photos')
             <div class="admin-error">{{ $message }}</div>
           @enderror
@@ -172,9 +178,29 @@
       </div>
     </form>
   </div>
+
+  @if ($project->photos->isNotEmpty())
+    <div id="admin-photo-crop-modal" class="admin-modal" hidden>
+      <div class="admin-modal-backdrop" data-crop-modal-dismiss tabindex="-1" aria-hidden="true"></div>
+      <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-photo-crop-title">
+        <h2 id="admin-photo-crop-title" class="admin-modal-title">Crop photo</h2>
+        <p class="admin-modal-hint">Drag the box or corners, then apply. The file on the server is replaced (WebP).</p>
+        <div class="admin-crop-stage">
+          <img id="admin-photo-crop-img" src="" alt="">
+        </div>
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn admin-btn--ghost" data-crop-modal-dismiss>Cancel</button>
+          <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-crop-apply" disabled>Apply crop</button>
+        </div>
+      </div>
+    </div>
+  @endif
 @endsection
 
 @if ($project->photos->isNotEmpty())
+  @push('head')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" crossorigin="anonymous">
+  @endpush
   @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script>
@@ -231,6 +257,101 @@
             input.name = 'photo_sequence[]';
             input.value = id;
             fields.appendChild(input);
+          });
+        });
+      })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js" crossorigin="anonymous"></script>
+    <script>
+      (function () {
+        var modal = document.getElementById('admin-photo-crop-modal');
+        var img = document.getElementById('admin-photo-crop-img');
+        var applyBtn = document.getElementById('admin-photo-crop-apply');
+        if (!modal || !img || !applyBtn || typeof Cropper === 'undefined') return;
+
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
+        var cropper = null;
+        var activeUrl = '';
+
+        function destroyCropper() {
+          if (cropper) {
+            cropper.destroy();
+            cropper = null;
+          }
+          img.removeAttribute('src');
+        }
+
+        function closeModal() {
+          modal.hidden = true;
+          destroyCropper();
+          applyBtn.disabled = true;
+          activeUrl = '';
+        }
+
+        modal.querySelectorAll('[data-crop-modal-dismiss]').forEach(function (el) {
+          el.addEventListener('click', closeModal);
+        });
+
+        document.querySelectorAll('.js-crop-photo').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var url = btn.getAttribute('data-image-url');
+            var postUrl = btn.getAttribute('data-crop-url');
+            if (!url || !postUrl) return;
+            destroyCropper();
+            activeUrl = postUrl;
+            img.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'cropper=' + Date.now();
+            modal.hidden = false;
+            applyBtn.disabled = true;
+            cropper = new Cropper(img, {
+              viewMode: 1,
+              autoCropArea: 1,
+              responsive: true,
+              ready: function () {
+                applyBtn.disabled = false;
+              },
+            });
+          });
+        });
+
+        applyBtn.addEventListener('click', function () {
+          if (!cropper || !activeUrl) return;
+          var d = cropper.getData(true);
+          applyBtn.disabled = true;
+          fetch(activeUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({
+              x: d.x,
+              y: d.y,
+              width: d.width,
+              height: d.height,
+            }),
+          }).then(function (res) {
+            return res.json().then(function (body) {
+              if (!res.ok) {
+                var msg = (body && body.message) ? body.message : ('HTTP ' + res.status);
+                if (body && body.errors && typeof body.errors === 'object') {
+                  var keys = Object.keys(body.errors);
+                  if (keys.length && body.errors[keys[0]] && body.errors[keys[0]][0]) {
+                    msg = body.errors[keys[0]][0];
+                  }
+                }
+                throw new Error(msg);
+              }
+              return body;
+            });
+          }).then(function () {
+            window.location.reload();
+          }).catch(function (err) {
+            alert(err && err.message ? err.message : 'Could not crop photo.');
+            applyBtn.disabled = false;
           });
         });
       })();

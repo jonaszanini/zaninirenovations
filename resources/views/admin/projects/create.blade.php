@@ -53,7 +53,7 @@
       <div class="admin-form-group">
         <label for="photos">Photos</label>
         <input type="file" id="photos" name="photos[]" accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png" multiple>
-        <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). Files are converted to WebP, resized so the longest side is at most {{ (int) config('webp.max_edge_px', 1920) }}px, and recompressed for the web; originals are not kept. Up to 15 photos per project. Display order matches the order you select (first = top).</p>
+        <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). Files are converted to WebP, resized so the longest side is at most {{ (int) config('webp.max_edge_px', 1920) }}px, and recompressed for the web; originals are not kept. Up to 15 photos per project. Display order matches the order you select (first = top). To crop a photo after it is saved, edit the project and use the crop button on the thumbnail.</p>
         @error('photos')
           <div class="admin-error">{{ $message }}</div>
         @enderror

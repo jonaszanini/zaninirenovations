@@ -8,6 +8,7 @@ use App\Models\ProjectCategory;
 use App\Models\ProjectPhoto;
 use App\Models\GooglePhotosToken;
 use App\Services\GooglePhotosService;
+use App\Services\ProjectPhotoCropService;
 use App\Services\ProjectPhotoRotationService;
 use App\Services\ProjectPhotoWebpStorage;
 use Illuminate\Http\Request;
@@ -282,6 +283,94 @@ class ProjectController extends Controller
         return redirect()
             ->route('admin.projects.edit', $project)
             ->with('success', 'Photo rotated.');
+    }
+
+    public function cropPhoto(Request $request, Project $project, ProjectPhoto $photo)
+    {
+        abort_unless((int) $photo->project_id === (int) $project->id, 404);
+
+        $validated = $request->validate([
+            'x' => ['required', 'numeric'],
+            'y' => ['required', 'numeric'],
+            'width' => ['required', 'numeric', 'min:1'],
+            'height' => ['required', 'numeric', 'min:1'],
+        ]);
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($photo->path)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Photo file is missing on disk.'], 404);
+            }
+
+            return back()->with('error', 'Photo file is missing on disk.');
+        }
+
+        $fullPath = $disk->path($photo->path);
+        $info = @getimagesize($fullPath);
+        if ($info === false) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Could not read image dimensions.'], 422);
+            }
+
+            return back()->with('error', 'Could not read image dimensions.');
+        }
+
+        $iw = (int) $info[0];
+        $ih = (int) $info[1];
+        $x = (float) $validated['x'];
+        $y = (float) $validated['y'];
+        $w = (float) $validated['width'];
+        $h = (float) $validated['height'];
+
+        $tol = 0.02;
+        if ($x < -$tol || $y < -$tol || $x + $w > $iw + $tol || $y + $h > $ih + $tol) {
+            $msg = 'Crop rectangle must be inside the image.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg], 422);
+            }
+
+            return back()->with('error', $msg);
+        }
+
+        $ix = (int) max(0, min($iw - 1, floor($x)));
+        $iy = (int) max(0, min($ih - 1, floor($y)));
+        $cropW = (int) max(1, min($iw - $ix, (int) round($w)));
+        $cropH = (int) max(1, min($ih - $iy, (int) round($h)));
+
+        if ($cropW < 8 || $cropH < 8) {
+            $msg = 'Crop area is too small (minimum 8×8 pixels).';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg], 422);
+            }
+
+            return back()->with('error', $msg);
+        }
+
+        try {
+            app(ProjectPhotoCropService::class)->cropWebp($fullPath, $ix, $iy, $cropW, $cropH);
+        } catch (\Throwable $e) {
+            report($e);
+            $msg = 'Could not crop the photo: '.$e->getMessage();
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg], 500);
+            }
+
+            return back()->with('error', $msg);
+        }
+
+        $photo->touch();
+        $this->syncPublicStorageFallback($photo->path);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return redirect()
+            ->route('admin.projects.edit', $project)
+            ->with('success', 'Photo cropped.');
     }
 
     public function destroy(Project $project)

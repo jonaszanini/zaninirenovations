@@ -76,6 +76,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
 
     Route::post('projects/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])
         ->name('projects.photos.rotate');
+    Route::post('projects/{project}/photos/{photo}/crop', [ProjectController::class, 'cropPhoto'])
+        ->name('projects.photos.crop');
     Route::resource('projects', ProjectController::class)->except(['show']);
     Route::resource('categories', CategoryController::class)->except(['show']);
 });
