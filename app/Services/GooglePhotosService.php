@@ -50,7 +50,8 @@ class GooglePhotosService
             'response_type' => 'code',
             'access_type' => 'offline',
             'prompt' => 'consent',
-            'include_granted_scopes' => 'true',
+            // Avoid merging previously granted (legacy) Photos scopes; Library API needs a clean grant.
+            'include_granted_scopes' => 'false',
             'state' => $state,
             'scope' => implode(' ', (array) Config::get('google_photos.scopes', [])),
         ], '', '&', PHP_QUERY_RFC3986);
