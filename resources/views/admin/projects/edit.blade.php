@@ -283,9 +283,10 @@
         function sizeCropStagePx() {
           if (!stage) return;
           var vh = window.innerHeight || 640;
-          var h = Math.floor(vh * 0.32);
-          if (h < 200) h = 200;
-          if (h > 280) h = 280;
+          /* ~half viewport minus room for modal chrome; clamp keeps it usable on short / tall screens */
+          var h = Math.floor(vh * 0.48);
+          if (h < 260) h = 260;
+          if (h > 480) h = 480;
           stage.style.height = h + 'px';
           stage.style.minHeight = h + 'px';
           stage.style.maxHeight = h + 'px';
