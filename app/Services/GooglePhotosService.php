@@ -162,6 +162,8 @@ class GooglePhotosService
     }
 
     /**
+     * Lists photos from the configured app-created album (see GOOGLE_PHOTOS_ALBUM_ID).
+     *
      * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}
      */
     public function listRecentMedia(User $user, ?string $pageToken = null, int $pageSize = 24): array
@@ -171,15 +173,19 @@ class GooglePhotosService
             throw new RuntimeException('Google Photos is not connected.');
         }
 
+        $albumId = trim((string) Config::get('google_photos.album_id', ''));
+        if ($albumId === '') {
+            throw new RuntimeException(
+                'Google Photos album is not configured. Set GOOGLE_PHOTOS_ALBUM_ID in .env to an album ID created by this OAuth client, then disconnect and reconnect Google Photos so the new scopes take effect.'
+            );
+        }
+
         $access = $this->ensureFreshAccessToken($token);
 
+        // Library API: albumId cannot be combined with filters (see mediaItems.search docs).
         $body = [
+            'albumId' => $albumId,
             'pageSize' => max(1, min(100, $pageSize)),
-            'filters' => [
-                'mediaTypeFilter' => [
-                    'mediaTypes' => ['PHOTO'],
-                ],
-            ],
         ];
 
         if ($pageToken) {
@@ -200,7 +206,14 @@ class GooglePhotosService
         }
 
         if (($response->getStatusCode() ?? 500) >= 400) {
-            throw new RuntimeException('Google Photos list failed: '.((string) $response->getBody()));
+            $raw = (string) $response->getBody();
+            if (str_contains($raw, 'insufficient authentication scopes')) {
+                throw new RuntimeException(
+                    'Google Photos list failed: token is missing the app-created Library API scope. In Google Cloud → OAuth consent → Data Access, add https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata, then disconnect and reconnect Google Photos in admin.'
+                );
+            }
+
+            throw new RuntimeException('Google Photos list failed: '.$raw);
         }
 
         $items = [];

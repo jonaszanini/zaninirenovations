@@ -122,17 +122,17 @@
               data-max-total="{{ $canAdd }}"
             >
               <div class="admin-google-photos-toolbar">
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load recent photos</button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load album photos</button>
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-more hidden>Load more</button>
                 <span class="admin-google-photos-status" data-google-status></span>
               </div>
               <div class="admin-google-photos-grid" data-google-grid></div>
             </div>
-            <p class="admin-form-hint">You can add up to {{ $canAdd }} more photos total (uploads + Google combined).</p>
+            <p class="admin-form-hint">You can add up to {{ $canAdd }} more photos total (uploads + Google). Google items must be in the site’s configured app-created album.</p>
           @else
             <p class="admin-form-hint" style="margin-top:0;">
               <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect') }}">Connect Google Photos</a>
-              <span style="margin-left:0.5rem;color:var(--admin-muted);">Required for importing from your library.</span>
+              <span style="margin-left:0.5rem;color:var(--admin-muted);">Required for importing from the configured album.</span>
             </p>
           @endif
           @error('google_photos_media_ids')

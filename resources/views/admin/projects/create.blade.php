@@ -78,17 +78,17 @@
             data-max-total="15"
           >
             <div class="admin-google-photos-toolbar">
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load recent photos</button>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load album photos</button>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-more hidden>Load more</button>
               <span class="admin-google-photos-status" data-google-status></span>
             </div>
             <div class="admin-google-photos-grid" data-google-grid></div>
           </div>
-          <p class="admin-form-hint">Select photos here, or upload files above. Combined total cannot exceed 15.</p>
+          <p class="admin-form-hint">Photos must live in the Google Photos album configured for this site (app-created album for this OAuth client). Add them there, then load and select here—or upload files above. Combined total cannot exceed 15.</p>
         @else
           <p class="admin-form-hint" style="margin-top:0;">
             <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect') }}">Connect Google Photos</a>
-            <span style="margin-left:0.5rem;color:var(--admin-muted);">Required for importing from your library.</span>
+            <span style="margin-left:0.5rem;color:var(--admin-muted);">Required for importing from the configured album.</span>
           </p>
         @endif
         @error('google_photos_media_ids')
