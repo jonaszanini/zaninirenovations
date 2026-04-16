@@ -186,24 +186,11 @@ class GooglePhotosService
             return $this->listAppCreatedMediaPage($access, $pageToken, $pageSize);
         }
 
-        $cursor = null;
-        $hops = 0;
-        while ($hops < 40) {
-            $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize);
-            if (count($result['items']) > 0) {
-                return $result;
-            }
-            if (empty($result['nextPageToken'])) {
-                break;
-            }
-            $cursor = $result['nextPageToken'];
-            $hops++;
-        }
-
-        if ($hops >= 40) {
-            throw new RuntimeException(
-                'Google Photos returned many empty list pages. Try again later or reconnect Google Photos.'
-            );
+        // Single first page only: mediaItems.list can return nextPageToken with no items on a page;
+        // auto-skipping pages caused false "many empty pages" errors. Use "Load more" for the next token.
+        $result = $this->listAppCreatedMediaPage($access, null, $pageSize);
+        if (count($result['items']) > 0 || ! empty($result['nextPageToken'])) {
+            return $result;
         }
 
         throw new RuntimeException(
