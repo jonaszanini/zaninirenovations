@@ -357,18 +357,40 @@ class GooglePhotosService
      */
     private function parseSessionPayload(array $payload): array
     {
-        $id = isset($payload['id']) ? (string) $payload['id'] : '';
-        $pickerUri = isset($payload['pickerUri']) ? (string) $payload['pickerUri'] : '';
-        if ($id === '' || $pickerUri === '') {
-            throw new RuntimeException('Google Photos picker session response missing id or pickerUri.');
+        // Be tolerant to shape variants (camelCase, snake_case, nested session object, resource name).
+        $session = $payload;
+        if (isset($payload['session']) && is_array($payload['session'])) {
+            $session = $payload['session'];
         }
 
-        $pollingRaw = Arr::get($payload, 'pollingConfig');
+        $id = isset($session['id']) ? (string) $session['id'] : '';
+        if ($id === '' && isset($session['name']) && is_string($session['name'])) {
+            if (preg_match('#/sessions/([^/]+)$#', $session['name'], $m)) {
+                $id = $m[1];
+            }
+        }
+
+        $pickerUri = '';
+        if (isset($session['pickerUri']) && is_string($session['pickerUri'])) {
+            $pickerUri = $session['pickerUri'];
+        } elseif (isset($session['picker_uri']) && is_string($session['picker_uri'])) {
+            $pickerUri = $session['picker_uri'];
+        }
+        if ($id === '' || $pickerUri === '') {
+            $keys = implode(', ', array_keys($payload));
+            throw new RuntimeException('Google Photos picker session response missing id or pickerUri. Response keys: ['.$keys.']');
+        }
+
+        $pollingRaw = Arr::get($session, 'pollingConfig', Arr::get($session, 'polling_config'));
         $polling = null;
         if (is_array($pollingRaw)) {
             $polling = [
-                'pollInterval' => isset($pollingRaw['pollInterval']) ? (string) $pollingRaw['pollInterval'] : null,
-                'timeoutIn' => isset($pollingRaw['timeoutIn']) ? (string) $pollingRaw['timeoutIn'] : null,
+                'pollInterval' => isset($pollingRaw['pollInterval'])
+                    ? (string) $pollingRaw['pollInterval']
+                    : (isset($pollingRaw['poll_interval']) ? (string) $pollingRaw['poll_interval'] : null),
+                'timeoutIn' => isset($pollingRaw['timeoutIn'])
+                    ? (string) $pollingRaw['timeoutIn']
+                    : (isset($pollingRaw['timeout_in']) ? (string) $pollingRaw['timeout_in'] : null),
             ];
         }
 
@@ -376,7 +398,7 @@ class GooglePhotosService
             'id' => $id,
             'pickerUri' => $pickerUri,
             'pollingConfig' => $polling,
-            'mediaItemsSet' => (bool) ($payload['mediaItemsSet'] ?? false),
+            'mediaItemsSet' => (bool) ($session['mediaItemsSet'] ?? $session['media_items_set'] ?? false),
         ];
     }
 
