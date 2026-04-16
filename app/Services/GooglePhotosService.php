@@ -178,10 +178,8 @@ class GooglePhotosService
     }
 
     /**
-     * Lists app-created photos via POST mediaItems:search. When GOOGLE_PHOTOS_ALBUM_ID is set we
-     * first search that album (matches uploads from batchCreate with albumId); if that yields
-     * nothing we fall back to a library-wide search (no albumId). Pagination tokens are only valid
-     * for the same search shape, so callers must pass list_context on “Load more”.
+     * Lists app-created photos: GET mediaItems first, then album search, then library search.
+     * Pagination tokens are only valid for the same API shape, so callers must pass list_context on “Load more”.
      *
      * list_context is one of: album (mediaItems:search + albumId), library (search, no album), get (GET mediaItems).
      *
@@ -217,7 +215,17 @@ class GooglePhotosService
             return $result;
         }
 
-        // First load: do not stop on album search “empty page + nextPageToken” — that skips library search.
+        // First load: GET mediaItems first — mediaItems:search often returns many pages with mediaItems=[].
+        $getResult = $this->listInitialWalkUntilItems(
+            fn (?string $c) => $this->listAppCreatedMediaGetPage($access, $c, $pageSize),
+            self::INITIAL_LIST_MAX_PAGES,
+        );
+        if ($getResult !== null && count($getResult['items']) > 0) {
+            $getResult['list_context'] = 'get';
+
+            return $getResult;
+        }
+
         $albumResult = null;
         if ($albumId !== '') {
             $albumResult = $this->listInitialWalkUntilItems(
@@ -241,16 +249,11 @@ class GooglePhotosService
             return $libResult;
         }
 
-        $getResult = $this->listInitialWalkUntilItems(
-            fn (?string $c) => $this->listAppCreatedMediaGetPage($access, $c, $pageSize),
-            self::INITIAL_LIST_MAX_PAGES,
-        );
-        if ($getResult !== null && count($getResult['items']) > 0) {
+        if ($getResult !== null) {
             $getResult['list_context'] = 'get';
 
             return $getResult;
         }
-
         if ($libResult !== null) {
             $libResult['list_context'] = 'library';
 
@@ -260,11 +263,6 @@ class GooglePhotosService
             $albumResult['list_context'] = 'album';
 
             return $albumResult;
-        }
-        if ($getResult !== null) {
-            $getResult['list_context'] = 'get';
-
-            return $getResult;
         }
 
         throw new RuntimeException(
@@ -345,11 +343,6 @@ class GooglePhotosService
         }
         if ($albumIdForSearch !== null && $albumIdForSearch !== '') {
             $body['albumId'] = $albumIdForSearch;
-        } else {
-            // Library-wide search only: albumId + filters is rejected by the API.
-            $body['filters'] = [
-                'includeArchivedMedia' => true,
-            ];
         }
 
         $response = $this->httpList()->post('https://photoslibrary.googleapis.com/v1/mediaItems:search', [
@@ -459,6 +452,40 @@ class GooglePhotosService
             'mimeType' => Arr::get($payload, 'mediaMetadata.mimeType'),
             'filename' => Arr::get($payload, 'filename'),
         ];
+    }
+
+    /**
+     * Ensures recent site uploads (IDs stored in session) appear even when Google list/search returns empty.
+     *
+     * @param  array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>  $apiItems
+     * @param  array<int, string>  $sessionIdsNewestLast
+     * @return array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>
+     */
+    public function mergeSessionMediaIntoList(User $user, array $apiItems, array $sessionIdsNewestLast): array
+    {
+        $seen = [];
+        $out = [];
+        foreach (array_reverse($sessionIdsNewestLast) as $id) {
+            $id = trim((string) $id);
+            if ($id === '' || isset($seen[$id])) {
+                continue;
+            }
+            try {
+                $out[] = $this->getMediaItem($user, $id);
+                $seen[$id] = true;
+            } catch (Throwable) {
+            }
+        }
+        foreach ($apiItems as $it) {
+            $id = (string) ($it['id'] ?? '');
+            if ($id === '' || isset($seen[$id])) {
+                continue;
+            }
+            $out[] = $it;
+            $seen[$id] = true;
+        }
+
+        return $out;
     }
 
     /**

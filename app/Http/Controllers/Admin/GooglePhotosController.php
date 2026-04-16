@@ -50,9 +50,10 @@ class GooglePhotosController extends Controller
         }
     }
 
-    public function disconnect(GooglePhotosService $photos)
+    public function disconnect(Request $request, GooglePhotosService $photos)
     {
-        $photos->disconnect(request()->user());
+        $photos->disconnect($request->user());
+        $request->session()->forget('google_photos_recent_media_ids');
 
         return redirect()
             ->back()
@@ -67,6 +68,14 @@ class GooglePhotosController extends Controller
 
         try {
             $media = $photos->uploadIntoImportAlbum($request->user(), $request->file('file'));
+
+            $ids = (array) $request->session()->get('google_photos_recent_media_ids', []);
+            $ids[] = (string) ($media['id'] ?? '');
+            $ids = array_values(array_unique(array_filter(array_map('strval', $ids))));
+            if (count($ids) > 40) {
+                $ids = array_slice($ids, -40);
+            }
+            $request->session()->put('google_photos_recent_media_ids', $ids);
 
             return response()->json([
                 'ok' => true,
@@ -102,6 +111,17 @@ class GooglePhotosController extends Controller
             $albumId = trim((string) config('google_photos.album_id', ''));
             $listContext = $data['list_context'] ?? null;
             unset($data['list_context']);
+
+            if (! $request->filled('page_token')) {
+                $sessionIds = array_values(array_unique(array_filter(array_map('strval', (array) $request->session()->get('google_photos_recent_media_ids', [])))));
+                if ($sessionIds !== []) {
+                    $data['items'] = $photos->mergeSessionMediaIntoList(
+                        $request->user(),
+                        $data['items'] ?? [],
+                        $sessionIds,
+                    );
+                }
+            }
 
             $data['meta'] = [
                 'album_id_length' => strlen($albumId),
