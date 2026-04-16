@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Zanini Renovations - Professional Renovation and Carpentry Services">
-    <title>Zanini Renovations - Coming Soon</title>
+    <title>Zanini Renovations</title>
     <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
 </head>
 <body>

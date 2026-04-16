@@ -1,6 +1,5 @@
 @extends('site.layouts.public')
 
-@section('title', 'Kitchen Refacing Kanata, Ottawa | O.Reg. 332/12 | Zanini Renovations')
 @section('meta_description', 'Zanini Renovations offers expert Kitchen Cabinet Refacing Ottawa in Kanata. Specialized in high-end finish carpentry and OBC-compliant framing. Get your CAD$ quote today in Kanata.')
 @section('meta_keywords', config('seo.lsi_verbatim'))
 @section('canonical', url('/services/custom-kitchen-remodel'))

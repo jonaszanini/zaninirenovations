@@ -1,6 +1,5 @@
 @extends('site.layouts.public')
 
-@section('title', 'Licensed Carpenter Ottawa | O.Reg. 332/12 | Zanini Renovations')
 @section('meta_description', 'Licensed Carpenter Ottawa & Carleton Place — finish carpentry, rough carpentry, custom millwork, decks, basements. WSIB Clearance Certificate, Part 9 Housing & Small Buildings, O.Reg. 332/12 compliant. CAD$ quotes Kanata, Barrhaven, Orléans.')
 @section('meta_keywords', config('seo.lsi_verbatim'))
 @section('canonical', url('/'))

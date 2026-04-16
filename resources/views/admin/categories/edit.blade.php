@@ -1,6 +1,5 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Edit category')
 @section('heading', 'Edit category')
 
 @section('content')
