@@ -207,7 +207,9 @@ class GooglePhotosService
         // First load: do not stop on album search “empty page + nextPageToken” — that skips library search.
         $albumResult = null;
         if ($albumId !== '') {
-            $albumResult = $this->listInitialSearchChunk($access, $pageSize, $albumId);
+            $albumResult = $this->listInitialWalkUntilItems(
+                fn (?string $c) => $this->listAppCreatedMediaPage($access, $c, $pageSize, $albumId),
+            );
             if ($albumResult !== null && count($albumResult['items']) > 0) {
                 $albumResult['list_context'] = 'album';
 
@@ -215,14 +217,18 @@ class GooglePhotosService
             }
         }
 
-        $libResult = $this->listInitialSearchChunk($access, $pageSize, null);
+        $libResult = $this->listInitialWalkUntilItems(
+            fn (?string $c) => $this->listAppCreatedMediaPage($access, $c, $pageSize, null),
+        );
         if ($libResult !== null && count($libResult['items']) > 0) {
             $libResult['list_context'] = 'library';
 
             return $libResult;
         }
 
-        $getResult = $this->listInitialGetChunk($access, $pageSize);
+        $getResult = $this->listInitialWalkUntilItems(
+            fn (?string $c) => $this->listAppCreatedMediaGetPage($access, $c, $pageSize),
+        );
         if ($getResult !== null && count($getResult['items']) > 0) {
             $getResult['list_context'] = 'get';
 
@@ -251,43 +257,18 @@ class GooglePhotosService
     }
 
     /**
-     * Walks past empty list pages (Google sometimes returns nextPageToken with no mediaItems).
+     * Follows nextPageToken until a page returns media items, or the list ends, or max pages.
+     * Google often returns many search pages with mediaItems=[] but a token (client “Load more”
+     * would need dozens of clicks); doing this on the server makes the first admin load succeed.
      *
-     * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}|null Null if this search mode has no items at all.
-     */
-    private function listInitialSearchChunk(string $access, int $pageSize, ?string $albumIdForSearch): ?array
-    {
-        $cursor = null;
-        $maxEmptySkips = 12;
-        for ($i = 0; $i < $maxEmptySkips; $i++) {
-            $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize, $albumIdForSearch);
-            if (count($result['items']) > 0) {
-                return $result;
-            }
-            $next = $result['nextPageToken'] ?? null;
-            if ($next === null || $next === '') {
-                return null;
-            }
-            $cursor = $next;
-        }
-
-        $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize, $albumIdForSearch);
-        if (count($result['items']) > 0 || ! empty($result['nextPageToken'])) {
-            return $result;
-        }
-
-        return null;
-    }
-
-    /**
+     * @param  callable(?string): array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}  $fetchPage
      * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}|null
      */
-    private function listInitialGetChunk(string $access, int $pageSize): ?array
+    private function listInitialWalkUntilItems(callable $fetchPage, int $maxPages = 45): ?array
     {
         $cursor = null;
-        $maxEmptySkips = 12;
-        for ($i = 0; $i < $maxEmptySkips; $i++) {
-            $result = $this->listAppCreatedMediaGetPage($access, $cursor, $pageSize);
+        for ($i = 0; $i < $maxPages; $i++) {
+            $result = $fetchPage($cursor);
             if (count($result['items']) > 0) {
                 return $result;
             }
@@ -298,7 +279,7 @@ class GooglePhotosService
             $cursor = $next;
         }
 
-        $result = $this->listAppCreatedMediaGetPage($access, $cursor, $pageSize);
+        $result = $fetchPage($cursor);
         if (count($result['items']) > 0 || ! empty($result['nextPageToken'])) {
             return $result;
         }
@@ -348,6 +329,11 @@ class GooglePhotosService
         }
         if ($albumIdForSearch !== null && $albumIdForSearch !== '') {
             $body['albumId'] = $albumIdForSearch;
+        } else {
+            // Library-wide search only: albumId + filters is rejected by the API.
+            $body['filters'] = [
+                'includeArchivedMedia' => true,
+            ];
         }
 
         $response = $this->http()->post('https://photoslibrary.googleapis.com/v1/mediaItems:search', [
@@ -392,24 +378,34 @@ class GooglePhotosService
      */
     private function parseMediaItemsPayload(array $payload): array
     {
+        $rawList = $payload['mediaItems'] ?? $payload['media_items'] ?? [];
         $items = [];
-        foreach ((array) ($payload['mediaItems'] ?? []) as $mi) {
+        foreach ((array) $rawList as $mi) {
             if (! is_array($mi)) {
                 continue;
             }
             $id = (string) ($mi['id'] ?? '');
+            if ($id === '' && isset($mi['name']) && is_string($mi['name'])) {
+                if (preg_match('#/(?:mediaItems|media_items)/([^/]+)$#', $mi['name'], $m)) {
+                    $id = $m[1];
+                }
+            }
             if ($id === '') {
                 continue;
             }
+            $baseUrl = $mi['baseUrl'] ?? $mi['base_url'] ?? null;
+            $mimeType = Arr::get($mi, 'mediaMetadata.mimeType') ?? Arr::get($mi, 'media_metadata.mimeType');
+            $filename = Arr::get($mi, 'filename');
             $items[] = [
                 'id' => $id,
-                'baseUrl' => isset($mi['baseUrl']) ? (string) $mi['baseUrl'] : null,
-                'mimeType' => Arr::get($mi, 'mediaMetadata.mimeType'),
-                'filename' => Arr::get($mi, 'filename'),
+                'baseUrl' => isset($baseUrl) ? (string) $baseUrl : null,
+                'mimeType' => $mimeType,
+                'filename' => $filename,
             ];
         }
 
-        $next = isset($payload['nextPageToken']) ? (string) $payload['nextPageToken'] : null;
+        $next = $payload['nextPageToken'] ?? $payload['next_page_token'] ?? null;
+        $next = $next !== null ? (string) $next : null;
 
         return [
             'items' => $items,

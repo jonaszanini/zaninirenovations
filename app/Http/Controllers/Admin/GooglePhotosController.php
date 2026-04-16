@@ -92,7 +92,7 @@ class GooglePhotosController extends Controller
             $data = $photos->listRecentMedia(
                 $request->user(),
                 $request->input('page_token'),
-                24,
+                100,
                 $request->input('list_context'),
             );
 
