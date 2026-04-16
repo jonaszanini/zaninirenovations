@@ -669,7 +669,7 @@ body.admin-body {
 }
 
 #admin-photo-crop-modal .admin-modal-backdrop {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 0;
   background: rgba(55, 52, 53, 0.5);
@@ -678,7 +678,7 @@ body.admin-body {
 
 #admin-photo-crop-modal .admin-modal-panel {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: min(880px, calc(100vw - 1.5rem));
   max-width: 100%;
   max-height: min(96vh, 920px);
@@ -725,14 +725,9 @@ body.admin-body {
   max-height: 100%;
 }
 
-#admin-photo-crop-modal .admin-crop-stage .cropper-container,
-#admin-photo-crop-modal .admin-crop-stage .cropper-wrap-box,
-#admin-photo-crop-modal .admin-crop-stage .cropper-canvas,
-#admin-photo-crop-modal .admin-crop-stage .cropper-crop-box {
-  max-width: 100% !important;
-}
-
+/* Only constrain the outer Cropper box — do not style .cropper-crop-box / canvas (breaks or hangs Cropper). */
 #admin-photo-crop-modal .admin-crop-stage .cropper-container {
+  max-width: 100% !important;
   max-height: min(52vh, 440px) !important;
 }
 
@@ -742,6 +737,10 @@ body.admin-body {
   gap: 0.65rem;
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+html.admin-crop-modal-open {
+  overflow: hidden;
 }
 
 /* Login page (standalone) */

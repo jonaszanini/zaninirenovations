@@ -278,13 +278,14 @@
         var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
         var cropper = null;
         var activeUrl = '';
-        var bodyScrollLockY = 0;
 
         function destroyCropper() {
           if (cropper) {
             cropper.destroy();
             cropper = null;
           }
+          img.onload = null;
+          img.onerror = null;
           img.removeAttribute('src');
         }
 
@@ -293,17 +294,11 @@
           destroyCropper();
           applyBtn.disabled = true;
           activeUrl = '';
-          document.body.style.position = '';
-          document.body.style.top = '';
-          document.body.style.width = '';
-          window.scrollTo(0, bodyScrollLockY);
+          document.documentElement.classList.remove('admin-crop-modal-open');
         }
 
         function openModal() {
-          bodyScrollLockY = window.scrollY || window.pageYOffset || 0;
-          document.body.style.position = 'fixed';
-          document.body.style.top = '-' + bodyScrollLockY + 'px';
-          document.body.style.width = '100%';
+          document.documentElement.classList.add('admin-crop-modal-open');
           modal.hidden = false;
         }
 
@@ -324,23 +319,60 @@
             if (!url || !postUrl) return;
             destroyCropper();
             activeUrl = postUrl;
-            img.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'cropper=' + Date.now();
-            openModal();
             applyBtn.disabled = true;
-            cropper = new Cropper(img, {
-              viewMode: 1,
-              autoCropArea: 1,
-              responsive: true,
-              restore: false,
-              ready: function () {
-                applyBtn.disabled = false;
-                window.requestAnimationFrame(function () {
-                  if (cropper && typeof cropper.resize === 'function') {
-                    cropper.resize();
+            openModal();
+
+            var bust = url + (url.indexOf('?') === -1 ? '?' : '&') + 'cropper=' + Date.now();
+            var initScheduled = false;
+
+            function initCropperOnce() {
+              if (initScheduled) return;
+              if (!img.naturalWidth || !img.naturalHeight) return;
+              initScheduled = true;
+              img.onload = null;
+              window.requestAnimationFrame(function () {
+                try {
+                  cropper = new Cropper(img, {
+                    viewMode: 1,
+                    autoCropArea: 1,
+                    responsive: true,
+                    restore: false,
+                    ready: function () {
+                      applyBtn.disabled = false;
+                      try {
+                        if (cropper && typeof cropper.resize === 'function') {
+                          cropper.resize();
+                        }
+                      } catch (eResize) { /* ignore */ }
+                    },
+                  });
+                } catch (e) {
+                  closeModal();
+                  alert('Could not open the crop tool. Try refreshing the page, or check that Cropper.js loaded (network / ad blocker).');
+                  if (typeof console !== 'undefined' && console.error) {
+                    console.error(e);
                   }
-                });
-              },
-            });
+                }
+              });
+            }
+
+            function onImgReady() {
+              if (!img.naturalWidth || !img.naturalHeight) {
+                closeModal();
+                alert('Could not load this image for cropping.');
+                return;
+              }
+              initCropperOnce();
+            }
+
+            img.onerror = function () {
+              img.onerror = null;
+              img.onload = null;
+              closeModal();
+              alert('Could not load this image for cropping (broken link or blocked request).');
+            };
+            img.onload = onImgReady;
+            img.src = bust;
           });
         });
 
