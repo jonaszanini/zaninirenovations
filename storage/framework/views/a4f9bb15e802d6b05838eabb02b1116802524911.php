@@ -54,4 +54,4 @@
   </main>
 <?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('site.layouts.public', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/site/service-kitchen.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('site.layouts.public', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views\site\service-kitchen.blade.php ENDPATH**/ ?>

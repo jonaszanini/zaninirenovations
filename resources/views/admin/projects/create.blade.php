@@ -215,12 +215,16 @@
           hintEl.hidden = true;
           hintEl.textContent = '';
         }
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
+        if (!csrfToken) throw new Error('Missing CSRF token. Reload the page and try again.');
         var res = await fetch(createSessionUrl, {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': csrfToken,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ max_item_count: maxTotal })

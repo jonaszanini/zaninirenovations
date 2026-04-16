@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-CA">
 <head>
   <meta charset="utf-8">
   <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
@@ -7,8 +7,49 @@
   <title><?php echo $__env->yieldContent('title', 'Zanini Renovations'); ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="<?php echo $__env->yieldContent('meta_description', 'Zanini Renovations — carpentry and renovations in Carleton Place and the Ottawa region.'); ?>">
+  <?php if (! empty(trim($__env->yieldContent('meta_keywords')))): ?>
+  <meta name="keywords" content="<?php echo $__env->yieldContent('meta_keywords'); ?>">
+  <?php endif; ?>
   <meta name="theme-color" content="#024768">
+  <meta name="robots" content="<?php echo $__env->yieldContent('meta_robots', 'index,follow'); ?>">
+  <link rel="canonical" href="<?php echo $__env->yieldContent('canonical', url()->current()); ?>">
   <link rel="shortcut icon" href="<?php echo e(url('images/favicon.png')); ?>">
+
+  <?php
+    $seoTitle = trim($__env->yieldContent('title')) ?: 'Zanini Renovations';
+    $seoDesc = trim($__env->yieldContent('meta_description')) ?: 'Zanini Renovations — licensed carpenter Ottawa, Carleton Place, finish & rough carpentry, O.Reg. 332/12 compliant work.';
+    $seoDescOg = \Illuminate\Support\Str::limit($seoDesc, 300, '');
+    $ogImagePath = ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
+    $ogImageAbs = url($ogImagePath);
+  ?>
+  <meta property="og:locale" content="en_CA">
+  <meta property="og:type" content="<?php echo $__env->yieldContent('og_type', 'website'); ?>">
+  <meta property="og:site_name" content="Zanini Renovations">
+  <meta property="og:title" content="<?php echo e($seoTitle); ?>">
+  <meta property="og:description" content="<?php echo e($seoDescOg); ?>">
+  <meta property="og:url" content="<?php echo e(url()->current()); ?>">
+  <meta property="og:image" content="<?php echo e($ogImageAbs); ?>">
+  <meta property="og:image:alt" content="<?php echo e($seoTitle); ?>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<?php echo e($seoTitle); ?>">
+  <meta name="twitter:description" content="<?php echo e($seoDescOg); ?>">
+  <meta name="twitter:image" content="<?php echo e($ogImageAbs); ?>">
+
+  <?php if(filled(config('seo.google_site_verification'))): ?>
+  <meta name="google-site-verification" content="<?php echo e(config('seo.google_site_verification')); ?>">
+  <?php endif; ?>
+
+  <?php if(filled(config('seo.ga4_measurement_id'))): ?>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=<?php echo e(config('seo.ga4_measurement_id')); ?>"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '<?php echo e(config('seo.ga4_measurement_id')); ?>');
+  </script>
+  <?php endif; ?>
+
+  <?php echo $__env->yieldPushContent('jsonld'); ?>
 
   <link href="<?php echo e(url('css/bootstrap.min.css')); ?>" rel="stylesheet" type="text/css">
   <link href="<?php echo e(url('css/font-awesome.min.css')); ?>" rel="stylesheet" type="text/css">

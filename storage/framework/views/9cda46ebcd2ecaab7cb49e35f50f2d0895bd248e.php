@@ -9,7 +9,7 @@
   ?>
   <div
     class="col-md-3 col-sm-6 col-xs-12 portfolio-container js-latest-project-item"
-    data-category-slug="<?php echo e($project->category?->slug ?? ''); ?>"
+    data-category-slugs="<?php echo e($project->categories->pluck('slug')->implode(',')); ?>"
   >
 
     <a
@@ -21,7 +21,7 @@
 
       <figure class="portfolio-img">
 
-        <img src="<?php echo e($coverSrc); ?>" alt="<?php echo e(e($project->title)); ?>" loading="lazy" decoding="async">
+        <img src="<?php echo e($coverSrc); ?>" alt="<?php echo e(e(\Illuminate\Support\Str::limit($project->title.' — Rough Carpentry Contractors; Finish Carpentry Services Ontario; O.Reg. 332/12 compliant portfolio', 200))); ?>" loading="lazy" decoding="async">
 
       </figure>
       <!-- end .cause-img  -->

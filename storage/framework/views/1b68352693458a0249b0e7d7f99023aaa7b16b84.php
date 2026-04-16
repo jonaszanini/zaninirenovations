@@ -22,7 +22,7 @@
               <div class="col-lg-10 col-lg-offset-1 col-md-12 col-sm-12 col-xs-12">
 
                 <figure>
-                  <img src="<?php echo e(url('images/logo-footer.webp')); ?>" alt="Zanini Renovations" loading="lazy" decoding="async">
+                  <img src="<?php echo e(url('images/logo-footer.webp')); ?>" alt="Zanini Renovations — WSIB Clearance Certificate; General Liability Insurance $2M; Part 9 Housing &amp; Small Buildings" loading="lazy" decoding="async">
                 </figure>
                 <p class="margin-top-24">
 
@@ -109,65 +109,51 @@
             <div class="sidebar-widget-wrapper">
 
               <div class="footer-widget-header clearfix">
-                <h3>QUALITY SERVICES</h3>
+                <h3>SERVICES</h3>
               </div>
 
               <div class="textwidget">
 
                 <ul class="footer-useful-links clearfix">
                   <li>
-                    <a href="<?php echo e($home); ?>#contact-location" class="nav_menu">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Fencing
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Fencing
                   </li>
                   <li>
-                    <a href="<?php echo e($home); ?>#contact-location" class="nav_menu">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Decks
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Decks
                   </li>
                   <li>
-                    <a href="<?php echo e($home); ?>#contact-location" class="nav_menu">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Basement Renovation
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Basement Renovation
                   </li>
                   <li>
-                    <a href="<?php echo e($home); ?>#contact-location" class="nav_menu">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Trim &amp; Moulding
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Custom Kitchen Remodel
                   </li>
                   <li>
-                    <a href="<?php echo e($home); ?>#contact-location" class="nav_menu">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Shelving
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Trim &amp; Moulding
                   </li>
                   <li>
-                    <a href="<?php echo e($home); ?>#contact-location" class="nav_menu">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Flooring
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Shelving
                   </li>
                   <li>
-                    <a href="<?php echo e($home); ?>#contact">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Tile
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Flooring
                   </li>
                   <li>
-                    <a href="<?php echo e($home); ?>#contact-location" class="nav_menu">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Accent Walls
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Tile
                   </li>
                   <li>
-                    <a href="<?php echo e($home); ?>#contact-location" class="nav_menu">
-                      <i class="fa fa-caret-right fa-footer"></i>
-                      Stairs
-                    </a>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Accent Walls
+                  </li>
+                  <li>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    Stairs
                   </li>
                 </ul>
 

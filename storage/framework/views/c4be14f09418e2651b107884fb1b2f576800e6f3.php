@@ -45,7 +45,7 @@
           <div class="col-md-4 col-sm-12 col-xs-12 header-col-logo">
             <div class="header-logo logo">
               <a href="<?php echo e($home); ?>" title="Zanini Renovations — Home">
-                <img src="<?php echo e(url('images/logo.png')); ?>" alt="Logo">
+                <img src="<?php echo e(url('images/logo.png')); ?>" alt="Zanini Renovations — Licensed Carpenter Ottawa; Custom Millwork Ottawa; Carleton Place">
               </a>
             </div>
           </div>

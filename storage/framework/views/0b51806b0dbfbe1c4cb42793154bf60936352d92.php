@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
   <meta name="robots" content="noindex, nofollow">
   <title><?php echo $__env->yieldContent('title', 'Admin'); ?> — Zanini Renovations</title>
   <link rel="shortcut icon" href="<?php echo e(asset('images/favicon.png')); ?>">
@@ -106,6 +107,44 @@
         }
       });
     })();
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-admin-google-disconnect]');
+      if (!btn) return;
+      var url = btn.getAttribute('data-disconnect-url');
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      if (!url || !meta) return;
+      e.preventDefault();
+      if (btn.getAttribute('aria-busy') === 'true') return;
+      btn.setAttribute('aria-busy', 'true');
+      btn.disabled = true;
+      var t = meta.getAttribute('content') || '';
+      fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRF-TOKEN': t,
+          'X-Requested-With': 'XMLHttpRequest',
+          Accept: 'application/json, text/html, */*;q=0.8'
+        },
+        body: '_token=' + encodeURIComponent(t)
+      })
+        .then(function (res) {
+          if (res.ok) {
+            window.location.reload();
+            return;
+          }
+          btn.disabled = false;
+          btn.removeAttribute('aria-busy');
+          window.alert('Could not disconnect Google Photos. Try again.');
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.removeAttribute('aria-busy');
+          window.alert('Could not disconnect Google Photos. Try again.');
+        });
+    });
   </script>
   <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
