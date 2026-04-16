@@ -209,9 +209,12 @@
           if (hintEl && data && data.meta) {
             var em = data.meta;
             var bits = [data.error || 'Could not load Google Photos.'];
-            if (!em.album_id_length) bits.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
-            else bits.push('Album id in use ends …' + (em.album_id_tail || '') + ' (length ' + em.album_id_length + ').');
-            if (em.configuration_cached) bits.push('Configuration is cached. After editing .env on the server, run: php artisan config:clear');
+            if (!em.album_id_length) {
+              bits.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
+              if (em.configuration_cached) bits.push('After editing .env on the server, run: php artisan config:clear');
+            } else {
+              bits.push('Album id in use ends …' + (em.album_id_tail || '') + ' (length ' + em.album_id_length + ').');
+            }
             hintEl.textContent = bits.join(' ');
             hintEl.hidden = false;
           } else {
@@ -231,11 +234,9 @@
           var parts = [];
           if (!m.album_id_length) {
             parts.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
+            if (m.configuration_cached) parts.push('After editing .env on the server, run: php artisan config:clear (then reload).');
           } else {
-            parts.push('Server is using album id ending …' + (m.album_id_tail || '') + ' (length ' + m.album_id_length + ').');
-          }
-          if (m.configuration_cached) {
-            parts.push('Configuration is cached. After editing .env on the server, run: php artisan config:clear (then reload this page).');
+            parts.push('No app-created photos on this page. Try Load more if shown, or use Upload to import album.');
           }
           hintEl.textContent = parts.join(' ');
           hintEl.hidden = false;
