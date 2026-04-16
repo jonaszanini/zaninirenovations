@@ -158,6 +158,11 @@
       function renderItems(items) {
         items.forEach(function (it) {
           if (!it || !it.id) return;
+          var dup = false;
+          grid.querySelectorAll('input[name="google_photos_media_ids[]"]').forEach(function (inp) {
+            if (inp.value === it.id) dup = true;
+          });
+          if (dup) return;
           var url = it.baseUrl ? (it.baseUrl + '=w220-h220-c') : '';
           var label = it.filename || 'Photo';
 
@@ -230,16 +235,19 @@
           hintEl.textContent = '';
         }
         if ((data.items || []).length === 0 && data.meta && hintEl) {
-          var m = data.meta;
-          var parts = [];
-          if (!m.album_id_length) {
-            parts.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
-            if (m.configuration_cached) parts.push('After editing .env on the server, run: php artisan config:clear (then reload).');
-          } else {
-            parts.push('No app-created photos on this page. Try Load more if shown, or use Upload to import album.');
+          var hasTiles = grid.querySelectorAll('input[name="google_photos_media_ids[]"]').length > 0;
+          if (!hasTiles) {
+            var m = data.meta;
+            var parts = [];
+            if (!m.album_id_length) {
+              parts.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
+              if (m.configuration_cached) parts.push('After editing .env on the server, run: php artisan config:clear (then reload).');
+            } else {
+              parts.push('No app-created photos on this page. Try Load more if shown, or use Upload to import album.');
+            }
+            hintEl.textContent = parts.join(' ');
+            hintEl.hidden = false;
           }
-          hintEl.textContent = parts.join(' ');
-          hintEl.hidden = false;
         }
         status.textContent = '';
         refreshStatus();
@@ -283,6 +291,9 @@
               grid.innerHTML = '';
               nextToken = null;
               btnMore.hidden = true;
+              if (data.media && data.media.id) {
+                renderItems([data.media]);
+              }
               await loadPage(null);
             }
           } catch (e) {

@@ -164,9 +164,10 @@ class GooglePhotosService
     }
 
     /**
-     * Lists app-created photos (GET mediaItems). We use this instead of mediaItems:search(albumId)
-     * because Google may return no rows for an album that mixes “Photos app” items with API uploads,
-     * even though API uploads are listable via mediaItems.list.
+     * Lists app-created photos via POST mediaItems:search with no filters (Library API returns all
+     * app-created media for the user). We avoid mediaItems:search with albumId because mixed albums
+     * can return no rows; we avoid relying on GET mediaItems alone because some accounts see empty
+     * first pages until pagination.
      *
      * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}
      */
@@ -186,9 +187,24 @@ class GooglePhotosService
             return $this->listAppCreatedMediaPage($access, $pageToken, $pageSize);
         }
 
-        // Single first page only: mediaItems.list can return nextPageToken with no items on a page;
-        // auto-skipping pages caused false "many empty pages" errors. Use "Load more" for the next token.
-        $result = $this->listAppCreatedMediaPage($access, null, $pageSize);
+        // First load: skip empty pages (Google sometimes returns nextPageToken with no mediaItems).
+        $cursor = null;
+        $maxEmptySkips = 12;
+        for ($i = 0; $i < $maxEmptySkips; $i++) {
+            $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize);
+            if (count($result['items']) > 0) {
+                return $result;
+            }
+            $next = $result['nextPageToken'] ?? null;
+            if ($next === null || $next === '') {
+                throw new RuntimeException(
+                    'No app-created photos found yet. Use “Upload to import album” (needs photoslibrary.appendonly + reconnect), then load again. Items added only in the Google Photos app are never returned by this API.'
+                );
+            }
+            $cursor = $next;
+        }
+
+        $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize);
         if (count($result['items']) > 0 || ! empty($result['nextPageToken'])) {
             return $result;
         }
@@ -203,37 +219,38 @@ class GooglePhotosService
      */
     private function listAppCreatedMediaPage(string $access, ?string $pageToken, int $pageSize): array
     {
-        $query = ['pageSize' => $pageSize];
+        $body = ['pageSize' => $pageSize];
         if ($pageToken !== null && $pageToken !== '') {
-            $query['pageToken'] = $pageToken;
+            $body['pageToken'] = $pageToken;
         }
-        $url = 'https://photoslibrary.googleapis.com/v1/mediaItems?'.http_build_query($query);
 
-        $response = $this->http()->get($url, [
+        $response = $this->http()->post('https://photoslibrary.googleapis.com/v1/mediaItems:search', [
             'headers' => [
                 'Authorization' => 'Bearer '.$access,
+                'Content-Type' => 'application/json',
             ],
+            'json' => $body,
         ]);
 
-        $payload = json_decode((string) $response->getBody(), true);
+        $code = (int) ($response->getStatusCode() ?? 500);
+        $rawBody = (string) $response->getBody();
+        $payload = json_decode($rawBody, true);
         if (! is_array($payload)) {
             throw new RuntimeException('Google Photos list failed: invalid response.');
         }
 
-        if (isset($payload['error']) && is_array($payload['error'])) {
-            $msg = (string) ($payload['error']['message'] ?? json_encode($payload['error']));
-            throw new RuntimeException('Google Photos list failed: '.$msg);
-        }
-
-        if (($response->getStatusCode() ?? 500) >= 400) {
-            $raw = (string) $response->getBody();
-            if (str_contains($raw, 'insufficient authentication scopes')) {
+        if ($code >= 400 || (isset($payload['error']) && is_array($payload['error']))) {
+            if (isset($payload['error']) && is_array($payload['error'])) {
+                $msg = (string) ($payload['error']['message'] ?? json_encode($payload['error']));
+                throw new RuntimeException('Google Photos list failed: '.$msg);
+            }
+            if (str_contains($rawBody, 'insufficient authentication scopes')) {
                 throw new RuntimeException(
                     'Google Photos list failed: token is missing the app-created Library API scope. In Google Cloud → OAuth consent → Data Access, add https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata, then disconnect and reconnect Google Photos in admin.'
                 );
             }
 
-            throw new RuntimeException('Google Photos list failed: '.$raw);
+            throw new RuntimeException('Google Photos list failed: '.$rawBody);
         }
 
         $items = [];
@@ -346,7 +363,7 @@ class GooglePhotosService
     /**
      * Raw upload + batchCreate so the file becomes app-created media in the configured import album.
      *
-     * @return array{id: string, filename: ?string}
+     * @return array{id: string, baseUrl: ?string, mimeType: ?string, filename: ?string}
      */
     public function uploadIntoImportAlbum(User $user, UploadedFile $file): array
     {
@@ -411,7 +428,7 @@ class GooglePhotosService
     }
 
     /**
-     * @return array{id: string, filename: ?string}
+     * @return array{id: string, baseUrl: ?string, mimeType: ?string, filename: ?string}
      */
     private function batchCreateMediaInAlbum(string $access, string $albumId, string $uploadToken, string $fileName): array
     {
@@ -453,6 +470,8 @@ class GooglePhotosService
         if (is_array($media) && ! empty($media['id'])) {
             return [
                 'id' => (string) $media['id'],
+                'baseUrl' => isset($media['baseUrl']) ? (string) $media['baseUrl'] : null,
+                'mimeType' => Arr::get($media, 'mediaMetadata.mimeType'),
                 'filename' => isset($media['filename']) ? (string) $media['filename'] : null,
             ];
         }
