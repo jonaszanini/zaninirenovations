@@ -5,6 +5,15 @@
 
 @section('content')
   <div class="admin-card">
+    @if (auth()->user()->googlePhotosToken)
+      <div class="admin-google-banner">
+        <span>Google Photos connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.</span>
+        <form action="{{ route('admin.google-photos.disconnect') }}" method="post">
+          @csrf
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Disconnect</button>
+        </form>
+      </div>
+    @endif
     <form action="{{ route('admin.projects.update', $project) }}" method="post" enctype="multipart/form-data">
       @csrf
       @method('PUT')
@@ -109,13 +118,6 @@
         <div class="admin-form-group">
           <span class="admin-form-group-label">Google Photos</span>
           @if (auth()->user()->googlePhotosToken)
-            <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">
-              Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.
-              <form action="{{ route('admin.google-photos.disconnect') }}" method="post" style="display:inline;margin-left:0.5rem;">
-                @csrf
-                <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Disconnect</button>
-              </form>
-            </p>
             <div
               class="admin-google-photos"
               data-google-media-url="{{ route('admin.google-photos.media') }}"
