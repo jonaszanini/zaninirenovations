@@ -269,10 +269,16 @@
         var applyBtn = document.getElementById('admin-photo-crop-apply');
         if (!modal || !img || !applyBtn || typeof Cropper === 'undefined') return;
 
+        /* Keep overlay under <body> so position:fixed always covers the viewport (not the form column). */
+        if (modal.parentElement !== document.body) {
+          document.body.appendChild(modal);
+        }
+
         var csrfMeta = document.querySelector('meta[name="csrf-token"]');
         var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
         var cropper = null;
         var activeUrl = '';
+        var bodyScrollLockY = 0;
 
         function destroyCropper() {
           if (cropper) {
@@ -287,10 +293,28 @@
           destroyCropper();
           applyBtn.disabled = true;
           activeUrl = '';
+          document.body.style.position = '';
+          document.body.style.top = '';
+          document.body.style.width = '';
+          window.scrollTo(0, bodyScrollLockY);
+        }
+
+        function openModal() {
+          bodyScrollLockY = window.scrollY || window.pageYOffset || 0;
+          document.body.style.position = 'fixed';
+          document.body.style.top = '-' + bodyScrollLockY + 'px';
+          document.body.style.width = '100%';
+          modal.hidden = false;
         }
 
         modal.querySelectorAll('[data-crop-modal-dismiss]').forEach(function (el) {
           el.addEventListener('click', closeModal);
+        });
+
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !modal.hidden) {
+            closeModal();
+          }
         });
 
         document.querySelectorAll('.js-crop-photo').forEach(function (btn) {
@@ -301,14 +325,20 @@
             destroyCropper();
             activeUrl = postUrl;
             img.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'cropper=' + Date.now();
-            modal.hidden = false;
+            openModal();
             applyBtn.disabled = true;
             cropper = new Cropper(img, {
               viewMode: 1,
               autoCropArea: 1,
               responsive: true,
+              restore: false,
               ready: function () {
                 applyBtn.disabled = false;
+                window.requestAnimationFrame(function () {
+                  if (cropper && typeof cropper.resize === 'function') {
+                    cropper.resize();
+                  }
+                });
               },
             });
           });
