@@ -227,7 +227,7 @@
             hintEl.textContent = bits.join(' ');
             hintEl.hidden = false;
           } else {
-            alert((data && data.error) ? data.error : 'Could not load Google Photos.');
+            alert((data && data.error) ? data.error : ('Could not load Google Photos (HTTP ' + res.status + ').'));
           }
           return;
         }

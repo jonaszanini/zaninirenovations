@@ -88,6 +88,9 @@ class GooglePhotosController extends Controller
             'list_context' => ['nullable', 'string', 'in:album,library,get'],
         ]);
 
+        // Listing can call Google several times; avoid shared-hosting default 30s killing mid-flight.
+        @ini_set('max_execution_time', '90');
+
         try {
             $data = $photos->listRecentMedia(
                 $request->user(),

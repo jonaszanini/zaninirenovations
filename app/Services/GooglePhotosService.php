@@ -14,11 +14,24 @@ use Throwable;
 
 class GooglePhotosService
 {
+    /** Max Google list API calls per strategy on first admin load (prevents CDN/origin timeouts). */
+    private const INITIAL_LIST_MAX_PAGES = 6;
+
     private function http(): Client
     {
         return new Client([
             'timeout' => 60,
             'connect_timeout' => 20,
+            'http_errors' => false,
+        ]);
+    }
+
+    /** Shorter timeouts for read-only list calls so one slow page does not block the admin for minutes. */
+    private function httpList(): Client
+    {
+        return new Client([
+            'timeout' => 22,
+            'connect_timeout' => 12,
             'http_errors' => false,
         ]);
     }
@@ -209,6 +222,7 @@ class GooglePhotosService
         if ($albumId !== '') {
             $albumResult = $this->listInitialWalkUntilItems(
                 fn (?string $c) => $this->listAppCreatedMediaPage($access, $c, $pageSize, $albumId),
+                self::INITIAL_LIST_MAX_PAGES,
             );
             if ($albumResult !== null && count($albumResult['items']) > 0) {
                 $albumResult['list_context'] = 'album';
@@ -219,6 +233,7 @@ class GooglePhotosService
 
         $libResult = $this->listInitialWalkUntilItems(
             fn (?string $c) => $this->listAppCreatedMediaPage($access, $c, $pageSize, null),
+            self::INITIAL_LIST_MAX_PAGES,
         );
         if ($libResult !== null && count($libResult['items']) > 0) {
             $libResult['list_context'] = 'library';
@@ -228,6 +243,7 @@ class GooglePhotosService
 
         $getResult = $this->listInitialWalkUntilItems(
             fn (?string $c) => $this->listAppCreatedMediaGetPage($access, $c, $pageSize),
+            self::INITIAL_LIST_MAX_PAGES,
         );
         if ($getResult !== null && count($getResult['items']) > 0) {
             $getResult['list_context'] = 'get';
@@ -264,7 +280,7 @@ class GooglePhotosService
      * @param  callable(?string): array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}  $fetchPage
      * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}|null
      */
-    private function listInitialWalkUntilItems(callable $fetchPage, int $maxPages = 45): ?array
+    private function listInitialWalkUntilItems(callable $fetchPage, int $maxPages = 6): ?array
     {
         $cursor = null;
         for ($i = 0; $i < $maxPages; $i++) {
@@ -300,7 +316,7 @@ class GooglePhotosService
         }
         $url = 'https://photoslibrary.googleapis.com/v1/mediaItems?'.http_build_query($query);
 
-        $response = $this->http()->get($url, [
+        $response = $this->httpList()->get($url, [
             'headers' => [
                 'Authorization' => 'Bearer '.$access,
             ],
@@ -336,7 +352,7 @@ class GooglePhotosService
             ];
         }
 
-        $response = $this->http()->post('https://photoslibrary.googleapis.com/v1/mediaItems:search', [
+        $response = $this->httpList()->post('https://photoslibrary.googleapis.com/v1/mediaItems:search', [
             'headers' => [
                 'Authorization' => 'Bearer '.$access,
                 'Content-Type' => 'application/json',
