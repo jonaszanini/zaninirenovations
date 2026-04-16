@@ -53,34 +53,30 @@ class GooglePhotosController extends Controller
     public function disconnect(Request $request, GooglePhotosService $photos)
     {
         $photos->disconnect($request->user());
-        $request->session()->forget('google_photos_recent_media_ids');
 
         return redirect()
             ->back()
             ->with('success', 'Google Photos disconnected.');
     }
 
-    public function uploadToImportAlbum(Request $request, GooglePhotosService $photos)
+    public function createPickerSession(Request $request, GooglePhotosService $photos)
     {
         $request->validate([
-            'file' => ['required', 'file', 'max:20480', 'mimetypes:image/jpeg,image/png,image/webp,image/gif'],
+            'max_item_count' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
         try {
-            $media = $photos->uploadIntoImportAlbum($request->user(), $request->file('file'));
+            $session = $photos->createPickerSession(
+                $request->user(),
+                (int) $request->integer('max_item_count', 30),
+            );
 
-            $ids = (array) $request->session()->get('google_photos_recent_media_ids', []);
-            $ids[] = (string) ($media['id'] ?? '');
-            $ids = array_values(array_unique(array_filter(array_map('strval', $ids))));
-            if (count($ids) > 40) {
-                $ids = array_slice($ids, -40);
-            }
-            $request->session()->put('google_photos_recent_media_ids', $ids);
+            $pickerUri = $session['pickerUri'];
+            $session['pickerUriAutoclose'] = str_ends_with($pickerUri, '/autoclose')
+                ? $pickerUri
+                : $pickerUri.'/autoclose';
 
-            return response()->json([
-                'ok' => true,
-                'media' => $media,
-            ]);
+            return response()->json($session);
         } catch (Throwable $e) {
             report($e);
 
@@ -90,59 +86,51 @@ class GooglePhotosController extends Controller
         }
     }
 
-    public function media(Request $request, GooglePhotosService $photos)
+    public function showPickerSession(string $sessionId, Request $request, GooglePhotosService $photos)
     {
-        $request->validate([
-            'page_token' => ['nullable', 'string', 'max:5000'],
-            'list_context' => ['nullable', 'string', 'in:album,library,get'],
-        ]);
-
-        // Listing can call Google several times; avoid shared-hosting default 30s killing mid-flight.
-        @ini_set('max_execution_time', '90');
-
         try {
-            $data = $photos->listRecentMedia(
-                $request->user(),
-                $request->input('page_token'),
-                100,
-                $request->input('list_context'),
-            );
+            $session = $photos->getPickerSession($request->user(), $sessionId);
 
-            $albumId = trim((string) config('google_photos.album_id', ''));
-            $listContext = $data['list_context'] ?? null;
-            unset($data['list_context']);
-
-            if (! $request->filled('page_token')) {
-                $sessionIds = array_values(array_unique(array_filter(array_map('strval', (array) $request->session()->get('google_photos_recent_media_ids', [])))));
-                if ($sessionIds !== []) {
-                    $data['items'] = $photos->mergeSessionMediaIntoList(
-                        $request->user(),
-                        $data['items'] ?? [],
-                        $sessionIds,
-                    );
-                }
-            }
-
-            $data['meta'] = [
-                'album_id_length' => strlen($albumId),
-                'album_id_tail' => $albumId === '' ? '' : substr($albumId, -22),
-                'configuration_cached' => app()->configurationIsCached(),
-                'list_context' => $listContext,
-            ];
-
-            return response()->json($data);
+            return response()->json($session);
         } catch (Throwable $e) {
             report($e);
 
-            $albumId = trim((string) config('google_photos.album_id', ''));
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function pickedMedia(string $sessionId, Request $request, GooglePhotosService $photos)
+    {
+        $request->validate([
+            'max_items' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        try {
+            $session = $photos->getPickerSession($request->user(), $sessionId);
+            if (! ($session['mediaItemsSet'] ?? false)) {
+                return response()->json([
+                    'ready' => false,
+                    'pollingConfig' => $session['pollingConfig'] ?? null,
+                ]);
+            }
+
+            $items = $photos->listAllPickedMedia(
+                $request->user(),
+                $sessionId,
+                (int) $request->integer('max_items', 200),
+            );
+
+            return response()->json([
+                'ready' => true,
+                'items' => $items,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
 
             return response()->json([
                 'error' => $e->getMessage(),
-                'meta' => [
-                    'album_id_length' => strlen($albumId),
-                    'album_id_tail' => $albumId === '' ? '' : substr($albumId, -22),
-                    'configuration_cached' => app()->configurationIsCached(),
-                ],
             ], 422);
         }
     }

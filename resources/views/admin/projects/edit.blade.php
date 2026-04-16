@@ -111,8 +111,8 @@
           @if (auth()->user()->googlePhotosToken)
             <div
               class="admin-google-photos"
-              data-google-media-url="{{ route('admin.google-photos.media') }}"
-              data-google-upload-url="{{ route('admin.google-photos.upload-to-import-album') }}"
+              data-picker-create-url="{{ route('admin.google-photos.picker-sessions.create') }}"
+              data-picker-media-url-template="{{ route('admin.google-photos.picker-sessions.media', ['sessionId' => '__SESSION__']) }}"
               data-max-total="{{ $canAdd }}"
             >
               <div class="admin-google-photos-head">
@@ -124,30 +124,26 @@
                   data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
                 >Disconnect</button>
               </div>
-              <p class="admin-form-hint" style="margin:0 0 0.5rem;">The grid lists every photo this site uploaded via the Library API (including “Upload to import album”). Items added only in the Google Photos app never appear here.</p>
-              <div class="admin-google-photos-upload-row" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin-bottom:0.65rem;">
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-google-upload-input>
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-upload-send>Upload to import album</button>
-              </div>
+              <p class="admin-form-hint" style="margin:0 0 0.5rem;">Open Google Photos Picker, choose photos (you can open your album there and select all), then import the picked results here.</p>
               <div class="admin-google-photos-toolbar">
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load Google uploads</button>
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-more hidden>Load more</button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-open-picker>Open Google Photos Picker</button>
                 <span class="admin-google-photos-status" data-google-status></span>
                 <span class="admin-google-photos-hint" data-google-hint hidden></span>
               </div>
               <div class="admin-google-photos-grid" data-google-grid></div>
+              <div data-google-picked-fields></div>
             </div>
-            <p class="admin-form-hint">You can add up to {{ $canAdd }} more photos total (uploads + Google). Google items must be in the site’s configured app-created album.</p>
+            <p class="admin-form-hint">You can add up to {{ $canAdd }} more photos total (file uploads + picked Google photos).</p>
           @else
             <p class="admin-form-hint" style="margin-top:0;">
               <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect') }}">Connect Google Photos</a>
-              <span style="margin-left:0.5rem;color:var(--admin-muted);">Required for importing from the configured album.</span>
+              <span style="margin-left:0.5rem;color:var(--admin-muted);">Required to open Google Photos Picker.</span>
             </p>
           @endif
-          @error('google_photos_media_ids')
+          @error('google_picker_items')
             <div class="admin-error">{{ $message }}</div>
           @enderror
-          @error('google_photos_media_ids.*')
+          @error('google_picker_items.*')
             <div class="admin-error">{{ $message }}</div>
           @enderror
         </div>
@@ -248,21 +244,17 @@
       var root = document.querySelector('.admin-google-photos');
       if (!root) return;
 
-      var mediaUrl = root.getAttribute('data-google-media-url');
+      var createSessionUrl = root.getAttribute('data-picker-create-url');
+      var mediaUrlTemplate = root.getAttribute('data-picker-media-url-template');
       var maxTotal = parseInt(root.getAttribute('data-max-total') || '0', 10);
-      var btnLoad = root.querySelector('[data-google-load]');
-      var btnMore = root.querySelector('[data-google-more]');
+      var btnOpen = root.querySelector('[data-google-open-picker]');
       var grid = root.querySelector('[data-google-grid]');
       var status = root.querySelector('[data-google-status]');
       var hintEl = root.querySelector('[data-google-hint]');
-      var uploadUrl = root.getAttribute('data-google-upload-url');
-      var btnUpload = root.querySelector('[data-google-upload-send]');
-      var uploadInput = root.querySelector('[data-google-upload-input]');
-      var nextToken = null;
-      var lastListContext = null;
+      var pickedFields = root.querySelector('[data-google-picked-fields]');
 
       function selectedCount() {
-        return grid.querySelectorAll('input[type="checkbox"][name="google_photos_media_ids[]"]:checked').length;
+        return grid.querySelectorAll('input[type="checkbox"][data-picker-checkbox]:checked').length;
       }
 
       function refreshStatus() {
@@ -284,23 +276,24 @@
       }
 
       function renderItems(items) {
+        grid.innerHTML = '';
         items.forEach(function (it) {
-          if (!it || !it.id) return;
-          var dup = false;
-          grid.querySelectorAll('input[name="google_photos_media_ids[]"]').forEach(function (inp) {
-            if (inp.value === it.id) dup = true;
-          });
-          if (dup) return;
+          if (!it || !it.baseUrl) return;
           var url = it.baseUrl ? (it.baseUrl + '=w220-h220-c') : '';
           var label = it.filename || 'Photo';
 
           var tile = document.createElement('label');
           tile.className = 'admin-google-photo-tile';
+          tile.setAttribute('data-picker-payload', JSON.stringify({
+            id: it.id || '',
+            baseUrl: it.baseUrl || '',
+            mimeType: it.mimeType || '',
+            filename: it.filename || ''
+          }));
 
           var cb = document.createElement('input');
           cb.type = 'checkbox';
-          cb.name = 'google_photos_media_ids[]';
-          cb.value = it.id;
+          cb.setAttribute('data-picker-checkbox', '1');
           cb.addEventListener('change', function () { enforceMax(cb); refreshStatus(); });
 
           var thumb = document.createElement('div');
@@ -324,129 +317,110 @@
         });
       }
 
-      async function loadPage(token) {
-        status.textContent = 'Loading…';
-        if (hintEl) {
-          hintEl.hidden = true;
-          hintEl.textContent = '';
-        }
-        var u = new URL(mediaUrl, window.location.origin);
-        if (token) {
-          u.searchParams.set('page_token', token);
-          if (lastListContext) u.searchParams.set('list_context', lastListContext);
-        }
-        var res = await fetch(u.toString(), {
+      function parseSecondsDuration(value, fallbackMs) {
+        if (!value || typeof value !== 'string' || !value.endsWith('s')) return fallbackMs;
+        var n = parseFloat(value.slice(0, -1));
+        if (!isFinite(n) || n <= 0) return fallbackMs;
+        return Math.round(n * 1000);
+      }
+
+      async function fetchPickedMedia(sessionId) {
+        var mediaUrl = (mediaUrlTemplate || '').replace('__SESSION__', encodeURIComponent(sessionId));
+        if (!mediaUrl || mediaUrl === mediaUrlTemplate) throw new Error('Picker media URL is not configured.');
+        var res = await fetch(mediaUrl, {
           credentials: 'same-origin',
           headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         });
         var data = await res.json().catch(function () { return null; });
-        if (!res.ok || !data || data.error) {
-          status.textContent = '';
-          if (hintEl && data && data.meta) {
-            var em = data.meta;
-            var bits = [data.error || 'Could not load Google Photos.'];
-            if (!em.album_id_length) {
-              bits.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
-              if (em.configuration_cached) bits.push('After editing .env on the server, run: php artisan config:clear');
-            } else {
-              bits.push('Album id in use ends …' + (em.album_id_tail || '') + ' (length ' + em.album_id_length + ').');
-            }
-            hintEl.textContent = bits.join(' ');
-            hintEl.hidden = false;
-          } else {
-            alert((data && data.error) ? data.error : ('Could not load Google Photos (HTTP ' + res.status + ').'));
-          }
-          return;
-        }
-        renderItems(data.items || []);
-        nextToken = data.nextPageToken || null;
-        btnMore.hidden = !nextToken;
-        if (data.meta && data.meta.list_context) lastListContext = data.meta.list_context;
+        if (!res.ok || !data || data.error) throw new Error((data && data.error) ? data.error : 'Could not read picked media.');
+        return data;
+      }
+
+      async function openPicker() {
+        status.textContent = 'Starting picker…';
         if (hintEl) {
           hintEl.hidden = true;
           hintEl.textContent = '';
         }
-        if ((data.items || []).length === 0 && data.meta && hintEl) {
-          var hasTiles = grid.querySelectorAll('input[name="google_photos_media_ids[]"]').length > 0;
-          if (!hasTiles) {
-            var m = data.meta;
-            var parts = [];
-            if (!m.album_id_length) {
-              parts.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
-              if (m.configuration_cached) parts.push('After editing .env on the server, run: php artisan config:clear (then reload).');
-            } else if (nextToken) {
-              parts.push('This page is empty, but more results exist. Click “Load more”.');
-            } else {
-              parts.push('No app-created photos on this page. Try Load more if shown, or use Upload to import album.');
-            }
-            hintEl.textContent = parts.join(' ');
-            hintEl.hidden = false;
-          }
+        var res = await fetch(createSessionUrl, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ max_item_count: maxTotal })
+        });
+        var data = await res.json().catch(function () { return null; });
+        if (!res.ok || !data || data.error) {
+          throw new Error((data && data.error) ? data.error : ('Could not open Google Photos picker (HTTP ' + res.status + ').'));
         }
-        status.textContent = '';
-        refreshStatus();
-      }
+        var pickerUrl = data.pickerUriAutoclose || data.pickerUri;
+        var sessionId = data.id;
+        if (!pickerUrl || !sessionId) throw new Error('Picker session response was incomplete.');
+        var popup = window.open(pickerUrl, '_blank', 'noopener,noreferrer');
+        if (!popup) throw new Error('Popup blocked. Allow popups for this site and try again.');
 
-      btnLoad.addEventListener('click', function () {
-        grid.innerHTML = '';
-        nextToken = null;
-        lastListContext = null;
-        btnMore.hidden = true;
-        loadPage(null);
-      });
-      btnMore.addEventListener('click', function () {
-        if (nextToken) loadPage(nextToken);
-      });
-
-      if (btnUpload && uploadInput && uploadUrl) {
-        btnUpload.addEventListener('click', async function () {
-          if (!uploadInput.files || !uploadInput.files[0]) {
-            alert('Choose an image file first (JPEG, PNG, WebP, or GIF).');
+        status.textContent = 'Waiting for selection…';
+        var pollEvery = parseSecondsDuration(data.pollingConfig && data.pollingConfig.pollInterval, 2000);
+        var timeoutMs = parseSecondsDuration(data.pollingConfig && data.pollingConfig.timeoutIn, 120000);
+        var started = Date.now();
+        while (Date.now() - started < timeoutMs) {
+          await new Promise(function (resolve) { setTimeout(resolve, pollEvery); });
+          var picked = await fetchPickedMedia(sessionId);
+          if (picked.ready) {
+            renderItems(picked.items || []);
+            status.textContent = '';
+            if (hintEl && (picked.items || []).length === 0) {
+              hintEl.textContent = 'No items were selected in Google Photos Picker.';
+              hintEl.hidden = false;
+            }
+            refreshStatus();
             return;
           }
-          var meta = document.querySelector('meta[name="csrf-token"]');
-          if (!meta) return;
-          btnUpload.disabled = true;
-          status.textContent = 'Uploading to Google…';
-          var fd = new FormData();
-          fd.append('file', uploadInput.files[0]);
-          fd.append('_token', meta.getAttribute('content') || '');
-          try {
-            var res = await fetch(uploadUrl, {
-              method: 'POST',
-              body: fd,
-              credentials: 'same-origin',
-              headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
-            });
-            var data = await res.json().catch(function () { return null; });
-            if (!res.ok || !data || data.error) {
-              alert((data && data.error) ? data.error : 'Upload to Google Photos failed.');
-            } else {
-              uploadInput.value = '';
-              grid.innerHTML = '';
-              nextToken = null;
-              lastListContext = null;
-              btnMore.hidden = true;
-              if (data.media && data.media.id) {
-                renderItems([data.media]);
-              }
-              await loadPage(null);
-            }
-          } catch (e) {
-            alert('Upload to Google Photos failed.');
-          }
-          btnUpload.disabled = false;
-          refreshStatus();
-        });
+        }
+        throw new Error('Timed out waiting for Google Photos Picker selection.');
       }
+
+      btnOpen.addEventListener('click', async function () {
+        btnOpen.disabled = true;
+        try {
+          await openPicker();
+        } catch (e) {
+          status.textContent = '';
+          alert(e && e.message ? e.message : 'Could not open Google Photos Picker.');
+        } finally {
+          btnOpen.disabled = false;
+          refreshStatus();
+        }
+      });
 
       var fileInput = document.getElementById('photos');
       if (fileInput) {
         fileInput.addEventListener('change', function () {
-          grid.querySelectorAll('input[type="checkbox"][name="google_photos_media_ids[]"]:checked').forEach(function (cb) {
+          grid.querySelectorAll('input[type="checkbox"][data-picker-checkbox]:checked').forEach(function (cb) {
             enforceMax(cb);
           });
           refreshStatus();
+        });
+      }
+
+      var form = root.closest('form');
+      if (form && pickedFields) {
+        form.addEventListener('submit', function () {
+          pickedFields.innerHTML = '';
+          grid.querySelectorAll('.admin-google-photo-tile').forEach(function (tile) {
+            var cb = tile.querySelector('input[type="checkbox"][data-picker-checkbox]');
+            if (!cb || !cb.checked) return;
+            var payload = tile.getAttribute('data-picker-payload') || '';
+            if (!payload) return;
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'google_picker_items[]';
+            input.value = payload;
+            pickedFields.appendChild(input);
+          });
         });
       }
 

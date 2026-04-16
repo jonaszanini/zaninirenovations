@@ -50,13 +50,13 @@ class ProjectController extends Controller
             'completed_on' => ['required', 'date'],
             'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
-            'google_photos_media_ids' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
-            'google_photos_media_ids.*' => ['string', 'max:256', 'distinct'],
+            'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'google_picker_items.*' => ['string', 'max:4000', 'distinct'],
         ]);
 
         $fileCount = $request->hasFile('photos') ? count((array) $request->file('photos')) : 0;
-        $googleIds = array_values(array_filter((array) $request->input('google_photos_media_ids', []), fn ($v) => is_string($v) && $v !== ''));
-        if ($fileCount + count($googleIds) > self::MAX_PHOTOS_PER_PROJECT) {
+        $googleItems = array_values(array_filter((array) $request->input('google_picker_items', []), fn ($v) => is_string($v) && $v !== ''));
+        if ($fileCount + count($googleItems) > self::MAX_PHOTOS_PER_PROJECT) {
             return back()
                 ->withErrors(['photos' => 'Too many images selected (max '.self::MAX_PHOTOS_PER_PROJECT.' total).'])
                 ->withInput();
@@ -87,8 +87,8 @@ class ProjectController extends Controller
                 }
             }
 
-            if ($googleIds !== []) {
-                $this->importGooglePhotosMedia($request, $project, $converter, $savedPaths, (int) $project->photos()->count());
+            if ($googleItems !== []) {
+                $this->importGooglePickerMedia($request, $project, $converter, $savedPaths, (int) $project->photos()->count());
             }
 
             DB::commit();
@@ -190,13 +190,13 @@ class ProjectController extends Controller
         $request->validate([
             'photos' => ['nullable', 'array', 'max:'.max(0, $slots)],
             'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
-            'google_photos_media_ids' => ['nullable', 'array', 'max:'.max(0, $slots)],
-            'google_photos_media_ids.*' => ['string', 'max:256', 'distinct'],
+            'google_picker_items' => ['nullable', 'array', 'max:'.max(0, $slots)],
+            'google_picker_items.*' => ['string', 'max:4000', 'distinct'],
         ]);
 
         $fileCount = $request->hasFile('photos') ? count((array) $request->file('photos')) : 0;
-        $googleIds = array_values(array_filter((array) $request->input('google_photos_media_ids', []), fn ($v) => is_string($v) && $v !== ''));
-        if ($fileCount + count($googleIds) > max(0, $slots)) {
+        $googleItems = array_values(array_filter((array) $request->input('google_picker_items', []), fn ($v) => is_string($v) && $v !== ''));
+        if ($fileCount + count($googleItems) > max(0, $slots)) {
             return back()
                 ->withErrors(['photos' => 'Too many images selected for remaining slots (max '.$slots.' more).'])
                 ->withInput();
@@ -230,12 +230,12 @@ class ProjectController extends Controller
             }
         }
 
-        if ($googleIds !== [] && $slots > 0) {
+        if ($googleItems !== [] && $slots > 0) {
             $converter = new ProjectPhotoWebpStorage;
             $savedPaths = [];
 
             try {
-                $this->importGooglePhotosMedia($request, $project, $converter, $savedPaths, (int) $project->photos()->count());
+                $this->importGooglePickerMedia($request, $project, $converter, $savedPaths, (int) $project->photos()->count());
             } catch (\Throwable $e) {
                 foreach ($savedPaths as $p) {
                     Storage::disk('public')->delete($p);
@@ -331,16 +331,34 @@ class ProjectController extends Controller
     /**
      * @param  list<string>  $savedPaths
      */
-    private function importGooglePhotosMedia(Request $request, Project $project, ProjectPhotoWebpStorage $converter, array &$savedPaths, int $startSortOrder): void
+    private function importGooglePickerMedia(Request $request, Project $project, ProjectPhotoWebpStorage $converter, array &$savedPaths, int $startSortOrder): void
     {
         if (! GooglePhotosToken::query()->where('user_id', $request->user()->id)->exists()) {
             throw new \RuntimeException('Google Photos is not connected.');
         }
 
-        $ids = array_values(array_filter((array) $request->input('google_photos_media_ids', []), fn ($v) => is_string($v) && $v !== ''));
-        $ids = array_values(array_unique($ids));
+        $rawItems = array_values(array_filter((array) $request->input('google_picker_items', []), fn ($v) => is_string($v) && $v !== ''));
+        if ($rawItems === []) {
+            return;
+        }
 
-        if ($ids === []) {
+        $items = [];
+        foreach ($rawItems as $raw) {
+            $decoded = json_decode($raw, true);
+            if (! is_array($decoded)) {
+                continue;
+            }
+            $baseUrl = isset($decoded['baseUrl']) ? trim((string) $decoded['baseUrl']) : '';
+            if ($baseUrl === '') {
+                continue;
+            }
+            $items[] = [
+                'baseUrl' => $baseUrl,
+                'mimeType' => isset($decoded['mimeType']) ? trim((string) $decoded['mimeType']) : null,
+            ];
+        }
+        $items = array_values(array_unique($items, SORT_REGULAR));
+        if ($items === []) {
             return;
         }
 
@@ -349,15 +367,19 @@ class ProjectController extends Controller
             $remaining = 0;
         }
 
-        if (count($ids) > $remaining) {
-            throw new \RuntimeException('Too many Google Photos selected for remaining slots.');
+        if (count($items) > $remaining) {
+            throw new \RuntimeException('Too many Google Photos items selected for remaining slots.');
         }
 
         $photosApi = app(GooglePhotosService::class);
 
         $order = $startSortOrder;
-        foreach ($ids as $mediaId) {
-            [$tmp, $mime] = $photosApi->downloadMedia($request->user(), $mediaId);
+        foreach ($items as $item) {
+            [$tmp, $mime] = $photosApi->downloadPickedMedia(
+                $request->user(),
+                (string) $item['baseUrl'],
+                isset($item['mimeType']) ? (string) $item['mimeType'] : null,
+            );
 
             try {
                 $path = $converter->storeFromPath($tmp, (int) $project->id, $mime);

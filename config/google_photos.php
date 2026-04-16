@@ -16,20 +16,12 @@ return [
      */
     'allowed_google_email' => env('GOOGLE_PHOTOS_ALLOWED_EMAIL'),
 
-    /**
-     * Album whose media we list for admin import (Library API: mediaItems.search with albumId).
-     * Must be an album created by this same OAuth client (app-created data model).
-     */
-    'album_id' => env('GOOGLE_PHOTOS_ALBUM_ID'),
-
     'scopes' => [
         // Needed so we can read the signed-in Google account email via userinfo during connect.
         'openid',
         'email',
         'profile',
-        // After March 31, 2025, Library API reads are limited to app-created albums/media.
-        'https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata',
-        // Upload bytes + batchCreate into app-created albums (required for listable imports).
-        'https://www.googleapis.com/auth/photoslibrary.appendonly',
+        // Required for Google Photos Picker API sessions and selected media access.
+        'https://www.googleapis.com/auth/photospicker.mediaitems.readonly',
     ],
 ];

@@ -70,8 +70,9 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('google-photos/connect', [GooglePhotosController::class, 'connect'])->name('google-photos.connect');
     Route::get('google-photos/callback', [GooglePhotosController::class, 'callback'])->name('google-photos.callback');
     Route::post('google-photos/disconnect', [GooglePhotosController::class, 'disconnect'])->name('google-photos.disconnect');
-    Route::get('google-photos/media', [GooglePhotosController::class, 'media'])->name('google-photos.media');
-    Route::post('google-photos/upload-to-import-album', [GooglePhotosController::class, 'uploadToImportAlbum'])->name('google-photos.upload-to-import-album');
+    Route::post('google-photos/picker-sessions', [GooglePhotosController::class, 'createPickerSession'])->name('google-photos.picker-sessions.create');
+    Route::get('google-photos/picker-sessions/{sessionId}', [GooglePhotosController::class, 'showPickerSession'])->name('google-photos.picker-sessions.show');
+    Route::get('google-photos/picker-sessions/{sessionId}/media', [GooglePhotosController::class, 'pickedMedia'])->name('google-photos.picker-sessions.media');
 
     Route::post('projects/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])
         ->name('projects.photos.rotate');
