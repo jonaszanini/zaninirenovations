@@ -5,15 +5,6 @@
 
 @section('content')
   <div class="admin-card">
-    @if (auth()->user()->googlePhotosToken)
-      <div class="admin-google-banner">
-        <span>Google Photos connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.</span>
-        <form action="{{ route('admin.google-photos.disconnect') }}" method="post">
-          @csrf
-          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Disconnect</button>
-        </form>
-      </div>
-    @endif
     <form action="{{ route('admin.projects.update', $project) }}" method="post" enctype="multipart/form-data">
       @csrf
       @method('PUT')
@@ -123,6 +114,15 @@
               data-google-media-url="{{ route('admin.google-photos.media') }}"
               data-max-total="{{ $canAdd }}"
             >
+              <div class="admin-google-photos-head">
+                <span class="admin-google-photos-account">Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong></span>
+                <button
+                  type="button"
+                  class="admin-btn admin-btn--ghost admin-btn--sm"
+                  data-admin-google-disconnect
+                  data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
+                >Disconnect</button>
+              </div>
               <div class="admin-google-photos-toolbar">
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load album photos</button>
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-more hidden>Load more</button>
@@ -146,6 +146,21 @@
         </div>
       @else
         <p class="admin-form-hint">Maximum of 15 photos reached. Remove one to add more.</p>
+        @if (auth()->user()->googlePhotosToken)
+          <div class="admin-form-group">
+            <span class="admin-form-group-label">Google Photos</span>
+            <p class="admin-form-hint" style="margin-top:0;">
+              Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.
+              <button
+                type="button"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                style="margin-left:0.35rem;"
+                data-admin-google-disconnect
+                data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
+              >Disconnect</button>
+            </p>
+          </div>
+        @endif
       @endif
 
       <div class="admin-form-actions">

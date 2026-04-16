@@ -5,15 +5,6 @@
 
 @section('content')
   <div class="admin-card">
-    @if (auth()->user()->googlePhotosToken)
-      <div class="admin-google-banner">
-        <span>Google Photos connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.</span>
-        <form action="{{ route('admin.google-photos.disconnect') }}" method="post">
-          @csrf
-          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Disconnect</button>
-        </form>
-      </div>
-    @endif
     <form action="{{ route('admin.projects.store') }}" method="post" enctype="multipart/form-data">
       @csrf
       <div class="admin-form-group">
@@ -79,6 +70,15 @@
             data-google-media-url="{{ route('admin.google-photos.media') }}"
             data-max-total="15"
           >
+            <div class="admin-google-photos-head">
+              <span class="admin-google-photos-account">Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong></span>
+              <button
+                type="button"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                data-admin-google-disconnect
+                data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
+              >Disconnect</button>
+            </div>
             <div class="admin-google-photos-toolbar">
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load album photos</button>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-more hidden>Load more</button>

@@ -938,20 +938,18 @@ body.admin-nav-open {
 }
 
 /* ——— Google Photos picker (admin) ——— */
-.admin-google-banner {
+.admin-google-photos-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--admin-border);
-  font-size: 14px;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
 }
 
-.admin-google-banner form {
-  margin: 0;
+.admin-google-photos-account {
+  color: var(--admin-muted);
+  font-size: 13px;
 }
 
 .admin-google-photos-toolbar {
