@@ -248,7 +248,15 @@
         var timeoutMs = parseSecondsDuration(data.pollingConfig && data.pollingConfig.timeoutIn, 120000);
         var started = Date.now();
         while (Date.now() - started < timeoutMs) {
-          if (popup && popup.closed) throw new Error('Picker window was closed before selection was completed.');
+          if (popup && popup.closed) {
+            status.textContent = '';
+            if (hintEl) {
+              hintEl.textContent = 'Google Photos Picker was closed — open it again when you want to choose photos.';
+              hintEl.hidden = false;
+            }
+            refreshStatus();
+            return;
+          }
           await new Promise(function (resolve) { setTimeout(resolve, pollEvery); });
           var picked = await fetchPickedMedia(sessionId, allowedSlots);
           if (picked.ready) {
@@ -262,7 +270,12 @@
             return;
           }
         }
-        throw new Error('Timed out waiting for Google Photos Picker selection.');
+        status.textContent = '';
+        if (hintEl) {
+          hintEl.textContent = 'Picker timed out. Click “Open Google Photos Picker” to try again.';
+          hintEl.hidden = false;
+        }
+        refreshStatus();
       }
 
       btnOpen.addEventListener('click', async function () {
