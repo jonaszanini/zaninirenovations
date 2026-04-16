@@ -679,17 +679,20 @@ body.admin-body {
 #admin-photo-crop-modal .admin-modal-panel {
   position: relative;
   z-index: 2;
-  width: min(880px, calc(100vw - 1.5rem));
+  width: min(640px, calc(100vw - 1.5rem));
   max-width: 100%;
-  max-height: min(96vh, 920px);
+  max-height: min(92vh, 720px);
   margin: auto;
-  padding: 1.1rem 1.25rem 1.25rem;
+  padding: 1rem 1.1rem 1.1rem;
   background: var(--admin-surface);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow-lg);
   border: 1px solid var(--admin-border);
   flex-shrink: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 #admin-photo-crop-modal .admin-modal-title {
@@ -697,6 +700,7 @@ body.admin-body {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--admin-text);
+  flex-shrink: 0;
 }
 
 #admin-photo-crop-modal .admin-modal-hint {
@@ -704,19 +708,25 @@ body.admin-body {
   font-size: 0.88rem;
   color: var(--admin-muted);
   line-height: 1.45;
+  flex-shrink: 0;
 }
 
-/* Explicit height so Cropper.js scales the image to the viewport, not natural pixels */
+/*
+ * Cropper.js measures the img parent's offsetWidth/offsetHeight. Use a modest fixed
+ * fallback height; JS also sets explicit px height on open so the crop never blows up to natural size.
+ */
 #admin-photo-crop-modal .admin-crop-stage {
   width: 100%;
-  height: min(52vh, 440px);
-  max-height: min(52vh, 440px);
-  min-height: 220px;
+  flex: 0 0 auto;
+  height: 240px;
+  max-height: min(32vh, 260px);
+  min-height: 200px;
   background: var(--admin-bg);
   border-radius: 8px;
   border: 1px solid var(--admin-border);
   overflow: hidden;
   position: relative;
+  box-sizing: border-box;
 }
 
 #admin-photo-crop-modal .admin-crop-stage img {
@@ -725,10 +735,9 @@ body.admin-body {
   max-height: 100%;
 }
 
-/* Only constrain the outer Cropper box — do not style .cropper-crop-box / canvas (breaks or hangs Cropper). */
+/* Outer wrapper only — let Cropper own inner dimensions once fitted to this box */
 #admin-photo-crop-modal .admin-crop-stage .cropper-container {
   max-width: 100% !important;
-  max-height: min(52vh, 440px) !important;
 }
 
 #admin-photo-crop-modal .admin-modal-actions {
@@ -737,6 +746,7 @@ body.admin-body {
   gap: 0.65rem;
   justify-content: flex-end;
   margin-top: 1rem;
+  flex-shrink: 0;
 }
 
 html.admin-crop-modal-open {

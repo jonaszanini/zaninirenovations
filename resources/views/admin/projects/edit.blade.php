@@ -278,6 +278,25 @@
         var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
         var cropper = null;
         var activeUrl = '';
+        var stage = modal.querySelector('.admin-crop-stage');
+
+        function sizeCropStagePx() {
+          if (!stage) return;
+          var vh = window.innerHeight || 640;
+          var h = Math.floor(vh * 0.32);
+          if (h < 200) h = 200;
+          if (h > 280) h = 280;
+          stage.style.height = h + 'px';
+          stage.style.minHeight = h + 'px';
+          stage.style.maxHeight = h + 'px';
+        }
+
+        function clearCropStagePx() {
+          if (!stage) return;
+          stage.style.height = '';
+          stage.style.minHeight = '';
+          stage.style.maxHeight = '';
+        }
 
         function destroyCropper() {
           if (cropper) {
@@ -292,15 +311,27 @@
         function closeModal() {
           modal.hidden = true;
           destroyCropper();
+          clearCropStagePx();
           applyBtn.disabled = true;
           activeUrl = '';
           document.documentElement.classList.remove('admin-crop-modal-open');
         }
 
         function openModal() {
+          sizeCropStagePx();
           document.documentElement.classList.add('admin-crop-modal-open');
           modal.hidden = false;
         }
+
+        window.addEventListener('resize', function () {
+          if (modal.hidden) return;
+          sizeCropStagePx();
+          if (cropper && typeof cropper.resize === 'function') {
+            try {
+              cropper.resize();
+            } catch (e) { /* ignore */ }
+          }
+        });
 
         modal.querySelectorAll('[data-crop-modal-dismiss]').forEach(function (el) {
           el.addEventListener('click', closeModal);
@@ -339,11 +370,20 @@
                     restore: false,
                     ready: function () {
                       applyBtn.disabled = false;
+                      sizeCropStagePx();
                       try {
                         if (cropper && typeof cropper.resize === 'function') {
                           cropper.resize();
                         }
                       } catch (eResize) { /* ignore */ }
+                      window.setTimeout(function () {
+                        sizeCropStagePx();
+                        try {
+                          if (cropper && typeof cropper.resize === 'function') {
+                            cropper.resize();
+                          }
+                        } catch (e2) { /* ignore */ }
+                      }, 80);
                     },
                   });
                 } catch (e) {
