@@ -29,5 +29,7 @@ return [
         'profile',
         // After March 31, 2025, Library API reads are limited to app-created albums/media.
         'https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata',
+        // Upload bytes + batchCreate into app-created albums (required for listable imports).
+        'https://www.googleapis.com/auth/photoslibrary.appendonly',
     ],
 ];

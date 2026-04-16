@@ -71,6 +71,7 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('google-photos/callback', [GooglePhotosController::class, 'callback'])->name('google-photos.callback');
     Route::post('google-photos/disconnect', [GooglePhotosController::class, 'disconnect'])->name('google-photos.disconnect');
     Route::get('google-photos/media', [GooglePhotosController::class, 'media'])->name('google-photos.media');
+    Route::post('google-photos/upload-to-import-album', [GooglePhotosController::class, 'uploadToImportAlbum'])->name('google-photos.upload-to-import-album');
 
     Route::post('projects/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])
         ->name('projects.photos.rotate');

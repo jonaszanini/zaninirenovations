@@ -68,6 +68,7 @@
           <div
             class="admin-google-photos"
             data-google-media-url="{{ route('admin.google-photos.media') }}"
+            data-google-upload-url="{{ route('admin.google-photos.upload-to-import-album') }}"
             data-max-total="15"
           >
             <div class="admin-google-photos-head">
@@ -78,6 +79,11 @@
                 data-admin-google-disconnect
                 data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
               >Disconnect</button>
+            </div>
+            <p class="admin-form-hint" style="margin:0 0 0.5rem;">Only photos uploaded through this admin button (or the Library API) show in the grid. Items added only in the Google Photos app are not listable here.</p>
+            <div class="admin-google-photos-upload-row" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin-bottom:0.65rem;">
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-google-upload-input>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-upload-send>Upload to import album</button>
             </div>
             <div class="admin-google-photos-toolbar">
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load album photos</button>
@@ -122,6 +128,9 @@
       var grid = root.querySelector('[data-google-grid]');
       var status = root.querySelector('[data-google-status]');
       var hintEl = root.querySelector('[data-google-hint]');
+      var uploadUrl = root.getAttribute('data-google-upload-url');
+      var btnUpload = root.querySelector('[data-google-upload-send]');
+      var uploadInput = root.querySelector('[data-google-upload-input]');
       var nextToken = null;
 
       function selectedCount() {
@@ -244,6 +253,44 @@
       btnMore.addEventListener('click', function () {
         if (nextToken) loadPage(nextToken);
       });
+
+      if (btnUpload && uploadInput && uploadUrl) {
+        btnUpload.addEventListener('click', async function () {
+          if (!uploadInput.files || !uploadInput.files[0]) {
+            alert('Choose an image file first (JPEG, PNG, WebP, or GIF).');
+            return;
+          }
+          var meta = document.querySelector('meta[name="csrf-token"]');
+          if (!meta) return;
+          btnUpload.disabled = true;
+          status.textContent = 'Uploading to Google…';
+          var fd = new FormData();
+          fd.append('file', uploadInput.files[0]);
+          fd.append('_token', meta.getAttribute('content') || '');
+          try {
+            var res = await fetch(uploadUrl, {
+              method: 'POST',
+              body: fd,
+              credentials: 'same-origin',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+            });
+            var data = await res.json().catch(function () { return null; });
+            if (!res.ok || !data || data.error) {
+              alert((data && data.error) ? data.error : 'Upload to Google Photos failed.');
+            } else {
+              uploadInput.value = '';
+              grid.innerHTML = '';
+              nextToken = null;
+              btnMore.hidden = true;
+              await loadPage(null);
+            }
+          } catch (e) {
+            alert('Upload to Google Photos failed.');
+          }
+          btnUpload.disabled = false;
+          refreshStatus();
+        });
+      }
 
       var fileInput = document.getElementById('photos');
       if (fileInput) {

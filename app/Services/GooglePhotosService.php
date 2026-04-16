@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\GooglePhotosToken;
 use App\Models\User;
 use GuzzleHttp\Client;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
@@ -225,7 +226,7 @@ class GooglePhotosService
         $count = isset($album['body']['mediaItemsCount']) ? (int) $album['body']['mediaItemsCount'] : 0;
         if ($count > 0) {
             throw new RuntimeException(
-                'Google Photos returned no listable media for this album even though Google reports '.$count.' item(s). The Library API only returns media your app created; photos added only via the Google Photos website/app into this album may not appear. Upload into this album using the Library API with the same OAuth client, or use the Picker API to choose library photos.'
+                'This album has '.$count.' item(s) in Google Photos, but none are visible to the Library API. Items added only in the Google Photos app are not listable here. Use “Upload to import album” in admin (after adding the appendonly scope and reconnecting Google), upload via the Library API, or use the Google Photos Picker API.'
             );
         }
 
@@ -403,6 +404,128 @@ class GooglePhotosService
         }
 
         return [$target, $mime];
+    }
+
+    /**
+     * Raw upload + batchCreate so the file becomes app-created media in the configured import album.
+     *
+     * @return array{id: string, filename: ?string}
+     */
+    public function uploadIntoImportAlbum(User $user, UploadedFile $file): array
+    {
+        $albumId = trim((string) Config::get('google_photos.album_id', ''));
+        if ($albumId === '') {
+            throw new RuntimeException('GOOGLE_PHOTOS_ALBUM_ID is not configured.');
+        }
+
+        $token = GooglePhotosToken::query()->where('user_id', $user->id)->first();
+        if (! $token) {
+            throw new RuntimeException('Google Photos is not connected.');
+        }
+
+        $access = $this->ensureFreshAccessToken($token);
+
+        $realPath = $file->getRealPath();
+        if ($realPath === false || ! is_readable($realPath)) {
+            throw new RuntimeException('Could not read uploaded file.');
+        }
+
+        $mime = $file->getMimeType() ?: 'application/octet-stream';
+        $uploadToken = $this->uploadRawBytes($access, $realPath, $mime);
+
+        $safeName = $file->getClientOriginalName();
+        if ($safeName === '' || strlen($safeName) > 255) {
+            $safeName = 'upload.jpg';
+        }
+
+        return $this->batchCreateMediaInAlbum($access, $albumId, $uploadToken, $safeName);
+    }
+
+    private function uploadRawBytes(string $access, string $absolutePath, string $mimeType): string
+    {
+        $stream = fopen($absolutePath, 'rb');
+        if ($stream === false) {
+            throw new RuntimeException('Could not open file for Google Photos upload.');
+        }
+
+        try {
+            $response = $this->http()->post('https://photoslibrary.googleapis.com/v1/uploads', [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$access,
+                    'Content-Type' => 'application/octet-stream',
+                    'X-Goog-Upload-Protocol' => 'raw',
+                    'X-Goog-Upload-Content-Type' => $mimeType,
+                ],
+                'body' => $stream,
+            ]);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        $code = (int) ($response->getStatusCode() ?? 500);
+        $raw = trim((string) $response->getBody());
+        if ($code !== 200 || $raw === '') {
+            throw new RuntimeException('Google Photos byte upload failed (HTTP '.$code.'): '.$raw);
+        }
+
+        return $raw;
+    }
+
+    /**
+     * @return array{id: string, filename: ?string}
+     */
+    private function batchCreateMediaInAlbum(string $access, string $albumId, string $uploadToken, string $fileName): array
+    {
+        $response = $this->http()->post('https://photoslibrary.googleapis.com/v1/mediaItems:batchCreate', [
+            'headers' => [
+                'Authorization' => 'Bearer '.$access,
+                'Content-Type' => 'application/json',
+            ],
+            'json' => [
+                'albumId' => $albumId,
+                'newMediaItems' => [
+                    [
+                        'simpleMediaItem' => [
+                            'uploadToken' => $uploadToken,
+                            'fileName' => $fileName,
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $payload = json_decode((string) $response->getBody(), true);
+        if (! is_array($payload)) {
+            throw new RuntimeException('Google Photos batchCreate failed: invalid response.');
+        }
+
+        $code = (int) ($response->getStatusCode() ?? 500);
+        if ($code !== 200 && $code !== 207) {
+            throw new RuntimeException('Google Photos batchCreate failed (HTTP '.$code.'): '.((string) $response->getBody()));
+        }
+
+        $results = (array) ($payload['newMediaItemResults'] ?? []);
+        $first = $results[0] ?? null;
+        if (! is_array($first)) {
+            throw new RuntimeException('Google Photos batchCreate returned no results.');
+        }
+
+        $media = $first['mediaItem'] ?? null;
+        if (is_array($media) && ! empty($media['id'])) {
+            return [
+                'id' => (string) $media['id'],
+                'filename' => isset($media['filename']) ? (string) $media['filename'] : null,
+            ];
+        }
+
+        $msg = '';
+        if (isset($first['status']) && is_array($first['status'])) {
+            $msg = (string) ($first['status']['message'] ?? '');
+        }
+
+        throw new RuntimeException('Google Photos batchCreate failed: '.($msg !== '' ? $msg : json_encode($first)));
     }
 
     private function fetchGoogleAccountEmail(string $accessToken): string

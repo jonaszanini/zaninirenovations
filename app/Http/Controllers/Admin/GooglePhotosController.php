@@ -59,6 +59,28 @@ class GooglePhotosController extends Controller
             ->with('success', 'Google Photos disconnected.');
     }
 
+    public function uploadToImportAlbum(Request $request, GooglePhotosService $photos)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:20480', 'mimetypes:image/jpeg,image/png,image/webp,image/gif'],
+        ]);
+
+        try {
+            $media = $photos->uploadIntoImportAlbum($request->user(), $request->file('file'));
+
+            return response()->json([
+                'ok' => true,
+                'media' => $media,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
     public function media(Request $request, GooglePhotosService $photos)
     {
         $request->validate([
