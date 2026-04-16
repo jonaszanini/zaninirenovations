@@ -85,7 +85,7 @@ class GooglePhotosController extends Controller
     {
         $request->validate([
             'page_token' => ['nullable', 'string', 'max:5000'],
-            'list_context' => ['nullable', 'string', 'in:album,library'],
+            'list_context' => ['nullable', 'string', 'in:album,library,get'],
         ]);
 
         try {

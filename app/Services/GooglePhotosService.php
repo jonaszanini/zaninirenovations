@@ -170,6 +170,8 @@ class GooglePhotosService
      * nothing we fall back to a library-wide search (no albumId). Pagination tokens are only valid
      * for the same search shape, so callers must pass list_context on “Load more”.
      *
+     * list_context is one of: album (mediaItems:search + albumId), library (search, no album), get (GET mediaItems).
+     *
      * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string, list_context: string}
      */
     public function listRecentMedia(User $user, ?string $pageToken = null, int $pageSize = 24, ?string $listContext = null): array
@@ -186,8 +188,14 @@ class GooglePhotosService
         $loadMore = $pageToken !== null && $pageToken !== '';
 
         if ($loadMore) {
-            if ($listContext !== 'album' && $listContext !== 'library') {
+            if (! in_array($listContext, ['album', 'library', 'get'], true)) {
                 throw new RuntimeException('Missing list context: reload the page, click “Load Google uploads” again, then use “Load more”.');
+            }
+            if ($listContext === 'get') {
+                $result = $this->listAppCreatedMediaGetPage($access, $pageToken, $pageSize);
+                $result['list_context'] = 'get';
+
+                return $result;
             }
             $albumForSearch = ($listContext === 'album' && $albumId !== '') ? $albumId : null;
             $result = $this->listAppCreatedMediaPage($access, $pageToken, $pageSize, $albumForSearch);
@@ -196,24 +204,50 @@ class GooglePhotosService
             return $result;
         }
 
+        // First load: do not stop on album search “empty page + nextPageToken” — that skips library search.
+        $albumResult = null;
         if ($albumId !== '') {
-            $result = $this->listInitialSearchChunk($access, $pageSize, $albumId);
-            if ($result !== null) {
-                $result['list_context'] = 'album';
+            $albumResult = $this->listInitialSearchChunk($access, $pageSize, $albumId);
+            if ($albumResult !== null && count($albumResult['items']) > 0) {
+                $albumResult['list_context'] = 'album';
 
-                return $result;
+                return $albumResult;
             }
         }
 
-        $result = $this->listInitialSearchChunk($access, $pageSize, null);
-        if ($result === null) {
-            throw new RuntimeException(
-                'No app-created photos found yet. Use “Upload to import album” (needs photoslibrary.appendonly + reconnect), then load again. Items added only in the Google Photos app are never returned by this API.'
-            );
-        }
-        $result['list_context'] = 'library';
+        $libResult = $this->listInitialSearchChunk($access, $pageSize, null);
+        if ($libResult !== null && count($libResult['items']) > 0) {
+            $libResult['list_context'] = 'library';
 
-        return $result;
+            return $libResult;
+        }
+
+        $getResult = $this->listInitialGetChunk($access, $pageSize);
+        if ($getResult !== null && count($getResult['items']) > 0) {
+            $getResult['list_context'] = 'get';
+
+            return $getResult;
+        }
+
+        if ($libResult !== null) {
+            $libResult['list_context'] = 'library';
+
+            return $libResult;
+        }
+        if ($albumResult !== null) {
+            $albumResult['list_context'] = 'album';
+
+            return $albumResult;
+        }
+        if ($getResult !== null) {
+            $getResult['list_context'] = 'get';
+
+            return $getResult;
+        }
+
+        throw new RuntimeException(
+            'No app-created photos found yet. Use “Upload to import album” (needs photoslibrary.appendonly + reconnect), then load again. Items added only in the Google Photos app are never returned by this API.'
+        );
     }
 
     /**
@@ -246,6 +280,64 @@ class GooglePhotosService
     }
 
     /**
+     * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}|null
+     */
+    private function listInitialGetChunk(string $access, int $pageSize): ?array
+    {
+        $cursor = null;
+        $maxEmptySkips = 12;
+        for ($i = 0; $i < $maxEmptySkips; $i++) {
+            $result = $this->listAppCreatedMediaGetPage($access, $cursor, $pageSize);
+            if (count($result['items']) > 0) {
+                return $result;
+            }
+            $next = $result['nextPageToken'] ?? null;
+            if ($next === null || $next === '') {
+                return null;
+            }
+            $cursor = $next;
+        }
+
+        $result = $this->listAppCreatedMediaGetPage($access, $cursor, $pageSize);
+        if (count($result['items']) > 0 || ! empty($result['nextPageToken'])) {
+            return $result;
+        }
+
+        return null;
+    }
+
+    /**
+     * GET mediaItems (same app-created visibility as search for restricted scopes).
+     *
+     * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}
+     */
+    private function listAppCreatedMediaGetPage(string $access, ?string $pageToken, int $pageSize): array
+    {
+        $query = ['pageSize' => $pageSize];
+        if ($pageToken !== null && $pageToken !== '') {
+            $query['pageToken'] = $pageToken;
+        }
+        $url = 'https://photoslibrary.googleapis.com/v1/mediaItems?'.http_build_query($query);
+
+        $response = $this->http()->get($url, [
+            'headers' => [
+                'Authorization' => 'Bearer '.$access,
+            ],
+        ]);
+
+        $code = (int) ($response->getStatusCode() ?? 500);
+        $rawBody = (string) $response->getBody();
+        $payload = json_decode($rawBody, true);
+        if (! is_array($payload)) {
+            throw new RuntimeException('Google Photos list failed: invalid response.');
+        }
+
+        $this->throwIfPhotosListError($code, $rawBody, $payload);
+
+        return $this->parseMediaItemsPayload($payload);
+    }
+
+    /**
      * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}
      */
     private function listAppCreatedMediaPage(string $access, ?string $pageToken, int $pageSize, ?string $albumIdForSearch = null): array
@@ -273,6 +365,13 @@ class GooglePhotosService
             throw new RuntimeException('Google Photos list failed: invalid response.');
         }
 
+        $this->throwIfPhotosListError($code, $rawBody, $payload);
+
+        return $this->parseMediaItemsPayload($payload);
+    }
+
+    private function throwIfPhotosListError(int $code, string $rawBody, array $payload): void
+    {
         if ($code >= 400 || (isset($payload['error']) && is_array($payload['error']))) {
             if (isset($payload['error']) && is_array($payload['error'])) {
                 $msg = (string) ($payload['error']['message'] ?? json_encode($payload['error']));
@@ -286,7 +385,13 @@ class GooglePhotosService
 
             throw new RuntimeException('Google Photos list failed: '.$rawBody);
         }
+    }
 
+    /**
+     * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}
+     */
+    private function parseMediaItemsPayload(array $payload): array
+    {
         $items = [];
         foreach ((array) ($payload['mediaItems'] ?? []) as $mi) {
             if (! is_array($mi)) {
