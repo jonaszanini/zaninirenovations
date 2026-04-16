@@ -248,15 +248,6 @@
         var timeoutMs = parseSecondsDuration(data.pollingConfig && data.pollingConfig.timeoutIn, 120000);
         var started = Date.now();
         while (Date.now() - started < timeoutMs) {
-          if (popup && popup.closed) {
-            status.textContent = '';
-            if (hintEl) {
-              hintEl.textContent = 'Google Photos Picker was closed — open it again when you want to choose photos.';
-              hintEl.hidden = false;
-            }
-            refreshStatus();
-            return;
-          }
           await new Promise(function (resolve) { setTimeout(resolve, pollEvery); });
           var picked = await fetchPickedMedia(sessionId, allowedSlots);
           if (picked.ready) {
@@ -264,6 +255,34 @@
             status.textContent = '';
             if (hintEl && (picked.items || []).length === 0) {
               hintEl.textContent = 'No items were selected in Google Photos Picker.';
+              hintEl.hidden = false;
+            }
+            refreshStatus();
+            return;
+          }
+          /* Google closes the picker when the user confirms; "ready" can arrive slightly after closed. */
+          if (popup && popup.closed) {
+            for (var extra = 0; extra < 6; extra++) {
+              await new Promise(function (resolve) { setTimeout(resolve, 450); });
+              try {
+                picked = await fetchPickedMedia(sessionId, allowedSlots);
+              } catch (ignore) {
+                picked = { ready: false };
+              }
+              if (picked.ready) {
+                renderItems(picked.items || []);
+                status.textContent = '';
+                if (hintEl && (picked.items || []).length === 0) {
+                  hintEl.textContent = 'No items were selected in Google Photos Picker.';
+                  hintEl.hidden = false;
+                }
+                refreshStatus();
+                return;
+              }
+            }
+            status.textContent = '';
+            if (hintEl) {
+              hintEl.textContent = 'Google Photos Picker was closed — open it again when you want to choose photos.';
               hintEl.hidden = false;
             }
             refreshStatus();
