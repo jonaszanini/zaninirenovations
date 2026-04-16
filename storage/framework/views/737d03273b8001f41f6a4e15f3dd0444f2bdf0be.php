@@ -404,7 +404,7 @@ unset($__errorArgs, $__bag); ?>
         return data;
       }
 
-      async function openPicker() {
+      async function openPicker(popup) {
         status.textContent = 'Starting picker…';
         if (hintEl) {
           hintEl.hidden = true;
@@ -431,8 +431,8 @@ unset($__errorArgs, $__bag); ?>
         var pickerUrl = data.pickerUriAutoclose || data.pickerUri;
         var sessionId = data.id;
         if (!pickerUrl || !sessionId) throw new Error('Picker session response was incomplete.');
-        var popup = window.open(pickerUrl, '_blank', 'noopener,noreferrer');
-        if (!popup) throw new Error('Popup blocked. Allow popups for this site and try again.');
+        if (!popup || popup.closed) throw new Error('Popup blocked. Allow popups for this site and try again.');
+        popup.location.href = pickerUrl;
 
         status.textContent = 'Waiting for selection…';
         var pollEvery = parseSecondsDuration(data.pollingConfig && data.pollingConfig.pollInterval, 2000);
@@ -458,7 +458,10 @@ unset($__errorArgs, $__bag); ?>
       btnOpen.addEventListener('click', async function () {
         btnOpen.disabled = true;
         try {
-          await openPicker();
+          var popup = window.open('', '_blank');
+          if (!popup) throw new Error('Popup blocked. Allow popups for this site and try again.');
+          popup.document.write('Loading Google Photos Picker...');
+          await openPicker(popup);
         } catch (e) {
           status.textContent = '';
           alert(e && e.message ? e.message : 'Could not open Google Photos Picker.');
@@ -500,5 +503,6 @@ unset($__errorArgs, $__bag); ?>
     })();
   </script>
 <?php $__env->stopPush(); ?>
+
 
 <?php echo $__env->make('admin.layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views\admin\projects\edit.blade.php ENDPATH**/ ?>
