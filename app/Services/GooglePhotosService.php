@@ -363,6 +363,7 @@ class GooglePhotosService
             $session = $payload['session'];
         }
 
+        
         $id = isset($session['id']) ? (string) $session['id'] : '';
         if ($id === '' && isset($session['name']) && is_string($session['name'])) {
             if (preg_match('#/sessions/([^/]+)$#', $session['name'], $m)) {
