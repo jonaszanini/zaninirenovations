@@ -130,11 +130,39 @@
         return grid.querySelectorAll('input[type="checkbox"][data-picker-checkbox]:checked').length;
       }
 
+      function pickedTileCount() {
+        return grid.querySelectorAll('.admin-google-photo-tile').length;
+      }
+
+      function pickerThumbUrl(baseUrl) {
+        if (!baseUrl || typeof baseUrl !== 'string') return '';
+        var t = baseUrl.trim();
+        if (t.indexOf('=') !== -1) return t;
+        return t + '=w240-h240-c';
+      }
+
       function refreshStatus() {
         var fileInput = document.getElementById('photos');
         var files = fileInput && fileInput.files ? fileInput.files.length : 0;
-        var g = selectedCount();
-        status.textContent = 'Selected: ' + g + ' Google + ' + files + ' uploads (max ' + maxTotal + ' total)';
+        var picked = pickedTileCount();
+        var checked = selectedCount();
+        status.textContent =
+          picked + ' from Google (' + checked + ' checked for import) · ' + files + ' uploads · max ' + maxTotal + ' total';
+      }
+
+      function applyDefaultChecks() {
+        var fileInput = document.getElementById('photos');
+        var files = fileInput && fileInput.files ? fileInput.files.length : 0;
+        var maxGoogle = Math.max(0, maxTotal - files);
+        grid.querySelectorAll('input[data-picker-checkbox]').forEach(function (c) {
+          c.checked = true;
+        });
+        while (selectedCount() > maxGoogle) {
+          var list = grid.querySelectorAll('input[data-picker-checkbox]:checked');
+          if (!list.length) break;
+          list[list.length - 1].checked = false;
+        }
+        refreshStatus();
       }
 
       function enforceMax(checkbox) {
@@ -152,7 +180,7 @@
         grid.innerHTML = '';
         items.forEach(function (it) {
           if (!it || !it.baseUrl) return;
-          var url = it.baseUrl ? (it.baseUrl + '=w220-h220-c') : '';
+          var url = pickerThumbUrl(it.baseUrl);
           var label = it.filename || 'Photo';
 
           var tile = document.createElement('label');
@@ -164,30 +192,41 @@
             filename: it.filename || ''
           }));
 
-          var cb = document.createElement('input');
-          cb.type = 'checkbox';
-          cb.setAttribute('data-picker-checkbox', '1');
-          cb.addEventListener('change', function () { enforceMax(cb); refreshStatus(); });
-
           var thumb = document.createElement('div');
           thumb.className = 'admin-google-photo-thumb';
-          if (url) {
-            var img = document.createElement('img');
-            img.src = url;
-            img.alt = '';
-            img.loading = 'lazy';
-            thumb.appendChild(img);
-          }
+
+          var cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.className = 'admin-google-photo-tile-check';
+          cb.setAttribute('data-picker-checkbox', '1');
+          cb.addEventListener('change', function () { enforceMax(cb); refreshStatus(); });
+          thumb.appendChild(cb);
+
+          var img = document.createElement('img');
+          img.src = url;
+          img.alt = '';
+          img.loading = 'lazy';
+          img.decoding = 'async';
+          img.referrerPolicy = 'no-referrer';
+          img.addEventListener('error', function () {
+            thumb.classList.add('is-fallback');
+          });
+          thumb.appendChild(img);
+
+          var fallback = document.createElement('div');
+          fallback.className = 'admin-google-photo-thumb-fallback';
+          fallback.textContent = 'Preview unavailable (still imports if checked)';
+          thumb.appendChild(fallback);
 
           var cap = document.createElement('div');
           cap.className = 'admin-google-photo-caption';
           cap.textContent = label;
 
-          tile.appendChild(cb);
           tile.appendChild(thumb);
           tile.appendChild(cap);
           grid.appendChild(tile);
         });
+        applyDefaultChecks();
       }
 
       function parseSecondsDuration(value, fallbackMs) {

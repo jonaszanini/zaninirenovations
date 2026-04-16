@@ -1084,26 +1084,62 @@ body.admin-nav-open {
 
 .admin-google-photos-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 168px));
+  gap: 0.75rem;
+  width: 100%;
+  justify-content: start;
+  align-items: start;
+  margin-top: 0.35rem;
 }
 
 .admin-google-photo-tile {
   border: 1px solid var(--admin-border);
   border-radius: 10px;
   background: var(--admin-surface);
-  padding: 0.55rem;
-  display: grid;
-  gap: 0.45rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 168px;
+  justify-self: start;
+  cursor: pointer;
+  box-shadow: var(--admin-shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  overflow: hidden;
+}
+
+.admin-google-photo-tile:hover {
+  border-color: var(--admin-border-strong);
+  box-shadow: var(--admin-shadow-md);
+}
+
+.admin-google-photo-tile:has(input[data-picker-checkbox]:checked) {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 1px var(--admin-primary-ring);
 }
 
 .admin-google-photo-thumb {
+  position: relative;
   aspect-ratio: 1 / 1;
-  border-radius: 8px;
+  width: 100%;
+  border-radius: 0;
   overflow: hidden;
-  background: var(--admin-surface-hover);
-  display: grid;
-  place-items: center;
+  background: linear-gradient(145deg, var(--admin-surface-hover) 0%, var(--admin-border) 100%);
+  display: block;
+}
+
+.admin-google-photo-tile-check {
+  position: absolute;
+  top: 0.45rem;
+  left: 0.45rem;
+  z-index: 2;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--admin-primary);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+  border-radius: 3px;
 }
 
 .admin-google-photo-thumb img {
@@ -1113,12 +1149,32 @@ body.admin-nav-open {
   display: block;
 }
 
+.admin-google-photo-thumb-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  font-size: 11px;
+  color: var(--admin-muted);
+  text-align: center;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.admin-google-photo-thumb.is-fallback .admin-google-photo-thumb-fallback {
+  display: flex;
+}
+
 .admin-google-photo-caption {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--admin-muted);
   line-height: 1.25;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  padding: 0.45rem 0.5rem 0.55rem;
+  word-break: break-word;
 }
