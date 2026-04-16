@@ -245,11 +245,25 @@
 
         status.textContent = 'Waiting for selection…';
         var pollEvery = parseSecondsDuration(data.pollingConfig && data.pollingConfig.pollInterval, 2000);
-        var timeoutMs = parseSecondsDuration(data.pollingConfig && data.pollingConfig.timeoutIn, 120000);
+        var serverTimeoutMs = parseSecondsDuration(data.pollingConfig && data.pollingConfig.timeoutIn, 120000);
         var started = Date.now();
-        while (Date.now() - started < timeoutMs) {
+        var deadline = started + serverTimeoutMs;
+        var pickerClosedAt = null;
+        var postCloseBudgetMs = 240000;
+
+        while (Date.now() < deadline) {
           await new Promise(function (resolve) { setTimeout(resolve, pollEvery); });
-          var picked = await fetchPickedMedia(sessionId, allowedSlots);
+          if (popup && popup.closed && pickerClosedAt === null) {
+            pickerClosedAt = Date.now();
+            deadline = Math.max(deadline, pickerClosedAt + postCloseBudgetMs);
+            status.textContent = 'Finishing up with Google Photos… (albums can take a bit)';
+          }
+          var picked;
+          try {
+            picked = await fetchPickedMedia(sessionId, allowedSlots);
+          } catch (ignore) {
+            continue;
+          }
           if (picked.ready) {
             renderItems(picked.items || []);
             status.textContent = '';
@@ -260,38 +274,10 @@
             refreshStatus();
             return;
           }
-          /* Google closes the picker when the user confirms; "ready" can arrive slightly after closed. */
-          if (popup && popup.closed) {
-            for (var extra = 0; extra < 6; extra++) {
-              await new Promise(function (resolve) { setTimeout(resolve, 450); });
-              try {
-                picked = await fetchPickedMedia(sessionId, allowedSlots);
-              } catch (ignore) {
-                picked = { ready: false };
-              }
-              if (picked.ready) {
-                renderItems(picked.items || []);
-                status.textContent = '';
-                if (hintEl && (picked.items || []).length === 0) {
-                  hintEl.textContent = 'No items were selected in Google Photos Picker.';
-                  hintEl.hidden = false;
-                }
-                refreshStatus();
-                return;
-              }
-            }
-            status.textContent = '';
-            if (hintEl) {
-              hintEl.textContent = 'Google Photos Picker was closed — open it again when you want to choose photos.';
-              hintEl.hidden = false;
-            }
-            refreshStatus();
-            return;
-          }
         }
         status.textContent = '';
         if (hintEl) {
-          hintEl.textContent = 'Picker timed out. Click “Open Google Photos Picker” to try again.';
+          hintEl.textContent = 'Google Photos did not finish returning your picks in time. That often happens if you browse a long time in an album before choosing. Try again, confirm your selection in the picker, or pick fewer photos at once.';
           hintEl.hidden = false;
         }
         refreshStatus();

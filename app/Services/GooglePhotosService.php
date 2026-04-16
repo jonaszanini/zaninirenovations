@@ -24,8 +24,8 @@ class GooglePhotosService
     private function httpPicker(): Client
     {
         return new Client([
-            'timeout' => 30,
-            'connect_timeout' => 15,
+            'timeout' => 90,
+            'connect_timeout' => 20,
             'http_errors' => false,
         ]);
     }
@@ -332,17 +332,20 @@ class GooglePhotosService
             if (! is_array($mi)) {
                 continue;
             }
-            $mediaFile = (array) ($mi['mediaFile'] ?? []);
+            $mediaFile = (array) ($mi['mediaFile'] ?? $mi['media_file'] ?? []);
             $id = (string) ($mi['id'] ?? '');
             if ($id === '') {
                 continue;
             }
+            $baseUrl = $mediaFile['baseUrl'] ?? $mediaFile['base_url'] ?? null;
+            $mimeType = $mediaFile['mimeType'] ?? $mediaFile['mime_type'] ?? null;
+            $filename = $mediaFile['filename'] ?? null;
             $items[] = [
                 'id' => $id,
                 'type' => isset($mi['type']) ? (string) $mi['type'] : null,
-                'baseUrl' => isset($mediaFile['baseUrl']) ? (string) $mediaFile['baseUrl'] : null,
-                'mimeType' => isset($mediaFile['mimeType']) ? (string) $mediaFile['mimeType'] : null,
-                'filename' => isset($mediaFile['filename']) ? (string) $mediaFile['filename'] : null,
+                'baseUrl' => is_string($baseUrl) ? $baseUrl : null,
+                'mimeType' => is_string($mimeType) ? $mimeType : null,
+                'filename' => is_string($filename) ? $filename : null,
             ];
         }
 
@@ -365,7 +368,6 @@ class GooglePhotosService
             $session = $payload['session'];
         }
 
-        
         $id = isset($session['id']) ? (string) $session['id'] : '';
         if ($id === '' && isset($session['name']) && is_string($session['name'])) {
             if (preg_match('#/sessions/([^/]+)$#', $session['name'], $m)) {
@@ -397,11 +399,15 @@ class GooglePhotosService
             ];
         }
 
+        $rawSet = $session['mediaItemsSet'] ?? $session['media_items_set'] ?? $payload['mediaItemsSet'] ?? $payload['media_items_set'] ?? false;
+        $mediaItemsSet = $rawSet === true || $rawSet === 1 || $rawSet === '1'
+            || (is_string($rawSet) && strtolower($rawSet) === 'true');
+
         return [
             'id' => $id,
             'pickerUri' => $pickerUri,
             'pollingConfig' => $polling,
-            'mediaItemsSet' => (bool) ($session['mediaItemsSet'] ?? $session['media_items_set'] ?? false),
+            'mediaItemsSet' => $mediaItemsSet,
         ];
     }
 
