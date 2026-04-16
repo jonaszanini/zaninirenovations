@@ -259,6 +259,7 @@
       var btnUpload = root.querySelector('[data-google-upload-send]');
       var uploadInput = root.querySelector('[data-google-upload-input]');
       var nextToken = null;
+      var lastListContext = null;
 
       function selectedCount() {
         return grid.querySelectorAll('input[type="checkbox"][name="google_photos_media_ids[]"]:checked').length;
@@ -330,7 +331,10 @@
           hintEl.textContent = '';
         }
         var u = new URL(mediaUrl, window.location.origin);
-        if (token) u.searchParams.set('page_token', token);
+        if (token) {
+          u.searchParams.set('page_token', token);
+          if (lastListContext) u.searchParams.set('list_context', lastListContext);
+        }
         var res = await fetch(u.toString(), {
           credentials: 'same-origin',
           headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -357,6 +361,7 @@
         renderItems(data.items || []);
         nextToken = data.nextPageToken || null;
         btnMore.hidden = !nextToken;
+        if (data.meta && data.meta.list_context) lastListContext = data.meta.list_context;
         if (hintEl) {
           hintEl.hidden = true;
           hintEl.textContent = '';
@@ -369,6 +374,8 @@
             if (!m.album_id_length) {
               parts.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
               if (m.configuration_cached) parts.push('After editing .env on the server, run: php artisan config:clear (then reload).');
+            } else if (nextToken) {
+              parts.push('This page is empty, but more results exist. Click “Load more”.');
             } else {
               parts.push('No app-created photos on this page. Try Load more if shown, or use Upload to import album.');
             }
@@ -383,6 +390,7 @@
       btnLoad.addEventListener('click', function () {
         grid.innerHTML = '';
         nextToken = null;
+        lastListContext = null;
         btnMore.hidden = true;
         loadPage(null);
       });
@@ -417,6 +425,7 @@
               uploadInput.value = '';
               grid.innerHTML = '';
               nextToken = null;
+              lastListContext = null;
               btnMore.hidden = true;
               if (data.media && data.media.id) {
                 renderItems([data.media]);

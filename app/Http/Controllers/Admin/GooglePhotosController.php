@@ -85,6 +85,7 @@ class GooglePhotosController extends Controller
     {
         $request->validate([
             'page_token' => ['nullable', 'string', 'max:5000'],
+            'list_context' => ['nullable', 'string', 'in:album,library'],
         ]);
 
         try {
@@ -92,13 +93,18 @@ class GooglePhotosController extends Controller
                 $request->user(),
                 $request->input('page_token'),
                 24,
+                $request->input('list_context'),
             );
 
             $albumId = trim((string) config('google_photos.album_id', ''));
+            $listContext = $data['list_context'] ?? null;
+            unset($data['list_context']);
+
             $data['meta'] = [
                 'album_id_length' => strlen($albumId),
                 'album_id_tail' => $albumId === '' ? '' : substr($albumId, -22),
                 'configuration_cached' => app()->configurationIsCached(),
+                'list_context' => $listContext,
             ];
 
             return response()->json($data);

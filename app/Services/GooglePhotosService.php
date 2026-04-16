@@ -10,6 +10,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 class GooglePhotosService
 {
@@ -164,14 +165,14 @@ class GooglePhotosService
     }
 
     /**
-     * Lists app-created photos via POST mediaItems:search with no filters (Library API returns all
-     * app-created media for the user). We avoid mediaItems:search with albumId because mixed albums
-     * can return no rows; we avoid relying on GET mediaItems alone because some accounts see empty
-     * first pages until pagination.
+     * Lists app-created photos via POST mediaItems:search. When GOOGLE_PHOTOS_ALBUM_ID is set we
+     * first search that album (matches uploads from batchCreate with albumId); if that yields
+     * nothing we fall back to a library-wide search (no albumId). Pagination tokens are only valid
+     * for the same search shape, so callers must pass list_context on “Load more”.
      *
-     * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}
+     * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string, list_context: string}
      */
-    public function listRecentMedia(User $user, ?string $pageToken = null, int $pageSize = 24): array
+    public function listRecentMedia(User $user, ?string $pageToken = null, int $pageSize = 24, ?string $listContext = null): array
     {
         $token = GooglePhotosToken::query()->where('user_id', $user->id)->first();
         if (! $token) {
@@ -181,47 +182,80 @@ class GooglePhotosService
         $access = $this->ensureFreshAccessToken($token);
         $pageSize = max(1, min(100, $pageSize));
 
+        $albumId = trim((string) Config::get('google_photos.album_id', ''));
         $loadMore = $pageToken !== null && $pageToken !== '';
 
         if ($loadMore) {
-            return $this->listAppCreatedMediaPage($access, $pageToken, $pageSize);
+            if ($listContext !== 'album' && $listContext !== 'library') {
+                throw new RuntimeException('Missing list context: reload the page, click “Load Google uploads” again, then use “Load more”.');
+            }
+            $albumForSearch = ($listContext === 'album' && $albumId !== '') ? $albumId : null;
+            $result = $this->listAppCreatedMediaPage($access, $pageToken, $pageSize, $albumForSearch);
+            $result['list_context'] = $albumForSearch !== null ? 'album' : 'library';
+
+            return $result;
         }
 
-        // First load: skip empty pages (Google sometimes returns nextPageToken with no mediaItems).
+        if ($albumId !== '') {
+            $result = $this->listInitialSearchChunk($access, $pageSize, $albumId);
+            if ($result !== null) {
+                $result['list_context'] = 'album';
+
+                return $result;
+            }
+        }
+
+        $result = $this->listInitialSearchChunk($access, $pageSize, null);
+        if ($result === null) {
+            throw new RuntimeException(
+                'No app-created photos found yet. Use “Upload to import album” (needs photoslibrary.appendonly + reconnect), then load again. Items added only in the Google Photos app are never returned by this API.'
+            );
+        }
+        $result['list_context'] = 'library';
+
+        return $result;
+    }
+
+    /**
+     * Walks past empty list pages (Google sometimes returns nextPageToken with no mediaItems).
+     *
+     * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}|null Null if this search mode has no items at all.
+     */
+    private function listInitialSearchChunk(string $access, int $pageSize, ?string $albumIdForSearch): ?array
+    {
         $cursor = null;
         $maxEmptySkips = 12;
         for ($i = 0; $i < $maxEmptySkips; $i++) {
-            $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize);
+            $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize, $albumIdForSearch);
             if (count($result['items']) > 0) {
                 return $result;
             }
             $next = $result['nextPageToken'] ?? null;
             if ($next === null || $next === '') {
-                throw new RuntimeException(
-                    'No app-created photos found yet. Use “Upload to import album” (needs photoslibrary.appendonly + reconnect), then load again. Items added only in the Google Photos app are never returned by this API.'
-                );
+                return null;
             }
             $cursor = $next;
         }
 
-        $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize);
+        $result = $this->listAppCreatedMediaPage($access, $cursor, $pageSize, $albumIdForSearch);
         if (count($result['items']) > 0 || ! empty($result['nextPageToken'])) {
             return $result;
         }
 
-        throw new RuntimeException(
-            'No app-created photos found yet. Use “Upload to import album” (needs photoslibrary.appendonly + reconnect), then load again. Items added only in the Google Photos app are never returned by this API.'
-        );
+        return null;
     }
 
     /**
      * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}
      */
-    private function listAppCreatedMediaPage(string $access, ?string $pageToken, int $pageSize): array
+    private function listAppCreatedMediaPage(string $access, ?string $pageToken, int $pageSize, ?string $albumIdForSearch = null): array
     {
         $body = ['pageSize' => $pageSize];
         if ($pageToken !== null && $pageToken !== '') {
             $body['pageToken'] = $pageToken;
+        }
+        if ($albumIdForSearch !== null && $albumIdForSearch !== '') {
+            $body['albumId'] = $albumIdForSearch;
         }
 
         $response = $this->http()->post('https://photoslibrary.googleapis.com/v1/mediaItems:search', [
@@ -392,7 +426,20 @@ class GooglePhotosService
             $safeName = 'upload.jpg';
         }
 
-        return $this->batchCreateMediaInAlbum($access, $albumId, $uploadToken, $safeName);
+        $created = $this->batchCreateMediaInAlbum($access, $albumId, $uploadToken, $safeName);
+
+        if (($created['baseUrl'] ?? null) === null || $created['baseUrl'] === '') {
+            try {
+                $full = $this->getMediaItem($user, $created['id']);
+                $created['baseUrl'] = $full['baseUrl'] ?? $created['baseUrl'] ?? null;
+                $created['mimeType'] = $created['mimeType'] ?? $full['mimeType'] ?? null;
+                $created['filename'] = $created['filename'] ?? $full['filename'] ?? null;
+            } catch (Throwable) {
+                // Thumbnail may not be ready immediately after create.
+            }
+        }
+
+        return $created;
     }
 
     private function uploadRawBytes(string $access, string $absolutePath, string $mimeType): string
