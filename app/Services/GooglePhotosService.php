@@ -196,7 +196,7 @@ class GooglePhotosService
             throw new RuntimeException('Google Photos picker session create failed: '.((string) $response->getBody()));
         }
 
-        return $this->parseSessionPayload($payload);
+        return $this->parseSessionPayload($payload, true);
     }
 
     /**
@@ -222,7 +222,7 @@ class GooglePhotosService
             throw new RuntimeException('Google Photos picker session read failed: '.((string) $response->getBody()));
         }
 
-        return $this->parseSessionPayload($payload);
+        return $this->parseSessionPayload($payload, false);
     }
 
     /**
@@ -355,7 +355,7 @@ class GooglePhotosService
     /**
      * @return array{id:string,pickerUri:string,pollingConfig:array{pollInterval:?string,timeoutIn:?string}|null,mediaItemsSet:bool}
      */
-    private function parseSessionPayload(array $payload): array
+    private function parseSessionPayload(array $payload, bool $requirePickerUri): array
     {
         // Be tolerant to shape variants (camelCase, snake_case, nested session object, resource name).
         $session = $payload;
@@ -376,7 +376,7 @@ class GooglePhotosService
         } elseif (isset($session['picker_uri']) && is_string($session['picker_uri'])) {
             $pickerUri = $session['picker_uri'];
         }
-        if ($id === '' || $pickerUri === '') {
+        if ($id === '' || ($requirePickerUri && $pickerUri === '')) {
             $keys = implode(', ', array_keys($payload));
             throw new RuntimeException('Google Photos picker session response missing id or pickerUri. Response keys: ['.$keys.']');
         }
