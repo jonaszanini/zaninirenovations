@@ -124,13 +124,13 @@
                   data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
                 >Disconnect</button>
               </div>
-              <p class="admin-form-hint" style="margin:0 0 0.5rem;">Only photos uploaded through this admin button (or the Library API) show in the grid. Items added only in the Google Photos app are not listable here.</p>
+              <p class="admin-form-hint" style="margin:0 0 0.5rem;">The grid lists every photo this site uploaded via the Library API (including “Upload to import album”). Items added only in the Google Photos app never appear here.</p>
               <div class="admin-google-photos-upload-row" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin-bottom:0.65rem;">
                 <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-google-upload-input>
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-upload-send>Upload to import album</button>
               </div>
               <div class="admin-google-photos-toolbar">
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load album photos</button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load Google uploads</button>
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-more hidden>Load more</button>
                 <span class="admin-google-photos-status" data-google-status></span>
                 <span class="admin-google-photos-hint" data-google-hint hidden></span>
