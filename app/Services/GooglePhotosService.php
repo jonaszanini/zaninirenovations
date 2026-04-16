@@ -182,14 +182,68 @@ class GooglePhotosService
         }
 
         $access = $this->ensureFreshAccessToken($token);
+        $pageSize = max(1, min(100, $pageSize));
 
-        // Library API: albumId cannot be combined with filters (see mediaItems.search docs).
+        $loadMore = $pageToken !== null && $pageToken !== '';
+
+        if ($loadMore) {
+            return $this->searchAlbumMediaPage($access, $albumId, $pageToken, $pageSize);
+        }
+
+        // First load: Google occasionally returns empty mediaItems with only nextPageToken; skip those pages.
+        $cursor = null;
+        $hops = 0;
+        while ($hops < 40) {
+            $result = $this->searchAlbumMediaPage($access, $albumId, $cursor, $pageSize);
+            if (count($result['items']) > 0) {
+                return $result;
+            }
+            if (empty($result['nextPageToken'])) {
+                break;
+            }
+            $cursor = $result['nextPageToken'];
+            $hops++;
+        }
+
+        if ($hops >= 40) {
+            throw new RuntimeException(
+                'Google Photos list returned many empty pages in a row. Verify GOOGLE_PHOTOS_ALBUM_ID matches an album created with this site\'s OAuth client.'
+            );
+        }
+
+        $album = $this->getAppAlbum($access, $albumId);
+        $status = $album['status'];
+        if ($status === 404) {
+            throw new RuntimeException(
+                'Google Photos album id was not found for this site\'s OAuth client. Create the album using the same Google OAuth client ID as GOOGLE_PHOTOS_CLIENT_ID (in OAuth Playground use the gear icon → "Use your own OAuth credentials"), then set GOOGLE_PHOTOS_ALBUM_ID to the id returned by POST /v1/albums.'
+            );
+        }
+        if ($status >= 400) {
+            throw new RuntimeException('Google Photos album lookup failed: '.$album['raw']);
+        }
+
+        $count = isset($album['body']['mediaItemsCount']) ? (int) $album['body']['mediaItemsCount'] : 0;
+        if ($count > 0) {
+            throw new RuntimeException(
+                'Google Photos returned no listable media for this album even though Google reports '.$count.' item(s). The Library API only returns media your app created; photos added only via the Google Photos website/app into this album may not appear. Upload into this album using the Library API with the same OAuth client, or use the Picker API to choose library photos.'
+            );
+        }
+
+        throw new RuntimeException(
+            'The configured Google Photos album is empty for API listing (no app-created media items yet). Upload photos using the Library API, then try again.'
+        );
+    }
+
+    /**
+     * @return array{items: array<int, array{id:string, baseUrl:?string, mimeType:?string, filename:?string}>, nextPageToken:?string}
+     */
+    private function searchAlbumMediaPage(string $access, string $albumId, ?string $pageToken, int $pageSize): array
+    {
         $body = [
             'albumId' => $albumId,
-            'pageSize' => max(1, min(100, $pageSize)),
+            'pageSize' => $pageSize,
         ];
-
-        if ($pageToken) {
+        if ($pageToken !== null && $pageToken !== '') {
             $body['pageToken'] = $pageToken;
         }
 
@@ -204,6 +258,11 @@ class GooglePhotosService
         $payload = json_decode((string) $response->getBody(), true);
         if (! is_array($payload)) {
             throw new RuntimeException('Google Photos list failed: invalid response.');
+        }
+
+        if (isset($payload['error']) && is_array($payload['error'])) {
+            $msg = (string) ($payload['error']['message'] ?? json_encode($payload['error']));
+            throw new RuntimeException('Google Photos list failed: '.$msg);
         }
 
         if (($response->getStatusCode() ?? 500) >= 400) {
@@ -239,6 +298,28 @@ class GooglePhotosService
         return [
             'items' => $items,
             'nextPageToken' => $next !== '' ? $next : null,
+        ];
+    }
+
+    /**
+     * @return array{status:int, body: array<string, mixed>, raw: string}
+     */
+    private function getAppAlbum(string $access, string $albumId): array
+    {
+        $url = 'https://photoslibrary.googleapis.com/v1/albums/'.rawurlencode($albumId);
+        $response = $this->http()->get($url, [
+            'headers' => [
+                'Authorization' => 'Bearer '.$access,
+            ],
+        ]);
+
+        $raw = (string) $response->getBody();
+        $payload = json_decode($raw, true);
+
+        return [
+            'status' => (int) ($response->getStatusCode() ?? 500),
+            'body' => is_array($payload) ? $payload : [],
+            'raw' => $raw,
         ];
     }
 

@@ -72,12 +72,26 @@ class GooglePhotosController extends Controller
                 24,
             );
 
+            $albumId = trim((string) config('google_photos.album_id', ''));
+            $data['meta'] = [
+                'album_id_length' => strlen($albumId),
+                'album_id_tail' => $albumId === '' ? '' : substr($albumId, -22),
+                'configuration_cached' => app()->configurationIsCached(),
+            ];
+
             return response()->json($data);
         } catch (Throwable $e) {
             report($e);
 
+            $albumId = trim((string) config('google_photos.album_id', ''));
+
             return response()->json([
                 'error' => $e->getMessage(),
+                'meta' => [
+                    'album_id_length' => strlen($albumId),
+                    'album_id_tail' => $albumId === '' ? '' : substr($albumId, -22),
+                    'configuration_cached' => app()->configurationIsCached(),
+                ],
             ], 422);
         }
     }

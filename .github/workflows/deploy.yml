@@ -124,6 +124,7 @@ jobs:
 
             php artisan optimize:clear
             php artisan migrate --force
+            # Rebuilds bootstrap/cache/config.php from the server’s current .env. If you change .env without redeploying, run: php artisan config:clear && php artisan config:cache
             php artisan config:cache
             php artisan route:clear
             php artisan view:cache

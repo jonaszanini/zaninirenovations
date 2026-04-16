@@ -965,6 +965,14 @@ body.admin-nav-open {
   font-size: 13px;
 }
 
+.admin-google-photos-hint {
+  flex-basis: 100%;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 0.15rem;
+}
+
 .admin-google-photos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

@@ -83,6 +83,7 @@
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-load>Load album photos</button>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-more hidden>Load more</button>
               <span class="admin-google-photos-status" data-google-status></span>
+              <span class="admin-google-photos-hint" data-google-hint hidden></span>
             </div>
             <div class="admin-google-photos-grid" data-google-grid></div>
           </div>
@@ -120,6 +121,7 @@
       var btnMore = root.querySelector('[data-google-more]');
       var grid = root.querySelector('[data-google-grid]');
       var status = root.querySelector('[data-google-status]');
+      var hintEl = root.querySelector('[data-google-hint]');
       var nextToken = null;
 
       function selectedCount() {
@@ -182,18 +184,53 @@
 
       async function loadPage(token) {
         status.textContent = 'Loading…';
+        if (hintEl) {
+          hintEl.hidden = true;
+          hintEl.textContent = '';
+        }
         var u = new URL(mediaUrl, window.location.origin);
         if (token) u.searchParams.set('page_token', token);
-        var res = await fetch(u.toString(), { headers: { 'Accept': 'application/json' } });
+        var res = await fetch(u.toString(), {
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
         var data = await res.json().catch(function () { return null; });
         if (!res.ok || !data || data.error) {
           status.textContent = '';
-          alert((data && data.error) ? data.error : 'Could not load Google Photos.');
+          if (hintEl && data && data.meta) {
+            var em = data.meta;
+            var bits = [data.error || 'Could not load Google Photos.'];
+            if (!em.album_id_length) bits.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
+            else bits.push('Album id in use ends …' + (em.album_id_tail || '') + ' (length ' + em.album_id_length + ').');
+            if (em.configuration_cached) bits.push('Configuration is cached. After editing .env on the server, run: php artisan config:clear');
+            hintEl.textContent = bits.join(' ');
+            hintEl.hidden = false;
+          } else {
+            alert((data && data.error) ? data.error : 'Could not load Google Photos.');
+          }
           return;
         }
         renderItems(data.items || []);
         nextToken = data.nextPageToken || null;
         btnMore.hidden = !nextToken;
+        if (hintEl) {
+          hintEl.hidden = true;
+          hintEl.textContent = '';
+        }
+        if ((data.items || []).length === 0 && data.meta && hintEl) {
+          var m = data.meta;
+          var parts = [];
+          if (!m.album_id_length) {
+            parts.push('GOOGLE_PHOTOS_ALBUM_ID is empty in configuration.');
+          } else {
+            parts.push('Server is using album id ending …' + (m.album_id_tail || '') + ' (length ' + m.album_id_length + ').');
+          }
+          if (m.configuration_cached) {
+            parts.push('Configuration is cached. After editing .env on the server, run: php artisan config:clear (then reload this page).');
+          }
+          hintEl.textContent = parts.join(' ');
+          hintEl.hidden = false;
+        }
         status.textContent = '';
         refreshStatus();
       }
