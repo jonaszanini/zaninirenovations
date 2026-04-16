@@ -269,7 +269,9 @@ class GooglePhotosService
 
         $downloadUrl = $baseUrl;
         if (! str_contains($downloadUrl, '=')) {
-            $downloadUrl .= '=d';
+            $isImage = is_string($mimeTypeHint) && str_starts_with(strtolower($mimeTypeHint), 'image/');
+            // Avoid downloading very large originals when we only keep a resized WebP copy.
+            $downloadUrl .= $isImage ? '=w2048-h2048' : '=d';
         }
 
         $tmp = tempnam(sys_get_temp_dir(), 'gpp_');

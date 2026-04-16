@@ -258,8 +258,12 @@ unset($__errorArgs, $__bag); ?>
         return Math.round(n * 1000);
       }
 
-      async function fetchPickedMedia(sessionId) {
+      async function fetchPickedMedia(sessionId, maxItems) {
         var mediaUrl = (mediaUrlTemplate || '').replace('__SESSION__', encodeURIComponent(sessionId));
+        if (maxItems && maxItems > 0) {
+          var sep = mediaUrl.indexOf('?') === -1 ? '?' : '&';
+          mediaUrl += sep + 'max_items=' + encodeURIComponent(String(maxItems));
+        }
         if (!mediaUrl || mediaUrl === mediaUrlTemplate) throw new Error('Picker media URL is not configured.');
         var res = await fetch(mediaUrl, {
           credentials: 'same-origin',
@@ -270,7 +274,7 @@ unset($__errorArgs, $__bag); ?>
         return data;
       }
 
-      async function openPicker(popup) {
+      async function openPicker(popup, allowedSlots) {
         status.textContent = 'Starting picker…';
         if (hintEl) {
           hintEl.hidden = true;
@@ -288,7 +292,7 @@ unset($__errorArgs, $__bag); ?>
             'X-CSRF-TOKEN': csrfToken,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ max_item_count: maxTotal })
+          body: JSON.stringify({ max_item_count: allowedSlots })
         });
         var data = await res.json().catch(function () { return null; });
         if (!res.ok || !data || data.error) {
@@ -305,8 +309,9 @@ unset($__errorArgs, $__bag); ?>
         var timeoutMs = parseSecondsDuration(data.pollingConfig && data.pollingConfig.timeoutIn, 120000);
         var started = Date.now();
         while (Date.now() - started < timeoutMs) {
+          if (popup && popup.closed) throw new Error('Picker window was closed before selection was completed.');
           await new Promise(function (resolve) { setTimeout(resolve, pollEvery); });
-          var picked = await fetchPickedMedia(sessionId);
+          var picked = await fetchPickedMedia(sessionId, allowedSlots);
           if (picked.ready) {
             renderItems(picked.items || []);
             status.textContent = '';
@@ -324,10 +329,14 @@ unset($__errorArgs, $__bag); ?>
       btnOpen.addEventListener('click', async function () {
         btnOpen.disabled = true;
         try {
+          var fileInput = document.getElementById('photos');
+          var files = fileInput && fileInput.files ? fileInput.files.length : 0;
+          var allowedSlots = Math.max(0, maxTotal - files);
+          if (allowedSlots < 1) throw new Error('No free slots left for Google photos. Remove selected uploads first.');
           var popup = window.open('', '_blank');
           if (!popup) throw new Error('Popup blocked. Allow popups for this site and try again.');
           popup.document.write('Loading Google Photos Picker...');
-          await openPicker(popup);
+          await openPicker(popup, allowedSlots);
         } catch (e) {
           status.textContent = '';
           alert(e && e.message ? e.message : 'Could not open Google Photos Picker.');
@@ -369,6 +378,7 @@ unset($__errorArgs, $__bag); ?>
     })();
   </script>
 <?php $__env->stopPush(); ?>
+
 
 
 <?php echo $__env->make('admin.layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views\admin\projects\create.blade.php ENDPATH**/ ?>
