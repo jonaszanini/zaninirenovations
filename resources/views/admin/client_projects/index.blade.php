@@ -57,12 +57,12 @@
             <th class="cp-col-amount">Total</th>
             <th class="cp-col-amount">Paid</th>
             <th>Last updated</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
           @foreach ($projects as $project)
-            <tr>
+            @php $url = route('admin.client-projects.show', $project); @endphp
+            <tr class="cp-row-link" data-href="{{ $url }}" tabindex="0" role="link" aria-label="Open project {{ $project->name }}">
               <td>
                 <strong>{{ $project->name }}</strong>
               </td>
@@ -84,9 +84,6 @@
               <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($project->total_amount) }}</td>
               <td class="cp-col-amount">{{ number_format($project->percentPaid(), 0) }}%</td>
               <td>{{ optional($project->updated_at)->format('d/m/Y H:i') }}</td>
-              <td style="white-space:nowrap;">
-                <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--primary admin-btn--sm">Open</a>
-              </td>
             </tr>
           @endforeach
         </tbody>
@@ -96,4 +93,49 @@
       {{ $projects->links('pagination.admin') }}
     </div>
   @endif
+
+  {{-- Row-as-link behaviour. <tr> can't legally wrap an <a>, so we navigate
+       in JS. Plain clicks open in the same tab; Ctrl/Cmd-click and middle-click
+       open in a new tab to match standard link behaviour. --}}
+  <script>
+    (function () {
+      var rows = document.querySelectorAll('.cp-row-link[data-href]');
+      if (!rows.length) return;
+
+      function shouldIgnore(target) {
+        // Don't hijack clicks on real interactive elements inside the row
+        // (links, buttons, inputs, selects). Today there are none, but this
+        // keeps the row safe if any get added later.
+        return !!target.closest('a, button, input, select, textarea, label');
+      }
+
+      rows.forEach(function (row) {
+        var url = row.getAttribute('data-href');
+
+        row.addEventListener('click', function (ev) {
+          if (shouldIgnore(ev.target)) return;
+          if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+            window.open(url, '_blank');
+          } else {
+            window.location.href = url;
+          }
+        });
+
+        // Middle-click (auxclick, button === 1) → open in new tab.
+        row.addEventListener('auxclick', function (ev) {
+          if (ev.button !== 1 || shouldIgnore(ev.target)) return;
+          ev.preventDefault();
+          window.open(url, '_blank');
+        });
+
+        // Keyboard: Enter / Space activates the row when it has focus.
+        row.addEventListener('keydown', function (ev) {
+          if (ev.key !== 'Enter' && ev.key !== ' ') return;
+          if (shouldIgnore(ev.target)) return;
+          ev.preventDefault();
+          window.location.href = url;
+        });
+      });
+    })();
+  </script>
 @endsection

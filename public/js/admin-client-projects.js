@@ -120,13 +120,20 @@
     return h * 60 + mm;
   }
 
-  function initTimeForm() {
-    var form = document.getElementById('cp-time-form');
-    if (!form) return;
+  // Wire one time-entry form (used by both the "Add time entry" form at the
+  // top of the panel AND each inline "edit existing entry" form in the table).
+  // Behaviour:
+  //   - Start + End both picked  → Hours auto-computed and field locked.
+  //   - Start only (no End)      → Hours stays empty, field unlocked.
+  //                                Submitting saves an "in progress" entry.
+  //   - End only / Hours only    → Field unlocked, user can type freely.
+  function initOneTimeForm(form) {
+    if (!form || form._cpTimeWired) return;
+    form._cpTimeWired = true;
 
-    var startSel = form.querySelector('#cp-time-start');
-    var endSel = form.querySelector('#cp-time-end');
-    var hoursInput = form.querySelector('#cp-time-hours');
+    var startSel = form.querySelector('[data-cp-time-start]');
+    var endSel = form.querySelector('[data-cp-time-end]');
+    var hoursInput = form.querySelector('[data-cp-time-hours]');
     if (!startSel || !endSel || !hoursInput) return;
 
     // --- 1) Only digits and (at most) one decimal separator in Hours -----
@@ -134,14 +141,12 @@
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
       if (ev.key && ev.key.length > 1) return; // arrows, backspace, tab...
       if (ev.key === '.' || ev.key === ',') {
-        // Allow a single decimal separator; normalise "," to "." on input.
         if (hoursInput.value.indexOf('.') !== -1) ev.preventDefault();
         return;
       }
       if (!/^\d$/.test(ev.key)) ev.preventDefault();
     });
     hoursInput.addEventListener('input', function () {
-      // Strip everything except digits and the first "." (comma → dot).
       var v = hoursInput.value.replace(/,/g, '.').replace(/[^\d.]/g, '');
       var firstDot = v.indexOf('.');
       if (firstDot !== -1) {
@@ -150,15 +155,12 @@
       if (v !== hoursInput.value) hoursInput.value = v;
     });
 
-    // --- 2) Auto-fill Hours from Start + End, and lock the field --------
     function syncFromTimes() {
       var startMin = parseHhMm(startSel.value);
       var endMin = parseHhMm(endSel.value);
-      var bothChosen = startMin !== null && endMin !== null;
 
-      if (bothChosen) {
+      if (startMin !== null && endMin !== null) {
         if (endMin <= startMin) {
-          // Invalid range — don't overwrite. Unlock so the user can fix it.
           hoursInput.readOnly = false;
           hoursInput.classList.remove('is-locked');
           hoursInput.value = '';
@@ -167,14 +169,19 @@
           return;
         }
         var hours = (endMin - startMin) / 60;
-        // Keep two decimal places but drop trailing zeros (e.g. 1.5 not 1.50).
         hoursInput.value = (Math.round(hours * 100) / 100).toString();
         hoursInput.readOnly = true;
         hoursInput.classList.add('is-locked');
         hoursInput.setCustomValidity('');
-        hoursInput.title = 'Calculated from start and end times. Clear one of them to edit manually.';
+        hoursInput.title = 'Calculated from start and end times. Clear End to edit manually or to save as in-progress.';
+      } else if (startMin !== null && endMin === null) {
+        // "Start only" mode — server will save this as an in-progress entry,
+        // so leave hours empty + unlock for optional manual override.
+        hoursInput.readOnly = false;
+        hoursInput.classList.remove('is-locked');
+        hoursInput.setCustomValidity('');
+        hoursInput.title = 'No End time — this will be saved as an in-progress entry.';
       } else {
-        // Either field empty → let the user type hours manually.
         hoursInput.readOnly = false;
         hoursInput.classList.remove('is-locked');
         hoursInput.setCustomValidity('');
@@ -184,6 +191,64 @@
     startSel.addEventListener('change', syncFromTimes);
     endSel.addEventListener('change', syncFromTimes);
     syncFromTimes();
+  }
+
+  function initTimeForms() {
+    document.querySelectorAll('[data-cp-time-form]').forEach(initOneTimeForm);
+  }
+
+  // --- Inline edit toggles for existing time entries --------------------
+  function initTimeEditToggles() {
+    document.querySelectorAll('[data-cp-edit-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-cp-edit-toggle');
+        var row = document.querySelector('[data-cp-edit-row="' + id + '"]');
+        if (!row) return;
+        var isHidden = row.hasAttribute('hidden');
+        if (isHidden) {
+          row.removeAttribute('hidden');
+          // Wire the form on first open (it might not have been wired yet
+          // because it was hidden during initial pass — though we already
+          // call initTimeForms once on load, this is a safety net).
+          var form = row.querySelector('[data-cp-time-form]');
+          if (form) initOneTimeForm(form);
+        } else {
+          row.setAttribute('hidden', '');
+        }
+      });
+    });
+    document.querySelectorAll('[data-cp-edit-cancel]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-cp-edit-cancel');
+        var row = document.querySelector('[data-cp-edit-row="' + id + '"]');
+        if (row) row.setAttribute('hidden', '');
+      });
+    });
+  }
+
+  // --- Billing-type radios (create/edit project): toggle hourly_rate field ---
+  function initBillingTypeToggle() {
+    var radios = document.querySelectorAll('[data-cp-billing]');
+    if (!radios.length) return;
+    var rateGroup = document.querySelector('[data-cp-hourly-rate]');
+    if (!rateGroup) return;
+
+    function sync() {
+      var checked = document.querySelector('[data-cp-billing]:checked');
+      var isHourly = checked && checked.value === 'hourly';
+      rateGroup.style.display = isHourly ? '' : 'none';
+      var input = rateGroup.querySelector('input[name="hourly_rate"]');
+      if (input) {
+        if (isHourly) {
+          input.required = true;
+        } else {
+          input.required = false;
+          input.value = '';
+        }
+      }
+    }
+    radios.forEach(function (r) { r.addEventListener('change', sync); });
+    sync();
   }
 
   // --- Dynamic installment editor --------------------------------------
@@ -327,7 +392,9 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     initMoneyMask();
-    initTimeForm();
+    initTimeForms();
+    initTimeEditToggles();
+    initBillingTypeToggle();
 
     var planSelect = document.getElementById('cp-plan');
     if (!planSelect) return;

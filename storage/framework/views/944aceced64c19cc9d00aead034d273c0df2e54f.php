@@ -57,12 +57,12 @@
             <th class="cp-col-amount">Total</th>
             <th class="cp-col-amount">Paid</th>
             <th>Last updated</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
           <?php $__currentLoopData = $projects; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $project): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-            <tr>
+            <?php $url = route('admin.client-projects.show', $project); ?>
+            <tr class="cp-row-link" data-href="<?php echo e($url); ?>" tabindex="0" role="link" aria-label="Open project <?php echo e($project->name); ?>">
               <td>
                 <strong><?php echo e($project->name); ?></strong>
               </td>
@@ -85,9 +85,6 @@
               <td class="cp-col-amount"><?php echo e(\App\Models\ClientProject::formatMoney($project->total_amount)); ?></td>
               <td class="cp-col-amount"><?php echo e(number_format($project->percentPaid(), 0)); ?>%</td>
               <td><?php echo e(optional($project->updated_at)->format('d/m/Y H:i')); ?></td>
-              <td style="white-space:nowrap;">
-                <a href="<?php echo e(route('admin.client-projects.show', $project)); ?>" class="admin-btn admin-btn--primary admin-btn--sm">Open</a>
-              </td>
             </tr>
           <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>
@@ -98,6 +95,49 @@
 
     </div>
   <?php endif; ?>
+
+  
+  <script>
+    (function () {
+      var rows = document.querySelectorAll('.cp-row-link[data-href]');
+      if (!rows.length) return;
+
+      function shouldIgnore(target) {
+        // Don't hijack clicks on real interactive elements inside the row
+        // (links, buttons, inputs, selects). Today there are none, but this
+        // keeps the row safe if any get added later.
+        return !!target.closest('a, button, input, select, textarea, label');
+      }
+
+      rows.forEach(function (row) {
+        var url = row.getAttribute('data-href');
+
+        row.addEventListener('click', function (ev) {
+          if (shouldIgnore(ev.target)) return;
+          if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+            window.open(url, '_blank');
+          } else {
+            window.location.href = url;
+          }
+        });
+
+        // Middle-click (auxclick, button === 1) → open in new tab.
+        row.addEventListener('auxclick', function (ev) {
+          if (ev.button !== 1 || shouldIgnore(ev.target)) return;
+          ev.preventDefault();
+          window.open(url, '_blank');
+        });
+
+        // Keyboard: Enter / Space activates the row when it has focus.
+        row.addEventListener('keydown', function (ev) {
+          if (ev.key !== 'Enter' && ev.key !== ' ') return;
+          if (shouldIgnore(ev.target)) return;
+          ev.preventDefault();
+          window.location.href = url;
+        });
+      });
+    })();
+  </script>
 <?php $__env->stopSection(); ?>
 
 <?php echo $__env->make('admin.layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/admin/client_projects/index.blade.php ENDPATH**/ ?>

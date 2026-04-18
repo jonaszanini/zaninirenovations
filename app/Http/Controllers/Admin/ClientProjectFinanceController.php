@@ -187,15 +187,40 @@ class ClientProjectFinanceController extends Controller
             return back()->with('error', 'Time tracking is available once the proposal is accepted.');
         }
 
-        $data = $request->validate([
-            'occurred_on' => ['required', 'date'],
-            'hours' => ['required', 'numeric', 'min:0.01', 'max:24'],
-            'note' => ['nullable', 'string', 'max:500'],
-        ]);
+        $data = $this->validateTimeEntry($request);
+        $payload = $this->buildTimeEntryPayload($data);
 
-        $client_project->timeEntries()->create($data);
+        if ($payload === null) {
+            return back()
+                ->withErrors(['hours' => 'Provide a start time, or hours, or both — an empty entry can\'t be saved.'])
+                ->withInput();
+        }
 
-        return back()->with('success', 'Time entry added.');
+        $client_project->timeEntries()->create($payload);
+
+        $message = $payload['hours'] === null
+            ? 'Time entry started — add an end time later to close it.'
+            : 'Time entry added.';
+
+        return back()->with('success', $message);
+    }
+
+    public function updateTime(Request $request, ClientProject $client_project, ClientProjectTimeEntry $time_entry)
+    {
+        abort_unless($time_entry->client_project_id === $client_project->id, 404);
+
+        $data = $this->validateTimeEntry($request);
+        $payload = $this->buildTimeEntryPayload($data);
+
+        if ($payload === null) {
+            return back()
+                ->withErrors(['hours' => 'Provide a start time, or hours, or both — an empty entry can\'t be saved.'])
+                ->withInput();
+        }
+
+        $time_entry->fill($payload)->save();
+
+        return back()->with('success', 'Time entry updated.');
     }
 
     public function destroyTime(ClientProject $client_project, ClientProjectTimeEntry $time_entry)
@@ -204,6 +229,77 @@ class ClientProjectFinanceController extends Controller
         $time_entry->delete();
 
         return back()->with('success', 'Time entry removed.');
+    }
+
+    /**
+     * Shared validation for create/update of a time entry.
+     * Either hours OR start_time must be provided. End time is optional;
+     * if provided, it must be after start_time.
+     */
+    private function validateTimeEntry(Request $request): array
+    {
+        return $request->validate([
+            'occurred_on' => ['required', 'date'],
+            'start_time' => ['nullable', 'regex:/^\d{1,2}:\d{2}$/'],
+            'end_time' => ['nullable', 'regex:/^\d{1,2}:\d{2}$/'],
+            'hours' => ['nullable', 'numeric', 'min:0.01', 'max:24'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ], [
+            'start_time.regex' => 'Start time must look like HH:MM (24h).',
+            'end_time.regex' => 'End time must look like HH:MM (24h).',
+        ]);
+    }
+
+    /**
+     * Build the persistable time-entry attributes from validated input.
+     * Returns null when nothing meaningful was provided (refuses to save
+     * a row that has no hours and no start time).
+     *
+     * Rules:
+     *   - If both start_time & end_time are present, hours is recomputed
+     *     from the range (any submitted hours value is ignored to keep
+     *     the two in sync).
+     *   - If only start_time is present, the entry stays "open" (hours = null).
+     *   - If only hours is present (legacy / quick log), start/end stay null.
+     */
+    private function buildTimeEntryPayload(array $data): ?array
+    {
+        $start = $data['start_time'] ?? null;
+        $end = $data['end_time'] ?? null;
+        $hours = $data['hours'] ?? null;
+
+        if ($end && !$start) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'start_time' => 'Pick a start time before setting an end time.',
+            ]);
+        }
+
+        if ($start && $end) {
+            $computed = ClientProjectTimeEntry::computeHoursFromRange($start, $end);
+            if ($computed === null) {
+                // Range was invalid (end <= start). Surface as a validation error.
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'end_time' => 'End time must be after start time.',
+                ]);
+            }
+            $hours = $computed;
+        } elseif ($start && !$end) {
+            // Open / in-progress entry — no hours yet.
+            $hours = null;
+        }
+
+        // Refuse a completely blank entry.
+        if (!$start && !$end && $hours === null) {
+            return null;
+        }
+
+        return [
+            'occurred_on' => $data['occurred_on'],
+            'start_time' => $start ?: null,
+            'end_time' => $end ?: null,
+            'hours' => $hours,
+            'note' => $data['note'] ?? null,
+        ];
     }
 
     private function defaultInstallmentLabel(int $plan, int $index): string

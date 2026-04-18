@@ -38,13 +38,29 @@
 
       var events = <?php echo json_encode($events, 15, 512) ?>;
 
+      // Two layouts: desktop = single row; mobile = three stacked rows
+      // (view buttons on top, title in the middle, prev/today/next at bottom).
+      // We swap the toolbar config when crossing the breakpoint.
+      var DESKTOP_TOOLBAR = {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,listMonth'
+      };
+      // Spaces (not commas) make prev / today / next sit in their own groups
+      // so we can `justify-content: space-between` them on mobile.
+      var MOBILE_TOOLBAR = {
+        left: 'prev today next',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,listMonth'
+      };
+      var MOBILE_BREAKPOINT = 700;
+      function pickToolbar() {
+        return window.innerWidth <= MOBILE_BREAKPOINT ? MOBILE_TOOLBAR : DESKTOP_TOOLBAR;
+      }
+
       var calendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,listMonth'
-        },
+        headerToolbar: pickToolbar(),
         firstDay: 1,
         height: 'auto',
         events: events,
@@ -58,6 +74,15 @@
         eventDidMount: function (info) {
           if (info.event.extendedProps && info.event.extendedProps.status) {
             info.el.setAttribute('title', info.event.title + ' — ' + info.event.extendedProps.status);
+          }
+        },
+        windowResize: function () {
+          var next = pickToolbar();
+          var current = calendar.getOption('headerToolbar');
+          // Only swap when the layout actually changes — avoids re-rendering
+          // the toolbar on every pixel of resize.
+          if (!current || current.left !== next.left) {
+            calendar.setOption('headerToolbar', next);
           }
         }
       });

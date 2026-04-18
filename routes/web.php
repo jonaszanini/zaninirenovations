@@ -103,6 +103,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.returns.destroy');
     Route::post('client-projects/{client_project}/time', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeTime'])
         ->name('client-projects.time.store');
+    Route::put('client-projects/{client_project}/time/{time_entry}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'updateTime'])
+        ->name('client-projects.time.update');
     Route::delete('client-projects/{client_project}/time/{time_entry}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyTime'])
         ->name('client-projects.time.destroy');
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)

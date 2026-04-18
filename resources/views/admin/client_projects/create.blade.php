@@ -43,6 +43,47 @@
         </div>
       </div>
 
+      <div class="admin-form-section">
+        <h3>Billing</h3>
+        @php
+          $billingType = old('billing_type', \App\Models\ClientProject::BILLING_FIXED);
+        @endphp
+        <div class="admin-form-group cp-billing-choice">
+          <label class="cp-billing-option">
+            <input type="radio" name="billing_type" value="{{ \App\Models\ClientProject::BILLING_FIXED }}"
+                   data-cp-billing
+                   @checked($billingType === \App\Models\ClientProject::BILLING_FIXED)>
+            <span>
+              <strong>Fixed price</strong>
+              <small>One total amount, paid in 1–4 installments.</small>
+            </span>
+          </label>
+          <label class="cp-billing-option">
+            <input type="radio" name="billing_type" value="{{ \App\Models\ClientProject::BILLING_HOURLY }}"
+                   data-cp-billing
+                   @checked($billingType === \App\Models\ClientProject::BILLING_HOURLY)>
+            <span>
+              <strong>Hourly rate</strong>
+              <small>Set a rate per hour — earnings = rate × logged hours.</small>
+            </span>
+          </label>
+        </div>
+        @error('billing_type') <p class="admin-form-error">{{ $message }}</p> @enderror
+
+        <div class="admin-form-group cp-hourly-rate-group" data-cp-hourly-rate
+             style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY ? '' : 'display:none;' }}">
+          <label for="cp-hourly-rate">Hourly rate (CAD / hour) <span class="cp-required">*</span></label>
+          <input type="text" id="cp-hourly-rate" name="hourly_rate"
+                 class="cp-money-input"
+                 inputmode="decimal"
+                 autocomplete="off"
+                 placeholder="0.00"
+                 value="{{ old('hourly_rate') }}">
+          @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
+          <p class="admin-form-help">You can adjust this later from the project's Financials tab.</p>
+        </div>
+      </div>
+
       <div class="admin-form-group">
         <label for="cp-notes">Notes</label>
         <textarea id="cp-notes" name="notes" rows="4" maxlength="5000">{{ old('notes') }}</textarea>

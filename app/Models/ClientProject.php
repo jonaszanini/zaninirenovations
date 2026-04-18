@@ -26,6 +26,11 @@ class ClientProject extends Model
     // Canadian HST rate applied to revenue for set-aside calculation.
     public const HST_RATE = 0.13;
 
+    // Billing modes — fixed = traditional total amount + installments;
+    // hourly  = revenue is logged hours * hourly_rate.
+    public const BILLING_FIXED = 'fixed';
+    public const BILLING_HOURLY = 'hourly';
+
     protected $fillable = [
         'name',
         'client_name',
@@ -40,6 +45,8 @@ class ClientProject extends Model
         'calendar_email_sent_at',
         'total_amount',
         'payment_plan',
+        'billing_type',
+        'hourly_rate',
         'last_quote_reminder_sent_at',
         'quote_sent_follow_up_due_at',
         'quote_sent_follow_up_sent_at',
@@ -55,6 +62,7 @@ class ClientProject extends Model
         'quote_sent_follow_up_sent_at' => 'datetime',
         'total_amount' => 'decimal:2',
         'payment_plan' => 'integer',
+        'hourly_rate' => 'decimal:2',
     ];
 
     // --- Relationships -----------------------------------------------------
@@ -155,6 +163,12 @@ class ClientProject extends Model
         ], true);
     }
 
+    /** True if the project is billed by the hour (rate × logged hours). */
+    public function isHourly(): bool
+    {
+        return $this->billing_type === self::BILLING_HOURLY;
+    }
+
     // --- Money & profit calculations --------------------------------------
 
     /** Sum of expense amounts (without subtracting returns). */
@@ -178,6 +192,10 @@ class ClientProject extends Model
     /** Sum of paid installments (revenue recognised so far). */
     public function totalRevenueCollected(): float
     {
+        if ($this->isHourly()) {
+            return $this->hourlyAmountEarned();
+        }
+
         return (float) $this->installments
             ->where('is_paid', true)
             ->sum('amount');
@@ -187,6 +205,17 @@ class ClientProject extends Model
     public function revenueForProfit(): float
     {
         return $this->totalRevenueCollected();
+    }
+
+    /** Money earned so far on an hourly project = rate × closed-entry hours. */
+    public function hourlyAmountEarned(): float
+    {
+        $rate = (float) ($this->hourly_rate ?? 0);
+        if ($rate <= 0) {
+            return 0.0;
+        }
+
+        return round($rate * $this->totalHours(), 2);
     }
 
     public function grossProfit(): float
@@ -204,9 +233,15 @@ class ClientProject extends Model
         return $this->grossProfit() - $this->hstToSave();
     }
 
+    /**
+     * Sum of hours across closed entries only — entries with just a start
+     * time but no end time (in-progress) don't count yet.
+     */
     public function totalHours(): float
     {
-        return (float) $this->timeEntries->sum('hours');
+        return (float) $this->timeEntries
+            ->filter(fn ($entry) => $entry->hours !== null)
+            ->sum('hours');
     }
 
     public function effectiveHourlyRate(): ?float

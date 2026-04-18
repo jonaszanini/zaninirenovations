@@ -96,7 +96,17 @@ class ClientProjectController extends Controller
             'client_phone' => ['nullable', 'string', 'max:50'],
             'client_address' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'billing_type' => ['required', \Illuminate\Validation\Rule::in([
+                ClientProject::BILLING_FIXED,
+                ClientProject::BILLING_HOURLY,
+            ])],
+            'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
         ]);
+
+        // Normalise hourly_rate so fixed projects don't carry a stray rate.
+        if ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
+            $data['hourly_rate'] = null;
+        }
 
         $project = DB::transaction(function () use ($data) {
             $project = ClientProject::create(array_merge($data, [
@@ -150,7 +160,22 @@ class ClientProjectController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'billing_type' => ['nullable', \Illuminate\Validation\Rule::in([
+                ClientProject::BILLING_FIXED,
+                ClientProject::BILLING_HOURLY,
+            ])],
+            'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
         ]);
+
+        // billing_type is optional on update — some narrower forms (like the
+        // schedule-only partial on the show page) don't post it. Only update
+        // billing fields if billing_type was actually present in the request,
+        // otherwise leave the existing billing config untouched.
+        if (!$request->has('billing_type')) {
+            unset($data['billing_type'], $data['hourly_rate']);
+        } elseif ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
+            $data['hourly_rate'] = null;
+        }
 
         $previousStart = $client_project->start_date ? $client_project->start_date->toDateString() : null;
         $previousEnd = $client_project->end_date ? $client_project->end_date->toDateString() : null;
