@@ -6223,6 +6223,14 @@ ul.pagination li:last-child {
   left: 0;
 }
 
+/* Latest projects: Load More button row */
+.latest-projects-load-more-row {
+  margin-top: 24px;
+}
+.latest-projects-load-more-row .btn-theme.js-latest-projects-load-more {
+  min-width: 180px;
+}
+
 /* Latest projects: show only title on hover overlay */
 .js-latest-project-item .portfolio-light-box .portfolio-info-box {
   padding: 10px 8px;
@@ -6232,6 +6240,36 @@ ul.pagination li:last-child {
 }
 .js-latest-project-item .portfolio-light-box .portfolio-info-box span {
   display: none;
+}
+
+/* Latest projects: force square tiles regardless of photo dimensions.
+   The image is pinned to fill the square and is cropped/centered. */
+.js-latest-project-item .portfolio-light-box .portfolio-img {
+  display: block;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+/* Padding-bottom fallback for browsers that ignore aspect-ratio */
+@supports not (aspect-ratio: 1 / 1) {
+  .js-latest-project-item .portfolio-light-box .portfolio-img {
+    height: 0;
+    padding-bottom: 100%;
+  }
+}
+.js-latest-project-item .portfolio-light-box .portfolio-img img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center center;
 }
 
 .portfolio-carousel {

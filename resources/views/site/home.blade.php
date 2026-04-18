@@ -350,6 +350,21 @@
         </div>
         <!-- end .row  -->
 
+        @if ($projects->count() > 12)
+        <div class="row latest-projects-load-more-row">
+          <div class="col-md-12 col-sm-12 col-xs-12 text-center">
+            <button
+              type="button"
+              class="btn btn-theme js-latest-projects-load-more"
+              data-initial="12"
+              data-step="4"
+            >
+              Load More
+            </button>
+          </div>
+        </div>
+        @endif
+
       </div>
       <!-- end .container -->
 

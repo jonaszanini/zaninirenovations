@@ -1639,25 +1639,81 @@ jQuery(function ($) {
     zr_project_gallery_modal();
 
     function zr_latest_projects_filter() {
-        var $filters = $('.latest-projects-filters');
-        if (!$filters.length) {
+        var $items = $('.js-latest-project-item');
+        if (!$items.length) {
             return;
         }
 
-        $filters.on('click', '.latest-project-filter-btn', function () {
-            var $btn = $(this);
-            var filter = $btn.attr('data-filter') || 'all';
+        var $filters = $('.latest-projects-filters');
+        var $loadMoreBtn = $('.js-latest-projects-load-more');
+        var $loadMoreRow = $loadMoreBtn.closest('.latest-projects-load-more-row');
 
-            $filters.find('.latest-project-filter-btn').removeClass('is-active').attr('aria-pressed', 'false');
-            $btn.addClass('is-active').attr('aria-pressed', 'true');
+        var initialLimit = parseInt($loadMoreBtn.attr('data-initial'), 10);
+        if (!initialLimit || initialLimit <= 0) { initialLimit = 12; }
+        var step = parseInt($loadMoreBtn.attr('data-step'), 10);
+        if (!step || step <= 0) { step = 4; }
 
-            $('.js-latest-project-item').each(function () {
-                var raw = $(this).attr('data-category-slugs') || '';
-                var slugs = raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-                var match = filter === 'all' || slugs.indexOf(filter) !== -1;
-                $(this).toggle(match);
+        var currentFilter = 'all';
+        var visibleLimit = initialLimit;
+
+        function itemMatches($item, filter) {
+            if (filter === 'all') { return true; }
+            var raw = $item.attr('data-category-slugs') || '';
+            var slugs = raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+            return slugs.indexOf(filter) !== -1;
+        }
+
+        function applyFilterAndLimit() {
+            var matchingTotal = 0;
+            var shown = 0;
+
+            $items.each(function () {
+                var $item = $(this);
+                var matches = itemMatches($item, currentFilter);
+                if (!matches) {
+                    $item.hide();
+                    return;
+                }
+                matchingTotal += 1;
+                if (shown < visibleLimit) {
+                    $item.show();
+                    shown += 1;
+                } else {
+                    $item.hide();
+                }
             });
-        });
+
+            if ($loadMoreRow.length) {
+                if (matchingTotal > shown) {
+                    $loadMoreRow.show();
+                } else {
+                    $loadMoreRow.hide();
+                }
+            }
+        }
+
+        if ($filters.length) {
+            $filters.on('click', '.latest-project-filter-btn', function () {
+                var $btn = $(this);
+                var filter = $btn.attr('data-filter') || 'all';
+
+                $filters.find('.latest-project-filter-btn').removeClass('is-active').attr('aria-pressed', 'false');
+                $btn.addClass('is-active').attr('aria-pressed', 'true');
+
+                currentFilter = filter;
+                visibleLimit = initialLimit;
+                applyFilterAndLimit();
+            });
+        }
+
+        if ($loadMoreBtn.length) {
+            $loadMoreBtn.on('click', function () {
+                visibleLimit += step;
+                applyFilterAndLimit();
+            });
+        }
+
+        applyFilterAndLimit();
     }
 
     zr_latest_projects_filter();
