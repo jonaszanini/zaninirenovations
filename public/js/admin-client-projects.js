@@ -1,13 +1,205 @@
 /*
- * Admin — Client Projects dynamic installment editor.
+ * Admin — Client Projects dynamic installment editor + CAD money mask.
  *
  * Keeps the payment-plan form in sync:
  *   - When the user selects "2/3/4 installments", the correct number of
  *     percentage rows is rendered.
  *   - As they type percentages, the dollar-amount next to each row updates
  *     live and a "Remaining to allocate" counter shows how far from 100% they are.
+ *
+ * Money mask (inputs with class `.cp-money-input`):
+ *   - Calculator-style entry: only digits are accepted, and they accumulate
+ *     from the right so `1` -> `0.01`, `12` -> `0.12`, `123` -> `1.23`,
+ *     `12345` -> `123.45`, `1234567` -> `12,345.67`.
+ *   - Thousand separators (",") are inserted and refreshed on every keystroke
+ *     (including backspace).
+ *   - On form submit the visible value is replaced with a plain numeric string
+ *     (e.g. `12345.67`) so server-side numeric validation keeps working.
  */
 (function () {
+  // --- CAD money mask ---------------------------------------------------
+
+  function formatCentsAsCad(cents) {
+    var whole = Math.floor(cents / 100);
+    var frac = cents % 100;
+    var wholeStr = whole.toLocaleString('en-US'); // 1234567 -> "1,234,567"
+    var fracStr = frac < 10 ? '0' + frac : String(frac);
+    return wholeStr + '.' + fracStr;
+  }
+
+  // Read a raw visible value ("1,234.56" or "1234.56" or "") and turn it
+  // into integer cents. Empty / NaN -> 0.
+  function parseToCents(value) {
+    if (value == null) return 0;
+    var digits = String(value).replace(/\D/g, '');
+    if (!digits) return 0;
+    // Strip leading zeros so "00000123" -> "123".
+    digits = digits.replace(/^0+(?=\d)/, '');
+    var n = parseInt(digits, 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  // Blade renders pre-existing amounts as "1234.56" (no commas). Convert that
+  // to the calculator representation: the whole string is treated as a real
+  // dollar amount, so "1234.56" -> 123456 cents -> "1,234.56".
+  function initExistingValue(input) {
+    var raw = (input.value || '').trim();
+    if (!raw) return;
+    var num = parseFloat(raw.replace(/,/g, ''));
+    if (!isFinite(num) || num <= 0) {
+      input.value = '';
+      return;
+    }
+    var cents = Math.round(num * 100);
+    input.value = formatCentsAsCad(cents);
+  }
+
+  function onMoneyInput(e) {
+    var input = e.target;
+    var raw = input.value;
+    // If the field was fully cleared, keep it empty — calculator style means
+    // the user can get back to a blank slate by deleting everything.
+    if (!raw.replace(/\D/g, '')) {
+      input.value = '';
+      return;
+    }
+    var cents = parseToCents(raw);
+    if (cents === 0) {
+      input.value = '';
+      return;
+    }
+    input.value = formatCentsAsCad(cents);
+    // Always keep caret at the end; it's the calculator-entry convention and
+    // avoids the "cursor jumps around after reformat" problem.
+    var end = input.value.length;
+    try { input.setSelectionRange(end, end); } catch (err) { /* some input types disallow this */ }
+  }
+
+  // Strip thousand separators just before the form is submitted, so the
+  // backend sees "1234.56" instead of "1,234.56".
+  function onFormSubmitStripCommas(e) {
+    var form = e.target;
+    if (!form || !form.querySelectorAll) return;
+    form.querySelectorAll('.cp-money-input').forEach(function (input) {
+      if (input.value) input.value = input.value.replace(/,/g, '');
+    });
+  }
+
+  function initMoneyMask() {
+    var inputs = document.querySelectorAll('.cp-money-input');
+    if (!inputs.length) return;
+    var forms = new Set();
+    inputs.forEach(function (input) {
+      initExistingValue(input);
+      input.addEventListener('input', onMoneyInput);
+      // Block weird key combos that would insert letters (e.g. "e" in some
+      // locales) — the input filter in onMoneyInput handles it too, but this
+      // keeps the field from flickering.
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key && ev.key.length === 1 && !/[\d]/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) {
+          ev.preventDefault();
+        }
+      });
+      if (input.form) forms.add(input.form);
+    });
+    forms.forEach(function (form) {
+      form.addEventListener('submit', onFormSubmitStripCommas);
+    });
+  }
+
+  // --- Time-entry form: start/end → hours -----------------------------
+
+  // Parses "HH:MM" (24h) into integer minutes-since-midnight.
+  function parseHhMm(value) {
+    if (!value || typeof value !== 'string') return null;
+    var m = value.match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    var h = parseInt(m[1], 10);
+    var mm = parseInt(m[2], 10);
+    if (isNaN(h) || isNaN(mm)) return null;
+    return h * 60 + mm;
+  }
+
+  function initTimeForm() {
+    var form = document.getElementById('cp-time-form');
+    if (!form) return;
+
+    var startSel = form.querySelector('#cp-time-start');
+    var endSel = form.querySelector('#cp-time-end');
+    var hoursInput = form.querySelector('#cp-time-hours');
+    if (!startSel || !endSel || !hoursInput) return;
+
+    // --- 1) Only digits and (at most) one decimal separator in Hours -----
+    hoursInput.addEventListener('keydown', function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.key && ev.key.length > 1) return; // arrows, backspace, tab...
+      if (ev.key === '.' || ev.key === ',') {
+        // Allow a single decimal separator; normalise "," to "." on input.
+        if (hoursInput.value.indexOf('.') !== -1) ev.preventDefault();
+        return;
+      }
+      if (!/^\d$/.test(ev.key)) ev.preventDefault();
+    });
+    hoursInput.addEventListener('input', function () {
+      // Strip everything except digits and the first "." (comma → dot).
+      var v = hoursInput.value.replace(/,/g, '.').replace(/[^\d.]/g, '');
+      var firstDot = v.indexOf('.');
+      if (firstDot !== -1) {
+        v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
+      }
+      if (v !== hoursInput.value) hoursInput.value = v;
+    });
+
+    // --- 2) Auto-fill Hours from Start + End, and lock the field --------
+    function syncFromTimes() {
+      var startMin = parseHhMm(startSel.value);
+      var endMin = parseHhMm(endSel.value);
+      var bothChosen = startMin !== null && endMin !== null;
+
+      if (bothChosen) {
+        if (endMin <= startMin) {
+          // Invalid range — don't overwrite. Unlock so the user can fix it.
+          hoursInput.readOnly = false;
+          hoursInput.classList.remove('is-locked');
+          hoursInput.value = '';
+          hoursInput.setCustomValidity('End time must be after start time.');
+          hoursInput.title = 'End time must be after start time.';
+          return;
+        }
+        var hours = (endMin - startMin) / 60;
+        // Keep two decimal places but drop trailing zeros (e.g. 1.5 not 1.50).
+        hoursInput.value = (Math.round(hours * 100) / 100).toString();
+        hoursInput.readOnly = true;
+        hoursInput.classList.add('is-locked');
+        hoursInput.setCustomValidity('');
+        hoursInput.title = 'Calculated from start and end times. Clear one of them to edit manually.';
+      } else {
+        // Either field empty → let the user type hours manually.
+        hoursInput.readOnly = false;
+        hoursInput.classList.remove('is-locked');
+        hoursInput.setCustomValidity('');
+        hoursInput.title = '';
+      }
+    }
+    startSel.addEventListener('change', syncFromTimes);
+    endSel.addEventListener('change', syncFromTimes);
+    syncFromTimes();
+  }
+
+  // --- Dynamic installment editor --------------------------------------
+
+  // Pre-populated percentages whenever a plan is (re)selected.
+  //   1 → 100%
+  //   2 → 50 / 50
+  //   3 → 30 / 30 / 40
+  //   4 → 20 / 20 / 30 / 30
+  var PLAN_DEFAULTS = {
+    1: [100],
+    2: [50, 50],
+    3: [30, 30, 40],
+    4: [20, 20, 30, 30],
+  };
+
   function render() {
     var form = document.getElementById('cp-installments-form');
     if (!form) return;
@@ -18,13 +210,17 @@
     var remainingWrap = document.getElementById('cp-installments-remaining');
     if (!planSelect || !totalInput || !rowsEl || !remainingWrap) return;
 
+    // If any installment is already paid, the payment plan is locked. Never
+    // rebuild rows in that case — we'd throw away the paid/percentage record.
+    var paidCount = parseInt(form.getAttribute('data-paid-count'), 10) || 0;
+    if (paidCount > 0) {
+      wirePercentInputs();
+      recalc();
+      return;
+    }
+
     var plan = parseInt(planSelect.value, 10) || 1;
-
-    // Collect existing percentage values before re-rendering so we preserve user input.
-    var existingPercents = Array.from(rowsEl.querySelectorAll('.cp-pct-input')).map(function (inp) {
-      return inp.value;
-    });
-
+    var defaults = PLAN_DEFAULTS[plan] || PLAN_DEFAULTS[1];
     var ordinals = ['1st', '2nd', '3rd', '4th'];
 
     if (plan === 1) {
@@ -47,17 +243,13 @@
     } else {
       remainingWrap.classList.remove('is-hidden');
 
-      // Default an even split for new rows if no existing values are present.
-      var evenSplit = (100 / plan);
       var rowsHtml = '';
       for (var i = 0; i < plan; i++) {
         var label = (ordinals[i] || (i + 1) + 'th') + ' installment';
-        var defaultPct = (existingPercents[i] !== undefined && existingPercents[i] !== '')
-          ? existingPercents[i]
-          : evenSplit.toFixed(2);
+        var defaultPct = (defaults[i] !== undefined ? defaults[i] : (100 / plan)).toFixed(2);
 
         rowsHtml += [
-          '<div class="cp-installment-row" data-row>',
+          '<div class="cp-installment-row" data-row data-paid="0">',
           '  <div class="cp-installment-label">', label, '</div>',
           '  <div class="cp-installment-pct">',
           '    <label>Percentage</label>',
@@ -86,7 +278,8 @@
     var remainingSpan = form.querySelector('[data-remaining]');
     var rows = form.querySelectorAll('[data-row]');
 
-    var total = parseFloat(totalInput.value);
+    // totalInput uses the CAD mask: "1,234.56". Strip commas before parsing.
+    var total = parseFloat(String(totalInput.value || '').replace(/,/g, ''));
     if (isNaN(total)) total = 0;
 
     var sum = 0;
@@ -133,6 +326,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    initMoneyMask();
+    initTimeForm();
+
     var planSelect = document.getElementById('cp-plan');
     if (!planSelect) return;
 

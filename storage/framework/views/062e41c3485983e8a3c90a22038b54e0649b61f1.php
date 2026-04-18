@@ -2,28 +2,67 @@
   $totalHours = $project->totalHours();
   $netAfterHst = $project->netProfitAfterHst();
   $hourlyRate = $project->effectiveHourlyRate();
+
+  // Build 15-minute time options from 8:00 AM to 8:00 PM inclusive.
+  // Key is 24-hour HH:MM (used as <option value>), label is 12-hour formatted.
+  $timeOptions = [];
+  for ($minutes = 8 * 60; $minutes <= 20 * 60; $minutes += 15) {
+    $h = intdiv($minutes, 60);
+    $m = $minutes % 60;
+    $value = sprintf('%02d:%02d', $h, $m);
+    $hour12 = $h % 12 === 0 ? 12 : $h % 12;
+    $ampm = $h < 12 ? 'AM' : 'PM';
+    $timeOptions[$value] = sprintf('%d:%02d %s', $hour12, $m, $ampm);
+  }
 ?>
 
 <div class="admin-card">
   <h3>Log time</h3>
-  <form action="<?php echo e(route('admin.client-projects.time.store', $project)); ?>" method="post" class="cp-finance-form">
+  <form action="<?php echo e(route('admin.client-projects.time.store', $project)); ?>" method="post" class="cp-finance-form" id="cp-time-form">
     <?php echo csrf_field(); ?>
-    <div class="cp-finance-form-grid">
+    <div class="cp-time-form-grid">
       <div class="admin-form-group">
         <label>Date</label>
         <input type="date" name="occurred_on" required value="<?php echo e(now()->toDateString()); ?>">
       </div>
       <div class="admin-form-group">
-        <label>Hours <span class="cp-hint" title="Decimal hours allowed — e.g. 4.5 for 4h 30m.">?</span></label>
-        <input type="number" name="hours" required step="0.01" min="0.01" max="24" placeholder="e.g. 4.5">
+        <label>Start time</label>
+        <select id="cp-time-start" class="cp-time-select">
+          <option value="">—</option>
+          <?php $__currentLoopData = $timeOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $val => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <option value="<?php echo e($val); ?>"><?php echo e($label); ?></option>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        </select>
+      </div>
+      <div class="admin-form-group">
+        <label>End time</label>
+        <select id="cp-time-end" class="cp-time-select">
+          <option value="">—</option>
+          <?php $__currentLoopData = $timeOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $val => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <option value="<?php echo e($val); ?>"><?php echo e($label); ?></option>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        </select>
+      </div>
+      <div class="admin-form-group">
+        <label>Hours
+          <span class="cp-hint" title="Decimal hours allowed — e.g. 4.5 for 4h 30m. Auto-filled when you pick start and end times.">?</span>
+        </label>
+        <input type="text" id="cp-time-hours" name="hours" required
+               class="cp-hours-input"
+               inputmode="decimal"
+               autocomplete="off"
+               placeholder="e.g. 4.5">
       </div>
       <div class="admin-form-group">
         <label>Note (optional)</label>
         <input type="text" name="note" maxlength="500">
       </div>
-      <div class="admin-form-group cp-finance-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add time entry</button>
-      </div>
+    </div>
+    <p class="admin-form-help cp-time-help">
+      Tip: pick <strong>Start</strong> + <strong>End</strong> (15-min steps, 8 AM – 8 PM) and Hours is filled for you, or just type Hours directly.
+    </p>
+    <div class="cp-time-submit">
+      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add time entry</button>
     </div>
   </form>
 

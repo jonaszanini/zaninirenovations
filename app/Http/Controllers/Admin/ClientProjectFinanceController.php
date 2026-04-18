@@ -42,6 +42,16 @@ class ClientProjectFinanceController extends Controller
         $total = round((float) $data['total_amount'], 2);
         $plan = (int) $data['payment_plan'];
 
+        // If any installment is already paid, the plan count is locked —
+        // changing it would destroy a paid financial record. Percentages and
+        // total amount are still editable.
+        $paidCount = $client_project->installments()->where('is_paid', true)->count();
+        if ($paidCount > 0 && $plan !== (int) $client_project->payment_plan) {
+            return back()
+                ->withErrors(['payment_plan' => 'The payment plan cannot be changed — one or more installments have already been marked paid.'])
+                ->withInput();
+        }
+
         // Normalise percentages. For pay-in-full (1) force a single 100% row.
         if ($plan === 1) {
             $percentages = [100.0];

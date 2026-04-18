@@ -304,6 +304,16 @@
   border-radius: 6px;
   background: #fff;
 }
+/* Paid installment — the percentage is locked and the row is visually muted. */
+.cp-installment-row.is-paid-row {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+.cp-installment-row.is-paid-row .cp-pct-input[readonly] {
+  background: #e2e8f0;
+  color: #475569;
+  cursor: not-allowed;
+}
 .cp-installment-label {
   font-weight: 600;
   font-size: 14px;
@@ -393,6 +403,59 @@
     grid-column: 1 / -1;
   }
   .cp-finance-form-actions .admin-btn {
+    width: 100%;
+  }
+}
+
+/* Log-time form — 5 fields on the top row (Date / Start / End / Hours / Note).
+   The tip line sits below the grid, and the submit button is on its own row
+   below the tip, aligned to the right. */
+.cp-time-form-grid {
+  display: grid;
+  grid-template-columns: 150px 140px 140px 120px minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+.cp-time-form-grid .admin-form-group { margin-bottom: 0; }
+.cp-time-form-grid .admin-form-group input,
+.cp-time-form-grid .admin-form-group select {
+  width: 100%;
+  box-sizing: border-box;
+}
+.cp-time-help {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+.cp-time-submit {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.cp-time-submit .admin-btn {
+  min-height: 44px;
+  white-space: nowrap;
+}
+/* Hours field when auto-filled from start/end — locked appearance. */
+.cp-hours-input.is-locked,
+.cp-hours-input[readonly] {
+  background: #e2e8f0;
+  color: #475569;
+  cursor: not-allowed;
+}
+@media (max-width: 980px) {
+  .cp-time-form-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .cp-time-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cp-time-submit {
+    justify-content: stretch;
+  }
+  .cp-time-submit .admin-btn {
     width: 100%;
   }
 }

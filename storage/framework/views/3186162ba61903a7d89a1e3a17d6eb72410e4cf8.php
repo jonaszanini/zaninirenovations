@@ -2,18 +2,29 @@
   $installments = $project->installments;
   $totalAmount = (float) ($project->total_amount ?? 0);
   $paymentPlan = (int) ($project->payment_plan ?? 1);
+  $paidInstallmentCount = $installments->where('is_paid', true)->count();
+  $planIsLocked = $paidInstallmentCount > 0;
 ?>
 
 
 <div class="admin-card">
   <h3>Payment plan</h3>
-  <form action="<?php echo e(route('admin.client-projects.installments.save', $project)); ?>" method="post" id="cp-installments-form" data-total="<?php echo e($totalAmount); ?>" data-plan="<?php echo e($paymentPlan); ?>">
+  <form action="<?php echo e(route('admin.client-projects.installments.save', $project)); ?>"
+        method="post"
+        id="cp-installments-form"
+        data-total="<?php echo e($totalAmount); ?>"
+        data-plan="<?php echo e($paymentPlan); ?>"
+        data-paid-count="<?php echo e($paidInstallmentCount); ?>">
     <?php echo csrf_field(); ?>
 
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
         <label for="cp-total">Total project amount (CAD) <span class="cp-required">*</span></label>
-        <input type="number" id="cp-total" name="total_amount" step="0.01" min="0.01" required
+        <input type="text" id="cp-total" name="total_amount" required
+               class="cp-money-input"
+               inputmode="decimal"
+               autocomplete="off"
+               placeholder="0.00"
                value="<?php echo e(old('total_amount', $totalAmount > 0 ? number_format($totalAmount, 2, '.', '') : '')); ?>">
         <?php $__errorArgs = ['total_amount'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -28,12 +39,17 @@ unset($__errorArgs, $__bag); ?>
         <label for="cp-plan">Payment schedule
           <span class="cp-hint" title="Choose how the client will pay. With 2/3/4 installments, each row below takes a percentage — the dollar amount is calculated for you.">?</span>
         </label>
-        <select id="cp-plan" name="payment_plan">
+        <select id="cp-plan" name="payment_plan" <?php if($planIsLocked): echo 'disabled'; endif; ?>>
           <option value="1" <?php if($paymentPlan === 1): echo 'selected'; endif; ?>>Pay in full at the end</option>
           <option value="2" <?php if($paymentPlan === 2): echo 'selected'; endif; ?>>2 installments</option>
           <option value="3" <?php if($paymentPlan === 3): echo 'selected'; endif; ?>>3 installments</option>
           <option value="4" <?php if($paymentPlan === 4): echo 'selected'; endif; ?>>4 installments</option>
         </select>
+        <?php if($planIsLocked): ?>
+          
+          <input type="hidden" name="payment_plan" value="<?php echo e($paymentPlan); ?>">
+          <p class="admin-form-help">The payment plan is locked because one or more installments have already been marked paid.</p>
+        <?php endif; ?>
       </div>
     </div>
 
@@ -43,12 +59,20 @@ unset($__errorArgs, $__bag); ?>
       </div>
       <div class="cp-installments-rows" id="cp-installments-rows">
         <?php $__currentLoopData = $installments; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $idx => $inst): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-          <div class="cp-installment-row" data-row>
-            <div class="cp-installment-label"><?php echo e($inst->label ?: 'Installment '.($idx + 1)); ?></div>
+          <div class="cp-installment-row <?php echo e($inst->is_paid ? 'is-paid-row' : ''); ?>" data-row data-paid="<?php echo e($inst->is_paid ? '1' : '0'); ?>">
+            <div class="cp-installment-label">
+              <?php echo e($inst->label ?: 'Installment '.($idx + 1)); ?>
+
+              <?php if($inst->is_paid): ?>
+                <span class="cp-badge" style="background:#22c55e20;color:#15803d;margin-left:6px;">Paid</span>
+              <?php endif; ?>
+            </div>
             <div class="cp-installment-pct">
               <label>Percentage</label>
               <input type="number" class="cp-pct-input" name="percentages[]" step="0.01" min="0" max="100"
-                     value="<?php echo e(number_format((float) $inst->percentage, 2, '.', '')); ?>">
+                     value="<?php echo e(number_format((float) $inst->percentage, 2, '.', '')); ?>"
+                     <?php if($inst->is_paid): echo 'readonly'; endif; ?>
+                     <?php if($inst->is_paid): ?> title="Locked — this installment is already paid." <?php endif; ?>>
               <span>%</span>
             </div>
             <div class="cp-installment-amount">
@@ -147,7 +171,11 @@ unset($__errorArgs, $__bag); ?>
       </div>
       <div class="admin-form-group">
         <label>Amount (CAD)</label>
-        <input type="number" name="amount" required step="0.01" min="0.01">
+        <input type="text" name="amount" required
+               class="cp-money-input"
+               inputmode="decimal"
+               autocomplete="off"
+               placeholder="0.00">
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add expense</button>
@@ -211,7 +239,11 @@ unset($__errorArgs, $__bag); ?>
       </div>
       <div class="admin-form-group">
         <label>Amount (CAD)</label>
-        <input type="number" name="amount" required step="0.01" min="0.01">
+        <input type="text" name="amount" required
+               class="cp-money-input"
+               inputmode="decimal"
+               autocomplete="off"
+               placeholder="0.00">
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add return</button>

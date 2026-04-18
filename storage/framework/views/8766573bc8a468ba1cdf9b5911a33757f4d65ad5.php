@@ -23,7 +23,15 @@
             </td>
           </tr>
           <tr>
-            <td style="background:#f1f5f9;color:#6b7280;padding:16px 28px;font-size:12px;line-height:1.4;">
+            <td align="center" style="background:#ffffff;padding:20px 28px 8px 28px;">
+              <img src="<?php echo e(asset('images/logo.png')); ?>"
+                   alt="<?php echo e(config('mail.from.name', 'Zanini Renovations')); ?>"
+                   width="160"
+                   style="display:block;max-width:160px;height:auto;border:0;outline:none;text-decoration:none;">
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f1f5f9;color:#6b7280;padding:16px 28px;font-size:12px;line-height:1.4;text-align:center;">
               &copy; <?php echo e(date('Y')); ?> <?php echo e(config('mail.from.name', 'Zanini Renovations')); ?>. This is an automated message.
             </td>
           </tr>
