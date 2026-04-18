@@ -23,7 +23,7 @@
         <li>
           <a href="{{ route('admin.projects.index') }}" class="{{ request()->routeIs('admin.projects.*') ? 'is-active' : '' }}">
             <i class="fa fa-folder-open"></i>
-            Latest projects
+            Latest Projects Photos
           </a>
         </li>
         <li>

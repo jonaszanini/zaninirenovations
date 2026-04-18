@@ -6231,15 +6231,20 @@ ul.pagination li:last-child {
   min-width: 180px;
 }
 
-/* Latest projects: show only title on hover overlay */
+/* Latest projects: show only the title on hover overlay (hide category label) */
 .js-latest-project-item .portfolio-light-box .portfolio-info-box {
   padding: 10px 8px;
+  text-align: center;
 }
 .js-latest-project-item .portfolio-light-box .portfolio-info-box h4 {
   margin: 0;
+  font-size: 16px;
+  line-height: 20px;
 }
-.js-latest-project-item .portfolio-light-box .portfolio-info-box span {
-  display: none;
+.js-latest-project-item .portfolio-light-box .portfolio-info-box span,
+.js-latest-project-item .portfolio-light-box .portfolio-info-box br,
+.js-latest-project-item .portfolio-light-box .portfolio-info-box p {
+  display: none !important;
 }
 
 /* Latest projects: force square tiles regardless of photo dimensions.
