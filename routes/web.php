@@ -64,7 +64,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::get('/', function () {
-        return redirect()->route('admin.projects.index');
+        return redirect()->route('admin.client-projects.index');
     });
 
     Route::get('google-photos/connect', [GooglePhotosController::class, 'connect'])->name('google-photos.connect');
@@ -74,10 +74,37 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('google-photos/picker-sessions/{sessionId}', [GooglePhotosController::class, 'showPickerSession'])->name('google-photos.picker-sessions.show');
     Route::get('google-photos/picker-sessions/{sessionId}/media', [GooglePhotosController::class, 'pickedMedia'])->name('google-photos.picker-sessions.media');
 
-    Route::post('projects/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])
-        ->name('projects.photos.rotate');
-    Route::post('projects/{project}/photos/{photo}/crop', [ProjectController::class, 'cropPhoto'])
-        ->name('projects.photos.crop');
-    Route::resource('projects', ProjectController::class)->except(['show']);
+    // Portfolio (a.k.a. "Latest Projects Photos") — manages Project/ProjectPhoto used on the public home page.
+    Route::post('portfolio/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])
+        ->name('portfolio.photos.rotate');
+    Route::post('portfolio/{project}/photos/{photo}/crop', [ProjectController::class, 'cropPhoto'])
+        ->name('portfolio.photos.crop');
+    Route::resource('portfolio', ProjectController::class)
+        ->parameters(['portfolio' => 'project'])
+        ->except(['show']);
     Route::resource('categories', CategoryController::class)->except(['show']);
+
+    // Client Projects management (quote → completion lifecycle).
+    Route::get('client-projects/calendar', [\App\Http\Controllers\Admin\ClientProjectController::class, 'calendar'])
+        ->name('client-projects.calendar');
+    Route::post('client-projects/{client_project}/status', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'update'])
+        ->name('client-projects.status.update');
+    Route::post('client-projects/{client_project}/installments', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'saveInstallments'])
+        ->name('client-projects.installments.save');
+    Route::post('client-projects/{client_project}/installments/{installment}/paid', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'togglePaid'])
+        ->name('client-projects.installments.toggle-paid');
+    Route::post('client-projects/{client_project}/expenses', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeExpense'])
+        ->name('client-projects.expenses.store');
+    Route::delete('client-projects/{client_project}/expenses/{expense}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyExpense'])
+        ->name('client-projects.expenses.destroy');
+    Route::post('client-projects/{client_project}/returns', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeReturn'])
+        ->name('client-projects.returns.store');
+    Route::delete('client-projects/{client_project}/returns/{project_return}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyReturn'])
+        ->name('client-projects.returns.destroy');
+    Route::post('client-projects/{client_project}/time', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeTime'])
+        ->name('client-projects.time.store');
+    Route::delete('client-projects/{client_project}/time/{time_entry}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyTime'])
+        ->name('client-projects.time.destroy');
+    Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
+        ->parameters(['client-projects' => 'client_project']);
 });

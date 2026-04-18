@@ -15,7 +15,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Daily reminder emails for Quote Pending projects + follow-ups for
+        // projects whose Quote Sent 2-day follow-up is due.
+        $schedule->command('client-projects:send-reminders')
+            ->dailyAt('09:00')
+            ->timezone('America/Toronto')
+            ->withoutOverlapping();
     }
 
     /**

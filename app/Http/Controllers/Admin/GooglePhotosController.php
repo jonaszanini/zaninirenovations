@@ -39,13 +39,13 @@ class GooglePhotosController extends Controller
             );
 
             return redirect()
-                ->route('admin.projects.index')
+                ->route('admin.portfolio.index')
                 ->with('success', 'Google Photos connected.');
         } catch (Throwable $e) {
             report($e);
 
             return redirect()
-                ->route('admin.projects.index')
+                ->route('admin.portfolio.index')
                 ->with('error', 'Google Photos connection failed: '.$e->getMessage());
         }
     }

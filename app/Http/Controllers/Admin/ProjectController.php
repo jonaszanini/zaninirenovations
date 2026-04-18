@@ -28,7 +28,7 @@ class ProjectController extends Controller
             ->orderByCompletionLatest()
             ->paginate(15);
 
-        return view('admin.projects.index', compact('projects'));
+        return view('admin.portfolio.index', compact('projects'));
     }
 
     public function create()
@@ -38,7 +38,7 @@ class ProjectController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.projects.create', compact('categories'));
+        return view('admin.portfolio.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -106,7 +106,7 @@ class ProjectController extends Controller
         }
 
         return redirect()
-            ->route('admin.projects.index')
+            ->route('admin.portfolio.index')
             ->with('success', 'Project created.');
     }
 
@@ -122,7 +122,7 @@ class ProjectController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.projects.edit', compact('project', 'categories'));
+        return view('admin.portfolio.edit', compact('project', 'categories'));
     }
 
     public function update(Request $request, Project $project)
@@ -250,7 +250,7 @@ class ProjectController extends Controller
         }
 
         return redirect()
-            ->route('admin.projects.edit', $project)
+            ->route('admin.portfolio.edit', $project)
             ->with('success', 'Project updated.');
     }
 
@@ -281,7 +281,7 @@ class ProjectController extends Controller
         $this->syncPublicStorageFallback($photo->path);
 
         return redirect()
-            ->route('admin.projects.edit', $project)
+            ->route('admin.portfolio.edit', $project)
             ->with('success', 'Photo rotated.');
     }
 
@@ -369,7 +369,7 @@ class ProjectController extends Controller
         }
 
         return redirect()
-            ->route('admin.projects.edit', $project)
+            ->route('admin.portfolio.edit', $project)
             ->with('success', 'Photo cropped.');
     }
 
@@ -382,7 +382,7 @@ class ProjectController extends Controller
         $project->delete();
 
         return redirect()
-            ->route('admin.projects.index')
+            ->route('admin.portfolio.index')
             ->with('success', 'Project deleted.');
     }
 

@@ -9,6 +9,7 @@
   <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
   <link rel="stylesheet" href="{{ asset('css/font-awesome.min.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/admin-client-projects.css') }}">
   @stack('head')
 </head>
 <body class="admin-body">
@@ -16,12 +17,24 @@
     <div class="admin-nav-backdrop" id="admin-nav-backdrop" aria-hidden="true" hidden></div>
     <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
       <div class="admin-sidebar-brand">
-        <a href="{{ route('admin.projects.index') }}">Zanini Renovations</a>
+        <a href="{{ route('admin.client-projects.index') }}">Zanini Renovations</a>
         <span>Admin</span>
       </div>
       <ul class="admin-nav">
         <li>
-          <a href="{{ route('admin.projects.index') }}" class="{{ request()->routeIs('admin.projects.*') ? 'is-active' : '' }}">
+          <a href="{{ route('admin.client-projects.index') }}" class="{{ request()->routeIs('admin.client-projects.index') || request()->routeIs('admin.client-projects.create') || request()->routeIs('admin.client-projects.show') || request()->routeIs('admin.client-projects.edit') || request()->routeIs('admin.client-projects.store') || request()->routeIs('admin.client-projects.update') ? 'is-active' : '' }}">
+            <i class="fa fa-briefcase"></i>
+            Projects
+          </a>
+        </li>
+        <li>
+          <a href="{{ route('admin.client-projects.calendar') }}" class="{{ request()->routeIs('admin.client-projects.calendar') ? 'is-active' : '' }}">
+            <i class="fa fa-calendar"></i>
+            Project Calendar
+          </a>
+        </li>
+        <li>
+          <a href="{{ route('admin.portfolio.index') }}" class="{{ request()->routeIs('admin.portfolio.*') ? 'is-active' : '' }}">
             <i class="fa fa-folder-open"></i>
             Latest Projects Photos
           </a>
@@ -146,6 +159,7 @@
         });
     });
   </script>
+  <script src="{{ asset('js/admin-client-projects.js') }}"></script>
   @stack('scripts')
 </body>
 </html>
