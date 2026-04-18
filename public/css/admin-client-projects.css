@@ -365,19 +365,35 @@
 }
 .cp-finance-form-grid {
   display: grid;
-  grid-template-columns: 140px 2fr 140px auto;
+  grid-template-columns: 160px minmax(0, 2fr) 160px auto;
   gap: 12px;
   align-items: end;
 }
+/* Make every form field stretch to fill its grid cell so the browser's
+   default width for type="number" can't push the button out of place. */
+.cp-finance-form-grid .admin-form-group { margin-bottom: 0; }
+.cp-finance-form-grid .admin-form-group input,
+.cp-finance-form-grid .admin-form-group select {
+  width: 100%;
+  box-sizing: border-box;
+}
 .cp-finance-form-actions {
   margin: 0;
+  align-self: end;
 }
-@media (max-width: 700px) {
+.cp-finance-form-actions .admin-btn {
+  min-height: 44px;      /* match input height */
+  white-space: nowrap;
+}
+@media (max-width: 820px) {
   .cp-finance-form-grid {
     grid-template-columns: 1fr 1fr;
   }
   .cp-finance-form-actions {
     grid-column: 1 / -1;
+  }
+  .cp-finance-form-actions .admin-btn {
+    width: 100%;
   }
 }
 
