@@ -107,6 +107,17 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.time.update');
     Route::delete('client-projects/{client_project}/time/{time_entry}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyTime'])
         ->name('client-projects.time.destroy');
+
+    // Contract (rich-text body, PDF generation, email-to-client).
+    Route::get('client-projects/{client_project}/contract/edit', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'edit'])
+        ->name('client-projects.contract.edit');
+    Route::put('client-projects/{client_project}/contract', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'update'])
+        ->name('client-projects.contract.update');
+    Route::get('client-projects/{client_project}/contract/pdf', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'downloadPdf'])
+        ->name('client-projects.contract.pdf');
+    Route::post('client-projects/{client_project}/contract/send', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'send'])
+        ->name('client-projects.contract.send');
+
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
 });

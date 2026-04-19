@@ -942,3 +942,258 @@
     grid-column: 2 / span 3;    /* Note — three quarters */
   }
 }
+
+/* =================================================================
+   Contract tab
+   ================================================================= */
+
+/* Empty state — large centered "Create Contract" button. */
+.cp-contract-empty {
+  text-align: center;
+}
+.cp-contract-empty h3 {
+  margin-top: 0;
+}
+.cp-contract-empty .admin-form-help {
+  max-width: 540px;
+  margin: 6px auto 22px;
+  text-align: center;
+}
+.cp-contract-empty-action {
+  margin: 8px 0 4px;
+}
+.cp-contract-empty-action .admin-btn {
+  font-size: 15px;
+  padding: 14px 28px;
+  min-height: 52px;
+}
+.cp-contract-empty-action .admin-btn .fa {
+  margin-right: 6px;
+}
+
+/* Card containing the saved/sent contract preview. */
+.cp-contract-card h3 {
+  margin: 0;
+}
+.cp-contract-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.cp-contract-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.cp-contract-version {
+  color: #6b7280;
+  font-size: 12px;
+}
+.cp-contract-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cp-contract-actions form {
+  margin: 0;
+}
+.cp-contract-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #78350f;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.cp-contract-warning .fa {
+  font-size: 16px;
+  margin-top: 1px;
+}
+.cp-contract-warning a {
+  color: #024768;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* On-screen preview of the contract body (mirrors the PDF look). */
+.cp-contract-preview {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 28px 32px;
+  margin-top: 6px;
+  color: #1f2937;
+  line-height: 1.55;
+  font-size: 14px;
+}
+.cp-contract-preview-parties {
+  margin-bottom: 18px;
+}
+.cp-contract-parties-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+.cp-contract-parties-table td {
+  width: 50%;
+  vertical-align: top;
+  border: 1px solid #d8dee4;
+  background: #f9fafb;
+  padding: 12px 14px;
+}
+.cp-party-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #024768;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.cp-party-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+/* Render the rich-text body's typography sensibly. */
+.cp-contract-preview-body {
+  margin-top: 8px;
+}
+.cp-contract-preview-body h1,
+.cp-contract-preview-body h2,
+.cp-contract-preview-body h3,
+.cp-contract-preview-body h4 {
+  color: #024768;
+  margin: 18px 0 8px;
+}
+.cp-contract-preview-body h1 { font-size: 22px; }
+.cp-contract-preview-body h2 { font-size: 18px; }
+.cp-contract-preview-body h3 { font-size: 16px; }
+.cp-contract-preview-body p {
+  margin: 0 0 10px;
+}
+.cp-contract-preview-body ul,
+.cp-contract-preview-body ol {
+  margin: 0 0 12px 24px;
+  padding: 0;
+}
+.cp-contract-preview-body li {
+  margin-bottom: 4px;
+}
+.cp-contract-preview-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+.cp-contract-preview-body table th,
+.cp-contract-preview-body table td {
+  border: 1px solid #d8dee4;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+.cp-contract-preview-body table th {
+  background: #eef2f6;
+  text-align: left;
+}
+.cp-contract-preview-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Signature block. */
+.cp-contract-preview-signatures {
+  margin-top: 36px;
+}
+.cp-contract-preview-signatures table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.cp-contract-preview-signatures td {
+  width: 50%;
+  vertical-align: top;
+  padding: 0 14px;
+}
+.cp-sig-line {
+  border-top: 1px solid #1f2937;
+  margin-bottom: 6px;
+}
+.cp-sig-date {
+  margin-top: 8px;
+  color: #4b5563;
+}
+.cp-contract-entire {
+  margin-top: 28px;
+  padding-top: 12px;
+  font-size: 13px;
+  color: #1f2937;
+  line-height: 1.55;
+}
+
+/* Editor view (TinyMCE). */
+.cp-contract-editor-card {
+  padding-bottom: 1.25rem;
+}
+.cp-contract-editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.cp-contract-editor-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+/* Mobile tweaks. */
+@media (max-width: 700px) {
+  .cp-contract-header {
+    flex-direction: column;
+  }
+  .cp-contract-actions {
+    width: 100%;
+  }
+  .cp-contract-actions .admin-btn,
+  .cp-contract-actions form {
+    flex: 1 1 auto;
+  }
+  /* Stack signatures and parties vertically on mobile. */
+  .cp-contract-parties-table,
+  .cp-contract-parties-table tbody,
+  .cp-contract-parties-table tr {
+    display: block;
+  }
+  .cp-contract-parties-table td,
+  .cp-contract-preview-signatures td {
+    display: block;
+    width: 100%;
+    padding: 12px 14px;
+  }
+  .cp-contract-preview-signatures table,
+  .cp-contract-preview-signatures tbody,
+  .cp-contract-preview-signatures tr {
+    display: block;
+  }
+  .cp-contract-preview {
+    padding: 18px;
+  }
+}
+

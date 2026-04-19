@@ -75,6 +75,7 @@
     <button type="button" class="cp-tab" data-tab="schedule" role="tab">Calendar</button>
     <button type="button" class="cp-tab" data-tab="financials" role="tab">Financials</button>
     <button type="button" class="cp-tab" data-tab="time" role="tab">Time Tracking</button>
+    <button type="button" class="cp-tab" data-tab="contract" role="tab">Contract</button>
     <button type="button" class="cp-tab" data-tab="history" role="tab">History</button>
   </div>
 
@@ -173,6 +174,11 @@
     @endif
   </section>
 
+  {{-- CONTRACT TAB -------------------------------------------------------- --}}
+  <section class="cp-tab-panel" data-panel="contract" id="contract">
+    @include('admin.client_projects._contract', ['project' => $project])
+  </section>
+
   {{-- HISTORY TAB --------------------------------------------------------- --}}
   <section class="cp-tab-panel" data-panel="history">
     <div class="admin-card">
@@ -230,10 +236,18 @@
         t.addEventListener('click', function () { show(t.getAttribute('data-tab')); });
       });
 
-      try {
-        var saved = sessionStorage.getItem('cpActiveTab-{{ $project->id }}');
-        if (saved) show(saved);
-      } catch (e) {}
+      // Priority: explicit URL hash (e.g. /show#contract) wins over the
+      // session-remembered tab. This lets the controller redirect a user
+      // back to the right tab after a save/email action.
+      var hashTab = (window.location.hash || '').replace('#', '');
+      if (hashTab && document.querySelector('.cp-tab[data-tab="' + hashTab + '"]')) {
+        show(hashTab);
+      } else {
+        try {
+          var saved = sessionStorage.getItem('cpActiveTab-{{ $project->id }}');
+          if (saved) show(saved);
+        } catch (e) {}
+      }
     })();
   </script>
 @endsection

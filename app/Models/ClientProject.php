@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * ClientProject — full business lifecycle for a renovation project
@@ -90,6 +91,43 @@ class ClientProject extends Model
     public function statusHistory(): HasMany
     {
         return $this->hasMany(ClientProjectStatusHistoryEntry::class)->orderByDesc('changed_at');
+    }
+
+    public function contract(): HasOne
+    {
+        return $this->hasOne(ClientProjectContract::class);
+    }
+
+    /**
+     * True iff the project has all the client info required to send the
+     * contract by email (name, phone, email, and service address).
+     */
+    public function hasContactInfoForContract(): bool
+    {
+        return filled($this->client_name)
+            && filled($this->client_phone)
+            && filled($this->client_email)
+            && filled($this->client_address);
+    }
+
+    /** Returns a list of human labels for the missing contact fields. */
+    public function missingContactFieldsForContract(): array
+    {
+        $missing = [];
+        if (blank($this->client_name)) {
+            $missing[] = 'Client name';
+        }
+        if (blank($this->client_phone)) {
+            $missing[] = 'Client phone';
+        }
+        if (blank($this->client_email)) {
+            $missing[] = 'Client email';
+        }
+        if (blank($this->client_address)) {
+            $missing[] = 'Service address';
+        }
+
+        return $missing;
     }
 
     // --- Status helpers ----------------------------------------------------
