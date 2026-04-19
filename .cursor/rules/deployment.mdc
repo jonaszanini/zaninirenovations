@@ -1,0 +1,37 @@
+---
+description: Production deployment paths and post-deploy artisan commands for Zanini Renovations
+alwaysApply: true
+---
+
+# Deployment
+
+## Production server
+
+- **Host:** Hostinger (shared hosting, SSH access available)
+- **Project root on prod:** `/home/u372714627/domains/zaninirenovations.ca/public_html`
+  - This is the Laravel root (contains `artisan`, `app/`, `public/`, etc.).
+  - Always `cd` here before running any `php artisan ...` command on prod.
+
+## Common prod commands
+
+After pushing changes to production, SSH in and run from the project root:
+
+```bash
+cd /home/u372714627/domains/zaninirenovations.ca/public_html
+
+# Recompile Blade templates and clear app cache.
+php artisan view:clear
+php artisan cache:clear
+
+# Only re-run these if the site uses cached config/views in prod.
+php artisan config:cache
+php artisan view:cache
+```
+
+## Asset cache busting
+
+Static CSS/JS assets are referenced with a `?v={{ filemtime(...) }}` query string
+(see `resources/views/site/layouts/public.blade.php` and
+`resources/views/admin/layouts/app.blade.php`). The version updates automatically
+whenever the file on disk changes, so browsers and CDNs always pick up new
+deploys without a manual purge.
