@@ -434,11 +434,23 @@ strong {
   z-index: 9999;
 }
 #preloader span {
-  left: 50%;
-  margin-left: -15px;
-  margin-top: -15px;
   position: absolute;
+  left: 50%;
   top: 50%;
+  /* Translate by half the element's own size so the loader is perfectly
+     centered regardless of the GIF's dimensions (works for the old 30x30
+     spinner and the current 294x260 graphic alike). */
+  -webkit-transform: translate(-50%, -50%);
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+  /* Keep the loader from overflowing on narrow screens. */
+  max-width: 90vw;
+  text-align: center;
+  line-height: 0;
+}
+#preloader span img {
+  max-width: 100%;
+  height: auto;
 }
 
 #backTop {
