@@ -57,7 +57,10 @@
   <link href="{{ url('css/owl.theme.css') }}" rel="stylesheet" type="text/css">
   <link href="{{ url('css/animate.css') }}" rel="stylesheet" type="text/css">
   <link href="{{ url('css/venobox.css') }}" rel="stylesheet" type="text/css">
-  <link rel="stylesheet" href="{{ url('css/styles.css') }}" type="text/css">
+  {{-- Cache-bust styles.css so every push to prod is picked up by phones,
+       browsers and CDNs that would otherwise serve a stale copy. The query
+       string changes whenever the file on disk is modified. --}}
+  <link rel="stylesheet" href="{{ url('css/styles.css') }}?v={{ @filemtime(public_path('css/styles.css')) ?: time() }}" type="text/css">
   @stack('styles')
 </head>
 
@@ -85,7 +88,7 @@
 <script src="{{ url('js/jquery.stellar.min.js') }}"></script>
 <script src="{{ url('js/jquery.counterup.min.js') }}"></script>
 <script src="{{ url('js/venobox.min.js') }}"></script>
-<script src="{{ url('js/custom-scripts.js') }}"></script>
+<script src="{{ url('js/custom-scripts.js') }}?v={{ @filemtime(public_path('js/custom-scripts.js')) ?: time() }}"></script>
 @stack('scripts')
 </body>
 </html>

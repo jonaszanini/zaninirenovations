@@ -8,8 +8,8 @@
   <title>Zanini Renovations</title>
   <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
   <link rel="stylesheet" href="{{ asset('css/font-awesome.min.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/admin-client-projects.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) ?: time() }}">
+  <link rel="stylesheet" href="{{ asset('css/admin-client-projects.css') }}?v={{ @filemtime(public_path('css/admin-client-projects.css')) ?: time() }}">
   @stack('head')
 </head>
 <body class="admin-body">
@@ -159,7 +159,7 @@
         });
     });
   </script>
-  <script src="{{ asset('js/admin-client-projects.js') }}"></script>
+  <script src="{{ asset('js/admin-client-projects.js') }}?v={{ @filemtime(public_path('js/admin-client-projects.js')) ?: time() }}"></script>
   @stack('scripts')
 </body>
 </html>

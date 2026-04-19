@@ -7,7 +7,7 @@
   <title>Zanini Renovations</title>
   <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
   <link rel="stylesheet" href="{{ asset('css/font-awesome.min.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) ?: time() }}">
 </head>
 <body class="admin-body">
   <div class="admin-login-page">
