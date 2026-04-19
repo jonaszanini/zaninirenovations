@@ -363,6 +363,29 @@
   display: block;
 }
 
+/* Mobile: a single row of [label | percentage | amount] gets too cramped
+   below ~560px and the amount overlaps the percentage input. Re-flow the
+   row so the label sits on its own line and the percentage/amount share
+   the next line, with the amount right-aligned underneath. */
+@media (max-width: 560px) {
+  .cp-installment-row {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "label label"
+      "pct   amount";
+    row-gap: 8px;
+  }
+  .cp-installment-label  { grid-area: label; }
+  .cp-installment-pct    { grid-area: pct; }
+  .cp-installment-amount {
+    grid-area: amount;
+    align-self: center;
+  }
+  .cp-amount-preview {
+    font-size: 16px;
+  }
+}
+
 .cp-installments-table .cp-row-paid {
   background: #f0fdf4;
 }

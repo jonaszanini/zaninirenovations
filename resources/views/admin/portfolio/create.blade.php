@@ -3,7 +3,7 @@
 @section('heading', 'New project')
 
 @section('content')
-  <div class="admin-card">
+  <div class="admin-card admin-card--narrow">
     <form action="{{ route('admin.portfolio.store') }}" method="post" enctype="multipart/form-data">
       @csrf
       <div class="admin-form-group">

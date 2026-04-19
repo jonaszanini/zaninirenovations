@@ -180,6 +180,7 @@
       @if ($project->statusHistory->isEmpty())
         <p class="admin-form-help">No history yet.</p>
       @else
+        <div class="admin-table-scroll">
         <table class="admin-table cp-history-table">
           <thead>
             <tr>
@@ -202,6 +203,7 @@
             @endforeach
           </tbody>
         </table>
+        </div>
       @endif
     </div>
   </section>

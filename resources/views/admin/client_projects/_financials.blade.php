@@ -137,6 +137,7 @@
   @if ($installments->isNotEmpty())
     <div class="admin-card">
       <h3>Installments</h3>
+      <div class="admin-table-scroll">
       <table class="admin-table cp-installments-table">
         <thead>
           <tr>
@@ -186,6 +187,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   @endif
 @endif
@@ -220,6 +222,7 @@
   </form>
 
   @if ($project->expenses->isNotEmpty())
+    <div class="admin-table-scroll">
     <table class="admin-table">
       <thead>
         <tr><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th></th></tr>
@@ -246,6 +249,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
   @else
     <p class="admin-form-help">No expenses recorded yet.</p>
   @endif
@@ -280,6 +284,7 @@
   </form>
 
   @if ($project->returns->isNotEmpty())
+    <div class="admin-table-scroll">
     <table class="admin-table">
       <thead>
         <tr><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th></th></tr>
@@ -306,6 +311,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
   @else
     <p class="admin-form-help">No returns recorded yet.</p>
   @endif

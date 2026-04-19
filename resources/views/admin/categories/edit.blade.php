@@ -3,7 +3,7 @@
 @section('heading', 'Edit category')
 
 @section('content')
-  <div class="admin-card">
+  <div class="admin-card admin-card--narrow">
     <form action="{{ route('admin.categories.update', $category) }}" method="post">
       @csrf
       @method('PUT')

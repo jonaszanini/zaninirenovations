@@ -396,20 +396,51 @@ body.admin-body {
   margin: 0 0 1rem;
 }
 
-/* Forms */
+/* Cards
+   Default: fill the full width of the .admin-content area (block-level
+   <div> naturally takes 100% of its container — no explicit width needed,
+   which keeps things well-behaved inside flex/overflow contexts on mobile).
+   Use the .admin-card--narrow modifier on short forms (project create/edit,
+   category create/edit, portfolio create/edit, etc.) where a narrower
+   card keeps inputs and labels readable on wide screens. */
 .admin-card {
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius);
   padding: 1.5rem;
-  max-width: 720px;
+  /* Don't let a wide child (e.g. a many-column table) push the card past
+     the viewport width on mobile. The table itself is wrapped in a
+     horizontally-scrollable container instead. */
+  min-width: 0;
+  max-width: 100%;
   box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-card--narrow {
+  max-width: 720px;
 }
 
 @media (min-width: 768px) {
   .admin-card {
     padding: 1.75rem 2rem;
   }
+}
+
+/* Wrap wide tables in <div class="admin-table-scroll"> ... </div> so the
+   table can scroll horizontally inside its card on mobile without forcing
+   the whole page wider than the viewport. */
+.admin-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Slight bottom space so the scrollbar (when shown on desktop) doesn't
+     hug the next element. */
+  margin-bottom: 0.25rem;
+}
+
+.admin-table-scroll > table {
+  width: 100%;
+  margin-bottom: 0;
 }
 
 .admin-form-group {
@@ -1008,6 +1039,24 @@ html.admin-crop-modal-open {
 
   .admin-main {
     width: 100%;
+    /* Belt-and-braces: the sidebar is position:fixed on mobile so it shouldn't
+       take any width, but min-width:0 makes sure no flex child can push the
+       column wider than the viewport. */
+    min-width: 0;
+    max-width: 100vw;
+  }
+
+  /* Prevent any single wide element (a long word, a wide table, an iframe,
+     etc.) from forcing horizontal page scroll on mobile. Wide tables that
+     legitimately need to scroll should use .admin-table-wrap or
+     .admin-table-scroll, which scroll inside their own container. */
+  body.admin-body {
+    overflow-x: hidden;
+  }
+
+  .admin-content {
+    min-width: 0;
+    max-width: 100vw;
   }
 
   .admin-topbar {

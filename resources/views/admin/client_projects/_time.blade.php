@@ -72,6 +72,7 @@
   </form>
 
   @if ($project->timeEntries->isNotEmpty())
+    <div class="admin-table-scroll">
     <table class="admin-table cp-time-table">
       <thead>
         <tr>
@@ -161,6 +162,7 @@
         @endforeach
       </tbody>
     </table>
+    </div>
   @else
     <p class="admin-form-help">No time entries recorded yet.</p>
   @endif
