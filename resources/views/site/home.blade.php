@@ -655,7 +655,7 @@
             <ul class="contact-info">
               <li>
                 <span class="icon-container"><i class="fa fa-home"></i></span>
-                <address>Carleton Place, ON</address>
+                <address>Located in Carleton Place, ON</address>
               </li>
             </ul>
           </div>
@@ -716,18 +716,11 @@
 
             <h2 class="contact-title">Our location</h2>
 
-            <div class="section-google-map-block wow fadeInUp home-google-map-embed">
-              <iframe
-                title="Zanini Renovations on Google Maps"
-                src="https://www.google.com/maps?q=Zanini+Renovations,+Carleton+Place,+ON,+Canada&amp;output=embed"
-                allowfullscreen=""
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade"
-              ></iframe>
-              <p class="text-center margin-top-12">
-                <a href="https://maps.app.goo.gl/WsKrQcEq2KdPKoN19" target="_blank" rel="noopener noreferrer" class="text-primary-color">Open in Google Maps</a>
-              </p>
-            </div>
+            <p class="home-service-area-blurb wow fadeInUp">
+              Based in Carleton Place, we proudly serve Perth, Smiths Falls, Lanark County, the Ottawa region, and Gatineau.
+            </p>
+
+            <img src="{{ url('images/truck.webp') }}" alt="Zanini Renovations service truck" class="home-service-area-image wow fadeInUp" loading="lazy" decoding="async">
 
           </div>
 
@@ -736,13 +729,6 @@
             <div class="contact-form-block">
 
               <h2 class="contact-title">Send a message</h2>
-              <p class="home-contact-form-whatsapp-note">
-                <a
-                  href="{{ $socialWhatsappUrl }}"
-                  class="home-contact-form-whatsapp-link"
-                  @if (str_starts_with($socialWhatsappUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif
-                ><i class="fa fa-whatsapp" aria-hidden="true"></i> Or reach us on WhatsApp</a>
-              </p>
 
               <form role="form" action="#" method="post" id="contact-form">
 

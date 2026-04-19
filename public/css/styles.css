@@ -3664,7 +3664,8 @@ ul.custom-bullet-list.custom-icon li:before {
   height: 8px;
   -webkit-border-radius: 100%;
   border-radius: 100%;
-  background: #c18363;
+  /* Lighter variant of brand blue #024768 — matches the testimonials dot. */
+  background: #4a9bc4;
 }
 .team-carousel:hover .owl-nav {
   opacity: 1;
@@ -6584,6 +6585,22 @@ ul.pagination li:last-child {
   color: #013251;
 }
 
+.home-service-area-blurb {
+  margin: 6px 0 0;
+  padding: 0;
+  color: #024768;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.home-service-area-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 18px 0 36px;
+  border-radius: 6px;
+}
+
 .home-google-map-embed {
   border: 1px solid #d6e3eb;
   background: #f5f9fb;
@@ -7908,9 +7925,10 @@ footer .social-icons a:hover {
   }
   .service-block-2 h3,
   .service-block-2 h3 a {
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 22px;
+    line-height: 30px;
     font-weight: 600;
+    opacity: 0.85;
   }
   /*----- PROCESS BLOCK  ----*/
   .process-step-1,
@@ -8762,4 +8780,103 @@ button,
 }
 #warranty {
   scroll-margin-top: 100px;
+}
+
+/* =================================================================
+   Mobile navbar — white background, dark-blue links, light-gray
+   active-link background. Overrides the dark template defaults that
+   live in the @media (max-width: 767px) block above.
+   ================================================================= */
+@media only screen and (max-width: 991px) {
+  .main-header-2 .navbar-default .navbar-collapse,
+  .navbar-default .navbar-collapse {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+  }
+  .main-header-2 .navbar-default .navbar-nav,
+  .navbar-default .navbar-nav {
+    background: #ffffff;
+  }
+  /* Make every mobile nav link span the entire row (full-width tap area
+     and full-width active background). Bootstrap's navbar `<a>` sometimes
+     lays out as inline-block on collapsed nav, leaving the active
+     highlight as a small chip instead of filling the row. */
+  .main-header-2 .navbar-default .navbar-nav > li,
+  .navbar-default .navbar-nav > li {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  .main-header-2 .navbar-default .navbar-nav > li > a,
+  .navbar-default .navbar-nav > li > a {
+    color: #024768;
+    background: transparent;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 14px 20px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    outline: none;
+    text-align: left;
+  }
+  /* On touch devices :focus/:active sticks after a tap, which made the
+     last-tapped menu item keep the dark-blue background. Clear those
+     states on mobile so only `.link-active` (set by the scroll-spy)
+     marks the current section. */
+  .main-header-2 .navbar-default .navbar-nav > li > a:hover,
+  .navbar-default .navbar-nav > li > a:hover,
+  .main-header-2 .navbar-default .navbar-nav > li > a:focus,
+  .navbar-default .navbar-nav > li > a:focus,
+  .main-header-2 .navbar-default .navbar-nav > li > a:active,
+  .navbar-default .navbar-nav > li > a:active {
+    color: #024768;
+    background: transparent;
+    outline: none;
+    box-shadow: none;
+    border: 0;
+  }
+  /* Active item: full-row light-gray background. Apply on both the <li>
+     (so the row appears highlighted edge-to-edge regardless of any margin
+     between <a> and the list edge) and the <a> (so the link itself is
+     visibly the highlighted control). */
+  .main-header-2 .navbar-default .navbar-nav > li:has(> a.link-active),
+  .navbar-default .navbar-nav > li:has(> a.link-active) {
+    background: #d6dee6;
+  }
+  .main-header-2 .navbar-default .navbar-nav > li > a.link-active,
+  .navbar-default .navbar-nav > li > a.link-active,
+  .main-header-2 .navbar-default .navbar-nav > li > a.link-active:hover,
+  .navbar-default .navbar-nav > li > a.link-active:hover,
+  .main-header-2 .navbar-default .navbar-nav > li > a.link-active:focus,
+  .navbar-default .navbar-nav > li > a.link-active:focus,
+  .main-header-2 .navbar-default .navbar-nav > li > a.link-active:active,
+  .navbar-default .navbar-nav > li > a.link-active:active {
+    color: #024768;
+    background: #d6dee6; /* Lighter tint of the brand light-gray (#9dadbc). */
+    border: 0;
+    outline: none;
+    box-shadow: none;
+  }
+  /* Drop-down items inside the collapsed mobile menu also get the
+     dark-blue color on the white background. */
+  .main-header-2 .navbar-default .navbar-nav li ul.drop-down li a,
+  .navbar-default .navbar-nav li ul.drop-down li a,
+  .main-header-2 .navbar-default .navbar-nav li ul.drop-down li.drop a,
+  .navbar-default .navbar-nav li ul.drop-down li.drop a,
+  .main-header-2 .navbar-default .navbar-nav .drop-down li a,
+  .navbar-default .navbar-nav .drop-down li a {
+    color: #024768;
+  }
+  .main-header-2 .navbar-default .navbar-nav li ul.drop-down li a:hover,
+  .navbar-default .navbar-nav li ul.drop-down li a:hover {
+    color: #024768;
+    background: #d6dee6;
+  }
+
+  /* The mobile floating bar (#zr-mobile-fb) is built and styled
+     entirely from inline JS (see public-header.blade.php). No
+     stylesheet rules are needed for it here. */
 }
