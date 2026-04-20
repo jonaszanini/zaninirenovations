@@ -5,13 +5,52 @@
   <title>Contract — <?php echo e($project->name); ?></title>
   <style>
     /* ============================================================
-       DomPDF requires inline @page rules for repeating header/footer.
-       Margins reserve space for the fixed-position bars below.
-       A4 = 595 x 842pt. We use generous margins for a print-ready
-       look.
+       Roboto via @font-face. DomPDF reads local TTF files only
+       (it cannot use Google Fonts CDN, which serves WOFF2),
+       so the font files are shipped under public/fonts/roboto/.
+       The url() must be an absolute filesystem path for dompdf
+       to load it reliably across servers.
+       ============================================================ */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 400;
+      src: url("<?php echo e(public_path('fonts/roboto/Roboto-Regular.ttf')); ?>") format('truetype');
+    }
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 700;
+      src: url("<?php echo e(public_path('fonts/roboto/Roboto-Bold.ttf')); ?>") format('truetype');
+    }
+    @font-face {
+      font-family: 'Roboto';
+      font-style: italic;
+      font-weight: 400;
+      src: url("<?php echo e(public_path('fonts/roboto/Roboto-Italic.ttf')); ?>") format('truetype');
+    }
+    @font-face {
+      font-family: 'Roboto';
+      font-style: italic;
+      font-weight: 700;
+      src: url("<?php echo e(public_path('fonts/roboto/Roboto-BoldItalic.ttf')); ?>") format('truetype');
+    }
+
+    /* ============================================================
+       Page layout
+       ------------------------------------------------------------
+       A4 = 595 × 842 pt. Margins reserve room for the fixed
+       header / footer below; everything inside @page (i.e. the
+       body content) automatically respects these margins.
+
+       1 inch = 72 pt. So:
+         top    150pt ≈ 53 mm  (logo + 5 lines of contact + breathing room)
+         right   60pt ≈ 21 mm  (~1 inch readable line length)
+         bottom 100pt ≈ 35 mm  (footer + breathing room)
+         left    60pt ≈ 21 mm
        ============================================================ */
     @page {
-      margin: 130px 50px 110px 50px;
+      margin: 150pt 60pt 100pt 60pt;
     }
 
     * {
@@ -21,20 +60,25 @@
     html, body {
       margin: 0;
       padding: 0;
-      font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
+      font-family: 'Roboto', 'DejaVu Sans', Arial, Helvetica, sans-serif;
       font-size: 11pt;
       line-height: 1.5;
       color: #1f2937;
     }
 
-    /* ---------- Page header (repeats on every page) ---------- */
+    /* ============================================================
+       Repeating page header (logo left, company info right).
+       Sits inside the top page margin via the negative `top`
+       trick that DomPDF supports.
+       ============================================================ */
     .pdf-header {
       position: fixed;
-      top: -110px;
+      top: -120pt;       /* lifts header up into the @page top margin */
       left: 0;
       right: 0;
-      height: 90px;
-      border-bottom: 2px solid #024768;
+      height: 100pt;
+      border-bottom: 1pt solid #024768;
+      padding-bottom: 6pt;
     }
 
     .pdf-header table {
@@ -48,41 +92,40 @@
     }
 
     .pdf-header .logo-cell {
-      width: 160px;
+      width: 200pt;
     }
 
     .pdf-header .logo-cell img {
-      height: 70px;
+      height: 80pt;
       width: auto;
     }
 
-    .pdf-header .title-cell {
+    .pdf-header .info-cell {
       text-align: right;
-      color: #024768;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1f2937;
     }
 
-    .pdf-header .title-cell .title {
-      font-size: 18pt;
-      font-weight: bold;
-      letter-spacing: 0.04em;
+    .pdf-header .info-cell .info-line {
       margin: 0;
     }
 
-    .pdf-header .title-cell .subtitle {
-      font-size: 10pt;
-      color: #5a6570;
-      margin-top: 2px;
+    .pdf-header .info-cell .info-line + .info-line {
+      margin-top: 1pt;
     }
 
-    /* ---------- Page footer (repeats on every page) ---------- */
+    /* ============================================================
+       Repeating page footer (page numbers).
+       ============================================================ */
     .pdf-footer {
       position: fixed;
-      bottom: -90px;
+      bottom: -70pt;
       left: 0;
       right: 0;
-      height: 70px;
-      border-top: 1px solid #d8dee4;
-      padding-top: 8px;
+      height: 50pt;
+      border-top: 1pt solid #d8dee4;
+      padding-top: 6pt;
       font-size: 9pt;
       color: #6b7280;
     }
@@ -92,62 +135,49 @@
       border-collapse: collapse;
     }
 
-    .pdf-footer td {
-      vertical-align: top;
-      padding: 0;
-    }
+    .pdf-footer .left  { text-align: left; }
+    .pdf-footer .right { text-align: right; }
 
-    .pdf-footer .left {
-      text-align: left;
-    }
+    .pdf-pagenum:before   { content: counter(page); }
+    .pdf-pagecount:before { content: counter(pages); }
 
-    .pdf-footer .right {
-      text-align: right;
-    }
-
-    .pdf-pagenum:before {
-      content: counter(page);
-    }
-
-    .pdf-pagecount:before {
-      content: counter(pages);
-    }
-
-    /* ---------- Parties block (first page) ---------- */
+    /* ============================================================
+       Parties block (first page only).
+       ============================================================ */
     .parties-intro {
       font-size: 11pt;
       color: #1f2937;
-      margin-bottom: 14px;
+      margin: 0 0 12pt;
     }
 
     .parties {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 24px;
+      margin-bottom: 24pt;
     }
 
     .parties td {
       width: 50%;
       vertical-align: top;
-      padding: 12px 14px;
-      border: 1px solid #d8dee4;
+      padding: 12pt 14pt;
+      border: 1pt solid #d8dee4;
       background: #f9fafb;
     }
 
     .parties .party-label {
       font-size: 9pt;
-      font-weight: bold;
+      font-weight: 700;
       color: #024768;
       letter-spacing: 0.08em;
-      margin: 0 0 6px;
+      margin: 0 0 6pt;
       text-transform: uppercase;
     }
 
     .parties .party-name {
       font-size: 12pt;
-      font-weight: bold;
+      font-weight: 700;
       color: #1f2937;
-      margin: 0 0 4px;
+      margin: 0 0 4pt;
     }
 
     .parties .party-line {
@@ -157,7 +187,9 @@
       line-height: 1.45;
     }
 
-    /* ---------- Contract body (rich text from TinyMCE) ---------- */
+    /* ============================================================
+       Contract body (rich text from TinyMCE).
+       ============================================================ */
     .contract-body {
       font-size: 11pt;
       color: #1f2937;
@@ -169,8 +201,9 @@
     .contract-body h3,
     .contract-body h4 {
       color: #024768;
-      margin-top: 18px;
-      margin-bottom: 8px;
+      font-weight: 700;
+      margin-top: 18pt;
+      margin-bottom: 8pt;
       page-break-after: avoid;
     }
 
@@ -180,29 +213,29 @@
     .contract-body h4 { font-size: 11pt; }
 
     .contract-body p {
-      margin: 0 0 10px;
+      margin: 0 0 10pt;
     }
 
     .contract-body ul,
     .contract-body ol {
-      margin: 0 0 12px 24px;
+      margin: 0 0 12pt 24pt;
       padding: 0;
     }
 
     .contract-body li {
-      margin-bottom: 4px;
+      margin-bottom: 4pt;
     }
 
     .contract-body table {
       width: 100%;
       border-collapse: collapse;
-      margin: 10px 0;
+      margin: 10pt 0;
     }
 
     .contract-body table th,
     .contract-body table td {
-      border: 1px solid #d8dee4;
-      padding: 6px 8px;
+      border: 1pt solid #d8dee4;
+      padding: 6pt 8pt;
       vertical-align: top;
     }
 
@@ -211,18 +244,20 @@
       text-align: left;
     }
 
-    .contract-body strong { font-weight: bold; }
-    .contract-body em { font-style: italic; }
-    .contract-body u { text-decoration: underline; }
+    .contract-body strong { font-weight: 700; }
+    .contract-body em     { font-style: italic; }
+    .contract-body u      { text-decoration: underline; }
 
     .contract-body img {
       max-width: 100%;
       height: auto;
     }
 
-    /* ---------- Signature block (end of document) ---------- */
+    /* ============================================================
+       Signature block (end of document).
+       ============================================================ */
     .signature-section {
-      margin-top: 50px;
+      margin-top: 50pt;
       page-break-inside: avoid;
     }
 
@@ -234,19 +269,19 @@
     .signature-table td {
       width: 50%;
       vertical-align: top;
-      padding: 0 14px;
+      padding: 0 14pt;
     }
 
     .signature-line {
-      border-top: 1px solid #1f2937;
+      border-top: 1pt solid #1f2937;
       width: 100%;
-      margin-bottom: 4px;
+      margin-bottom: 4pt;
     }
 
     .signature-name {
       font-size: 11pt;
       color: #1f2937;
-      margin: 0 0 14px;
+      margin: 0 0 14pt;
     }
 
     .signature-date {
@@ -257,15 +292,14 @@
 
     .signature-date .date-line {
       display: inline-block;
-      border-bottom: 1px solid #1f2937;
-      width: 200px;
-      margin-left: 4px;
+      border-bottom: 1pt solid #1f2937;
+      width: 200pt;
+      margin-left: 4pt;
     }
 
-    /* ---------- Closing paragraph ---------- */
     .entire-agreement {
-      margin-top: 36px;
-      padding-top: 14px;
+      margin-top: 36pt;
+      padding-top: 14pt;
       font-size: 10pt;
       color: #1f2937;
       line-height: 1.55;
@@ -283,9 +317,12 @@
             <img src="<?php echo e(public_path('images/logo.png')); ?>" alt="Zanini Renovations">
           <?php endif; ?>
         </td>
-        <td class="title-cell">
-          <div class="title">CONTRACT</div>
-          <div class="subtitle"><?php echo e($project->name); ?></div>
+        <td class="info-cell">
+          <p class="info-line">53 Antonakos Dr</p>
+          <p class="info-line">Carleton Place, ON K7C 0L1</p>
+          <p class="info-line">(647) 834-7570</p>
+          <p class="info-line">zaninirenovations@gmail.com</p>
+          <p class="info-line">zaninirenovation.ca</p>
         </td>
       </tr>
     </table>
@@ -295,10 +332,7 @@
   <div class="pdf-footer">
     <table>
       <tr>
-        <td class="left">
-          ZANINI RENOVATIONS · 53 Antonakos Dr, Carleton Place, ON K7C 0L1<br>
-          647 834 7570 · jonaszanini@gmail.com
-        </td>
+        <td class="left">ZANINI RENOVATIONS</td>
         <td class="right">
           Page <span class="pdf-pagenum"></span> of <span class="pdf-pagecount"></span>
         </td>
@@ -318,8 +352,8 @@
           <p class="party-name">Jonas Zanini</p>
           <p class="party-line"><strong>ZANINI RENOVATIONS</strong></p>
           <p class="party-line">53 Antonakos Dr, Carleton Place, ON K7C 0L1</p>
-          <p class="party-line">Phone: 647 834 7570</p>
-          <p class="party-line">Email: jonaszanini@gmail.com</p>
+          <p class="party-line">Phone: (647) 834-7570</p>
+          <p class="party-line">Email: zaninirenovations@gmail.com</p>
         </td>
         <td>
           <p class="party-label">Client</p>

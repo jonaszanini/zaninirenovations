@@ -178,9 +178,12 @@ class ClientProjectContractController extends Controller
             'contract' => $contract,
         ])
             ->setPaper('a4')
+            // Allow @font-face / file:// URLs (used for Roboto + the PNG logo).
             ->setOption('isRemoteEnabled', true)
             ->setOption('isHtml5ParserEnabled', true)
-            ->setOption('defaultFont', 'DejaVu Sans');
+            // Roboto is registered via @font-face in the template and is the
+            // default for everything except elements that explicitly opt out.
+            ->setOption('defaultFont', 'Roboto');
     }
 
     /** Stable, human-friendly filename for the generated PDF. */
