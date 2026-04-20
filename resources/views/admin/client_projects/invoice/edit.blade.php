@@ -14,7 +14,7 @@
         $invoice->cleanItems()
     );
     if (empty($existing)) {
-        $existing = array_fill(0, 3, ['description' => '', 'amount' => '']);
+        $existing = [['description' => '', 'amount' => '']];
     }
 
     $isManual = $invoice->isManual();

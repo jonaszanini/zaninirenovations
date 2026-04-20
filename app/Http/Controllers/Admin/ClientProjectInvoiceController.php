@@ -530,18 +530,41 @@ class ClientProjectInvoiceController extends Controller
     {
         $plan = (int) $project->payment_plan ?: 1;
         $description = null;
+        $items = [];
+        $subtotal = 0.0;
+
+        // Installment-linked invoices get seeded with a single pre-filled
+        // line item that mirrors the installment (description + pre-HST
+        // amount), so the user usually just hits "Send" — no retyping.
+        // Manual invoices stay empty and let the user enter everything.
         if ($installmentNumber !== null) {
             $description = ClientProjectInvoice::installmentDescriptionFor($plan, $installmentNumber);
+
+            $installment = $project->installments()
+                ->orderBy('sort_order')
+                ->get()
+                ->values()
+                ->get($installmentNumber - 1);
+
+            if ($installment) {
+                $subtotal = round((float) $installment->amount, 2);
+                $items = [[
+                    'description' => $description ?: 'Installment '.$installmentNumber,
+                    'amount' => $subtotal,
+                ]];
+            }
         }
+
+        $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
 
         return $project->invoices()->create([
             'installment_number' => $installmentNumber,
             'installment_description' => $description,
             'invoice_number' => ClientProjectInvoice::generateNumber(),
-            'items' => [],
-            'subtotal' => 0,
-            'hst' => 0,
-            'total' => 0,
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'hst' => $hst,
+            'total' => round($subtotal + $hst, 2),
             'status' => ClientProjectInvoice::STATUS_DRAFT,
             'version' => 1,
         ]);
