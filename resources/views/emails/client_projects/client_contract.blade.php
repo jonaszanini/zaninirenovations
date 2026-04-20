@@ -34,8 +34,8 @@
   </p>
 
   <p style="margin:12px 0;">
-    <strong>Option 2:</strong> Open the PDF on your computer, use the
-    &ldquo;Add signature/initials&rdquo; tool, and place your signature at the end.
+    <strong>Option 2:</strong> Open the PDF, use the Add signature tool to sign the end,
+    save, and reply with the signed file attached.
   </p>
 
   <p style="margin:12px 0;">
