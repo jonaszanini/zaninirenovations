@@ -122,7 +122,7 @@
             <td>
               <div class="cp-party-label">CLIENT</div>
               <div class="cp-party-name">{{ $project->client_name ?: '—' }}</div>
-              <div>Phone: {{ $project->client_phone ?: '—' }}</div>
+              <div>Phone: {{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</div>
               <div>Service Address: {{ $project->client_address ?: '—' }}</div>
               <div>Email: {{ $project->client_email ?: '—' }}</div>
             </td>

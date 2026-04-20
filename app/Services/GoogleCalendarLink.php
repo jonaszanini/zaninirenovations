@@ -40,7 +40,7 @@ class GoogleCalendarLink
         ];
 
         if ($project->client_phone) {
-            $lines[] = 'Phone: '.$project->client_phone;
+            $lines[] = 'Phone: '.\App\Models\ClientProject::formatPhone($project->client_phone);
         }
         if ($project->client_email) {
             $lines[] = 'Email: '.$project->client_email;

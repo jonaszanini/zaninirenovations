@@ -19,13 +19,19 @@
         <h2>{{ $project->name }}</h2>
         <div class="cp-header-meta">
           @if ($project->client_phone)
-            <span><i class="fa fa-phone"></i> {{ $project->client_phone }}</span>
+            <span><i class="fa fa-phone"></i> {{ \App\Models\ClientProject::formatPhone($project->client_phone) }}</span>
           @endif
           @if ($project->client_email)
             <span><i class="fa fa-envelope"></i> <a href="mailto:{{ $project->client_email }}">{{ $project->client_email }}</a></span>
           @endif
           @if ($project->client_address)
-            <span><i class="fa fa-map-marker"></i> {{ $project->client_address }}</span>
+            <span>
+              <i class="fa fa-map-marker"></i>
+              <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($project->client_address) }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="Open in Google Maps">{{ $project->client_address }}</a>
+            </span>
           @endif
         </div>
       </div>
@@ -92,7 +98,7 @@
         <dt>Project name</dt><dd>{{ $project->name }}</dd>
         <dt>Client</dt><dd>{{ $project->client_name }}</dd>
         <dt>Email</dt><dd>{{ $project->client_email ?: '—' }}</dd>
-        <dt>Phone</dt><dd>{{ $project->client_phone ?: '—' }}</dd>
+        <dt>Phone</dt><dd>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</dd>
         <dt>Address</dt><dd>{{ $project->client_address ?: '—' }}</dd>
         <dt>Created</dt><dd>{{ $project->created_at->format('d/m/Y H:i') }}</dd>
         <dt>Status changed</dt><dd>{{ $project->status_changed_at ? $project->status_changed_at->format('d/m/Y H:i') : '—' }}</dd>

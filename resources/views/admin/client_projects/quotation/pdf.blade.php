@@ -312,7 +312,7 @@
           <p class="label">Prepared for</p>
           <p class="name">{{ $project->client_name ?: '—' }}</p>
           <p class="line">{{ $project->client_address ?: '—' }}</p>
-          <p class="line">{{ $project->client_phone ?: '—' }}</p>
+          <p class="line">{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</p>
           <p class="line">{{ $project->client_email ?: '—' }}</p>
           <p class="line" style="margin-top:4pt;font-style:italic;color:#4b5563;">
             Project: {{ $project->name }}

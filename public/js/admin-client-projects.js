@@ -415,8 +415,94 @@
     return 'CA$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  // --- NANP phone mask (inputs with class `.cp-phone-input`) ---------------
+  //
+  // Behaviour:
+  //   - Accepts only digits. Anything else (letters, punctuation) is
+  //     silently discarded on every keystroke and on paste.
+  //   - Caps at exactly 10 digits. The 11th keystroke is ignored so the
+  //     field cannot exceed "(xxx) xxx-xxxx".
+  //   - Formats progressively as the user types:
+  //       1-3 digits    -> "123"
+  //       4-6 digits    -> "(123) 456"
+  //       7+ digits     -> "(123) 456-7890"
+  //   - Legacy stored values (e.g. "6478347570" with no formatting, or
+  //     "(647) 834-7570" already formatted) are reformatted on init.
+  //   - On submit we don't mutate the field — the backend strips
+  //     non-digits before validation, so the masked value is accepted
+  //     as-is either way.
+
+  function phoneDigitsFrom(value) {
+    return (value == null ? '' : String(value)).replace(/\D/g, '').slice(0, 10);
+  }
+
+  function formatPhoneDigits(digits) {
+    if (!digits) return '';
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+    return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6, 10);
+  }
+
+  function onPhoneInput(e) {
+    var input = e.target;
+    var digits = phoneDigitsFrom(input.value);
+    input.value = formatPhoneDigits(digits);
+    // Calculator-style: keep the caret at the end so the natural "I'm
+    // typing forwards" flow is preserved, even after auto-inserted
+    // parens/space/dash.
+    var end = input.value.length;
+    try { input.setSelectionRange(end, end); } catch (err) { /* some input types disallow this */ }
+  }
+
+  function wirePhoneInput(input) {
+    if (!input || input._cpPhoneWired) return;
+    input._cpPhoneWired = true;
+    input.setAttribute('inputmode', input.getAttribute('inputmode') || 'tel');
+    input.setAttribute('autocomplete', input.getAttribute('autocomplete') || 'tel');
+    input.setAttribute('maxlength', '14'); // "(123) 456-7890"
+    input.value = formatPhoneDigits(phoneDigitsFrom(input.value));
+
+    input.addEventListener('input', onPhoneInput);
+    input.addEventListener('keydown', function (ev) {
+      // Swallow any single-character key that isn't a digit. Control
+      // keys (Backspace, Delete, Tab, arrows, etc.) have key.length > 1
+      // and are left alone. Ctrl/Cmd shortcuts (copy/paste/select-all)
+      // are also left alone.
+      if (ev.key && ev.key.length === 1 && !/\d/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) {
+        ev.preventDefault();
+      }
+    });
+    input.addEventListener('paste', function (ev) {
+      var data = (ev.clipboardData || window.clipboardData).getData('text');
+      if (data == null) return;
+      ev.preventDefault();
+      var merged = phoneDigitsFrom(input.value + data);
+      input.value = formatPhoneDigits(merged);
+    });
+  }
+
+  function initPhoneMask() {
+    document.querySelectorAll('.cp-phone-input').forEach(wirePhoneInput);
+  }
+
+  window.cpPhoneMask = {
+    wire: function (target) {
+      if (!target) return;
+      if (target.nodeType === 1) {
+        wirePhoneInput(target);
+      } else if (typeof target.forEach === 'function') {
+        target.forEach(wirePhoneInput);
+      }
+    },
+    /** Convert any string into the canonical "(xxx) xxx-xxxx" form. */
+    format: function (value) {
+      return formatPhoneDigits(phoneDigitsFrom(value));
+    }
+  };
+
   document.addEventListener('DOMContentLoaded', function () {
     initMoneyMask();
+    initPhoneMask();
     initTimeForms();
     initTimeEditToggles();
     initBillingTypeToggle();

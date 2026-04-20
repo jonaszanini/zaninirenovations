@@ -15,7 +15,7 @@
     @if ($project->client_phone)
       <tr>
         <td style="padding:6px 12px 6px 0;color:#6b7280;">Phone</td>
-        <td style="padding:6px 0;">{{ $project->client_phone }}</td>
+        <td style="padding:6px 0;">{{ \App\Models\ClientProject::formatPhone($project->client_phone) }}</td>
       </tr>
     @endif
   </table>

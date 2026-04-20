@@ -89,11 +89,13 @@ class ClientProjectController extends Controller
 
     public function store(Request $request, ClientProjectStatusService $service)
     {
+        $this->normalisePhoneOnRequest($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
-            'client_phone' => ['nullable', 'string', 'max:50'],
+            'client_phone' => ['nullable', 'digits:10'],
             'client_address' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'billing_type' => ['required', \Illuminate\Validation\Rule::in([
@@ -101,7 +103,7 @@ class ClientProjectController extends Controller
                 ClientProject::BILLING_HOURLY,
             ])],
             'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
-        ]);
+        ], $this->clientProjectValidationMessages());
 
         // Normalise hourly_rate so fixed projects don't carry a stray rate.
         if ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
@@ -152,11 +154,13 @@ class ClientProjectController extends Controller
 
     public function update(Request $request, ClientProject $client_project, ClientProjectStatusService $service)
     {
+        $this->normalisePhoneOnRequest($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
-            'client_phone' => ['nullable', 'string', 'max:50'],
+            'client_phone' => ['nullable', 'digits:10'],
             'client_address' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'start_date' => ['nullable', 'date'],
@@ -166,7 +170,7 @@ class ClientProjectController extends Controller
                 ClientProject::BILLING_HOURLY,
             ])],
             'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
-        ]);
+        ], $this->clientProjectValidationMessages());
 
         // billing_type is optional on update — some narrower forms (like the
         // schedule-only partial on the show page) don't post it. Only update
@@ -195,6 +199,47 @@ class ClientProjectController extends Controller
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->with('success', 'Project updated.');
+    }
+
+    /**
+     * Strip every non-digit from `client_phone` on an incoming request
+     * before validation runs. Users submit the masked value "(647)
+     * 834-7570" from the form; we validate against the normalised
+     * 10-digit string "6478347570" so the `digits:10` rule is reliable
+     * regardless of how the field is formatted client-side.
+     *
+     * Empty / whitespace-only input is converted to null so the
+     * "nullable" rule keeps the field truly optional.
+     */
+    /**
+     * User-facing validation messages. Laravel falls back to
+     * "validation.digits" (the raw translation key) when no message
+     * file is published, which looks broken in the UI — provide
+     * friendly strings for the rules we actually use.
+     */
+    protected function clientProjectValidationMessages(): array
+    {
+        return [
+            'client_phone.digits' => 'Phone number must have exactly 10 digits (e.g. (123) 456-7890).',
+            'client_email.email' => 'Please enter a valid email address.',
+            'end_date.after_or_equal' => 'End date must be the same as or after the start date.',
+            'hourly_rate.required_if' => 'Hourly rate is required when billing type is "Hourly rate".',
+            'hourly_rate.min' => 'Hourly rate must be at least $0.01.',
+        ];
+    }
+
+    protected function normalisePhoneOnRequest(Request $request): void
+    {
+        if (!$request->has('client_phone')) {
+            return;
+        }
+
+        $raw = (string) $request->input('client_phone');
+        $digits = preg_replace('/\D/', '', $raw);
+
+        $request->merge([
+            'client_phone' => $digits === '' ? null : $digits,
+        ]);
     }
 
     public function destroy(ClientProject $client_project)

@@ -9,7 +9,8 @@
 
       <div class="admin-form-group">
         <label for="cp-name">Project name <span class="cp-required">*</span></label>
-        <input type="text" id="cp-name" name="name" value="{{ old('name') }}" required maxlength="255">
+        <input type="text" id="cp-name" name="name" value="{{ old('name') }}" required maxlength="255"
+               @class(['is-invalid' => $errors->has('name')])>
         @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
@@ -18,27 +19,38 @@
 
         <div class="admin-form-group">
           <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
-          <input type="text" id="cp-client-name" name="client_name" value="{{ old('client_name') }}" required maxlength="255">
+          <input type="text" id="cp-client-name" name="client_name" value="{{ old('client_name') }}" required maxlength="255"
+                 @class(['is-invalid' => $errors->has('client_name')])>
           @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="cp-client-email">Email</label>
-            <input type="email" id="cp-client-email" name="client_email" value="{{ old('client_email') }}" maxlength="255">
+            <input type="email" id="cp-client-email" name="client_email" value="{{ old('client_email') }}" maxlength="255"
+                   @class(['is-invalid' => $errors->has('client_email')])>
             @error('client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
             <p class="admin-form-help">If provided, the client gets an automated "quote request received" email.</p>
           </div>
           <div class="admin-form-group">
             <label for="cp-client-phone">Phone number</label>
-            <input type="text" id="cp-client-phone" name="client_phone" value="{{ old('client_phone') }}" maxlength="50">
+            <input type="text"
+                   id="cp-client-phone"
+                   name="client_phone"
+                   @class(['cp-phone-input', 'is-invalid' => $errors->has('client_phone')])
+                   inputmode="tel"
+                   autocomplete="tel"
+                   maxlength="14"
+                   placeholder="(xxx) xxx-xxxx"
+                   value="{{ \App\Models\ClientProject::formatPhone(old('client_phone')) }}">
             @error('client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </div>
 
         <div class="admin-form-group">
           <label for="cp-client-address">Address</label>
-          <input type="text" id="cp-client-address" name="client_address" value="{{ old('client_address') }}" maxlength="500">
+          <input type="text" id="cp-client-address" name="client_address" value="{{ old('client_address') }}" maxlength="500"
+                 @class(['is-invalid' => $errors->has('client_address')])>
           @error('client_address') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
       </div>

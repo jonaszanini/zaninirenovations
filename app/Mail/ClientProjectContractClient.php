@@ -33,9 +33,17 @@ class ClientProjectContractClient extends Mailable
     {
         $subject = 'Contract – '.$this->project->name;
 
+        // The email body references the quotation number + date so the
+        // client can paste the acceptance phrase. Load it lazily so we
+        // don't second-guess whatever the caller already preloaded.
+        $quotation = $this->project->relationLoaded('quotation')
+            ? $this->project->quotation
+            : $this->project->quotation()->first();
+
         return $this->subject($subject)
             ->view('emails.client_projects.client_contract', [
                 'project' => $this->project,
+                'quotation' => $quotation,
                 'siteName' => (string) config('mail.from.name', 'Zanini Renovations'),
             ])
             ->attachData($this->pdfBytes, $this->pdfFilename, [

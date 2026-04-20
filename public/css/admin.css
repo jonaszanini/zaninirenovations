@@ -490,6 +490,38 @@ body.admin-body {
   box-shadow: 0 0 0 3px var(--admin-primary-ring);
 }
 
+/* Invalid field state (applied via @class with $errors->has(...)).
+   Red border + soft red focus ring so the error is unmistakable
+   without looking aggressive. Works on inputs, textareas and selects. */
+.admin-form-group input.is-invalid,
+.admin-form-group select.is-invalid,
+.admin-form-group textarea.is-invalid,
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+.admin-form-group input.is-invalid:focus,
+.admin-form-group select.is-invalid:focus,
+.admin-form-group textarea.is-invalid:focus,
+input.is-invalid:focus,
+select.is-invalid:focus,
+textarea.is-invalid:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
+}
+
+/* Inline validation message emitted by @error directives. Kept
+   small and red but not shouty — matches the admin UI's overall
+   tone. */
+.admin-form-error {
+  margin: 6px 0 0;
+  color: #dc2626;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
 .admin-category-checkboxes {
   display: flex;
   flex-wrap: wrap;

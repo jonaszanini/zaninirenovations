@@ -412,7 +412,7 @@
         <td>
           <p class="party-label">Client</p>
           <p class="party-name">{{ $project->client_name ?: '—' }}</p>
-          <p class="party-line">Phone: {{ $project->client_phone ?: '—' }}</p>
+          <p class="party-line">Phone: {{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</p>
           <p class="party-line">Service Address: {{ $project->client_address ?: '—' }}</p>
           <p class="party-line">Email: {{ $project->client_email ?: '—' }}</p>
         </td>

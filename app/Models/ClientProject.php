@@ -393,4 +393,61 @@ class ClientProject extends Model
 
         return $date->format('d/m/Y');
     }
+
+    /**
+     * Format a phone number for display as (xxx) xxx-xxxx.
+     *
+     * Internally we normalise all input to a 10-digit string before saving
+     * (see the client_phone mutator), so 99% of calls here will hit the
+     * "10 digits" branch. The graceful fallbacks cover legacy rows that
+     * existed before normalisation was introduced.
+     */
+    public static function formatPhone(?string $phone): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $phone);
+
+        if ($digits === '' || $digits === null) {
+            return '';
+        }
+
+        if (strlen($digits) === 10) {
+            return sprintf(
+                '(%s) %s-%s',
+                substr($digits, 0, 3),
+                substr($digits, 3, 3),
+                substr($digits, 6, 4)
+            );
+        }
+
+        // 11-digit NANP numbers like "16478347570" are stored legacy-style
+        // with the leading country code — strip it and reformat.
+        if (strlen($digits) === 11 && $digits[0] === '1') {
+            return self::formatPhone(substr($digits, 1));
+        }
+
+        // Anything else (shorter/longer/unusual) → return the raw value
+        // as the user typed it, so we don't silently hide bad data.
+        return (string) $phone;
+    }
+
+    /**
+     * Client phone mutator: strip everything but digits before persistence
+     * so "(647) 834-7570", "647-834-7570" and "6478347570" are all stored
+     * the same way. Display-side we always reformat via formatPhone().
+     *
+     * Empty / non-numeric input is stored as NULL so the column stays
+     * genuinely optional.
+     */
+    public function setClientPhoneAttribute(?string $value): void
+    {
+        if ($value === null) {
+            $this->attributes['client_phone'] = null;
+
+            return;
+        }
+
+        $digits = preg_replace('/\D/', '', (string) $value);
+
+        $this->attributes['client_phone'] = $digits === '' ? null : $digits;
+    }
 }

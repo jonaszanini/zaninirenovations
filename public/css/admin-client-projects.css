@@ -1285,6 +1285,34 @@
   text-align: right;
 }
 
+/* Generic input styling for the quotation editor (and any other admin
+   form built outside .admin-form-group). Mirrors the look of the
+   Financials → Total project amount field so the calculator-style
+   money inputs match the rest of the admin UI: white background,
+   1px gray border, 8px radius, comfortable padding, and the same
+   inherited sans-serif font instead of the browser's default
+   monospace-ish input style. */
+.admin-input {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+.admin-input:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+textarea.admin-input {
+  line-height: 1.4;
+}
+
 /* -- Editor: live totals strip ----------------------------------------- */
 .cp-quotation-totals {
   margin-left: auto;
