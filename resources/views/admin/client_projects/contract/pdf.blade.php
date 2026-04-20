@@ -3,61 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <title>Contract — {{ $project->name }}</title>
+  @php
+    /*
+     * Normalise font paths to forward slashes. On Windows public_path()
+     * returns backslashes (e.g. C:\xampp\htdocs\...), and CSS treats
+     * `\x` as a hex escape sequence — that silently corrupts the @font-face
+     * URLs AND breaks subsequent rules (including @page). Forward slashes
+     * are valid on every OS and dompdf accepts them as filesystem paths.
+     */
+    $fontDir = str_replace('\\', '/', public_path('fonts/roboto'));
+  @endphp
   <style>
+    /* ============================================================
+       Page layout
+       ------------------------------------------------------------
+       A4 = 595 × 842 pt (1 inch = 72 pt).
+
+       NOTE: @page MUST be declared before any @font-face rules.
+       DomPDF parses style sheets in source order and a malformed
+       font URL (or any earlier rule it cannot resolve) can prevent
+       a later @page rule from being applied — which silently
+       reverts the page to the default zero margin.
+
+       IMPORTANT — DomPDF v2 quirk:
+         `position: fixed` offsets (top/left/right/bottom) are
+         measured from the BODY CONTENT origin (i.e. AFTER the
+         @page margin), NOT from the page paper edge. To place the
+         header inside the @page TOP margin area we therefore need
+         a NEGATIVE `top` value, and likewise NEGATIVE `bottom`
+         for the footer.
+
+       Margins (printed margins around the body content):
+         top    160pt ≈ 56 mm  (room for header + breathing space)
+         right   60pt ≈ 21 mm
+         bottom  90pt ≈ 32 mm  (room for footer + breathing space)
+         left    60pt ≈ 21 mm
+       ============================================================ */
+    @page {
+      margin: 160pt 60pt 90pt 60pt;
+    }
+
     /* ============================================================
        Roboto via @font-face. DomPDF reads local TTF files only
        (it cannot use Google Fonts CDN, which serves WOFF2),
        so the font files are shipped under public/fonts/roboto/.
-       The url() must be an absolute filesystem path for dompdf
-       to load it reliably across servers.
        ============================================================ */
     @font-face {
       font-family: 'Roboto';
       font-style: normal;
       font-weight: 400;
-      src: url("{{ public_path('fonts/roboto/Roboto-Regular.ttf') }}") format('truetype');
+      src: url("{{ $fontDir }}/Roboto-Regular.ttf") format('truetype');
     }
     @font-face {
       font-family: 'Roboto';
       font-style: normal;
       font-weight: 700;
-      src: url("{{ public_path('fonts/roboto/Roboto-Bold.ttf') }}") format('truetype');
+      src: url("{{ $fontDir }}/Roboto-Bold.ttf") format('truetype');
     }
     @font-face {
       font-family: 'Roboto';
       font-style: italic;
       font-weight: 400;
-      src: url("{{ public_path('fonts/roboto/Roboto-Italic.ttf') }}") format('truetype');
+      src: url("{{ $fontDir }}/Roboto-Italic.ttf") format('truetype');
     }
     @font-face {
       font-family: 'Roboto';
       font-style: italic;
       font-weight: 700;
-      src: url("{{ public_path('fonts/roboto/Roboto-BoldItalic.ttf') }}") format('truetype');
-    }
-
-    /* ============================================================
-       Page layout
-       ------------------------------------------------------------
-       A4 = 595 × 842 pt. Margins reserve room for the fixed
-       header / footer below; everything inside @page (i.e. the
-       body content) automatically respects these margins.
-
-       1 inch = 72 pt. So:
-         top    150pt ≈ 53 mm  (logo + 5 lines of contact + breathing room)
-         right   60pt ≈ 21 mm  (~1 inch readable line length)
-         bottom 100pt ≈ 35 mm  (footer + breathing room)
-         left    60pt ≈ 21 mm
-       ============================================================ */
-    @page {
-      margin: 150pt 60pt 100pt 60pt;
+      src: url("{{ $fontDir }}/Roboto-BoldItalic.ttf") format('truetype');
     }
 
     * {
       box-sizing: border-box;
     }
 
-    html, body {
+    /*
+     * IMPORTANT: do NOT style the <html> element here.
+     * In DomPDF, `html { margin: 0 }` (and friends) overrides the
+     * @page margin and silently collapses it back to zero. Only style
+     * the <body> element — that keeps @page in control of the printed
+     * page margins.
+     */
+    body {
       margin: 0;
       padding: 0;
       font-family: 'Roboto', 'DejaVu Sans', Arial, Helvetica, sans-serif;
@@ -68,12 +95,16 @@
 
     /* ============================================================
        Repeating page header (logo left, company info right).
-       Sits inside the top page margin via the negative `top`
-       trick that DomPDF supports.
+
+       top: -130pt means 130pt ABOVE the body content origin.
+       Body origin is at @page margin-top (160pt from page edge),
+       so the header sits at 160 - 130 = 30pt from the page edge.
+       With height 100pt the header ends at 130pt from page edge,
+       leaving a 30pt gap before the body content starts at 160pt.
        ============================================================ */
     .pdf-header {
       position: fixed;
-      top: -120pt;       /* lifts header up into the @page top margin */
+      top: -130pt;
       left: 0;
       right: 0;
       height: 100pt;
@@ -117,13 +148,19 @@
 
     /* ============================================================
        Repeating page footer (page numbers).
+
+       bottom: -60pt means 60pt BELOW the body content bottom
+       (which is 90pt from the page bottom edge). So the footer
+       sits at 90 - 60 = 30pt from the page bottom edge with
+       height 30pt → occupies the 30pt-60pt strip above the
+       page bottom edge.
        ============================================================ */
     .pdf-footer {
       position: fixed;
-      bottom: -70pt;
+      bottom: -60pt;
       left: 0;
       right: 0;
-      height: 50pt;
+      height: 30pt;
       border-top: 1pt solid #d8dee4;
       padding-top: 6pt;
       font-size: 9pt;
