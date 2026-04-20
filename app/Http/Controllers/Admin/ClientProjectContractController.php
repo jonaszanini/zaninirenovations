@@ -170,10 +170,20 @@ class ClientProjectContractController extends Controller
      * Build the PDF object from the Blade template using the Contractor /
      * Client info from the project. Centralised so download/email use the
      * exact same template.
+     *
+     * After loading the view we force ->render() so dompdf has finalised
+     * pagination, then stamp the "Page X of Y" footer text via
+     * $canvas->page_text(). We can't do that from the Blade template
+     * because dompdf v2's CPDF::page_text() resolves the page count
+     * IMMEDIATELY (it iterates $this->_pages at call time), so an inline
+     * <script type="text/php"> only ever sees the pages laid out before
+     * its position in the document — yielding "Page 1 of 1" on page 1
+     * and a blank footer on page 2. Stamping after render() side-steps
+     * the issue completely.
      */
     protected function renderPdf(ClientProject $project, ClientProjectContract $contract)
     {
-        return Pdf::loadView('admin.client_projects.contract.pdf', [
+        $pdf = Pdf::loadView('admin.client_projects.contract.pdf', [
             'project' => $project,
             'contract' => $contract,
         ])
@@ -184,6 +194,39 @@ class ClientProjectContractController extends Controller
             // Roboto is registered via @font-face in the template and is the
             // default for everything except elements that explicitly opt out.
             ->setOption('defaultFont', 'Roboto');
+
+        $pdf->render();
+
+        $this->stampPageNumbers($pdf);
+
+        return $pdf;
+    }
+
+    /**
+     * Draw "Page X of Y" on every page of an already-rendered PDF.
+     *
+     * Coordinates are PDF points from the top-left of the page;
+     * A4 = 595 × 842 pt. The right-edge x is computed against a
+     * conservative max-width string so the text stays right-aligned
+     * even when the count grows to two digits.
+     */
+    protected function stampPageNumbers($pdf): void
+    {
+        $dompdf = $pdf->getDomPDF();
+        $canvas = $dompdf->getCanvas();
+        $fontMetrics = $dompdf->getFontMetrics();
+
+        $font = $fontMetrics->getFont('Roboto', 'normal') ?: $fontMetrics->getFont('Helvetica', 'normal');
+        $size = 9;
+        $color = [0.42, 0.45, 0.50]; // #6b7280
+
+        $text = 'Page {PAGE_NUM} of {PAGE_COUNT}';
+        $reservedWidth = $fontMetrics->getTextWidth('Page 99 of 99', $font, $size);
+
+        $x = $canvas->get_width() - 60 - $reservedWidth;
+        $y = $canvas->get_height() - 50;
+
+        $canvas->page_text($x, $y, $text, $font, $size, $color);
     }
 
     /** Stable, human-friendly filename for the generated PDF. */

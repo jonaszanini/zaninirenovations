@@ -75,6 +75,7 @@
     <button type="button" class="cp-tab" data-tab="schedule" role="tab">Calendar</button>
     <button type="button" class="cp-tab" data-tab="financials" role="tab">Financials</button>
     <button type="button" class="cp-tab" data-tab="time" role="tab">Time Tracking</button>
+    <button type="button" class="cp-tab" data-tab="quotation" role="tab">Quotation</button>
     <button type="button" class="cp-tab" data-tab="contract" role="tab">Contract</button>
     <button type="button" class="cp-tab" data-tab="history" role="tab">History</button>
   </div>
@@ -172,6 +173,11 @@
     @else
       @include('admin.client_projects._time', ['project' => $project])
     @endif
+  </section>
+
+  {{-- QUOTATION TAB ------------------------------------------------------- --}}
+  <section class="cp-tab-panel" data-panel="quotation" id="quotation">
+    @include('admin.client_projects._quotation', ['project' => $project])
   </section>
 
   {{-- CONTRACT TAB -------------------------------------------------------- --}}

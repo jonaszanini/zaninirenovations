@@ -98,11 +98,17 @@ class ClientProject extends Model
         return $this->hasOne(ClientProjectContract::class);
     }
 
+    public function quotation(): HasOne
+    {
+        return $this->hasOne(ClientProjectQuotation::class);
+    }
+
     /**
-     * True iff the project has all the client info required to send the
-     * contract by email (name, phone, email, and service address).
+     * True iff the project has all the client info required to email a
+     * client-facing document (contract or quotation): name, phone, email,
+     * service address.
      */
-    public function hasContactInfoForContract(): bool
+    public function hasClientContactInfo(): bool
     {
         return filled($this->client_name)
             && filled($this->client_phone)
@@ -110,8 +116,8 @@ class ClientProject extends Model
             && filled($this->client_address);
     }
 
-    /** Returns a list of human labels for the missing contact fields. */
-    public function missingContactFieldsForContract(): array
+    /** Returns a list of human labels for the missing client contact fields. */
+    public function missingClientContactFields(): array
     {
         $missing = [];
         if (blank($this->client_name)) {
@@ -128,6 +134,18 @@ class ClientProject extends Model
         }
 
         return $missing;
+    }
+
+    /** @deprecated Use hasClientContactInfo(); kept for the contract feature. */
+    public function hasContactInfoForContract(): bool
+    {
+        return $this->hasClientContactInfo();
+    }
+
+    /** @deprecated Use missingClientContactFields(); kept for the contract feature. */
+    public function missingContactFieldsForContract(): array
+    {
+        return $this->missingClientContactFields();
     }
 
     // --- Status helpers ----------------------------------------------------

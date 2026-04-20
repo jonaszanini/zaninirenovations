@@ -118,6 +118,16 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::post('client-projects/{client_project}/contract/send', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'send'])
         ->name('client-projects.contract.send');
 
+    // Quotation / Estimate (structured, PDF generation, email-to-client).
+    Route::get('client-projects/{client_project}/quotation/edit', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'edit'])
+        ->name('client-projects.quotation.edit');
+    Route::put('client-projects/{client_project}/quotation', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'update'])
+        ->name('client-projects.quotation.update');
+    Route::get('client-projects/{client_project}/quotation/pdf', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'downloadPdf'])
+        ->name('client-projects.quotation.pdf');
+    Route::post('client-projects/{client_project}/quotation/send', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'send'])
+        ->name('client-projects.quotation.send');
+
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
 });

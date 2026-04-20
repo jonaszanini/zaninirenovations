@@ -1170,6 +1170,259 @@
   flex-wrap: wrap;
 }
 
+/* ========================================================================
+   Quotation tab
+   ------------------------------------------------------------------------
+   Mirrors the Contract tab look & feel and reuses .cp-contract-* classes
+   wherever possible for the empty state, header, action bar, and warning
+   banner. The Quotation-specific bits below are mostly the editor's
+   line-item table and the inline preview that mimics the PDF layout.
+   ======================================================================== */
+
+.cp-quotation-number {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  color: #024768;
+  background: #024768 0;
+  background: rgba(2, 71, 104, 0.08);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* -- Editor: type/checkbox row ------------------------------------------ */
+.cp-quotation-form-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.cp-quotation-form-grid .admin-form-group {
+  margin-bottom: 0;
+}
+.cp-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.cp-quotation-warning-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.cp-quotation-warning-inline .fa { flex-shrink: 0; }
+
+/* -- Editor: line items card ------------------------------------------- */
+.cp-quotation-items-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+.cp-quotation-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cp-quotation-items-header h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.cp-quotation-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+.cp-quotation-items-table th,
+.cp-quotation-items-table td {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 8px 10px;
+  vertical-align: top;
+}
+.cp-quotation-items-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cp-quotation-items-table .col-amount { width: 160px; }
+.cp-quotation-items-table .col-actions { width: 50px; text-align: right; }
+.cp-quotation-items-table th.col-amount { text-align: right; }
+.cp-quotation-items-table .cp-quotation-row-desc {
+  width: 100%;
+  resize: vertical;
+  min-height: 44px;
+}
+.cp-quotation-items-table .cp-quotation-row-amount {
+  width: 100%;
+  text-align: right;
+}
+
+/* -- Editor: live totals strip ----------------------------------------- */
+.cp-quotation-totals {
+  margin-left: auto;
+  width: 320px;
+  max-width: 100%;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+.cp-quotation-totals-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+.cp-quotation-totals-grand {
+  border-top: 2px solid #024768;
+  margin-top: 4px;
+  padding-top: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #024768;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
+}
+
+/* -- Preview (in tab) -------------------------------------------------- */
+.cp-quotation-preview {
+  /* inherits typography from .cp-contract-preview */
+}
+.cp-quotation-doc-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.cp-quotation-doc-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #024768;
+  line-height: 1.15;
+}
+.cp-quotation-doc-date {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+.cp-quotation-doc-client {
+  background: #f9fafb;
+  border: 1px solid #d8dee4;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  min-width: 240px;
+  border-radius: 6px;
+}
+.cp-quotation-doc-client .cp-party-label {
+  margin-bottom: 4px;
+}
+.cp-quotation-doc-client .cp-party-name {
+  margin-bottom: 4px;
+}
+
+.cp-quotation-intro {
+  font-size: 14px;
+  color: #1f2937;
+  margin: 6px 0 14px;
+}
+
+.cp-quotation-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 14px;
+}
+.cp-quotation-items th,
+.cp-quotation-items td {
+  border: 1px solid #d8dee4;
+  padding: 8px 10px;
+  font-size: 13px;
+  vertical-align: top;
+}
+.cp-quotation-items thead th {
+  background: #024768;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: left;
+}
+.cp-quotation-items th.amount,
+.cp-quotation-items td.amount {
+  text-align: right;
+  width: 150px;
+  white-space: nowrap;
+}
+.cp-quotation-items tbody tr:nth-child(even) td {
+  background: #f9fafb;
+}
+.cp-quotation-items tfoot td {
+  border: 0;
+  border-top: 1px solid #d8dee4;
+  font-size: 14px;
+  background: #fff;
+  padding: 6px 10px;
+}
+.cp-quotation-items tfoot td.totals-label {
+  text-align: right;
+  color: #4b5563;
+}
+.cp-quotation-items tfoot td.amount {
+  font-weight: 700;
+}
+.cp-quotation-items tfoot tr.grand-row td {
+  border-top: 2px solid #024768;
+  font-size: 16px;
+  font-weight: 700;
+  color: #024768;
+  padding-top: 10px;
+}
+
+.cp-quotation-closing {
+  margin-top: 14px;
+  padding-top: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1f2937;
+}
+.cp-quotation-closing ul {
+  margin: 0 0 12px 18px;
+  padding: 0;
+}
+.cp-quotation-closing li {
+  margin-bottom: 4px;
+}
+.cp-quotation-closing p {
+  margin: 0 0 8px;
+}
+
 /* Mobile tweaks. */
 @media (max-width: 700px) {
   .cp-contract-header {
@@ -1189,6 +1442,22 @@
   .cp-contract-editor-toolbar-right .admin-btn {
     flex: 1 1 auto;
     text-align: center;
+  }
+  .cp-quotation-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .cp-quotation-doc-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .cp-quotation-doc-client {
+    margin-top: 12px;
+  }
+  .cp-quotation-items-table .col-amount {
+    width: 110px;
+  }
+  .cp-quotation-totals {
+    width: 100%;
   }
   /* Stack signatures and parties vertically on mobile. */
   .cp-contract-parties-table,

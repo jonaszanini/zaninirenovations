@@ -175,9 +175,11 @@
 
     .pdf-footer .left  { text-align: left; }
     .pdf-footer .right { text-align: right; }
-
-    .pdf-pagenum:before   { content: counter(page); }
-    .pdf-pagecount:before { content: counter(pages); }
+    /* Page numbering is drawn by ClientProjectContractController::
+       stampPageNumbers() after Dompdf::render(). DomPDF's pure-CSS
+       counter(pages) returns 0 inside fixed-position table cells, and
+       inline page_text() calls only see the pages laid out so far —
+       see the controller for the full explanation. */
 
     /* ============================================================
        Parties block (first page only).
@@ -378,13 +380,14 @@
   {{-- ============================================================
        Repeating page footer with page number.
        ============================================================ --}}
+  {{-- Repeating footer (brand text on the left only). The right-hand
+       "Page X of Y" is stamped by the controller after dompdf renders,
+       see ClientProjectContractController::stampPageNumbers(). --}}
   <div class="pdf-footer">
     <table>
       <tr>
         <td class="left">ZANINI RENOVATIONS</td>
-        <td class="right">
-          Page <span class="pdf-pagenum"></span> of <span class="pdf-pagecount"></span>
-        </td>
+        <td class="right">{{-- page text injected by stampPageNumbers --}}</td>
       </tr>
     </table>
   </div>

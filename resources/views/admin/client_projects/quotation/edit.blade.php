@@ -1,0 +1,311 @@
+@extends('admin.layouts.app')
+
+@section('heading', 'Edit '.$quotation->typeLabel().' — '.$project->name)
+
+@section('content')
+  @php
+    /*
+     * Build the items array we render on initial load. We need at least one
+     * row visible so the user has something to type into. Saved items are
+     * shown first; if none exist we show three empty rows by default.
+     */
+    $existing = old('items') ?? array_map(
+        fn ($i) => ['description' => $i['description'], 'amount' => $i['amount']],
+        $quotation->cleanItems()
+    );
+    if (empty($existing)) {
+        $existing = array_fill(0, 3, ['description' => '', 'amount' => '']);
+    }
+    $type = old('type', $quotation->type);
+    $labour = old('labour', $quotation->labour) ? true : false;
+    $material = old('material', $quotation->material) ? true : false;
+    if (request()->isMethod('post')) {
+        // After validation failure (POST roundtrip), respect whatever the
+        // user actually checked rather than the saved row.
+        $labour = request()->boolean('labour');
+        $material = request()->boolean('material');
+    }
+  @endphp
+
+  <div class="admin-card cp-contract-editor-card">
+    <div class="cp-contract-editor-toolbar">
+      <div>
+        <h3 style="margin:0;">{{ $quotation->typeLabel() }} editor — <span class="cp-quotation-number">{{ $quotation->quotation_number }}</span></h3>
+        <p class="admin-form-help" style="margin:4px 0 0;">
+          Add line items with their pre-HST amounts. We automatically
+          calculate 13&nbsp;% HST and the grand total. Changing between
+          <em>Quotation</em> and <em>Estimate</em> updates the document
+          prefix until the first send.
+        </p>
+      </div>
+      <div class="cp-contract-editor-toolbar-right">
+        <a href="{{ route('admin.client-projects.show', $project) }}#quotation"
+           class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-arrow-left"></i> Back to project
+        </a>
+
+        {{-- Action buttons mirrored from the bottom of the form. The
+             `form="cp-quotation-form"` attribute lets these buttons submit
+             the form below even though they live outside it. --}}
+        <a href="{{ route('admin.client-projects.show', $project) }}#quotation"
+           class="admin-btn admin-btn--ghost admin-btn--sm">
+          Cancel
+        </a>
+        <button type="submit"
+                form="cp-quotation-form"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                data-cp-quotation-intent="draft">
+          Save Draft
+        </button>
+        <button type="submit"
+                form="cp-quotation-form"
+                class="admin-btn admin-btn--primary admin-btn--sm"
+                data-cp-quotation-intent="close">
+          Save &amp; Close
+        </button>
+      </div>
+    </div>
+
+    <form action="{{ route('admin.client-projects.quotation.update', $project) }}"
+          method="post"
+          id="cp-quotation-form">
+      @csrf
+      @method('PUT')
+
+      <input type="hidden" name="intent" value="draft" id="cp-quotation-intent">
+
+      <div class="cp-quotation-form-grid">
+        <div class="admin-form-group">
+          <label for="cp-quotation-type">Document type</label>
+          <select id="cp-quotation-type" name="type" class="admin-input">
+            <option value="quotation" @selected($type === 'quotation')>Quotation (firm price)</option>
+            <option value="estimate"  @selected($type === 'estimate')>Estimate (variable price)</option>
+          </select>
+        </div>
+
+        <div class="admin-form-group">
+          <span class="admin-form-label">Includes</span>
+          <label class="cp-checkbox-row">
+            <input type="checkbox" name="material" value="1" @checked($material) id="cp-quotation-material">
+            <span>Material</span>
+          </label>
+          <label class="cp-checkbox-row">
+            <input type="checkbox" name="labour" value="1" @checked($labour) id="cp-quotation-labour">
+            <span>Labour</span>
+          </label>
+          <p id="cp-quotation-includes-warning" class="cp-quotation-warning-inline" style="display:none;">
+            <i class="fa fa-exclamation-triangle"></i>
+            Select at least one of <em>Material</em> or <em>Labour</em> so the intro phrase reads naturally.
+          </p>
+        </div>
+      </div>
+
+      <div class="cp-quotation-items-card">
+        <div class="cp-quotation-items-header">
+          <h4>Line items</h4>
+          <button type="button"
+                  id="cp-quotation-add-row"
+                  class="admin-btn admin-btn--ghost admin-btn--sm">
+            <i class="fa fa-plus"></i> Add row
+          </button>
+        </div>
+
+        <table class="cp-quotation-items-table" id="cp-quotation-items">
+          <thead>
+            <tr>
+              <th class="col-description">Description</th>
+              <th class="col-amount">Amount ($)</th>
+              <th class="col-actions"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($existing as $i => $row)
+              <tr class="cp-quotation-row">
+                <td class="col-description">
+                  <textarea name="items[{{ $i }}][description]"
+                            class="admin-input cp-quotation-row-desc"
+                            rows="2"
+                            placeholder="Describe this line item">{{ $row['description'] }}</textarea>
+                </td>
+                <td class="col-amount">
+                  <input type="number"
+                         step="0.01"
+                         min="0"
+                         name="items[{{ $i }}][amount]"
+                         value="{{ $row['amount'] !== '' ? number_format((float) $row['amount'], 2, '.', '') : '' }}"
+                         class="admin-input cp-quotation-row-amount"
+                         placeholder="0.00">
+                </td>
+                <td class="col-actions">
+                  <button type="button"
+                          class="admin-btn admin-btn--ghost admin-btn--sm cp-quotation-remove-row"
+                          aria-label="Remove row">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+
+        <div class="cp-quotation-totals">
+          <div class="cp-quotation-totals-row">
+            <span>Subtotal</span>
+            <span id="cp-quotation-subtotal">CA$0.00</span>
+          </div>
+          <div class="cp-quotation-totals-row">
+            <span>HST (13%)</span>
+            <span id="cp-quotation-hst">CA$0.00</span>
+          </div>
+          <div class="cp-quotation-totals-row cp-quotation-totals-grand">
+            <span>Total with HST</span>
+            <span id="cp-quotation-grand">CA$0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cp-contract-editor-actions">
+        <a href="{{ route('admin.client-projects.show', $project) }}#quotation"
+           class="admin-btn admin-btn--ghost">
+          Cancel
+        </a>
+        <button type="submit"
+                class="admin-btn admin-btn--ghost"
+                data-cp-quotation-intent="draft">
+          Save Draft
+        </button>
+        <button type="submit"
+                class="admin-btn admin-btn--primary"
+                data-cp-quotation-intent="close">
+          Save &amp; Close
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {{-- Hidden HTML template used by the JS to clone a fresh empty row. --}}
+  <template id="cp-quotation-row-template">
+    <tr class="cp-quotation-row">
+      <td class="col-description">
+        <textarea name="items[__INDEX__][description]"
+                  class="admin-input cp-quotation-row-desc"
+                  rows="2"
+                  placeholder="Describe this line item"></textarea>
+      </td>
+      <td class="col-amount">
+        <input type="number"
+               step="0.01"
+               min="0"
+               name="items[__INDEX__][amount]"
+               class="admin-input cp-quotation-row-amount"
+               placeholder="0.00">
+      </td>
+      <td class="col-actions">
+        <button type="button"
+                class="admin-btn admin-btn--ghost admin-btn--sm cp-quotation-remove-row"
+                aria-label="Remove row">
+          <i class="fa fa-trash"></i>
+        </button>
+      </td>
+    </tr>
+  </template>
+
+  <script>
+    (function () {
+      var HST_RATE = 0.13;
+
+      var tbody = document.querySelector('#cp-quotation-items tbody');
+      var addBtn = document.getElementById('cp-quotation-add-row');
+      var template = document.getElementById('cp-quotation-row-template');
+      var subtotalEl = document.getElementById('cp-quotation-subtotal');
+      var hstEl = document.getElementById('cp-quotation-hst');
+      var grandEl = document.getElementById('cp-quotation-grand');
+      var labourCb = document.getElementById('cp-quotation-labour');
+      var materialCb = document.getElementById('cp-quotation-material');
+      var includesWarning = document.getElementById('cp-quotation-includes-warning');
+
+      // -- Money formatting helper -----------------------------------------
+      function formatMoney(n) {
+        var v = (typeof n === 'number' && !isNaN(n)) ? n : 0;
+        return 'CA$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      }
+
+      // -- Live totals -----------------------------------------------------
+      function recalc() {
+        var inputs = tbody.querySelectorAll('.cp-quotation-row-amount');
+        var subtotal = 0;
+        inputs.forEach(function (input) {
+          var v = parseFloat(input.value);
+          if (!isNaN(v)) subtotal += v;
+        });
+        var hst = subtotal * HST_RATE;
+        subtotalEl.textContent = formatMoney(subtotal);
+        hstEl.textContent = formatMoney(hst);
+        grandEl.textContent = formatMoney(subtotal + hst);
+      }
+
+      // Re-index all items[N][...] field names whenever rows are added or
+      // removed so the server-side payload stays a contiguous array.
+      function reindex() {
+        tbody.querySelectorAll('tr.cp-quotation-row').forEach(function (tr, idx) {
+          tr.querySelectorAll('[name]').forEach(function (el) {
+            el.name = el.name.replace(/items\[(\d+|__INDEX__)\]/, 'items[' + idx + ']');
+          });
+        });
+      }
+
+      // -- Add row ---------------------------------------------------------
+      addBtn.addEventListener('click', function () {
+        var html = template.innerHTML.replace(/__INDEX__/g, tbody.querySelectorAll('tr').length);
+        var wrapper = document.createElement('tbody');
+        wrapper.innerHTML = html.trim();
+        var newRow = wrapper.firstChild;
+        tbody.appendChild(newRow);
+        reindex();
+        newRow.querySelector('.cp-quotation-row-desc').focus();
+      });
+
+      // -- Remove row (event delegation) -----------------------------------
+      tbody.addEventListener('click', function (e) {
+        var btn = e.target.closest('.cp-quotation-remove-row');
+        if (!btn) return;
+        var rows = tbody.querySelectorAll('tr.cp-quotation-row');
+        if (rows.length <= 1) {
+          // Always keep at least one row in the table for usability — clear
+          // its contents instead of removing the row entirely.
+          var tr = btn.closest('tr');
+          tr.querySelector('.cp-quotation-row-desc').value = '';
+          tr.querySelector('.cp-quotation-row-amount').value = '';
+        } else {
+          btn.closest('tr').remove();
+        }
+        reindex();
+        recalc();
+      });
+
+      // -- Recalc on any amount change -------------------------------------
+      tbody.addEventListener('input', function (e) {
+        if (e.target.classList.contains('cp-quotation-row-amount')) recalc();
+      });
+
+      // -- Includes warning ------------------------------------------------
+      function refreshIncludesWarning() {
+        var bad = !labourCb.checked && !materialCb.checked;
+        includesWarning.style.display = bad ? '' : 'none';
+      }
+      labourCb.addEventListener('change', refreshIncludesWarning);
+      materialCb.addEventListener('change', refreshIncludesWarning);
+      refreshIncludesWarning();
+
+      // -- Intent stamping (top + bottom Save buttons) ---------------------
+      var intentField = document.getElementById('cp-quotation-intent');
+      document.querySelectorAll('[data-cp-quotation-intent]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          intentField.value = btn.getAttribute('data-cp-quotation-intent') || 'draft';
+        });
+      });
+
+      recalc();
+    })();
+  </script>
+@endsection
