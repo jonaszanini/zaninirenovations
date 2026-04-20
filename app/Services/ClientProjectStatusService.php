@@ -157,10 +157,13 @@ class ClientProjectStatusService
         }
 
         try {
-            Mail::to($email, $project->client_name)
-                ->send(new ClientProjectQuoteReceivedClient($project));
+            $mailer = Mail::to($email, $project->client_name);
+            if ($cc = $project->secondaryClientEmail()) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectQuoteReceivedClient($project));
 
-            $this->recordEvent($project, "Quote-received acknowledgement emailed to {$email}.");
+            $this->recordEvent($project, "Quote-received acknowledgement emailed to {$project->clientEmailRecipientsLabel()}.");
         } catch (\Throwable $e) {
             Log::warning('Client quote-received email failed', [
                 'client_project_id' => $project->id,
@@ -177,10 +180,13 @@ class ClientProjectStatusService
         }
 
         try {
-            Mail::to($email, $project->client_name)
-                ->send(new ClientProjectThankYouClient($project));
+            $mailer = Mail::to($email, $project->client_name);
+            if ($cc = $project->secondaryClientEmail()) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectThankYouClient($project));
 
-            $this->recordEvent($project, "Thank-you / review-request email sent to {$email}.");
+            $this->recordEvent($project, "Thank-you / review-request email sent to {$project->clientEmailRecipientsLabel()}.");
         } catch (\Throwable $e) {
             Log::warning('Client thank-you email failed', [
                 'client_project_id' => $project->id,

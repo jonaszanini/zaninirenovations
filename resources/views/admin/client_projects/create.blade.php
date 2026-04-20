@@ -48,6 +48,15 @@
         </div>
 
         <div class="admin-form-group">
+          <label for="cp-client-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(optional — CC'd on every client email)</small></label>
+          <input type="email" id="cp-client-email-secondary" name="client_email_secondary"
+                 value="{{ old('client_email_secondary') }}" maxlength="255"
+                 placeholder="spouse@example.com"
+                 @class(['is-invalid' => $errors->has('client_email_secondary')])>
+          @error('client_email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+
+        <div class="admin-form-group">
           <label for="cp-client-address">Address</label>
           <input type="text" id="cp-client-address" name="client_address" value="{{ old('client_address') }}" maxlength="500"
                  @class(['is-invalid' => $errors->has('client_address')])>

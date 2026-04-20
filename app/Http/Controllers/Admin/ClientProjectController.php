@@ -98,6 +98,7 @@ class ClientProjectController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
+            'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
             'client_phone' => ['nullable', 'digits:10'],
             'client_address' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -177,6 +178,7 @@ class ClientProjectController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
+            'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
             'client_phone' => ['nullable', 'digits:10'],
             'client_address' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -239,6 +241,8 @@ class ClientProjectController extends Controller
         return [
             'client_phone.digits' => 'Phone number must have exactly 10 digits (e.g. (123) 456-7890).',
             'client_email.email' => 'Please enter a valid email address.',
+            'client_email_secondary.email' => 'Please enter a valid secondary email address.',
+            'client_email_secondary.different' => 'The secondary email must be different from the primary email.',
             'end_date.after_or_equal' => 'End date must be the same as or after the start date.',
             'hourly_rate.required_if' => 'Hourly rate is required when billing type is "Hourly rate".',
             'hourly_rate.min' => 'Hourly rate must be at least $0.01.',
@@ -295,8 +299,11 @@ class ClientProjectController extends Controller
         }
 
         try {
-            Mail::to($client_project->client_email, $client_project->client_name)
-                ->send(new ClientProjectServiceConfirmationClient($client_project));
+            $mailer = Mail::to($client_project->client_email, $client_project->client_name);
+            if ($cc = $client_project->secondaryClientEmail()) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectServiceConfirmationClient($client_project));
         } catch (\Throwable $e) {
             Log::error('Failed to email service confirmation', [
                 'project_id' => $client_project->id,
@@ -309,7 +316,7 @@ class ClientProjectController extends Controller
         $client_project->service_confirmation_sent_at = now();
         $client_project->save();
 
-        $sendNote = "Service confirmation emailed to {$client_project->client_email}.";
+        $sendNote = "Service confirmation emailed to {$client_project->clientEmailRecipientsLabel()}.";
 
         // Confirming the booking with the client effectively means the
         // date is locked in and we're waiting for it to arrive, which is
@@ -345,7 +352,7 @@ class ClientProjectController extends Controller
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('schedule')
-            ->with('success', "Service confirmation emailed to {$client_project->client_email}.");
+            ->with('success', "Service confirmation emailed to {$client_project->clientEmailRecipientsLabel()}.");
     }
 
     /**

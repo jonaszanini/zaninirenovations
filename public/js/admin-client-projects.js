@@ -295,6 +295,26 @@
     4: [20, 20, 30, 30],
   };
 
+  // Must stay in sync with ClientProjectFinanceController::installmentLabel().
+  var PLAN_LABELS = {
+    1: ['Full payment on completion'],
+    2: [
+      'On signing (holds the schedule)',
+      'On completion',
+    ],
+    3: [
+      'On signing (holds the schedule)',
+      'Day before work begins',
+      'On completion',
+    ],
+    4: [
+      'On signing (holds the schedule)',
+      'Day before work begins',
+      'Mid-project',
+      'On completion',
+    ],
+  };
+
   function render() {
     var form = document.getElementById('cp-installments-form');
     if (!form) return;
@@ -316,12 +336,13 @@
 
     var plan = parseInt(planSelect.value, 10) || 1;
     var defaults = PLAN_DEFAULTS[plan] || PLAN_DEFAULTS[1];
+    var labels = PLAN_LABELS[plan] || PLAN_LABELS[1];
     var ordinals = ['1st', '2nd', '3rd', '4th'];
 
     if (plan === 1) {
       rowsEl.innerHTML = [
         '<div class="cp-installment-row" data-row>',
-        '  <div class="cp-installment-label">Full payment</div>',
+        '  <div class="cp-installment-label">' + labels[0] + '</div>',
         '  <div class="cp-installment-pct">',
         '    <label>Percentage</label>',
         '    <input type="hidden" name="percentages[]" value="100">',
@@ -340,7 +361,7 @@
 
       var rowsHtml = '';
       for (var i = 0; i < plan; i++) {
-        var label = (ordinals[i] || (i + 1) + 'th') + ' installment';
+        var label = labels[i] || ((ordinals[i] || (i + 1) + 'th') + ' installment');
         var defaultPct = (defaults[i] !== undefined ? defaults[i] : (100 / plan)).toFixed(2);
 
         rowsHtml += [

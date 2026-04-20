@@ -147,13 +147,16 @@ class ClientProjectQuotationController extends Controller
         $quotation->save();
 
         try {
-            Mail::to($client_project->client_email)
-                ->send(new ClientProjectQuotationClient(
-                    $client_project,
-                    $quotation,
-                    $bytes,
-                    $this->pdfFilename($client_project, $quotation)
-                ));
+            $mailer = Mail::to($client_project->client_email);
+            if ($cc = $client_project->secondaryClientEmail()) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectQuotationClient(
+                $client_project,
+                $quotation,
+                $bytes,
+                $this->pdfFilename($client_project, $quotation)
+            ));
         } catch (\Throwable $e) {
             Log::error('Failed to email quotation', [
                 'project_id' => $client_project->id,
@@ -173,7 +176,7 @@ class ClientProjectQuotationController extends Controller
         // accepted, in progress, completed) just because the user re-sent
         // an updated quotation version.
         $sendNote = "{$quotation->typeLabel()} {$quotation->quotation_number} "
-            ."emailed to {$client_project->client_email} (v{$quotation->version}).";
+            ."emailed to {$client_project->clientEmailRecipientsLabel()} (v{$quotation->version}).";
 
         if ($client_project->status === ClientProject::STATUS_QUOTE_PENDING) {
             try {
@@ -211,7 +214,7 @@ class ClientProjectQuotationController extends Controller
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('quotation')
-            ->with('success', "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to {$client_project->client_email} (v{$quotation->version}).");
+            ->with('success', "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to {$client_project->clientEmailRecipientsLabel()} (v{$quotation->version}).");
     }
 
     /**

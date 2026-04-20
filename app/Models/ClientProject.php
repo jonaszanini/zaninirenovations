@@ -38,6 +38,7 @@ class ClientProject extends Model
         'name',
         'client_name',
         'client_email',
+        'client_email_secondary',
         'client_phone',
         'client_address',
         'notes',
@@ -193,6 +194,41 @@ class ClientProject extends Model
     public function missingContactFieldsForContract(): array
     {
         return $this->missingClientContactFields();
+    }
+
+    /**
+     * The secondary email (spouse/partner) if set, normalised to lowercase
+     * and trimmed. Empty when not configured. Never includes the primary
+     * address even if the user accidentally typed the same value twice —
+     * callers should treat it as a safe-to-CC value.
+     */
+    public function secondaryClientEmail(): ?string
+    {
+        $secondary = strtolower(trim((string) $this->client_email_secondary));
+        if ($secondary === '') {
+            return null;
+        }
+
+        $primary = strtolower(trim((string) $this->client_email));
+        if ($primary !== '' && $secondary === $primary) {
+            return null;
+        }
+
+        return $secondary;
+    }
+
+    /**
+     * Human-friendly recipient list for History / success-flash copy.
+     * Examples:
+     *   "alice@example.com"
+     *   "alice@example.com (cc bob@example.com)"
+     */
+    public function clientEmailRecipientsLabel(): string
+    {
+        $primary = (string) $this->client_email;
+        $cc = $this->secondaryClientEmail();
+
+        return $cc ? "{$primary} (cc {$cc})" : $primary;
     }
 
     // --- Status helpers ----------------------------------------------------

@@ -142,12 +142,15 @@ class ClientProjectContractController extends Controller
         $contract->save();
 
         try {
-            Mail::to($client_project->client_email)
-                ->send(new ClientProjectContractClient(
-                    $client_project,
-                    $bytes,
-                    $this->pdfFilename($client_project, $contract)
-                ));
+            $mailer = Mail::to($client_project->client_email);
+            if ($cc = $client_project->secondaryClientEmail()) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectContractClient(
+                $client_project,
+                $bytes,
+                $this->pdfFilename($client_project, $contract)
+            ));
         } catch (\Throwable $e) {
             Log::error('Failed to email contract', [
                 'project_id' => $client_project->id,
@@ -167,7 +170,7 @@ class ClientProjectContractController extends Controller
         try {
             $statusService->recordEvent(
                 $client_project,
-                "Contract v{$contract->version} emailed to {$client_project->client_email}."
+                "Contract v{$contract->version} emailed to {$client_project->clientEmailRecipientsLabel()}."
             );
         } catch (\Throwable $e) {
             Log::warning('Failed to record contract-send history entry', [
@@ -179,7 +182,7 @@ class ClientProjectContractController extends Controller
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('contract')
-            ->with('success', "Contract emailed to {$client_project->client_email} (v{$contract->version}).");
+            ->with('success', "Contract emailed to {$client_project->clientEmailRecipientsLabel()} (v{$contract->version}).");
     }
 
     /**

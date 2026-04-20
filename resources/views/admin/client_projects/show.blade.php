@@ -24,6 +24,9 @@
           @if ($project->client_email)
             <span><i class="fa fa-envelope"></i> <a href="mailto:{{ $project->client_email }}">{{ $project->client_email }}</a></span>
           @endif
+          @if ($project->secondaryClientEmail())
+            <span title="Secondary email — CC'd on every client email"><i class="fa fa-envelope-o"></i> <a href="mailto:{{ $project->secondaryClientEmail() }}">{{ $project->secondaryClientEmail() }}</a></span>
+          @endif
           @if ($project->client_address)
             <span>
               <i class="fa fa-map-marker"></i>
@@ -98,6 +101,7 @@
         <dt>Project name</dt><dd>{{ $project->name }}</dd>
         <dt>Client</dt><dd>{{ $project->client_name }}</dd>
         <dt>Email</dt><dd>{{ $project->client_email ?: '—' }}</dd>
+        <dt>Secondary email</dt><dd>{{ $project->secondaryClientEmail() ?: '—' }}</dd>
         <dt>Phone</dt><dd>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</dd>
         <dt>Address</dt><dd>{{ $project->client_address ?: '—' }}</dd>
         <dt>Created</dt><dd>{{ $project->created_at->format('d/m/Y H:i') }}</dd>
@@ -201,7 +205,7 @@
         <form action="{{ route('admin.client-projects.service-confirmation.send', $project) }}"
               method="post"
               class="cp-schedule-form"
-              onsubmit="return confirm('{{ $alreadySent ? 'Re-send the service confirmation email to '.($project->client_email ?: 'the client').'?' : 'Send the service confirmation email to '.($project->client_email ?: 'the client').'?' }}');">
+              onsubmit="return confirm('{{ $alreadySent ? 'Re-send the service confirmation email to '.($project->clientEmailRecipientsLabel() ?: 'the client').'?' : 'Send the service confirmation email to '.($project->clientEmailRecipientsLabel() ?: 'the client').'?' }}');">
           @csrf
           <button type="submit"
                   class="admin-btn admin-btn--primary"

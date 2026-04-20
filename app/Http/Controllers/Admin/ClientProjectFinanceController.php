@@ -304,8 +304,39 @@ class ClientProjectFinanceController extends Controller
 
     private function defaultInstallmentLabel(int $plan, int $index): string
     {
-        if ($plan === 1) {
-            return 'Full payment';
+        return self::installmentLabel($plan, $index);
+    }
+
+    /**
+     * Canonical payment-plan installment labels.
+     *
+     * Centralised so the live editor (JS), the stored rows, and any future
+     * consumers stay in sync. Keep any wording changes here — the JS
+     * defaults in admin-client-projects.js mirror this list.
+     */
+    public static function installmentLabel(int $plan, int $index): string
+    {
+        $map = [
+            1 => ['Full payment on completion'],
+            2 => [
+                'On signing (holds the schedule)',
+                'On completion',
+            ],
+            3 => [
+                'On signing (holds the schedule)',
+                'Day before work begins',
+                'On completion',
+            ],
+            4 => [
+                'On signing (holds the schedule)',
+                'Day before work begins',
+                'Mid-project',
+                'On completion',
+            ],
+        ];
+
+        if (isset($map[$plan][$index])) {
+            return $map[$plan][$index];
         }
 
         $ordinals = ['1st', '2nd', '3rd', '4th'];
