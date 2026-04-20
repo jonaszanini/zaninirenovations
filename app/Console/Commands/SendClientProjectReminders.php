@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Mail\ClientProjectQuoteFollowUpAdmin;
 use App\Mail\ClientProjectQuoteReminderAdmin;
 use App\Models\ClientProject;
+use App\Services\ClientProjectStatusService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -23,15 +24,15 @@ class SendClientProjectReminders extends Command
 
     protected $description = 'Send admin reminders for Quote Pending and Quote Sent projects.';
 
-    public function handle(): int
+    public function handle(ClientProjectStatusService $statusService): int
     {
-        $this->sendQuotePendingReminders();
-        $this->sendQuoteSentFollowUps();
+        $this->sendQuotePendingReminders($statusService);
+        $this->sendQuoteSentFollowUps($statusService);
 
         return self::SUCCESS;
     }
 
-    private function sendQuotePendingReminders(): void
+    private function sendQuotePendingReminders(ClientProjectStatusService $statusService): void
     {
         $to = (string) config('client_projects.quote_reminder_email_to');
         if ($to === '') {
@@ -56,6 +57,7 @@ class SendClientProjectReminders extends Command
                 Mail::to($to)->send(new ClientProjectQuoteReminderAdmin($project));
                 $project->last_quote_reminder_sent_at = now();
                 $project->save();
+                $statusService->recordEvent($project, "Daily Quote-Pending reminder emailed to admin ({$to}).");
                 $this->info('Reminder sent for project #'.$project->id.' '.$project->name);
             } catch (\Throwable $e) {
                 Log::error('Quote Pending reminder failed', [
@@ -67,7 +69,7 @@ class SendClientProjectReminders extends Command
         }
     }
 
-    private function sendQuoteSentFollowUps(): void
+    private function sendQuoteSentFollowUps(ClientProjectStatusService $statusService): void
     {
         $to = (string) config('client_projects.quote_follow_up_email_to');
         if ($to === '') {
@@ -88,6 +90,7 @@ class SendClientProjectReminders extends Command
                 Mail::to($to)->send(new ClientProjectQuoteFollowUpAdmin($project));
                 $project->quote_sent_follow_up_sent_at = now();
                 $project->save();
+                $statusService->recordEvent($project, "2-day Quote-Sent follow-up reminder emailed to admin ({$to}).");
                 $this->info('Follow-up sent for project #'.$project->id.' '.$project->name);
             } catch (\Throwable $e) {
                 Log::error('Quote Sent follow-up failed', [

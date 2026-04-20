@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectContractClient;
 use App\Models\ClientProject;
 use App\Models\ClientProjectContract;
+use App\Services\ClientProjectStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -103,7 +104,7 @@ class ClientProjectContractController extends Controller
      * Generate a fresh PDF, persist it under storage/app/contracts/, email
      * it to the client, and bump the version + sent_at.
      */
-    public function send(ClientProject $client_project)
+    public function send(ClientProject $client_project, ClientProjectStatusService $statusService)
     {
         $contract = $client_project->contract;
 
@@ -158,6 +159,21 @@ class ClientProjectContractController extends Controller
                 ->route('admin.client-projects.show', $client_project)
                 ->withFragment('contract')
                 ->with('error', 'The PDF was generated but the email could not be sent: '.$e->getMessage());
+        }
+
+        // Audit trail: contract sends aren't always tied to a status
+        // change (e.g. re-sending a revised contract), so record an
+        // explicit event row separate from any transition.
+        try {
+            $statusService->recordEvent(
+                $client_project,
+                "Contract v{$contract->version} emailed to {$client_project->client_email}."
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Failed to record contract-send history entry', [
+                'project_id' => $client_project->id,
+                'exception' => $e->getMessage(),
+            ]);
         }
 
         return redirect()

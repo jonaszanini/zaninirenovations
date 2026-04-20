@@ -172,18 +172,35 @@ class ClientProjectQuotationController extends Controller
         // project that's already moved past this point (e.g. proposal
         // accepted, in progress, completed) just because the user re-sent
         // an updated quotation version.
+        $sendNote = "{$quotation->typeLabel()} {$quotation->quotation_number} "
+            ."emailed to {$client_project->client_email} (v{$quotation->version}).";
+
         if ($client_project->status === ClientProject::STATUS_QUOTE_PENDING) {
             try {
                 $statusService->transition(
                     $client_project,
                     ClientProject::STATUS_QUOTE_SENT,
-                    "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to client (v{$quotation->version})."
+                    $sendNote
                 );
             } catch (\Throwable $e) {
                 // Don't fail the whole send flow if the status side-effects
                 // blow up — the email already went out, the status is just
                 // bookkeeping.
                 Log::warning('Failed to auto-transition project to Quote Sent', [
+                    'project_id' => $client_project->id,
+                    'quotation_id' => $quotation->id,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        } else {
+            // Status already past Quote Pending (e.g. re-sending an updated
+            // quote to a client whose project is In Progress). Log an
+            // event-only history row so the audit trail still shows the
+            // send.
+            try {
+                $statusService->recordEvent($client_project, $sendNote);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to record quotation-send history entry', [
                     'project_id' => $client_project->id,
                     'quotation_id' => $quotation->id,
                     'exception' => $e->getMessage(),

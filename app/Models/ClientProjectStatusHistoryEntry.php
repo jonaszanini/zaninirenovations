@@ -34,7 +34,7 @@ class ClientProjectStatusHistoryEntry extends Model
 
     public function fromLabel(): string
     {
-        if ($this->from_status === null) {
+        if ($this->from_status === null || $this->from_status === $this->to_status) {
             return '—';
         }
 
@@ -44,5 +44,15 @@ class ClientProjectStatusHistoryEntry extends Model
     public function toLabel(): string
     {
         return ClientProject::statusLabels()[$this->to_status] ?? ucfirst(str_replace('_', ' ', $this->to_status));
+    }
+
+    /**
+     * True when this row is a plain event (email/file/audit) rather than
+     * a real status transition. The view uses this to render the "To"
+     * column as a muted badge instead of the bold status change.
+     */
+    public function isEvent(): bool
+    {
+        return $this->from_status !== null && $this->from_status === $this->to_status;
     }
 }

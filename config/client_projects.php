@@ -18,7 +18,7 @@ return [
 
     // Email address that receives the "Add to Google Calendar" link when
     // start/end dates are saved on a project.
-    'calendar_email_to' => env('CLIENT_PROJECTS_CALENDAR_TO', 'jonaszanini@gmail.com'),
+    'calendar_email_to' => env('CLIENT_PROJECTS_CALENDAR_TO', 'zaninirenovations@gmail.com'),
 
     // Google review URL used in the thank-you email to the client.
     'review_url' => env(

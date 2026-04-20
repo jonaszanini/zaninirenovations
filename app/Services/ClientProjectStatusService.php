@@ -80,6 +80,17 @@ class ClientProjectStatusService
         }
     }
 
+    /**
+     * Log a non-transition event against the project history (e.g. an
+     * email send, a file upload, a manual note). Uses the project's
+     * current status on both sides so the UI can render it as
+     * "unchanged status → event-only row".
+     */
+    public function recordEvent(ClientProject $project, string $note): void
+    {
+        $this->recordHistory($project, $project->status, $project->status, $note);
+    }
+
     private function recordHistory(ClientProject $project, ?string $fromStatus, string $toStatus, ?string $note): void
     {
         ClientProjectStatusHistoryEntry::create([
@@ -135,6 +146,13 @@ class ClientProjectStatusService
 
             $project->calendar_email_sent_at = now();
             $project->save();
+
+            $start = optional($project->start_date)->format('d/m/Y');
+            $end = optional($project->end_date)->format('d/m/Y');
+            $this->recordEvent(
+                $project,
+                "Dates saved ({$start} → {$end}). Admin calendar notification emailed to {$adminEmail}."
+            );
         } catch (\Throwable $e) {
             Log::warning('ClientProject calendar email failed', [
                 'client_project_id' => $project->id,
@@ -153,6 +171,8 @@ class ClientProjectStatusService
         try {
             Mail::to($email, $project->client_name)
                 ->send(new ClientProjectQuoteReceivedClient($project));
+
+            $this->recordEvent($project, "Quote-received acknowledgement emailed to {$email}.");
         } catch (\Throwable $e) {
             Log::warning('Client quote-received email failed', [
                 'client_project_id' => $project->id,
@@ -171,6 +191,8 @@ class ClientProjectStatusService
         try {
             Mail::to($email, $project->client_name)
                 ->send(new ClientProjectThankYouClient($project));
+
+            $this->recordEvent($project, "Thank-you / review-request email sent to {$email}.");
         } catch (\Throwable $e) {
             Log::warning('Client thank-you email failed', [
                 'client_project_id' => $project->id,

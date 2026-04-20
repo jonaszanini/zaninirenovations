@@ -309,6 +309,8 @@ class ClientProjectController extends Controller
         $client_project->service_confirmation_sent_at = now();
         $client_project->save();
 
+        $sendNote = "Service confirmation emailed to {$client_project->client_email}.";
+
         // Auto-promote Proposal Accepted → In Progress the first time we
         // confirm the booking with the client. Don't touch later statuses
         // (e.g. Completed) so re-sends remain idempotent.
@@ -317,10 +319,21 @@ class ClientProjectController extends Controller
                 $statusService->transition(
                     $client_project,
                     ClientProject::STATUS_IN_PROGRESS,
-                    'Service confirmation emailed to client.'
+                    $sendNote
                 );
             } catch (\Throwable $e) {
                 Log::warning('Failed to auto-transition project to In Progress after service confirmation', [
+                    'project_id' => $client_project->id,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        } else {
+            // Re-send (status already past Proposal Accepted). Record an
+            // event-only row so the history still shows the send.
+            try {
+                $statusService->recordEvent($client_project, $sendNote);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to record service-confirmation history entry', [
                     'project_id' => $client_project->id,
                     'exception' => $e->getMessage(),
                 ]);

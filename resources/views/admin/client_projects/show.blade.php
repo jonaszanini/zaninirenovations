@@ -260,8 +260,7 @@
           <thead>
             <tr>
               <th>When</th>
-              <th>From</th>
-              <th>To</th>
+              <th>Event</th>
               <th>Note</th>
               <th>By</th>
             </tr>
@@ -270,8 +269,15 @@
             @foreach ($project->statusHistory as $entry)
               <tr>
                 <td>{{ $entry->changed_at->format('d/m/Y H:i') }}</td>
-                <td>{{ $entry->fromLabel() }}</td>
-                <td><strong>{{ $entry->toLabel() }}</strong></td>
+                <td>
+                  @if ($entry->isEvent())
+                    <span class="cp-badge" style="background:#e5e7eb;color:#4b5563;">Event</span>
+                  @else
+                    <span class="cp-badge" style="background:#dbeafe;color:#1e40af;">
+                      {{ $entry->fromLabel() }} → {{ $entry->toLabel() }}
+                    </span>
+                  @endif
+                </td>
                 <td>{{ $entry->note ?: '—' }}</td>
                 <td>{{ $entry->user?->email ?? 'system' }}</td>
               </tr>
