@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\ClientProject;
+use App\Services\GoogleCalendarLink;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -45,6 +46,9 @@ class ClientProjectContractClient extends Mailable
                 'project' => $this->project,
                 'quotation' => $quotation,
                 'siteName' => (string) config('mail.from.name', 'Zanini Renovations'),
+                // Null when the project doesn't have both dates set.
+                // The template hides the "Save the date" block in that case.
+                'calendarLink' => GoogleCalendarLink::forClient($this->project),
             ])
             ->attachData($this->pdfBytes, $this->pdfFilename, [
                 'mime' => 'application/pdf',

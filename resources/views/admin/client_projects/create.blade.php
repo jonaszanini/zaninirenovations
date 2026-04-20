@@ -109,8 +109,14 @@
         <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
 
-      <p class="admin-form-help cp-form-footer">
+      <p class="admin-form-help cp-form-footer" data-cp-fixed-only
+         style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY ? 'display:none;' : '' }}">
         Status will be set to <strong>Quote Pending</strong>. You'll receive a daily email reminder until the quote is sent.
+      </p>
+      <p class="admin-form-help cp-form-footer" data-cp-hourly-only
+         style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY ? '' : 'display:none;' }}">
+        Status will be set to <strong>Proposal Accepted</strong>. No email is sent to the client yet &mdash; once
+        you schedule the dates you'll be able to send a service confirmation from the project page.
       </p>
     </form>
   </div>

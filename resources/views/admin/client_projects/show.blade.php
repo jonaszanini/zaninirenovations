@@ -155,6 +155,63 @@
         </div>
       @endif
     </div>
+
+    {{-- Hourly-only: manual "service confirmation" email. The rate was
+         agreed verbally up front, so the client doesn't get the automatic
+         quote_pending emails — instead Jonas sends this confirmation once
+         the dates are locked in. --}}
+    @if ($project->billing_type === \App\Models\ClientProject::BILLING_HOURLY && !$isRejected)
+      <div class="admin-card cp-service-confirmation-card">
+        <h3>Service confirmation</h3>
+        <p class="admin-form-help">
+          Hourly-billing projects skip the quotation flow because the rate was agreed verbally.
+          Once the dates are saved above, send the client a confirmation email with the scheduled
+          {{ $project->start_date && $project->end_date && \Illuminate\Support\Carbon::parse($project->start_date)->isSameDay(\Illuminate\Support\Carbon::parse($project->end_date)) ? 'date' : 'dates' }},
+          hourly rate, materials policy, and payment instructions.
+        </p>
+
+        @php
+          $datesSet = $project->start_date && $project->end_date;
+          $hasContact = $project->hasClientContactInfo();
+          $alreadySent = (bool) $project->service_confirmation_sent_at;
+          $canSend = $datesSet && $hasContact;
+        @endphp
+
+        @if (!$datesSet)
+          <p class="admin-form-help" style="color:#b45309;">
+            <i class="fa fa-exclamation-triangle"></i>
+            Save both the start and end dates before you can send the confirmation.
+          </p>
+        @elseif (!$hasContact)
+          <p class="admin-form-help" style="color:#b45309;">
+            <i class="fa fa-exclamation-triangle"></i>
+            Missing client contact info: {{ implode(', ', $project->missingClientContactFields()) }}.
+            <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project details</a> to fix.
+          </p>
+        @endif
+
+        @if ($alreadySent)
+          <p class="admin-form-help">
+            <i class="fa fa-check-circle" style="color:#10b981;"></i>
+            Last sent on
+            <strong>{{ $project->service_confirmation_sent_at->format('d/m/Y H:i') }}</strong>.
+          </p>
+        @endif
+
+        <form action="{{ route('admin.client-projects.service-confirmation.send', $project) }}"
+              method="post"
+              class="cp-schedule-form"
+              onsubmit="return confirm('{{ $alreadySent ? 'Re-send the service confirmation email to '.($project->client_email ?: 'the client').'?' : 'Send the service confirmation email to '.($project->client_email ?: 'the client').'?' }}');">
+          @csrf
+          <button type="submit"
+                  class="admin-btn admin-btn--primary"
+                  @disabled(!$canSend)>
+            <i class="fa fa-paper-plane"></i>
+            {{ $alreadySent ? 'Re-send service confirmation' : 'Send service confirmation' }}
+          </button>
+        </form>
+      </div>
+    @endif
   </section>
 
   {{-- FINANCIALS TAB ------------------------------------------------------- --}}

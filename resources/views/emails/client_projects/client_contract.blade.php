@@ -48,6 +48,34 @@
     {{ $acceptanceRef }} dated {{ $acceptanceDate }}.
   </p>
 
+  @if (!empty($calendarLink))
+    @php
+      $startFormatted = \Illuminate\Support\Carbon::parse($project->start_date)->format('F j, Y');
+      $endFormatted = \Illuminate\Support\Carbon::parse($project->end_date)->format('F j, Y');
+      $sameDay = $project->start_date && $project->end_date
+          && \Illuminate\Support\Carbon::parse($project->start_date)->isSameDay(\Illuminate\Support\Carbon::parse($project->end_date));
+    @endphp
+
+    <p style="margin-top:24px;">
+      <strong>Save the date:</strong>
+      @if ($sameDay)
+        Work is scheduled for <strong>{{ $startFormatted }}</strong>.
+      @else
+        Work is scheduled from <strong>{{ $startFormatted }}</strong> to
+        <strong>{{ $endFormatted }}</strong>.
+      @endif
+    </p>
+
+    <p style="margin:12px 0;">
+      <a href="{{ $calendarLink }}"
+         target="_blank"
+         rel="noopener noreferrer"
+         style="display:inline-block;padding:10px 18px;background:#1f4e5f;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">
+        Add to Google Calendar
+      </a>
+    </p>
+  @endif
+
   <p>
     If you have any questions or would like to discuss any details of the contract,
     please reply to this email.

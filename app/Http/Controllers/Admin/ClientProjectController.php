@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ClientProjectServiceConfirmationClient;
 use App\Models\ClientProject;
 use App\Services\ClientProjectStatusService;
 use App\Services\GoogleCalendarLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * CRUD for ClientProject (full lifecycle management). The model's show view
@@ -110,9 +113,19 @@ class ClientProjectController extends Controller
             $data['hourly_rate'] = null;
         }
 
-        $project = DB::transaction(function () use ($data) {
+        // Hourly projects imply the price has already been agreed verbally,
+        // so we skip Quote Pending (which would trigger daily admin reminders
+        // and the "we received your request" client email) and land directly
+        // at Proposal Accepted. The service confirmation email is sent
+        // manually from the project page once dates are scheduled.
+        $isHourly = $data['billing_type'] === ClientProject::BILLING_HOURLY;
+        $initialStatus = $isHourly
+            ? ClientProject::STATUS_PROPOSAL_ACCEPTED
+            : ClientProject::STATUS_QUOTE_PENDING;
+
+        $project = DB::transaction(function () use ($data, $initialStatus) {
             $project = ClientProject::create(array_merge($data, [
-                'status' => ClientProject::STATUS_QUOTE_PENDING,
+                'status' => $initialStatus,
                 'status_changed_at' => now(),
             ]));
 
@@ -121,9 +134,13 @@ class ClientProjectController extends Controller
 
         $service->onCreated($project);
 
+        $successMessage = $isHourly
+            ? 'Project created. Status set to Proposal Accepted — no email sent to the client yet.'
+            : 'Project created. Status set to Quote Pending.';
+
         return redirect()
             ->route('admin.client-projects.show', $project)
-            ->with('success', 'Project created. Status set to Quote Pending.');
+            ->with('success', $successMessage);
     }
 
     public function show(ClientProject $client_project)
@@ -249,6 +266,71 @@ class ClientProjectController extends Controller
         return redirect()
             ->route('admin.client-projects.index')
             ->with('success', 'Project deleted.');
+    }
+
+    /**
+     * Send the hourly-billing "service confirmation" email to the client.
+     *
+     * Only available for hourly projects that have both start_date and
+     * end_date set. The rate/price was already agreed verbally, so the
+     * email essentially says "the calendar slot is locked in". If the
+     * project is still in Proposal Accepted we also transition it to
+     * In Progress, mirroring the Quote Sent auto-transition used by the
+     * quotation flow.
+     */
+    public function sendServiceConfirmation(ClientProject $client_project, ClientProjectStatusService $statusService)
+    {
+        if ($client_project->billing_type !== ClientProject::BILLING_HOURLY) {
+            return back()->with('error', 'Service confirmation is only available for hourly-billing projects.');
+        }
+
+        if (!$client_project->start_date || !$client_project->end_date) {
+            return back()->with('error', 'Please set both the start and end dates before sending the service confirmation.');
+        }
+
+        if (!$client_project->hasClientContactInfo()) {
+            $missing = implode(', ', $client_project->missingClientContactFields());
+
+            return back()->with('error', "Cannot send the service confirmation — missing client info: {$missing}.");
+        }
+
+        try {
+            Mail::to($client_project->client_email, $client_project->client_name)
+                ->send(new ClientProjectServiceConfirmationClient($client_project));
+        } catch (\Throwable $e) {
+            Log::error('Failed to email service confirmation', [
+                'project_id' => $client_project->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to send the service confirmation: '.$e->getMessage());
+        }
+
+        $client_project->service_confirmation_sent_at = now();
+        $client_project->save();
+
+        // Auto-promote Proposal Accepted → In Progress the first time we
+        // confirm the booking with the client. Don't touch later statuses
+        // (e.g. Completed) so re-sends remain idempotent.
+        if ($client_project->status === ClientProject::STATUS_PROPOSAL_ACCEPTED) {
+            try {
+                $statusService->transition(
+                    $client_project,
+                    ClientProject::STATUS_IN_PROGRESS,
+                    'Service confirmation emailed to client.'
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Failed to auto-transition project to In Progress after service confirmation', [
+                    'project_id' => $client_project->id,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('schedule')
+            ->with('success', "Service confirmation emailed to {$client_project->client_email}.");
     }
 
     /**

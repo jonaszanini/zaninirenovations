@@ -389,6 +389,19 @@
 .cp-installments-table .cp-row-paid {
   background: #f0fdf4;
 }
+/* "(incl. 13% HST)" annotation next to the Amount column header /
+   installment row label. Kept lighter-weight and a touch smaller than
+   the main label so the column header still reads as "Amount" at a
+   glance. */
+.cp-incl-hst {
+  display: inline-block;
+  margin-left: 4px;
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: #6b7280;
+  text-transform: none;
+  letter-spacing: 0;
+}
 .cp-paid-date {
   padding: 5px 7px;
   font-size: 13px;

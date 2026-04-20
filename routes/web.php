@@ -128,6 +128,11 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::post('client-projects/{client_project}/quotation/send', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'send'])
         ->name('client-projects.quotation.send');
 
+    // Hourly-billing: manual "service confirmation" email to the client once
+    // the project dates are locked in.
+    Route::post('client-projects/{client_project}/service-confirmation/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendServiceConfirmation'])
+        ->name('client-projects.service-confirmation.send');
+
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
 });

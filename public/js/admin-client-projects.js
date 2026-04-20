@@ -258,6 +258,9 @@
     var rateGroup = document.querySelector('[data-cp-hourly-rate]');
     if (!rateGroup) return;
 
+    var fixedOnly = document.querySelectorAll('[data-cp-fixed-only]');
+    var hourlyOnly = document.querySelectorAll('[data-cp-hourly-only]');
+
     function sync() {
       var checked = document.querySelector('[data-cp-billing]:checked');
       var isHourly = checked && checked.value === 'hourly';
@@ -271,6 +274,8 @@
           input.value = '';
         }
       }
+      fixedOnly.forEach(function (el) { el.style.display = isHourly ? 'none' : ''; });
+      hourlyOnly.forEach(function (el) { el.style.display = isHourly ? '' : 'none'; });
     }
     radios.forEach(function (r) { r.addEventListener('change', sync); });
     sync();
@@ -324,7 +329,7 @@
         '    <span>%</span>',
         '  </div>',
         '  <div class="cp-installment-amount">',
-        '    <span class="admin-form-help">Amount</span>',
+        '    <span class="admin-form-help">Amount (incl. 13% HST)</span>',
         '    <span class="cp-amount-preview" data-amount-preview>—</span>',
         '  </div>',
         '</div>',
@@ -347,7 +352,7 @@
           '    <span>%</span>',
           '  </div>',
           '  <div class="cp-installment-amount">',
-          '    <span class="admin-form-help">Amount</span>',
+          '    <span class="admin-form-help">Amount (incl. 13% HST)</span>',
           '    <span class="cp-amount-preview" data-amount-preview>—</span>',
           '  </div>',
           '</div>',
@@ -372,6 +377,14 @@
     var total = parseFloat(String(totalInput.value || '').replace(/,/g, ''));
     if (isNaN(total)) total = 0;
 
+    // The preview is client-facing: we display the amount the client
+    // actually pays, which is the pre-tax pct% of total × (1 + HST).
+    // The form's data-hst-rate is emitted from the Blade template so
+    // the rate stays in sync with PHP's ClientProject::HST_RATE.
+    var hstRate = parseFloat(form.getAttribute('data-hst-rate'));
+    if (!isFinite(hstRate)) hstRate = 0.13;
+    var withTax = 1 + hstRate;
+
     var sum = 0;
     rows.forEach(function (row) {
       var input = row.querySelector('.cp-pct-input');
@@ -381,7 +394,7 @@
       sum += pct;
 
       if (preview) {
-        var amount = total * (pct / 100);
+        var amount = total * (pct / 100) * withTax;
         preview.textContent = formatMoney(amount);
       }
     });

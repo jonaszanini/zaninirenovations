@@ -6,6 +6,13 @@
   $paidInstallmentCount = $installments->where('is_paid', true)->count();
   $planIsLocked = $paidInstallmentCount > 0;
   $hourlyRateConfigured = (float) ($project->hourly_rate ?? 0);
+
+  // The stored `total_amount` and each installment's `amount` are
+  // pre-tax (profit / HST set-aside calculations depend on that).
+  // For the client-facing "what they actually pay" figure we multiply
+  // by (1 + HST_RATE) on display only.
+  $hstRate = \App\Models\ClientProject::HST_RATE;
+  $withTax = 1 + $hstRate;
 @endphp
 
 @if ($isHourly)
@@ -63,7 +70,8 @@
           id="cp-installments-form"
           data-total="{{ $totalAmount }}"
           data-plan="{{ $paymentPlan }}"
-          data-paid-count="{{ $paidInstallmentCount }}">
+          data-paid-count="{{ $paidInstallmentCount }}"
+          data-hst-rate="{{ $hstRate }}">
       @csrf
 
       <div class="admin-form-grid-2">
@@ -117,7 +125,7 @@
                 <span>%</span>
               </div>
               <div class="cp-installment-amount">
-                <span class="admin-form-help">Amount</span>
+                <span class="admin-form-help">Amount (incl. 13% HST)</span>
                 <span class="cp-amount-preview" data-amount-preview>—</span>
               </div>
             </div>
@@ -144,7 +152,7 @@
             <th>#</th>
             <th>Label</th>
             <th>%</th>
-            <th class="cp-col-amount">Amount</th>
+            <th class="cp-col-amount">Amount <span class="admin-form-help cp-incl-hst">(incl. 13% HST)</span></th>
             <th>Status</th>
             <th>Paid on</th>
             <th></th>
@@ -156,7 +164,7 @@
               <td>{{ $idx + 1 }}</td>
               <td>{{ $inst->label }}</td>
               <td>{{ number_format((float) $inst->percentage, 2) }}%</td>
-              <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($inst->amount) }}</td>
+              <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney((float) $inst->amount * $withTax) }}</td>
               <td>
                 @if ($inst->is_paid)
                   <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid</span>
@@ -182,7 +190,7 @@
           @endforeach
           <tr class="cp-totals-row">
             <td colspan="3"><strong>Total paid</strong></td>
-            <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($project->totalRevenueCollected()) }}</strong></td>
+            <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($project->totalRevenueCollected() * $withTax) }}</strong></td>
             <td colspan="3">{{ number_format($project->percentPaid(), 1) }}% of total amount</td>
           </tr>
         </tbody>
