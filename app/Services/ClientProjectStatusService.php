@@ -109,27 +109,15 @@ class ClientProjectStatusService
             return;
         }
 
-        // Proposal Accepted → auto-promote to In Progress (per spec).
-        if ($toStatus === ClientProject::STATUS_PROPOSAL_ACCEPTED && !$this->alreadyPromoted($project)) {
-            $project->status = ClientProject::STATUS_IN_PROGRESS;
-            $project->status_changed_at = now();
-            $project->save();
-            $this->recordHistory(
-                $project,
-                ClientProject::STATUS_PROPOSAL_ACCEPTED,
-                ClientProject::STATUS_IN_PROGRESS,
-                'Auto-promoted after proposal acceptance.'
-            );
-        }
+        // Historic note: there used to be an auto-promotion
+        // Proposal Accepted → In Progress here. With the new "Scheduled"
+        // status sitting between acceptance and active work, each
+        // transition now carries distinct business meaning and the
+        // user advances through them explicitly.
 
         if ($toStatus === ClientProject::STATUS_COMPLETED) {
             $this->safeSendClientThankYou($project);
         }
-    }
-
-    private function alreadyPromoted(ClientProject $project): bool
-    {
-        return $project->status === ClientProject::STATUS_IN_PROGRESS;
     }
 
     /**

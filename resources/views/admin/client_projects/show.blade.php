@@ -54,7 +54,7 @@
         </select>
         <input type="text" name="note" placeholder="Optional note…" maxlength="2000" class="cp-status-note">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save status</button>
-        <span class="cp-hint" title="Proposal Accepted will automatically move the project to In Progress and unlock the financial & time tracking tabs.">?</span>
+        <span class="cp-hint" title="Workflow: Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Financial & time tracking tabs unlock from Proposal Accepted onward.">?</span>
       </form>
     @else
       <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>

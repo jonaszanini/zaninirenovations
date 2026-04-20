@@ -311,18 +311,20 @@ class ClientProjectController extends Controller
 
         $sendNote = "Service confirmation emailed to {$client_project->client_email}.";
 
-        // Auto-promote Proposal Accepted → In Progress the first time we
-        // confirm the booking with the client. Don't touch later statuses
-        // (e.g. Completed) so re-sends remain idempotent.
+        // Confirming the booking with the client effectively means the
+        // date is locked in and we're waiting for it to arrive, which is
+        // what "Scheduled" captures. Only promote from Proposal Accepted
+        // so subsequent re-sends (already past Scheduled, e.g. In
+        // Progress or Completed) don't regress the status.
         if ($client_project->status === ClientProject::STATUS_PROPOSAL_ACCEPTED) {
             try {
                 $statusService->transition(
                     $client_project,
-                    ClientProject::STATUS_IN_PROGRESS,
+                    ClientProject::STATUS_SCHEDULED,
                     $sendNote
                 );
             } catch (\Throwable $e) {
-                Log::warning('Failed to auto-transition project to In Progress after service confirmation', [
+                Log::warning('Failed to auto-transition project to Scheduled after service confirmation', [
                     'project_id' => $client_project->id,
                     'exception' => $e->getMessage(),
                 ]);
