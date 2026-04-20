@@ -1474,6 +1474,161 @@ textarea.admin-input {
   margin: 0 0 8px;
 }
 
+/* ========================================================================
+   Invoice tab
+   ------------------------------------------------------------------------
+   Builds on top of the Contract/Quotation styles (.cp-contract-card,
+   .cp-quotation-*) and adds the bits unique to invoicing: the
+   installments table with its inline action toolbar, the editor's
+   locked-total panel, the mismatch warning row, and the mark-as-paid
+   modal.
+   ======================================================================== */
+
+/* Invoice table — mostly inherits from .admin-table; this tightens the
+   inline action cell so the buttons don't explode the row height. */
+.cp-invoices-table th,
+.cp-invoices-table td {
+  vertical-align: middle;
+}
+.cp-invoice-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cp-invoice-actions .admin-btn {
+  white-space: nowrap;
+}
+.cp-invoice-actions form {
+  display: inline-block;
+}
+
+/* Green "success" button variant used for Mark-Paid / Receipt. */
+.admin-btn--success {
+  background: #22c55e20;
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+.admin-btn--success:hover {
+  background: rgba(34, 197, 94, 0.2);
+  color: #14532d;
+}
+
+/* Editor: "locked total" readout + mismatch warning ------------------- */
+.cp-invoice-locked-field {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+  color: #1f2937;
+}
+.cp-invoice-locked-total {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 18px;
+  background: rgba(2, 71, 104, 0.06);
+  border: 1px solid rgba(2, 71, 104, 0.25);
+  border-radius: 10px;
+  color: #024768;
+  flex-wrap: wrap;
+}
+.cp-invoice-locked-total-value {
+  text-align: right;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.cp-invoice-locked-total-subtotal {
+  color: #4b5563;
+  font-size: 13px;
+}
+.cp-invoice-locked-total-grand {
+  font-size: 16px;
+  color: #024768;
+}
+.cp-invoice-mismatch {
+  color: #b91c1c !important;
+  background: #fef2f2;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.cp-invoice-mismatch .fa {
+  margin-right: 6px;
+}
+
+/* Mark-as-paid modal -------------------------------------------------- */
+.cp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 16px 16px;
+  z-index: 1000;
+  overflow-y: auto;
+}
+.cp-modal-backdrop[hidden] {
+  display: none;
+}
+body.cp-modal-open {
+  overflow: hidden;
+}
+.cp-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cp-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eef1f4;
+}
+.cp-modal-header h3 {
+  margin: 0;
+  font-size: 17px;
+  color: #024768;
+}
+.cp-modal-close {
+  background: transparent;
+  border: 0;
+  font-size: 22px;
+  line-height: 1;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.cp-modal-close:hover {
+  color: #1f2937;
+}
+.cp-modal-body {
+  padding: 16px 18px;
+}
+.cp-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid #eef1f4;
+  background: #f9fafb;
+}
+
 /* Mobile tweaks. */
 @media (max-width: 700px) {
   .cp-contract-header {
@@ -1509,6 +1664,23 @@ textarea.admin-input {
   }
   .cp-quotation-totals {
     width: 100%;
+  }
+  .cp-invoice-actions {
+    gap: 4px;
+  }
+  .cp-invoice-actions .admin-btn {
+    padding-inline: 8px;
+  }
+  .cp-invoice-locked-total {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .cp-invoice-locked-total-value {
+    text-align: left;
+  }
+  .cp-modal {
+    max-width: calc(100vw - 24px);
   }
   /* Stack signatures and parties vertically on mobile. */
   .cp-contract-parties-table,

@@ -85,6 +85,8 @@ class ClientProject extends Model
         static::deleting(function (self $project): void {
             $project->purgeGeneratedPdfs('contracts');
             $project->purgeGeneratedPdfs('quotations');
+            $project->purgeGeneratedPdfs('invoices');
+            $project->purgeGeneratedPdfs('receipts');
         });
     }
 
@@ -102,13 +104,19 @@ class ClientProject extends Model
             return;
         }
 
-        $prefix = "project-{$this->id}-v";
+        // Match any PDF whose filename starts with this project's prefix.
+        // Existing patterns:
+        //   contracts/quotations: "project-{id}-v{n}.pdf"
+        //   invoices / receipts:  "project-{id}-installment-{N}-v{n}.pdf"
+        //                         "project-{id}-manual-{invoice_id}-v{n}.pdf"
+        // A leading-prefix check plus the project-scoped regex below is
+        // enough to avoid nuking files for similarly-numbered projects.
+        $prefix = "project-{$this->id}-";
+        $pattern = '/^project-'.$this->id.'-(?:v\d+|installment-\d+-v\d+|manual-\d+-v\d+)\.pdf$/';
 
         foreach ($disk->files($dir) as $path) {
             $name = basename($path);
-            // Match "project-{id}-v{digits}.pdf" exactly so we don't
-            // accidentally nuke files for similarly-numbered projects.
-            if (str_starts_with($name, $prefix) && preg_match('/^project-\d+-v\d+\.pdf$/', $name)) {
+            if (str_starts_with($name, $prefix) && preg_match($pattern, $name)) {
                 $disk->delete($path);
             }
         }
@@ -149,6 +157,14 @@ class ClientProject extends Model
     public function quotation(): HasOne
     {
         return $this->hasOne(ClientProjectQuotation::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(ClientProjectInvoice::class)
+            ->orderByRaw('installment_number IS NULL') // installment-linked first, then manual
+            ->orderBy('installment_number')
+            ->orderBy('id');
     }
 
     /**

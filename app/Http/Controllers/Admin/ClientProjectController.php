@@ -153,6 +153,7 @@ class ClientProjectController extends Controller
             'timeEntries',
             'statusHistory.user',
             'contract',
+            'invoices',
         ]);
 
         $calendarLink = GoogleCalendarLink::forProject($client_project);

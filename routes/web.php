@@ -128,6 +128,27 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::post('client-projects/{client_project}/quotation/send', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'send'])
         ->name('client-projects.quotation.send');
 
+    // Invoices (structured, PDF generation, email-to-client). Multiple allowed
+    // per project — one per installment plus optional manual invoices.
+    Route::post('client-projects/{client_project}/invoices', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'create'])
+        ->name('client-projects.invoices.create');
+    Route::get('client-projects/{client_project}/invoices/{invoice}/edit', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'edit'])
+        ->name('client-projects.invoices.edit');
+    Route::put('client-projects/{client_project}/invoices/{invoice}', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'update'])
+        ->name('client-projects.invoices.update');
+    Route::get('client-projects/{client_project}/invoices/{invoice}/pdf', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'downloadPdf'])
+        ->name('client-projects.invoices.pdf');
+    Route::get('client-projects/{client_project}/invoices/{invoice}/receipt', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'downloadReceipt'])
+        ->name('client-projects.invoices.receipt');
+    Route::post('client-projects/{client_project}/invoices/{invoice}/send', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'send'])
+        ->name('client-projects.invoices.send');
+    Route::post('client-projects/{client_project}/invoices/{invoice}/reminder', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'sendReminder'])
+        ->name('client-projects.invoices.reminder');
+    Route::post('client-projects/{client_project}/invoices/{invoice}/mark-paid', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'markPaid'])
+        ->name('client-projects.invoices.mark-paid');
+    Route::delete('client-projects/{client_project}/invoices/{invoice}', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'destroy'])
+        ->name('client-projects.invoices.destroy');
+
     // Hourly-billing: manual "service confirmation" email to the client once
     // the project dates are locked in.
     Route::post('client-projects/{client_project}/service-confirmation/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendServiceConfirmation'])

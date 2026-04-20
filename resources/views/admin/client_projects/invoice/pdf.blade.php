@@ -2,29 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title><?php echo e($quotation->typeLabel()); ?> <?php echo e($quotation->quotation_number); ?> — <?php echo e($project->name); ?></title>
-  <?php
-    /*
-     * Normalise font paths to forward slashes. On Windows public_path()
-     * returns backslashes (e.g. C:\xampp\htdocs\...), and CSS treats
-     * `\x` as a hex escape sequence — that silently corrupts the @font-face
-     * URLs AND breaks subsequent rules (including @page). Forward slashes
-     * are valid on every OS and dompdf accepts them as filesystem paths.
-     */
+  <title>Invoice {{ $invoice->invoice_number }} — {{ $project->name }}</title>
+  @php
+    // Normalise font paths to forward slashes — see quotation/pdf for why.
     $fontDir = str_replace('\\', '/', public_path('fonts/roboto'));
-    $items = $quotation->cleanItems();
-    $subtotal = $quotation->subtotal();
-    $hst = $quotation->hst();
-    $grand = $quotation->grandTotal();
+    $items = $invoice->cleanItems();
+    $subtotal = (float) $invoice->subtotal;
+    $hst = (float) $invoice->hst;
+    $total = (float) $invoice->total;
 
     $fmt = fn ($n) => 'CA$'.number_format((float) $n, 2, '.', ',');
-  ?>
+    $dateStr = ($invoice->sent_at ?: now())->format('F j, Y');
+    $dueStr = $invoice->due_on
+      ? \Illuminate\Support\Carbon::parse($invoice->due_on)->format('F j, Y')
+      : now()->addDays(\App\Models\ClientProjectInvoice::DEFAULT_DUE_DAYS)->format('F j, Y');
+  @endphp
   <style>
-    /* ============================================================
-       Page layout — see the Contract PDF template for the full
-       explanation of the @page-before-@font-face ordering and the
-       DomPDF position:fixed quirk used by the header/footer below.
-       ============================================================ */
     @page {
       margin: 160pt 60pt 90pt 60pt;
     }
@@ -33,34 +26,29 @@
       font-family: 'Roboto';
       font-style: normal;
       font-weight: 400;
-      src: url("<?php echo e($fontDir); ?>/Roboto-Regular.ttf") format('truetype');
+      src: url("{{ $fontDir }}/Roboto-Regular.ttf") format('truetype');
     }
     @font-face {
       font-family: 'Roboto';
       font-style: normal;
       font-weight: 700;
-      src: url("<?php echo e($fontDir); ?>/Roboto-Bold.ttf") format('truetype');
+      src: url("{{ $fontDir }}/Roboto-Bold.ttf") format('truetype');
     }
     @font-face {
       font-family: 'Roboto';
       font-style: italic;
       font-weight: 400;
-      src: url("<?php echo e($fontDir); ?>/Roboto-Italic.ttf") format('truetype');
+      src: url("{{ $fontDir }}/Roboto-Italic.ttf") format('truetype');
     }
     @font-face {
       font-family: 'Roboto';
       font-style: italic;
       font-weight: 700;
-      src: url("<?php echo e($fontDir); ?>/Roboto-BoldItalic.ttf") format('truetype');
+      src: url("{{ $fontDir }}/Roboto-BoldItalic.ttf") format('truetype');
     }
 
     * { box-sizing: border-box; }
 
-    /*
-     * IMPORTANT: do NOT style the <html> element here.
-     * In DomPDF, `html { margin: 0 }` overrides the @page margin and
-     * silently collapses it back to zero. Only style <body>.
-     */
     body {
       margin: 0;
       padding: 0;
@@ -70,7 +58,7 @@
       color: #1f2937;
     }
 
-    /* -- Repeating header (logo left, contact right) ----------------- */
+    /* -- Repeating header (logo left, contact right) ---------------- */
     .pdf-header {
       position: fixed;
       top: -130pt;
@@ -93,7 +81,7 @@
     .pdf-header .info-cell .info-line { margin: 0; }
     .pdf-header .info-cell .info-line + .info-line { margin-top: 1pt; }
 
-    /* -- Repeating footer (page number) ------------------------------ */
+    /* -- Repeating footer ------------------------------------------- */
     .pdf-footer {
       position: fixed;
       bottom: -60pt;
@@ -108,39 +96,38 @@
     .pdf-footer table { width: 100%; border-collapse: collapse; }
     .pdf-footer .left  { text-align: left; }
     .pdf-footer .right { text-align: right; }
-    /* Page numbering is drawn by the <script type="text/php"> block below
-       via $pdf->page_script(). DomPDF's pure-CSS `counter(pages)` returns
-       0 here because it's evaluated before the second layout pass when
-       the footer lives inside a position:fixed table cell. The script
-       callback runs AFTER pagination is final, so the count is always
-       correct. */
 
-    /* -- Document body ----------------------------------------------- */
-    .quote-doc-meta {
+    /* -- Document body ---------------------------------------------- */
+    .doc-meta {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 18pt;
     }
-    .quote-doc-meta td {
-      vertical-align: top;
-      padding: 0;
-    }
-    .quote-doc-meta .left  { width: 60%; }
-    .quote-doc-meta .right { width: 40%; text-align: right; }
+    .doc-meta td { vertical-align: top; padding: 0; }
+    .doc-meta .left  { width: 60%; }
+    .doc-meta .right { width: 40%; text-align: right; }
 
     .quote-title {
-      font-size: 17pt;
+      font-size: 18pt;
       font-weight: 700;
       color: #024768;
-      margin: 0 0 4pt;
+      margin: 0 0 3pt;
       line-height: 1.15;
       white-space: nowrap;
     }
-    .quote-date {
+    .quote-subtitle {
+      font-size: 11pt;
+      font-weight: 400;
+      color: #1f2937;
+      margin: 0 0 4pt;
+      line-height: 1.3;
+    }
+    .quote-dates {
       font-size: 10.5pt;
       color: #4b5563;
       margin: 0;
     }
+    .quote-dates strong { color: #1f2937; }
 
     .quote-client {
       display: inline-block;
@@ -172,7 +159,7 @@
       color: #1f2937;
     }
 
-    .quote-intro {
+    .section-intro {
       font-size: 11pt;
       color: #1f2937;
       margin: 6pt 0 12pt;
@@ -229,42 +216,46 @@
       padding-top: 10pt;
     }
 
-    /* Closing block */
+    .pay-instructions {
+      margin-top: 14pt;
+      padding: 12pt 14pt;
+      border: 1.5pt solid #024768;
+      background: #f4fafe;
+      border-radius: 3pt;
+      font-size: 11pt;
+      color: #1f2937;
+    }
+    .pay-instructions strong {
+      color: #024768;
+    }
+    .pay-instructions .email {
+      font-weight: 700;
+      color: #024768;
+    }
+
     .closing {
       font-size: 10.5pt;
       color: #1f2937;
       line-height: 1.55;
-      margin-top: 18pt;
+      margin-top: 16pt;
       page-break-inside: avoid;
     }
-    .closing ul {
-      margin: 0 0 12pt 18pt;
-      padding: 0;
-    }
-    .closing li {
-      margin-bottom: 4pt;
-    }
-    .closing p {
-      margin: 0 0 8pt;
-    }
-    .closing .signoff {
-      margin-top: 14pt;
-    }
+    .closing p { margin: 0 0 8pt; }
+    .closing .signoff { margin-top: 12pt; }
   </style>
 </head>
 <body>
 
-  
+  {{-- Repeating header --}}
   <div class="pdf-header">
     <table>
       <tr>
         <td class="logo-cell">
-          
-          <?php if(extension_loaded('gd') && file_exists(public_path('images/logo.png'))): ?>
-            <img src="<?php echo e(public_path('images/logo.png')); ?>" alt="Zanini Renovations">
-          <?php else: ?>
+          @if (extension_loaded('gd') && file_exists(public_path('images/logo.png')))
+            <img src="{{ public_path('images/logo.png') }}" alt="Zanini Renovations">
+          @else
             <span style="font-weight:700;color:#024768;font-size:14pt;">ZANINI RENOVATIONS</span>
-          <?php endif; ?>
+          @endif
         </td>
         <td class="info-cell">
           <p class="info-line">53 Antonakos Dr, Carleton Place, ON K7C 0L1</p>
@@ -276,45 +267,47 @@
     </table>
   </div>
 
-  
+  {{-- Repeating footer. Right cell intentionally empty — the
+       page_text() callback in the controller stamps "Page X of Y". --}}
   <div class="pdf-footer">
     <table>
       <tr>
-        <td class="left">ZANINI RENOVATIONS — <?php echo e($quotation->typeLabel()); ?> <?php echo e($quotation->quotation_number); ?></td>
+        <td class="left">ZANINI RENOVATIONS — Invoice {{ $invoice->invoice_number }}</td>
         <td class="right"></td>
       </tr>
     </table>
   </div>
 
-  
-
-  
-  <table class="quote-doc-meta">
+  {{-- Title + dates + client block --}}
+  <table class="doc-meta">
     <tr>
       <td class="left">
-        <p class="quote-title"><?php echo e($quotation->typeLabel()); ?> #<?php echo e($quotation->quotation_number); ?></p>
-        <p class="quote-date">Date: <?php echo e(now()->format('F j, Y')); ?></p>
+        <p class="quote-title">Invoice #{{ $invoice->invoice_number }}</p>
+        @if ($invoice->installmentTitle())
+          <p class="quote-subtitle">{{ $invoice->installmentTitle() }}</p>
+        @endif
+        <p class="quote-dates">
+          <strong>Date:</strong> {{ $dateStr }}<br>
+          <strong>Due date:</strong> {{ $dueStr }}
+        </p>
       </td>
       <td class="right">
         <div class="quote-client">
-          <p class="label">Prepared for</p>
-          <p class="name"><?php echo e($project->client_name ?: '—'); ?></p>
-          <p class="line"><?php echo e($project->client_address ?: '—'); ?></p>
-          <p class="line"><?php echo e($project->client_phone ?: '—'); ?></p>
-          <p class="line"><?php echo e($project->client_email ?: '—'); ?></p>
+          <p class="label">Bill to</p>
+          <p class="name">{{ $project->client_name ?: '—' }}</p>
+          <p class="line">{{ $project->client_address ?: '—' }}</p>
+          <p class="line">{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</p>
+          <p class="line">{{ $project->client_email ?: '—' }}</p>
           <p class="line" style="margin-top:4pt;font-style:italic;color:#4b5563;">
-            Project: <?php echo e($project->name); ?>
-
+            Project: {{ $project->name }}
           </p>
         </div>
       </td>
     </tr>
   </table>
 
-  
-  <p class="quote-intro"><?php echo e($quotation->introPhrase()); ?></p>
+  <p class="section-intro">Invoice for the following:</p>
 
-  
   <table class="items">
     <thead>
       <tr>
@@ -323,42 +316,49 @@
       </tr>
     </thead>
     <tbody>
-      <?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+      @forelse ($items as $row)
         <tr>
-          <td><?php echo e($row['description']); ?></td>
-          <td class="amount"><?php echo e($fmt($row['amount'])); ?></td>
+          <td>{{ $row['description'] }}</td>
+          <td class="amount">{{ $fmt($row['amount']) }}</td>
         </tr>
-      <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+      @empty
+        <tr>
+          <td colspan="2" style="font-style:italic;color:#6b7280;text-align:center;">
+            {{ $invoice->installmentTitle() ?: 'Services rendered' }}
+          </td>
+        </tr>
+      @endforelse
     </tbody>
     <tfoot>
       <tr>
         <td class="totals-label">Subtotal</td>
-        <td class="amount"><?php echo e($fmt($subtotal)); ?></td>
+        <td class="amount">{{ $fmt($subtotal) }}</td>
       </tr>
       <tr>
         <td class="totals-label">HST (13%)</td>
-        <td class="amount"><?php echo e($fmt($hst)); ?></td>
+        <td class="amount">{{ $fmt($hst) }}</td>
       </tr>
       <tr class="grand">
-        <td class="totals-label">Total with HST</td>
-        <td class="amount"><?php echo e($fmt($grand)); ?></td>
+        <td class="totals-label">Total</td>
+        <td class="amount">{{ $fmt($total) }}</td>
       </tr>
     </tfoot>
   </table>
 
-  
+  <div class="pay-instructions">
+    <p style="margin:0 0 6pt;">
+      <strong>Please pay via e-Transfer to:</strong>
+      <span class="email">zaninirenovations@gmail.com</span>
+    </p>
+    <p style="margin:0;font-size:10pt;color:#4b5563;">
+      Please include invoice number <strong>{{ $invoice->invoice_number }}</strong>
+      in the e-Transfer message so payment is matched to your project.
+    </p>
+  </div>
+
   <div class="closing">
-    <ul>
-      <li>Prices are firm for 10 days.</li>
-      <li>Work schedule is based on weather permitting days (if outside work).</li>
-      <li>Zanini Renovations carries a liability insurance.</li>
-      <li>Warrantee on workmanship: 1 year.</li>
-      <li>Warrantee on workmanship: damages caused by external forces (&ldquo;Act of God&rdquo;) such as weather are not covered under warrantee.</li>
-      <li>If you have any questions, please do not hesitate to call.</li>
-    </ul>
-
-    <p>We trust this quote meets with your approval and we are favoured with your order.</p>
-
+    <p style="margin-top:14pt;">Thank you for your business — it's a pleasure working with you.</p>
+    <p>If you have any questions regarding this invoice, please do not hesitate to reach out.</p>
     <div class="signoff">
       <p>Best regards,</p>
       <p>
@@ -373,4 +373,3 @@
 
 </body>
 </html>
-<?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/admin/client_projects/quotation/pdf.blade.php ENDPATH**/ ?>
