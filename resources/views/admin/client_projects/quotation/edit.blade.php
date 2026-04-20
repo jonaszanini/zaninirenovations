@@ -28,25 +28,18 @@
   @endphp
 
   <div class="admin-card cp-contract-editor-card">
+    {{-- Top action bar: Back to project on the LEFT, the form action
+         buttons (Cancel / Save Draft / Save & Close) on the RIGHT.
+         The action buttons live outside the <form> below and are wired
+         to it via the HTML `form="cp-quotation-form"` attribute. --}}
     <div class="cp-contract-editor-toolbar">
-      <div>
-        <h3 style="margin:0;">{{ $quotation->typeLabel() }} editor — <span class="cp-quotation-number">{{ $quotation->quotation_number }}</span></h3>
-        <p class="admin-form-help" style="margin:4px 0 0;">
-          Add line items with their pre-HST amounts. We automatically
-          calculate 13&nbsp;% HST and the grand total. Changing between
-          <em>Quotation</em> and <em>Estimate</em> updates the document
-          prefix until the first send.
-        </p>
-      </div>
-      <div class="cp-contract-editor-toolbar-right">
+      <div class="cp-contract-editor-toolbar-left">
         <a href="{{ route('admin.client-projects.show', $project) }}#quotation"
            class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-arrow-left"></i> Back to project
         </a>
-
-        {{-- Action buttons mirrored from the bottom of the form. The
-             `form="cp-quotation-form"` attribute lets these buttons submit
-             the form below even though they live outside it. --}}
+      </div>
+      <div class="cp-contract-editor-toolbar-right">
         <a href="{{ route('admin.client-projects.show', $project) }}#quotation"
            class="admin-btn admin-btn--ghost admin-btn--sm">
           Cancel
@@ -64,6 +57,16 @@
           Save &amp; Close
         </button>
       </div>
+    </div>
+
+    <div class="cp-contract-editor-heading">
+      <h3 style="margin:0;">{{ $quotation->typeLabel() }} editor — <span class="cp-quotation-number">{{ $quotation->quotation_number }}</span></h3>
+      <p class="admin-form-help" style="margin:4px 0 0;">
+        Add line items with their pre-HST amounts. We automatically
+        calculate 13&nbsp;% HST and the grand total. Changing between
+        <em>Quotation</em> and <em>Estimate</em> updates the document
+        prefix until the first send.
+      </p>
     </div>
 
     <form action="{{ route('admin.client-projects.quotation.update', $project) }}"
@@ -128,12 +131,12 @@
                             placeholder="Describe this line item">{{ $row['description'] }}</textarea>
                 </td>
                 <td class="col-amount">
-                  <input type="number"
-                         step="0.01"
-                         min="0"
+                  <input type="text"
+                         inputmode="decimal"
+                         autocomplete="off"
                          name="items[{{ $i }}][amount]"
                          value="{{ $row['amount'] !== '' ? number_format((float) $row['amount'], 2, '.', '') : '' }}"
-                         class="admin-input cp-quotation-row-amount"
+                         class="admin-input cp-money-input cp-quotation-row-amount"
                          placeholder="0.00">
                 </td>
                 <td class="col-actions">
@@ -193,11 +196,11 @@
                   placeholder="Describe this line item"></textarea>
       </td>
       <td class="col-amount">
-        <input type="number"
-               step="0.01"
-               min="0"
+        <input type="text"
+               inputmode="decimal"
+               autocomplete="off"
                name="items[__INDEX__][amount]"
-               class="admin-input cp-quotation-row-amount"
+               class="admin-input cp-money-input cp-quotation-row-amount"
                placeholder="0.00">
       </td>
       <td class="col-actions">
@@ -231,12 +234,23 @@
       }
 
       // -- Live totals -----------------------------------------------------
+      // The amount inputs go through the global .cp-money-input mask
+      // (calculator-style entry, comma-formatted display). We can't just
+      // parseFloat the visible value because "1,234.56" parses to 1.
+      // window.cpMoneyMask.parse() strips the commas first.
+      function parseAmount(input) {
+        if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
+          return window.cpMoneyMask.parse(input.value);
+        }
+        var n = parseFloat(String(input.value).replace(/,/g, ''));
+        return isFinite(n) ? n : 0;
+      }
+
       function recalc() {
         var inputs = tbody.querySelectorAll('.cp-quotation-row-amount');
         var subtotal = 0;
         inputs.forEach(function (input) {
-          var v = parseFloat(input.value);
-          if (!isNaN(v)) subtotal += v;
+          subtotal += parseAmount(input);
         });
         var hst = subtotal * HST_RATE;
         subtotalEl.textContent = formatMoney(subtotal);
@@ -262,6 +276,10 @@
         var newRow = wrapper.firstChild;
         tbody.appendChild(newRow);
         reindex();
+        // Wire the calculator-style money mask onto the brand-new amount input.
+        if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+          window.cpMoneyMask.wire(newRow.querySelectorAll('.cp-money-input'));
+        }
         newRow.querySelector('.cp-quotation-row-desc').focus();
       });
 

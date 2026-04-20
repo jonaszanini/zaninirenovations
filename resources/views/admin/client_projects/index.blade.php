@@ -50,8 +50,8 @@
       <table class="admin-table cp-table">
         <thead>
           <tr>
-            <th>Project</th>
             <th>Client</th>
+            <th>Project</th>
             <th>Status</th>
             <th>Dates</th>
             <th class="cp-col-amount">Total</th>
@@ -64,13 +64,13 @@
             @php $url = route('admin.client-projects.show', $project); @endphp
             <tr class="cp-row-link" data-href="{{ $url }}" tabindex="0" role="link" aria-label="Open project {{ $project->name }}">
               <td>
-                <strong>{{ $project->name }}</strong>
-              </td>
-              <td>
-                <div>{{ $project->client_name }}</div>
+                <strong>{{ $project->client_name }}</strong>
                 @if ($project->client_email)
                   <div class="cp-subtle">{{ $project->client_email }}</div>
                 @endif
+              </td>
+              <td>
+                {{ $project->name }}
               </td>
               <td>
                 <span class="cp-badge" style="background: {{ $statusColors[$project->status] ?? '#6b7280' }}20; color: {{ $statusColors[$project->status] ?? '#6b7280' }};">

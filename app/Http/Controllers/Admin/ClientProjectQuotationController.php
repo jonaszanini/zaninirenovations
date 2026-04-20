@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectQuotationClient;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
+use App\Services\ClientProjectStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -110,7 +111,7 @@ class ClientProjectQuotationController extends Controller
      * Generate a fresh PDF, persist it under storage/app/quotations/, email
      * it to the client, and bump the version + sent_at.
      */
-    public function send(ClientProject $client_project)
+    public function send(ClientProject $client_project, ClientProjectStatusService $statusService)
     {
         $quotation = $client_project->quotation;
 
@@ -164,6 +165,30 @@ class ClientProjectQuotationController extends Controller
                 ->route('admin.client-projects.show', $client_project)
                 ->withFragment('quotation')
                 ->with('error', 'The PDF was generated but the email could not be sent: '.$e->getMessage());
+        }
+
+        // Auto-transition the project to "Quote Sent" once the email leaves
+        // successfully. Only promote from Quote Pending — never regress a
+        // project that's already moved past this point (e.g. proposal
+        // accepted, in progress, completed) just because the user re-sent
+        // an updated quotation version.
+        if ($client_project->status === ClientProject::STATUS_QUOTE_PENDING) {
+            try {
+                $statusService->transition(
+                    $client_project,
+                    ClientProject::STATUS_QUOTE_SENT,
+                    "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to client (v{$quotation->version})."
+                );
+            } catch (\Throwable $e) {
+                // Don't fail the whole send flow if the status side-effects
+                // blow up — the email already went out, the status is just
+                // bookkeeping.
+                Log::warning('Failed to auto-transition project to Quote Sent', [
+                    'project_id' => $client_project->id,
+                    'quotation_id' => $quotation->id,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
         }
 
         return redirect()

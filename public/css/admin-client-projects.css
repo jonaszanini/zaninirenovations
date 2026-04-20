@@ -1150,10 +1150,17 @@
 .cp-contract-editor-toolbar {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 14px;
+}
+.cp-contract-editor-toolbar-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 .cp-contract-editor-toolbar-right {
   display: flex;
@@ -1161,6 +1168,9 @@
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+.cp-contract-editor-heading {
+  margin: 0 0 14px;
 }
 .cp-contract-editor-actions {
   display: flex;

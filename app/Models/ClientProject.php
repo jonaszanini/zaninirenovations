@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * ClientProject — full business lifecycle for a renovation project
@@ -65,6 +66,49 @@ class ClientProject extends Model
         'payment_plan' => 'integer',
         'hourly_rate' => 'decimal:2',
     ];
+
+    // --- Lifecycle hooks --------------------------------------------------
+
+    /**
+     * When a project is deleted, the FK cascade removes the contract and
+     * quotation rows from the DB — but the generated PDF files on the
+     * `local` disk would otherwise be orphaned forever. This hook deletes
+     * every version of both documents for this project ID so we leave
+     * nothing behind on the server.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $project): void {
+            $project->purgeGeneratedPdfs('contracts');
+            $project->purgeGeneratedPdfs('quotations');
+        });
+    }
+
+    /**
+     * Delete every PDF on the local disk that belongs to this project,
+     * across all stored versions. File names follow the pattern
+     * "{$dir}/project-{id}-v{N}.pdf" (see the contract / quotation
+     * controllers' send() methods).
+     */
+    protected function purgeGeneratedPdfs(string $dir): void
+    {
+        $disk = Storage::disk('local');
+
+        if (!$disk->exists($dir)) {
+            return;
+        }
+
+        $prefix = "project-{$this->id}-v";
+
+        foreach ($disk->files($dir) as $path) {
+            $name = basename($path);
+            // Match "project-{id}-v{digits}.pdf" exactly so we don't
+            // accidentally nuke files for similarly-numbered projects.
+            if (str_starts_with($name, $prefix) && preg_match('/^project-\d+-v\d+\.pdf$/', $name)) {
+                $disk->delete($path);
+            }
+        }
+    }
 
     // --- Relationships -----------------------------------------------------
 

@@ -12,26 +12,18 @@
 
 @section('content')
   <div class="admin-card cp-contract-editor-card">
+    {{-- Top action bar: Back to project on the LEFT, the form action
+         buttons (Cancel / Save Draft / Save & Close) on the RIGHT.
+         The action buttons live outside the <form> below and are wired
+         to it via the HTML `form="cp-contract-form"` attribute. --}}
     <div class="cp-contract-editor-toolbar">
-      <div>
-        <h3 style="margin:0;">Contract editor</h3>
-        <p class="admin-form-help" style="margin:4px 0 0;">
-          Paste from Word or Google Docs and the formatting will be preserved.
-          Use the toolbar for headings, lists, tables and more. The contract
-          header (parties) and footer (signatures + entire-agreement clause)
-          are added automatically when the PDF is generated — you only edit
-          the body here.
-        </p>
-      </div>
-      <div class="cp-contract-editor-toolbar-right">
+      <div class="cp-contract-editor-toolbar-left">
         <a href="{{ route('admin.client-projects.show', $project) }}#contract"
            class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-arrow-left"></i> Back to project
         </a>
-
-        {{-- Action buttons mirrored from the bottom of the form. The
-             `form="cp-contract-form"` attribute lets these buttons submit
-             the form below even though they live outside it. --}}
+      </div>
+      <div class="cp-contract-editor-toolbar-right">
         <a href="{{ route('admin.client-projects.show', $project) }}#contract"
            class="admin-btn admin-btn--ghost admin-btn--sm">
           Cancel
@@ -49,6 +41,17 @@
           Save &amp; Close
         </button>
       </div>
+    </div>
+
+    <div class="cp-contract-editor-heading">
+      <h3 style="margin:0;">Contract editor</h3>
+      <p class="admin-form-help" style="margin:4px 0 0;">
+        Paste from Word or Google Docs and the formatting will be preserved.
+        Use the toolbar for headings, lists, tables and more. The contract
+        header (parties) and footer (signatures + entire-agreement clause)
+        are added automatically when the PDF is generated — you only edit
+        the body here.
+      </p>
     </div>
 
     <form action="{{ route('admin.client-projects.contract.update', $project) }}"

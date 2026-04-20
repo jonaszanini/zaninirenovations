@@ -85,27 +85,52 @@
     });
   }
 
-  function initMoneyMask() {
-    var inputs = document.querySelectorAll('.cp-money-input');
-    if (!inputs.length) return;
-    var forms = new Set();
-    inputs.forEach(function (input) {
-      initExistingValue(input);
-      input.addEventListener('input', onMoneyInput);
-      // Block weird key combos that would insert letters (e.g. "e" in some
-      // locales) — the input filter in onMoneyInput handles it too, but this
-      // keeps the field from flickering.
-      input.addEventListener('keydown', function (ev) {
-        if (ev.key && ev.key.length === 1 && !/[\d]/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) {
-          ev.preventDefault();
-        }
-      });
-      if (input.form) forms.add(input.form);
+  // Wire a single .cp-money-input. Idempotent — calling it twice on the
+  // same element is a no-op. Exposed on `window.cpMoneyMask` so views
+  // that build inputs dynamically (e.g. the quotation editor's add-row
+  // button) can re-wire freshly cloned rows.
+  function wireMoneyInput(input) {
+    if (!input || input._cpMoneyWired) return;
+    input._cpMoneyWired = true;
+    initExistingValue(input);
+    input.addEventListener('input', onMoneyInput);
+    // Block weird key combos that would insert letters (e.g. "e" in some
+    // locales) — the input filter in onMoneyInput handles it too, but this
+    // keeps the field from flickering.
+    input.addEventListener('keydown', function (ev) {
+      if (ev.key && ev.key.length === 1 && !/[\d]/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) {
+        ev.preventDefault();
+      }
     });
-    forms.forEach(function (form) {
-      form.addEventListener('submit', onFormSubmitStripCommas);
-    });
+    if (input.form && !input.form._cpMoneyFormWired) {
+      input.form._cpMoneyFormWired = true;
+      input.form.addEventListener('submit', onFormSubmitStripCommas);
+    }
   }
+
+  function initMoneyMask() {
+    document.querySelectorAll('.cp-money-input').forEach(wireMoneyInput);
+  }
+
+  // Public entry-point for view-level scripts that need to wire money
+  // inputs they create after page load. Accepts a single element or a
+  // NodeList / array.
+  window.cpMoneyMask = {
+    wire: function (target) {
+      if (!target) return;
+      if (target.nodeType === 1) {
+        wireMoneyInput(target);
+      } else if (typeof target.forEach === 'function') {
+        target.forEach(wireMoneyInput);
+      }
+    },
+    /** Parse a masked value ("1,234.56") into a Number. NaN/empty → 0. */
+    parse: function (value) {
+      if (value == null || value === '') return 0;
+      var n = parseFloat(String(value).replace(/,/g, ''));
+      return isFinite(n) ? n : 0;
+    }
+  };
 
   // --- Time-entry form: start/end → hours -----------------------------
 

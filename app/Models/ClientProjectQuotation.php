@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * ClientProjectQuotation — structured quotation/estimate attached to a
@@ -43,6 +44,24 @@ class ClientProjectQuotation extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(ClientProject::class, 'client_project_id');
+    }
+
+    /**
+     * Defensive cleanup: when a quotation row is deleted directly (i.e. not
+     * through the parent project's cascade, which doesn't fire model events),
+     * also remove the latest PDF on disk.
+     *
+     * The parent ClientProject's deleting hook handles every version when a
+     * whole project is deleted; this only ensures we don't orphan a single
+     * file when a quotation is deleted on its own.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $quotation): void {
+            if (filled($quotation->pdf_path)) {
+                Storage::disk('local')->delete($quotation->pdf_path);
+            }
+        });
     }
 
     /** Has the quotation been emailed to the client at least once? */
