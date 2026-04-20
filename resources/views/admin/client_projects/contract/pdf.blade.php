@@ -123,12 +123,13 @@
     }
 
     .pdf-header .logo-cell {
-      width: 200pt;
+      width: 260px;
     }
 
     .pdf-header .logo-cell img {
-      height: 80pt;
-      width: auto;
+      /* Render at the source asset's native dimensions (254 × 63 px). */
+      width: 254px;
+      height: 63px;
     }
 
     .pdf-header .info-cell {
@@ -303,10 +304,18 @@
       border-collapse: collapse;
     }
 
-    .signature-table td {
+    /*
+     * Note the doubled-up selector: the generic `.contract-body table td`
+     * rule above has higher specificity than a plain `.signature-table td`
+     * (2 elements + 1 class vs 1 element + 1 class), so we bump our
+     * specificity to (2 elements + 2 classes) to actually win the cascade
+     * and render the signature cells with no visible border.
+     */
+    .contract-body table.signature-table td {
       width: 50%;
       vertical-align: top;
       padding: 0 14pt;
+      border: 0 none transparent;
     }
 
     .signature-line {
@@ -357,8 +366,7 @@
           @endif
         </td>
         <td class="info-cell">
-          <p class="info-line">53 Antonakos Dr</p>
-          <p class="info-line">Carleton Place, ON K7C 0L1</p>
+          <p class="info-line">53 Antonakos Dr, Carleton Place, ON K7C 0L1</p>
           <p class="info-line">(647) 834-7570</p>
           <p class="info-line">zaninirenovations@gmail.com</p>
           <p class="info-line">zaninirenovation.ca</p>

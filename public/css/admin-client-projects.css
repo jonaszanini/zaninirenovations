@@ -1155,6 +1155,13 @@
   flex-wrap: wrap;
   margin-bottom: 14px;
 }
+.cp-contract-editor-toolbar-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .cp-contract-editor-actions {
   display: flex;
   gap: 8px;
@@ -1174,6 +1181,14 @@
   .cp-contract-actions .admin-btn,
   .cp-contract-actions form {
     flex: 1 1 auto;
+  }
+  .cp-contract-editor-toolbar-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .cp-contract-editor-toolbar-right .admin-btn {
+    flex: 1 1 auto;
+    text-align: center;
   }
   /* Stack signatures and parties vertically on mobile. */
   .cp-contract-parties-table,

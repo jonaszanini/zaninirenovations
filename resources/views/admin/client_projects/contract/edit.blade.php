@@ -23,10 +23,32 @@
           the body here.
         </p>
       </div>
-      <a href="{{ route('admin.client-projects.show', $project) }}#contract"
-         class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-arrow-left"></i> Back to project
-      </a>
+      <div class="cp-contract-editor-toolbar-right">
+        <a href="{{ route('admin.client-projects.show', $project) }}#contract"
+           class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-arrow-left"></i> Back to project
+        </a>
+
+        {{-- Action buttons mirrored from the bottom of the form. The
+             `form="cp-contract-form"` attribute lets these buttons submit
+             the form below even though they live outside it. --}}
+        <a href="{{ route('admin.client-projects.show', $project) }}#contract"
+           class="admin-btn admin-btn--ghost admin-btn--sm">
+          Cancel
+        </a>
+        <button type="submit"
+                form="cp-contract-form"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                data-cp-contract-intent="draft">
+          Save Draft
+        </button>
+        <button type="submit"
+                form="cp-contract-form"
+                class="admin-btn admin-btn--primary admin-btn--sm"
+                data-cp-contract-intent="close">
+          Save &amp; Close
+        </button>
+      </div>
     </div>
 
     <form action="{{ route('admin.client-projects.contract.update', $project) }}"
@@ -94,9 +116,11 @@
 
       // Stamp the right "intent" (draft vs. close) onto the hidden field
       // before the form is submitted, based on which button was clicked.
-      var form = document.getElementById('cp-contract-form');
+      // We query the whole document because the top toolbar's submit
+      // buttons live outside the form (they use the HTML `form` attribute
+      // to associate themselves with it).
       var intentField = document.getElementById('cp-contract-intent');
-      var buttons = form.querySelectorAll('[data-cp-contract-intent]');
+      var buttons = document.querySelectorAll('[data-cp-contract-intent]');
       buttons.forEach(function (btn) {
         btn.addEventListener('click', function () {
           intentField.value = btn.getAttribute('data-cp-contract-intent') || 'draft';
