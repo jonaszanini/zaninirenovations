@@ -224,8 +224,23 @@ class ClientProjectInvoiceController extends Controller
             return back()->with('error', 'This invoice has already been paid.');
         }
 
-        if (!$invoice->hasContent()) {
-            return back()->with('error', 'Please add at least one line item before sending the invoice.');
+        // Require at least one complete line item (both description AND
+        // amount > 0). hasContent() alone is too lenient — it allows rows
+        // with just a description or just an amount.
+        $completeItems = array_filter(
+            $invoice->cleanItems(),
+            fn ($row) => trim((string) ($row['description'] ?? '')) !== '' && (float) ($row['amount'] ?? 0) > 0
+        );
+        if (count($completeItems) === 0) {
+            return redirect()
+                ->route('admin.client-projects.invoices.edit', [$client_project, $invoice])
+                ->with('error', 'Please add at least one line item with a description and an amount greater than $0 before sending the invoice.');
+        }
+
+        if (empty($invoice->due_on)) {
+            return redirect()
+                ->route('admin.client-projects.invoices.edit', [$client_project, $invoice])
+                ->with('error', 'Please set a due date before sending the invoice.');
         }
 
         if (!$client_project->hasClientContactInfo()) {
@@ -262,10 +277,6 @@ class ClientProjectInvoiceController extends Controller
         $invoice->status = $invoice->isPaid()
             ? ClientProjectInvoice::STATUS_PAID
             : ClientProjectInvoice::STATUS_SENT;
-
-        if (!$invoice->due_on) {
-            $invoice->due_on = now()->addDays(ClientProjectInvoice::DEFAULT_DUE_DAYS)->toDateString();
-        }
 
         $invoice->save();
 
@@ -403,7 +414,11 @@ class ClientProjectInvoiceController extends Controller
             'also_email_receipt' => ['nullable', 'boolean'],
         ]);
 
-        DB::transaction(function () use ($invoice, $client_project, $data) {
+        // Track whether this mark-paid flipped the first installment from
+        // unpaid → paid, so we can trigger the admin calendar email afterwards.
+        $firstInstallmentJustPaid = false;
+
+        DB::transaction(function () use ($invoice, $client_project, $data, &$firstInstallmentJustPaid) {
             $invoice->paid_at = $data['paid_on'];
             $invoice->paid_amount = round((float) $data['paid_amount'], 2);
             $invoice->status = ClientProjectInvoice::STATUS_PAID;
@@ -433,6 +448,10 @@ class ClientProjectInvoiceController extends Controller
                     $installment->is_paid = true;
                     $installment->paid_on = $data['paid_on'];
                     $installment->save();
+
+                    if ((int) $invoice->installment_number === 1) {
+                        $firstInstallmentJustPaid = true;
+                    }
                 }
             }
         });
@@ -490,10 +509,33 @@ class ClientProjectInvoiceController extends Controller
             ? "Invoice marked paid. Receipt emailed to {$client_project->clientEmailRecipientsLabel()}."
             : 'Invoice marked paid. (Email not sent.)';
 
-        return redirect()
+        // If paying this invoice just flipped the 1st installment to paid,
+        // trigger the admin calendar email — or warn that dates are still
+        // pending, mirroring the Financials togglePaid flow.
+        $warning = null;
+        if ($firstInstallmentJustPaid) {
+            if (!$client_project->fresh()->hasSchedule()) {
+                $warning = 'Please set the project start and end dates — the calendar notification will be emailed once both are saved.';
+            } else {
+                $result = $statusService->maybeSendCalendarDatesEmail($client_project->fresh());
+                if ($result === 'sent') {
+                    $flash .= ' Calendar notification emailed to the admin.';
+                } elseif ($result === 'failed') {
+                    $warning = 'The calendar notification email failed to send. Check logs and try again.';
+                }
+            }
+        }
+
+        $redirect = redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('invoice')
             ->with('success', $flash);
+
+        if ($warning) {
+            $redirect->with('warning', $warning);
+        }
+
+        return $redirect;
     }
 
     public function destroy(ClientProject $client_project, ClientProjectInvoice $invoice)

@@ -12,9 +12,30 @@
 --}}
 
 @php
-  $sendTitle = $hasContactInfo
+  // Build a list of reasons the invoice can't be sent yet. The server
+  // enforces these too, but surfacing them up-front stops the user from
+  // clicking into the editor just to see the error.
+  $sendBlockers = [];
+  if (!$hasContactInfo) {
+      $sendBlockers[] = 'Missing client info: '.implode(', ', $missing);
+  }
+  if ($invoice) {
+      $completeItems = array_filter(
+          $invoice->cleanItems(),
+          fn ($row) => trim((string) ($row['description'] ?? '')) !== '' && (float) ($row['amount'] ?? 0) > 0
+      );
+      if (count($completeItems) === 0) {
+          $sendBlockers[] = 'Add at least one line item with a description and amount.';
+      }
+      if (empty($invoice->due_on)) {
+          $sendBlockers[] = 'Set a due date in the editor.';
+      }
+  }
+
+  $canSend = empty($sendBlockers);
+  $sendTitle = $canSend
     ? 'Generate a fresh PDF and email it to the client.'
-    : 'Missing client info: '.implode(', ', $missing);
+    : implode(' ', $sendBlockers);
 @endphp
 
 @if (!$invoice)
@@ -53,7 +74,7 @@
 
     {{-- Send / Resend (draft or sent state) --}}
     @unless ($invoice->isPaid())
-      @if ($hasContactInfo && ($invoice->hasContent() || $invoice->total > 0))
+      @if ($canSend)
         <form action="{{ route('admin.client-projects.invoices.send', [$project, $invoice]) }}"
               method="post"
               class="cp-inline-form"

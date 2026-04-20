@@ -121,10 +121,49 @@ class ClientProjectStatusService
     }
 
     /**
-     * Notify the admin of newly saved start/end dates. Only sent once per
-     * date-save event (the controller passes `shouldNotify = true`).
+     * Conditionally notify the admin of a project's scheduled dates. The
+     * email is only sent once BOTH conditions are true:
+     *   - start_date + end_date are saved
+     *   - the first installment of the payment plan is marked paid
+     *
+     * Hourly projects have no installments, so they're exempt from the
+     * "first installment paid" gate and the email fires as soon as dates
+     * are saved (preserving the previous behavior for that flow).
+     *
+     * Returns a status code so the caller can surface user-facing
+     * feedback:
+     *   - 'sent'             email sent successfully
+     *   - 'waiting-dates'    first installment paid but dates not set
+     *   - 'waiting-payment'  dates set but first installment not paid yet
+     *   - 'skipped'          neither condition met, nothing to do
+     *   - 'failed'           tried to send but SMTP/exception blew up
      */
-    public function notifyCalendarDatesSaved(ClientProject $project): void
+    public function maybeSendCalendarDatesEmail(ClientProject $project): string
+    {
+        $datesSet = $project->hasSchedule();
+
+        // Hourly projects: no payment plan → trigger on dates alone.
+        // Fixed-price projects: also require first installment paid.
+        $paymentGateOk = $project->isHourly() || $project->firstInstallmentPaid();
+
+        if (!$datesSet && !$paymentGateOk) {
+            return 'skipped';
+        }
+        if (!$datesSet) {
+            return 'waiting-dates';
+        }
+        if (!$paymentGateOk) {
+            return 'waiting-payment';
+        }
+
+        return $this->sendCalendarDatesEmail($project) ? 'sent' : 'failed';
+    }
+
+    /**
+     * Low-level sender. Prefer maybeSendCalendarDatesEmail() which applies
+     * the gating rules. Exposed only for unit tests / one-off retries.
+     */
+    public function sendCalendarDatesEmail(ClientProject $project): bool
     {
         try {
             $adminEmail = config('client_projects.calendar_email_to')
@@ -141,11 +180,15 @@ class ClientProjectStatusService
                 $project,
                 "Dates saved ({$start} → {$end}). Admin calendar notification emailed to {$adminEmail}."
             );
+
+            return true;
         } catch (\Throwable $e) {
             Log::warning('ClientProject calendar email failed', [
                 'client_project_id' => $project->id,
                 'message' => $e->getMessage(),
             ]);
+
+            return false;
         }
     }
 

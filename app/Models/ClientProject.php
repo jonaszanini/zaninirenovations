@@ -21,6 +21,7 @@ class ClientProject extends Model
     public const STATUS_QUOTE_PENDING = 'quote_pending';
     public const STATUS_QUOTE_SENT = 'quote_sent';
     public const STATUS_PROPOSAL_ACCEPTED = 'proposal_accepted';
+    public const STATUS_PENDING_FIRST_PAYMENT = 'pending_first_payment';
     public const STATUS_SCHEDULED = 'scheduled';
     public const STATUS_IN_PROGRESS = 'in_progress';
     public const STATUS_COMPLETED = 'completed';
@@ -256,6 +257,7 @@ class ClientProject extends Model
             self::STATUS_QUOTE_PENDING,
             self::STATUS_QUOTE_SENT,
             self::STATUS_PROPOSAL_ACCEPTED,
+            self::STATUS_PENDING_FIRST_PAYMENT,
             self::STATUS_SCHEDULED,
             self::STATUS_IN_PROGRESS,
             self::STATUS_COMPLETED,
@@ -270,6 +272,7 @@ class ClientProject extends Model
             self::STATUS_QUOTE_PENDING => 'Quote Pending',
             self::STATUS_QUOTE_SENT => 'Quote Sent',
             self::STATUS_PROPOSAL_ACCEPTED => 'Proposal Accepted',
+            self::STATUS_PENDING_FIRST_PAYMENT => 'Pending First Payment',
             self::STATUS_SCHEDULED => 'Scheduled',
             self::STATUS_IN_PROGRESS => 'In Progress',
             self::STATUS_COMPLETED => 'Completed',
@@ -281,13 +284,14 @@ class ClientProject extends Model
     public static function statusColors(): array
     {
         return [
-            self::STATUS_QUOTE_PENDING => '#f59e0b',      // amber
-            self::STATUS_QUOTE_SENT => '#3b82f6',         // blue
-            self::STATUS_PROPOSAL_ACCEPTED => '#10b981',  // green
-            self::STATUS_SCHEDULED => '#8b5cf6',          // violet
-            self::STATUS_IN_PROGRESS => '#6366f1',        // indigo
-            self::STATUS_COMPLETED => '#22c55e',          // bright green
-            self::STATUS_REJECTED => '#ef4444',           // red
+            self::STATUS_QUOTE_PENDING => '#f59e0b',         // amber
+            self::STATUS_QUOTE_SENT => '#3b82f6',            // blue
+            self::STATUS_PROPOSAL_ACCEPTED => '#10b981',     // green
+            self::STATUS_PENDING_FIRST_PAYMENT => '#f97316', // orange
+            self::STATUS_SCHEDULED => '#8b5cf6',             // violet
+            self::STATUS_IN_PROGRESS => '#6366f1',           // indigo
+            self::STATUS_COMPLETED => '#22c55e',             // bright green
+            self::STATUS_REJECTED => '#ef4444',              // red
         ];
     }
 
@@ -316,6 +320,7 @@ class ClientProject extends Model
     {
         return in_array($this->status, [
             self::STATUS_PROPOSAL_ACCEPTED,
+            self::STATUS_PENDING_FIRST_PAYMENT,
             self::STATUS_SCHEDULED,
             self::STATUS_IN_PROGRESS,
             self::STATUS_COMPLETED,
@@ -326,6 +331,30 @@ class ClientProject extends Model
     public function isHourly(): bool
     {
         return $this->billing_type === self::BILLING_HOURLY;
+    }
+
+    /**
+     * First installment of the payment plan (lowest sort_order), or null
+     * if the project has no installments yet (e.g. hourly-billed, or
+     * financials not filled in).
+     */
+    public function firstInstallment(): ?ClientProjectInstallment
+    {
+        return $this->installments()->orderBy('sort_order')->first();
+    }
+
+    /** True once the first installment has been marked paid. */
+    public function firstInstallmentPaid(): bool
+    {
+        $first = $this->firstInstallment();
+
+        return $first !== null && (bool) $first->is_paid;
+    }
+
+    /** True if both start + end dates are saved. */
+    public function hasSchedule(): bool
+    {
+        return filled($this->start_date) && filled($this->end_date);
     }
 
     // --- Money & profit calculations --------------------------------------

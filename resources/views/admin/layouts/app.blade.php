@@ -68,6 +68,9 @@
         @if (session('success'))
           <div class="admin-flash admin-flash--success">{{ session('success') }}</div>
         @endif
+        @if (session('warning'))
+          <div class="admin-flash admin-flash--warning">{{ session('warning') }}</div>
+        @endif
         @if (session('error'))
           <div class="admin-flash admin-flash--error">{{ session('error') }}</div>
         @endif

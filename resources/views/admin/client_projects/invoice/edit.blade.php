@@ -98,13 +98,13 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="cp-invoice-due">Due date</label>
+          <label for="cp-invoice-due">Due date <span style="color:#ef4444;">*</span></label>
           <input type="date"
                  id="cp-invoice-due"
                  name="due_on"
                  class="admin-input"
                  value="{{ $dueOn }}">
-          <p class="admin-form-help" style="margin:4px 0 0;">Defaults to 10 days from send date if left blank.</p>
+          <p class="admin-form-help" style="margin:4px 0 0;">Required before the invoice can be sent to the client.</p>
         </div>
       </div>
 

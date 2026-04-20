@@ -35,6 +35,12 @@ class ClientProjectController extends Controller
         $query = ClientProject::query()
             ->withCount('installments')
             ->withSum('installments as paid_amount_sum', 'amount')
+            // Pull hours so hourly-billed projects can display rate × hours
+            // in the TOTAL column without N+1-ing timeEntries per row.
+            ->withSum(
+                ['timeEntries as hours_logged' => fn ($q) => $q->whereNotNull('hours')],
+                'hours'
+            )
             ->orderByDesc('status_changed_at')
             ->orderByDesc('id');
 
@@ -207,18 +213,29 @@ class ClientProjectController extends Controller
 
         $client_project->fill($data)->save();
 
-        // If both dates are now present AND either of them changed, send the admin calendar email.
+        // Dates are the only field that triggers an admin calendar email,
+        // and only when the "first installment paid" gate is also satisfied
+        // (maybeSendCalendarDatesEmail encodes that rule — see service).
         $newStart = $client_project->start_date ? $client_project->start_date->toDateString() : null;
         $newEnd = $client_project->end_date ? $client_project->end_date->toDateString() : null;
         $datesChanged = $newStart && $newEnd && ($newStart !== $previousStart || $newEnd !== $previousEnd);
 
+        $successMessage = 'Project updated.';
         if ($datesChanged) {
-            $service->notifyCalendarDatesSaved($client_project);
+            $result = $service->maybeSendCalendarDatesEmail($client_project);
+            if ($result === 'sent') {
+                $successMessage = 'Project updated. Calendar notification emailed.';
+            } elseif ($result === 'failed') {
+                $successMessage = 'Project updated, but the calendar notification email failed. Check logs and retry.';
+            }
+            // 'waiting-payment' is silent here — the user is still editing
+            // dates ahead of the 1st payment; the email will fire once
+            // they mark the first installment paid.
         }
 
         return redirect()
             ->route('admin.client-projects.show', $client_project)
-            ->with('success', 'Project updated.');
+            ->with('success', $successMessage);
     }
 
     /**

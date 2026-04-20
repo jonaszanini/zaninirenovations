@@ -8,6 +8,7 @@ use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInstallment;
 use App\Models\ClientProjectReturn;
 use App\Models\ClientProjectTimeEntry;
+use App\Services\ClientProjectStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -113,8 +114,12 @@ class ClientProjectFinanceController extends Controller
         return back()->with('success', 'Payment plan saved.');
     }
 
-    public function togglePaid(Request $request, ClientProject $client_project, ClientProjectInstallment $installment)
-    {
+    public function togglePaid(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectInstallment $installment,
+        ClientProjectStatusService $statusService
+    ) {
         abort_unless($installment->client_project_id === $client_project->id, 404);
 
         $data = $request->validate([
@@ -122,11 +127,39 @@ class ClientProjectFinanceController extends Controller
             'paid_on' => ['nullable', 'date'],
         ]);
 
+        $wasPaid = (bool) $installment->is_paid;
         $installment->is_paid = (bool) $data['is_paid'];
         $installment->paid_on = $data['is_paid']
             ? ($data['paid_on'] ?? now()->toDateString())
             : null;
         $installment->save();
+
+        // Flipping the first installment to paid is the trigger for the
+        // admin calendar email. Check the schedule is actually set first —
+        // if not, we surface a warning so the admin knows the email is
+        // still pending on the dates being saved.
+        if (!$wasPaid && $installment->is_paid) {
+            $firstInstallment = $client_project->firstInstallment();
+            $isFirstInstallment = $firstInstallment && $firstInstallment->id === $installment->id;
+
+            if ($isFirstInstallment) {
+                if (!$client_project->hasSchedule()) {
+                    return back()
+                        ->with('success', 'Installment marked paid.')
+                        ->with('warning', 'Please set the project start and end dates — the calendar notification will be emailed once both are saved.');
+                }
+
+                $result = $statusService->maybeSendCalendarDatesEmail($client_project->fresh());
+                if ($result === 'sent') {
+                    return back()->with('success', 'Installment marked paid. Calendar notification emailed to the admin.');
+                }
+                if ($result === 'failed') {
+                    return back()
+                        ->with('success', 'Installment marked paid.')
+                        ->with('warning', 'The calendar notification email failed to send. Check logs and try again.');
+                }
+            }
+        }
 
         return back()->with('success', $installment->is_paid ? 'Installment marked paid.' : 'Installment marked unpaid.');
     }

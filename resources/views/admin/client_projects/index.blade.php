@@ -81,7 +81,17 @@
                 <div>{{ \App\Models\ClientProject::formatDate($project->start_date) }}</div>
                 <div class="cp-subtle">→ {{ \App\Models\ClientProject::formatDate($project->end_date) }}</div>
               </td>
-              <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($project->total_amount) }}</td>
+              <td class="cp-col-amount">
+                @if ($project->isHourly())
+                  @php
+                    $hourlyTotal = round((float) ($project->hours_logged ?? 0) * (float) ($project->hourly_rate ?? 0), 2);
+                  @endphp
+                  {{ \App\Models\ClientProject::formatMoney($hourlyTotal) }}
+                  <div class="cp-subtle">{{ number_format((float) ($project->hours_logged ?? 0), 2) }} h @ {{ \App\Models\ClientProject::formatMoney((float) ($project->hourly_rate ?? 0)) }}/h</div>
+                @else
+                  {{ \App\Models\ClientProject::formatMoney($project->total_amount) }}
+                @endif
+              </td>
               <td class="cp-col-amount">{{ number_format($project->percentPaid(), 0) }}%</td>
               <td>{{ optional($project->updated_at)->format('d/m/Y H:i') }}</td>
             </tr>
