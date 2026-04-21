@@ -72,9 +72,6 @@
           <i class="fa fa-calendar"></i> Add to Google Calendar
         </a>
       @endif
-      <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-arrow-left"></i> Back to list
-      </a>
     </div>
   </div>
 

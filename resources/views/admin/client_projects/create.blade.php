@@ -30,7 +30,20 @@
             <input type="email" id="cp-client-email" name="client_email" value="{{ old('client_email') }}" maxlength="255"
                    @class(['is-invalid' => $errors->has('client_email')])>
             @error('client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
-            <p class="admin-form-help">If provided, the client gets an automated "quote request received" email.</p>
+            @php
+              // Checkbox value is preserved on validation failure. On first
+              // render there is no "old" value, so default to checked.
+              $sendClientEmail = old('send_client_email', '1') === '1';
+            @endphp
+            <label class="cp-checkbox-inline" for="cp-send-client-email" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-weight:400;">
+              <input type="hidden" name="send_client_email" value="0">
+              <input type="checkbox"
+                     id="cp-send-client-email"
+                     name="send_client_email"
+                     value="1"
+                     @checked($sendClientEmail)>
+              <span>Send automated &ldquo;quote request received&rdquo; email to the client</span>
+            </label>
           </div>
           <div class="admin-form-group">
             <label for="cp-client-phone">Phone number</label>

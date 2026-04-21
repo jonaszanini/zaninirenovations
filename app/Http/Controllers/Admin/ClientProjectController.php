@@ -113,12 +113,18 @@ class ClientProjectController extends Controller
                 ClientProject::BILLING_HOURLY,
             ])],
             'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
+            'send_client_email' => ['nullable', 'boolean'],
         ], $this->clientProjectValidationMessages());
 
         // Normalise hourly_rate so fixed projects don't carry a stray rate.
         if ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
             $data['hourly_rate'] = null;
         }
+
+        // Pulled out before array_merge below because it isn't a column
+        // on the projects table — it controls the onCreated side-effect.
+        $sendClientEmail = (bool) ($data['send_client_email'] ?? true);
+        unset($data['send_client_email']);
 
         // Hourly projects imply the price has already been agreed verbally,
         // so we skip Quote Pending (which would trigger daily admin reminders
@@ -139,11 +145,15 @@ class ClientProjectController extends Controller
             return $project;
         });
 
-        $service->onCreated($project);
+        $service->onCreated($project, $sendClientEmail);
 
-        $successMessage = $isHourly
-            ? 'Project created. Status set to Proposal Accepted — no email sent to the client yet.'
-            : 'Project created. Status set to Quote Pending.';
+        if ($isHourly) {
+            $successMessage = 'Project created. Status set to Proposal Accepted — no email sent to the client yet.';
+        } elseif ($sendClientEmail && filled($project->client_email)) {
+            $successMessage = 'Project created. Status set to Quote Pending. Acknowledgement emailed to the client.';
+        } else {
+            $successMessage = 'Project created. Status set to Quote Pending. No client email sent.';
+        }
 
         return redirect()
             ->route('admin.client-projects.show', $project)

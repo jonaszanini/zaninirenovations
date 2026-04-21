@@ -67,15 +67,19 @@ class ClientProjectStatusService
     }
 
     /**
-     * Called right after a ClientProject is created. Ensures Quote Pending
-     * status is logged in history + optional "thank you for your request"
-     * email to the client.
+     * Called right after a ClientProject is created. Ensures the initial
+     * status is logged in history and — for fixed-price quote requests —
+     * sends the "quote request received" acknowledgement to the client.
+     *
+     * The $sendClientEmail flag lets the caller suppress that email
+     * when the admin unchecks the "notify client" checkbox on create
+     * (e.g. the project was already discussed in person / on the phone).
      */
-    public function onCreated(ClientProject $project): void
+    public function onCreated(ClientProject $project, bool $sendClientEmail = true): void
     {
         $this->recordHistory($project, null, $project->status, 'Project created.');
 
-        if ($project->status === ClientProject::STATUS_QUOTE_PENDING) {
+        if ($sendClientEmail && $project->status === ClientProject::STATUS_QUOTE_PENDING) {
             $this->safeSendClientQuoteReceived($project);
         }
     }
