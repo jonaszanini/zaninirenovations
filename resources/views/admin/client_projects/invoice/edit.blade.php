@@ -18,6 +18,7 @@
     }
 
     $isManual = $invoice->isManual();
+    $isFromTimeEntries = $isManual && $invoice->isFromTimeEntries();
     $manualDescription = old('manual_description', $invoice->installment_description);
     $manualTotal = old('manual_total', $invoice->subtotal > 0 ? number_format((float) $invoice->subtotal, 2, '.', '') : '');
     $dueOn = old('due_on', $invoice->due_on ? $invoice->due_on->toDateString() : null);
@@ -65,7 +66,10 @@
         @endif
       </h3>
       <p class="admin-form-help" style="margin:4px 0 0;">
-        @if ($isManual)
+        @if ($isFromTimeEntries)
+          Hourly invoice — prefilled from {{ $invoice->timeEntries->count() }} unbilled time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}.
+          You can edit the descriptions and amounts freely before sending. Deleting this draft will release the entries back to "unbilled".
+        @elseif ($isManual)
           Manual invoice — no installment link. Enter the pre-HST total and optionally itemise the work below.
         @else
           <strong>{{ $invoice->installmentTitle() }}</strong>.
@@ -85,8 +89,17 @@
       {{-- Installment / header info ---------------------------------- --}}
       <div class="cp-quotation-form-grid">
         <div class="admin-form-group">
-          <label>Linked installment</label>
-          @if ($isManual)
+          <label>
+            @if ($isFromTimeEntries) Source @else Linked installment @endif
+          </label>
+          @if ($isFromTimeEntries)
+            <div class="cp-invoice-locked-field">
+              <span class="cp-badge" style="background:#ecfdf5;color:#15803d;">
+                <i class="fa fa-clock-o"></i>
+                Hourly — {{ $invoice->timeEntries->count() }} time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}
+              </span>
+            </div>
+          @elseif ($isManual)
             <div class="cp-invoice-locked-field">
               <span class="cp-badge" style="background:#e5e7eb;color:#4b5563;">Manual — no installment</span>
             </div>

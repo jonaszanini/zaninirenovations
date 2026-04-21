@@ -1,10 +1,16 @@
 {{--
-  Invoice tab partial — lists every installment in the current Financials
-  payment plan, shows its invoice status (no invoice / draft / sent / paid),
-  and exposes per-row actions (Create / Edit / Download PDF / Send / Mark Paid
-  / Download Receipt).
+  Invoice tab partial. Two distinct flows behind the same UI chrome:
 
-  Separate section at the bottom for manual (non-installment) invoices.
+  Fixed-price projects (unchanged)
+    - One invoice per installment from the Financials payment plan,
+      plus optional manual invoices.
+
+  Hourly projects
+    - No installments. Admin hits "Create invoice from hours" to
+      snapshot every unbilled time entry into a new draft invoice,
+      then tweaks the line items / due date / description before
+      sending. Unbilled entries are tracked via a FK on the entry
+      row (client_project_invoice_id).
 
   Variables expected:
     $project   – the ClientProject
@@ -13,34 +19,195 @@
 @php
   $isHourly = $project->isHourly();
   $isAccepted = $project->isAccepted();
-  $installments = $project->installments;
   $invoices = $project->invoices;
-  $installmentInvoices = $invoices->whereNotNull('installment_number')->keyBy('installment_number');
-  $manualInvoices = $invoices->whereNull('installment_number')->values();
 
   $missing = $project->missingClientContactFields();
   $hasContactInfo = empty($missing);
-
-  $hstRate = \App\Models\ClientProject::HST_RATE;
-  $withTax = 1 + $hstRate;
 @endphp
 
-{{-- ========================================================================
-     Locked: hourly projects and projects still in pre-accept state don't
-     get the invoice flow. Invoices are tied to a payment plan, which
-     only exists for accepted, fixed-billing projects.
-     ======================================================================== --}}
 @if ($isHourly)
-  <div class="admin-card cp-locked">
-    <h3>Invoices</h3>
-    <p>This project is billed by the hour. Hourly projects don't use the payment-plan invoice flow — use the Financials tab to record time and the Time Tracking tab to log hours.</p>
+  {{-- =================================================================
+       HOURLY FLOW — separate from anything fixed-price below. Leaves
+       all installment / payment-plan logic untouched.
+       ================================================================= --}}
+  @php
+    $hourlyRate = round((float) ($project->hourly_rate ?? 0), 2);
+
+    // Time entries with duration set (open entries without end_time are
+    // ignored until closed out).
+    $closedEntries = $project->timeEntries()
+        ->whereNotNull('hours')
+        ->orderBy('occurred_on')
+        ->get();
+
+    $totalHours = round((float) $closedEntries->sum('hours'), 2);
+    $unbilledEntries = $closedEntries->whereNull('client_project_invoice_id');
+    $unbilledHours = round((float) $unbilledEntries->sum('hours'), 2);
+    $billedHours = round($totalHours - $unbilledHours, 2);
+
+    $unbilledSubtotal = round($unbilledHours * $hourlyRate, 2);
+    $unbilledTotal = round($unbilledSubtotal * (1 + \App\Models\ClientProjectInvoice::HST_RATE), 2);
+
+    $canCreateFromHours = $unbilledEntries->isNotEmpty() && $hourlyRate > 0;
+  @endphp
+
+  <div class="admin-card cp-contract-card">
+    <div class="cp-contract-header">
+      <div class="cp-contract-meta">
+        <h3>Invoices</h3>
+        <p class="admin-form-help" style="margin:6px 0 0;">
+          This project is billed by the hour. Log time on the
+          <a href="#time" data-cp-jump-tab="time">Time Tracking</a> tab, then create
+          an invoice here whenever you're ready to bill the client for unbilled hours.
+          You can also raise a manual invoice for anything not tied to tracked time
+          (e.g. materials, delivery fees). Once you mark an invoice as paid, a receipt
+          is generated and emailed to the client automatically.
+        </p>
+      </div>
+
+      <div class="cp-contract-actions">
+        @if ($canCreateFromHours)
+          <form action="{{ route('admin.client-projects.invoices.create', $project) }}" method="post" class="cp-inline-form">
+            @csrf
+            <input type="hidden" name="mode" value="hourly">
+            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm"
+                    title="Snapshot {{ $unbilledEntries->count() }} unbilled time entr{{ $unbilledEntries->count() === 1 ? 'y' : 'ies' }} into a new draft invoice.">
+              <i class="fa fa-clock-o"></i> Create invoice from hours
+            </button>
+          </form>
+        @else
+          <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" disabled
+                  title="{{ $hourlyRate <= 0 ? 'Set the hourly rate on the project first.' : 'No unbilled hours to invoice — log time on the Time Tracking tab first.' }}">
+            <i class="fa fa-clock-o"></i> Create invoice from hours
+          </button>
+        @endif
+
+        <form action="{{ route('admin.client-projects.invoices.create', $project) }}" method="post" class="cp-inline-form">
+          @csrf
+          <input type="hidden" name="mode" value="manual">
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="Create a manual invoice not tied to tracked hours (e.g. materials).">
+            <i class="fa fa-plus"></i> New manual invoice
+          </button>
+        </form>
+      </div>
+    </div>
+
+    @if (!$hasContactInfo)
+      <div class="cp-contract-warning">
+        <i class="fa fa-exclamation-triangle"></i>
+        <div>
+          <strong>Can't email invoices yet.</strong>
+          Missing client info: <strong>{{ implode(', ', $missing) }}</strong>.
+          <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project details to fix.</a>
+        </div>
+      </div>
+    @endif
+
+    {{-- Hours summary tiles (same visual language as Financials "set-aside"
+         tiles — kept lightweight so it doesn't compete with the table). --}}
+    <div class="cp-hourly-summary">
+      <div class="cp-hourly-summary-tile">
+        <div class="cp-hourly-summary-label">Hours logged</div>
+        <div class="cp-hourly-summary-value">{{ number_format($totalHours, 2) }} h</div>
+        @if ($hourlyRate > 0)
+          <div class="cp-hourly-summary-sub">@ {{ \App\Models\ClientProject::formatMoney($hourlyRate) }}/h</div>
+        @endif
+      </div>
+      <div class="cp-hourly-summary-tile">
+        <div class="cp-hourly-summary-label">Already invoiced</div>
+        <div class="cp-hourly-summary-value">{{ number_format($billedHours, 2) }} h</div>
+      </div>
+      <div class="cp-hourly-summary-tile cp-hourly-summary-tile--highlight">
+        <div class="cp-hourly-summary-label">Unbilled</div>
+        <div class="cp-hourly-summary-value">{{ number_format($unbilledHours, 2) }} h</div>
+        @if ($unbilledHours > 0 && $hourlyRate > 0)
+          <div class="cp-hourly-summary-sub">
+            {{ \App\Models\ClientProject::formatMoney($unbilledSubtotal) }} + HST =
+            <strong>{{ \App\Models\ClientProject::formatMoney($unbilledTotal) }}</strong>
+          </div>
+        @endif
+      </div>
+    </div>
+
+    {{-- Existing invoices (drafts + sent + paid), newest first. Each
+         invoice is a "manual-style" row — no installment column. --}}
+    @if ($invoices->isEmpty())
+      <p class="admin-form-help" style="margin-top:18px;">
+        <i class="fa fa-info-circle"></i>
+        No invoices yet. When you're ready to bill, click <strong>Create invoice from hours</strong>
+        to snapshot the unbilled entries into a draft, then review and send.
+      </p>
+    @else
+      <div class="admin-table-scroll" style="margin-top:14px;">
+        <table class="admin-table cp-invoices-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th style="width:150px;">Amount <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th style="width:130px;">Status</th>
+              <th style="width:340px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($invoices->sortByDesc('id') as $invoice)
+              @php
+                $statusLabel = \App\Models\ClientProjectInvoice::statusLabel($invoice->status);
+                $statusColor = \App\Models\ClientProjectInvoice::statusColor($invoice->status);
+                $entryCount = $invoice->timeEntries->count();
+              @endphp
+              <tr>
+                <td>
+                  {{ $invoice->installment_description ?: 'Hourly work' }}
+                  @if ($entryCount > 0)
+                    <div class="admin-form-help" style="margin-top:2px;">
+                      <i class="fa fa-clock-o"></i>
+                      {{ $entryCount }} time entr{{ $entryCount === 1 ? 'y' : 'ies' }} snapshotted
+                    </div>
+                  @endif
+                </td>
+                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</td>
+                <td>
+                  <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
+                    {{ $statusLabel }}
+                    <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
+                  </span>
+                </td>
+                <td>
+                  @include('admin.client_projects._invoice_row_actions', [
+                    'project' => $project,
+                    'invoice' => $invoice,
+                    'installmentNumber' => null,
+                    'hasContactInfo' => $hasContactInfo,
+                    'missing' => $missing,
+                  ])
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    @endif
   </div>
+
 @elseif (!$isAccepted)
   <div class="admin-card cp-locked">
     <h3>Invoices are locked</h3>
     <p>Invoices become available once the project status is <strong>Proposal Accepted</strong> or later. Lock in the payment plan on the Financials tab first.</p>
   </div>
+
 @else
+  {{-- =================================================================
+       FIXED-PRICE FLOW — untouched from the original implementation.
+       Installment-driven invoices + optional manual invoices.
+       ================================================================= --}}
+  @php
+    $installments = $project->installments;
+    $installmentInvoices = $invoices->whereNotNull('installment_number')->keyBy('installment_number');
+    $manualInvoices = $invoices->whereNull('installment_number')->values();
+
+    $hstRate = \App\Models\ClientProject::HST_RATE;
+    $withTax = 1 + $hstRate;
+  @endphp
 
   {{-- ---------------------------------------------------------------- --}}
   {{-- Header + top action bar                                           --}}
@@ -195,9 +362,14 @@
       </div>
     @endif
   </div>
+@endif
 
-  {{-- Mark-as-paid modal (one shared modal; data attrs populate it
-       when a row's "Mark as paid" button is clicked). --}}
+{{-- =====================================================================
+     Shared mark-as-paid modal + tab-jump script. Rendered for every
+     non-locked state (hourly and fixed-price both use it). The pre-accept
+     lock branch returns before this point, so we gate on that one case.
+     ===================================================================== --}}
+@if ($isHourly || $isAccepted)
   <div class="cp-modal-backdrop" id="cp-mark-paid-modal" hidden>
     <div class="cp-modal" role="dialog" aria-labelledby="cp-mark-paid-title">
       <div class="cp-modal-header">
@@ -210,8 +382,8 @@
           <p class="admin-form-help" style="margin-top:0;">
             This will mark <strong id="cp-mark-paid-invoice-label">the invoice</strong>
             as paid, generate a <strong>Receipt PDF</strong>, and — if the client's email is on file —
-            send the receipt to them automatically. The linked installment on the Financials tab
-            will be marked paid for you.
+            send the receipt to them automatically.
+            @unless ($isHourly) The linked installment on the Financials tab will be marked paid for you. @endunless
           </p>
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
@@ -291,7 +463,7 @@
         if (!modal.hidden && e.key === 'Escape') closeModal();
       });
 
-      // ---- In-tab jump to Financials ------------------------------
+      // ---- In-tab jump to another tab ---------------------------
       document.querySelectorAll('[data-cp-jump-tab]').forEach(function (a) {
         a.addEventListener('click', function (e) {
           var key = a.getAttribute('data-cp-jump-tab');

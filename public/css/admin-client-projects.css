@@ -1484,6 +1484,49 @@ textarea.admin-input {
    modal.
    ======================================================================== */
 
+/* Hourly-project summary tiles shown above the invoice list. Compact
+   version of the Time-tracking/Financials tile grid — keeps the invoice
+   tab visually in the same family without stealing the headline. */
+.cp-hourly-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+.cp-hourly-summary-tile {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.cp-hourly-summary-tile--highlight {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+.cp-hourly-summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+.cp-hourly-summary-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 2px;
+}
+.cp-hourly-summary-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+@media (max-width: 640px) {
+  .cp-hourly-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Invoice table — mostly inherits from .admin-table; this tightens the
    inline action cell so the buttons don't explode the row height. */
 .cp-invoices-table th,

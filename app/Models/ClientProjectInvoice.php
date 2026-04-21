@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Http\Controllers\Admin\ClientProjectFinanceController;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -66,6 +67,33 @@ class ClientProjectInvoice extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(ClientProject::class, 'client_project_id');
+    }
+
+    /**
+     * Time entries snapshotted onto this invoice. Only populated for
+     * "hourly" invoices (hourly-billed projects where the admin clicks
+     * "Create invoice from hours"). Empty for installment / manual
+     * invoices.
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(ClientProjectTimeEntry::class, 'client_project_invoice_id')
+            ->orderBy('occurred_on');
+    }
+
+    /**
+     * True if this invoice was built from time entries (regardless of
+     * whether the user has since edited the line items).
+     */
+    public function isFromTimeEntries(): bool
+    {
+        // relationLoaded first to avoid an extra query when the caller
+        // has eager-loaded the relation (most view paths do).
+        if ($this->relationLoaded('timeEntries')) {
+            return $this->timeEntries->isNotEmpty();
+        }
+
+        return $this->timeEntries()->exists();
     }
 
     /**

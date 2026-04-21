@@ -8,6 +8,7 @@ use App\Mail\ClientProjectInvoiceReceiptClient;
 use App\Mail\ClientProjectInvoiceReminderClient;
 use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
+use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientProjectStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -41,10 +42,14 @@ use Illuminate\Validation\ValidationException;
 class ClientProjectInvoiceController extends Controller
 {
     /**
-     * Create a new invoice (linked to an installment, or manual) and
-     * redirect to its editor. If an invoice already exists for the
-     * requested installment, we just reopen that one instead of
-     * duplicating.
+     * Create a new invoice and redirect to its editor. Three modes:
+     *   - installment: linked to the N-th installment in the payment plan
+     *                  (fixed-price projects only, 1:1 per installment)
+     *   - manual:      blank invoice, admin fills everything in
+     *   - hourly:      snapshots every unbilled time entry on the project
+     *                  as prefilled line items (hourly-billed projects only)
+     *
+     * Reopens an existing draft when appropriate instead of duplicating.
      */
     public function create(Request $request, ClientProject $client_project)
     {
@@ -55,10 +60,21 @@ class ClientProjectInvoiceController extends Controller
                 'min:1',
                 'max:4',
             ],
-            'mode' => ['nullable', 'in:installment,manual'],
+            'mode' => ['nullable', 'in:installment,manual,hourly'],
         ]);
 
         $mode = $data['mode'] ?? ($request->filled('installment_number') ? 'installment' : 'manual');
+
+        // Guard: mode vs billing type must line up. This keeps the
+        // fixed-price (installment / manual) and hourly flows strictly
+        // separated so a form bug can't cross-contaminate them.
+        if ($mode === 'hourly' && !$client_project->isHourly()) {
+            return back()->with('error', '"Create invoice from hours" is only available for hourly-billed projects.');
+        }
+        if ($mode === 'installment' && $client_project->isHourly()) {
+            return back()->with('error', 'Hourly projects do not use the installment invoice flow.');
+        }
+
         $installmentNumber = $mode === 'installment' ? (int) ($data['installment_number'] ?? 0) : null;
 
         if ($mode === 'installment') {
@@ -82,6 +98,24 @@ class ClientProjectInvoiceController extends Controller
                     ->route('admin.client-projects.invoices.edit', [$client_project, $existing])
                     ->with('info', 'An invoice already exists for this installment — opening the editor.');
             }
+        }
+
+        if ($mode === 'hourly') {
+            $unbilled = $client_project->timeEntries()
+                ->unbilled()
+                ->closed()
+                ->orderBy('occurred_on')
+                ->get();
+
+            if ($unbilled->isEmpty()) {
+                return back()->with('error', 'There are no unbilled time entries to invoice. Log some hours on the Time Tracking tab first.');
+            }
+
+            $invoice = $this->createHourlyInvoice($client_project, $unbilled);
+
+            return redirect()
+                ->route('admin.client-projects.invoices.edit', [$client_project, $invoice])
+                ->with('success', 'Invoice draft created from '.$unbilled->count().' unbilled time entr'.($unbilled->count() === 1 ? 'y' : 'ies').'. Review and adjust the line items as needed.');
         }
 
         $invoice = $this->createInvoice($client_project, $installmentNumber);
@@ -610,6 +644,93 @@ class ClientProjectInvoiceController extends Controller
             'status' => ClientProjectInvoice::STATUS_DRAFT,
             'version' => 1,
         ]);
+    }
+
+    /**
+     * Build a draft invoice for an hourly project from its unbilled,
+     * closed time entries. Each entry becomes one editable line item
+     * (description = "DD/MM/YYYY — note (or 'Hourly work')", amount =
+     * hours × hourly_rate). Every entry is linked back to the new
+     * invoice so it's excluded from the next "Create invoice from hours".
+     *
+     * If the admin deletes the draft later (destroy()), the FK's
+     * ON DELETE SET NULL releases the entries back to "unbilled".
+     */
+    protected function createHourlyInvoice(ClientProject $project, $unbilledEntries): ClientProjectInvoice
+    {
+        $rate = round((float) ($project->hourly_rate ?? 0), 2);
+        $items = [];
+
+        foreach ($unbilledEntries as $entry) {
+            $hours = round((float) ($entry->hours ?? 0), 2);
+            if ($hours <= 0) {
+                continue; // defensive: scopeClosed should already exclude these
+            }
+
+            // Build a parts list and join with " · ". Each component is
+            // only appended when it has real content, so we never end up
+            // with dangling separators.
+            //
+            //   [date] · [start – end] · [X.XX h @ $Y/h] · [note]
+            //
+            // The time range is only included when BOTH start_time and
+            // end_time are set on the entry — i.e. the admin clocked in
+            // and out. Legacy or bulk-entered rows (hours only) fall
+            // back to date + total hours, per the user's explicit ask.
+            $parts = [];
+
+            if ($entry->occurred_on) {
+                $parts[] = $entry->occurred_on->format('d/m/Y');
+            }
+
+            if (!empty($entry->start_time) && !empty($entry->end_time)) {
+                $parts[] = sprintf(
+                    '%s – %s',
+                    ClientProjectTimeEntry::formatTime($entry->start_time),
+                    ClientProjectTimeEntry::formatTime($entry->end_time)
+                );
+            }
+
+            $parts[] = sprintf('%.2f h @ %s/h', $hours, ClientProject::formatMoney($rate));
+
+            $note = trim((string) ($entry->note ?? ''));
+            if ($note !== '') {
+                $parts[] = $note;
+            }
+
+            $items[] = [
+                'description' => implode(' · ', $parts),
+                'amount' => round($hours * $rate, 2),
+            ];
+        }
+
+        $subtotal = round(array_sum(array_column($items, 'amount')), 2);
+        $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
+
+        // Use a transaction so the link-back to time entries is atomic
+        // with the invoice insert — an exception anywhere rolls back
+        // and leaves the entries unbilled.
+        return DB::transaction(function () use ($project, $items, $subtotal, $hst, $unbilledEntries) {
+            $invoice = $project->invoices()->create([
+                'installment_number' => null,
+                'installment_description' => 'Hourly work',
+                'invoice_number' => ClientProjectInvoice::generateNumber(),
+                'items' => $items,
+                'subtotal' => $subtotal,
+                'hst' => $hst,
+                'total' => round($subtotal + $hst, 2),
+                'status' => ClientProjectInvoice::STATUS_DRAFT,
+                'version' => 1,
+            ]);
+
+            // Attach the time entries to this invoice so they're treated
+            // as "billed" for future hourly invoice creation.
+            $project->timeEntries()
+                ->whereIn('id', $unbilledEntries->pluck('id'))
+                ->update(['client_project_invoice_id' => $invoice->id]);
+
+            return $invoice;
+        });
     }
 
     /**

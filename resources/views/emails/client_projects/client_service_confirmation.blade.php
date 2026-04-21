@@ -40,6 +40,13 @@
     {{ $scheduledDate }}
   </p>
 
+  @if (filled($project->client_address))
+    <p style="margin:12px 0 12px 16px;border-left:3px solid #024768;padding:8px 12px;background:#f9fafb;">
+      <strong>Service address:</strong>
+      {{ $project->client_address }}
+    </p>
+  @endif
+
   @if ($rate)
     <p>
       As we previously discussed, this project will be billed at an hourly rate of
