@@ -225,10 +225,13 @@
   // --- Inline edit toggles for existing time entries --------------------
   function initTimeEditToggles() {
     document.querySelectorAll('[data-cp-edit-toggle]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
         var id = btn.getAttribute('data-cp-edit-toggle');
         var row = document.querySelector('[data-cp-edit-row="' + id + '"]');
         if (!row) return;
+        var details = row.closest('details');
+        if (details) details.open = true;
         var isHidden = row.hasAttribute('hidden');
         if (isHidden) {
           row.removeAttribute('hidden');

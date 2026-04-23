@@ -5,16 +5,15 @@
   $hourlyRate = $project->effectiveHourlyRate();
   $configuredRate = $isHourly ? (float) ($project->hourly_rate ?? 0) : null;
 
-  // Build 15-minute time options from 8:00 AM to 8:00 PM inclusive.
-  // Key is 24-hour HH:MM (used as <option value>), label is 12-hour formatted.
+  // 15-minute slots 08:00–20:00. Values stay zero-padded HH:MM for DB
+  // consistency; labels use 24h without a leading zero on the hour
+  // (9:00, 13:00) for easier reading on phones.
   $timeOptions = [];
   for ($minutes = 8 * 60; $minutes <= 20 * 60; $minutes += 15) {
     $h = intdiv($minutes, 60);
     $m = $minutes % 60;
     $value = sprintf('%02d:%02d', $h, $m);
-    $hour12 = $h % 12 === 0 ? 12 : $h % 12;
-    $ampm = $h < 12 ? 'AM' : 'PM';
-    $timeOptions[$value] = sprintf('%d:%02d %s', $hour12, $m, $ampm);
+    $timeOptions[$value] = sprintf('%d:%02d', $h, $m);
   }
 @endphp
 
@@ -72,45 +71,46 @@
   </form>
 
   @if ($project->timeEntries->isNotEmpty())
-    <div class="admin-table-scroll">
-    <table class="admin-table cp-time-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Start</th>
-          <th>End</th>
-          <th>Hours</th>
-          <th>Note</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach ($project->timeEntries as $entry)
-          @php $isOpen = $entry->isOpen(); @endphp
-          <tr data-cp-entry-row="{{ $entry->id }}" class="{{ $isOpen ? 'cp-row-open' : '' }}">
-            <td data-label="Date">{{ \App\Models\ClientProject::formatDate($entry->occurred_on) }}</td>
-            <td data-label="Start">{{ \App\Models\ClientProjectTimeEntry::formatTime($entry->start_time) }}</td>
-            <td data-label="End">
-              {{ \App\Models\ClientProjectTimeEntry::formatTime($entry->end_time) }}
-              @if ($isOpen)
-                <span class="cp-badge" style="background:#f59e0b20;color:#b45309;margin-left:6px;">In progress</span>
-              @endif
-            </td>
-            <td data-label="Hours">{{ $entry->hours !== null ? number_format((float) $entry->hours, 2) : '—' }}</td>
-            <td data-label="Note">{{ $entry->note ?: '—' }}</td>
-            <td class="cp-time-actions" data-label="Actions">
+    <h4 class="cp-time-saved-heading">Saved entries</h4>
+    <p class="admin-form-help cp-time-saved-help">Newest at the top. Tap a row to expand; use Edit to change times.</p>
+    <div class="cp-time-entries">
+      @foreach ($project->timeEntries as $entry)
+        @php
+          $isOpen = $entry->isOpen();
+          $dm = $entry->occurred_on ? $entry->occurred_on->format('d/m') : '—';
+          $st = \App\Models\ClientProjectTimeEntry::formatTime($entry->start_time);
+          $et = \App\Models\ClientProjectTimeEntry::formatTime($entry->end_time);
+          if ($isOpen) {
+            $hoursPart = 'in progress';
+          } elseif ($entry->hours !== null) {
+            $hoursPart = rtrim(rtrim(number_format((float) $entry->hours, 2, '.', ''), '0'), '.').' hrs';
+          } else {
+            $hoursPart = '—';
+          }
+          $summaryLine = '| '.$dm.': '.$st.' - '.$et.' = '.$hoursPart.' |';
+        @endphp
+        <details class="cp-time-entry {{ $isOpen ? 'cp-time-entry--open' : '' }}" data-cp-entry-row="{{ $entry->id }}">
+          <summary class="cp-time-entry__summary">
+            <span class="cp-time-entry__summary-text">{{ $summaryLine }}</span>
+            @if ($isOpen)
+              <span class="cp-time-entry__badge cp-time-entry__badge--progress">In progress</span>
+            @endif
+          </summary>
+          <div class="cp-time-entry__panel">
+            @if (filled($entry->note))
+              <p class="cp-time-entry__note"><strong>Note:</strong> {{ $entry->note }}</p>
+            @endif
+            <div class="cp-time-entry__actions">
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-edit-toggle="{{ $entry->id }}">
-                {{ $isOpen ? 'Set end' : 'Edit' }}
+                {{ $isOpen ? 'Set end time' : 'Edit' }}
               </button>
               <form action="{{ route('admin.client-projects.time.destroy', [$project, $entry]) }}" method="post" onsubmit="return confirm('Delete this time entry?');" class="cp-inline-form">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
               </form>
-            </td>
-          </tr>
-          <tr class="cp-time-edit-row" data-cp-edit-row="{{ $entry->id }}" hidden>
-            <td colspan="6">
+            </div>
+            <div class="cp-time-entry__edit" data-cp-edit-row="{{ $entry->id }}" hidden>
               <form action="{{ route('admin.client-projects.time.update', [$project, $entry]) }}" method="post" class="cp-time-edit-form" data-cp-time-form>
                 @csrf
                 @method('PUT')
@@ -157,11 +157,10 @@
                   <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save changes</button>
                 </div>
               </form>
-            </td>
-          </tr>
-        @endforeach
-      </tbody>
-    </table>
+            </div>
+          </div>
+        </details>
+      @endforeach
     </div>
   @else
     <p class="admin-form-help">No time entries recorded yet.</p>

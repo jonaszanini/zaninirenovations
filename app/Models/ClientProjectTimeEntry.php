@@ -85,7 +85,10 @@ class ClientProjectTimeEntry extends Model
         return round(($endMin - $startMin) / 60, 2);
     }
 
-    /** Format an HH:MM 24h string as a human "h:MM AM/PM". Returns "—" when empty. */
+    /**
+     * Format a stored "HH:MM" (24h) value for display as 24-hour clock
+     * (e.g. 9:00, 13:00). Returns "—" when empty.
+     */
     public static function formatTime(?string $value): string
     {
         $minutes = self::parseHhMm($value);
@@ -94,10 +97,8 @@ class ClientProjectTimeEntry extends Model
         }
         $h24 = intdiv($minutes, 60);
         $m = $minutes % 60;
-        $h12 = $h24 % 12 === 0 ? 12 : $h24 % 12;
-        $ampm = $h24 < 12 ? 'AM' : 'PM';
 
-        return sprintf('%d:%02d %s', $h12, $m, $ampm);
+        return sprintf('%d:%02d', $h24, $m);
     }
 
     private static function parseHhMm(?string $value): ?int

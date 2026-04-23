@@ -800,159 +800,167 @@
 }
 
 /* =================================================================
-   Time entry table — open entries + inline edit row
+   Time entries — accordion list (newest first via model ordering)
    ================================================================= */
-.cp-row-open td {
+.cp-time-saved-heading {
+  margin: 20px 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+.cp-time-saved-help {
+  margin: 0 0 12px;
+}
+.cp-time-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cp-time-entry {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.cp-time-entry--open {
+  border-color: #fde68a;
   background: #fffbeb;
 }
-.cp-time-actions {
+.cp-time-entry__summary {
+  list-style: none;
   display: flex;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  min-height: 48px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: #111827;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cp-time-entry__summary::-webkit-details-marker {
+  display: none;
+}
+.cp-time-entry__summary::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #64748b;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.cp-time-entry[open] .cp-time-entry__summary::after {
+  transform: rotate(180deg);
+}
+.cp-time-entry__summary-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+.cp-time-entry__badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.cp-time-entry__badge--progress {
+  background: #f59e0b20;
+  color: #b45309;
+}
+.cp-time-entry__panel {
+  padding: 0 16px 14px;
+  border-top: 1px dashed #e5e7eb;
+}
+.cp-time-entry--open .cp-time-entry__panel {
+  border-top-color: #fde68a;
+}
+.cp-time-entry__note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.45;
+}
+.cp-time-entry__actions {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+  margin-top: 12px;
 }
-.cp-time-edit-row td {
+.cp-time-entry__edit {
+  margin-top: 14px;
+  padding: 14px;
   background: #f1f5f9;
-  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.cp-time-entry__edit[hidden] {
+  display: none !important;
 }
 .cp-time-edit-form {
   margin: 0;
 }
 .cp-time-edit-actions {
+  display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .cp-time-edit-actions .admin-btn {
   margin-left: 0;
+  min-height: 44px;
 }
 
-/* ---- Mobile (≤ 640px): turn the time-entry table into stacked cards ----
-   The shared .admin-table has a `min-width: 560px` that forces horizontal
-   scrolling on phones. For the time table we drop that and re-render each
-   row as a vertical card with field labels (from `data-label` on each <td>)
-   so the user can read every entry without swiping sideways. */
 @media (max-width: 640px) {
-  .cp-time-table {
-    min-width: 0;
-    border: 0;
-  }
-  .cp-time-table thead {
-    /* Hide the column headers — we render per-cell labels instead. */
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-  .cp-time-table tbody {
-    display: block;
-  }
-  .cp-time-table tr {
-    display: block;
-    margin-bottom: 12px;
+  .cp-time-entry__summary {
+    font-size: 13px;
     padding: 12px 14px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: #fff;
   }
-  /* Our `display: block` overrides the browser's default `[hidden] { display: none }`
-     for table rows — re-assert it so collapsed edit rows stay collapsed. */
-  .cp-time-table tr[hidden] {
-    display: none;
+  .cp-time-entry__actions {
+    flex-direction: column;
   }
-  .cp-time-table tr.cp-row-open {
-    background: #fffbeb;
-    border-color: #fde68a;
-  }
-  .cp-time-table tr:hover td {
-    background: transparent;
-  }
-  .cp-time-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 6px 0;
-    border-bottom: 1px dashed #e5e7eb;
-    text-align: right;
-  }
-  .cp-time-table td:last-child {
-    border-bottom: 0;
-  }
-  .cp-time-table td::before {
-    content: attr(data-label);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    font-weight: 600;
-    flex: 0 0 auto;
-    text-align: left;
-  }
-  /* Action buttons row: drop the "Actions" label and stretch buttons across
-     the full card width, so taps are easy on a phone. */
-  .cp-time-table td.cp-time-actions {
-    flex-wrap: wrap;
-    justify-content: stretch;
-    gap: 8px;
-    padding-top: 12px;
-    border-bottom: 0;
-  }
-  .cp-time-table td.cp-time-actions::before {
-    content: none;
-  }
-  .cp-time-table td.cp-time-actions > * {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .cp-time-table td.cp-time-actions .admin-btn {
+  .cp-time-entry__actions .admin-btn,
+  .cp-time-entry__actions .cp-inline-form .admin-btn {
     width: 100%;
   }
-  /* Inline edit row: the "card" wrapper handles its padding. */
-  .cp-time-table tr.cp-time-edit-row {
-    padding: 0;
-    background: #f1f5f9;
-    border-color: #cbd5e1;
+  .cp-time-entry__actions .cp-inline-form {
+    width: 100%;
   }
-  .cp-time-table tr.cp-time-edit-row td {
-    display: block;
-    padding: 14px;
-    border: 0;
-    text-align: left;
+  .cp-time-edit-actions {
+    flex-direction: column;
+    justify-content: stretch;
   }
-  .cp-time-table tr.cp-time-edit-row td::before {
-    content: none;
+  .cp-time-edit-actions .admin-btn {
+    width: 100%;
   }
-
-  /* Time-entry forms on mobile (both the top "Add time entry" form and the
-     inline "Edit" form) — fixed layout per row:
-       row 1: Date (full width)
-       row 2: Start time (1/2)  | End time (1/2)
-       row 3: Hours     (1/4)   | Note     (3/4)
-       row 4: Submit / cancel (handled by .cp-time-submit / .cp-time-edit-actions).
-     The form grid is split into 4 equal cells so we can give Hours a single
-     cell and let Note take the remaining three. */
+  /* Same mobile field layout as before — Add form + accordion edit forms */
   .cp-time-form-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
   }
   .cp-time-form-grid > .admin-form-group:nth-child(1) {
-    grid-column: 1 / -1;        /* Date — full row */
+    grid-column: 1 / -1;
   }
   .cp-time-form-grid > .admin-form-group:nth-child(2) {
-    grid-column: 1 / span 2;    /* Start time — half */
+    grid-column: 1 / span 2;
   }
   .cp-time-form-grid > .admin-form-group:nth-child(3) {
-    grid-column: 3 / span 2;    /* End time — half */
+    grid-column: 3 / span 2;
   }
   .cp-time-form-grid > .admin-form-group:nth-child(4) {
-    grid-column: 1 / span 1;    /* Hours — quarter */
+    grid-column: 1 / span 1;
   }
   .cp-time-form-grid > .admin-form-group:nth-child(5) {
-    grid-column: 2 / span 3;    /* Note — three quarters */
+    grid-column: 2 / span 3;
   }
 }
 

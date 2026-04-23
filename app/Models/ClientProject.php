@@ -142,7 +142,10 @@ class ClientProject extends Model
 
     public function timeEntries(): HasMany
     {
-        return $this->hasMany(ClientProjectTimeEntry::class)->orderBy('occurred_on');
+        // Newest first (same day: higher id last on that day → appears first).
+        return $this->hasMany(ClientProjectTimeEntry::class)
+            ->orderByDesc('occurred_on')
+            ->orderByDesc('id');
     }
 
     public function statusHistory(): HasMany
