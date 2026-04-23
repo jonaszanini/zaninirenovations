@@ -202,13 +202,23 @@ unset($__errorArgs, $__bag); ?>
         <div class="cp-profit-value"><?php echo e(\App\Models\ClientProject::formatMoney($project->hourlyAmountEarned())); ?></div>
       </div>
     <?php endif; ?>
-    <div class="cp-profit-tile">
-      <div class="cp-profit-label">Net profit after HST</div>
-      <div class="cp-profit-value <?php echo e($netAfterHst >= 0 ? 'is-positive' : 'is-negative'); ?>">
-        <?php echo e(\App\Models\ClientProject::formatMoney($netAfterHst)); ?>
+    <?php if($isHourly): ?>
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Final amount after HST</div>
+        <div class="cp-profit-value <?php echo e($project->hourlyFinalAmountAfterHst() >= 0 ? 'is-positive' : 'is-negative'); ?>">
+          <?php echo e(\App\Models\ClientProject::formatMoney($project->hourlyFinalAmountAfterHst())); ?>
 
+        </div>
       </div>
-    </div>
+    <?php else: ?>
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Net profit after HST</div>
+        <div class="cp-profit-value <?php echo e($netAfterHst >= 0 ? 'is-positive' : 'is-negative'); ?>">
+          <?php echo e(\App\Models\ClientProject::formatMoney($netAfterHst)); ?>
+
+        </div>
+      </div>
+    <?php endif; ?>
     <?php if (! ($isHourly)): ?>
       <div class="cp-profit-tile cp-profit-tile--highlight">
         <div class="cp-profit-label">Effective hourly rate</div>
@@ -219,5 +229,45 @@ unset($__errorArgs, $__bag); ?>
       </div>
     <?php endif; ?>
   </div>
+
+  <?php if($isHourly): ?>
+    <?php
+      $closedForSummary = $project->timeEntries->filter(fn ($e) => $e->hours !== null)->count();
+      $hasClientEmail = filled($project->client_email);
+      $hasClientName = filled($project->client_name);
+      $canSendTimeSummary = $closedForSummary > 0 && $hasClientEmail && $hasClientName;
+    ?>
+    <div class="cp-time-summary-email" style="margin-top:20px;padding-top:20px;border-top:1px solid #e5e7eb;">
+      <h4 class="cp-time-saved-heading" style="margin-top:0;">Send summary to client</h4>
+      <p class="admin-form-help" style="margin-bottom:12px;">
+        Email the client a full breakdown: each day worked (start, end, hours, notes), total hours, and amounts before and after 13% HST.
+        <?php echo e($project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : ''); ?>
+
+      </p>
+      <?php if(!$hasClientEmail || !$hasClientName): ?>
+        <p class="admin-form-help" style="color:#b45309;">
+          <i class="fa fa-exclamation-triangle"></i>
+          Add the client’s name and email on the
+          <a href="<?php echo e(route('admin.client-projects.edit', $project)); ?>">edit project</a> page before sending.
+        </p>
+      <?php elseif($closedForSummary === 0): ?>
+        <p class="admin-form-help" style="color:#b45309;">
+          <i class="fa fa-exclamation-triangle"></i>
+          Close at least one time entry (with hours) before sending — open “in progress” rows are listed separately but not included in totals.
+        </p>
+      <?php endif; ?>
+      <form action="<?php echo e(route('admin.client-projects.time-tracking-summary.send', $project)); ?>"
+            method="post"
+            onsubmit="return confirm('Send the time tracking summary to <?php echo e(e($project->clientEmailRecipientsLabel() ?: 'the client')); ?>?');">
+        <?php echo csrf_field(); ?>
+        <button type="submit"
+                class="admin-btn admin-btn--primary admin-btn--sm"
+                <?php if(!$canSendTimeSummary): echo 'disabled'; endif; ?>>
+          <i class="fa fa-paper-plane"></i>
+          Send time summary to client
+        </button>
+      </form>
+    </div>
+  <?php endif; ?>
 </div>
 <?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/admin/client_projects/_time.blade.php ENDPATH**/ ?>

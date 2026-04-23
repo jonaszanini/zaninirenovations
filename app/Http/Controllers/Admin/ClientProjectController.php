@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectServiceConfirmationClient;
+use App\Mail\ClientProjectTimeTrackingSummaryClient;
 use App\Models\ClientProject;
 use App\Services\ClientProjectStatusService;
 use App\Services\GoogleCalendarLink;
@@ -383,6 +384,72 @@ class ClientProjectController extends Controller
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('schedule')
             ->with('success', "Service confirmation emailed to {$client_project->clientEmailRecipientsLabel()}.");
+    }
+
+    /**
+     * Email the client a table of every closed time entry (date, start/end,
+     * hours, notes) plus total hours and labour subtotal / HST / total with
+     * HST. Does not change project status.
+     */
+    public function sendTimeTrackingSummary(ClientProject $client_project, ClientProjectStatusService $statusService)
+    {
+        if (!$client_project->isHourly()) {
+            return back()->with('error', 'The time summary email is only available for hourly-billing projects.');
+        }
+
+        $client_project->load('timeEntries');
+
+        $closedCount = $client_project->timeEntries->filter(fn ($e) => $e->hours !== null)->count();
+        if ($closedCount === 0) {
+            return back()
+                ->withFragment('time')
+                ->with('error', 'Add at least one completed time entry (with hours) before sending a summary to the client.');
+        }
+
+        if (!filled($client_project->client_email)) {
+            return back()
+                ->withFragment('time')
+                ->with('error', 'Cannot send the time summary — the client email is missing. Edit the project to add it.');
+        }
+
+        if (!filled($client_project->client_name)) {
+            return back()
+                ->withFragment('time')
+                ->with('error', 'Cannot send the time summary — the client name is missing. Edit the project to add it.');
+        }
+
+        try {
+            $mailer = Mail::to($client_project->client_email, $client_project->client_name);
+            if ($cc = $client_project->secondaryClientEmail()) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectTimeTrackingSummaryClient($client_project));
+        } catch (\Throwable $e) {
+            Log::error('Failed to email time tracking summary', [
+                'project_id' => $client_project->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->withFragment('time')
+                ->with('error', 'Failed to send the time summary: '.$e->getMessage());
+        }
+
+        $sendNote = "Time tracking summary emailed to {$client_project->clientEmailRecipientsLabel()}.";
+
+        try {
+            $statusService->recordEvent($client_project, $sendNote);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to record time-tracking-summary history entry', [
+                'project_id' => $client_project->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('time')
+            ->with('success', $sendNote);
     }
 
     /**

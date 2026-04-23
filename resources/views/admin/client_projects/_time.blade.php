@@ -210,4 +210,43 @@
       </div>
     @endunless
   </div>
+
+  @if ($isHourly)
+    @php
+      $closedForSummary = $project->timeEntries->filter(fn ($e) => $e->hours !== null)->count();
+      $hasClientEmail = filled($project->client_email);
+      $hasClientName = filled($project->client_name);
+      $canSendTimeSummary = $closedForSummary > 0 && $hasClientEmail && $hasClientName;
+    @endphp
+    <div class="cp-time-summary-email" style="margin-top:20px;padding-top:20px;border-top:1px solid #e5e7eb;">
+      <h4 class="cp-time-saved-heading" style="margin-top:0;">Send summary to client</h4>
+      <p class="admin-form-help" style="margin-bottom:12px;">
+        Email the client a full breakdown: each day worked (start, end, hours, notes), total hours, and amounts before and after 13% HST.
+        {{ $project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : '' }}
+      </p>
+      @if (!$hasClientEmail || !$hasClientName)
+        <p class="admin-form-help" style="color:#b45309;">
+          <i class="fa fa-exclamation-triangle"></i>
+          Add the client’s name and email on the
+          <a href="{{ route('admin.client-projects.edit', $project) }}">edit project</a> page before sending.
+        </p>
+      @elseif ($closedForSummary === 0)
+        <p class="admin-form-help" style="color:#b45309;">
+          <i class="fa fa-exclamation-triangle"></i>
+          Close at least one time entry (with hours) before sending — open “in progress” rows are listed separately but not included in totals.
+        </p>
+      @endif
+      <form action="{{ route('admin.client-projects.time-tracking-summary.send', $project) }}"
+            method="post"
+            onsubmit="return confirm('Send the time tracking summary to {{ e($project->clientEmailRecipientsLabel() ?: 'the client') }}?');">
+        @csrf
+        <button type="submit"
+                class="admin-btn admin-btn--primary admin-btn--sm"
+                @disabled(!$canSendTimeSummary)>
+          <i class="fa fa-paper-plane"></i>
+          Send time summary to client
+        </button>
+      </form>
+    </div>
+  @endif
 </div>

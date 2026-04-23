@@ -153,6 +153,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // the project dates are locked in.
     Route::post('client-projects/{client_project}/service-confirmation/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendServiceConfirmation'])
         ->name('client-projects.service-confirmation.send');
+    Route::post('client-projects/{client_project}/time-tracking-summary/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendTimeTrackingSummary'])
+        ->name('client-projects.time-tracking-summary.send');
 
     // -----------------------------------------------------------------
     // Standalone Quotation module (separate from per-project quotations).
