@@ -42,7 +42,7 @@
         <span class="cp-badge cp-badge--lg" style="background: {{ $project->statusColor() }}20; color: {{ $project->statusColor() }};">
           {{ $project->statusLabel() }}
         </span>
-        <div class="cp-updated">Updated {{ optional($project->updated_at)->format('d/m/Y H:i') }}</div>
+        <div class="cp-updated">Updated {{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</div>
       </div>
     </div>
 
@@ -102,8 +102,8 @@
         <dt>Secondary email</dt><dd>{{ $project->secondaryClientEmail() ?: '—' }}</dd>
         <dt>Phone</dt><dd>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</dd>
         <dt>Address</dt><dd>{{ $project->client_address ?: '—' }}</dd>
-        <dt>Created</dt><dd>{{ $project->created_at->format('d/m/Y H:i') }}</dd>
-        <dt>Status changed</dt><dd>{{ $project->status_changed_at ? $project->status_changed_at->format('d/m/Y H:i') : '—' }}</dd>
+        <dt>Created</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->created_at) }}</dd>
+        <dt>Status changed</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->status_changed_at) }}</dd>
       </dl>
 
       @if ($project->notes)
@@ -196,7 +196,7 @@
           <p class="admin-form-help">
             <i class="fa fa-check-circle" style="color:#10b981;"></i>
             Last sent on
-            <strong>{{ $project->service_confirmation_sent_at->format('d/m/Y H:i') }}</strong>.
+            <strong>{{ \App\Models\ClientProject::formatDateTime($project->service_confirmation_sent_at) }}</strong>.
           </p>
         @endif
 
@@ -275,7 +275,7 @@
           <tbody>
             @foreach ($project->statusHistory as $entry)
               <tr>
-                <td>{{ $entry->changed_at->format('d/m/Y H:i') }}</td>
+                <td>{{ $entry->changedAtDisplay() }}</td>
                 <td>
                   @if ($entry->isEvent())
                     <span class="cp-badge" style="background:#e5e7eb;color:#4b5563;">Event</span>

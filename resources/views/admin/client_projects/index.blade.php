@@ -93,7 +93,7 @@
                 @endif
               </td>
               <td class="cp-col-amount">{{ number_format($project->percentPaid(), 0) }}%</td>
-              <td>{{ optional($project->updated_at)->format('d/m/Y H:i') }}</td>
+              <td>{{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</td>
             </tr>
           @endforeach
         </tbody>

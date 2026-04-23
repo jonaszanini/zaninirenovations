@@ -8,9 +8,11 @@ use App\Models\ClientProjectQuotation;
 use App\Models\FenceFormulaSetting;
 use App\Models\FenceMaterial;
 use App\Models\FenceQuotation;
+use App\Services\ClientProjectStatusService;
 use App\Services\FenceQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -59,6 +61,7 @@ class FenceQuotationController extends Controller
             'settings' => $settings,
             'materials' => $materials,
             'zeroPricedMaterials' => $zeroPricedKeys,
+            'linkableProjects' => collect(),
         ]);
     }
 
@@ -183,6 +186,10 @@ class FenceQuotationController extends Controller
      */
     public function linkToProject(Request $request, FenceQuotation $fence_quotation)
     {
+        if ($fence_quotation->isLinked()) {
+            return back()->with('error', 'This fence quotation is already linked to a project.');
+        }
+
         $data = $request->validate([
             'client_project_id' => ['required', 'integer', 'exists:client_projects,id'],
         ]);
@@ -194,52 +201,131 @@ class FenceQuotationController extends Controller
             return back()->with('error', 'Cannot link to a rejected or completed project.');
         }
 
-        // Append the fence line to the project's main quotation. If the
-        // project has no quotation yet, create a minimal draft so the
-        // line item has somewhere to live.
         DB::transaction(function () use ($project, $fence_quotation) {
-            /** @var ClientProjectQuotation $projectQuote */
-            $projectQuote = $project->quotation()->firstOrNew([]);
-
-            if (!$projectQuote->exists) {
-                $projectQuote->client_project_id = $project->id;
-                $projectQuote->type = ClientProjectQuotation::TYPE_QUOTATION;
-                $projectQuote->labour = true;
-                $projectQuote->material = true;
-                $projectQuote->quotation_number = ClientProjectQuotation::generateNumber(
-                    ClientProjectQuotation::TYPE_QUOTATION
-                );
-                $projectQuote->items = [];
-                $projectQuote->version = 1;
-            }
-
-            $items = is_array($projectQuote->items) ? $projectQuote->items : [];
-            $items[] = [
-                'description' => $fence_quotation->summaryDescription()
-                    .' (see fence quote '.$fence_quotation->quote_number.')',
-                // We bundle materials + HST + labour into one amount so the
-                // project quotation's own HST line doesn't double-charge.
-                // The project quotation recalculates HST on this single
-                // number using its own items-subtotal rule, so we pass the
-                // pre-tax portion only (materials + labour).
-                'amount' => round(
-                    (float) $fence_quotation->materials_subtotal + (float) $fence_quotation->labour_total,
-                    2
-                ),
-            ];
-
-            $projectQuote->items = $items;
-            $projectQuote->save();
-
-            $fence_quotation->update([
-                'client_project_id' => $project->id,
-                'linked_at' => now(),
-            ]);
+            $this->appendFenceLineToProjectQuotation($project, $fence_quotation);
         });
 
         return redirect()
             ->route('admin.quotations.fence.edit', $fence_quotation)
             ->with('success', 'Linked to project "'.$project->name.'". A line item was added to the project\'s Quotation.');
+    }
+
+    /**
+     * Create a new fixed-price client project from the fence editor, then
+     * attach this fence estimate as the first line on that project's
+     * Quotation. No "quote received" email is sent — the lead already came
+     * from the fence calculator.
+     */
+    public function createProjectAndLink(
+        Request $request,
+        FenceQuotation $fence_quotation,
+        ClientProjectStatusService $statusService
+    ) {
+        if ($fence_quotation->isLinked()) {
+            return back()->with('error', 'This fence quotation is already linked to a project.');
+        }
+
+        $this->normaliseFenceProjectPhoneOnRequest($request);
+
+        $data = $request->validate([
+            'fp_project_name' => ['nullable', 'string', 'max:255'],
+            'fp_client_name' => ['required', 'string', 'max:255'],
+            'fp_client_email' => ['nullable', 'email', 'max:255'],
+            'fp_client_phone' => ['nullable', 'digits:10'],
+            'fp_client_address' => ['nullable', 'string', 'max:500'],
+        ], [
+            'fp_client_phone.digits' => 'Phone number must have exactly 10 digits (e.g. (123) 456-7890).',
+            'fp_client_email.email' => 'Please enter a valid email address.',
+        ]);
+
+        $clientName = trim($data['fp_client_name']);
+        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
+        if ($projectTitle === '') {
+            $projectTitle = $clientName.' — Fence';
+        }
+        $projectTitle = Str::limit($projectTitle, 255, '');
+
+        $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $fence_quotation) {
+            $project = ClientProject::create([
+                'name' => $projectTitle,
+                'client_name' => $clientName,
+                'client_email' => $data['fp_client_email'] ?: null,
+                'client_phone' => $data['fp_client_phone'] ?: null,
+                'client_address' => $data['fp_client_address'] ?: null,
+                'billing_type' => ClientProject::BILLING_FIXED,
+                'hourly_rate' => null,
+                'status' => ClientProject::STATUS_QUOTE_PENDING,
+                'status_changed_at' => now(),
+            ]);
+
+            $this->appendFenceLineToProjectQuotation($project, $fence_quotation);
+
+            return $project;
+        });
+
+        $statusService->onCreated($project, false);
+
+        return redirect()
+            ->to(route('admin.client-projects.show', $project).'#quotation')
+            ->with('success', 'Project created (fixed price). The fence line item was added to the Quotation tab.');
+    }
+
+    /**
+     * Append this fence quote as one line item on the project's main
+     * quotation and mark the fence row as linked.
+     */
+    protected function appendFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
+    {
+        /** @var ClientProjectQuotation $projectQuote */
+        $projectQuote = $project->quotation()->firstOrNew([]);
+
+        if (!$projectQuote->exists) {
+            $projectQuote->client_project_id = $project->id;
+            $projectQuote->type = ClientProjectQuotation::TYPE_QUOTATION;
+            $projectQuote->labour = true;
+            $projectQuote->material = true;
+            $projectQuote->quotation_number = ClientProjectQuotation::generateNumber(
+                ClientProjectQuotation::TYPE_QUOTATION
+            );
+            $projectQuote->items = [];
+            $projectQuote->version = 1;
+        }
+
+        $items = is_array($projectQuote->items) ? $projectQuote->items : [];
+        $items[] = [
+            'description' => $fence_quotation->summaryDescription()
+                .' (see fence quote '.$fence_quotation->quote_number.')',
+            'amount' => round(
+                (float) $fence_quotation->materials_subtotal + (float) $fence_quotation->labour_total,
+                2
+            ),
+        ];
+
+        $projectQuote->items = $items;
+        $projectQuote->save();
+
+        $fence_quotation->update([
+            'client_project_id' => $project->id,
+            'linked_at' => now(),
+        ]);
+    }
+
+    /**
+     * Strip non-digits from the "new project" phone field before validation
+     * (same behaviour as ClientProjectController::normalisePhoneOnRequest).
+     */
+    protected function normaliseFenceProjectPhoneOnRequest(Request $request): void
+    {
+        if (!$request->has('fp_client_phone')) {
+            return;
+        }
+
+        $raw = (string) $request->input('fp_client_phone');
+        $digits = preg_replace('/\D/', '', $raw);
+
+        $request->merge([
+            'fp_client_phone' => $digits === '' ? null : $digits,
+        ]);
     }
 
     public function destroy(FenceQuotation $fence_quotation)

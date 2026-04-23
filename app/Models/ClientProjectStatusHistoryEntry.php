@@ -55,4 +55,13 @@ class ClientProjectStatusHistoryEntry extends Model
     {
         return $this->from_status !== null && $this->from_status === $this->to_status;
     }
+
+    /**
+     * When column for the History tab — always shown in the app timezone
+     * (default America/Toronto = Eastern) with EST/EDT abbreviation.
+     */
+    public function changedAtDisplay(): string
+    {
+        return ClientProject::formatDateTime($this->changed_at);
+    }
 }

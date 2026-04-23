@@ -97,7 +97,7 @@
                 <?php endif; ?>
               </td>
               <td class="cp-col-amount"><?php echo e(number_format($project->percentPaid(), 0)); ?>%</td>
-              <td><?php echo e(optional($project->updated_at)->format('d/m/Y H:i')); ?></td>
+              <td><?php echo e(\App\Models\ClientProject::formatDateTime($project->updated_at)); ?></td>
             </tr>
           <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>

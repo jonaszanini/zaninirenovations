@@ -52,14 +52,14 @@
         <div class="cp-contract-meta-row">
           @if ($quotation->isSent())
             <span class="cp-badge" style="background:#22c55e20;color:#15803d;">
-              <i class="fa fa-check"></i> Sent {{ $quotation->sent_at->format('d/m/Y H:i') }}
+              <i class="fa fa-check"></i> Sent {{ \App\Models\ClientProject::formatDateTime($quotation->sent_at) }}
             </span>
             <span class="cp-contract-version">Version {{ $quotation->version }}</span>
           @else
             <span class="cp-badge" style="background:#f59e0b20;color:#b45309;">Draft — not sent yet</span>
           @endif
           <span class="cp-contract-version">
-            Last saved {{ $quotation->updated_at->format('d/m/Y H:i') }}
+            Last saved {{ \App\Models\ClientProject::formatDateTime($quotation->updated_at) }}
           </span>
         </div>
       </div>

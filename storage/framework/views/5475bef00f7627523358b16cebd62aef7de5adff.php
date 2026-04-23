@@ -18,7 +18,6 @@
     // ignored until closed out).
     $closedEntries = $project->timeEntries()
         ->whereNotNull('hours')
-        ->orderBy('occurred_on')
         ->get();
 
     $totalHours = round((float) $closedEntries->sum('hours'), 2);

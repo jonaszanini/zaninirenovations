@@ -409,6 +409,19 @@ class ClientProject extends Model
         return round($rate * $this->totalHours(), 2);
     }
 
+    /**
+     * Hourly “Earned (rate × hours)” is pre-tax; this is that subtotal plus
+     * 13% HST — the gross amount if all logged hours were invoiced with tax.
+     */
+    public function hourlyFinalAmountAfterHst(): float
+    {
+        if (!$this->isHourly()) {
+            return 0.0;
+        }
+
+        return round($this->hourlyAmountEarned() * (1 + self::HST_RATE), 2);
+    }
+
     public function grossProfit(): float
     {
         return $this->revenueForProfit() - $this->totalSpent();
@@ -483,6 +496,22 @@ class ClientProject extends Model
         }
 
         return $date->format('d/m/Y');
+    }
+
+    /**
+     * Date + time in the app timezone (default America/Toronto = Eastern),
+     * with a short zone suffix (EST / EDT).
+     */
+    public static function formatDateTime($dateTime): string
+    {
+        if ($dateTime === null) {
+            return '—';
+        }
+        $c = $dateTime instanceof \Carbon\CarbonInterface
+            ? $dateTime->copy()
+            : \Illuminate\Support\Carbon::parse((string) $dateTime);
+
+        return $c->timezone(config('app.timezone'))->format('d/m/Y H:i T');
     }
 
     /**

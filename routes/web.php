@@ -189,6 +189,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.fence.update');
     Route::post('quotations/fence/{fence_quotation}/link', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'linkToProject'])
         ->name('quotations.fence.link');
+    Route::post('quotations/fence/{fence_quotation}/create-project', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.fence.create-project');
     Route::delete('quotations/fence/{fence_quotation}', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'destroy'])
         ->name('quotations.fence.destroy');
 

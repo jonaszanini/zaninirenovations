@@ -5,16 +5,15 @@
   $hourlyRate = $project->effectiveHourlyRate();
   $configuredRate = $isHourly ? (float) ($project->hourly_rate ?? 0) : null;
 
-  // Build 15-minute time options from 8:00 AM to 8:00 PM inclusive.
-  // Key is 24-hour HH:MM (used as <option value>), label is 12-hour formatted.
+  // 15-minute slots 08:00–20:00. Values stay zero-padded HH:MM for DB
+  // consistency; labels use 24h without a leading zero on the hour
+  // (9:00, 13:00) for easier reading on phones.
   $timeOptions = [];
   for ($minutes = 8 * 60; $minutes <= 20 * 60; $minutes += 15) {
     $h = intdiv($minutes, 60);
     $m = $minutes % 60;
     $value = sprintf('%02d:%02d', $h, $m);
-    $hour12 = $h % 12 === 0 ? 12 : $h % 12;
-    $ampm = $h < 12 ? 'AM' : 'PM';
-    $timeOptions[$value] = sprintf('%d:%02d %s', $hour12, $m, $ampm);
+    $timeOptions[$value] = sprintf('%d:%02d', $h, $m);
   }
 ?>
 
@@ -86,36 +85,38 @@ unset($__errorArgs, $__bag); ?>
   </form>
 
   <?php if($project->timeEntries->isNotEmpty()): ?>
-    <div class="admin-table-scroll">
-    <table class="admin-table cp-time-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Start</th>
-          <th>End</th>
-          <th>Hours</th>
-          <th>Note</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php $__currentLoopData = $project->timeEntries; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $entry): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-          <?php $isOpen = $entry->isOpen(); ?>
-          <tr data-cp-entry-row="<?php echo e($entry->id); ?>" class="<?php echo e($isOpen ? 'cp-row-open' : ''); ?>">
-            <td data-label="Date"><?php echo e(\App\Models\ClientProject::formatDate($entry->occurred_on)); ?></td>
-            <td data-label="Start"><?php echo e(\App\Models\ClientProjectTimeEntry::formatTime($entry->start_time)); ?></td>
-            <td data-label="End">
-              <?php echo e(\App\Models\ClientProjectTimeEntry::formatTime($entry->end_time)); ?>
-
-              <?php if($isOpen): ?>
-                <span class="cp-badge" style="background:#f59e0b20;color:#b45309;margin-left:6px;">In progress</span>
-              <?php endif; ?>
-            </td>
-            <td data-label="Hours"><?php echo e($entry->hours !== null ? number_format((float) $entry->hours, 2) : '—'); ?></td>
-            <td data-label="Note"><?php echo e($entry->note ?: '—'); ?></td>
-            <td class="cp-time-actions" data-label="Actions">
+    <h4 class="cp-time-saved-heading">Saved entries</h4>
+    <p class="admin-form-help cp-time-saved-help">Newest at the top. Tap a row to expand; use Edit to change times.</p>
+    <div class="cp-time-entries">
+      <?php $__currentLoopData = $project->timeEntries; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $entry): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+        <?php
+          $isOpen = $entry->isOpen();
+          $dm = $entry->occurred_on ? $entry->occurred_on->format('d/m') : '—';
+          $st = \App\Models\ClientProjectTimeEntry::formatTime($entry->start_time);
+          $et = \App\Models\ClientProjectTimeEntry::formatTime($entry->end_time);
+          if ($isOpen) {
+            $hoursPart = 'in progress';
+          } elseif ($entry->hours !== null) {
+            $hoursPart = rtrim(rtrim(number_format((float) $entry->hours, 2, '.', ''), '0'), '.').' hrs';
+          } else {
+            $hoursPart = '—';
+          }
+          $summaryLine = $dm.': '.$st.' - '.$et.' = '.$hoursPart;
+        ?>
+        <details class="cp-time-entry <?php echo e($isOpen ? 'cp-time-entry--open' : ''); ?>" data-cp-entry-row="<?php echo e($entry->id); ?>">
+          <summary class="cp-time-entry__summary">
+            <span class="cp-time-entry__summary-text"><?php echo e($summaryLine); ?></span>
+            <?php if($isOpen): ?>
+              <span class="cp-time-entry__badge cp-time-entry__badge--progress">In progress</span>
+            <?php endif; ?>
+          </summary>
+          <div class="cp-time-entry__panel">
+            <?php if(filled($entry->note)): ?>
+              <p class="cp-time-entry__note"><strong>Note:</strong> <?php echo e($entry->note); ?></p>
+            <?php endif; ?>
+            <div class="cp-time-entry__actions">
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-edit-toggle="<?php echo e($entry->id); ?>">
-                <?php echo e($isOpen ? 'Set end' : 'Edit'); ?>
+                <?php echo e($isOpen ? 'Set end time' : 'Edit'); ?>
 
               </button>
               <form action="<?php echo e(route('admin.client-projects.time.destroy', [$project, $entry])); ?>" method="post" onsubmit="return confirm('Delete this time entry?');" class="cp-inline-form">
@@ -123,10 +124,8 @@ unset($__errorArgs, $__bag); ?>
                 <?php echo method_field('DELETE'); ?>
                 <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
               </form>
-            </td>
-          </tr>
-          <tr class="cp-time-edit-row" data-cp-edit-row="<?php echo e($entry->id); ?>" hidden>
-            <td colspan="6">
+            </div>
+            <div class="cp-time-entry__edit" data-cp-edit-row="<?php echo e($entry->id); ?>" hidden>
               <form action="<?php echo e(route('admin.client-projects.time.update', [$project, $entry])); ?>" method="post" class="cp-time-edit-form" data-cp-time-form>
                 <?php echo csrf_field(); ?>
                 <?php echo method_field('PUT'); ?>
@@ -173,11 +172,10 @@ unset($__errorArgs, $__bag); ?>
                   <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save changes</button>
                 </div>
               </form>
-            </td>
-          </tr>
-        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-      </tbody>
-    </table>
+            </div>
+          </div>
+        </details>
+      <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
     </div>
   <?php else: ?>
     <p class="admin-form-help">No time entries recorded yet.</p>

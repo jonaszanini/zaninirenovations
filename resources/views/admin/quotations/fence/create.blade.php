@@ -137,9 +137,53 @@
     .fq-link-project-card {
       border: 1px dashed #c9d3e0;
       background: #fbfcfd;
-      border-radius: 8px;
-      padding: 14px;
-      margin-top: 16px;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-top: 20px;
+    }
+    .fq-link-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 14px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .fq-link-grid { grid-template-columns: 1fr; }
+      .fq-link-col--stack {
+        border-top: 1px dashed #cbd5e1;
+        padding-top: 18px;
+        margin-top: 4px;
+      }
+    }
+    .fq-link-col h5 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #024768;
+    }
+    .fq-link-existing-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+    }
+    @media (max-width: 640px) {
+      .fq-link-existing-row {
+        grid-template-columns: 1fr;
+      }
+      .fq-link-existing-row .admin-btn {
+        width: 100%;
+        min-height: 46px;
+      }
+    }
+    .fq-create-project-form .admin-form-group {
+      margin-bottom: 12px;
+    }
+    .fq-create-project-form .admin-btn--primary {
+      width: 100%;
+      margin-top: 4px;
+      min-height: 46px;
     }
     .fq-linked-banner {
       display: flex;
@@ -177,7 +221,7 @@
         Linked to project
         <a href="{{ route('admin.client-projects.show', $quotation->project) }}#quotation">{{ $quotation->project->name }}</a>
         @if ($quotation->linked_at)
-          · {{ $quotation->linked_at->format('d/m/Y H:i') }}
+          · {{ \App\Models\ClientProject::formatDateTime($quotation->linked_at) }}
         @endif
       </span>
     </div>
@@ -329,30 +373,89 @@
     </aside>
   </div>
 
-  {{-- Link-to-project (edit mode only, and only if not already linked) --}}
-  @if ($isEdit && !$quotation->project && isset($linkableProjects) && $linkableProjects->isNotEmpty())
-    <div class="admin-card fq-link-project-card" style="margin-top:16px;">
-      <h4 style="margin:0 0 6px;">Link to a project</h4>
-      <p class="admin-form-help" style="margin:0 0 10px;">
-        Selecting a project adds a single line item to its <strong>Quotation</strong>
-        with this fence's description and grand total (materials + labour, pre-tax — the
-        project quotation applies its own HST).
+  {{-- Connect to project: link existing OR create new (edit, not linked) --}}
+  @if ($isEdit && !$quotation->project)
+    @php
+      $linkable = $linkableProjects ?? collect();
+    @endphp
+    <div class="admin-card fq-link-project-card">
+      <h4 style="margin:0 0 6px;">Connect to a project</h4>
+      <p class="admin-form-help" style="margin:0;">
+        Add this fence estimate as a line on a project <strong>Quotation</strong> (pre-tax materials + labour — the project quotation adds HST).
       </p>
-      <form method="post" action="{{ route('admin.quotations.fence.link', $quotation) }}" class="fq-inline-controls">
-        @csrf
-        <div class="admin-form-group" style="flex:1;min-width:260px;">
-          <label for="fq-link-project">Active project</label>
-          <select id="fq-link-project" name="client_project_id" class="admin-input" required>
-            <option value="" disabled selected>Choose a project…</option>
-            @foreach ($linkableProjects as $p)
-              <option value="{{ $p->id }}">{{ $p->client_name }} — {{ $p->name }}</option>
-            @endforeach
-          </select>
+
+      <div class="fq-link-grid">
+        <div class="fq-link-col">
+          <h5><i class="fa fa-link"></i> Existing project</h5>
+          @if ($linkable->isNotEmpty())
+            <form method="post" action="{{ route('admin.quotations.fence.link', $quotation) }}" class="fq-link-existing-form">
+              @csrf
+              <div class="fq-link-existing-row">
+                <div class="admin-form-group" style="margin:0;">
+                  <label for="fq-link-project">Project</label>
+                  <select id="fq-link-project" name="client_project_id" class="admin-input" required>
+                    <option value="" disabled selected>Choose a project…</option>
+                    @foreach ($linkable as $p)
+                      <option value="{{ $p->id }}">{{ $p->client_name }} — {{ $p->name }}</option>
+                    @endforeach
+                  </select>
+                </div>
+                <button type="submit" class="admin-btn admin-btn--primary">
+                  <i class="fa fa-link"></i> Link
+                </button>
+              </div>
+            </form>
+          @else
+            <p class="admin-form-help" style="margin:0;">No active projects to link. Create a new one on the right, or finish a rejected/completed project first.</p>
+          @endif
         </div>
-        <button type="submit" class="admin-btn admin-btn--primary">
-          <i class="fa fa-link"></i> Link &amp; add line item
-        </button>
-      </form>
+
+        <div class="fq-link-col fq-link-col--stack">
+          <h5><i class="fa fa-plus-circle"></i> New project</h5>
+          <p class="admin-form-help" style="margin:0 0 12px;">
+            Always <strong>fixed price</strong>. Only client name is required. No automated client email is sent from here.
+          </p>
+          <form method="post"
+                action="{{ route('admin.quotations.fence.create-project', $quotation) }}"
+                class="fq-create-project-form">
+            @csrf
+            <div class="admin-form-group">
+              <label for="fq-new-project-name">Project name <span class="admin-form-help">(optional)</span></label>
+              <input type="text" id="fq-new-project-name" name="fp_project_name" class="admin-input" maxlength="255"
+                     value="{{ old('fp_project_name') }}"
+                     placeholder="Defaults to: Client name — Fence">
+            </div>
+            <div class="admin-form-group">
+              <label for="fq-new-client-name">Client name <span class="admin-required">*</span></label>
+              <input type="text" id="fq-new-client-name" name="fp_client_name" class="admin-input @error('fp_client_name') is-invalid @enderror"
+                     maxlength="255" required value="{{ old('fp_client_name') }}">
+              @error('fp_client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+            <div class="admin-form-group">
+              <label for="fq-new-client-email">Email</label>
+              <input type="email" id="fq-new-client-email" name="fp_client_email" class="admin-input @error('fp_client_email') is-invalid @enderror"
+                     maxlength="255" value="{{ old('fp_client_email') }}">
+              @error('fp_client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+            <div class="admin-form-group">
+              <label for="fq-new-client-phone">Phone</label>
+              <input type="text" id="fq-new-client-phone" name="fp_client_phone"
+                     class="admin-input cp-phone-input @error('fp_client_phone') is-invalid @enderror"
+                     inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx"
+                     value="{{ old('fp_client_phone') ? \App\Models\ClientProject::formatPhone(old('fp_client_phone')) : '' }}">
+              @error('fp_client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+            <div class="admin-form-group">
+              <label for="fq-new-client-address">Address</label>
+              <input type="text" id="fq-new-client-address" name="fp_client_address" class="admin-input" maxlength="500"
+                     value="{{ old('fp_client_address') }}">
+            </div>
+            <button type="submit" class="admin-btn admin-btn--primary">
+              <i class="fa fa-briefcase"></i> Create project &amp; add to quotation
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   @endif
 @endsection

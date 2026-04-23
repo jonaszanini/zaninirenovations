@@ -30,7 +30,7 @@
     @endif
     <tr>
       <td style="padding:6px 12px 6px 0;color:#6b7280;">Created</td>
-      <td style="padding:6px 0;">{{ $project->created_at->format('d/m/Y H:i') }}</td>
+      <td style="padding:6px 0;">{{ \App\Models\ClientProject::formatDateTime($project->created_at) }}</td>
     </tr>
   </table>
 

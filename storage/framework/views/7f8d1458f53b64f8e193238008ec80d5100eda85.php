@@ -43,7 +43,7 @@
           <?php echo e($project->statusLabel()); ?>
 
         </span>
-        <div class="cp-updated">Updated <?php echo e(optional($project->updated_at)->format('d/m/Y H:i')); ?></div>
+        <div class="cp-updated">Updated <?php echo e(\App\Models\ClientProject::formatDateTime($project->updated_at)); ?></div>
       </div>
     </div>
 
@@ -103,8 +103,8 @@
         <dt>Secondary email</dt><dd><?php echo e($project->secondaryClientEmail() ?: '—'); ?></dd>
         <dt>Phone</dt><dd><?php echo e(\App\Models\ClientProject::formatPhone($project->client_phone) ?: '—'); ?></dd>
         <dt>Address</dt><dd><?php echo e($project->client_address ?: '—'); ?></dd>
-        <dt>Created</dt><dd><?php echo e($project->created_at->format('d/m/Y H:i')); ?></dd>
-        <dt>Status changed</dt><dd><?php echo e($project->status_changed_at ? $project->status_changed_at->format('d/m/Y H:i') : '—'); ?></dd>
+        <dt>Created</dt><dd><?php echo e(\App\Models\ClientProject::formatDateTime($project->created_at)); ?></dd>
+        <dt>Status changed</dt><dd><?php echo e(\App\Models\ClientProject::formatDateTime($project->status_changed_at)); ?></dd>
       </dl>
 
       <?php if($project->notes): ?>
@@ -196,7 +196,7 @@
           <p class="admin-form-help">
             <i class="fa fa-check-circle" style="color:#10b981;"></i>
             Last sent on
-            <strong><?php echo e($project->service_confirmation_sent_at->format('d/m/Y H:i')); ?></strong>.
+            <strong><?php echo e(\App\Models\ClientProject::formatDateTime($project->service_confirmation_sent_at)); ?></strong>.
           </p>
         <?php endif; ?>
 
@@ -276,7 +276,7 @@
           <tbody>
             <?php $__currentLoopData = $project->statusHistory; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $entry): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
               <tr>
-                <td><?php echo e($entry->changed_at->format('d/m/Y H:i')); ?></td>
+                <td><?php echo e($entry->changedAtDisplay()); ?></td>
                 <td>
                   <?php if($entry->isEvent()): ?>
                     <span class="cp-badge" style="background:#e5e7eb;color:#4b5563;">Event</span>

@@ -87,7 +87,7 @@
           } else {
             $hoursPart = '—';
           }
-          $summaryLine = '| '.$dm.': '.$st.' - '.$et.' = '.$hoursPart.' |';
+          $summaryLine = $dm.': '.$st.' - '.$et.' = '.$hoursPart;
         @endphp
         <details class="cp-time-entry {{ $isOpen ? 'cp-time-entry--open' : '' }}" data-cp-entry-row="{{ $entry->id }}">
           <summary class="cp-time-entry__summary">
@@ -186,12 +186,21 @@
         <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($project->hourlyAmountEarned()) }}</div>
       </div>
     @endif
-    <div class="cp-profit-tile">
-      <div class="cp-profit-label">Net profit after HST</div>
-      <div class="cp-profit-value {{ $netAfterHst >= 0 ? 'is-positive' : 'is-negative' }}">
-        {{ \App\Models\ClientProject::formatMoney($netAfterHst) }}
+    @if ($isHourly)
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Final amount after HST</div>
+        <div class="cp-profit-value {{ $project->hourlyFinalAmountAfterHst() >= 0 ? 'is-positive' : 'is-negative' }}">
+          {{ \App\Models\ClientProject::formatMoney($project->hourlyFinalAmountAfterHst()) }}
+        </div>
       </div>
-    </div>
+    @else
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Net profit after HST</div>
+        <div class="cp-profit-value {{ $netAfterHst >= 0 ? 'is-positive' : 'is-negative' }}">
+          {{ \App\Models\ClientProject::formatMoney($netAfterHst) }}
+        </div>
+      </div>
+    @endif
     @unless ($isHourly)
       <div class="cp-profit-tile cp-profit-tile--highlight">
         <div class="cp-profit-label">Effective hourly rate</div>
