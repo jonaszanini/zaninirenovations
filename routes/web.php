@@ -154,6 +154,44 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::post('client-projects/{client_project}/service-confirmation/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendServiceConfirmation'])
         ->name('client-projects.service-confirmation.send');
 
+    // -----------------------------------------------------------------
+    // Standalone Quotation module (separate from per-project quotations).
+    //
+    // Hub page lists quotation "types" as cards; today the only one wired
+    // up is Fence, which runs a structural calculator against a catalogue
+    // of editable materials and formula parameters. Fence quotes can be
+    // saved standalone or linked into an existing client project by
+    // appending a line item to that project's own Quotation.
+    // -----------------------------------------------------------------
+    Route::get('quotations', [\App\Http\Controllers\Admin\QuotationHubController::class, 'index'])
+        ->name('quotations.index');
+
+    // Fence configuration (materials catalogue + formula parameters).
+    Route::get('quotations/fence/config', [\App\Http\Controllers\Admin\FenceConfigController::class, 'index'])
+        ->name('quotations.fence.config');
+    Route::put('quotations/fence/config/materials', [\App\Http\Controllers\Admin\FenceConfigController::class, 'updateMaterials'])
+        ->name('quotations.fence.config.materials.update');
+    Route::put('quotations/fence/config/formula', [\App\Http\Controllers\Admin\FenceConfigController::class, 'updateFormula'])
+        ->name('quotations.fence.config.formula.update');
+
+    // Fence quotations CRUD + PDF + project-link.
+    Route::get('quotations/fence', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'index'])
+        ->name('quotations.fence.index');
+    Route::get('quotations/fence/create', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'create'])
+        ->name('quotations.fence.create');
+    Route::post('quotations/fence', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'store'])
+        ->name('quotations.fence.store');
+    Route::post('quotations/fence/preview', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'preview'])
+        ->name('quotations.fence.preview');
+    Route::get('quotations/fence/{fence_quotation}/edit', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'edit'])
+        ->name('quotations.fence.edit');
+    Route::put('quotations/fence/{fence_quotation}', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'update'])
+        ->name('quotations.fence.update');
+    Route::post('quotations/fence/{fence_quotation}/link', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'linkToProject'])
+        ->name('quotations.fence.link');
+    Route::delete('quotations/fence/{fence_quotation}', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'destroy'])
+        ->name('quotations.fence.destroy');
+
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
 });

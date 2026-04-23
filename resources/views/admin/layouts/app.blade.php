@@ -34,6 +34,12 @@
           </a>
         </li>
         <li>
+          <a href="{{ route('admin.quotations.index') }}" class="{{ request()->routeIs('admin.quotations.*') ? 'is-active' : '' }}">
+            <i class="fa fa-calculator"></i>
+            Quotation
+          </a>
+        </li>
+        <li>
           <a href="{{ route('admin.portfolio.index') }}" class="{{ request()->routeIs('admin.portfolio.*') ? 'is-active' : '' }}">
             <i class="fa fa-folder-open"></i>
             Latest Projects Photos
