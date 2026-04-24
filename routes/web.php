@@ -187,6 +187,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.fence.preview');
     Route::get('quotations/fence/{fence_quotation}/edit', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'edit'])
         ->name('quotations.fence.edit');
+    Route::get('quotations/fence/{fence_quotation}/purchase-list', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'purchaseList'])
+        ->name('quotations.fence.purchase-list');
     Route::put('quotations/fence/{fence_quotation}', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'update'])
         ->name('quotations.fence.update');
     Route::post('quotations/fence/{fence_quotation}/link', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'linkToProject'])

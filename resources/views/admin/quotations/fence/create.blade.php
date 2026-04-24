@@ -208,6 +208,13 @@
     </a>
     <div class="fq-form-toolbar-right">
       <a href="{{ route('admin.quotations.fence.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+      @if ($isEdit)
+        <a href="{{ route('admin.quotations.fence.purchase-list', $quotation) }}"
+           target="_blank" rel="noopener noreferrer"
+           class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-print"></i> Print Material List
+        </a>
+      @endif
       <button type="submit" form="fq-form" class="admin-btn admin-btn--primary admin-btn--sm">
         <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}
       </button>

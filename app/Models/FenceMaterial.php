@@ -27,6 +27,24 @@ class FenceMaterial extends Model
     public const KEY_POST_CAP = 'post_cap';
     public const KEY_GATE_HARDWARE = 'gate_hardware';
 
+    /**
+     * Material keys included on the fence quotation “purchasing list”
+     * printout (Home Depot list). Order is the print order. Excludes nails
+     * and gate hardware.
+     *
+     * @var list<string>
+     */
+    public const PURCHASE_LIST_KEYS = [
+        self::KEY_POST_10,
+        self::KEY_POST_12,
+        self::KEY_BOARD_6,
+        self::KEY_BOARD_8,
+        self::KEY_RAIL,
+        self::KEY_CONCRETE,
+        self::KEY_BRACKET,
+        self::KEY_POST_CAP,
+    ];
+
     protected $fillable = [
         'key',
         'name',

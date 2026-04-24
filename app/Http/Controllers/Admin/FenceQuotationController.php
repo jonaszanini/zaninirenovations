@@ -337,9 +337,129 @@ class FenceQuotationController extends Controller
             ->with('success', 'Fence quotation deleted.');
     }
 
+    /**
+     * Printable purchasing list (e.g. Home Depot) for a saved quote.
+     * Quantities come from the stored calculation; long name, SKU, and
+     * model come from the live materials catalogue when set.
+     */
+    public function purchaseList(FenceQuotation $fence_quotation)
+    {
+        $calc = $fence_quotation->calculation;
+        $rows = [];
+
+        if (is_array($calc) && !empty($calc['materials'])) {
+            $byKey = collect($calc['materials'])->keyBy('key');
+            $catalogue = FenceMaterial::catalogueByKey();
+
+            foreach (FenceMaterial::PURCHASE_LIST_KEYS as $key) {
+                $line = $byKey->get($key);
+                if (!$line) {
+                    continue;
+                }
+                $quantity = (float) ($line['quantity'] ?? 0);
+                if ($quantity <= 0) {
+                    continue;
+                }
+
+                /** @var FenceMaterial|null $mat */
+                $mat = $catalogue->get($key);
+                $qtyPart = $this->formatPurchaseQuantityLabel($quantity);
+
+                $longName = $mat && filled($mat->long_name)
+                    ? $mat->long_name
+                    : (filled($line['long_name'] ?? null) ? (string) $line['long_name'] : (string) ($mat?->name ?? $line['name'] ?? $key));
+
+                $storeSku = $mat && filled($mat->store_sku)
+                    ? $mat->store_sku
+                    : (filled($line['store_sku'] ?? null) ? (string) $line['store_sku'] : null);
+
+                $model = $mat && filled($mat->model)
+                    ? $mat->model
+                    : (filled($line['model'] ?? null) ? (string) $line['model'] : null);
+
+                $rows[] = [
+                    'quantity_label' => $qtyPart,
+                    'long_name_html' => $this->purchaseListCellHtml($longName),
+                    'store_sku_html' => $storeSku !== null ? $this->purchaseListCellHtml($storeSku) : null,
+                    'model_html' => $model !== null ? $this->purchaseListCellHtml($model) : null,
+                ];
+            }
+        }
+
+        return view('admin.quotations.fence.purchase_list', [
+            'quotation' => $fence_quotation,
+            'rows' => $rows,
+        ]);
+    }
+
     // =================================================================
     //   Helpers
     // =================================================================
+
+    /**
+     * Undo literal HTML entities in catalogue text (e.g. &#039;, &amp;#039;).
+     */
+    protected function decodePurchaseListText(string $value): string
+    {
+        $decoded = $value;
+        for ($i = 0; $i < 8; $i++) {
+            $next = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        $decoded = preg_replace('/&(?:#0*39|#39)(?!\\d);?/i', "'", $decoded);
+        $decoded = preg_replace('/&(?:#x0*27)(?![0-9a-fA-F]);?/i', "'", $decoded);
+        $decoded = str_replace(['&apos;', '&#039;', '&#39;', '&#x27;', '&#X27;'], "'", $decoded);
+
+        for ($i = 0; $i < 3; $i++) {
+            $next = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        // Last pass: any foot-mark entity spellings left as plain text.
+        for ($i = 0; $i < 5; $i++) {
+            $next = preg_replace('/&(?:#0*39|#39)(?!\\d);?/i', "'", $decoded);
+            $next = preg_replace('/&(?:#x0*27)(?![0-9a-fA-F]);?/i', "'", $next);
+            $next = str_replace(['&apos;', '&#039;', '&#39;', '&#x27;', '&#X27;'], "'", $next);
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Decode catalogue entities, then escape for HTML text nodes without
+     * re-encoding apostrophes (avoids &#039; showing literally in some
+     * browsers / print views).
+     */
+    protected function purchaseListCellHtml(string $value): string
+    {
+        $plain = $this->decodePurchaseListText($value);
+
+        return htmlspecialchars($plain, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8', true);
+    }
+
+    /** Format a material quantity for the purchasing list (no trailing .00). */
+    protected function formatPurchaseQuantityLabel(float $q): string
+    {
+        if (abs($q - round($q)) < 0.00001) {
+            return (string) (int) round($q);
+        }
+
+        $s = number_format($q, 2, '.', '');
+        $s = rtrim(rtrim($s, '0'), '.');
+
+        return $s !== '' ? $s : '0';
+    }
 
     /** Shared validation rules for store() and update(). */
     protected function validateFenceInputs(Request $request): array
