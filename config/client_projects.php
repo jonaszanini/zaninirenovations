@@ -20,6 +20,9 @@ return [
     // start/end dates are saved on a project.
     'calendar_email_to' => env('CLIENT_PROJECTS_CALENDAR_TO', 'zaninirenovations@gmail.com'),
 
+    // Admin email for the automated "day before work begins" notice (runs via scheduler).
+    'commencement_eve_email_to' => env('CLIENT_PROJECTS_COMMENCEMENT_EVE_TO', 'zaninirenovations@gmail.com'),
+
     // Google review URL used in the thank-you email to the client.
     'review_url' => env(
         'CLIENT_PROJECTS_REVIEW_URL',

@@ -226,6 +226,12 @@ class ClientProjectController extends Controller
 
         $client_project->fill($data)->save();
 
+        $newStartAfterSave = $client_project->start_date ? $client_project->start_date->toDateString() : null;
+        if ($newStartAfterSave !== $previousStart) {
+            $client_project->day_before_start_sent_for_date = null;
+            $client_project->saveQuietly();
+        }
+
         // Dates are the only field that triggers an admin calendar email,
         // and only when the "first installment paid" gate is also satisfied
         // (maybeSendCalendarDatesEmail encodes that rule — see service).

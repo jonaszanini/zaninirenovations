@@ -12,6 +12,16 @@ alwaysApply: true
   - This is the Laravel root (contains `artisan`, `app/`, `public/`, etc.).
   - Always `cd` here before running any `php artisan ...` command on prod.
 
+## Laravel scheduler (automated emails)
+
+The app uses **one system cron entry** that runs every minute; Laravel decides when each job actually fires:
+
+```bash
+* * * * * cd /home/u372714627/domains/zaninirenovations.ca/public_html && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Configured tasks live in `app/Console/Kernel.php` (quote reminders, day-before commencement notice, etc.). Without this cron, scheduled commands never run on production.
+
 ## Common prod commands
 
 After pushing changes to production, SSH in and run from the project root:

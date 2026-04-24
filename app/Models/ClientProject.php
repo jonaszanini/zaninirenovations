@@ -46,6 +46,7 @@ class ClientProject extends Model
         'status',
         'status_changed_at',
         'start_date',
+        'day_before_start_sent_for_date',
         'end_date',
         'calendar_email_sent_at',
         'total_amount',
@@ -60,6 +61,7 @@ class ClientProject extends Model
 
     protected $casts = [
         'start_date' => 'date',
+        'day_before_start_sent_for_date' => 'date',
         'end_date' => 'date',
         'status_changed_at' => 'datetime',
         'calendar_email_sent_at' => 'datetime',
@@ -512,6 +514,32 @@ class ClientProject extends Model
             : \Illuminate\Support\Carbon::parse((string) $dateTime);
 
         return $c->timezone(config('app.timezone'))->format('d/m/Y H:i T');
+    }
+
+    /**
+     * Digits-only destination for SMS gateways (e.g. Mocean `mocean-to`).
+     * Stored 10-digit NANP numbers get a leading country code 1.
+     */
+    public static function phoneDigitsForSms(?string $phone): ?string
+    {
+        $d = preg_replace('/\D/', '', (string) $phone);
+        if ($d === '') {
+            return null;
+        }
+
+        if (strlen($d) === 10) {
+            return '1'.$d;
+        }
+
+        if (strlen($d) === 11 && str_starts_with($d, '1')) {
+            return $d;
+        }
+
+        if (strlen($d) >= 10 && strlen($d) <= 15) {
+            return $d;
+        }
+
+        return null;
     }
 
     /**

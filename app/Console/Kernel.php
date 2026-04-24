@@ -21,6 +21,12 @@ class Kernel extends ConsoleKernel
             ->dailyAt('09:00')
             ->timezone('America/Toronto')
             ->withoutOverlapping();
+
+        // Admin email the calendar day before a project's scheduled start_date.
+        $schedule->command('client-projects:notify-commencement-eve')
+            ->dailyAt('09:00')
+            ->timezone('America/Toronto')
+            ->withoutOverlapping();
     }
 
     /**
