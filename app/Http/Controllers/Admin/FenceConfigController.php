@@ -9,11 +9,11 @@ use Illuminate\Http\Request;
 
 /**
  * Handles the Fence module's configuration pages — the materials
- * catalogue (price + URL + nail box size) and the formula settings
+ * catalogue (product fields, price, URL, nail box size) and the formula settings
  * (labour rate, concrete-per-post, rails-per-section, etc).
  *
- * Materials are never created or deleted through the UI; only the
- * three editable fields are writeable. This keeps the calculator's
+ * Materials are never created or deleted through the UI; catalogue
+ * fields (including product metadata) are writeable. This keeps the
  * lookups by `key` safe from accidental renames.
  */
 class FenceConfigController extends Controller
@@ -31,6 +31,9 @@ class FenceConfigController extends Controller
         $data = $request->validate([
             'materials' => ['required', 'array'],
             'materials.*.id' => ['required', 'integer', 'exists:fence_materials,id'],
+            'materials.*.long_name' => ['nullable', 'string', 'max:500'],
+            'materials.*.model' => ['nullable', 'string', 'max:160'],
+            'materials.*.store_sku' => ['nullable', 'string', 'max:160'],
             'materials.*.price_cad' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'materials.*.url' => ['nullable', 'url', 'max:500'],
             'materials.*.quantity_per_box' => ['nullable', 'integer', 'min:1', 'max:999999'],
@@ -42,6 +45,9 @@ class FenceConfigController extends Controller
                 continue;
             }
 
+            $material->long_name = filled($row['long_name'] ?? null) ? $row['long_name'] : null;
+            $material->model = filled($row['model'] ?? null) ? $row['model'] : null;
+            $material->store_sku = filled($row['store_sku'] ?? null) ? $row['store_sku'] : null;
             $material->price_cad = (float) ($row['price_cad'] ?? 0);
             $material->url = $row['url'] ?? null;
 

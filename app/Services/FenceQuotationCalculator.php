@@ -21,7 +21,7 @@ use App\Models\FenceQuotation;
  *   {
  *     inputs:      echo of the normalised inputs,
  *     geometry:    { total_linear_ft, sections_total, sides_breakdown },
- *     materials:   [ { key, name, quantity, unit, unit_price, subtotal, notes, url } ],
+ *     materials:   [ { key, name, long_name, model, store_sku, quantity, unit, unit_price, subtotal, notes, url } ],
  *     totals:      { materials_subtotal, hst, labour_subtotal, grand_total }
  *   }
  *
@@ -392,6 +392,9 @@ class FenceQuotationCalculator
         return [
             'key' => $key,
             'name' => $mat ? $mat->name : $key,
+            'long_name' => $mat?->long_name,
+            'model' => $mat?->model,
+            'store_sku' => $mat?->store_sku,
             'url' => $mat ? $mat->url : null,
             'quantity' => $quantity,
             'unit' => $unit,

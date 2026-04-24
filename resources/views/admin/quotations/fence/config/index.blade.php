@@ -13,8 +13,8 @@
 
   {{-- ==============================================================
        Materials catalogue
-       Fixed list, seeded at migration time. Only price, URL, and
-       (for nails) quantity-per-box are editable.
+       Fixed list, seeded at migration time. Admins edit product
+       details, price, URL, and (for nails) quantity-per-box.
        ============================================================== --}}
   <form method="post" action="{{ route('admin.quotations.fence.config.materials.update') }}" class="admin-card fq-config-card">
     @csrf
@@ -23,7 +23,7 @@
       <div>
         <h3 style="margin:0;">Materials catalogue</h3>
         <p class="admin-form-help" style="margin:4px 0 0;">
-          Enter the current price (before tax, in CAD$) and optionally a link to the product page.
+          Enter store product details, the current price (before tax, in CAD$), and optionally a link to the product page.
           The calculator pulls these values live when generating an estimate.
         </p>
       </div>
@@ -37,9 +37,12 @@
         <thead>
           <tr>
             <th>Material</th>
+            <th style="min-width:200px;">Long name</th>
+            <th style="min-width:120px;">Model</th>
+            <th style="min-width:120px;">Store SKU</th>
             <th style="width:170px;">Price (CAD$, pre-tax)</th>
             <th style="width:130px;">Quantity / box</th>
-            <th>Product URL</th>
+            <th style="min-width:180px;">Product URL</th>
           </tr>
         </thead>
         <tbody>
@@ -49,6 +52,30 @@
                 <strong>{{ $m->name }}</strong>
                 <div class="admin-form-help" style="font-size:11px;">key: <code>{{ $m->key }}</code></div>
                 <input type="hidden" name="materials[{{ $i }}][id]" value="{{ $m->id }}">
+              </td>
+              <td>
+                <input type="text"
+                       name="materials[{{ $i }}][long_name]"
+                       class="admin-input"
+                       maxlength="500"
+                       placeholder="Full product title…"
+                       value="{{ old('materials.'.$i.'.long_name', $m->long_name) }}">
+              </td>
+              <td>
+                <input type="text"
+                       name="materials[{{ $i }}][model]"
+                       class="admin-input"
+                       maxlength="160"
+                       placeholder="Model #"
+                       value="{{ old('materials.'.$i.'.model', $m->model) }}">
+              </td>
+              <td>
+                <input type="text"
+                       name="materials[{{ $i }}][store_sku]"
+                       class="admin-input"
+                       maxlength="160"
+                       placeholder="SKU"
+                       value="{{ old('materials.'.$i.'.store_sku', $m->store_sku) }}">
               </td>
               <td>
                 <input type="text"

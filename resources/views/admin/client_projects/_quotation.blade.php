@@ -177,7 +177,7 @@
           Tel: (647) 834-7570<br>
           Zanini Renovations<br>
           E-mail: zaninirenovations@gmail.com<br>
-          Website: www.zaninirenovation.ca
+          Website: www.zaninirenovations.ca
         </p>
       </div>
     </div>

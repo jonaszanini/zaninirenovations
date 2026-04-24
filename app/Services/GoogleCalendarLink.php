@@ -106,7 +106,7 @@ class GoogleCalendarLink
         $lines[] = 'Contractor: Jonas Zanini — Zanini Renovations';
         $lines[] = 'Phone: (647) 834-7570';
         $lines[] = 'Email: zaninirenovations@gmail.com';
-        $lines[] = 'Website: https://zaninirenovation.ca';
+        $lines[] = 'Website: https://zaninirenovations.ca';
 
         return implode("\n", $lines);
     }

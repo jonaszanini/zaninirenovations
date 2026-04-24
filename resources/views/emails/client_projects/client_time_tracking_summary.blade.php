@@ -129,6 +129,6 @@
     <strong>Jonas Zanini</strong><br>
     Zanini Renovations<br>
     <a href="mailto:zaninirenovations@gmail.com" style="color:#024768;">zaninirenovations@gmail.com</a><br>
-    <a href="https://www.zaninirenovation.ca" style="color:#024768;">www.zaninirenovation.ca</a>
+    <a href="https://www.zaninirenovations.ca" style="color:#024768;">www.zaninirenovations.ca</a>
   </p>
 @endcomponent

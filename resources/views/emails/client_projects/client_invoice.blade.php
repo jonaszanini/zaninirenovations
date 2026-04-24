@@ -37,6 +37,6 @@
     Best regards,<br>
     Jonas Zanini<br>
     (647) 834-7570<br>
-    <a href="https://zaninirenovation.ca">zaninirenovation.ca</a>
+    <a href="https://zaninirenovations.ca">zaninirenovations.ca</a>
   </p>
 @endcomponent

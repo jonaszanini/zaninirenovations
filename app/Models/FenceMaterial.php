@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * FenceMaterial — one row per material in the fence catalogue. The
- * list is fixed (seeded by migration); admins can only edit
- * `price_cad`, `url`, and — for the nails row — `quantity_per_box`.
+ * list is fixed (seeded by migration); admins can edit catalogue fields
+ * (`long_name`, `model`, `store_sku`, `price_cad`, `url`, and for nails
+ * `quantity_per_box`) but not `key` or `name`.
  *
  * Look materials up by their stable `key` (e.g. "post_10", "board_6")
  * rather than by id; that way the calculator stays readable even if
@@ -29,6 +30,9 @@ class FenceMaterial extends Model
     protected $fillable = [
         'key',
         'name',
+        'long_name',
+        'model',
+        'store_sku',
         'price_cad',
         'url',
         'quantity_per_box',
