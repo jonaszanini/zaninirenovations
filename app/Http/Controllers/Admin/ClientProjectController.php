@@ -42,7 +42,9 @@ class ClientProjectController extends Controller
                 ['timeEntries as hours_logged' => fn ($q) => $q->whereNotNull('hours')],
                 'hours'
             )
-            ->orderByDesc('status_changed_at')
+            // Soonest start dates first; undated projects at the bottom.
+            ->orderByRaw('CASE WHEN start_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('start_date')
             ->orderByDesc('id');
 
         if ($filters['status'] !== '') {
