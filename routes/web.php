@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\Auth\LoginController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GooglePhotosController;
 use App\Http\Controllers\Admin\ProjectController;
@@ -61,10 +62,13 @@ Route::middleware('guest')->group(function () {
     Route::post('/admin/login', [LoginController::class, 'login']);
 });
 
+Route::middleware('auth')->get('/dashboard', [DashboardController::class, 'index'])
+    ->name('admin.dashboard');
+
 Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::get('/', function () {
-        return redirect()->route('admin.client-projects.index');
+        return redirect()->route('admin.dashboard');
     });
 
     Route::get('google-photos/connect', [GooglePhotosController::class, 'connect'])->name('google-photos.connect');

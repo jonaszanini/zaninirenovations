@@ -17,10 +17,16 @@
     <div class="admin-nav-backdrop" id="admin-nav-backdrop" aria-hidden="true" hidden></div>
     <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
       <div class="admin-sidebar-brand">
-        <a href="<?php echo e(route('admin.client-projects.index')); ?>">Zanini Renovations</a>
+        <a href="<?php echo e(route('admin.dashboard')); ?>">Zanini Renovations</a>
         <span>Admin</span>
       </div>
       <ul class="admin-nav">
+        <li>
+          <a href="<?php echo e(route('admin.dashboard')); ?>" class="<?php echo e(request()->routeIs('admin.dashboard') ? 'is-active' : ''); ?>">
+            <i class="fa fa-tachometer"></i>
+            Dashboard
+          </a>
+        </li>
         <li>
           <a href="<?php echo e(route('admin.client-projects.index')); ?>" class="<?php echo e(request()->routeIs('admin.client-projects.index') || request()->routeIs('admin.client-projects.create') || request()->routeIs('admin.client-projects.show') || request()->routeIs('admin.client-projects.edit') || request()->routeIs('admin.client-projects.store') || request()->routeIs('admin.client-projects.update') ? 'is-active' : ''); ?>">
             <i class="fa fa-briefcase"></i>
@@ -79,6 +85,16 @@
         <?php endif; ?>
         <?php if(session('error')): ?>
           <div class="admin-flash admin-flash--error"><?php echo e(session('error')); ?></div>
+        <?php endif; ?>
+        <?php if($errors->any()): ?>
+          <div class="admin-flash admin-flash--error" role="alert">
+            <strong>Please fix the following:</strong>
+            <ul style="margin:8px 0 0 18px;">
+              <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $message): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <li><?php echo e($message); ?></li>
+              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            </ul>
+          </div>
         <?php endif; ?>
         <?php echo $__env->yieldContent('content'); ?>
       </main>

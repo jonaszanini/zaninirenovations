@@ -17,10 +17,16 @@
     <div class="admin-nav-backdrop" id="admin-nav-backdrop" aria-hidden="true" hidden></div>
     <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
       <div class="admin-sidebar-brand">
-        <a href="{{ route('admin.client-projects.index') }}">Zanini Renovations</a>
+        <a href="{{ route('admin.dashboard') }}">Zanini Renovations</a>
         <span>Admin</span>
       </div>
       <ul class="admin-nav">
+        <li>
+          <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}">
+            <i class="fa fa-tachometer"></i>
+            Dashboard
+          </a>
+        </li>
         <li>
           <a href="{{ route('admin.client-projects.index') }}" class="{{ request()->routeIs('admin.client-projects.index') || request()->routeIs('admin.client-projects.create') || request()->routeIs('admin.client-projects.show') || request()->routeIs('admin.client-projects.edit') || request()->routeIs('admin.client-projects.store') || request()->routeIs('admin.client-projects.update') ? 'is-active' : '' }}">
             <i class="fa fa-briefcase"></i>
