@@ -149,15 +149,29 @@ class ClientProjectFinanceController extends Controller
                         ->with('warning', 'Please set the project start and end dates — the calendar notification will be emailed once both are saved.');
                 }
 
-                $result = $statusService->maybeSendCalendarDatesEmail($client_project->fresh());
+                $fresh = $client_project->fresh();
+                $result = $statusService->maybeSendCalendarDatesEmail($fresh);
+                $fixed = $statusService->maybeSendFixedScheduleConfirmationToClient($fresh->fresh());
+
+                $success = 'Installment marked paid.';
+                $warnings = [];
                 if ($result === 'sent') {
-                    return back()->with('success', 'Installment marked paid. Calendar notification emailed to the admin.');
+                    $success .= ' Calendar notification emailed to the admin.';
+                } elseif ($result === 'failed') {
+                    $warnings[] = 'The calendar notification email failed to send. Check logs and try again.';
                 }
-                if ($result === 'failed') {
-                    return back()
-                        ->with('success', 'Installment marked paid.')
-                        ->with('warning', 'The calendar notification email failed to send. Check logs and try again.');
+                if ($fixed === 'sent') {
+                    $success .= ' Schedule confirmation emailed to the client.';
+                } elseif ($fixed === 'failed') {
+                    $warnings[] = 'The client schedule confirmation email failed to send. Check logs.';
                 }
+
+                $redirect = back()->with('success', $success);
+                if ($warnings !== []) {
+                    $redirect->with('warning', implode(' ', $warnings));
+                }
+
+                return $redirect;
             }
         }
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\ClientProjectCalendarEventAdmin;
+use App\Mail\ClientProjectFixedScheduleConfirmationClient;
 use App\Mail\ClientProjectQuoteReceivedClient;
 use App\Mail\ClientProjectThankYouClient;
 use App\Models\ClientProject;
@@ -193,6 +194,57 @@ class ClientProjectStatusService
             ]);
 
             return false;
+        }
+    }
+
+    /**
+     * Email the client once on fixed-price projects when the first installment
+     * is paid and both schedule dates are set — separate from invoice/receipt
+     * mail. Idempotent via `fixed_schedule_confirmation_sent_at`.
+     *
+     * @return string 'sent'|'skipped-hourly'|'waiting-dates'|'waiting-payment'|'already-sent'|'no-contact'|'failed'
+     */
+    public function maybeSendFixedScheduleConfirmationToClient(ClientProject $project): string
+    {
+        if ($project->isHourly()) {
+            return 'skipped-hourly';
+        }
+        if (!$project->hasSchedule()) {
+            return 'waiting-dates';
+        }
+        if (!$project->firstInstallmentPaid()) {
+            return 'waiting-payment';
+        }
+        if ($project->fixed_schedule_confirmation_sent_at) {
+            return 'already-sent';
+        }
+        if (!$project->hasClientContactInfo()) {
+            return 'no-contact';
+        }
+
+        try {
+            $mailer = Mail::to($project->client_email, $project->client_name);
+            if ($cc = $project->secondaryClientEmail()) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectFixedScheduleConfirmationClient($project));
+
+            $project->fixed_schedule_confirmation_sent_at = now();
+            $project->save();
+
+            $this->recordEvent(
+                $project,
+                'Schedule confirmation (fixed price) emailed to '.$project->clientEmailRecipientsLabel().'.'
+            );
+
+            return 'sent';
+        } catch (\Throwable $e) {
+            Log::warning('Fixed-price schedule confirmation email failed', [
+                'client_project_id' => $project->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return 'failed';
         }
     }
 

@@ -551,11 +551,19 @@ class ClientProjectInvoiceController extends Controller
             if (!$client_project->fresh()->hasSchedule()) {
                 $warning = 'Please set the project start and end dates — the calendar notification will be emailed once both are saved.';
             } else {
-                $result = $statusService->maybeSendCalendarDatesEmail($client_project->fresh());
+                $fresh = $client_project->fresh();
+                $result = $statusService->maybeSendCalendarDatesEmail($fresh);
+                $fixed = $statusService->maybeSendFixedScheduleConfirmationToClient($fresh->fresh());
                 if ($result === 'sent') {
                     $flash .= ' Calendar notification emailed to the admin.';
                 } elseif ($result === 'failed') {
                     $warning = 'The calendar notification email failed to send. Check logs and try again.';
+                }
+                if ($fixed === 'sent') {
+                    $flash .= ' Schedule confirmation emailed to the client.';
+                } elseif ($fixed === 'failed') {
+                    $warn2 = 'The client schedule confirmation email failed to send. Check logs.';
+                    $warning = $warning ? $warning.' '.$warn2 : $warn2;
                 }
             }
         }

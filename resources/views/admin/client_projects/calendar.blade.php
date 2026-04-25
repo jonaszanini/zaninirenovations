@@ -60,7 +60,7 @@
       var calendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
         headerToolbar: pickToolbar(),
-        firstDay: 1,
+        firstDay: 0,
         height: 'auto',
         events: events,
         eventDisplay: 'block',

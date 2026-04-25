@@ -118,7 +118,8 @@
     <div class="admin-card">
       <h3>Start &amp; End dates</h3>
       <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link.</p>
-      <form action="{{ route('admin.client-projects.update', $project) }}" method="post" class="cp-schedule-form">
+      <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
+      <form id="cp-schedule-dates-form" action="{{ route('admin.client-projects.update', $project) }}" method="post" class="cp-schedule-form">
         @csrf
         @method('PUT')
         {{-- Include required fields (controller validates the full update payload). --}}
@@ -132,11 +133,13 @@
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="cp-start">Start date</label>
-            <input type="date" id="cp-start" name="start_date" value="{{ optional($project->start_date)->toDateString() }}">
+            <input type="date" id="cp-start" name="start_date" value="{{ old('start_date', optional($project->start_date)->toDateString()) }}">
+            @error('start_date') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
             <label for="cp-end">End date</label>
-            <input type="date" id="cp-end" name="end_date" value="{{ optional($project->end_date)->toDateString() }}">
+            <input type="date" id="cp-end" name="end_date" value="{{ old('end_date', optional($project->end_date)->toDateString()) }}">
+            @error('end_date') <p class="admin-form-error">{{ $message }}</p> @enderror
             <p class="admin-form-help">Same-day start &amp; end is allowed.</p>
           </div>
         </div>
@@ -330,6 +333,41 @@
           if (saved) show(saved);
         } catch (e) {}
       }
+    })();
+  </script>
+  <script>
+    (function () {
+      var form = document.getElementById('cp-schedule-dates-form');
+      if (!form) return;
+      var start = form.querySelector('[name="start_date"]');
+      var end = form.querySelector('[name="end_date"]');
+      var warn = document.getElementById('cp-schedule-date-warning');
+      if (!start || !end || !warn) return;
+
+      function checkScheduleDates() {
+        if (!start.value || !end.value) {
+          warn.style.display = 'none';
+          warn.textContent = '';
+          return true;
+        }
+        if (start.value > end.value) {
+          warn.textContent = 'The start date is after the end date. Choose an end date on or after the start date (same day is fine), then save.';
+          warn.style.display = 'block';
+          return false;
+        }
+        warn.style.display = 'none';
+        warn.textContent = '';
+        return true;
+      }
+
+      start.addEventListener('change', checkScheduleDates);
+      end.addEventListener('change', checkScheduleDates);
+      form.addEventListener('submit', function (e) {
+        if (!checkScheduleDates()) {
+          e.preventDefault();
+          warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
     })();
   </script>
 @endsection

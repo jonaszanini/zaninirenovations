@@ -4,7 +4,7 @@
 
 @section('content')
   <div class="admin-card admin-card--narrow">
-    <form action="{{ route('admin.client-projects.update', $project) }}" method="post">
+    <form id="cp-edit-project-form" action="{{ route('admin.client-projects.update', $project) }}" method="post">
       @csrf
       @method('PUT')
 
@@ -66,6 +66,7 @@
 
       <div class="admin-form-section">
         <h3>Schedule <span class="admin-form-help cp-inline-help" title="Optional. Used to show the project on the Project Calendar page and to send an 'Add to Google Calendar' email.">?</span></h3>
+        <div id="cp-edit-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="cp-start-date">Start date</label>
@@ -144,4 +145,39 @@
       <button type="submit" class="admin-btn admin-btn--danger">Delete project</button>
     </form>
   </div>
+  <script>
+    (function () {
+      var form = document.getElementById('cp-edit-project-form');
+      if (!form) return;
+      var start = document.getElementById('cp-start-date');
+      var end = document.getElementById('cp-end-date');
+      var warn = document.getElementById('cp-edit-date-warning');
+      if (!start || !end || !warn) return;
+
+      function checkEditDates() {
+        if (!start.value || !end.value) {
+          warn.style.display = 'none';
+          warn.textContent = '';
+          return true;
+        }
+        if (start.value > end.value) {
+          warn.textContent = 'The start date is after the end date. Choose an end date on or after the start date (same day is fine), then save.';
+          warn.style.display = 'block';
+          return false;
+        }
+        warn.style.display = 'none';
+        warn.textContent = '';
+        return true;
+      }
+
+      start.addEventListener('change', checkEditDates);
+      end.addEventListener('change', checkEditDates);
+      form.addEventListener('submit', function (e) {
+        if (!checkEditDates()) {
+          e.preventDefault();
+          warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    })();
+  </script>
 @endsection

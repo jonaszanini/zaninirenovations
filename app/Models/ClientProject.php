@@ -57,6 +57,7 @@ class ClientProject extends Model
         'quote_sent_follow_up_due_at',
         'quote_sent_follow_up_sent_at',
         'service_confirmation_sent_at',
+        'fixed_schedule_confirmation_sent_at',
     ];
 
     protected $casts = [
@@ -69,6 +70,7 @@ class ClientProject extends Model
         'quote_sent_follow_up_due_at' => 'datetime',
         'quote_sent_follow_up_sent_at' => 'datetime',
         'service_confirmation_sent_at' => 'datetime',
+        'fixed_schedule_confirmation_sent_at' => 'datetime',
         'total_amount' => 'decimal:2',
         'payment_plan' => 'integer',
         'hourly_rate' => 'decimal:2',

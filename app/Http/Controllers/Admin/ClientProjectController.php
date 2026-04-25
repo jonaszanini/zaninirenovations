@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * CRUD for ClientProject (full lifecycle management). The model's show view
@@ -196,7 +197,7 @@ class ClientProjectController extends Controller
     {
         $this->normalisePhoneOnRequest($request);
 
-        $data = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
@@ -212,6 +213,23 @@ class ClientProjectController extends Controller
             ])],
             'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
         ], $this->clientProjectValidationMessages());
+
+        if ($validator->fails()) {
+            if ($request->has('billing_type')) {
+                return redirect()
+                    ->route('admin.client-projects.edit', $client_project)
+                    ->withErrors($validator)
+                    ->withInput();
+            }
+
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('schedule')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $data = $validator->validated();
 
         // billing_type is optional on update — some narrower forms (like the
         // schedule-only partial on the show page) don't post it. Only update
@@ -229,8 +247,13 @@ class ClientProjectController extends Controller
         $client_project->fill($data)->save();
 
         $newStartAfterSave = $client_project->start_date ? $client_project->start_date->toDateString() : null;
-        if ($newStartAfterSave !== $previousStart) {
-            $client_project->day_before_start_sent_for_date = null;
+        $newEndAfterSave = $client_project->end_date ? $client_project->end_date->toDateString() : null;
+        $scheduleFieldsChanged = ($newStartAfterSave !== $previousStart) || ($newEndAfterSave !== $previousEnd);
+        if ($scheduleFieldsChanged) {
+            if ($newStartAfterSave !== $previousStart) {
+                $client_project->day_before_start_sent_for_date = null;
+            }
+            $client_project->fixed_schedule_confirmation_sent_at = null;
             $client_project->saveQuietly();
         }
 
@@ -254,9 +277,23 @@ class ClientProjectController extends Controller
             // they mark the first installment paid.
         }
 
-        return redirect()
+        $scheduleClientWarning = null;
+        $fixedSched = $service->maybeSendFixedScheduleConfirmationToClient($client_project->fresh());
+        if ($fixedSched === 'sent') {
+            $successMessage .= ' Schedule confirmation emailed to the client.';
+        } elseif ($fixedSched === 'failed') {
+            $scheduleClientWarning = 'The client schedule confirmation email failed to send. Check logs.';
+        }
+
+        $redirect = redirect()
             ->route('admin.client-projects.show', $client_project)
             ->with('success', $successMessage);
+
+        if ($scheduleClientWarning) {
+            $redirect->with('warning', $scheduleClientWarning);
+        }
+
+        return $redirect;
     }
 
     /**
@@ -282,7 +319,7 @@ class ClientProjectController extends Controller
             'client_email.email' => 'Please enter a valid email address.',
             'client_email_secondary.email' => 'Please enter a valid secondary email address.',
             'client_email_secondary.different' => 'The secondary email must be different from the primary email.',
-            'end_date.after_or_equal' => 'End date must be the same as or after the start date.',
+            'end_date.after_or_equal' => 'The end date must be the same day or after the start date. Fix the dates and try again.',
             'hourly_rate.required_if' => 'Hourly rate is required when billing type is "Hourly rate".',
             'hourly_rate.min' => 'Hourly rate must be at least $0.01.',
         ];

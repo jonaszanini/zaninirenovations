@@ -80,6 +80,16 @@
         @if (session('error'))
           <div class="admin-flash admin-flash--error">{{ session('error') }}</div>
         @endif
+        @if ($errors->any())
+          <div class="admin-flash admin-flash--error" role="alert">
+            <strong>Please fix the following:</strong>
+            <ul style="margin:8px 0 0 18px;">
+              @foreach ($errors->all() as $message)
+                <li>{{ $message }}</li>
+              @endforeach
+            </ul>
+          </div>
+        @endif
         @yield('content')
       </main>
     </div>
