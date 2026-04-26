@@ -81,6 +81,14 @@
             value="{{ old('visit_date', optional($project->visit_date)->toDateString()) }}">
           @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
+        <input type="hidden" name="visit_done" value="0">
+        <div class="admin-form-group">
+          <label class="cp-checkbox-label">
+            <input type="checkbox" name="visit_done" value="1" id="cp-edit-visit-done"
+              @checked(old('visit_done', $project->visit_done))>
+            <span>Visit done</span>
+          </label>
+        </div>
       </div>
 
       <div class="admin-form-section">
@@ -173,10 +181,15 @@
       var warn = document.getElementById('cp-edit-date-warning');
       var visitCb = document.getElementById('cp-edit-visit-required');
       var visitDate = document.getElementById('cp-edit-visit-date');
+      var visitDoneCb = document.getElementById('cp-edit-visit-done');
 
-      function syncEditVisitDate() {
-        if (!visitCb || !visitDate) return;
-        visitDate.disabled = !visitCb.checked;
+      function syncEditVisitFields() {
+        if (!visitDate) return;
+        var required = visitCb ? visitCb.checked : false;
+        var done = visitDoneCb ? visitDoneCb.checked : false;
+        visitDate.readOnly = !!done;
+        visitDate.disabled = !done && !required;
+        visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
       }
 
       function checkEditDates() {
@@ -200,13 +213,14 @@
         start.addEventListener('change', checkEditDates);
         end.addEventListener('change', checkEditDates);
       }
-      if (visitCb && visitDate) {
-        visitCb.addEventListener('change', syncEditVisitDate);
-        syncEditVisitDate();
-      }
+      if (visitCb) visitCb.addEventListener('change', syncEditVisitFields);
+      if (visitDoneCb) visitDoneCb.addEventListener('change', syncEditVisitFields);
+      syncEditVisitFields();
+
       form.addEventListener('submit', function (e) {
-        if (visitCb && visitDate && !visitCb.checked) {
+        if (visitDate && visitCb && !visitCb.checked && !(visitDoneCb && visitDoneCb.checked)) {
           visitDate.disabled = false;
+          visitDate.readOnly = false;
           visitDate.value = '';
         }
         if (!checkEditDates()) {

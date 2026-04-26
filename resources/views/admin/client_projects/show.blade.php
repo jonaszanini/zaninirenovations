@@ -105,10 +105,15 @@
         <dt>Address</dt><dd>{{ $project->client_address ?: '—' }}</dd>
         <dt>Created</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->created_at) }}</dd>
         <dt>Status changed</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->status_changed_at) }}</dd>
-        @if ($project->visit_required || $project->visit_date)
+        @if ($project->visit_required || $project->visit_date || $project->visit_done)
           <dt>Visit</dt>
           <dd>
-            @if ($project->visit_required)
+            @if ($project->visit_done)
+              Done
+              @if ($project->visit_date)
+                ({{ \App\Models\ClientProject::formatDate($project->visit_date) }})
+              @endif
+            @elseif ($project->visit_required)
               {{ $project->visit_date ? \App\Models\ClientProject::formatDate($project->visit_date) : 'Required — date not set yet' }}
             @elseif ($project->visit_date)
               {{ \App\Models\ClientProject::formatDate($project->visit_date) }}
@@ -139,7 +144,7 @@
 
       <div class="admin-card cp-visit-card">
         <h3>Visit date</h3>
-        <p class="admin-form-help">Use this when the client wants an on-site visit before work is scheduled. Turn on <strong>Visit required</strong> to set a date.</p>
+        <p class="admin-form-help">Use this when the client wants an on-site visit before work is scheduled. Turn on <strong>Visit required</strong> to set a date. Check <strong>Visit done</strong> after the visit — the project list will then show job start/end dates again.</p>
         <input type="hidden" name="visit_required" value="0">
         <div class="admin-form-group cp-visit-toggle">
           <label class="cp-checkbox-label">
@@ -153,6 +158,14 @@
           <input type="date" id="cp-visit-date" name="visit_date"
             value="{{ old('visit_date', optional($project->visit_date)->toDateString()) }}">
           @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+        <input type="hidden" name="visit_done" value="0">
+        <div class="admin-form-group cp-visit-toggle">
+          <label class="cp-checkbox-label">
+            <input type="checkbox" name="visit_done" value="1" id="cp-visit-done"
+              @checked(old('visit_done', $project->visit_done))>
+            <span>Visit done</span>
+          </label>
         </div>
       </div>
 
@@ -379,11 +392,15 @@
       var warn = document.getElementById('cp-schedule-date-warning');
       var visitCb = document.getElementById('cp-visit-required');
       var visitDate = document.getElementById('cp-visit-date');
+      var visitDoneCb = document.getElementById('cp-visit-done');
 
-      function syncVisitDateEnabled() {
-        if (!visitCb || !visitDate) return;
-        var on = visitCb.checked;
-        visitDate.disabled = !on;
+      function syncVisitFields() {
+        if (!visitDate) return;
+        var required = visitCb ? visitCb.checked : false;
+        var done = visitDoneCb ? visitDoneCb.checked : false;
+        visitDate.readOnly = !!done;
+        visitDate.disabled = !done && !required;
+        visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
       }
 
       function checkScheduleDates() {
@@ -407,14 +424,14 @@
         start.addEventListener('change', checkScheduleDates);
         end.addEventListener('change', checkScheduleDates);
       }
-      if (visitCb && visitDate) {
-        visitCb.addEventListener('change', syncVisitDateEnabled);
-        syncVisitDateEnabled();
-      }
+      if (visitCb) visitCb.addEventListener('change', syncVisitFields);
+      if (visitDoneCb) visitDoneCb.addEventListener('change', syncVisitFields);
+      syncVisitFields();
 
       form.addEventListener('submit', function (e) {
-        if (visitCb && visitDate && !visitCb.checked) {
+        if (visitDate && visitCb && !visitCb.checked && !(visitDoneCb && visitDoneCb.checked)) {
           visitDate.disabled = false;
+          visitDate.readOnly = false;
           visitDate.value = '';
         }
         if (!checkScheduleDates()) {

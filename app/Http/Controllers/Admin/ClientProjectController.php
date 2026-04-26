@@ -68,6 +68,7 @@ class ClientProjectController extends Controller
                 $query->where(function ($sub) use ($from) {
                     $sub->where('start_date', '>=', $from)
                         ->orWhere('end_date', '>=', $from)
+                        ->orWhere('visit_date', '>=', $from)
                         ->orWhere('created_at', '>=', $from);
                 });
             } catch (\Throwable $e) {
@@ -80,6 +81,7 @@ class ClientProjectController extends Controller
                 $query->where(function ($sub) use ($to) {
                     $sub->where('start_date', '<=', $to)
                         ->orWhere('end_date', '<=', $to)
+                        ->orWhere('visit_date', '<=', $to)
                         ->orWhere('created_at', '<=', $to);
                 });
             } catch (\Throwable $e) {
@@ -209,6 +211,7 @@ class ClientProjectController extends Controller
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'visit_required' => ['sometimes', 'boolean'],
             'visit_date' => ['nullable', 'date'],
+            'visit_done' => ['sometimes', 'boolean'],
             'billing_type' => ['nullable', \Illuminate\Validation\Rule::in([
                 ClientProject::BILLING_FIXED,
                 ClientProject::BILLING_HOURLY,

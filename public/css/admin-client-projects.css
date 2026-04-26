@@ -1978,9 +1978,13 @@ body.cp-modal-open {
   width: auto;
   margin: 0;
 }
-.cp-visit-date input[type="date"]:disabled {
+.cp-visit-date input[type="date"]:disabled,
+.cp-visit-date input[type="date"].cp-visit-date-input--locked {
   opacity: 0.55;
   cursor: not-allowed;
   background: #f1f5f9;
+}
+.cp-visit-date input[type="date"][readonly]:not(:disabled) {
+  cursor: default;
 }
 

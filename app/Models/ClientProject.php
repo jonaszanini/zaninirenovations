@@ -52,6 +52,7 @@ class ClientProject extends Model
         'end_date',
         'visit_required',
         'visit_date',
+        'visit_done',
         'calendar_email_sent_at',
         'total_amount',
         'payment_plan',
@@ -70,6 +71,7 @@ class ClientProject extends Model
         'end_date' => 'date',
         'visit_required' => 'boolean',
         'visit_date' => 'date',
+        'visit_done' => 'boolean',
         'status_changed_at' => 'datetime',
         'calendar_email_sent_at' => 'datetime',
         'last_quote_reminder_sent_at' => 'datetime',
@@ -451,6 +453,15 @@ class ClientProject extends Model
     public function hasSchedule(): bool
     {
         return filled($this->start_date) && filled($this->end_date);
+    }
+
+    /**
+     * Project list "Dates" column: show visit date + "Visit" while status is
+     * Visit scheduled and the on-site visit is not marked done yet.
+     */
+    public function showsVisitLayoutInProjectList(): bool
+    {
+        return $this->status === self::STATUS_VISIT_SCHEDULED && !$this->visit_done;
     }
 
     // --- Money & profit calculations --------------------------------------

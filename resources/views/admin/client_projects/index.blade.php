@@ -78,8 +78,13 @@
                 </span>
               </td>
               <td>
-                <div>{{ \App\Models\ClientProject::formatDate($project->start_date) }}</div>
-                <div class="cp-subtle">→ {{ \App\Models\ClientProject::formatDate($project->end_date) }}</div>
+                @if ($project->showsVisitLayoutInProjectList())
+                  <div>{{ \App\Models\ClientProject::formatDate($project->visit_date) }}</div>
+                  <div class="cp-subtle">Visit</div>
+                @else
+                  <div>{{ \App\Models\ClientProject::formatDate($project->start_date) }}</div>
+                  <div class="cp-subtle">→ {{ \App\Models\ClientProject::formatDate($project->end_date) }}</div>
+                @endif
               </td>
               <td class="cp-col-amount">
                 @if ($project->isHourly())
