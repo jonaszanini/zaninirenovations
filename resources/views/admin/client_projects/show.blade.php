@@ -68,8 +68,9 @@
         <i class="fa fa-pencil"></i> Edit details
       </a>
       @if ($calendarLink)
-        <a href="{{ $calendarLink }}" target="_blank" rel="noopener noreferrer" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-calendar"></i> Add to Google Calendar
+        <a href="{{ $calendarLink }}" target="_blank" rel="noopener noreferrer" class="cp-calendar-link cp-calendar-link--btn">
+          <i class="fa fa-calendar" aria-hidden="true"></i>
+          <span>Add to Google Calendar</span>
         </a>
       @endif
     </div>
@@ -175,14 +176,18 @@
         </div>
 
         @if ($project->start_date && $project->end_date)
-          <div class="cp-schedule-summary" style="margin-bottom:16px;">
-            <strong>Scheduled:</strong>
-            {{ \App\Models\ClientProject::formatDate($project->start_date) }}
-            →
-            {{ \App\Models\ClientProject::formatDate($project->end_date) }}
+          <div class="cp-schedule-summary cp-schedule-summary--with-action">
+            <span class="cp-schedule-summary__dates">
+              <strong>Scheduled:</strong>
+              {{ \App\Models\ClientProject::formatDate($project->start_date) }}
+              <span class="cp-schedule-summary__arrow" aria-hidden="true">→</span>
+              {{ \App\Models\ClientProject::formatDate($project->end_date) }}
+            </span>
             @if ($calendarLink)
-              ·
-              <a href="{{ $calendarLink }}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
+              <a href="{{ $calendarLink }}" target="_blank" rel="noopener noreferrer" class="cp-calendar-link">
+                <i class="fa fa-calendar" aria-hidden="true"></i>
+                <span>Add to Google Calendar</span>
+              </a>
             @endif
           </div>
         @endif

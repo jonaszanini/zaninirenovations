@@ -181,6 +181,7 @@
 }
 .cp-header-actions {
   display: flex;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   margin-top: 12px;
@@ -277,10 +278,76 @@
    ================================================================= */
 .cp-schedule-summary {
   margin-top: 14px;
-  padding: 10px 14px;
-  background: #f1f5f9;
-  border-radius: 6px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   font-size: 14px;
+  color: #1f2937;
+  line-height: 1.45;
+}
+.cp-schedule-summary--with-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+.cp-schedule-summary__dates {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.cp-schedule-summary__arrow {
+  margin: 0 0.2em;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Brand-colored calendar links (default + visited) */
+.cp-calendar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--admin-primary);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin: -6px -10px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.cp-calendar-link:visited,
+.cp-calendar-link:active {
+  color: var(--admin-primary);
+}
+.cp-calendar-link:hover {
+  color: var(--admin-primary-hover);
+  background: var(--admin-primary-soft);
+  text-decoration: none;
+}
+.cp-calendar-link:focus-visible {
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+}
+.cp-calendar-link .fa {
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+/* Header row: same brand treatment, reads as a compact action */
+.cp-calendar-link--btn {
+  margin: 0;
+  padding: 7px 12px;
+  font-size: 14px;
+  border: 1px solid rgba(2, 71, 104, 0.22);
+  background: #fff;
+}
+.cp-calendar-link--btn:hover {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
 }
 
 /* =================================================================
