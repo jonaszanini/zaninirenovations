@@ -58,7 +58,7 @@
         </select>
         <input type="text" name="note" placeholder="Optional note…" maxlength="2000" class="cp-status-note">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save status</button>
-        <span class="cp-hint" title="Workflow: Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Financial & time tracking tabs unlock from Proposal Accepted onward.">?</span>
+        <span class="cp-hint" title="Workflow: Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
       </form>
     <?php else: ?>
       <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>
@@ -69,8 +69,9 @@
         <i class="fa fa-pencil"></i> Edit details
       </a>
       <?php if($calendarLink): ?>
-        <a href="<?php echo e($calendarLink); ?>" target="_blank" rel="noopener noreferrer" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-calendar"></i> Add to Google Calendar
+        <a href="<?php echo e($calendarLink); ?>" target="_blank" rel="noopener noreferrer" class="cp-calendar-link cp-calendar-link--btn">
+          <i class="fa fa-calendar" aria-hidden="true"></i>
+          <span>Add to Google Calendar</span>
         </a>
       <?php endif; ?>
     </div>
@@ -80,11 +81,11 @@
   <div class="cp-tabs" role="tablist">
     <button type="button" class="cp-tab is-active" data-tab="overview" role="tab">Overview</button>
     <button type="button" class="cp-tab" data-tab="schedule" role="tab">Calendar</button>
-    <button type="button" class="cp-tab" data-tab="financials" role="tab">Financials</button>
     <button type="button" class="cp-tab" data-tab="time" role="tab">Time Tracking</button>
     <button type="button" class="cp-tab" data-tab="quotation" role="tab">Quotation</button>
     <button type="button" class="cp-tab" data-tab="contract" role="tab">Contract</button>
     <button type="button" class="cp-tab" data-tab="invoice" role="tab">Invoice</button>
+    <button type="button" class="cp-tab" data-tab="financials" role="tab">Financials</button>
     <button type="button" class="cp-tab" data-tab="history" role="tab">History</button>
   </div>
 
@@ -105,6 +106,23 @@
         <dt>Address</dt><dd><?php echo e($project->client_address ?: '—'); ?></dd>
         <dt>Created</dt><dd><?php echo e(\App\Models\ClientProject::formatDateTime($project->created_at)); ?></dd>
         <dt>Status changed</dt><dd><?php echo e(\App\Models\ClientProject::formatDateTime($project->status_changed_at)); ?></dd>
+        <?php if($project->visit_required || $project->visit_date || $project->visit_done): ?>
+          <dt>Visit</dt>
+          <dd>
+            <?php if($project->visit_done): ?>
+              Done
+              <?php if($project->visit_date): ?>
+                (<?php echo e(\App\Models\ClientProject::formatDate($project->visit_date)); ?>)
+              <?php endif; ?>
+            <?php elseif($project->visit_required): ?>
+              <?php echo e($project->visit_date ? \App\Models\ClientProject::formatDate($project->visit_date) : 'Required — date not set yet'); ?>
+
+            <?php elseif($project->visit_date): ?>
+              <?php echo e(\App\Models\ClientProject::formatDate($project->visit_date)); ?>
+
+            <?php endif; ?>
+          </dd>
+        <?php endif; ?>
       </dl>
 
       <?php if($project->notes): ?>
@@ -115,51 +133,107 @@
   </section>
 
   
-  <section class="cp-tab-panel" data-panel="schedule">
-    <div class="admin-card">
-      <h3>Start &amp; End dates</h3>
-      <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link.</p>
-      <form action="<?php echo e(route('admin.client-projects.update', $project)); ?>" method="post" class="cp-schedule-form">
-        <?php echo csrf_field(); ?>
-        <?php echo method_field('PUT'); ?>
-        
-        <input type="hidden" name="name" value="<?php echo e($project->name); ?>">
-        <input type="hidden" name="client_name" value="<?php echo e($project->client_name); ?>">
-        <input type="hidden" name="client_email" value="<?php echo e($project->client_email); ?>">
-        <input type="hidden" name="client_phone" value="<?php echo e($project->client_phone); ?>">
-        <input type="hidden" name="client_address" value="<?php echo e($project->client_address); ?>">
-        <input type="hidden" name="notes" value="<?php echo e($project->notes); ?>">
+  <section class="cp-tab-panel" data-panel="schedule" id="schedule">
+    <form id="cp-schedule-dates-form" action="<?php echo e(route('admin.client-projects.update', $project)); ?>" method="post" class="cp-schedule-form">
+      <?php echo csrf_field(); ?>
+      <?php echo method_field('PUT'); ?>
+      
+      <input type="hidden" name="name" value="<?php echo e($project->name); ?>">
+      <input type="hidden" name="client_name" value="<?php echo e($project->client_name); ?>">
+      <input type="hidden" name="client_email" value="<?php echo e($project->client_email); ?>">
+      <input type="hidden" name="client_phone" value="<?php echo e($project->client_phone); ?>">
+      <input type="hidden" name="client_address" value="<?php echo e($project->client_address); ?>">
+      <input type="hidden" name="notes" value="<?php echo e($project->notes); ?>">
+
+      <div class="admin-card cp-visit-card">
+        <h3>Visit date</h3>
+        <p class="admin-form-help">Use this when the client wants an on-site visit before work is scheduled. Turn on <strong>Visit required</strong> to set a date. Check <strong>Visit done</strong> after the visit — the project list will then show job start/end dates again.</p>
+        <input type="hidden" name="visit_required" value="0">
+        <div class="admin-form-group cp-visit-toggle">
+          <label class="cp-checkbox-label">
+            <input type="checkbox" name="visit_required" value="1" id="cp-visit-required"
+              <?php if(old('visit_required', $project->visit_required)): echo 'checked'; endif; ?>>
+            <span>Visit required</span>
+          </label>
+        </div>
+        <div class="admin-form-group cp-visit-date">
+          <label for="cp-visit-date">Visit date</label>
+          <input type="date" id="cp-visit-date" name="visit_date"
+            value="<?php echo e(old('visit_date', optional($project->visit_date)->toDateString())); ?>">
+          <?php $__errorArgs = ['visit_date'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+        </div>
+        <input type="hidden" name="visit_done" value="0">
+        <div class="admin-form-group cp-visit-toggle">
+          <label class="cp-checkbox-label">
+            <input type="checkbox" name="visit_done" value="1" id="cp-visit-done"
+              <?php if(old('visit_done', $project->visit_done)): echo 'checked'; endif; ?>>
+            <span>Visit done</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>Start &amp; End dates</h3>
+        <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link.</p>
+        <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
 
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="cp-start">Start date</label>
-            <input type="date" id="cp-start" name="start_date" value="<?php echo e(optional($project->start_date)->toDateString()); ?>">
+            <input type="date" id="cp-start" name="start_date" value="<?php echo e(old('start_date', optional($project->start_date)->toDateString())); ?>">
+            <?php $__errorArgs = ['start_date'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
           </div>
           <div class="admin-form-group">
             <label for="cp-end">End date</label>
-            <input type="date" id="cp-end" name="end_date" value="<?php echo e(optional($project->end_date)->toDateString()); ?>">
+            <input type="date" id="cp-end" name="end_date" value="<?php echo e(old('end_date', optional($project->end_date)->toDateString())); ?>">
+            <?php $__errorArgs = ['end_date'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
             <p class="admin-form-help">Same-day start &amp; end is allowed.</p>
           </div>
         </div>
 
+        <?php if($project->start_date && $project->end_date): ?>
+          <div class="cp-schedule-summary cp-schedule-summary--with-action">
+            <span class="cp-schedule-summary__dates">
+              <strong>Scheduled:</strong>
+              <?php echo e(\App\Models\ClientProject::formatDate($project->start_date)); ?>
+
+              <span class="cp-schedule-summary__arrow" aria-hidden="true">→</span>
+              <?php echo e(\App\Models\ClientProject::formatDate($project->end_date)); ?>
+
+            </span>
+            <?php if($calendarLink): ?>
+              <a href="<?php echo e($calendarLink); ?>" target="_blank" rel="noopener noreferrer" class="cp-calendar-link">
+                <i class="fa fa-calendar" aria-hidden="true"></i>
+                <span>Add to Google Calendar</span>
+              </a>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+
         <button type="submit" class="admin-btn admin-btn--primary">Save dates</button>
-      </form>
-
-      <?php if($project->start_date && $project->end_date): ?>
-        <div class="cp-schedule-summary">
-          <strong>Scheduled:</strong>
-          <?php echo e(\App\Models\ClientProject::formatDate($project->start_date)); ?>
-
-          →
-          <?php echo e(\App\Models\ClientProject::formatDate($project->end_date)); ?>
-
-          <?php if($calendarLink): ?>
-            ·
-            <a href="<?php echo e($calendarLink); ?>" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
-          <?php endif; ?>
-        </div>
-      <?php endif; ?>
-    </div>
+      </div>
+    </form>
 
     
     <?php if($project->billing_type === \App\Models\ClientProject::BILLING_HOURLY && !$isRejected): ?>
@@ -218,19 +292,7 @@
   </section>
 
   
-  <section class="cp-tab-panel" data-panel="financials">
-    <?php if(!$isAccepted): ?>
-      <div class="admin-card cp-locked">
-        <h3>Financials are locked</h3>
-        <p>Financial details become available once the project status is <strong>Proposal Accepted</strong> or later.</p>
-      </div>
-    <?php else: ?>
-      <?php echo $__env->make('admin.client_projects._financials', ['project' => $project], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
-    <?php endif; ?>
-  </section>
-
-  
-  <section class="cp-tab-panel" data-panel="time">
+  <section class="cp-tab-panel" data-panel="time" id="time">
     <?php if(!$isAccepted): ?>
       <div class="admin-card cp-locked">
         <h3>Time tracking is locked</h3>
@@ -254,6 +316,18 @@
   
   <section class="cp-tab-panel" data-panel="invoice" id="invoice">
     <?php echo $__env->make('admin.client_projects._invoice', ['project' => $project], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+  </section>
+
+  
+  <section class="cp-tab-panel" data-panel="financials" id="financials">
+    <?php if(!$isAccepted): ?>
+      <div class="admin-card cp-locked">
+        <h3>Financials are locked</h3>
+        <p>Financial details become available once the project status is <strong>Proposal Accepted</strong> or later.</p>
+      </div>
+    <?php else: ?>
+      <?php echo $__env->make('admin.client_projects._financials', ['project' => $project], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+    <?php endif; ?>
   </section>
 
   
@@ -332,6 +406,64 @@
           if (saved) show(saved);
         } catch (e) {}
       }
+    })();
+  </script>
+  <script>
+    (function () {
+      var form = document.getElementById('cp-schedule-dates-form');
+      if (!form) return;
+      var start = form.querySelector('[name="start_date"]');
+      var end = form.querySelector('[name="end_date"]');
+      var warn = document.getElementById('cp-schedule-date-warning');
+      var visitCb = document.getElementById('cp-visit-required');
+      var visitDate = document.getElementById('cp-visit-date');
+      var visitDoneCb = document.getElementById('cp-visit-done');
+
+      function syncVisitFields() {
+        if (!visitDate) return;
+        var required = visitCb ? visitCb.checked : false;
+        var done = visitDoneCb ? visitDoneCb.checked : false;
+        visitDate.readOnly = !!done;
+        visitDate.disabled = !done && !required;
+        visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
+      }
+
+      function checkScheduleDates() {
+        if (!start || !end || !warn) return true;
+        if (!start.value || !end.value) {
+          warn.style.display = 'none';
+          warn.textContent = '';
+          return true;
+        }
+        if (start.value > end.value) {
+          warn.textContent = 'The start date is after the end date. Choose an end date on or after the start date (same day is fine), then save.';
+          warn.style.display = 'block';
+          return false;
+        }
+        warn.style.display = 'none';
+        warn.textContent = '';
+        return true;
+      }
+
+      if (start && end && warn) {
+        start.addEventListener('change', checkScheduleDates);
+        end.addEventListener('change', checkScheduleDates);
+      }
+      if (visitCb) visitCb.addEventListener('change', syncVisitFields);
+      if (visitDoneCb) visitDoneCb.addEventListener('change', syncVisitFields);
+      syncVisitFields();
+
+      form.addEventListener('submit', function (e) {
+        if (visitDate && visitCb && !visitCb.checked && !(visitDoneCb && visitDoneCb.checked)) {
+          visitDate.disabled = false;
+          visitDate.readOnly = false;
+          visitDate.value = '';
+        }
+        if (!checkScheduleDates()) {
+          e.preventDefault();
+          if (warn) warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
     })();
   </script>
 <?php $__env->stopSection(); ?>

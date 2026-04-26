@@ -23,7 +23,10 @@
     $manualTotal = old('manual_total', $invoice->subtotal > 0 ? number_format((float) $invoice->subtotal, 2, '.', '') : '');
     $dueOn = old('due_on', $invoice->due_on ? $invoice->due_on->toDateString() : null);
 
-    // $lockedSubtotal + $lockedTotalWithHst are provided by the controller.
+    // $lockedSubtotal + $lockedHst + $lockedTotalWithHst are provided by
+    // the controller. For installment-linked invoices, $lockedHst is the
+    // proportional share of the quotation's HST (NOT a flat 13% of the
+    // subtotal), so HST-exempt quotation lines aren't re-taxed.
   @endphp
 
   <div class="admin-card cp-contract-editor-card">
@@ -157,8 +160,11 @@
             <div class="cp-invoice-locked-total-subtotal">
               Subtotal: <strong>{{ \App\Models\ClientProject::formatMoney($lockedSubtotal) }}</strong>
             </div>
+            <div class="cp-invoice-locked-total-subtotal">
+              HST (from quotation share): <strong>{{ \App\Models\ClientProject::formatMoney($lockedHst) }}</strong>
+            </div>
             <div class="cp-invoice-locked-total-grand">
-              Total (incl. 13% HST): <strong>{{ \App\Models\ClientProject::formatMoney($lockedTotalWithHst) }}</strong>
+              Total (incl. HST): <strong>{{ \App\Models\ClientProject::formatMoney($lockedTotalWithHst) }}</strong>
             </div>
           </div>
         </div>
@@ -219,7 +225,7 @@
             <span id="cp-invoice-subtotal">CA$0.00</span>
           </div>
           <div class="cp-quotation-totals-row">
-            <span>HST (13%)</span>
+            <span id="cp-invoice-hst-label">{{ $isManual ? 'HST (13%)' : 'HST (from quotation share)' }}</span>
             <span id="cp-invoice-hst">CA$0.00</span>
           </div>
           <div class="cp-quotation-totals-row cp-quotation-totals-grand">
@@ -287,8 +293,12 @@
 
   <script>
     (function () {
+      // Manual invoices use a flat 13%. Installment-linked invoices
+      // freeze the HST to its proportional share of the quotation
+      // (LOCKED_HST), since the items must sum to LOCKED_SUBTOTAL anyway.
       var HST_RATE = 0.13;
       var LOCKED_SUBTOTAL = {{ $isManual ? 'null' : json_encode(round((float) $lockedSubtotal, 2)) }};
+      var LOCKED_HST = {{ $isManual ? 'null' : json_encode(round((float) $lockedHst, 2)) }};
 
       var tbody = document.querySelector('#cp-invoice-items tbody');
       var addBtn = document.getElementById('cp-invoice-add-row');
@@ -319,10 +329,20 @@
           subtotal += parseAmount(input);
         });
         subtotal = Math.round(subtotal * 100) / 100;
-        var hst = Math.round(subtotal * HST_RATE * 100) / 100;
+
+        // Installment-linked invoices: HST is whatever the quotation
+        // share resolved to server-side — never recompute as 13% × items.
+        // Manual invoices: 13% × items.
+        var hst;
+        if (LOCKED_HST !== null) {
+          hst = LOCKED_HST;
+        } else {
+          hst = Math.round(subtotal * HST_RATE * 100) / 100;
+        }
+
         subtotalEl.textContent = formatMoney(subtotal);
         hstEl.textContent = formatMoney(hst);
-        grandEl.textContent = formatMoney(subtotal + hst);
+        grandEl.textContent = formatMoney(Math.round((subtotal + hst) * 100) / 100);
 
         if (LOCKED_SUBTOTAL !== null && mismatchEl) {
           var diff = Math.round((subtotal - LOCKED_SUBTOTAL) * 100) / 100;

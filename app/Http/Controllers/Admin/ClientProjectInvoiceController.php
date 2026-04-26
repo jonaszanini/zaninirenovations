@@ -133,6 +133,7 @@ class ClientProjectInvoiceController extends Controller
             'invoice' => $invoice,
             'lockedTotalWithHst' => $this->lockedTotalWithHst($client_project, $invoice),
             'lockedSubtotal' => $this->lockedSubtotal($client_project, $invoice),
+            'lockedHst' => $this->lockedHst($client_project, $invoice),
         ]);
     }
 
@@ -171,7 +172,7 @@ class ClientProjectInvoiceController extends Controller
 
         $invoice->items = $items;
         $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
-        $invoice->hst = round($invoice->subtotal * ClientProjectInvoice::HST_RATE, 2);
+        $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
         $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
 
         if ($invoice->isManual() && $data['manual_total'] !== null) {
@@ -180,14 +181,14 @@ class ClientProjectInvoiceController extends Controller
             // UI surfaces a validation warning. For the "send" action this
             // mismatch is a hard stop (see send()).
             $invoice->subtotal = (float) $data['manual_total'];
-            $invoice->hst = round($invoice->subtotal * ClientProjectInvoice::HST_RATE, 2);
+            $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
             $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
 
             if (abs((float) array_sum(array_column($items, 'amount')) - (float) $data['manual_total']) > 0.01 && count($items)) {
                 // Fall back to items-sum as the authoritative subtotal if
                 // the user actually typed line items (prefer item sum).
                 $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
-                $invoice->hst = round($invoice->subtotal * ClientProjectInvoice::HST_RATE, 2);
+                $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
                 $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
             }
         }
@@ -621,6 +622,8 @@ class ClientProjectInvoiceController extends Controller
         // line item that mirrors the installment (description + pre-HST
         // amount), so the user usually just hits "Send" — no retyping.
         // Manual invoices stay empty and let the user enter everything.
+        $hst = 0.0;
+
         if ($installmentNumber !== null) {
             $description = ClientProjectInvoice::installmentDescriptionFor($plan, $installmentNumber);
 
@@ -636,10 +639,19 @@ class ClientProjectInvoiceController extends Controller
                     'description' => $description ?: 'Installment '.$installmentNumber,
                     'amount' => $subtotal,
                 ]];
+                // HST for installment-linked invoices comes from the
+                // quotation's actual HST share, NOT a flat 13% — see
+                // ClientProjectInstallment::effectiveHst() for the rationale.
+                $hst = round((float) $installment->effectiveHst(), 2);
+            } else {
+                $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
             }
+        } else {
+            // Manual invoice with empty seed total. HST is irrelevant on
+            // a $0 draft but we keep the 13% formula here so saves later
+            // (with a real subtotal) re-compute correctly.
+            $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
         }
-
-        $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
 
         return $project->invoices()->create([
             'installment_number' => $installmentNumber,
@@ -767,11 +779,56 @@ class ClientProjectInvoiceController extends Controller
         return round((float) ($installment->amount ?? 0), 2);
     }
 
+    /**
+     * HST that the invoice should bill, given a subtotal.
+     *
+     * Installment-linked invoices: HST is sliced proportionally from the
+     * quotation's actual HST (some quotation lines may have been HST-exempt,
+     * so 13% × subtotal would over-charge). The split is anchored on the
+     * locked installment subtotal — never on the typed line items, which
+     * are constrained to sum to that amount anyway.
+     *
+     * Manual / hourly invoices: standard 13% on the supplied subtotal.
+     */
+    protected function computeInvoiceHst(ClientProject $project, ClientProjectInvoice $invoice, float $subtotal): float
+    {
+        if ($invoice->isManual()) {
+            return round($subtotal * ClientProjectInvoice::HST_RATE, 2);
+        }
+
+        $installment = $project->installments()
+            ->orderBy('sort_order')
+            ->get()
+            ->values()
+            ->get($invoice->installment_number - 1);
+
+        if (!$installment) {
+            return round($subtotal * ClientProjectInvoice::HST_RATE, 2);
+        }
+
+        return round((float) $installment->effectiveHst(), 2);
+    }
+
+    /**
+     * The HST amount the invoice will bill (matches whatever
+     * computeInvoiceHst() resolves to at the locked subtotal). Used by
+     * the editor to show the locked HST breakdown alongside the locked
+     * subtotal/total without having to re-derive it on the front end.
+     */
+    protected function lockedHst(ClientProject $project, ClientProjectInvoice $invoice): float
+    {
+        if ($invoice->isManual()) {
+            $sub = $this->lockedSubtotal($project, $invoice);
+
+            return round($sub * ClientProjectInvoice::HST_RATE, 2);
+        }
+
+        return $this->computeInvoiceHst($project, $invoice, $this->lockedSubtotal($project, $invoice));
+    }
+
     protected function lockedTotalWithHst(ClientProject $project, ClientProjectInvoice $invoice): float
     {
-        $sub = $this->lockedSubtotal($project, $invoice);
-
-        return round($sub * (1 + ClientProjectInvoice::HST_RATE), 2);
+        return round($this->lockedSubtotal($project, $invoice) + $this->lockedHst($project, $invoice), 2);
     }
 
     protected function normaliseItems(array $rows): array

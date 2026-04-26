@@ -172,7 +172,10 @@ class AdminDashboardService
                 if ($inst->is_paid) {
                     continue;
                 }
-                $gross = round((float) $inst->amount * (1 + ClientProject::HST_RATE), 2);
+                // Use the installment's proportional HST share rather than
+                // a flat 13% — see ClientProjectInstallment::effectiveHst()
+                // for why HST-exempt quotation lines must not be re-taxed.
+                $gross = $inst->effectiveTotal();
                 $d = $this->projectedInstallmentDate($project, $inst, $instRows->count(), $byInst);
                 $this->addToProjectionBuckets($buckets, $d, $rangeStart, $rangeEnd, $gross, $ytdMargin);
             }
@@ -513,7 +516,7 @@ class AdminDashboardService
         if (!$inst) {
             return null;
         }
-        $gross = round((float) $inst->amount * (1 + ClientProject::HST_RATE), 2);
+        $gross = $inst->effectiveTotal();
         $label = $inst->label ?: 'Installment';
 
         return ClientProject::formatMoney($gross).' — '.$label;

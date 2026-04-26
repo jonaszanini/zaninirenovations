@@ -17,10 +17,16 @@
 
   // The stored `total_amount` and each installment's `amount` are
   // pre-tax (profit / HST set-aside calculations depend on that).
-  // For the client-facing "what they actually pay" figure we multiply
-  // by (1 + HST_RATE) on display only.
-  $hstRate = \App\Models\ClientProject::HST_RATE;
-  $withTax = 1 + $hstRate;
+  //
+  // For the client-facing "what they actually pay" figure we add the
+  // installment's PROPORTIONAL slice of the quotation's HST — not a
+  // flat 13% — because a quotation line may have been HST-exempt
+  // (e.g. supplied material vs labour). The effective rate is the
+  // quotation's HST ÷ subtotal, so it equals 13% only when every line
+  // had HST applied. See ClientProjectInstallment::effectiveHst().
+  $effectiveHstRate = $hasQuot && $quotSub > 0
+      ? (float) $project->quotation->hst() / (float) $quotSub
+      : \App\Models\ClientProject::HST_RATE;
 @endphp
 
 @if ($isHourly)
@@ -79,7 +85,7 @@
           data-total="{{ $hiddenPreTax }}"
           data-plan="{{ $paymentPlan }}"
           data-paid-count="{{ $paidInstallmentCount }}"
-          data-hst-rate="{{ $hstRate }}">
+          data-hst-rate="{{ $effectiveHstRate }}">
       @csrf
 
       <input type="hidden" name="total_amount" id="cp-total" value="{{ $hiddenPreTax > 0 ? number_format($hiddenPreTax, 2, '.', '') : '' }}">
@@ -174,7 +180,7 @@
               <td>{{ $idx + 1 }}</td>
               <td>{{ $inst->label }}</td>
               <td>{{ number_format((float) $inst->percentage, 2) }}%</td>
-              <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney((float) $inst->amount * $withTax) }}</td>
+              <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($inst->effectiveTotal()) }}</td>
               <td>
                 @if ($inst->is_paid)
                   <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid</span>
@@ -198,9 +204,15 @@
               </td>
             </tr>
           @endforeach
+          @php
+            $totalPaidWithHst = $installments->where('is_paid', true)->reduce(
+                fn ($carry, $i) => $carry + $i->effectiveTotal(),
+                0.0
+            );
+          @endphp
           <tr class="cp-totals-row">
             <td colspan="3"><strong>Total paid</strong></td>
-            <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($project->totalRevenueCollected() * $withTax) }}</strong></td>
+            <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($totalPaidWithHst) }}</strong></td>
             <td colspan="3">{{ number_format($project->percentPaid(), 1) }}% of total amount</td>
           </tr>
         </tbody>

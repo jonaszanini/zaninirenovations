@@ -6,13 +6,27 @@
   $paidInstallmentCount = $installments->where('is_paid', true)->count();
   $planIsLocked = $paidInstallmentCount > 0;
   $hourlyRateConfigured = (float) ($project->hourly_rate ?? 0);
+  $hasQuot = $project->quotation && $project->quotation->hasContent();
+  $quotSub = $hasQuot ? (float) $project->quotation->subtotal() : null;
+  $quotGrand = $hasQuot ? (float) $project->quotation->grandTotal() : null;
+  // Pre-tax basis for installment % (matches DB total_amount when in sync).
+  $hiddenPreTax = $paidInstallmentCount > 0
+      ? $totalAmount
+      : ($quotSub ?? $totalAmount);
+  $canSavePaymentPlan = $paidInstallmentCount > 0 || $hasQuot;
 
   // The stored `total_amount` and each installment's `amount` are
   // pre-tax (profit / HST set-aside calculations depend on that).
-  // For the client-facing "what they actually pay" figure we multiply
-  // by (1 + HST_RATE) on display only.
-  $hstRate = \App\Models\ClientProject::HST_RATE;
-  $withTax = 1 + $hstRate;
+  //
+  // For the client-facing "what they actually pay" figure we add the
+  // installment's PROPORTIONAL slice of the quotation's HST — not a
+  // flat 13% — because a quotation line may have been HST-exempt
+  // (e.g. supplied material vs labour). The effective rate is the
+  // quotation's HST ÷ subtotal, so it equals 13% only when every line
+  // had HST applied. See ClientProjectInstallment::effectiveHst().
+  $effectiveHstRate = $hasQuot && $quotSub > 0
+      ? (float) $project->quotation->hst() / (float) $quotSub
+      : \App\Models\ClientProject::HST_RATE;
 ?>
 
 <?php if($isHourly): ?>
@@ -76,29 +90,24 @@ unset($__errorArgs, $__bag); ?>
     <form action="<?php echo e(route('admin.client-projects.installments.save', $project)); ?>"
           method="post"
           id="cp-installments-form"
-          data-total="<?php echo e($totalAmount); ?>"
+          data-total="<?php echo e($hiddenPreTax); ?>"
           data-plan="<?php echo e($paymentPlan); ?>"
           data-paid-count="<?php echo e($paidInstallmentCount); ?>"
-          data-hst-rate="<?php echo e($hstRate); ?>">
+          data-hst-rate="<?php echo e($effectiveHstRate); ?>">
       <?php echo csrf_field(); ?>
+
+      <input type="hidden" name="total_amount" id="cp-total" value="<?php echo e($hiddenPreTax > 0 ? number_format($hiddenPreTax, 2, '.', '') : ''); ?>">
 
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
-          <label for="cp-total">Total project amount (CAD) <span class="cp-required">*</span></label>
-          <input type="text" id="cp-total" name="total_amount" required
-                 class="cp-money-input"
-                 inputmode="decimal"
-                 autocomplete="off"
-                 placeholder="0.00"
-                 value="<?php echo e(old('total_amount', $totalAmount > 0 ? number_format($totalAmount, 2, '.', '') : '')); ?>">
-          <?php $__errorArgs = ['total_amount'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
+          <label>Total with HST (from quotation)</label>
+          <?php if($hasQuot): ?>
+            <p class="cp-financials-locked-total" id="cp-total-with-hst-display"><?php echo e(\App\Models\ClientProject::formatMoney($quotGrand)); ?></p>
+            <p class="admin-form-help">Pre-tax subtotal (used for installment %): <?php echo e(\App\Models\ClientProject::formatMoney($quotSub)); ?>. Edit line items and HST checkboxes on the <a href="<?php echo e(route('admin.client-projects.quotation.edit', $project)); ?>">Quotation editor</a>.</p>
+          <?php else: ?>
+            <p class="cp-financials-locked-total">—</p>
+            <p class="admin-form-help">Add a quotation with line items first. <?php if($paidInstallmentCount > 0): ?> Payment totals stay fixed while installments are paid. <?php endif; ?></p>
+          <?php endif; ?>
         </div>
         <div class="admin-form-group">
           <label for="cp-plan">Payment schedule
@@ -160,7 +169,7 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
 
-      <button type="submit" class="admin-btn admin-btn--primary">Save payment plan</button>
+      <button type="submit" class="admin-btn admin-btn--primary" <?php if(!$canSavePaymentPlan): echo 'disabled'; endif; ?>>Save payment plan</button>
     </form>
   </div>
 
@@ -187,7 +196,7 @@ unset($__errorArgs, $__bag); ?>
               <td><?php echo e($idx + 1); ?></td>
               <td><?php echo e($inst->label); ?></td>
               <td><?php echo e(number_format((float) $inst->percentage, 2)); ?>%</td>
-              <td class="cp-col-amount"><?php echo e(\App\Models\ClientProject::formatMoney((float) $inst->amount * $withTax)); ?></td>
+              <td class="cp-col-amount"><?php echo e(\App\Models\ClientProject::formatMoney($inst->effectiveTotal())); ?></td>
               <td>
                 <?php if($inst->is_paid): ?>
                   <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid</span>
@@ -211,9 +220,15 @@ unset($__errorArgs, $__bag); ?>
               </td>
             </tr>
           <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+          <?php
+            $totalPaidWithHst = $installments->where('is_paid', true)->reduce(
+                fn ($carry, $i) => $carry + $i->effectiveTotal(),
+                0.0
+            );
+          ?>
           <tr class="cp-totals-row">
             <td colspan="3"><strong>Total paid</strong></td>
-            <td class="cp-col-amount"><strong><?php echo e(\App\Models\ClientProject::formatMoney($project->totalRevenueCollected() * $withTax)); ?></strong></td>
+            <td class="cp-col-amount"><strong><?php echo e(\App\Models\ClientProject::formatMoney($totalPaidWithHst)); ?></strong></td>
             <td colspan="3"><?php echo e(number_format($project->percentPaid(), 1)); ?>% of total amount</td>
           </tr>
         </tbody>

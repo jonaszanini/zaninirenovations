@@ -131,14 +131,23 @@
     <?php endif; ?>
 
     
-    <?php if($invoice->isDraft() && !$invoice->wasEverSent()): ?>
+    <?php if (! ($invoice->isPaid())): ?>
+      <?php
+        if ($invoice->wasEverSent()) {
+            $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to the client. Deleting it here will REMOVE it from our records and let you create a fresh invoice for this installment, but the client will still have the old PDF in their inbox. You should let them know to disregard the old one. Continue?";
+            $deleteTitle = 'Delete this sent invoice and start the installment over.';
+        } else {
+            $deleteConfirm = 'Delete this draft invoice? This cannot be undone.';
+            $deleteTitle = 'Delete this draft invoice.';
+        }
+      ?>
       <form action="<?php echo e(route('admin.client-projects.invoices.destroy', [$project, $invoice])); ?>"
             method="post"
             class="cp-inline-form"
-            onsubmit="return confirm('Delete this draft invoice? This cannot be undone.');">
+            onsubmit="return confirm(<?php echo e(json_encode($deleteConfirm)); ?>);">
         <?php echo csrf_field(); ?>
         <?php echo method_field('DELETE'); ?>
-        <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" title="Delete this draft invoice.">
+        <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" title="<?php echo e($deleteTitle); ?>">
           <i class="fa fa-trash"></i>
         </button>
       </form>

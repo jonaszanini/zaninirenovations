@@ -80,8 +80,13 @@
                 </span>
               </td>
               <td>
-                <div><?php echo e(\App\Models\ClientProject::formatDate($project->start_date)); ?></div>
-                <div class="cp-subtle">→ <?php echo e(\App\Models\ClientProject::formatDate($project->end_date)); ?></div>
+                <?php if($project->showsVisitLayoutInProjectList()): ?>
+                  <div><?php echo e(\App\Models\ClientProject::formatDate($project->visit_date)); ?></div>
+                  <div class="cp-subtle">Visit</div>
+                <?php else: ?>
+                  <div><?php echo e(\App\Models\ClientProject::formatDate($project->start_date)); ?></div>
+                  <div class="cp-subtle">→ <?php echo e(\App\Models\ClientProject::formatDate($project->end_date)); ?></div>
+                <?php endif; ?>
               </td>
               <td class="cp-col-amount">
                 <?php if($project->isHourly()): ?>

@@ -137,12 +137,18 @@
         to snapshot the unbilled entries into a draft, then review and send.
       </p>
     @else
-      <div class="admin-table-scroll" style="margin-top:14px;">
+      <p class="admin-form-help" style="margin-top:14px; margin-bottom:6px;">
+        <i class="fa fa-info-circle"></i>
+        HST (13%) is added to each invoice once, on top of the pre-tax subtotal.
+      </p>
+      <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
             <tr>
               <th>Description</th>
-              <th style="width:150px;">Amount <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th style="width:120px;">Subtotal</th>
+              <th style="width:120px;">HST (13%)</th>
+              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
               <th style="width:130px;">Status</th>
               <th style="width:340px;">Actions</th>
             </tr>
@@ -164,7 +170,9 @@
                     </div>
                   @endif
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</td>
+                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
+                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->hst) }}</td>
+                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
                 <td>
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
@@ -203,9 +211,6 @@
     $installments = $project->installments;
     $installmentInvoices = $invoices->whereNotNull('installment_number')->keyBy('installment_number');
     $manualInvoices = $invoices->whereNull('installment_number')->values();
-
-    $hstRate = \App\Models\ClientProject::HST_RATE;
-    $withTax = 1 + $hstRate;
   @endphp
 
   {{-- ---------------------------------------------------------------- --}}
@@ -255,17 +260,30 @@
 
       {{-- ================================================================
            Installment table: one row per installment from the payment
-           plan. Each row summarises the installment (description + amount
-           including HST) and its current invoice status, with all the
-           per-state action buttons inline.
+           plan. Each row breaks the installment amount down into
+           Subtotal (pre-HST, from the Financials payment plan) + HST
+           + Total (incl. HST), so it's visually obvious that HST is
+           applied exactly once on top of the pre-tax installment.
            ================================================================ --}}
+      <p class="admin-form-help" style="margin:10px 0 6px;">
+        <i class="fa fa-info-circle"></i>
+        Subtotal comes from the pre-tax installment amount on the
+        <a href="#financials" data-cp-jump-tab="financials">Financials payment plan</a>.
+        HST is applied once at invoice time, sliced proportionally from the
+        quotation's actual HST — so HST-exempt quotation lines (e.g. supplied
+        material) never get re-taxed here.
+        Existing draft / sent invoices keep their stored values; create a new
+        invoice if you change the payment plan after one was sent.
+      </p>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
             <tr>
-              <th style="width:70px;">#</th>
+              <th style="width:50px;">#</th>
               <th>Description</th>
-              <th style="width:150px;">Amount <span class="admin-form-help cp-incl-hst">(incl. 13% HST)</span></th>
+              <th style="width:120px;">Subtotal</th>
+              <th style="width:120px;">HST</th>
+              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
               <th style="width:130px;">Status</th>
               <th style="width:340px;">Actions</th>
             </tr>
@@ -275,7 +293,27 @@
               @php
                 $n = $idx + 1;
                 $invoice = $installmentInvoices->get($n);
-                $amountIncl = (float) $inst->amount * $withTax;
+
+                // Prefer the stored invoice values when an invoice exists —
+                // those are what was (or will be) emailed. Otherwise project
+                // the figures from the installment + quotation HST share.
+                if ($invoice) {
+                    $rowSubtotal = (float) $invoice->subtotal;
+                    $rowHst = (float) $invoice->hst;
+                    $rowTotal = (float) $invoice->total;
+                } else {
+                    $rowSubtotal = (float) $inst->amount;
+                    $rowHst = $inst->effectiveHst();
+                    $rowTotal = $inst->effectiveTotal();
+                }
+
+                // Highlight when the existing invoice's stored total no
+                // longer matches the projected installment total (e.g.
+                // an old invoice predates the HST fix). Admin should
+                // delete + recreate to bring it in line.
+                $expectedTotal = $inst->effectiveTotal();
+                $hasMismatch = $invoice && abs($rowTotal - $expectedTotal) > 0.01;
+
                 $status = $invoice?->status;
                 $statusLabel = \App\Models\ClientProjectInvoice::statusLabel($status);
                 $statusColor = \App\Models\ClientProjectInvoice::statusColor($status);
@@ -287,8 +325,19 @@
                   @if ($inst->is_paid)
                     <span class="cp-badge" style="background:#22c55e20;color:#15803d;margin-left:4px;">Installment paid</span>
                   @endif
+                  @if ($hasMismatch)
+                    <div class="admin-form-help" style="margin-top:4px;color:#b45309;">
+                      <i class="fa fa-exclamation-triangle"></i>
+                      Stored invoice total ({{ \App\Models\ClientProject::formatMoney($rowTotal) }})
+                      doesn't match the current expected total
+                      ({{ \App\Models\ClientProject::formatMoney($expectedTotal) }}).
+                      Delete and recreate this invoice to refresh.
+                    </div>
+                  @endif
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($amountIncl) }}</td>
+                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($rowSubtotal) }}</td>
+                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($rowHst) }}</td>
+                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($rowTotal) }}</strong></td>
                 <td>
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
@@ -317,13 +366,19 @@
          Manual / ad-hoc invoices (no installment link)
          ================================================================ --}}
     @if ($manualInvoices->isNotEmpty())
-      <h4 style="margin:24px 0 10px;">Manual invoices</h4>
+      <h4 style="margin:24px 0 6px;">Manual invoices</h4>
+      <p class="admin-form-help" style="margin:0 0 6px;">
+        <i class="fa fa-info-circle"></i>
+        HST (13%) is added to the manual invoice subtotal once — these invoices are not tied to the quotation, so the breakdown below is the only HST applied.
+      </p>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
             <tr>
               <th>Description</th>
-              <th style="width:150px;">Amount <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th style="width:120px;">Subtotal</th>
+              <th style="width:120px;">HST (13%)</th>
+              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
               <th style="width:130px;">Status</th>
               <th style="width:340px;">Actions</th>
             </tr>
@@ -338,7 +393,9 @@
                 <td>
                   {{ $invoice->installment_description ?: 'Manual invoice' }}
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</td>
+                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
+                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->hst) }}</td>
+                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
                 <td>
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
