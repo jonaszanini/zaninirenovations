@@ -1971,15 +1971,12 @@ body.cp-modal-open {
 }
 
 /* Standard quotation (standalone materials + labour) ------------------ */
+/* Materials full width, labour stacked below (not side-by-side). */
 .sq-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  display: flex;
+  flex-direction: column;
   gap: 20px;
-  align-items: start;
   margin-bottom: 20px;
-}
-@media (max-width: 1024px) {
-  .sq-layout { grid-template-columns: 1fr; }
 }
 .sq-panel-head {
   display: flex;
