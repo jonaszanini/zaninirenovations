@@ -65,6 +65,25 @@
       </div>
 
       <div class="admin-form-section">
+        <h3>Visit date</h3>
+        <p class="admin-form-help">On-site visit before quoting. Enable only when the client has asked for a visit.</p>
+        <input type="hidden" name="visit_required" value="0">
+        <div class="admin-form-group">
+          <label class="cp-checkbox-label">
+            <input type="checkbox" name="visit_required" value="1" id="cp-edit-visit-required"
+              @checked(old('visit_required', $project->visit_required))>
+            <span>Visit required</span>
+          </label>
+        </div>
+        <div class="admin-form-group cp-visit-date">
+          <label for="cp-edit-visit-date">Visit date</label>
+          <input type="date" id="cp-edit-visit-date" name="visit_date"
+            value="{{ old('visit_date', optional($project->visit_date)->toDateString()) }}">
+          @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+      </div>
+
+      <div class="admin-form-section">
         <h3>Schedule <span class="admin-form-help cp-inline-help" title="Optional. Used to show the project on the Project Calendar page and to send an 'Add to Google Calendar' email.">?</span></h3>
         <div id="cp-edit-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
         <div class="admin-form-grid-2">
@@ -152,9 +171,16 @@
       var start = document.getElementById('cp-start-date');
       var end = document.getElementById('cp-end-date');
       var warn = document.getElementById('cp-edit-date-warning');
-      if (!start || !end || !warn) return;
+      var visitCb = document.getElementById('cp-edit-visit-required');
+      var visitDate = document.getElementById('cp-edit-visit-date');
+
+      function syncEditVisitDate() {
+        if (!visitCb || !visitDate) return;
+        visitDate.disabled = !visitCb.checked;
+      }
 
       function checkEditDates() {
+        if (!start || !end || !warn) return true;
         if (!start.value || !end.value) {
           warn.style.display = 'none';
           warn.textContent = '';
@@ -170,12 +196,22 @@
         return true;
       }
 
-      start.addEventListener('change', checkEditDates);
-      end.addEventListener('change', checkEditDates);
+      if (start && end && warn) {
+        start.addEventListener('change', checkEditDates);
+        end.addEventListener('change', checkEditDates);
+      }
+      if (visitCb && visitDate) {
+        visitCb.addEventListener('change', syncEditVisitDate);
+        syncEditVisitDate();
+      }
       form.addEventListener('submit', function (e) {
+        if (visitCb && visitDate && !visitCb.checked) {
+          visitDate.disabled = false;
+          visitDate.value = '';
+        }
         if (!checkEditDates()) {
           e.preventDefault();
-          warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          if (warn) warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       });
     })();

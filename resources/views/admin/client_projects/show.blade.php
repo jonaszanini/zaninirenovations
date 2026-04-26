@@ -104,6 +104,16 @@
         <dt>Address</dt><dd>{{ $project->client_address ?: '—' }}</dd>
         <dt>Created</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->created_at) }}</dd>
         <dt>Status changed</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->status_changed_at) }}</dd>
+        @if ($project->visit_required || $project->visit_date)
+          <dt>Visit</dt>
+          <dd>
+            @if ($project->visit_required)
+              {{ $project->visit_date ? \App\Models\ClientProject::formatDate($project->visit_date) : 'Required — date not set yet' }}
+            @elseif ($project->visit_date)
+              {{ \App\Models\ClientProject::formatDate($project->visit_date) }}
+            @endif
+          </dd>
+        @endif
       </dl>
 
       @if ($project->notes)
@@ -114,21 +124,41 @@
   </section>
 
   {{-- SCHEDULE / CALENDAR TAB ---------------------------------------------- --}}
-  <section class="cp-tab-panel" data-panel="schedule">
-    <div class="admin-card">
-      <h3>Start &amp; End dates</h3>
-      <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link.</p>
-      <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
-      <form id="cp-schedule-dates-form" action="{{ route('admin.client-projects.update', $project) }}" method="post" class="cp-schedule-form">
-        @csrf
-        @method('PUT')
-        {{-- Include required fields (controller validates the full update payload). --}}
-        <input type="hidden" name="name" value="{{ $project->name }}">
-        <input type="hidden" name="client_name" value="{{ $project->client_name }}">
-        <input type="hidden" name="client_email" value="{{ $project->client_email }}">
-        <input type="hidden" name="client_phone" value="{{ $project->client_phone }}">
-        <input type="hidden" name="client_address" value="{{ $project->client_address }}">
-        <input type="hidden" name="notes" value="{{ $project->notes }}">
+  <section class="cp-tab-panel" data-panel="schedule" id="schedule">
+    <form id="cp-schedule-dates-form" action="{{ route('admin.client-projects.update', $project) }}" method="post" class="cp-schedule-form">
+      @csrf
+      @method('PUT')
+      {{-- Include required fields (controller validates the full update payload). --}}
+      <input type="hidden" name="name" value="{{ $project->name }}">
+      <input type="hidden" name="client_name" value="{{ $project->client_name }}">
+      <input type="hidden" name="client_email" value="{{ $project->client_email }}">
+      <input type="hidden" name="client_phone" value="{{ $project->client_phone }}">
+      <input type="hidden" name="client_address" value="{{ $project->client_address }}">
+      <input type="hidden" name="notes" value="{{ $project->notes }}">
+
+      <div class="admin-card cp-visit-card">
+        <h3>Visit date</h3>
+        <p class="admin-form-help">Use this when the client wants an on-site visit before work is scheduled. Turn on <strong>Visit required</strong> to set a date.</p>
+        <input type="hidden" name="visit_required" value="0">
+        <div class="admin-form-group cp-visit-toggle">
+          <label class="cp-checkbox-label">
+            <input type="checkbox" name="visit_required" value="1" id="cp-visit-required"
+              @checked(old('visit_required', $project->visit_required))>
+            <span>Visit required</span>
+          </label>
+        </div>
+        <div class="admin-form-group cp-visit-date">
+          <label for="cp-visit-date">Visit date</label>
+          <input type="date" id="cp-visit-date" name="visit_date"
+            value="{{ old('visit_date', optional($project->visit_date)->toDateString()) }}">
+          @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>Start &amp; End dates</h3>
+        <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link.</p>
+        <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
 
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
@@ -144,22 +174,22 @@
           </div>
         </div>
 
-        <button type="submit" class="admin-btn admin-btn--primary">Save dates</button>
-      </form>
+        @if ($project->start_date && $project->end_date)
+          <div class="cp-schedule-summary" style="margin-bottom:16px;">
+            <strong>Scheduled:</strong>
+            {{ \App\Models\ClientProject::formatDate($project->start_date) }}
+            →
+            {{ \App\Models\ClientProject::formatDate($project->end_date) }}
+            @if ($calendarLink)
+              ·
+              <a href="{{ $calendarLink }}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
+            @endif
+          </div>
+        @endif
 
-      @if ($project->start_date && $project->end_date)
-        <div class="cp-schedule-summary">
-          <strong>Scheduled:</strong>
-          {{ \App\Models\ClientProject::formatDate($project->start_date) }}
-          →
-          {{ \App\Models\ClientProject::formatDate($project->end_date) }}
-          @if ($calendarLink)
-            ·
-            <a href="{{ $calendarLink }}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
-          @endif
-        </div>
-      @endif
-    </div>
+        <button type="submit" class="admin-btn admin-btn--primary">Save dates</button>
+      </div>
+    </form>
 
     {{-- Hourly-only: manual "service confirmation" email. The rate was
          agreed verbally up front, so the client doesn't get the automatic
@@ -342,9 +372,17 @@
       var start = form.querySelector('[name="start_date"]');
       var end = form.querySelector('[name="end_date"]');
       var warn = document.getElementById('cp-schedule-date-warning');
-      if (!start || !end || !warn) return;
+      var visitCb = document.getElementById('cp-visit-required');
+      var visitDate = document.getElementById('cp-visit-date');
+
+      function syncVisitDateEnabled() {
+        if (!visitCb || !visitDate) return;
+        var on = visitCb.checked;
+        visitDate.disabled = !on;
+      }
 
       function checkScheduleDates() {
+        if (!start || !end || !warn) return true;
         if (!start.value || !end.value) {
           warn.style.display = 'none';
           warn.textContent = '';
@@ -360,12 +398,23 @@
         return true;
       }
 
-      start.addEventListener('change', checkScheduleDates);
-      end.addEventListener('change', checkScheduleDates);
+      if (start && end && warn) {
+        start.addEventListener('change', checkScheduleDates);
+        end.addEventListener('change', checkScheduleDates);
+      }
+      if (visitCb && visitDate) {
+        visitCb.addEventListener('change', syncVisitDateEnabled);
+        syncVisitDateEnabled();
+      }
+
       form.addEventListener('submit', function (e) {
+        if (visitCb && visitDate && !visitCb.checked) {
+          visitDate.disabled = false;
+          visitDate.value = '';
+        }
         if (!checkScheduleDates()) {
           e.preventDefault();
-          warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          if (warn) warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       });
     })();

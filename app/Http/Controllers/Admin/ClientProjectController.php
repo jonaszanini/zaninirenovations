@@ -207,6 +207,8 @@ class ClientProjectController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'visit_required' => ['sometimes', 'boolean'],
+            'visit_date' => ['nullable', 'date'],
             'billing_type' => ['nullable', \Illuminate\Validation\Rule::in([
                 ClientProject::BILLING_FIXED,
                 ClientProject::BILLING_HOURLY,
@@ -239,6 +241,16 @@ class ClientProjectController extends Controller
             unset($data['billing_type'], $data['hourly_rate']);
         } elseif ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
             $data['hourly_rate'] = null;
+        }
+
+        // Visit fields: only apply when this request includes them (Calendar /
+        // Edit forms). Other partial updates must not wipe visit settings.
+        if (array_key_exists('visit_required', $data)) {
+            if (!$data['visit_required']) {
+                $data['visit_date'] = null;
+            }
+        } else {
+            unset($data['visit_required'], $data['visit_date']);
         }
 
         $previousStart = $client_project->start_date ? $client_project->start_date->toDateString() : null;
