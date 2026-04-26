@@ -131,14 +131,13 @@ class ClientProjectController extends Controller
         unset($data['send_client_email']);
 
         // Hourly projects imply the price has already been agreed verbally,
-        // so we skip Quote Pending (which would trigger daily admin reminders
-        // and the "we received your request" client email) and land directly
-        // at Proposal Accepted. The service confirmation email is sent
-        // manually from the project page once dates are scheduled.
+        // so we skip the pre-quote stages (visit / quote pending) and land
+        // directly at Proposal Accepted. Fixed-price projects start at
+        // Visit scheduled (first workflow step).
         $isHourly = $data['billing_type'] === ClientProject::BILLING_HOURLY;
         $initialStatus = $isHourly
             ? ClientProject::STATUS_PROPOSAL_ACCEPTED
-            : ClientProject::STATUS_QUOTE_PENDING;
+            : ClientProject::STATUS_VISIT_SCHEDULED;
 
         $project = DB::transaction(function () use ($data, $initialStatus) {
             $project = ClientProject::create(array_merge($data, [
@@ -154,9 +153,9 @@ class ClientProjectController extends Controller
         if ($isHourly) {
             $successMessage = 'Project created. Status set to Proposal Accepted — no email sent to the client yet.';
         } elseif ($sendClientEmail && filled($project->client_email)) {
-            $successMessage = 'Project created. Status set to Quote Pending. Acknowledgement emailed to the client.';
+            $successMessage = 'Project created. Status set to Visit scheduled. Acknowledgement emailed to the client.';
         } else {
-            $successMessage = 'Project created. Status set to Quote Pending. No client email sent.';
+            $successMessage = 'Project created. Status set to Visit scheduled. No client email sent.';
         }
 
         return redirect()
@@ -173,6 +172,7 @@ class ClientProjectController extends Controller
             'timeEntries',
             'statusHistory.user',
             'contract',
+            'quotation',
             // invoices.timeEntries is used by the hourly invoice tab to
             // show "N time entries snapshotted" under each invoice row.
             'invoices.timeEntries',

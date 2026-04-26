@@ -286,6 +286,13 @@
 /* =================================================================
    Financials: payment plan editor
    ================================================================= */
+.cp-financials-locked-total {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #024768;
+}
+
 .cp-installments-editor {
   margin-top: 12px;
   margin-bottom: 16px;
@@ -1293,7 +1300,21 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.cp-quotation-items-table .col-amount { width: 160px; }
+.cp-quotation-items-table .col-hst {
+  width: 110px;
+  text-align: center;
+  white-space: nowrap;
+}
+.cp-quotation-items-table .col-hst label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.cp-quotation-items-table .col-amount { width: 140px; }
 .cp-quotation-items-table .col-actions { width: 50px; text-align: right; }
 .cp-quotation-items-table th.col-amount { text-align: right; }
 .cp-quotation-items-table .cp-quotation-row-desc {
@@ -1432,6 +1453,13 @@ textarea.admin-input {
   font-weight: 600;
   letter-spacing: 0.03em;
   text-align: left;
+}
+.cp-quotation-items th.cp-quotation-hst-col,
+.cp-quotation-items td.cp-quotation-hst-col {
+  text-align: center;
+  width: 56px;
+  font-size: 0.85rem;
+  color: #4b5563;
 }
 .cp-quotation-items th.amount,
 .cp-quotation-items td.amount {

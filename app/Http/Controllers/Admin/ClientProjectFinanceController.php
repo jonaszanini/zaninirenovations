@@ -34,19 +34,34 @@ class ClientProjectFinanceController extends Controller
         }
 
         $data = $request->validate([
-            'total_amount' => ['required', 'numeric', 'min:0.01'],
             'payment_plan' => ['required', 'integer', Rule::in([1, 2, 3, 4])],
             'percentages' => ['required_unless:payment_plan,1', 'array'],
             'percentages.*' => ['numeric', 'min:0', 'max:100'],
         ]);
 
-        $total = round((float) $data['total_amount'], 2);
         $plan = (int) $data['payment_plan'];
 
         // If any installment is already paid, the plan count is locked —
         // changing it would destroy a paid financial record. Percentages and
         // total amount are still editable.
         $paidCount = $client_project->installments()->where('is_paid', true)->count();
+
+        if ($paidCount === 0) {
+            $quotation = $client_project->quotation;
+            if (!$quotation || !$quotation->hasContent()) {
+                return back()
+                    ->with('error', 'Add and save a quotation with line items first. The payment plan uses the quotation pre-tax subtotal per installment; invoices add 13% HST on each installment amount.');
+            }
+            $total = round((float) $quotation->subtotal(), 2);
+            if ($total < 0.01) {
+                return back()->with('error', 'Quotation line items must sum to more than zero before saving the payment plan.');
+            }
+        } else {
+            $total = round((float) $client_project->total_amount, 2);
+            if ($total < 0.01) {
+                return back()->with('error', 'The stored contract total is invalid. Restore the quotation or contact support.');
+            }
+        }
         if ($paidCount > 0 && $plan !== (int) $client_project->payment_plan) {
             return back()
                 ->withErrors(['payment_plan' => 'The payment plan cannot be changed — one or more installments have already been marked paid.'])

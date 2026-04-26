@@ -24,8 +24,8 @@
     <h3>Quotation</h3>
     <p class="admin-form-help">
       Create the quotation (or estimate) for this project. Add line items
-      with the price excluding HST and we'll automatically calculate the
-      13&nbsp;% HST and grand total. When you're ready, you can download a
+      with the price excluding HST. Apply 13&nbsp;% HST per line (defaults on);
+      uncheck for tax-exempt lines. When you're ready, you can download a
       PDF or email it directly to the client.
     </p>
     <div class="cp-contract-empty-action">
@@ -134,6 +134,7 @@
         <thead>
           <tr>
             <th>Description</th>
+            <th class="cp-quotation-hst-col">HST</th>
             <th class="amount">Amount</th>
           </tr>
         </thead>
@@ -141,21 +142,22 @@
           @foreach ($items as $row)
             <tr>
               <td>{{ $row['description'] }}</td>
+              <td class="cp-quotation-hst-col">{{ !empty($row['apply_hst']) ? '13%' : '—' }}</td>
               <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
             </tr>
           @endforeach
         </tbody>
         <tfoot>
           <tr>
-            <td class="totals-label">Subtotal</td>
+            <td class="totals-label" colspan="2">Subtotal</td>
             <td class="amount">{{ \App\Models\ClientProject::formatMoney($subtotal) }}</td>
           </tr>
           <tr>
-            <td class="totals-label">HST (13%)</td>
+            <td class="totals-label" colspan="2">HST (13% on marked lines)</td>
             <td class="amount">{{ \App\Models\ClientProject::formatMoney($hst) }}</td>
           </tr>
           <tr class="grand-row">
-            <td class="totals-label">Total with HST</td>
+            <td class="totals-label" colspan="2">Total with HST</td>
             <td class="amount">{{ \App\Models\ClientProject::formatMoney($grand) }}</td>
           </tr>
         </tfoot>

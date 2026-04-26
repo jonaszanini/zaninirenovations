@@ -1,5 +1,11 @@
-@component('emails.client_projects.layout', ['title' => 'Quote still pending'])
-  <p><strong>Reminder:</strong> a quote still needs to be prepared and sent for this project.</p>
+@component('emails.client_projects.layout', ['title' => $project->status === \App\Models\ClientProject::STATUS_VISIT_SCHEDULED ? 'Visit / quote prep' : 'Quote still pending'])
+  <p><strong>Reminder:</strong>
+    @if ($project->status === \App\Models\ClientProject::STATUS_VISIT_SCHEDULED)
+      this project is in <strong>Visit scheduled</strong> — follow up after the site visit and prepare/send the quote when ready.
+    @else
+      a quote still needs to be prepared and sent for this project.
+    @endif
+  </p>
 
   <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:12px;font-size:14px;">
     <tr>

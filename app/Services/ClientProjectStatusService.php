@@ -36,8 +36,8 @@ class ClientProjectStatusService
                 $project->status = $toStatus;
                 $project->status_changed_at = now();
 
-                // Reset bookkeeping that only makes sense for a specific status.
-                if ($toStatus !== ClientProject::STATUS_QUOTE_PENDING) {
+                // Reset bookkeeping that only makes sense for the pre-quote-sent stages.
+                if (!in_array($toStatus, ClientProject::preQuoteSentStatuses(), true)) {
                     $project->last_quote_reminder_sent_at = null;
                 }
                 if ($toStatus === ClientProject::STATUS_QUOTE_SENT) {
@@ -80,7 +80,7 @@ class ClientProjectStatusService
     {
         $this->recordHistory($project, null, $project->status, 'Project created.');
 
-        if ($sendClientEmail && $project->status === ClientProject::STATUS_QUOTE_PENDING) {
+        if ($sendClientEmail && $project->isAwaitingQuotePreparation()) {
             $this->safeSendClientQuoteReceived($project);
         }
     }

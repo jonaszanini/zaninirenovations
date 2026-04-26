@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * ClientProject — full business lifecycle for a renovation project
- * (from quote request through completion).
+ * (from first contact / visit through completion).
  *
  * This is distinct from the legacy Project model which only manages
  * portfolio photos shown on the public home page.
@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Storage;
 class ClientProject extends Model
 {
     // Canonical status keys (snake_case for DB, human labels in statusLabels()).
+    /** Lead / intake: on-site visit agreed, quote not sent yet. */
+    public const STATUS_VISIT_SCHEDULED = 'visit_scheduled';
     public const STATUS_QUOTE_PENDING = 'quote_pending';
     public const STATUS_QUOTE_SENT = 'quote_sent';
     public const STATUS_PROPOSAL_ACCEPTED = 'proposal_accepted';
@@ -257,10 +259,30 @@ class ClientProject extends Model
 
     // --- Status helpers ----------------------------------------------------
 
+    /**
+     * Statuses before a formal quotation email has been sent (visit / lead → quote prep).
+     *
+     * @return list<string>
+     */
+    public static function preQuoteSentStatuses(): array
+    {
+        return [
+            self::STATUS_VISIT_SCHEDULED,
+            self::STATUS_QUOTE_PENDING,
+        ];
+    }
+
+    /** True while the project is still in the visit or quote-pending intake stage. */
+    public function isAwaitingQuotePreparation(): bool
+    {
+        return in_array($this->status, self::preQuoteSentStatuses(), true);
+    }
+
     /** All valid status keys (in workflow order). */
     public static function statuses(): array
     {
         return [
+            self::STATUS_VISIT_SCHEDULED,
             self::STATUS_QUOTE_PENDING,
             self::STATUS_QUOTE_SENT,
             self::STATUS_PROPOSAL_ACCEPTED,
@@ -276,6 +298,7 @@ class ClientProject extends Model
     public static function statusLabels(): array
     {
         return [
+            self::STATUS_VISIT_SCHEDULED => 'Visit scheduled',
             self::STATUS_QUOTE_PENDING => 'Quote Pending',
             self::STATUS_QUOTE_SENT => 'Quote Sent',
             self::STATUS_PROPOSAL_ACCEPTED => 'Proposal Accepted',
@@ -291,6 +314,7 @@ class ClientProject extends Model
     public static function statusColors(): array
     {
         return [
+            self::STATUS_VISIT_SCHEDULED => '#0891b2',       // cyan — pre-quote / visit
             self::STATUS_QUOTE_PENDING => '#f59e0b',         // amber
             self::STATUS_QUOTE_SENT => '#3b82f6',            // blue
             self::STATUS_PROPOSAL_ACCEPTED => '#10b981',     // green
@@ -338,6 +362,67 @@ class ClientProject extends Model
     public function isHourly(): bool
     {
         return $this->billing_type === self::BILLING_HOURLY;
+    }
+
+    /**
+     * Fixed-price: sum of quotation line amounts (pre-HST). Used as the basis
+     * for payment-plan percentages — matches invoice line subtotals + 13% HST.
+     */
+    public function quotationSubtotalForFinancials(): ?float
+    {
+        if ($this->isHourly()) {
+            return null;
+        }
+        $q = $this->relationLoaded('quotation') ? $this->quotation : $this->quotation()->first();
+        if (!$q || !$q->hasContent()) {
+            return null;
+        }
+
+        return round($q->subtotal(), 2);
+    }
+
+    /** Fixed-price: quotation total including per-line HST (client-facing). */
+    public function quotationGrandTotalForFinancials(): ?float
+    {
+        if ($this->isHourly()) {
+            return null;
+        }
+        $q = $this->relationLoaded('quotation') ? $this->quotation : $this->quotation()->first();
+        if (!$q || !$q->hasContent()) {
+            return null;
+        }
+
+        return round($q->grandTotal(), 2);
+    }
+
+    /**
+     * After the quotation changes, copy its pre-tax subtotal into `total_amount`
+     * and refresh each installment's dollar amount (same %) when nothing is paid yet.
+     */
+    public function syncFixedContractTotalsFromQuotation(): bool
+    {
+        if ($this->isHourly()) {
+            return false;
+        }
+
+        $sub = $this->quotationSubtotalForFinancials();
+        if ($sub === null || $sub < 0.01) {
+            return false;
+        }
+
+        if ($this->installments()->where('is_paid', true)->exists()) {
+            return false;
+        }
+
+        $this->total_amount = $sub;
+        $this->saveQuietly();
+
+        foreach ($this->installments()->orderBy('sort_order')->get() as $inst) {
+            $inst->amount = round($sub * (float) $inst->percentage / 100, 2);
+            $inst->saveQuietly();
+        }
+
+        return true;
     }
 
     /**

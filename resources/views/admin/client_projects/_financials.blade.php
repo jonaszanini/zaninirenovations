@@ -6,6 +6,14 @@
   $paidInstallmentCount = $installments->where('is_paid', true)->count();
   $planIsLocked = $paidInstallmentCount > 0;
   $hourlyRateConfigured = (float) ($project->hourly_rate ?? 0);
+  $hasQuot = $project->quotation && $project->quotation->hasContent();
+  $quotSub = $hasQuot ? (float) $project->quotation->subtotal() : null;
+  $quotGrand = $hasQuot ? (float) $project->quotation->grandTotal() : null;
+  // Pre-tax basis for installment % (matches DB total_amount when in sync).
+  $hiddenPreTax = $paidInstallmentCount > 0
+      ? $totalAmount
+      : ($quotSub ?? $totalAmount);
+  $canSavePaymentPlan = $paidInstallmentCount > 0 || $hasQuot;
 
   // The stored `total_amount` and each installment's `amount` are
   // pre-tax (profit / HST set-aside calculations depend on that).
@@ -68,22 +76,24 @@
     <form action="{{ route('admin.client-projects.installments.save', $project) }}"
           method="post"
           id="cp-installments-form"
-          data-total="{{ $totalAmount }}"
+          data-total="{{ $hiddenPreTax }}"
           data-plan="{{ $paymentPlan }}"
           data-paid-count="{{ $paidInstallmentCount }}"
           data-hst-rate="{{ $hstRate }}">
       @csrf
 
+      <input type="hidden" name="total_amount" id="cp-total" value="{{ $hiddenPreTax > 0 ? number_format($hiddenPreTax, 2, '.', '') : '' }}">
+
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
-          <label for="cp-total">Total project amount (CAD) <span class="cp-required">*</span></label>
-          <input type="text" id="cp-total" name="total_amount" required
-                 class="cp-money-input"
-                 inputmode="decimal"
-                 autocomplete="off"
-                 placeholder="0.00"
-                 value="{{ old('total_amount', $totalAmount > 0 ? number_format($totalAmount, 2, '.', '') : '') }}">
-          @error('total_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
+          <label>Total with HST (from quotation)</label>
+          @if ($hasQuot)
+            <p class="cp-financials-locked-total" id="cp-total-with-hst-display">{{ \App\Models\ClientProject::formatMoney($quotGrand) }}</p>
+            <p class="admin-form-help">Pre-tax subtotal (used for installment %): {{ \App\Models\ClientProject::formatMoney($quotSub) }}. Edit line items and HST checkboxes on the <a href="{{ route('admin.client-projects.quotation.edit', $project) }}">Quotation editor</a>.</p>
+          @else
+            <p class="cp-financials-locked-total">—</p>
+            <p class="admin-form-help">Add a quotation with line items first. @if ($paidInstallmentCount > 0) Payment totals stay fixed while installments are paid. @endif</p>
+          @endif
         </div>
         <div class="admin-form-group">
           <label for="cp-plan">Payment schedule
@@ -137,7 +147,7 @@
         <p class="admin-form-error">{{ $message }}</p>
       @enderror
 
-      <button type="submit" class="admin-btn admin-btn--primary">Save payment plan</button>
+      <button type="submit" class="admin-btn admin-btn--primary" @disabled(!$canSavePaymentPlan)>Save payment plan</button>
     </form>
   </div>
 

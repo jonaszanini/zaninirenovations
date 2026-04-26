@@ -100,9 +100,13 @@ class ClientProjectQuotation extends Model
             if ($description === '' && $amount == 0.0) {
                 continue;
             }
+            $applyHst = !array_key_exists('apply_hst', $row)
+                || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
+
             $clean[] = [
                 'description' => $description,
                 'amount' => round($amount, 2),
+                'apply_hst' => $applyHst,
             ];
         }
 
@@ -120,14 +124,33 @@ class ClientProjectQuotation extends Model
         return round(array_sum(array_column($this->cleanItems(), 'amount')), 2);
     }
 
+    /** 13% HST only on rows where `apply_hst` is true (default). */
     public function hst(): float
     {
-        return round($this->subtotal() * self::HST_RATE, 2);
+        $sum = 0.0;
+        foreach ($this->cleanItems() as $row) {
+            if (empty($row['apply_hst'])) {
+                continue;
+            }
+            $sum += (float) ($row['amount'] ?? 0) * self::HST_RATE;
+        }
+
+        return round($sum, 2);
     }
 
     public function grandTotal(): float
     {
         return round($this->subtotal() + $this->hst(), 2);
+    }
+
+    /** HST amount attributed to a single cleaned row (for PDFs / previews). */
+    public static function lineHstAmount(array $row): float
+    {
+        if (empty($row['apply_hst'])) {
+            return 0.0;
+        }
+
+        return round((float) ($row['amount'] ?? 0) * self::HST_RATE, 2);
     }
 
     /**

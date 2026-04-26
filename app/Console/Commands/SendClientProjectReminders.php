@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Mail;
 
 /**
  * Sends the two kinds of admin reminder emails for Client Projects:
- *   1. Daily "Quote Pending" reminder for every project still awaiting a quote.
+ *   1. Daily reminder for projects in Visit scheduled or Quote Pending (awaiting quote).
  *   2. "Quote Sent" follow-up reminder for any project whose 2-day follow-up
  *      due timestamp has passed and which hasn't been reminded yet.
  *
@@ -22,7 +22,7 @@ class SendClientProjectReminders extends Command
 {
     protected $signature = 'client-projects:send-reminders';
 
-    protected $description = 'Send admin reminders for Quote Pending and Quote Sent projects.';
+    protected $description = 'Send admin reminders for Visit scheduled / Quote Pending and Quote Sent projects.';
 
     public function handle(ClientProjectStatusService $statusService): int
     {
@@ -42,12 +42,12 @@ class SendClientProjectReminders extends Command
         }
 
         $projects = ClientProject::query()
-            ->where('status', ClientProject::STATUS_QUOTE_PENDING)
+            ->whereIn('status', ClientProject::preQuoteSentStatuses())
             ->orderBy('created_at')
             ->get();
 
         if ($projects->isEmpty()) {
-            $this->info('No Quote Pending projects.');
+            $this->info('No Visit scheduled / Quote Pending projects.');
 
             return;
         }
@@ -57,10 +57,10 @@ class SendClientProjectReminders extends Command
                 Mail::to($to)->send(new ClientProjectQuoteReminderAdmin($project));
                 $project->last_quote_reminder_sent_at = now();
                 $project->save();
-                $statusService->recordEvent($project, "Daily Quote-Pending reminder emailed to admin ({$to}).");
+                $statusService->recordEvent($project, "Daily pre-quote reminder emailed to admin ({$to}).");
                 $this->info('Reminder sent for project #'.$project->id.' '.$project->name);
             } catch (\Throwable $e) {
-                Log::error('Quote Pending reminder failed', [
+                Log::error('Pre-quote reminder failed', [
                     'client_project_id' => $project->id,
                     'message' => $e->getMessage(),
                 ]);

@@ -565,7 +565,7 @@ class AdminDashboardService
 
     private function buildPipelineSummary(Collection $projects): array
     {
-        $openStatuses = [ClientProject::STATUS_QUOTE_PENDING, ClientProject::STATUS_QUOTE_SENT];
+        $openStatuses = array_merge(ClientProject::preQuoteSentStatuses(), [ClientProject::STATUS_QUOTE_SENT]);
         $openProjects = $projects->filter(fn (ClientProject $p) => in_array($p->status, $openStatuses, true));
 
         $potential = 0.0;

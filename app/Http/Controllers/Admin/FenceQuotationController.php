@@ -254,7 +254,7 @@ class FenceQuotationController extends Controller
                 'client_address' => $data['fp_client_address'] ?: null,
                 'billing_type' => ClientProject::BILLING_FIXED,
                 'hourly_rate' => null,
-                'status' => ClientProject::STATUS_QUOTE_PENDING,
+                'status' => ClientProject::STATUS_VISIT_SCHEDULED,
                 'status_changed_at' => now(),
             ]);
 
@@ -299,10 +299,14 @@ class FenceQuotationController extends Controller
                 (float) $fence_quotation->materials_subtotal + (float) $fence_quotation->labour_total,
                 2
             ),
+            'apply_hst' => true,
         ];
 
         $projectQuote->items = $items;
         $projectQuote->save();
+
+        $project->refresh();
+        $project->syncFixedContractTotalsFromQuotation();
 
         $fence_quotation->update([
             'client_project_id' => $project->id,

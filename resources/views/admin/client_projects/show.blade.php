@@ -57,7 +57,7 @@
         </select>
         <input type="text" name="note" placeholder="Optional note…" maxlength="2000" class="cp-status-note">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save status</button>
-        <span class="cp-hint" title="Workflow: Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Financial & time tracking tabs unlock from Proposal Accepted onward.">?</span>
+        <span class="cp-hint" title="Workflow: Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
       </form>
     @else
       <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>
@@ -79,11 +79,11 @@
   <div class="cp-tabs" role="tablist">
     <button type="button" class="cp-tab is-active" data-tab="overview" role="tab">Overview</button>
     <button type="button" class="cp-tab" data-tab="schedule" role="tab">Calendar</button>
-    <button type="button" class="cp-tab" data-tab="financials" role="tab">Financials</button>
     <button type="button" class="cp-tab" data-tab="time" role="tab">Time Tracking</button>
     <button type="button" class="cp-tab" data-tab="quotation" role="tab">Quotation</button>
     <button type="button" class="cp-tab" data-tab="contract" role="tab">Contract</button>
     <button type="button" class="cp-tab" data-tab="invoice" role="tab">Invoice</button>
+    <button type="button" class="cp-tab" data-tab="financials" role="tab">Financials</button>
     <button type="button" class="cp-tab" data-tab="history" role="tab">History</button>
   </div>
 
@@ -163,7 +163,7 @@
 
     {{-- Hourly-only: manual "service confirmation" email. The rate was
          agreed verbally up front, so the client doesn't get the automatic
-         quote_pending emails — instead Jonas sends this confirmation once
+         pre-quote acknowledgement — instead Jonas sends this confirmation once
          the dates are locked in. --}}
     @if ($project->billing_type === \App\Models\ClientProject::BILLING_HOURLY && !$isRejected)
       <div class="admin-card cp-service-confirmation-card">
@@ -219,20 +219,8 @@
     @endif
   </section>
 
-  {{-- FINANCIALS TAB ------------------------------------------------------- --}}
-  <section class="cp-tab-panel" data-panel="financials">
-    @if (!$isAccepted)
-      <div class="admin-card cp-locked">
-        <h3>Financials are locked</h3>
-        <p>Financial details become available once the project status is <strong>Proposal Accepted</strong> or later.</p>
-      </div>
-    @else
-      @include('admin.client_projects._financials', ['project' => $project])
-    @endif
-  </section>
-
   {{-- TIME TRACKING TAB --------------------------------------------------- --}}
-  <section class="cp-tab-panel" data-panel="time">
+  <section class="cp-tab-panel" data-panel="time" id="time">
     @if (!$isAccepted)
       <div class="admin-card cp-locked">
         <h3>Time tracking is locked</h3>
@@ -256,6 +244,18 @@
   {{-- INVOICE TAB --------------------------------------------------------- --}}
   <section class="cp-tab-panel" data-panel="invoice" id="invoice">
     @include('admin.client_projects._invoice', ['project' => $project])
+  </section>
+
+  {{-- FINANCIALS TAB ------------------------------------------------------- --}}
+  <section class="cp-tab-panel" data-panel="financials" id="financials">
+    @if (!$isAccepted)
+      <div class="admin-card cp-locked">
+        <h3>Financials are locked</h3>
+        <p>Financial details become available once the project status is <strong>Proposal Accepted</strong> or later.</p>
+      </div>
+    @else
+      @include('admin.client_projects._financials', ['project' => $project])
+    @endif
   </section>
 
   {{-- HISTORY TAB --------------------------------------------------------- --}}

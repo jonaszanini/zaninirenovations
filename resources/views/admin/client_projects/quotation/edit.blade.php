@@ -10,11 +10,15 @@
      * shown first; if none exist we show three empty rows by default.
      */
     $existing = old('items') ?? array_map(
-        fn ($i) => ['description' => $i['description'], 'amount' => $i['amount']],
+        fn ($i) => [
+            'description' => $i['description'],
+            'amount' => $i['amount'],
+            'apply_hst' => array_key_exists('apply_hst', $i) ? (bool) $i['apply_hst'] : true,
+        ],
         $quotation->cleanItems()
     );
     if (empty($existing)) {
-        $existing = array_fill(0, 3, ['description' => '', 'amount' => '']);
+        $existing = array_fill(0, 3, ['description' => '', 'amount' => '', 'apply_hst' => true]);
     }
     $type = old('type', $quotation->type);
     $labour = old('labour', $quotation->labour) ? true : false;
@@ -62,8 +66,8 @@
     <div class="cp-contract-editor-heading">
       <h3 style="margin:0;">{{ $quotation->typeLabel() }} editor — <span class="cp-quotation-number">{{ $quotation->quotation_number }}</span></h3>
       <p class="admin-form-help" style="margin:4px 0 0;">
-        Add line items with their pre-HST amounts. We automatically
-        calculate 13&nbsp;% HST and the grand total. Changing between
+        Add line items with their pre-HST amounts. Check <strong>13% HST</strong> per row
+        (on by default); uncheck for tax-exempt lines. Totals update automatically. Changing between
         <em>Quotation</em> and <em>Estimate</em> updates the document
         prefix until the first send.
       </p>
@@ -117,18 +121,27 @@
           <thead>
             <tr>
               <th class="col-description">Description</th>
+              <th class="col-hst">13% HST</th>
               <th class="col-amount">Amount ($)</th>
               <th class="col-actions"><span class="visually-hidden">Actions</span></th>
             </tr>
           </thead>
           <tbody>
             @foreach ($existing as $i => $row)
+              @php $applyHst = $row['apply_hst'] ?? true; @endphp
               <tr class="cp-quotation-row">
                 <td class="col-description">
                   <textarea name="items[{{ $i }}][description]"
                             class="admin-input cp-quotation-row-desc"
                             rows="2"
                             placeholder="Describe this line item">{{ $row['description'] }}</textarea>
+                </td>
+                <td class="col-hst">
+                  <input type="hidden" name="items[{{ $i }}][apply_hst]" value="0">
+                  <label>
+                    <input type="checkbox" name="items[{{ $i }}][apply_hst]" value="1" class="cp-quotation-row-hst" @checked($applyHst)>
+                    Apply
+                  </label>
                 </td>
                 <td class="col-amount">
                   <input type="text"
@@ -157,7 +170,7 @@
             <span id="cp-quotation-subtotal">CA$0.00</span>
           </div>
           <div class="cp-quotation-totals-row">
-            <span>HST (13%)</span>
+            <span>HST (13% on checked lines)</span>
             <span id="cp-quotation-hst">CA$0.00</span>
           </div>
           <div class="cp-quotation-totals-row cp-quotation-totals-grand">
@@ -194,6 +207,13 @@
                   class="admin-input cp-quotation-row-desc"
                   rows="2"
                   placeholder="Describe this line item"></textarea>
+      </td>
+      <td class="col-hst">
+        <input type="hidden" name="items[__INDEX__][apply_hst]" value="0">
+        <label>
+          <input type="checkbox" name="items[__INDEX__][apply_hst]" value="1" class="cp-quotation-row-hst" checked>
+          Apply
+        </label>
       </td>
       <td class="col-amount">
         <input type="text"
@@ -247,12 +267,19 @@
       }
 
       function recalc() {
-        var inputs = tbody.querySelectorAll('.cp-quotation-row-amount');
+        var rows = tbody.querySelectorAll('tr.cp-quotation-row');
         var subtotal = 0;
-        inputs.forEach(function (input) {
-          subtotal += parseAmount(input);
+        var hst = 0;
+        rows.forEach(function (tr) {
+          var amtInput = tr.querySelector('.cp-quotation-row-amount');
+          var hstCb = tr.querySelector('.cp-quotation-row-hst');
+          var v = parseAmount(amtInput);
+          subtotal += v;
+          if (hstCb && hstCb.checked) {
+            hst += v * HST_RATE;
+          }
         });
-        var hst = subtotal * HST_RATE;
+        hst = Math.round(hst * 100) / 100;
         subtotalEl.textContent = formatMoney(subtotal);
         hstEl.textContent = formatMoney(hst);
         grandEl.textContent = formatMoney(subtotal + hst);
@@ -294,6 +321,8 @@
           var tr = btn.closest('tr');
           tr.querySelector('.cp-quotation-row-desc').value = '';
           tr.querySelector('.cp-quotation-row-amount').value = '';
+          var hstCb = tr.querySelector('.cp-quotation-row-hst');
+          if (hstCb) hstCb.checked = true;
         } else {
           btn.closest('tr').remove();
         }
@@ -304,6 +333,9 @@
       // -- Recalc on any amount change -------------------------------------
       tbody.addEventListener('input', function (e) {
         if (e.target.classList.contains('cp-quotation-row-amount')) recalc();
+      });
+      tbody.addEventListener('change', function (e) {
+        if (e.target.classList.contains('cp-quotation-row-hst')) recalc();
       });
 
       // -- Includes warning ------------------------------------------------

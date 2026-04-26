@@ -54,6 +54,7 @@ class ClientProjectQuotationController extends Controller
             'items' => ['nullable', 'array'],
             'items.*.description' => ['nullable', 'string', 'max:2000'],
             'items.*.amount' => ['nullable', 'numeric'],
+            'items.*.apply_hst' => ['nullable'],
             'intent' => ['nullable', 'in:draft,close'],
         ]);
 
@@ -75,6 +76,9 @@ class ClientProjectQuotationController extends Controller
         $quotation->material = $request->boolean('material');
         $quotation->items = $this->normaliseItems($data['items'] ?? []);
         $quotation->save();
+
+        $client_project->refresh();
+        $client_project->syncFixedContractTotalsFromQuotation();
 
         $intent = $data['intent'] ?? 'draft';
 
@@ -171,14 +175,14 @@ class ClientProjectQuotationController extends Controller
         }
 
         // Auto-transition the project to "Quote Sent" once the email leaves
-        // successfully. Only promote from Quote Pending — never regress a
-        // project that's already moved past this point (e.g. proposal
-        // accepted, in progress, completed) just because the user re-sent
-        // an updated quotation version.
+        // successfully. Only promote from Visit scheduled or Quote Pending —
+        // never regress a project that's already moved past this point (e.g.
+        // proposal accepted, in progress, completed) just because the user
+        // re-sent an updated quotation version.
         $sendNote = "{$quotation->typeLabel()} {$quotation->quotation_number} "
             ."emailed to {$client_project->clientEmailRecipientsLabel()} (v{$quotation->version}).";
 
-        if ($client_project->status === ClientProject::STATUS_QUOTE_PENDING) {
+        if ($client_project->isAwaitingQuotePreparation()) {
             try {
                 $statusService->transition(
                     $client_project,
@@ -196,7 +200,7 @@ class ClientProjectQuotationController extends Controller
                 ]);
             }
         } else {
-            // Status already past Quote Pending (e.g. re-sending an updated
+            // Status already past pre-quote stages (e.g. re-sending an updated
             // quote to a client whose project is In Progress). Log an
             // event-only history row so the audit trail still shows the
             // send.
@@ -322,9 +326,12 @@ class ClientProjectQuotationController extends Controller
             if ($description === '' && $amount == 0.0) {
                 continue;
             }
+            $applyHst = !array_key_exists('apply_hst', $row)
+                || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
             $clean[] = [
                 'description' => $description,
                 'amount' => round($amount, 2),
+                'apply_hst' => $applyHst,
             ];
         }
 
