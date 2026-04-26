@@ -43,9 +43,10 @@ class ClientProjectController extends Controller
                 ['timeEntries as hours_logged' => fn ($q) => $q->whereNotNull('hours')],
                 'hours'
             )
-            // Soonest start dates first; undated projects at the bottom.
-            ->orderByRaw('CASE WHEN start_date IS NULL THEN 1 ELSE 0 END')
-            ->orderBy('start_date')
+            // Soonest relevant date first: job start when set, otherwise visit
+            // date (Visit scheduled). Rows with neither fall to the bottom.
+            ->orderByRaw('CASE WHEN start_date IS NULL AND visit_date IS NULL THEN 1 ELSE 0 END')
+            ->orderByRaw('COALESCE(start_date, visit_date) ASC')
             ->orderByDesc('id');
 
         if ($filters['status'] !== '') {
