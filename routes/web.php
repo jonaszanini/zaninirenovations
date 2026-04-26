@@ -163,8 +163,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // -----------------------------------------------------------------
     // Standalone Quotation module (separate from per-project quotations).
     //
-    // Hub page lists quotation "types" as cards; today the only one wired
-    // up is Fence, which runs a structural calculator against a catalogue
+    // Hub page lists quotation "types" as cards (Fence, Standard, …).
+    // Fence runs a structural calculator against a catalogue
     // of editable materials and formula parameters. Fence quotes can be
     // saved standalone or linked into an existing client project by
     // appending a line item to that project's own Quotation.
@@ -201,6 +201,24 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.fence.create-project');
     Route::delete('quotations/fence/{fence_quotation}', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'destroy'])
         ->name('quotations.fence.destroy');
+
+    // Standard quotations (materials grid + labour, no PDF in-module).
+    Route::get('quotations/standard', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'index'])
+        ->name('quotations.standard.index');
+    Route::get('quotations/standard/create', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'create'])
+        ->name('quotations.standard.create');
+    Route::post('quotations/standard', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'store'])
+        ->name('quotations.standard.store');
+    Route::get('quotations/standard/{standard_quotation}/edit', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'edit'])
+        ->name('quotations.standard.edit');
+    Route::put('quotations/standard/{standard_quotation}', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'update'])
+        ->name('quotations.standard.update');
+    Route::post('quotations/standard/{standard_quotation}/link', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'linkToProject'])
+        ->name('quotations.standard.link');
+    Route::post('quotations/standard/{standard_quotation}/create-project', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.standard.create-project');
+    Route::delete('quotations/standard/{standard_quotation}', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'destroy'])
+        ->name('quotations.standard.destroy');
 
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);

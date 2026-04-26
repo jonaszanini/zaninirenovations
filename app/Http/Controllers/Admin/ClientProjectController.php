@@ -514,41 +514,72 @@ class ClientProjectController extends Controller
     }
 
     /**
-     * Full-screen calendar view: all projects that have both dates set and
-     * that are not rejected, color-coded by status.
+     * Full-screen calendar view: job spans (start + end) and on-site visit
+     * days (visit_date). Rejected projects are hidden.
      */
     public function calendar()
     {
         $projects = ClientProject::query()
-            ->whereNotNull('start_date')
-            ->whereNotNull('end_date')
             ->where('status', '!=', ClientProject::STATUS_REJECTED)
-            ->orderBy('start_date')
+            ->where(function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereNotNull('start_date')->whereNotNull('end_date');
+                })->orWhereNotNull('visit_date');
+            })
+            ->orderByRaw('COALESCE(start_date, visit_date)')
+            ->orderByDesc('id')
             ->get();
 
-        $events = $projects->map(function (ClientProject $p) {
-            // FullCalendar all-day events have exclusive end dates.
-            $endExclusive = $p->end_date
-                ? \Illuminate\Support\Carbon::parse($p->end_date)->addDay()->toDateString()
-                : null;
+        $events = collect();
 
-            return [
-                'id' => $p->id,
-                'title' => $p->name.' — '.$p->client_name,
-                'start' => optional($p->start_date)->toDateString(),
-                'end' => $endExclusive,
-                'allDay' => true,
-                'url' => route('admin.client-projects.show', $p),
-                'backgroundColor' => $p->statusColor(),
-                'borderColor' => $p->statusColor(),
-                'extendedProps' => [
-                    'status' => $p->statusLabel(),
-                ],
-            ];
-        })->values();
+        foreach ($projects as $p) {
+            if ($p->start_date && $p->end_date) {
+                $endExclusive = \Illuminate\Support\Carbon::parse($p->end_date)->addDay()->toDateString();
+
+                $events->push([
+                    'id' => 'job-'.$p->id,
+                    'title' => $p->name.' — '.$p->client_name,
+                    'start' => $p->start_date->toDateString(),
+                    'end' => $endExclusive,
+                    'allDay' => true,
+                    'url' => route('admin.client-projects.show', $p),
+                    'backgroundColor' => $p->statusColor(),
+                    'borderColor' => $p->statusColor(),
+                    'extendedProps' => [
+                        'kind' => 'job',
+                        'status' => $p->statusLabel(),
+                    ],
+                ]);
+            }
+
+            if ($p->visit_date) {
+                $visitDay = $p->visit_date->toDateString();
+                $visitEndExclusive = \Illuminate\Support\Carbon::parse($p->visit_date)->addDay()->toDateString();
+                $visitDone = (bool) $p->visit_done;
+                $visitColor = $visitDone ? '#94a3b8' : $p->statusColor();
+                $visitStatusLabel = $visitDone
+                    ? 'Visit (completed)'
+                    : 'Visit — '.$p->statusLabel();
+
+                $events->push([
+                    'id' => 'visit-'.$p->id,
+                    'title' => ($visitDone ? 'Visit (done): ' : 'Visit: ').$p->name.' — '.$p->client_name,
+                    'start' => $visitDay,
+                    'end' => $visitEndExclusive,
+                    'allDay' => true,
+                    'url' => route('admin.client-projects.show', $p),
+                    'backgroundColor' => $visitColor,
+                    'borderColor' => $visitColor,
+                    'extendedProps' => [
+                        'kind' => 'visit',
+                        'status' => $visitStatusLabel,
+                    ],
+                ]);
+            }
+        }
 
         return view('admin.client_projects.calendar', [
-            'events' => $events,
+            'events' => $events->values(),
             'statusLabels' => ClientProject::statusLabels(),
             'statusColors' => ClientProject::statusColors(),
         ]);

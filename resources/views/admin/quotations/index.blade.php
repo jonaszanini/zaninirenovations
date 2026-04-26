@@ -28,6 +28,18 @@
       </div>
     </a>
 
-    {{-- Future quotation types plug in as sibling cards here. --}}
+    <a href="{{ route('admin.quotations.standard.index') }}" class="fq-hub-card">
+      <div class="fq-hub-card-icon" aria-hidden="true">
+        <i class="fa fa-table"></i>
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Standard</h4>
+        <p>
+          Build a quote from material line items (with optional 13% HST) plus hourly labour.
+          Save standalone or link the total into a project quotation.
+        </p>
+        <span class="fq-hub-card-cta">Open standard quotation <i class="fa fa-arrow-right"></i></span>
+      </div>
+    </a>
   </div>
 @endsection

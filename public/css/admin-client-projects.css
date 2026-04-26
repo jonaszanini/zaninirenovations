@@ -1526,7 +1526,12 @@ textarea.admin-input {
   text-align: center;
   width: 56px;
   font-size: 0.85rem;
+}
+.cp-quotation-items td.cp-quotation-hst-col {
   color: #4b5563;
+}
+.cp-quotation-items thead th.cp-quotation-hst-col {
+  color: #fff;
 }
 .cp-quotation-items th.amount,
 .cp-quotation-items td.amount {
@@ -1963,6 +1968,94 @@ body.cp-modal-open {
 @media (max-width: 640px) {
   .fq-hub-card { padding: 14px; }
   .fq-config-card { padding: 14px; }
+}
+
+/* Standard quotation (standalone materials + labour) ------------------ */
+.sq-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 20px;
+}
+@media (max-width: 1024px) {
+  .sq-layout { grid-template-columns: 1fr; }
+}
+.sq-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.sq-materials-table .sq-col-money { width: 100px; white-space: nowrap; }
+.sq-materials-table .sq-col-qty { width: 88px; }
+.sq-materials-table .sq-col-hst-pct { width: 88px; text-align: right; }
+.sq-materials-table .sq-cell-readonly {
+  background: #f8fafc;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+.sq-materials-totals { margin-top: 14px; }
+.sq-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.sq-checkbox-label input { width: auto; margin: 0; }
+.sq-labour-mode-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+}
+.sq-labour-mode-fieldset legend { margin-bottom: 6px; }
+.sq-labour-total-box {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+}
+.sq-labour-total-box strong { font-size: 18px; color: #024768; }
+.sq-grand-card {
+  margin-bottom: 20px;
+}
+.sq-grand-rows { max-width: 520px; }
+.sq-grand-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+  font-size: 14px;
+  color: #374151;
+}
+.sq-grand-row--final {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 2px solid #024768;
+  font-size: 18px;
+  font-weight: 700;
+  color: #024768;
+}
+.sq-form-actions {
+  margin-bottom: 24px;
+}
+.sq-intro-card { margin-bottom: 20px; }
+.sq-success-card { margin-bottom: 20px; }
+.sq-success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 /* Visit date (Calendar tab + edit project) */

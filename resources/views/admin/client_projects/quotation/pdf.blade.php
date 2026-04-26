@@ -202,6 +202,11 @@
       width: 72pt;
       white-space: nowrap;
     }
+    /* DomPDF: keep header text white (joint rule above also matches body cells). */
+    .items thead th.hst {
+      background: #024768;
+      color: #ffffff;
+    }
     .items th.amount, .items td.amount {
       text-align: right;
       width: 110pt;

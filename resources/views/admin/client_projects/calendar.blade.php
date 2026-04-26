@@ -8,7 +8,7 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">All projects with scheduled start and end dates. Click any event to open the project. Rejected projects are hidden.</p>
+    <p class="admin-toolbar-lede">Job timelines (start → end) and on-site <strong>Visit</strong> days (when a visit date is set). Click any event to open the project. Rejected projects are hidden.</p>
     <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost">
       <i class="fa fa-list"></i> Back to list
     </a>
