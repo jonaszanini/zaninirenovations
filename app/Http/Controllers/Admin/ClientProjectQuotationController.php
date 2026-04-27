@@ -30,11 +30,40 @@ use Illuminate\Support\Str;
 class ClientProjectQuotationController extends Controller
 {
     /**
-     * Show the editor. Creates an empty quotation row if one doesn't
-     * exist yet so the form has something to bind against.
+     * Show the editor. The flow branches on which specialised quotation
+     * (Standard, future Fence, ...) is linked to this project:
+     *
+     *   - 0 linked specialised quotations → render the generic
+     *     line-item editor (the historical behaviour).
+     *   - 1 linked → redirect into that specialised quotation's editor
+     *     with ?return=project so saving lands the user back on the
+     *     project's Quotation tab. The project's own ClientProjectQuotation
+     *     line items + work_description are driven entirely by the
+     *     linked SQ from that point on.
+     *   - 2+ linked → render a selector page so the user picks which
+     *     one to edit.
+     *
+     * An empty ClientProjectQuotation row is created on demand for the
+     * fallback editor so the form has something to bind against.
      */
     public function edit(ClientProject $client_project)
     {
+        $linkedStandard = $client_project->standardQuotations()->get();
+
+        if ($linkedStandard->count() === 1) {
+            $sq = $linkedStandard->first();
+
+            return redirect()
+                ->route('admin.quotations.standard.edit', [$sq, 'return' => 'project']);
+        }
+
+        if ($linkedStandard->count() > 1) {
+            return view('admin.client_projects.quotation.selector', [
+                'project' => $client_project,
+                'standardQuotations' => $linkedStandard,
+            ]);
+        }
+
         $quotation = $this->firstOrCreateQuotation($client_project);
 
         return view('admin.client_projects.quotation.edit', [
@@ -49,6 +78,17 @@ class ClientProjectQuotationController extends Controller
      */
     public function update(Request $request, ClientProject $client_project)
     {
+        // When a specialised quotation (Standard, Fence, ...) is linked to
+        // this project, the project Quotation is fully driven by that SQ
+        // (decision: overwrite_all). Block manual edits coming through
+        // this generic endpoint and route the user back to the SQ-aware
+        // edit flow so the line items stay consistent.
+        if ($client_project->standardQuotations()->exists()) {
+            return redirect()
+                ->route('admin.client-projects.quotation.edit', $client_project)
+                ->with('error', 'This project is linked to a specialised quotation. Edit it from there to keep the project quotation in sync.');
+        }
+
         $data = $request->validate([
             'type' => ['required', 'in:quotation,estimate'],
             'labour' => ['nullable'],

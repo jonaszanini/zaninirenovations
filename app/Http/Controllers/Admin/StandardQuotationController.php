@@ -74,10 +74,49 @@ class StandardQuotationController extends Controller
             'version' => $standard_quotation->version + 1,
         ]))->save();
 
+        // If this standard quotation is linked to a project, re-sync the
+        // project quotation's line items so the project's Quotation tab /
+        // PDF reflect the latest amounts. Manual line items are not kept:
+        // when an SQ is linked the project Quotation is fully driven by
+        // its linked SQ(s) (decision: overwrite_all).
+        if ($standard_quotation->isLinked() && $standard_quotation->project) {
+            DB::transaction(function () use ($standard_quotation) {
+                $this->syncStandardLinesIntoProjectQuotation(
+                    $standard_quotation->project,
+                    $standard_quotation
+                );
+            });
+        }
+
+        // Honour ?return=project / return=project — sent by the project's
+        // "Edit quotation" entry point so the user lands back on the
+        // project's Quotation tab (not the standalone editor).
+        if ($this->shouldReturnToProject($request, $standard_quotation)) {
+            return redirect()
+                ->route('admin.client-projects.show', $standard_quotation->client_project_id)
+                ->withFragment('quotation')
+                ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').');
+        }
+
         return redirect()
             ->route('admin.quotations.standard.edit', $standard_quotation)
             ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').')
             ->with('standard_flash', 'saved');
+    }
+
+    /**
+     * Whether the editor should redirect back to the project after save.
+     * True when the form was opened from the project's "Edit quotation"
+     * entry (which appends ?return=project to the URL).
+     */
+    protected function shouldReturnToProject(Request $request, StandardQuotation $sq): bool
+    {
+        if (!$sq->isLinked()) {
+            return false;
+        }
+
+        return $request->input('return') === 'project'
+            || $request->query('return') === 'project';
     }
 
     public function linkToProject(Request $request, StandardQuotation $standard_quotation)
@@ -266,6 +305,7 @@ class StandardQuotationController extends Controller
                 'materials_hst' => $computed['materials_hst'],
                 'materials_with_hst' => $computed['materials_with_hst'],
                 'labour_total' => $computed['labour_total'],
+                'labour_hst' => $computed['labour_hst'],
                 'grand_total' => $computed['grand_total'],
                 'contingency_enabled' => $computed['contingency_enabled'],
                 'contingency_percent' => $computed['contingency_percent'],
@@ -275,11 +315,56 @@ class StandardQuotationController extends Controller
         ];
     }
 
+    /**
+     * Initial link: mark the SQ as belonging to the project, then sync
+     * its line(s) into the project quotation. Used by the
+     * "Link to project" / "Create project & link" flows.
+     */
     protected function appendStandardLineToProjectQuotation(
         ClientProject $project,
         StandardQuotation $standardQuotation,
         string $lineDescription
     ): void {
+        $standardQuotation->client_project_id = $project->id;
+        $standardQuotation->linked_at = now();
+        $standardQuotation->save();
+
+        $this->syncStandardLinesIntoProjectQuotation(
+            $project,
+            $standardQuotation,
+            $lineDescription
+        );
+    }
+
+    /**
+     * Refresh the project's ClientProjectQuotation so its line items
+     * mirror the current state of $standardQuotation.
+     *
+     * Items belonging to this SQ are identified by either:
+     *   - the explicit marker `source_standard_quotation_id` (set by
+     *     this method), or
+     *   - the legacy "(see {quote_number})" suffix on the description
+     *     (so older links keep working through their first re-sync).
+     *
+     * Any line items NOT belonging to this SQ are preserved — that
+     * makes the method safe to call when multiple SQs are linked to
+     * the same project: each SQ refreshes only its own lines.
+     *
+     * The default $lineDescription is "Standard quotation"; pass a
+     * project-supplied label when linking from the form.
+     */
+    protected function syncStandardLinesIntoProjectQuotation(
+        ClientProject $project,
+        StandardQuotation $standardQuotation,
+        ?string $lineDescription = null
+    ): void {
+        $lineDescription = $lineDescription !== null
+            ? trim($lineDescription)
+            : '';
+        if ($lineDescription === '') {
+            $lineDescription = 'Standard quotation';
+        }
+
         /** @var ClientProjectQuotation $projectQuote */
         $projectQuote = $project->quotation()->firstOrNew([]);
 
@@ -295,40 +380,152 @@ class StandardQuotationController extends Controller
             $projectQuote->version = 1;
         }
 
-        $items = is_array($projectQuote->items) ? $projectQuote->items : [];
+        $existingItems = is_array($projectQuote->items) ? $projectQuote->items : [];
 
-        // Single tax-inclusive bundle: materials (with per-row HST) + untaxed labour.
-        // apply_hst false keeps the project quotation from adding another 13%.
-        $items[] = [
-            'description' => $lineDescription.' (see '.$standardQuotation->quote_number.')',
-            'amount' => round((float) $standardQuotation->grand_total, 2),
-            'apply_hst' => false,
-        ];
+        // Drop any item that came from THIS SQ: either tagged with the
+        // explicit marker, or (legacy) referencing this quote number in
+        // its description suffix. Other items survive untouched.
+        $quoteRef = '(see '.$standardQuotation->quote_number.')';
+        $remainingItems = array_values(array_filter(
+            $existingItems,
+            static function ($item) use ($standardQuotation, $quoteRef) {
+                if (!is_array($item)) {
+                    return true;
+                }
+                $sqId = $item['source_standard_quotation_id'] ?? null;
+                if ((int) $sqId === (int) $standardQuotation->id) {
+                    return false;
+                }
+                $desc = (string) ($item['description'] ?? '');
+                if ($sqId === null && str_contains($desc, $quoteRef)) {
+                    return false;
+                }
 
-        $projectQuote->items = $items;
+                return true;
+            }
+        ));
 
-        // Carry the standard quotation's "Description of the work" onto
-        // the project quotation as a top-level field. Rendered as its
-        // own block on the PDF / preview. If the project quotation
-        // already has its own description, append (separated by a blank
-        // line) so nothing the user wrote gets lost.
-        $standardWorkDescription = trim((string) ($standardQuotation->work_description ?? ''));
-        if ($standardWorkDescription !== '') {
-            $existingDescription = trim((string) ($projectQuote->work_description ?? ''));
-            $projectQuote->work_description = $existingDescription === ''
-                ? $standardWorkDescription
-                : $existingDescription."\n\n".$standardWorkDescription;
+        // Push PRE-HST amounts into the project quotation so the project
+        // quotation's own "Apply HST" toggle is the single source of HST
+        // (no double taxation). What travels here is the taxable subtotal
+        // of materials + contingency + labour, and (if present) any
+        // HST-exempt materials/contingency portion as a separate line.
+        $taxablePreHst = $this->preHstTaxableForLink($standardQuotation);
+        $exemptPreHst = $this->preHstExemptForLink($standardQuotation);
+        $refSuffix = ' '.$quoteRef;
+
+        $sqLines = [];
+        if ($exemptPreHst > 0 && $taxablePreHst > 0) {
+            $sqLines[] = [
+                'description' => $lineDescription.' — HST applicable'.$refSuffix,
+                'amount' => $taxablePreHst,
+                'apply_hst' => true,
+                'source_standard_quotation_id' => $standardQuotation->id,
+            ];
+            $sqLines[] = [
+                'description' => $lineDescription.' — HST exempt'.$refSuffix,
+                'amount' => $exemptPreHst,
+                'apply_hst' => false,
+                'source_standard_quotation_id' => $standardQuotation->id,
+            ];
+        } elseif ($exemptPreHst > 0) {
+            $sqLines[] = [
+                'description' => $lineDescription.$refSuffix,
+                'amount' => $exemptPreHst,
+                'apply_hst' => false,
+                'source_standard_quotation_id' => $standardQuotation->id,
+            ];
+        } else {
+            $sqLines[] = [
+                'description' => $lineDescription.$refSuffix,
+                'amount' => $taxablePreHst,
+                'apply_hst' => true,
+                'source_standard_quotation_id' => $standardQuotation->id,
+            ];
         }
+
+        $projectQuote->items = array_merge($remainingItems, $sqLines);
+
+        // Description of the work is owned by the SQ when there is a
+        // linked SQ — the project quote's own work_description column
+        // is intentionally cleared so the rendering layer reads from
+        // the SQ directly (single source of truth).
+        $projectQuote->work_description = null;
 
         $projectQuote->save();
 
         $project->refresh();
         $project->syncFixedContractTotalsFromQuotation();
+    }
 
-        $standardQuotation->update([
-            'client_project_id' => $project->id,
-            'linked_at' => now(),
-        ]);
+    /**
+     * Pre-HST amount (materials taxable subtotal + taxable share of
+     * contingency + labour total) that should be linked into the project
+     * quotation as an HST-applicable line.
+     */
+    protected function preHstTaxableForLink(StandardQuotation $sq): float
+    {
+        [$taxableSub, $exemptSub] = $this->materialsTaxableExemptSplit($sq);
+        $contingencyTaxable = $this->contingencyTaxableShare($sq, $taxableSub, $exemptSub);
+
+        return round($taxableSub + $contingencyTaxable + (float) $sq->labour_total, 2);
+    }
+
+    /**
+     * Pre-HST amount of HST-exempt material rows (and their share of
+     * contingency, if any). Linked as a separate exempt line item so the
+     * project quotation does not add HST to it.
+     */
+    protected function preHstExemptForLink(StandardQuotation $sq): float
+    {
+        [$taxableSub, $exemptSub] = $this->materialsTaxableExemptSplit($sq);
+        $contingencyExempt = (float) $sq->contingency_amount
+            - $this->contingencyTaxableShare($sq, $taxableSub, $exemptSub);
+
+        return round($exemptSub + max(0.0, $contingencyExempt), 2);
+    }
+
+    /**
+     * @return array{0: float, 1: float} [taxableSubtotal, exemptSubtotal]
+     */
+    protected function materialsTaxableExemptSplit(StandardQuotation $sq): array
+    {
+        $taxable = 0.0;
+        $exempt = 0.0;
+        $materials = is_array($sq->materials) ? $sq->materials : [];
+
+        foreach ($materials as $m) {
+            $unit = (float) ($m['unit_price'] ?? 0);
+            $qty = (float) ($m['quantity'] ?? 0);
+            $line = round($unit * $qty, 2);
+            $applyHst = !array_key_exists('apply_hst', $m)
+                || filter_var($m['apply_hst'], FILTER_VALIDATE_BOOLEAN);
+
+            if ($applyHst) {
+                $taxable += $line;
+            } else {
+                $exempt += $line;
+            }
+        }
+
+        return [round($taxable, 2), round($exempt, 2)];
+    }
+
+    protected function contingencyTaxableShare(
+        StandardQuotation $sq,
+        float $taxableSub,
+        float $exemptSub
+    ): float {
+        $contingency = (float) $sq->contingency_amount;
+        if ($contingency <= 0) {
+            return 0.0;
+        }
+        $matSub = $taxableSub + $exemptSub;
+        if ($matSub <= 0) {
+            return 0.0;
+        }
+
+        return round($contingency * ($taxableSub / $matSub), 2);
     }
 
     protected function normalisePhoneOnRequest(Request $request): void

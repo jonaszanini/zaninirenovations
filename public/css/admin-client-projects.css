@@ -2077,6 +2077,7 @@ body.cp-modal-open {
   font-size: 13px;
 }
 .sq-materials-totals { margin-top: 14px; }
+.sq-labour-totals { margin-top: 14px; }
 
 /* In-panel "Save only" button at the bottom-left of the Materials
    section. Same submit as the bottom-of-form button — just here for

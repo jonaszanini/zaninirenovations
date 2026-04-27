@@ -130,7 +130,21 @@
 
       <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
 
-      @php $previewWorkDesc = trim((string) ($quotation->work_description ?? '')); @endphp
+      @php
+        // Prefer the linked specialised quotations' work_description
+        // (single source of truth). Falls back to the project quotation's
+        // own field for projects that don't have any specialised
+        // quotation linked. Multiple linked SQs concatenate, separated
+        // by blank lines, in the order they were linked.
+        $linkedWorkDescParts = $project->standardQuotations
+            ->map(fn ($sq) => trim((string) ($sq->work_description ?? '')))
+            ->filter(fn ($s) => $s !== '')
+            ->values()
+            ->all();
+        $previewWorkDesc = !empty($linkedWorkDescParts)
+            ? implode("\n\n", $linkedWorkDescParts)
+            : trim((string) ($quotation->work_description ?? ''));
+      @endphp
       @if ($previewWorkDesc !== '')
         <div class="cp-quotation-work-description">
           <div class="cp-quotation-work-description-title">Description of the work</div>

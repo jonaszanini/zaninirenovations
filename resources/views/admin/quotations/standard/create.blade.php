@@ -3,8 +3,20 @@
 @php
   $isEdit = filled($quotation);
   $title = $isEdit ? 'Edit standard quotation '.$quotation->quote_number : 'New standard quotation';
+
+  // Project-context mode: this editor was opened from a project's
+  // "Edit quotation" entry point. The form posts with ?return=project
+  // so the controller redirects the user back to the project's
+  // Quotation tab on save (instead of staying on the standalone
+  // editor). The "Connect to a project" panel is hidden in this mode
+  // since the SQ is already linked.
+  $returnToProject = request('return') === 'project'
+    && $isEdit
+    && $quotation->project;
+  $projectForReturn = $returnToProject ? $quotation->project : null;
+
   $formAction = $isEdit
-    ? route('admin.quotations.standard.update', $quotation)
+    ? route('admin.quotations.standard.update', $quotation).($returnToProject ? '?return=project' : '')
     : route('admin.quotations.standard.store');
   $formMethod = $isEdit ? 'PUT' : 'POST';
 
@@ -46,14 +58,30 @@
 @section('content')
   <div class="admin-toolbar fq-list-toolbar">
     <div class="admin-toolbar-group">
-      <a href="{{ route('admin.quotations.standard.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-arrow-left"></i> All standard quotations
-      </a>
-      <a href="{{ route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-th"></i> Quotation types
-      </a>
+      @if ($returnToProject && $projectForReturn)
+        <a href="{{ route('admin.client-projects.show', $projectForReturn) }}#quotation"
+           class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-arrow-left"></i> Back to project
+        </a>
+      @else
+        <a href="{{ route('admin.quotations.standard.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-arrow-left"></i> All standard quotations
+        </a>
+        <a href="{{ route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-th"></i> Quotation types
+        </a>
+      @endif
     </div>
   </div>
+
+  @if ($returnToProject && $projectForReturn)
+    <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
+      Editing this standard quotation in the context of project
+      <a href="{{ route('admin.client-projects.show', $projectForReturn) }}#quotation">
+        {{ $projectForReturn->name }}
+      </a>. Saving will update the project's Quotation tab automatically.
+    </div>
+  @endif
 
   @if (session('success'))
     <div class="admin-flash admin-flash--success" style="margin-bottom:16px;">{{ session('success') }}</div>
@@ -248,7 +276,7 @@
              scrolling all the way down. --}}
         <div class="sq-panel-save">
           <button type="submit" class="admin-btn admin-btn--primary">
-            <i class="fa fa-save"></i> Save only
+            <i class="fa fa-save"></i> Save
           </button>
         </div>
       </div>
@@ -256,7 +284,7 @@
       {{-- Labour --------------------------------------------------- --}}
       <div class="admin-card sq-panel">
         <h3 style="margin:0 0 8px;">Labour</h3>
-        <p class="admin-form-help">Labour is <strong>not taxed</strong> (no HST on labour). <span title="1 day = 8 hours">8 hours = 1 day</span>.</p>
+        <p class="admin-form-help">Labour is <strong>HST-taxable</strong> at 13%. <span title="1 day = 8 hours">8 hours = 1 day</span>.</p>
 
         <div class="admin-form-group">
           <label for="sq-labour-rate">Hourly rate (CAD) <span class="cp-required">*</span></label>
@@ -286,9 +314,19 @@
           <p class="admin-form-help" id="sq-labour-equiv" style="margin-top:6px;"></p>
         </div>
 
-        <div class="sq-labour-total-box">
-          <span>Total labour cost</span>
-          <strong id="sq-labour-total">CA$0.00</strong>
+        <div class="cp-quotation-totals sq-labour-totals">
+          <div class="cp-quotation-totals-row">
+            <span>Total labour (before HST)</span>
+            <span id="sq-labour-total">CA$0.00</span>
+          </div>
+          <div class="cp-quotation-totals-row">
+            <span>HST on labour (13%)</span>
+            <span id="sq-labour-hst">CA$0.00</span>
+          </div>
+          <div class="cp-quotation-totals-row">
+            <span>Total labour with HST</span>
+            <span id="sq-labour-with-hst">CA$0.00</span>
+          </div>
         </div>
       </div>
     </div>
@@ -304,14 +342,16 @@
         </div>
         <div class="sq-grand-row"><span>HST on materials (13%)</span><span id="sq-g-mat-hst">CA$0.00</span></div>
         <div class="sq-grand-row"><span>Total materials with HST</span><span id="sq-g-mat-total">CA$0.00</span></div>
-        <div class="sq-grand-row"><span>Total labour</span><span id="sq-g-labour">CA$0.00</span></div>
+        <div class="sq-grand-row"><span>Total labour (before HST)</span><span id="sq-g-labour">CA$0.00</span></div>
+        <div class="sq-grand-row"><span>HST on labour (13%)</span><span id="sq-g-labour-hst">CA$0.00</span></div>
+        <div class="sq-grand-row"><span>Total labour with HST</span><span id="sq-g-labour-total">CA$0.00</span></div>
         <div class="sq-grand-row sq-grand-row--final"><span>Grand total</span><span id="sq-g-grand">CA$0.00</span></div>
       </div>
     </div>
 
     <div class="sq-form-actions">
       <button type="submit" class="admin-btn admin-btn--primary">
-        <i class="fa fa-save"></i> Save only
+        <i class="fa fa-save"></i> Save
       </button>
     </div>
   </form>
@@ -321,7 +361,7 @@
     <div class="admin-card fq-link-project-card">
       <h4 style="margin:0 0 6px;">Connect to a project</h4>
       <p class="admin-form-help" style="margin:0 0 12px;">
-        Adds one line to the project <strong>Quotation</strong> using the <strong>grand total</strong> below (materials already include HST where applied; labour is untaxed — the line is stored without extra HST).
+        Adds the <strong>pre-HST</strong> amounts to the project's <strong>Quotation</strong>. The project quotation's "Apply HST" toggle will then add HST to the taxable portion (no double taxation). If some materials are HST-exempt, two lines are added — one taxable, one exempt.
       </p>
 
       <div class="admin-form-group" style="max-width:520px;">
@@ -507,10 +547,14 @@
   var elMatSub = document.getElementById('sq-mat-subtotal');
   var elMatHst = document.getElementById('sq-mat-with-hst');
   var elLabour = document.getElementById('sq-labour-total');
+  var elLabourHst = document.getElementById('sq-labour-hst');
+  var elLabourWithHst = document.getElementById('sq-labour-with-hst');
   var gMatSub = document.getElementById('sq-g-mat-sub');
   var gMatHst = document.getElementById('sq-g-mat-hst');
   var gMatTot = document.getElementById('sq-g-mat-total');
   var gLab = document.getElementById('sq-g-labour');
+  var gLabHst = document.getElementById('sq-g-labour-hst');
+  var gLabTot = document.getElementById('sq-g-labour-total');
   var gGrand = document.getElementById('sq-g-grand');
 
   // Contingency controls + readouts
@@ -602,13 +646,19 @@
     var rate = parseMoney(rateInput.value);
     var hrs = labourHoursTotal();
     var lab = Math.round(rate * hrs * 100) / 100;
+    var labHst = Math.round(lab * HST * 100) / 100;
+    var labWithHst = Math.round((lab + labHst) * 100) / 100;
     elLabour.textContent = money(lab);
+    if (elLabourHst) elLabourHst.textContent = money(labHst);
+    if (elLabourWithHst) elLabourWithHst.textContent = money(labWithHst);
 
     gMatSub.textContent = money(subSum);
     gMatHst.textContent = money(hstWithCont);
     gMatTot.textContent = money(withSumWithCont);
     gLab.textContent = money(lab);
-    gGrand.textContent = money(withSumWithCont + lab);
+    if (gLabHst) gLabHst.textContent = money(labHst);
+    if (gLabTot) gLabTot.textContent = money(labWithHst);
+    gGrand.textContent = money(withSumWithCont + labWithHst);
 
     var lq = parseQty(qtyInput.value);
     if (labourMode() === 'days') {

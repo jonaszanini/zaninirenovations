@@ -175,6 +175,17 @@ class ClientProject extends Model
         return $this->hasOne(ClientProjectQuotation::class);
     }
 
+    /**
+     * Specialised quotations (Standard, future Fence, etc.) that have
+     * been linked to this project. The project's own ClientProjectQuotation
+     * acts as the rendered view of these — line items are auto-synced
+     * each time a linked specialised quotation is saved.
+     */
+    public function standardQuotations(): HasMany
+    {
+        return $this->hasMany(StandardQuotation::class)->orderByDesc('id');
+    }
+
     public function invoices(): HasMany
     {
         return $this->hasMany(ClientProjectInvoice::class)
