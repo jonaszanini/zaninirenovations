@@ -404,7 +404,7 @@
         <td class="amount">{{ $fmt($subtotal) }}</td>
       </tr>
       <tr>
-        <td class="totals-label" colspan="2">HST (13% on marked lines)</td>
+        <td class="totals-label" colspan="2">HST (13%)</td>
         <td class="amount">{{ $fmt($hst) }}</td>
       </tr>
       <tr class="grand">
