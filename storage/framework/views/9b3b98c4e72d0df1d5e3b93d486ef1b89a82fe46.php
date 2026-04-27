@@ -13,12 +13,32 @@
       $matRows = is_array($quotation->materials) ? $quotation->materials : [];
   }
   if (!is_array($matRows) || count($matRows) === 0) {
-      $matRows = [['description' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true]];
+      $matRows = [['short_name' => '', 'description' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true]];
   }
 
   $labourMode = old('labour_mode', $isEdit ? $quotation->labour_mode : 'hours');
   $labourQty = old('labour_quantity', $isEdit ? (string) $quotation->labour_quantity : '');
   $labourRate = old('labour_hourly_rate', $isEdit ? number_format((float) $quotation->labour_hourly_rate, 2, '.', '') : '65.00');
+
+  // Contingency allowance defaults: enabled with 10% on new quotes; for
+  // existing quotes use whatever was saved (column was added with default
+  // true / 10.00 so older rows still render sensibly).
+  if (old('contingency_enabled') !== null) {
+      $contingencyEnabled = filter_var(old('contingency_enabled'), FILTER_VALIDATE_BOOLEAN);
+  } elseif ($isEdit) {
+      $contingencyEnabled = (bool) $quotation->contingency_enabled;
+  } else {
+      $contingencyEnabled = true;
+  }
+  $contingencyPercent = old('contingency_percent');
+  if ($contingencyPercent === null || $contingencyPercent === '') {
+      $contingencyPercent = $isEdit
+          ? rtrim(rtrim(number_format((float) $quotation->contingency_percent, 2, '.', ''), '0'), '.')
+          : '10';
+      if ($contingencyPercent === '') {
+          $contingencyPercent = '10';
+      }
+  }
 ?>
 
 <?php $__env->startSection('heading', $title); ?>
@@ -105,65 +125,114 @@ unset($__errorArgs, $__bag); ?>
         </div>
         <p class="admin-form-help">Unit prices are <strong>before HST</strong>. Per-row HST (13%) is optional (on by default).</p>
 
-        <div class="admin-table-scroll">
-          <table class="cp-quotation-items-table sq-materials-table" id="sq-materials-table">
-            <thead>
-              <tr>
-                <th class="col-description">Description</th>
-                <th class="sq-col-money">Unit price ($)</th>
-                <th class="sq-col-qty">Qty</th>
-                <th class="sq-col-money">Subtotal</th>
-                <th class="sq-col-hst-pct">HST (13%)</th>
-                <th class="sq-col-money">Total w/ HST</th>
-                <th class="col-hst">Apply</th>
-                <th class="col-actions"><span class="visually-hidden">Remove</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php $__currentLoopData = $matRows; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                <?php
-                  $apply = array_key_exists('apply_hst', $row) ? filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN) : true;
-                ?>
-                <tr class="sq-material-row">
-                  <td class="col-description">
-                    <textarea name="materials[<?php echo e($i); ?>][description]" class="admin-input cp-quotation-row-desc sq-mat-desc" rows="2"
-                              placeholder="Material or item"><?php echo e($row['description'] ?? ''); ?></textarea>
-                  </td>
-                  <td class="sq-col-money">
+        
+        <div class="sq-materials-list" id="sq-materials-list">
+          <?php $__currentLoopData = $matRows; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <?php
+              $apply = array_key_exists('apply_hst', $row) ? filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN) : true;
+            ?>
+            <div class="sq-material-card sq-material-row">
+              <div class="sq-mat-fields">
+                <div class="sq-mat-row sq-mat-row--inputs">
+                  <div class="sq-mat-field sq-mat-field--short-name">
+                    <label>Short name</label>
+                    <input type="text" name="materials[<?php echo e($i); ?>][short_name]" class="admin-input sq-mat-short-name"
+                           maxlength="60" placeholder="e.g. Paint, Primer"
+                           value="<?php echo e($row['short_name'] ?? ''); ?>">
+                  </div>
+                  <div class="sq-mat-field sq-mat-field--description">
+                    <label>Description</label>
+                    <input type="text" name="materials[<?php echo e($i); ?>][description]" class="admin-input sq-mat-desc"
+                           maxlength="500" placeholder="Material or item"
+                           value="<?php echo e($row['description'] ?? ''); ?>">
+                  </div>
+                  <div class="sq-mat-field sq-mat-field--unit">
+                    <label>Unit price ($)</label>
                     <input type="text" inputmode="decimal" autocomplete="off" name="materials[<?php echo e($i); ?>][unit_price]"
                            class="admin-input cp-money-input sq-mat-unit" placeholder="0.00"
                            value="<?php echo e(isset($row['unit_price']) && $row['unit_price'] !== '' ? number_format((float) $row['unit_price'], 2, '.', '') : ''); ?>">
-                  </td>
-                  <td class="sq-col-qty">
-                    <input type="number" min="0" step="0.01" name="materials[<?php echo e($i); ?>][quantity]"
+                  </div>
+                  <div class="sq-mat-field sq-mat-field--qty">
+                    <label>Qty</label>
+                    
+                    <input type="text" inputmode="decimal" autocomplete="off"
+                           name="materials[<?php echo e($i); ?>][quantity]"
                            class="admin-input sq-mat-qty" placeholder="1"
                            value="<?php echo e($row['quantity'] ?? ''); ?>">
-                  </td>
-                  <td class="sq-col-money sq-cell-readonly"><span class="sq-mat-sub">—</span></td>
-                  <td class="sq-col-hst-pct sq-cell-readonly"><span class="sq-mat-hst">—</span></td>
-                  <td class="sq-col-money sq-cell-readonly"><span class="sq-mat-total">—</span></td>
-                  <td class="col-hst">
+                  </div>
+                </div>
+
+                <div class="sq-mat-row sq-mat-row--computed">
+                  <div class="sq-mat-field sq-mat-field--readonly">
+                    <label>Subtotal</label>
+                    <div class="sq-mat-readout"><span class="sq-mat-sub">—</span></div>
+                  </div>
+                  <div class="sq-mat-field sq-mat-field--readonly">
+                    <label>HST (13%)</label>
+                    <div class="sq-mat-readout"><span class="sq-mat-hst">—</span></div>
+                  </div>
+                  <div class="sq-mat-field sq-mat-field--readonly">
+                    <label>Total w/ HST</label>
+                    <div class="sq-mat-readout"><span class="sq-mat-total">—</span></div>
+                  </div>
+                  <div class="sq-mat-field sq-mat-field--apply">
+                    <label>HST</label>
                     <input type="hidden" name="materials[<?php echo e($i); ?>][apply_hst]" value="0">
-                    <label class="sq-checkbox-label">
+                    <label class="sq-checkbox-label sq-mat-apply-label">
                       <input type="checkbox" name="materials[<?php echo e($i); ?>][apply_hst]" value="1" class="sq-mat-hst-cb" <?php if($apply): echo 'checked'; endif; ?>>
                       <span>Apply</span>
                     </label>
-                  </td>
-                  <td class="col-actions">
-                    <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm sq-remove-material" aria-label="Remove row">
-                      <i class="fa fa-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sq-mat-actions">
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm sq-remove-material" aria-label="Remove row" title="Remove material">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        </div>
+
+        
+        
+        <div class="sq-contingency-block" id="sq-contingency-block">
+          <div class="sq-contingency-row">
+            <input type="hidden" name="contingency_enabled" value="0">
+            <label class="sq-checkbox-label sq-contingency-toggle">
+              <input type="checkbox" id="sq-contingency-enabled" name="contingency_enabled" value="1" <?php if($contingencyEnabled): echo 'checked'; endif; ?>>
+              <span>Contingency allowance</span>
+            </label>
+            <div class="sq-contingency-pct-field">
+              <input type="text" inputmode="decimal" autocomplete="off" id="sq-contingency-percent"
+                     name="contingency_percent" class="admin-input sq-contingency-percent"
+                     maxlength="6" placeholder="10" value="<?php echo e($contingencyPercent); ?>"
+                     <?php if(!$contingencyEnabled): echo 'disabled'; endif; ?>>
+              <span class="sq-contingency-pct-suffix">%</span>
+            </div>
+            <p class="admin-form-help sq-contingency-help">
+              Buffer applied on top of <em>Total materials (before HST)</em>. HST follows the materials' effective rate.
+            </p>
+          </div>
+          <?php $__errorArgs = ['contingency_percent'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
         </div>
 
         <div class="cp-quotation-totals sq-materials-totals">
           <div class="cp-quotation-totals-row">
             <span>Total materials (before HST)</span>
             <span id="sq-mat-subtotal">CA$0.00</span>
+          </div>
+          <div class="cp-quotation-totals-row sq-mat-contingency-row" id="sq-mat-contingency-row" style="<?php echo e($contingencyEnabled ? '' : 'display:none;'); ?>">
+            <span>Contingency (<span id="sq-mat-contingency-pct"><?php echo e($contingencyPercent); ?></span>%)</span>
+            <span id="sq-mat-contingency">+CA$0.00</span>
           </div>
           <div class="cp-quotation-totals-row">
             <span>Total materials with HST</span>
@@ -238,6 +307,10 @@ unset($__errorArgs, $__bag); ?>
       <h3 style="margin:0 0 12px;">Totals</h3>
       <div class="sq-grand-rows">
         <div class="sq-grand-row"><span>Subtotal materials (before HST)</span><span id="sq-g-mat-sub">CA$0.00</span></div>
+        <div class="sq-grand-row sq-grand-row--contingency" id="sq-g-contingency-row" style="<?php echo e($contingencyEnabled ? '' : 'display:none;'); ?>">
+          <span>Contingency (<span id="sq-g-contingency-pct"><?php echo e($contingencyPercent); ?></span>%)</span>
+          <span id="sq-g-contingency">+CA$0.00</span>
+        </div>
         <div class="sq-grand-row"><span>HST on materials (13%)</span><span id="sq-g-mat-hst">CA$0.00</span></div>
         <div class="sq-grand-row"><span>Total materials with HST</span><span id="sq-g-mat-total">CA$0.00</span></div>
         <div class="sq-grand-row"><span>Total labour</span><span id="sq-g-labour">CA$0.00</span></div>
@@ -368,33 +441,61 @@ unset($__errorArgs, $__bag); ?>
   <?php endif; ?>
 
   <template id="sq-material-template">
-    <tr class="sq-material-row">
-      <td class="col-description">
-        <textarea name="materials[__I__][description]" class="admin-input cp-quotation-row-desc sq-mat-desc" rows="2" placeholder="Material or item"></textarea>
-      </td>
-      <td class="sq-col-money">
-        <input type="text" inputmode="decimal" autocomplete="off" name="materials[__I__][unit_price]"
-               class="admin-input cp-money-input sq-mat-unit" placeholder="0.00">
-      </td>
-      <td class="sq-col-qty">
-        <input type="number" min="0" step="0.01" name="materials[__I__][quantity]" class="admin-input sq-mat-qty" placeholder="1">
-      </td>
-      <td class="sq-col-money sq-cell-readonly"><span class="sq-mat-sub">—</span></td>
-      <td class="sq-col-hst-pct sq-cell-readonly"><span class="sq-mat-hst">—</span></td>
-      <td class="sq-col-money sq-cell-readonly"><span class="sq-mat-total">—</span></td>
-      <td class="col-hst">
-        <input type="hidden" name="materials[__I__][apply_hst]" value="0">
-        <label class="sq-checkbox-label">
-          <input type="checkbox" name="materials[__I__][apply_hst]" value="1" class="sq-mat-hst-cb" checked>
-          <span>Apply</span>
-        </label>
-      </td>
-      <td class="col-actions">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm sq-remove-material" aria-label="Remove row">
+    <div class="sq-material-card sq-material-row">
+      <div class="sq-mat-fields">
+        <div class="sq-mat-row sq-mat-row--inputs">
+          <div class="sq-mat-field sq-mat-field--short-name">
+            <label>Short name</label>
+            <input type="text" name="materials[__I__][short_name]" class="admin-input sq-mat-short-name"
+                   maxlength="60" placeholder="e.g. Paint, Primer">
+          </div>
+          <div class="sq-mat-field sq-mat-field--description">
+            <label>Description</label>
+            <input type="text" name="materials[__I__][description]" class="admin-input sq-mat-desc"
+                   maxlength="500" placeholder="Material or item">
+          </div>
+          <div class="sq-mat-field sq-mat-field--unit">
+            <label>Unit price ($)</label>
+            <input type="text" inputmode="decimal" autocomplete="off" name="materials[__I__][unit_price]"
+                   class="admin-input cp-money-input sq-mat-unit" placeholder="0.00">
+          </div>
+          <div class="sq-mat-field sq-mat-field--qty">
+            <label>Qty</label>
+            <input type="text" inputmode="decimal" autocomplete="off" name="materials[__I__][quantity]"
+                   class="admin-input sq-mat-qty" placeholder="1">
+          </div>
+        </div>
+
+        <div class="sq-mat-row sq-mat-row--computed">
+          <div class="sq-mat-field sq-mat-field--readonly">
+            <label>Subtotal</label>
+            <div class="sq-mat-readout"><span class="sq-mat-sub">—</span></div>
+          </div>
+          <div class="sq-mat-field sq-mat-field--readonly">
+            <label>HST (13%)</label>
+            <div class="sq-mat-readout"><span class="sq-mat-hst">—</span></div>
+          </div>
+          <div class="sq-mat-field sq-mat-field--readonly">
+            <label>Total w/ HST</label>
+            <div class="sq-mat-readout"><span class="sq-mat-total">—</span></div>
+          </div>
+          <div class="sq-mat-field sq-mat-field--apply">
+            <label>HST</label>
+            <input type="hidden" name="materials[__I__][apply_hst]" value="0">
+            <label class="sq-checkbox-label sq-mat-apply-label">
+              <input type="checkbox" name="materials[__I__][apply_hst]" value="1" class="sq-mat-hst-cb" checked>
+              <span>Apply</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="sq-mat-actions">
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm sq-remove-material" aria-label="Remove row" title="Remove material">
           <i class="fa fa-trash"></i>
         </button>
-      </td>
-    </tr>
+      </div>
+    </div>
   </template>
 <?php $__env->stopSection(); ?>
 
@@ -423,7 +524,7 @@ unset($__errorArgs, $__bag); ?>
     return isFinite(v) && v >= 0 ? v : 0;
   }
 
-  var tbody = document.querySelector('#sq-materials-table tbody');
+  var list = document.getElementById('sq-materials-list');
   var addBtn = document.getElementById('sq-add-material');
   var template = document.getElementById('sq-material-template');
   var rateInput = document.getElementById('sq-labour-rate');
@@ -441,6 +542,24 @@ unset($__errorArgs, $__bag); ?>
   var gLab = document.getElementById('sq-g-labour');
   var gGrand = document.getElementById('sq-g-grand');
 
+  // Contingency controls + readouts
+  var contEnabled = document.getElementById('sq-contingency-enabled');
+  var contPercent = document.getElementById('sq-contingency-percent');
+  var matContRow = document.getElementById('sq-mat-contingency-row');
+  var matContPct = document.getElementById('sq-mat-contingency-pct');
+  var matContVal = document.getElementById('sq-mat-contingency');
+  var gContRow = document.getElementById('sq-g-contingency-row');
+  var gContPct = document.getElementById('sq-g-contingency-pct');
+  var gContVal = document.getElementById('sq-g-contingency');
+
+  function contingencyPctValue() {
+    var raw = contPercent ? contPercent.value : '';
+    var v = parseFloat(String(raw).replace(/[^0-9.]/g, ''));
+    if (!isFinite(v) || v < 0) return 0;
+    if (v > 100) return 100;
+    return v;
+  }
+
   function labourMode() {
     var m = document.querySelector('.sq-labour-mode:checked');
     return m ? m.value : 'hours';
@@ -452,23 +571,23 @@ unset($__errorArgs, $__bag); ?>
   }
 
   function recalcMaterials() {
-    var rows = tbody.querySelectorAll('.sq-material-row');
+    var rows = list.querySelectorAll('.sq-material-row');
     var subSum = 0;
     var hstSum = 0;
     var withSum = 0;
 
-    rows.forEach(function (tr) {
-      var unit = parseMoney(tr.querySelector('.sq-mat-unit').value);
-      var qty = parseQty(tr.querySelector('.sq-mat-qty').value);
-      var cb = tr.querySelector('.sq-mat-hst-cb');
+    rows.forEach(function (row) {
+      var unit = parseMoney(row.querySelector('.sq-mat-unit').value);
+      var qty = parseQty(row.querySelector('.sq-mat-qty').value);
+      var cb = row.querySelector('.sq-mat-hst-cb');
       var apply = cb && cb.checked;
       var lineSub = Math.round(unit * qty * 100) / 100;
       var lineHst = apply ? Math.round(lineSub * HST * 100) / 100 : 0;
       var lineTot = Math.round((lineSub + lineHst) * 100) / 100;
 
-      tr.querySelector('.sq-mat-sub').textContent = money(lineSub);
-      tr.querySelector('.sq-mat-hst').textContent = apply ? money(lineHst) : '—';
-      tr.querySelector('.sq-mat-total').textContent = money(lineTot);
+      row.querySelector('.sq-mat-sub').textContent = money(lineSub);
+      row.querySelector('.sq-mat-hst').textContent = apply ? money(lineHst) : '—';
+      row.querySelector('.sq-mat-total').textContent = money(lineTot);
 
       subSum += lineSub;
       hstSum += lineHst;
@@ -479,8 +598,35 @@ unset($__errorArgs, $__bag); ?>
     hstSum = Math.round(hstSum * 100) / 100;
     withSum = Math.round(withSum * 100) / 100;
 
+    // Contingency: % of pre-HST materials, with HST prorated to match
+    // the materials' effective HST rate. Mirrors backend calculator.
+    var contOn = !!(contEnabled && contEnabled.checked);
+    var contPct = contingencyPctValue();
+    var contAmt = 0;
+    var contHst = 0;
+    if (contOn && subSum > 0 && contPct > 0) {
+      contAmt = Math.round(subSum * (contPct / 100) * 100) / 100;
+      var effRate = subSum > 0 ? (hstSum / subSum) : 0;
+      contHst = Math.round(contAmt * effRate * 100) / 100;
+    }
+
+    var hstWithCont = Math.round((hstSum + contHst) * 100) / 100;
+    var withSumWithCont = Math.round((withSum + contAmt + contHst) * 100) / 100;
+
+    if (contPercent) {
+      contPercent.disabled = !contOn;
+    }
+
+    var pctLabel = (Math.round(contPct * 100) / 100).toString();
+    if (matContPct) matContPct.textContent = pctLabel;
+    if (gContPct) gContPct.textContent = pctLabel;
+    if (matContRow) matContRow.style.display = contOn ? '' : 'none';
+    if (gContRow) gContRow.style.display = contOn ? '' : 'none';
+    if (matContVal) matContVal.textContent = '+' + money(contAmt);
+    if (gContVal) gContVal.textContent = '+' + money(contAmt);
+
     elMatSub.textContent = money(subSum);
-    elMatHst.textContent = money(withSum);
+    elMatHst.textContent = money(withSumWithCont);
 
     var rate = parseMoney(rateInput.value);
     var hrs = labourHoursTotal();
@@ -488,10 +634,10 @@ unset($__errorArgs, $__bag); ?>
     elLabour.textContent = money(lab);
 
     gMatSub.textContent = money(subSum);
-    gMatHst.textContent = money(hstSum);
-    gMatTot.textContent = money(withSum);
+    gMatHst.textContent = money(hstWithCont);
+    gMatTot.textContent = money(withSumWithCont);
     gLab.textContent = money(lab);
-    gGrand.textContent = money(withSum + lab);
+    gGrand.textContent = money(withSumWithCont + lab);
 
     var lq = parseQty(qtyInput.value);
     if (labourMode() === 'days') {
@@ -506,42 +652,74 @@ unset($__errorArgs, $__bag); ?>
   }
 
   function reindexMaterialNames() {
-    var rows = tbody.querySelectorAll('.sq-material-row');
-    rows.forEach(function (tr, i) {
-      tr.querySelectorAll('[name]').forEach(function (el) {
+    var rows = list.querySelectorAll('.sq-material-row');
+    rows.forEach(function (row, i) {
+      row.querySelectorAll('[name]').forEach(function (el) {
         el.name = el.name.replace(/materials\[\d+]/, 'materials[' + i + ']');
       });
     });
   }
 
   function addRow() {
-    var html = template.innerHTML.replace(/__I__/g, String(tbody.querySelectorAll('.sq-material-row').length));
-    var wrap = document.createElement('tbody');
+    var html = template.innerHTML.replace(/__I__/g, String(list.querySelectorAll('.sq-material-row').length));
+    var wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
-    tbody.appendChild(wrap.firstElementChild);
+    list.appendChild(wrap.firstElementChild);
     reindexMaterialNames();
     recalcMaterials();
   }
 
-  tbody.addEventListener('click', function (e) {
+  list.addEventListener('click', function (e) {
     var rm = e.target.closest('.sq-remove-material');
     if (!rm) return;
-    var tr = rm.closest('tr');
-    if (tbody.querySelectorAll('.sq-material-row').length <= 1) return;
-    tr.remove();
+    var row = rm.closest('.sq-material-row');
+    if (!row) return;
+    if (list.querySelectorAll('.sq-material-row').length <= 1) return;
+    row.remove();
     reindexMaterialNames();
     recalcMaterials();
   });
 
   if (addBtn) addBtn.addEventListener('click', addRow);
 
+  // Strip anything that isn't a digit or a single decimal point from the
+  // material-row qty inputs. We use type=text so we can fully control what
+  // gets accepted, including supporting decimals like "1.5". Mobile keyboards
+  // still come up numeric thanks to inputmode="decimal".
+  function sanitizeDecimalInput(input) {
+    var raw = input.value;
+    // Remove any character that isn't 0-9 or ".".
+    var cleaned = raw.replace(/[^0-9.]/g, '');
+    // Collapse repeated dots: keep only the first one.
+    var firstDot = cleaned.indexOf('.');
+    if (firstDot !== -1) {
+      cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
+    }
+    if (cleaned !== raw) {
+      var pos = input.selectionStart;
+      input.value = cleaned;
+      // Best-effort caret restore (may be off by 1 if chars were stripped).
+      try { input.setSelectionRange(pos - (raw.length - cleaned.length), pos - (raw.length - cleaned.length)); } catch (_) {}
+    }
+  }
+
   document.getElementById('sq-standard-form').addEventListener('input', function (e) {
-    if (e.target && e.target.closest('#sq-materials-table, #sq-labour-rate, #sq-labour-qty')) {
+    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-qty')) {
+      sanitizeDecimalInput(e.target);
+    }
+    if (e.target && e.target.id === 'sq-contingency-percent') {
+      sanitizeDecimalInput(e.target);
+    }
+    if (e.target && e.target.closest('#sq-materials-list, #sq-labour-rate, #sq-labour-qty, #sq-contingency-block')) {
       recalcMaterials();
     }
   });
   document.getElementById('sq-standard-form').addEventListener('change', function (e) {
-    if (e.target && (e.target.classList.contains('sq-mat-hst-cb') || e.target.classList.contains('sq-labour-mode'))) {
+    if (e.target && (
+        e.target.classList.contains('sq-mat-hst-cb') ||
+        e.target.classList.contains('sq-labour-mode') ||
+        e.target.id === 'sq-contingency-enabled'
+    )) {
       recalcMaterials();
     }
   });

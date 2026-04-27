@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectServiceConfirmationClient;
 use App\Mail\ClientProjectTimeTrackingSummaryClient;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
+use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use App\Services\GoogleCalendarLink;
 use Illuminate\Http\Request;
@@ -13,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 /**
  * CRUD for ClientProject (full lifecycle management). The model's show view
@@ -390,17 +393,44 @@ class ClientProjectController extends Controller
             return back()->with('error', "Cannot send the service confirmation — missing client info: {$missing}.");
         }
 
+        $cc = $client_project->secondaryClientEmail();
+        $confirmationSubject = 'Service confirmation from Zanini Renovations';
+        $confirmationDescription = 'Service booking confirmed — '
+            .\Carbon\Carbon::parse($client_project->start_date)->format('M j, Y')
+            .' to '.\Carbon\Carbon::parse($client_project->end_date)->format('M j, Y');
+
         try {
             $mailer = Mail::to($client_project->client_email, $client_project->client_name);
-            if ($cc = $client_project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectServiceConfirmationClient($client_project));
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_SERVICE_CONFIRMATION,
+                $client_project->client_email,
+                $cc,
+                $confirmationSubject,
+                $confirmationDescription,
+            );
         } catch (\Throwable $e) {
             Log::error('Failed to email service confirmation', [
                 'project_id' => $client_project->id,
                 'message' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_SERVICE_CONFIRMATION,
+                $client_project->client_email,
+                $cc,
+                $confirmationSubject,
+                $confirmationDescription,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
 
             return back()->with('error', 'Failed to send the service confirmation: '.$e->getMessage());
         }
@@ -479,17 +509,44 @@ class ClientProjectController extends Controller
                 ->with('error', 'Cannot send the time summary — the client name is missing. Edit the project to add it.');
         }
 
+        $cc = $client_project->secondaryClientEmail();
+        $timeSummarySubject = 'Your time tracking summary — Zanini Renovations';
+        $timeSummaryDescription = 'Time tracking summary — '.$closedCount.' '
+            .Str::plural('entry', $closedCount).', '
+            .number_format($client_project->totalHours(), 2).' hours total';
+
         try {
             $mailer = Mail::to($client_project->client_email, $client_project->client_name);
-            if ($cc = $client_project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectTimeTrackingSummaryClient($client_project));
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_TIME_TRACKING_SUMMARY,
+                $client_project->client_email,
+                $cc,
+                $timeSummarySubject,
+                $timeSummaryDescription,
+            );
         } catch (\Throwable $e) {
             Log::error('Failed to email time tracking summary', [
                 'project_id' => $client_project->id,
                 'message' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_TIME_TRACKING_SUMMARY,
+                $client_project->client_email,
+                $cc,
+                $timeSummarySubject,
+                $timeSummaryDescription,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
 
             return back()
                 ->withFragment('time')

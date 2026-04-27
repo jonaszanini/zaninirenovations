@@ -46,6 +46,12 @@
           </a>
         </li>
         <li>
+          <a href="{{ route('admin.communications.index') }}" class="{{ request()->routeIs('admin.communications.*') ? 'is-active' : '' }}">
+            <i class="fa fa-paper-plane"></i>
+            Email/SMS log
+          </a>
+        </li>
+        <li>
           <a href="{{ route('admin.portfolio.index') }}" class="{{ request()->routeIs('admin.portfolio.*') ? 'is-active' : '' }}">
             <i class="fa fa-folder-open"></i>
             Latest Projects Photos

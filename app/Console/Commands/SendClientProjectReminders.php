@@ -4,7 +4,9 @@ namespace App\Console\Commands;
 
 use App\Mail\ClientProjectQuoteFollowUpAdmin;
 use App\Mail\ClientProjectQuoteReminderAdmin;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
+use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -52,18 +54,45 @@ class SendClientProjectReminders extends Command
             return;
         }
 
+        $logger = app(ClientCommunicationLogger::class);
+
         foreach ($projects as $project) {
+            $description = "Daily pre-quote reminder for project #{$project->id} (status: {$project->status})";
             try {
                 Mail::to($to)->send(new ClientProjectQuoteReminderAdmin($project));
                 $project->last_quote_reminder_sent_at = now();
                 $project->save();
                 $statusService->recordEvent($project, "Daily pre-quote reminder emailed to admin ({$to}).");
+
+                $logger->logEmail(
+                    $project,
+                    ClientCommunicationLog::REASON_QUOTE_PENDING_REMINDER_ADMIN,
+                    $to,
+                    null,
+                    'Daily reminder — quote still pending',
+                    $description,
+                    ClientCommunicationLog::DIRECTION_TO_ADMIN,
+                );
+
                 $this->info('Reminder sent for project #'.$project->id.' '.$project->name);
             } catch (\Throwable $e) {
                 Log::error('Pre-quote reminder failed', [
                     'client_project_id' => $project->id,
                     'message' => $e->getMessage(),
                 ]);
+
+                $logger->logEmail(
+                    $project,
+                    ClientCommunicationLog::REASON_QUOTE_PENDING_REMINDER_ADMIN,
+                    $to,
+                    null,
+                    'Daily reminder — quote still pending',
+                    $description,
+                    ClientCommunicationLog::DIRECTION_TO_ADMIN,
+                    false,
+                    $e->getMessage(),
+                );
+
                 $this->error('Failed for project #'.$project->id.': '.$e->getMessage());
             }
         }
@@ -85,18 +114,45 @@ class SendClientProjectReminders extends Command
             ->where('quote_sent_follow_up_due_at', '<=', now())
             ->get();
 
+        $logger = app(ClientCommunicationLogger::class);
+
         foreach ($projects as $project) {
+            $description = "2-day Quote-Sent follow-up for project #{$project->id}";
             try {
                 Mail::to($to)->send(new ClientProjectQuoteFollowUpAdmin($project));
                 $project->quote_sent_follow_up_sent_at = now();
                 $project->save();
                 $statusService->recordEvent($project, "2-day Quote-Sent follow-up reminder emailed to admin ({$to}).");
+
+                $logger->logEmail(
+                    $project,
+                    ClientCommunicationLog::REASON_QUOTE_SENT_FOLLOWUP_ADMIN,
+                    $to,
+                    null,
+                    'Follow-up reminder — quote sent 2 days ago',
+                    $description,
+                    ClientCommunicationLog::DIRECTION_TO_ADMIN,
+                );
+
                 $this->info('Follow-up sent for project #'.$project->id.' '.$project->name);
             } catch (\Throwable $e) {
                 Log::error('Quote Sent follow-up failed', [
                     'client_project_id' => $project->id,
                     'message' => $e->getMessage(),
                 ]);
+
+                $logger->logEmail(
+                    $project,
+                    ClientCommunicationLog::REASON_QUOTE_SENT_FOLLOWUP_ADMIN,
+                    $to,
+                    null,
+                    'Follow-up reminder — quote sent 2 days ago',
+                    $description,
+                    ClientCommunicationLog::DIRECTION_TO_ADMIN,
+                    false,
+                    $e->getMessage(),
+                );
+
                 $this->error('Failed for project #'.$project->id.': '.$e->getMessage());
             }
         }

@@ -222,4 +222,9 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
 
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
+
+    // Email / SMS audit log — read-only history of every message sent
+    // to clients (and admin-bound notifications).
+    Route::get('communications', [\App\Http\Controllers\Admin\CommunicationLogController::class, 'index'])
+        ->name('communications.index');
 });

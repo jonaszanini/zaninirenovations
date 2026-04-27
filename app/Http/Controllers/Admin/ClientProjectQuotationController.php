@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectQuotationClient;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
+use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -150,9 +152,14 @@ class ClientProjectQuotationController extends Controller
         $quotation->sent_at = now();
         $quotation->save();
 
+        $cc = $client_project->secondaryClientEmail();
+        $quoteSubject = "{$quotation->typeLabel()} {$quotation->quotation_number} from Zanini Renovations";
+        $quoteDescription = "{$quotation->typeLabel()} {$quotation->quotation_number} v{$quotation->version} — total "
+            .ClientProject::formatMoney((float) $quotation->grandTotal());
+
         try {
             $mailer = Mail::to($client_project->client_email);
-            if ($cc = $client_project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectQuotationClient(
@@ -161,12 +168,33 @@ class ClientProjectQuotationController extends Controller
                 $bytes,
                 $this->pdfFilename($client_project, $quotation)
             ));
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_QUOTATION_SENT,
+                $client_project->client_email,
+                $cc,
+                $quoteSubject,
+                $quoteDescription,
+            );
         } catch (\Throwable $e) {
             Log::error('Failed to email quotation', [
                 'project_id' => $client_project->id,
                 'quotation_id' => $quotation->id,
                 'exception' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_QUOTATION_SENT,
+                $client_project->client_email,
+                $cc,
+                $quoteSubject,
+                $quoteDescription,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)

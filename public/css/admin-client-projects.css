@@ -102,6 +102,15 @@
   box-shadow: inset 0 0 0 2px #024768;
 }
 
+/* Email / SMS log: failed delivery row gets a soft red wash so the
+   admin can spot bounces / SMTP errors at a glance. */
+.cp-table tr.cp-comm-row-failed td {
+  background: #fef2f2;
+}
+.cp-table tr.cp-comm-row-failed:hover td {
+  background: #fee2e2;
+}
+
 /* =================================================================
    Detail page: header card + status form
    ================================================================= */
@@ -1986,6 +1995,7 @@ body.cp-modal-open {
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
+.sq-materials-table .sq-col-short-name { width: 140px; }
 .sq-materials-table .sq-col-money { width: 100px; white-space: nowrap; }
 .sq-materials-table .sq-col-qty { width: 88px; }
 .sq-materials-table .sq-col-hst-pct { width: 88px; text-align: right; }
@@ -1996,6 +2006,235 @@ body.cp-modal-open {
   font-size: 13px;
 }
 .sq-materials-totals { margin-top: 14px; }
+
+/* Contingency allowance: sits between the material rows and the
+   materials-totals box. Compact one-line layout on desktop, wraps
+   gracefully on narrow viewports. */
+.sq-contingency-block {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+}
+.sq-contingency-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.sq-contingency-toggle {
+  font-weight: 700;
+  color: #0c4a6e;
+}
+.sq-contingency-pct-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.sq-contingency-pct-field .sq-contingency-percent {
+  width: 88px;
+  padding-right: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sq-contingency-pct-field .sq-contingency-percent:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+.sq-contingency-pct-suffix {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 13px;
+}
+.sq-contingency-help {
+  margin: 0;
+  flex: 1 1 240px;
+  min-width: 220px;
+  color: #334155;
+}
+.sq-mat-contingency-row,
+.sq-grand-row--contingency {
+  color: #0c4a6e;
+}
+
+/* =================================================================
+   Standard quotation: stacked "card" layout for material rows
+   -----------------------------------------------------------------
+   Each material is rendered as its own mini-form so the inputs stop
+   getting squeezed when several columns share one wide row. The card
+   is a 2-column grid:
+     [ fields stack ] [ delete button ]
+   The fields stack is itself two grid rows: editable inputs on top,
+   live-computed values + the per-row HST toggle below. Delete sits
+   vertically centred via align-items: center on the outer grid.
+   ================================================================= */
+.sq-materials-list {
+  display: flex;
+  flex-direction: column;
+  /* Larger gap so each card reads as its own block, not part of one
+     long form. Combined with the numbered badge + zebra striping below
+     this gives strong "these are separate items" affordance. */
+  gap: 18px;
+  margin-top: 8px;
+  /* CSS counter so each card auto-numbers itself (#1, #2, #3…). */
+  counter-reset: sq-material;
+}
+.sq-material-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  /* Slightly more vertical padding so the numbered badge that floats
+     out of the top-left corner doesn't crowd the SHORT NAME label. */
+  padding: 18px 16px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  /* Coloured left rail to reinforce that each block is one item. */
+  border-left: 4px solid #cbd5e1;
+  border-radius: 8px;
+  position: relative;
+  counter-increment: sq-material;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.sq-material-card:hover {
+  border-color: #cbd5e1;
+  border-left-color: #94a3b8;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+/* Zebra striping: odd rows get a soft slate tint. The even rows stay
+   pure white. Inputs/readouts already have their own backgrounds so
+   the tint only paints the card chrome around them. */
+.sq-material-card:nth-child(odd) {
+  background: #f8fafc;
+  border-left-color: #94a3b8;
+}
+.sq-material-card:nth-child(even) {
+  background: #ffffff;
+  border-left-color: #cbd5e1;
+}
+/* "#N" pill badge anchored at the top-left of every card, bumping
+   slightly out of the card so it reads as a label for that block. */
+.sq-material-card::before {
+  content: "#" counter(sq-material);
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  background: #024768;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+  z-index: 1;
+  pointer-events: none;
+}
+.sq-mat-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.sq-mat-row {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.sq-mat-row--inputs {
+  /* Short name | Description (wider) | Unit price (narrower) | Qty (narrower) */
+  grid-template-columns: minmax(120px, 1fr) minmax(260px, 4fr) minmax(90px, 0.6fr) minmax(70px, 0.45fr);
+}
+.sq-mat-row--computed {
+  /* Subtotal | HST (13%) | Total w/ HST | HST checkbox */
+  grid-template-columns: minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(90px, 0.7fr);
+}
+.sq-mat-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sq-mat-field > label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin: 0;
+}
+.sq-mat-field .admin-input { width: 100%; }
+/* Read-only computed values (Subtotal, HST, Total w/ HST). Styled to
+   look like a standard disabled input: white background, muted text,
+   not-allowed cursor — visually communicates "this is computed, you
+   can't type in it" while staying legible. */
+.sq-mat-readout {
+  background: #ffffff;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: not-allowed;
+  user-select: none;
+  opacity: 0.85;
+}
+.sq-mat-field--apply .sq-mat-apply-label {
+  /* The checkbox label needs to line up with the other readouts on
+     the second row, so we mimic the readout's height + padding. */
+  min-height: 36px;
+  padding: 4px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+}
+.sq-mat-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sq-mat-actions .sq-remove-material {
+  /* Square-ish trash button so the icon sits centred regardless of
+     how tall the field stack grows. */
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+}
+
+/* Tablet: drop to 2-up so each input has more room. */
+@media (max-width: 900px) {
+  .sq-mat-row--inputs,
+  .sq-mat-row--computed {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Phone: stack all fields one per line. */
+@media (max-width: 560px) {
+  .sq-material-card {
+    grid-template-columns: 1fr;
+  }
+  .sq-mat-row--inputs,
+  .sq-mat-row--computed {
+    grid-template-columns: 1fr;
+  }
+  .sq-mat-actions {
+    justify-content: flex-end;
+  }
+}
 .sq-checkbox-label {
   display: inline-flex;
   align-items: center;

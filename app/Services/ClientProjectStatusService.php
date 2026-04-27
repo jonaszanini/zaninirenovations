@@ -6,6 +6,7 @@ use App\Mail\ClientProjectCalendarEventAdmin;
 use App\Mail\ClientProjectFixedScheduleConfirmationClient;
 use App\Mail\ClientProjectQuoteReceivedClient;
 use App\Mail\ClientProjectThankYouClient;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectStatusHistoryEntry;
 use Illuminate\Support\Carbon;
@@ -170,20 +171,32 @@ class ClientProjectStatusService
      */
     public function sendCalendarDatesEmail(ClientProject $project): bool
     {
-        try {
-            $adminEmail = config('client_projects.calendar_email_to')
-                ?: 'jonaszanini@gmail.com';
+        $adminEmail = config('client_projects.calendar_email_to')
+            ?: 'jonaszanini@gmail.com';
 
+        $start = optional($project->start_date)->format('d/m/Y');
+        $end = optional($project->end_date)->format('d/m/Y');
+        $description = "Calendar event for project — schedule {$start} → {$end}";
+
+        try {
             Mail::to($adminEmail)->send(new ClientProjectCalendarEventAdmin($project));
 
             $project->calendar_email_sent_at = now();
             $project->save();
 
-            $start = optional($project->start_date)->format('d/m/Y');
-            $end = optional($project->end_date)->format('d/m/Y');
             $this->recordEvent(
                 $project,
                 "Dates saved ({$start} → {$end}). Admin calendar notification emailed to {$adminEmail}."
+            );
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_CALENDAR_EVENT_ADMIN,
+                $adminEmail,
+                null,
+                'New scheduled project — '.($project->name ?? '#'.$project->id),
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_ADMIN,
             );
 
             return true;
@@ -192,6 +205,18 @@ class ClientProjectStatusService
                 'client_project_id' => $project->id,
                 'message' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_CALENDAR_EVENT_ADMIN,
+                $adminEmail,
+                null,
+                'New scheduled project — '.($project->name ?? '#'.$project->id),
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_ADMIN,
+                false,
+                $e->getMessage(),
+            );
 
             return false;
         }
@@ -222,9 +247,15 @@ class ClientProjectStatusService
             return 'no-contact';
         }
 
+        $cc = $project->secondaryClientEmail();
+        $start = optional($project->start_date)->format('M j, Y');
+        $end = optional($project->end_date)->format('M j, Y');
+        $description = "Schedule confirmation (fixed-price) — {$start} to {$end}, first installment paid";
+        $subject = 'Your project schedule is confirmed — Zanini Renovations';
+
         try {
             $mailer = Mail::to($project->client_email, $project->client_name);
-            if ($cc = $project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectFixedScheduleConfirmationClient($project));
@@ -237,12 +268,33 @@ class ClientProjectStatusService
                 'Schedule confirmation (fixed price) emailed to '.$project->clientEmailRecipientsLabel().'.'
             );
 
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_FIXED_SCHEDULE_CONFIRMATION,
+                $project->client_email,
+                $cc,
+                $subject,
+                $description,
+            );
+
             return 'sent';
         } catch (\Throwable $e) {
             Log::warning('Fixed-price schedule confirmation email failed', [
                 'client_project_id' => $project->id,
                 'message' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_FIXED_SCHEDULE_CONFIRMATION,
+                $project->client_email,
+                $cc,
+                $subject,
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
 
             return 'failed';
         }
@@ -255,19 +307,44 @@ class ClientProjectStatusService
             return;
         }
 
+        $cc = $project->secondaryClientEmail();
+        $subject = "We've received your quote request — Zanini Renovations";
+        $description = 'Auto-acknowledgement after quote request submitted';
+
         try {
             $mailer = Mail::to($email, $project->client_name);
-            if ($cc = $project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectQuoteReceivedClient($project));
 
             $this->recordEvent($project, "Quote-received acknowledgement emailed to {$project->clientEmailRecipientsLabel()}.");
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_QUOTE_RECEIVED_AUTO,
+                $email,
+                $cc,
+                $subject,
+                $description,
+            );
         } catch (\Throwable $e) {
             Log::warning('Client quote-received email failed', [
                 'client_project_id' => $project->id,
                 'message' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_QUOTE_RECEIVED_AUTO,
+                $email,
+                $cc,
+                $subject,
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
         }
     }
 
@@ -278,19 +355,44 @@ class ClientProjectStatusService
             return;
         }
 
+        $cc = $project->secondaryClientEmail();
+        $subject = 'Thank you from Zanini Renovations';
+        $description = 'Thank-you / Google review request after project completion';
+
         try {
             $mailer = Mail::to($email, $project->client_name);
-            if ($cc = $project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectThankYouClient($project));
 
             $this->recordEvent($project, "Thank-you / review-request email sent to {$project->clientEmailRecipientsLabel()}.");
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_THANK_YOU,
+                $email,
+                $cc,
+                $subject,
+                $description,
+            );
         } catch (\Throwable $e) {
             Log::warning('Client thank-you email failed', [
                 'client_project_id' => $project->id,
                 'message' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_THANK_YOU,
+                $email,
+                $cc,
+                $subject,
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
         }
     }
 }

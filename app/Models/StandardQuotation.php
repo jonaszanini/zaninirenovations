@@ -30,6 +30,10 @@ class StandardQuotation extends Model
         'materials_with_hst',
         'labour_total',
         'grand_total',
+        'contingency_enabled',
+        'contingency_percent',
+        'contingency_amount',
+        'contingency_hst',
         'version',
         'linked_at',
     ];
@@ -44,6 +48,10 @@ class StandardQuotation extends Model
         'materials_with_hst' => 'decimal:2',
         'labour_total' => 'decimal:2',
         'grand_total' => 'decimal:2',
+        'contingency_enabled' => 'boolean',
+        'contingency_percent' => 'decimal:2',
+        'contingency_amount' => 'decimal:2',
+        'contingency_hst' => 'decimal:2',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];

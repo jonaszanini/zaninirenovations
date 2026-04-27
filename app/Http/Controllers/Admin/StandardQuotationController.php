@@ -199,6 +199,7 @@ class StandardQuotationController extends Controller
         $data = $request->validate([
             'client_name' => ['required', 'string', 'max:160'],
             'materials' => ['nullable', 'array'],
+            'materials.*.short_name' => ['nullable', 'string', 'max:60'],
             'materials.*.description' => ['nullable', 'string', 'max:500'],
             'materials.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'materials.*.quantity' => ['nullable', 'numeric', 'min:0'],
@@ -206,9 +207,13 @@ class StandardQuotationController extends Controller
             'labour_hourly_rate' => ['required', 'numeric', 'min:0'],
             'labour_mode' => ['required', Rule::in(['hours', 'days'])],
             'labour_quantity' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'contingency_enabled' => ['nullable'],
+            'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], [
             'client_name.required' => 'Client name is required.',
             'labour_hourly_rate.required' => 'Hourly rate is required.',
+            'contingency_percent.numeric' => 'Contingency percent must be a number.',
+            'contingency_percent.max' => 'Contingency percent cannot exceed 100.',
         ]);
 
         $materialRows = $data['materials'] ?? [];
@@ -220,15 +225,24 @@ class StandardQuotationController extends Controller
         }
         unset($mRow);
 
+        $contingencyEnabled = filter_var($data['contingency_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $contingencyPercent = $data['contingency_percent'] ?? null;
+        if ($contingencyPercent === null || $contingencyPercent === '') {
+            $contingencyPercent = 10.0;
+        }
+
         $computed = $calculator->compute(
             $materialRows,
             (float) $data['labour_hourly_rate'],
             (string) $data['labour_mode'],
-            (float) $data['labour_quantity']
+            (float) $data['labour_quantity'],
+            $contingencyEnabled,
+            (float) $contingencyPercent
         );
 
         $materialsForStorage = array_map(static function (array $m): array {
             return [
+                'short_name' => $m['short_name'] ?? '',
                 'description' => $m['description'],
                 'unit_price' => $m['unit_price'],
                 'quantity' => $m['quantity'],
@@ -249,6 +263,10 @@ class StandardQuotationController extends Controller
                 'materials_with_hst' => $computed['materials_with_hst'],
                 'labour_total' => $computed['labour_total'],
                 'grand_total' => $computed['grand_total'],
+                'contingency_enabled' => $computed['contingency_enabled'],
+                'contingency_percent' => $computed['contingency_percent'],
+                'contingency_amount' => $computed['contingency_amount'],
+                'contingency_hst' => $computed['contingency_hst'],
             ],
         ];
     }

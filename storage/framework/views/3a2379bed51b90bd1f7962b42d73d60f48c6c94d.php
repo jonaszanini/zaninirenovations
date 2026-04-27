@@ -46,6 +46,12 @@
           </a>
         </li>
         <li>
+          <a href="<?php echo e(route('admin.communications.index')); ?>" class="<?php echo e(request()->routeIs('admin.communications.*') ? 'is-active' : ''); ?>">
+            <i class="fa fa-paper-plane"></i>
+            Email/SMS log
+          </a>
+        </li>
+        <li>
           <a href="<?php echo e(route('admin.portfolio.index')); ?>" class="<?php echo e(request()->routeIs('admin.portfolio.*') ? 'is-active' : ''); ?>">
             <i class="fa fa-folder-open"></i>
             Latest Projects Photos

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectContractClient;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectContract;
+use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -141,9 +143,13 @@ class ClientProjectContractController extends Controller
         $contract->sent_at = now();
         $contract->save();
 
+        $cc = $client_project->secondaryClientEmail();
+        $contractDescription = "Contract v{$contract->version} (".$this->pdfFilename($client_project, $contract).')';
+        $contractSubject = 'Your contract from Zanini Renovations';
+
         try {
             $mailer = Mail::to($client_project->client_email);
-            if ($cc = $client_project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectContractClient(
@@ -151,12 +157,33 @@ class ClientProjectContractController extends Controller
                 $bytes,
                 $this->pdfFilename($client_project, $contract)
             ));
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_CONTRACT_SENT,
+                $client_project->client_email,
+                $cc,
+                $contractSubject,
+                $contractDescription,
+            );
         } catch (\Throwable $e) {
             Log::error('Failed to email contract', [
                 'project_id' => $client_project->id,
                 'contract_id' => $contract->id,
                 'exception' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_CONTRACT_SENT,
+                $client_project->client_email,
+                $cc,
+                $contractSubject,
+                $contractDescription,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)

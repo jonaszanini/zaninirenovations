@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectInvoiceClient;
 use App\Mail\ClientProjectInvoiceReceiptClient;
 use App\Mail\ClientProjectInvoiceReminderClient;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectTimeEntry;
+use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -317,18 +319,45 @@ class ClientProjectInvoiceController extends Controller
 
         $filename = $this->invoicePdfFilename($client_project, $invoice);
 
+        $cc = $client_project->secondaryClientEmail();
+        $invoiceSubject = "Invoice {$invoice->invoice_number} from Zanini Renovations";
+        $invoiceDescription = "Invoice {$invoice->invoice_number} ({$invoice->installmentTitle()}) v{$invoice->version} — total "
+            .ClientProject::formatMoney((float) $invoice->total)
+            .($invoice->due_on ? ', due '.\Carbon\Carbon::parse($invoice->due_on)->format('M j, Y') : '');
+
         try {
             $mailer = Mail::to($client_project->client_email);
-            if ($cc = $client_project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectInvoiceClient($client_project, $invoice, $bytes, $filename));
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_INVOICE_SENT,
+                $client_project->client_email,
+                $cc,
+                $invoiceSubject,
+                $invoiceDescription,
+            );
         } catch (\Throwable $e) {
             Log::error('Failed to email invoice', [
                 'project_id' => $client_project->id,
                 'invoice_id' => $invoice->id,
                 'exception' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_INVOICE_SENT,
+                $client_project->client_email,
+                $cc,
+                $invoiceSubject,
+                $invoiceDescription,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
@@ -384,9 +413,15 @@ class ClientProjectInvoiceController extends Controller
             $bytes = $this->renderInvoicePdf($client_project, $invoice)->output();
         }
 
+        $cc = $client_project->secondaryClientEmail();
+        $reminderSubject = "Payment reminder — invoice {$invoice->invoice_number}";
+        $reminderDescription = "Payment reminder for invoice {$invoice->invoice_number} — outstanding "
+            .ClientProject::formatMoney((float) $invoice->total)
+            .($invoice->due_on ? ', due '.\Carbon\Carbon::parse($invoice->due_on)->format('M j, Y') : '');
+
         try {
             $mailer = Mail::to($client_project->client_email);
-            if ($cc = $client_project->secondaryClientEmail()) {
+            if ($cc) {
                 $mailer->cc($cc);
             }
             $mailer->send(new ClientProjectInvoiceReminderClient(
@@ -395,12 +430,33 @@ class ClientProjectInvoiceController extends Controller
                 $bytes,
                 $this->invoicePdfFilename($client_project, $invoice)
             ));
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_INVOICE_REMINDER,
+                $client_project->client_email,
+                $cc,
+                $reminderSubject,
+                $reminderDescription,
+            );
         } catch (\Throwable $e) {
             Log::error('Failed to email invoice reminder', [
                 'project_id' => $client_project->id,
                 'invoice_id' => $invoice->id,
                 'exception' => $e->getMessage(),
             ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_INVOICE_REMINDER,
+                $client_project->client_email,
+                $cc,
+                $reminderSubject,
+                $reminderDescription,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
@@ -501,9 +557,15 @@ class ClientProjectInvoiceController extends Controller
         $emailSent = false;
 
         if ($sendEmail && $client_project->hasClientContactInfo()) {
+            $cc = $client_project->secondaryClientEmail();
+            $receiptSubject = "Receipt — invoice {$invoice->invoice_number} paid";
+            $receiptDescription = "Receipt for invoice {$invoice->invoice_number} — paid "
+                .ClientProject::formatMoney((float) $invoice->paid_amount)
+                .' on '.\Carbon\Carbon::parse($invoice->paid_at)->format('M j, Y');
+
             try {
                 $mailer = Mail::to($client_project->client_email);
-                if ($cc = $client_project->secondaryClientEmail()) {
+                if ($cc) {
                     $mailer->cc($cc);
                 }
                 $mailer->send(new ClientProjectInvoiceReceiptClient(
@@ -513,12 +575,33 @@ class ClientProjectInvoiceController extends Controller
                     $this->receiptPdfFilename($client_project, $invoice)
                 ));
                 $emailSent = true;
+
+                app(ClientCommunicationLogger::class)->logEmail(
+                    $client_project,
+                    ClientCommunicationLog::REASON_RECEIPT_SENT,
+                    $client_project->client_email,
+                    $cc,
+                    $receiptSubject,
+                    $receiptDescription,
+                );
             } catch (\Throwable $e) {
                 Log::error('Failed to email receipt', [
                     'project_id' => $client_project->id,
                     'invoice_id' => $invoice->id,
                     'exception' => $e->getMessage(),
                 ]);
+
+                app(ClientCommunicationLogger::class)->logEmail(
+                    $client_project,
+                    ClientCommunicationLog::REASON_RECEIPT_SENT,
+                    $client_project->client_email,
+                    $cc,
+                    $receiptSubject,
+                    $receiptDescription,
+                    ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                    false,
+                    $e->getMessage(),
+                );
             }
         }
 
