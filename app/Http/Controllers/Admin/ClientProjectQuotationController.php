@@ -57,6 +57,7 @@ class ClientProjectQuotationController extends Controller
             'items.*.description' => ['nullable', 'string', 'max:2000'],
             'items.*.amount' => ['nullable', 'numeric'],
             'items.*.apply_hst' => ['nullable'],
+            'work_description' => ['nullable', 'string', 'max:5000'],
             'intent' => ['nullable', 'in:draft,close'],
         ]);
 
@@ -77,6 +78,10 @@ class ClientProjectQuotationController extends Controller
         $quotation->labour = $request->boolean('labour');
         $quotation->material = $request->boolean('material');
         $quotation->items = $this->normaliseItems($data['items'] ?? []);
+
+        $workDescription = trim((string) ($data['work_description'] ?? ''));
+        $quotation->work_description = $workDescription === '' ? null : $workDescription;
+
         $quotation->save();
 
         $client_project->refresh();

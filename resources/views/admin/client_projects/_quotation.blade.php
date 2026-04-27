@@ -130,6 +130,14 @@
 
       <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
 
+      @php $previewWorkDesc = trim((string) ($quotation->work_description ?? '')); @endphp
+      @if ($previewWorkDesc !== '')
+        <div class="cp-quotation-work-description">
+          <div class="cp-quotation-work-description-title">Description of the work</div>
+          <div class="cp-quotation-work-description-body">{!! nl2br(e($previewWorkDesc)) !!}</div>
+        </div>
+      @endif
+
       <table class="cp-quotation-items">
         <thead>
           <tr>
@@ -141,7 +149,7 @@
         <tbody>
           @foreach ($items as $row)
             <tr>
-              <td>{{ $row['description'] }}</td>
+              <td>{!! nl2br(e($row['description'])) !!}</td>
               <td class="cp-quotation-hst-col">{{ !empty($row['apply_hst']) ? '13%' : '—' }}</td>
               <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
             </tr>

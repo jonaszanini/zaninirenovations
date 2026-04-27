@@ -107,6 +107,22 @@
         </div>
       </div>
 
+      {{-- Description of the work — free-form notes about the service.
+           Appears above the line items in the PDF / preview the client
+           sees. When a Standard Quotation is linked to this project,
+           its description is copied into this field. --}}
+      <div class="admin-form-group cp-quotation-work-description">
+        <label for="cp-quotation-work-description">Description of the work</label>
+        <textarea id="cp-quotation-work-description"
+                  name="work_description"
+                  rows="5"
+                  maxlength="5000"
+                  class="admin-input @error('work_description') is-invalid @enderror"
+                  placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $quotation->work_description) }}</textarea>
+        <p class="admin-form-help">Shown above the line items on the client's quotation PDF. Plain text — line breaks are preserved.</p>
+        @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
       <div class="cp-quotation-items-card">
         <div class="cp-quotation-items-header">
           <h4>Line items</h4>

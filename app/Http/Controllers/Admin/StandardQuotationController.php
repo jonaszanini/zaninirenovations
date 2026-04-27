@@ -198,6 +198,7 @@ class StandardQuotationController extends Controller
     {
         $data = $request->validate([
             'client_name' => ['required', 'string', 'max:160'],
+            'work_description' => ['nullable', 'string', 'max:5000'],
             'materials' => ['nullable', 'array'],
             'materials.*.short_name' => ['nullable', 'string', 'max:60'],
             'materials.*.description' => ['nullable', 'string', 'max:500'],
@@ -250,9 +251,12 @@ class StandardQuotationController extends Controller
             ];
         }, $computed['materials']);
 
+        $workDescription = trim((string) ($data['work_description'] ?? ''));
+
         return [
             'persistence' => [
                 'client_name' => trim($data['client_name']),
+                'work_description' => $workDescription === '' ? null : $workDescription,
                 'materials' => $materialsForStorage,
                 'labour_mode' => $data['labour_mode'],
                 'labour_quantity' => round((float) $data['labour_quantity'], 2),
@@ -292,6 +296,7 @@ class StandardQuotationController extends Controller
         }
 
         $items = is_array($projectQuote->items) ? $projectQuote->items : [];
+
         // Single tax-inclusive bundle: materials (with per-row HST) + untaxed labour.
         // apply_hst false keeps the project quotation from adding another 13%.
         $items[] = [
@@ -301,6 +306,20 @@ class StandardQuotationController extends Controller
         ];
 
         $projectQuote->items = $items;
+
+        // Carry the standard quotation's "Description of the work" onto
+        // the project quotation as a top-level field. Rendered as its
+        // own block on the PDF / preview. If the project quotation
+        // already has its own description, append (separated by a blank
+        // line) so nothing the user wrote gets lost.
+        $standardWorkDescription = trim((string) ($standardQuotation->work_description ?? ''));
+        if ($standardWorkDescription !== '') {
+            $existingDescription = trim((string) ($projectQuote->work_description ?? ''));
+            $projectQuote->work_description = $existingDescription === ''
+                ? $standardWorkDescription
+                : $existingDescription."\n\n".$standardWorkDescription;
+        }
+
         $projectQuote->save();
 
         $project->refresh();

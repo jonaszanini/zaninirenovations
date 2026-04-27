@@ -47,17 +47,29 @@
     </div>
 
     @unless ($isRejected)
+      {{-- Status form: label + help icon on one line, then a flex row of
+           controls (select | note | save). All inputs share the same
+           height via .admin-input so the note no longer looks shorter
+           than the select. Wraps cleanly to a single-column stack on
+           narrow viewports. --}}
       <form action="{{ route('admin.client-projects.status.update', $project) }}" method="post" class="cp-status-form">
         @csrf
-        <label for="cp-status-select">Change status</label>
-        <select id="cp-status-select" name="status">
-          @foreach ($statusLabels as $key => $label)
-            <option value="{{ $key }}" @selected($project->status === $key)>{{ $label }}</option>
-          @endforeach
-        </select>
-        <input type="text" name="note" placeholder="Optional note…" maxlength="2000" class="cp-status-note">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save status</button>
-        <span class="cp-hint" title="Workflow: Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
+        <div class="cp-status-form-head">
+          <label for="cp-status-select" class="cp-status-form-label">Change status</label>
+          <span class="cp-hint" title="Workflow: Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
+        </div>
+        <div class="cp-status-controls">
+          <select id="cp-status-select" name="status" class="admin-input cp-status-select">
+            @foreach ($statusLabels as $key => $label)
+              <option value="{{ $key }}" @selected($project->status === $key)>{{ $label }}</option>
+            @endforeach
+          </select>
+          <input type="text" id="cp-status-note" name="note" placeholder="Optional note about this status change…"
+                 maxlength="2000" class="admin-input cp-status-note">
+          <button type="submit" class="admin-btn admin-btn--primary cp-status-save">
+            <i class="fa fa-save"></i> Save status
+          </button>
+        </div>
       </form>
     @else
       <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>

@@ -27,6 +27,7 @@ class ClientProjectQuotation extends Model
         'labour',
         'material',
         'items',
+        'work_description',
         'quotation_number',
         'pdf_path',
         'sent_at',

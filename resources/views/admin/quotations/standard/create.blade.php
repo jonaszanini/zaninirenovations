@@ -98,6 +98,18 @@
                placeholder="e.g. Jane Smith">
         @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
+
+      {{-- Free-form description of the work/service. Surfaced on the
+           project quotation PDF (folded into the priced line item) so
+           the client sees what's covered by this standard quotation. --}}
+      <div class="admin-form-group" style="margin-top:18px;">
+        <label for="sq-work-description">Description of the work</label>
+        <textarea id="sq-work-description" name="work_description" rows="5" maxlength="5000"
+                  class="admin-input @error('work_description') is-invalid @enderror"
+                  placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? $quotation->work_description : '') }}</textarea>
+        <p class="admin-form-help">Shown on the client's quotation PDF, beneath the priced line item for this standard quotation. Plain text — line breaks are preserved.</p>
+        @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
     </div>
 
     <div class="sq-layout">
@@ -230,6 +242,15 @@
             <span id="sq-mat-with-hst">CA$0.00</span>
           </div>
         </div>
+
+        {{-- Convenience save: same submit as the bottom action so the
+             user can persist after entering only materials without
+             scrolling all the way down. --}}
+        <div class="sq-panel-save">
+          <button type="submit" class="admin-btn admin-btn--primary">
+            <i class="fa fa-save"></i> Save only
+          </button>
+        </div>
       </div>
 
       {{-- Labour --------------------------------------------------- --}}
@@ -343,6 +364,8 @@
             <p class="admin-form-help" style="margin:0;">No active projects to link.</p>
           @endif
         </div>
+
+        <hr class="sq-link-divider" aria-hidden="true">
 
         <div class="fq-link-col fq-link-col--stack">
           <h5><i class="fa fa-plus-circle"></i> New project</h5>

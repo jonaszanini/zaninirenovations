@@ -20,6 +20,7 @@ class StandardQuotation extends Model
         'client_project_id',
         'quote_number',
         'client_name',
+        'work_description',
         'materials',
         'labour_mode',
         'labour_quantity',

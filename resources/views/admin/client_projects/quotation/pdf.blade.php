@@ -178,6 +178,27 @@
       margin: 6pt 0 12pt;
     }
 
+    .quote-work-description {
+      margin: 0 0 14pt;
+      padding: 10pt 12pt;
+      background: #f8fafc;
+      border-left: 3pt solid #024768;
+    }
+    .quote-work-description-title {
+      margin: 0 0 4pt;
+      font-size: 9.5pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #024768;
+    }
+    .quote-work-description-body {
+      margin: 0;
+      font-size: 10.5pt;
+      color: #1f2937;
+      line-height: 1.45;
+    }
+
     /* Items table */
     .items {
       width: 100%;
@@ -335,6 +356,17 @@
   {{-- Intro phrase --}}
   <p class="quote-intro">{{ $quotation->introPhrase() }}</p>
 
+  {{-- Optional "Description of the work" — free-form notes about the
+       service. Rendered as its own block above the line items table so
+       the client sees the scope before the priced lines. --}}
+  @php $quoteWorkDesc = trim((string) ($quotation->work_description ?? '')); @endphp
+  @if ($quoteWorkDesc !== '')
+    <div class="quote-work-description">
+      <p class="quote-work-description-title">Description of the work</p>
+      <p class="quote-work-description-body">{!! nl2br(e($quoteWorkDesc)) !!}</p>
+    </div>
+  @endif
+
   {{-- Items --}}
   <table class="items">
     <thead>
@@ -347,7 +379,7 @@
     <tbody>
       @foreach ($items as $row)
         <tr>
-          <td>{{ $row['description'] }}</td>
+          <td>{!! nl2br(e($row['description'])) !!}</td>
           <td class="hst">{{ !empty($row['apply_hst']) ? '13%' : '—' }}</td>
           <td class="amount">{{ $fmt($row['amount']) }}</td>
         </tr>
