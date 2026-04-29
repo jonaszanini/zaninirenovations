@@ -8,6 +8,7 @@ use App\Mail\ClientProjectInvoiceReceiptClient;
 use App\Mail\ClientProjectInvoiceReminderClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
+use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
@@ -156,42 +157,57 @@ class ClientProjectInvoiceController extends Controller
             'items' => ['nullable', 'array'],
             'items.*.description' => ['nullable', 'string', 'max:2000'],
             'items.*.amount' => ['nullable', 'numeric'],
+            'items.*.line_kind' => ['nullable', Rule::in(['labour', 'materials'])],
+            'items.*.expense_id' => ['nullable', 'integer'],
             'manual_description' => ['nullable', 'string', 'max:255'],
             'manual_total' => ['nullable', 'numeric', 'min:0'],
             'due_on' => ['nullable', 'date'],
             'intent' => ['nullable', 'in:draft,close'],
         ]);
 
-        $items = $this->normaliseItems($data['items'] ?? []);
+        $isHourlyManual = $client_project->isHourly() && $invoice->isManual();
+
+        $items = $isHourlyManual
+            ? $this->normaliseHourlyInvoiceItems($client_project, $data['items'] ?? [])
+            : $this->normaliseItems($data['items'] ?? []);
 
         // For manual invoices, the user sets the pre-HST total directly
         // via the manual_total field; we only persist it when present.
+        // Excluded for hourly projects — totals come from Labour vs Materials rows.
         if ($invoice->isManual() && isset($data['manual_description'])) {
             $invoice->installment_description = trim((string) $data['manual_description']) ?: 'Manual invoice';
         }
 
-        $lockedSubtotal = $this->lockedSubtotal($client_project, $invoice, $data['manual_total'] ?? null);
-
-        $invoice->items = $items;
-        $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
-        $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
-        $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
-
-        if ($invoice->isManual() && $data['manual_total'] !== null) {
-            // Manual invoices: if the items don't add up to the user-entered
-            // manual_total, we still persist a draft so work isn't lost — the
-            // UI surfaces a validation warning. For the "send" action this
-            // mismatch is a hard stop (see send()).
-            $invoice->subtotal = (float) $data['manual_total'];
+        if ($isHourlyManual) {
+            [$labour, $materials] = $this->partitionHourlyLineAmounts($items);
+            $invoice->items = $items;
+            // subtotal column = taxable labour base (pre-HST) only — matches PDF wording.
+            $invoice->subtotal = $labour;
+            $invoice->hst = round($labour * ClientProjectInvoice::HST_RATE, 2);
+            $invoice->total = round($labour + $invoice->hst + $materials, 2);
+            $this->syncHourlyExpenseLinks($client_project, $invoice, $items);
+        } else {
+            $invoice->items = $items;
+            $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
             $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
             $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
 
-            if (abs((float) array_sum(array_column($items, 'amount')) - (float) $data['manual_total']) > 0.01 && count($items)) {
-                // Fall back to items-sum as the authoritative subtotal if
-                // the user actually typed line items (prefer item sum).
-                $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
+            if ($invoice->isManual() && $data['manual_total'] !== null && ! $client_project->isHourly()) {
+                // Manual fixed-price invoices: if the items don't add up to the user-entered
+                // manual_total, we still persist a draft so work isn't lost — the
+                // UI surfaces a validation warning. For the "send" action this
+                // mismatch is a hard stop (see send()).
+                $invoice->subtotal = (float) $data['manual_total'];
                 $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
                 $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
+
+                if (abs((float) array_sum(array_column($items, 'amount')) - (float) $data['manual_total']) > 0.01 && count($items)) {
+                    // Fall back to items-sum as the authoritative subtotal if
+                    // the user actually typed line items (prefer item sum).
+                    $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
+                    $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
+                    $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
+                }
             }
         }
 
@@ -804,24 +820,45 @@ class ClientProjectInvoiceController extends Controller
             $items[] = [
                 'description' => implode(' · ', $parts),
                 'amount' => round($hours * $rate, 2),
+                'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR,
             ];
         }
 
-        $subtotal = round(array_sum(array_column($items, 'amount')), 2);
-        $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
+        $unbilledExpenses = $project->expenses()
+            ->whereNull('client_project_invoice_id')
+            ->orderBy('occurred_on')
+            ->get();
+
+        foreach ($unbilledExpenses as $exp) {
+            $items[] = [
+                'description' => sprintf(
+                    'Materials · %s (%s)',
+                    $exp->description,
+                    $exp->occurred_on->format('M j, Y')
+                ),
+                // Amount entered on Financials tab is tax-included (Ontario POS style).
+                'amount' => round((float) $exp->amount, 2),
+                'line_kind' => ClientProjectInvoice::LINE_KIND_MATERIALS,
+                'expense_id' => $exp->id,
+            ];
+        }
+
+        [$labour, $materials] = $this->partitionHourlyLineAmounts($items);
+        $hst = round($labour * ClientProjectInvoice::HST_RATE, 2);
+        $grand = round($labour + $hst + $materials, 2);
 
         // Use a transaction so the link-back to time entries is atomic
         // with the invoice insert — an exception anywhere rolls back
         // and leaves the entries unbilled.
-        return DB::transaction(function () use ($project, $items, $subtotal, $hst, $unbilledEntries) {
+        return DB::transaction(function () use ($project, $items, $labour, $hst, $grand, $unbilledEntries) {
             $invoice = $project->invoices()->create([
                 'installment_number' => null,
                 'installment_description' => 'Hourly work',
                 'invoice_number' => ClientProjectInvoice::generateNumber(),
                 'items' => $items,
-                'subtotal' => $subtotal,
+                'subtotal' => $labour,
                 'hst' => $hst,
-                'total' => round($subtotal + $hst, 2),
+                'total' => $grand,
                 'status' => ClientProjectInvoice::STATUS_DRAFT,
                 'version' => 1,
             ]);
@@ -831,6 +868,8 @@ class ClientProjectInvoiceController extends Controller
             $project->timeEntries()
                 ->whereIn('id', $unbilledEntries->pluck('id'))
                 ->update(['client_project_invoice_id' => $invoice->id]);
+
+            $this->syncHourlyExpenseLinks($project, $invoice, $items);
 
             return $invoice;
         });
@@ -932,6 +971,98 @@ class ClientProjectInvoiceController extends Controller
         return $clean;
     }
 
+    /** @return array{0: float, 1: float} Labour (pre-HST) and materials (tax-included) totals. */
+    protected function partitionHourlyLineAmounts(array $items): array
+    {
+        $labour = 0.0;
+        $materials = 0.0;
+        foreach ($items as $row) {
+            $amt = round((float) ($row['amount'] ?? 0), 2);
+            if (($row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR) === ClientProjectInvoice::LINE_KIND_MATERIALS) {
+                $materials += $amt;
+            } else {
+                $labour += $amt;
+            }
+        }
+
+        return [round($labour, 2), round($materials, 2)];
+    }
+
+    /**
+     * Normalise hourly invoice rows + validate materials lines that reference
+     * a project expense snapshot.
+     *
+     * @return array<int, array{description: string, amount: float, line_kind: string, expense_id?: int}>
+     */
+    protected function normaliseHourlyInvoiceItems(ClientProject $project, array $rows): array
+    {
+        $clean = [];
+        foreach ($rows as $row) {
+            $description = trim((string) ($row['description'] ?? ''));
+            $amount = (float) ($row['amount'] ?? 0);
+            $kind = strtolower(trim((string) ($row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR)));
+            if ($kind !== ClientProjectInvoice::LINE_KIND_MATERIALS) {
+                $kind = ClientProjectInvoice::LINE_KIND_LABOUR;
+            }
+            if ($description === '' && $amount == 0.0) {
+                continue;
+            }
+
+            $out = [
+                'description' => $description,
+                'amount' => round($amount, 2),
+                'line_kind' => $kind,
+            ];
+
+            $eid = isset($row['expense_id']) ? (int) $row['expense_id'] : null;
+            if ($eid && $kind === ClientProjectInvoice::LINE_KIND_MATERIALS) {
+                $owns = ClientProjectExpense::query()
+                    ->where('client_project_id', $project->id)
+                    ->where('id', $eid)
+                    ->exists();
+                if ($owns) {
+                    $out['expense_id'] = $eid;
+                }
+            }
+
+            $clean[] = $out;
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Keep client_project_expenses.client_project_invoice_id aligned with
+     * materials lines that reference an expense snapshot.
+     */
+    protected function syncHourlyExpenseLinks(ClientProject $project, ClientProjectInvoice $invoice, array $items): void
+    {
+        $wanted = [];
+        foreach ($items as $row) {
+            if (($row['line_kind'] ?? '') === ClientProjectInvoice::LINE_KIND_MATERIALS && ! empty($row['expense_id'])) {
+                $wanted[] = (int) $row['expense_id'];
+            }
+        }
+        $wanted = array_values(array_unique($wanted));
+
+        $clear = ClientProjectExpense::query()
+            ->where('client_project_id', $project->id)
+            ->where('client_project_invoice_id', $invoice->id);
+
+        if (count($wanted) > 0) {
+            $clear->whereNotIn('id', $wanted);
+        }
+
+        $clear->update(['client_project_invoice_id' => null]);
+
+        foreach ($wanted as $id) {
+            ClientProjectExpense::query()
+                ->where('client_project_id', $project->id)
+                ->where('id', $id)
+                ->update(['client_project_invoice_id' => $invoice->id]);
+        }
+    }
+
     // --- PDF rendering ---------------------------------------------------
 
     protected function renderInvoicePdf(ClientProject $project, ClientProjectInvoice $invoice)
@@ -939,6 +1070,9 @@ class ClientProjectInvoiceController extends Controller
         $pdf = Pdf::loadView('admin.client_projects.invoice.pdf', [
             'project' => $project,
             'invoice' => $invoice,
+            'isHourlyManual' => $project->isHourly() && $invoice->isManual(),
+            'hourlyLabourTotal' => $invoice->hourlyLabourTotalFromItems(),
+            'hourlyMaterialsTotal' => $invoice->hourlyMaterialsTotalFromItems(),
         ])
             ->setPaper('a4')
             ->setOption('isRemoteEnabled', true)
@@ -956,6 +1090,9 @@ class ClientProjectInvoiceController extends Controller
         $pdf = Pdf::loadView('admin.client_projects.invoice.receipt', [
             'project' => $project,
             'invoice' => $invoice,
+            'isHourlyManual' => $project->isHourly() && $invoice->isManual(),
+            'hourlyLabourTotal' => $invoice->hourlyLabourTotalFromItems(),
+            'hourlyMaterialsTotal' => $invoice->hourlyMaterialsTotalFromItems(),
         ])
             ->setPaper('a4')
             ->setOption('isRemoteEnabled', true)

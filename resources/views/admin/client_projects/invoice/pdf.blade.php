@@ -7,6 +7,10 @@
     // Normalise font paths to forward slashes — see quotation/pdf for why.
     $fontDir = str_replace('\\', '/', public_path('fonts/roboto'));
     $items = $invoice->cleanItems();
+    $hourlyPdf = ($isHourlyManual ?? false);
+    $labourRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => ($r['line_kind'] ?? 'labour') !== 'materials')) : $items;
+    $materialsRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => ($r['line_kind'] ?? '') === 'materials')) : [];
+
     $subtotal = (float) $invoice->subtotal;
     $hst = (float) $invoice->hst;
     $total = (float) $invoice->total;
@@ -308,6 +312,81 @@
 
   <p class="section-intro">Invoice for the following:</p>
 
+  @if (!empty($hourlyPdf))
+    @if (count($labourRows) > 0)
+      <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Labour (HST applies)</p>
+      <table class="items" style="margin-bottom:16pt;">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="amount">Amount (pre-tax)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach ($labourRows as $row)
+            <tr>
+              <td>{{ $row['description'] }}</td>
+              <td class="amount">{{ $fmt($row['amount']) }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endif
+
+    @if (count($materialsRows) > 0)
+      <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Materials (amounts include HST)</p>
+      <p style="margin:0 0 8pt;font-size:9.5pt;color:#4b5563;font-style:italic;">No additional HST is charged on materials — amounts below are the final client prices (tax-included).</p>
+      <table class="items" style="margin-bottom:12pt;">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="amount">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach ($materialsRows as $row)
+            <tr>
+              <td>{{ $row['description'] }}</td>
+              <td class="amount">{{ $fmt($row['amount']) }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endif
+
+    @if (count($labourRows) === 0 && count($materialsRows) === 0)
+      <table class="items">
+        <tbody>
+          <tr>
+            <td colspan="2" style="font-style:italic;color:#6b7280;text-align:center;">No line items</td>
+          </tr>
+        </tbody>
+      </table>
+    @endif
+
+    <table class="items">
+      <tfoot>
+        <tr>
+          <td class="totals-label">Labour subtotal (pre-HST)</td>
+          <td class="amount">{{ $fmt($hourlyLabourTotal ?? $subtotal) }}</td>
+        </tr>
+        <tr>
+          <td class="totals-label">HST (13% on labour only)</td>
+          <td class="amount">{{ $fmt($hst) }}</td>
+        </tr>
+        @if (($hourlyMaterialsTotal ?? 0) > 0.0001)
+          <tr>
+            <td class="totals-label">Materials (tax-included)</td>
+            <td class="amount">{{ $fmt($hourlyMaterialsTotal) }}</td>
+          </tr>
+        @endif
+        <tr class="grand">
+          <td class="totals-label">Total due</td>
+          <td class="amount">{{ $fmt($total) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  @else
   <table class="items">
     <thead>
       <tr>
@@ -344,6 +423,7 @@
       </tr>
     </tfoot>
   </table>
+  @endif
 
   <div class="pay-instructions">
     <p style="margin:0 0 6pt;">

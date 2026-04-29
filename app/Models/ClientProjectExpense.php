@@ -9,6 +9,7 @@ class ClientProjectExpense extends Model
 {
     protected $fillable = [
         'client_project_id',
+        'client_project_invoice_id',
         'occurred_on',
         'description',
         'amount',
@@ -22,5 +23,10 @@ class ClientProjectExpense extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(ClientProject::class, 'client_project_id');
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(ClientProjectInvoice::class, 'client_project_invoice_id');
     }
 }
