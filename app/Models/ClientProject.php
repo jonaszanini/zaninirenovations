@@ -475,6 +475,32 @@ class ClientProject extends Model
         return $this->status === self::STATUS_VISIT_SCHEDULED && !$this->visit_done;
     }
 
+    /**
+     * Installment-linked invoice: typed line totals must equal the Financials installment pre-tax amount.
+     * Hourly/manual invoices skip this check.
+     */
+    public function invoiceLineSumMatchesInstallmentLock(ClientProjectInvoice $invoice): bool
+    {
+        if ($invoice->isManual() || $invoice->installment_number === null) {
+            return true;
+        }
+
+        $installment = $this->installments()
+            ->orderBy('sort_order')
+            ->get()
+            ->values()
+            ->get(((int) $invoice->installment_number) - 1);
+
+        if ($installment === null) {
+            return false;
+        }
+
+        $locked = round((float) ($installment->amount ?? 0), 2);
+        $actual = round(array_sum(array_column($invoice->cleanItems(), 'amount')), 2);
+
+        return abs($locked - $actual) <= 0.01;
+    }
+
     // --- Money & profit calculations --------------------------------------
 
     /** Sum of expense amounts (without subtracting returns). */
@@ -493,6 +519,20 @@ class ClientProject extends Model
     public function totalSpent(): float
     {
         return max(0.0, $this->totalExpensesAmount() - $this->totalReturnsAmount());
+    }
+
+    /**
+     * Cash costs that reduce the owner's gross/net profit calculations.
+     * On hourly projects, expense lines are tracked for materials passed through /
+     * reimbursed on client invoices—they are excluded here so labour-only profit matches reality.
+     */
+    public function totalSpentForProfit(): float
+    {
+        if ($this->isHourly()) {
+            return 0.0;
+        }
+
+        return $this->totalSpent();
     }
 
     /** Sum of paid installments (revenue recognised so far). */
@@ -539,7 +579,7 @@ class ClientProject extends Model
 
     public function grossProfit(): float
     {
-        return $this->revenueForProfit() - $this->totalSpent();
+        return $this->revenueForProfit() - $this->totalSpentForProfit();
     }
 
     public function hstToSave(): float

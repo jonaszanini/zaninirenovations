@@ -10,14 +10,20 @@
      * are shown first; if none, three empty rows.
      */
     $existing = old('items') ?? array_map(
-        fn ($i) => ['description' => $i['description'], 'amount' => $i['amount']],
+        fn ($i) => [
+            'description' => $i['description'],
+            'amount' => $i['amount'],
+            'line_kind' => $i['line_kind'] ?? 'labour',
+            'expense_id' => $i['expense_id'] ?? null,
+        ],
         $invoice->cleanItems()
     );
     if (empty($existing)) {
-        $existing = [['description' => '', 'amount' => '']];
+        $existing = [['description' => '', 'amount' => '', 'line_kind' => 'labour', 'expense_id' => null]];
     }
 
     $isManual = $invoice->isManual();
+    $isHourlyManual = $project->isHourly() && $isManual;
     $isFromTimeEntries = $isManual && $invoice->isFromTimeEntries();
     $manualDescription = old('manual_description', $invoice->installment_description);
     $manualTotal = old('manual_total', $invoice->subtotal > 0 ? number_format((float) $invoice->subtotal, 2, '.', '') : '');
@@ -72,6 +78,7 @@
         <?php if($isFromTimeEntries): ?>
           Hourly invoice — prefilled from <?php echo e($invoice->timeEntries->count()); ?> unbilled time entr<?php echo e($invoice->timeEntries->count() === 1 ? 'y' : 'ies'); ?>.
           You can edit the descriptions and amounts freely before sending. Deleting this draft will release the entries back to "unbilled".
+          Material lines are tax-included (no extra HST on materials); HST applies to labour only.
         <?php elseif($isManual): ?>
           Manual invoice — no installment link. Enter the pre-HST total and optionally itemise the work below.
         <?php else: ?>
@@ -137,20 +144,28 @@
                    value="<?php echo e($manualDescription); ?>"
                    placeholder="e.g. Extra work — additional drywall">
           </div>
-          <div class="admin-form-group">
-            <label for="cp-invoice-manual-total">Pre-HST total (CAD)</label>
-            <input type="text"
-                   id="cp-invoice-manual-total"
-                   name="manual_total"
-                   class="admin-input cp-money-input"
-                   inputmode="decimal"
-                   autocomplete="off"
-                   placeholder="0.00"
-                   value="<?php echo e($manualTotal); ?>">
-            <p class="admin-form-help" style="margin:4px 0 0;">
-              If you itemise the work below, the sum of the line items will be used instead.
-            </p>
-          </div>
+          <?php if (! ($isHourlyManual)): ?>
+            <div class="admin-form-group">
+              <label for="cp-invoice-manual-total">Pre-HST total (CAD)</label>
+              <input type="text"
+                     id="cp-invoice-manual-total"
+                     name="manual_total"
+                     class="admin-input cp-money-input"
+                     inputmode="decimal"
+                     autocomplete="off"
+                     placeholder="0.00"
+                     value="<?php echo e($manualTotal); ?>">
+              <p class="admin-form-help" style="margin:4px 0 0;">
+                If you itemise the work below, the sum of the line items will be used instead.
+              </p>
+            </div>
+          <?php else: ?>
+            <div class="admin-form-group">
+              <span class="admin-form-help" style="display:block;margin-top:22px;line-height:1.5;color:#374151;">
+                Mark each line as Labour (pre-tax) or Materials (<strong>amount includes HST</strong>). Invoice HST applies to labour lines only — materials pass through tax-included.
+              </span>
+            </div>
+          <?php endif; ?>
         </div>
       <?php else: ?>
         <div class="cp-invoice-locked-total">
@@ -186,12 +201,20 @@
           <thead>
             <tr>
               <th class="col-description">Description</th>
+              <?php if($isHourlyManual): ?>
+                <th class="col-line-kind">Type</th>
+              <?php endif; ?>
               <th class="col-amount">Amount ($)</th>
               <th class="col-actions"><span class="visually-hidden">Actions</span></th>
             </tr>
           </thead>
           <tbody>
             <?php $__currentLoopData = $existing; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+              <?php
+                $lk = strtolower((string) ($row['line_kind'] ?? 'labour'));
+                $lk = $lk === 'materials' ? 'materials' : 'labour';
+                $expenseId = $row['expense_id'] ?? null;
+              ?>
               <tr class="cp-quotation-row">
                 <td class="col-description">
                   <textarea name="items[<?php echo e($i); ?>][description]"
@@ -199,6 +222,20 @@
                             rows="2"
                             placeholder="Describe this line item"><?php echo e($row['description']); ?></textarea>
                 </td>
+                <?php if($isHourlyManual): ?>
+                  <td class="col-line-kind">
+                    <?php if(!empty($expenseId)): ?>
+                      <span class="cp-badge" style="background:#ecfdf5;color:#047857;white-space:nowrap;">Materials (expense)</span>
+                      <input type="hidden" name="items[<?php echo e($i); ?>][line_kind]" value="materials">
+                      <input type="hidden" name="items[<?php echo e($i); ?>][expense_id]" value="<?php echo e((int) $expenseId); ?>">
+                    <?php else: ?>
+                      <select name="items[<?php echo e($i); ?>][line_kind]" class="admin-input cp-invoice-line-kind" aria-label="Line type">
+                        <option value="labour" <?php if($lk === 'labour'): echo 'selected'; endif; ?>>Labour</option>
+                        <option value="materials" <?php if($lk === 'materials'): echo 'selected'; endif; ?>>Materials</option>
+                      </select>
+                    <?php endif; ?>
+                  </td>
+                <?php endif; ?>
                 <td class="col-amount">
                   <input type="text"
                          inputmode="decimal"
@@ -220,30 +257,51 @@
           </tbody>
         </table>
 
-        <div class="cp-quotation-totals">
-          <div class="cp-quotation-totals-row">
-            <span>Subtotal</span>
-            <span id="cp-invoice-subtotal">CA$0.00</span>
-          </div>
-          <div class="cp-quotation-totals-row">
-            <span id="cp-invoice-hst-label"><?php echo e($isManual ? 'HST (13%)' : 'HST (from quotation share)'); ?></span>
-            <span id="cp-invoice-hst">CA$0.00</span>
-          </div>
-          <div class="cp-quotation-totals-row cp-quotation-totals-grand">
-            <span>Total with HST</span>
-            <span id="cp-invoice-grand">CA$0.00</span>
-          </div>
-          <?php if (! ($isManual)): ?>
-            <div class="cp-quotation-totals-row cp-invoice-mismatch" id="cp-invoice-mismatch" style="display:none;">
-              <span>
-                <i class="fa fa-exclamation-triangle"></i>
-                Line-item subtotal must equal
-                <strong><?php echo e(\App\Models\ClientProject::formatMoney($lockedSubtotal)); ?></strong>
-                to match the locked installment. Current difference: <span id="cp-invoice-diff">—</span>
-              </span>
+        <?php if($isHourlyManual): ?>
+          <div class="cp-quotation-totals" id="cp-invoice-hourly-totals">
+            <div class="cp-quotation-totals-row">
+              <span>Labour subtotal (pre-HST)</span>
+              <span id="cp-invoice-labour-sub">CA$0.00</span>
             </div>
-          <?php endif; ?>
-        </div>
+            <div class="cp-quotation-totals-row">
+              <span>Materials (tax-included)</span>
+              <span id="cp-invoice-materials-sub">CA$0.00</span>
+            </div>
+            <div class="cp-quotation-totals-row">
+              <span id="cp-invoice-hst-label">HST (13% on labour)</span>
+              <span id="cp-invoice-hst">CA$0.00</span>
+            </div>
+            <div class="cp-quotation-totals-row cp-quotation-totals-grand">
+              <span>Total due</span>
+              <span id="cp-invoice-grand">CA$0.00</span>
+            </div>
+          </div>
+        <?php else: ?>
+          <div class="cp-quotation-totals" id="cp-invoice-standard-totals">
+            <div class="cp-quotation-totals-row">
+              <span>Subtotal</span>
+              <span id="cp-invoice-subtotal">CA$0.00</span>
+            </div>
+            <div class="cp-quotation-totals-row">
+              <span id="cp-invoice-hst-label"><?php echo e($isManual ? 'HST (13%)' : 'HST (from quotation share)'); ?></span>
+              <span id="cp-invoice-hst">CA$0.00</span>
+            </div>
+            <div class="cp-quotation-totals-row cp-quotation-totals-grand">
+              <span>Total with HST</span>
+              <span id="cp-invoice-grand">CA$0.00</span>
+            </div>
+            <?php if (! ($isManual)): ?>
+              <div class="cp-quotation-totals-row cp-invoice-mismatch" id="cp-invoice-mismatch" style="display:none;">
+                <span>
+                  <i class="fa fa-exclamation-triangle"></i>
+                  Line-item subtotal must equal
+                  <strong><?php echo e(\App\Models\ClientProject::formatMoney($lockedSubtotal)); ?></strong>
+                  to match the locked installment. Current difference: <span id="cp-invoice-diff">—</span>
+                </span>
+              </div>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
       </div>
 
       <div class="cp-contract-editor-actions">
@@ -266,45 +324,82 @@
   </div>
 
   
-  <template id="cp-invoice-row-template">
-    <tr class="cp-quotation-row">
-      <td class="col-description">
-        <textarea name="items[__INDEX__][description]"
-                  class="admin-input cp-quotation-row-desc"
-                  rows="2"
-                  placeholder="Describe this line item"></textarea>
-      </td>
-      <td class="col-amount">
-        <input type="text"
-               inputmode="decimal"
-               autocomplete="off"
-               name="items[__INDEX__][amount]"
-               class="admin-input cp-money-input cp-quotation-row-amount"
-               placeholder="0.00">
-      </td>
-      <td class="col-actions">
-        <button type="button"
-                class="admin-btn admin-btn--ghost admin-btn--sm cp-quotation-remove-row"
-                aria-label="Remove row">
-          <i class="fa fa-trash"></i>
-        </button>
-      </td>
-    </tr>
-  </template>
+  <?php if($isHourlyManual): ?>
+    <template id="cp-invoice-row-template-hourly">
+      <tr class="cp-quotation-row">
+        <td class="col-description">
+          <textarea name="items[__INDEX__][description]"
+                    class="admin-input cp-quotation-row-desc"
+                    rows="2"
+                    placeholder="Describe this line item"></textarea>
+        </td>
+        <td class="col-line-kind">
+          <select name="items[__INDEX__][line_kind]" class="admin-input cp-invoice-line-kind" aria-label="Line type">
+            <option value="labour" selected>Labour</option>
+            <option value="materials">Materials</option>
+          </select>
+        </td>
+        <td class="col-amount">
+          <input type="text"
+                 inputmode="decimal"
+                 autocomplete="off"
+                 name="items[__INDEX__][amount]"
+                 class="admin-input cp-money-input cp-quotation-row-amount"
+                 placeholder="0.00">
+        </td>
+        <td class="col-actions">
+          <button type="button"
+                  class="admin-btn admin-btn--ghost admin-btn--sm cp-quotation-remove-row"
+                  aria-label="Remove row">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    </template>
+  <?php else: ?>
+    <template id="cp-invoice-row-template">
+      <tr class="cp-quotation-row">
+        <td class="col-description">
+          <textarea name="items[__INDEX__][description]"
+                    class="admin-input cp-quotation-row-desc"
+                    rows="2"
+                    placeholder="Describe this line item"></textarea>
+        </td>
+        <td class="col-amount">
+          <input type="text"
+                 inputmode="decimal"
+                 autocomplete="off"
+                 name="items[__INDEX__][amount]"
+                 class="admin-input cp-money-input cp-quotation-row-amount"
+                 placeholder="0.00">
+        </td>
+        <td class="col-actions">
+          <button type="button"
+                  class="admin-btn admin-btn--ghost admin-btn--sm cp-quotation-remove-row"
+                  aria-label="Remove row">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    </template>
+  <?php endif; ?>
 
   <script>
     (function () {
-      // Manual invoices use a flat 13%. Installment-linked invoices
-      // freeze the HST to its proportional share of the quotation
-      // (LOCKED_HST), since the items must sum to LOCKED_SUBTOTAL anyway.
+      // Manual invoices use a flat 13% on the full line sum, except hourly manual:
+      // labour lines are pre-tax; materials are tax-included; HST = 13% × labour only.
+      // Installment-linked invoices freeze HST to the quotation share.
       var HST_RATE = 0.13;
+      var HOURLY_MANUAL = <?php echo e($isHourlyManual ? 'true' : 'false'); ?>;
       var LOCKED_SUBTOTAL = <?php echo e($isManual ? 'null' : json_encode(round((float) $lockedSubtotal, 2))); ?>;
       var LOCKED_HST = <?php echo e($isManual ? 'null' : json_encode(round((float) $lockedHst, 2))); ?>;
 
       var tbody = document.querySelector('#cp-invoice-items tbody');
       var addBtn = document.getElementById('cp-invoice-add-row');
-      var template = document.getElementById('cp-invoice-row-template');
+      var template = document.getElementById(HOURLY_MANUAL ? 'cp-invoice-row-template-hourly' : 'cp-invoice-row-template');
       var subtotalEl = document.getElementById('cp-invoice-subtotal');
+      var labourEl = document.getElementById('cp-invoice-labour-sub');
+      var materialsEl = document.getElementById('cp-invoice-materials-sub');
       var hstEl = document.getElementById('cp-invoice-hst');
       var grandEl = document.getElementById('cp-invoice-grand');
       var mismatchEl = document.getElementById('cp-invoice-mismatch');
@@ -316,6 +411,7 @@
       }
 
       function parseAmount(input) {
+        if (!input) return 0;
         if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
           return window.cpMoneyMask.parse(input.value);
         }
@@ -323,7 +419,33 @@
         return isFinite(n) ? n : 0;
       }
 
+      function rowLineKind(tr) {
+        var hidden = tr.querySelector('input[type="hidden"][name*="[line_kind]"]');
+        if (hidden) return hidden.value || 'labour';
+        var sel = tr.querySelector('select.cp-invoice-line-kind');
+        return sel ? sel.value : 'labour';
+      }
+
       function recalc() {
+        if (HOURLY_MANUAL) {
+          var labour = 0;
+          var materials = 0;
+          tbody.querySelectorAll('tr.cp-quotation-row').forEach(function (tr) {
+            var amt = parseAmount(tr.querySelector('.cp-quotation-row-amount'));
+            var kind = rowLineKind(tr);
+            if (kind === 'materials') materials += amt;
+            else labour += amt;
+          });
+          labour = Math.round(labour * 100) / 100;
+          materials = Math.round(materials * 100) / 100;
+          var hst = Math.round(labour * HST_RATE * 100) / 100;
+          if (labourEl) labourEl.textContent = formatMoney(labour);
+          if (materialsEl) materialsEl.textContent = formatMoney(materials);
+          if (hstEl) hstEl.textContent = formatMoney(hst);
+          if (grandEl) grandEl.textContent = formatMoney(Math.round((labour + hst + materials) * 100) / 100);
+          return;
+        }
+
         var inputs = tbody.querySelectorAll('.cp-quotation-row-amount');
         var subtotal = 0;
         inputs.forEach(function (input) {
@@ -331,9 +453,6 @@
         });
         subtotal = Math.round(subtotal * 100) / 100;
 
-        // Installment-linked invoices: HST is whatever the quotation
-        // share resolved to server-side — never recompute as 13% × items.
-        // Manual invoices: 13% × items.
         var hst;
         if (LOCKED_HST !== null) {
           hst = LOCKED_HST;
@@ -341,11 +460,11 @@
           hst = Math.round(subtotal * HST_RATE * 100) / 100;
         }
 
-        subtotalEl.textContent = formatMoney(subtotal);
-        hstEl.textContent = formatMoney(hst);
-        grandEl.textContent = formatMoney(Math.round((subtotal + hst) * 100) / 100);
+        if (subtotalEl) subtotalEl.textContent = formatMoney(subtotal);
+        if (hstEl) hstEl.textContent = formatMoney(hst);
+        if (grandEl) grandEl.textContent = formatMoney(Math.round((subtotal + hst) * 100) / 100);
 
-        if (LOCKED_SUBTOTAL !== null && mismatchEl) {
+        if (LOCKED_SUBTOTAL !== null && mismatchEl && diffEl) {
           var diff = Math.round((subtotal - LOCKED_SUBTOTAL) * 100) / 100;
           if (Math.abs(diff) > 0.01) {
             mismatchEl.style.display = '';
@@ -374,7 +493,8 @@
         if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
           window.cpMoneyMask.wire(newRow.querySelectorAll('.cp-money-input'));
         }
-        newRow.querySelector('.cp-quotation-row-desc').focus();
+        var desc = newRow.querySelector('.cp-quotation-row-desc');
+        if (desc) desc.focus();
       });
 
       tbody.addEventListener('click', function (e) {
@@ -383,8 +503,12 @@
         var rows = tbody.querySelectorAll('tr.cp-quotation-row');
         if (rows.length <= 1) {
           var tr = btn.closest('tr');
-          tr.querySelector('.cp-quotation-row-desc').value = '';
-          tr.querySelector('.cp-quotation-row-amount').value = '';
+          var d = tr.querySelector('.cp-quotation-row-desc');
+          var a = tr.querySelector('.cp-quotation-row-amount');
+          if (d) d.value = '';
+          if (a) a.value = '';
+          var kindSel = tr.querySelector('select.cp-invoice-line-kind');
+          if (kindSel) kindSel.value = 'labour';
         } else {
           btn.closest('tr').remove();
         }
@@ -394,6 +518,10 @@
 
       tbody.addEventListener('input', function (e) {
         if (e.target.classList.contains('cp-quotation-row-amount')) recalc();
+      });
+
+      tbody.addEventListener('change', function (e) {
+        if (e.target.classList.contains('cp-invoice-line-kind')) recalc();
       });
 
       var intentField = document.getElementById('cp-invoice-intent');

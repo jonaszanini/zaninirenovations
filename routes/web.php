@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ClientProjectInvoiceController;
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -38,6 +39,11 @@ Route::get('/robots.txt', function () {
     return response(implode("\n", $lines), 200)
         ->header('Content-Type', 'text/plain; charset=UTF-8');
 })->name('robots');
+
+/** Signed link (no login) so clients can open invoice PDFs from SMS — see ClientProjectInvoiceController::sendInvoiceSms. */
+Route::get('/client/invoice/{client_project}/{invoice}', [ClientProjectInvoiceController::class, 'guestDownloadInvoicePdf'])
+    ->middleware('signed')
+    ->name('public.client-project.invoice-pdf');
 
 Route::get('/', function () {
     $projects = Project::query()
@@ -146,6 +152,9 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.invoices.receipt');
     Route::post('client-projects/{client_project}/invoices/{invoice}/send', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'send'])
         ->name('client-projects.invoices.send');
+    Route::post('client-projects/{client_project}/invoices/{invoice}/sms', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'sendInvoiceSms'])
+        ->middleware('throttle:12,1')
+        ->name('client-projects.invoices.sms');
     Route::post('client-projects/{client_project}/invoices/{invoice}/reminder', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'sendReminder'])
         ->name('client-projects.invoices.reminder');
     Route::post('client-projects/{client_project}/invoices/{invoice}/mark-paid', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'markPaid'])

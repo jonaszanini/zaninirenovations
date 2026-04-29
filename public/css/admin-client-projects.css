@@ -1734,6 +1734,26 @@ textarea.admin-input {
   display: inline-block;
 }
 
+/* Visible when Send is disabled: explains blockers (e.g. missing due date). */
+.cp-invoices-table .cp-invoice-send-warning {
+  margin-bottom: 8px;
+  max-width: 100%;
+}
+.cp-invoices-table .cp-invoice-send-blockers {
+  margin: 8px 0 6px;
+  padding-left: 1.15em;
+}
+.cp-invoices-table .cp-invoice-send-blockers li {
+  margin-bottom: 3px;
+}
+.cp-invoices-table tbody td:last-child {
+  vertical-align: top;
+}
+.cp-invoice-send-warning-link {
+  font-weight: 600 !important;
+  color: #024768 !important;
+}
+
 /* Green "success" button variant used for Mark-Paid / Receipt. */
 .admin-btn--success {
   background: #22c55e20;

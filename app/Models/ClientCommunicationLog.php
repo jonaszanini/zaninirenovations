@@ -37,6 +37,8 @@ class ClientCommunicationLog extends Model
     public const REASON_CONTRACT_SENT = 'contract_sent';
     public const REASON_INVOICE_SENT = 'invoice_sent';
     public const REASON_INVOICE_REMINDER = 'invoice_reminder';
+    /** SMS with signed link to open/download invoice PDF — no attachment. */
+    public const REASON_INVOICE_SMS_LINK = 'invoice_sms_link';
     public const REASON_RECEIPT_SENT = 'receipt_sent';
     public const REASON_QUOTE_RECEIVED_AUTO = 'quote_received_auto';
     public const REASON_SERVICE_CONFIRMATION = 'service_confirmation';
@@ -54,6 +56,7 @@ class ClientCommunicationLog extends Model
         self::REASON_CONTRACT_SENT => 'Contract',
         self::REASON_INVOICE_SENT => 'Invoice',
         self::REASON_INVOICE_REMINDER => 'Invoice reminder',
+        self::REASON_INVOICE_SMS_LINK => 'Invoice (SMS link)',
         self::REASON_RECEIPT_SENT => 'Receipt',
         self::REASON_QUOTE_RECEIVED_AUTO => 'Quote received (auto-reply)',
         self::REASON_SERVICE_CONFIRMATION => 'Service confirmation',
@@ -143,6 +146,7 @@ class ClientCommunicationLog extends Model
             self::REASON_CONTRACT_SENT => '#8b5cf6',                 // violet
             self::REASON_INVOICE_SENT,
             self::REASON_INVOICE_REMINDER => '#f59e0b',              // amber
+            self::REASON_INVOICE_SMS_LINK => '#0d9488',             // teal
             self::REASON_RECEIPT_SENT => '#22c55e',                  // green
             self::REASON_SERVICE_CONFIRMATION,
             self::REASON_FIXED_SCHEDULE_CONFIRMATION => '#10b981',   // emerald

@@ -13,12 +13,14 @@ use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Services\MoceanSmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -245,6 +247,23 @@ class ClientProjectInvoiceController extends Controller
     }
 
     /**
+     * Public, signed URL (no login) so the client can open the invoice PDF from a phone SMS.
+     * Authenticity is enforced via signed middleware + matching project/invoice ids.
+     */
+    public function guestDownloadInvoicePdf(ClientProject $client_project, ClientProjectInvoice $invoice)
+    {
+        abort_unless((int) $invoice->client_project_id === (int) $client_project->id, 404);
+
+        if (!$invoice->hasContent() && (float) $invoice->total <= 0) {
+            abort(404, 'Invoice not available.');
+        }
+
+        $pdf = $this->renderInvoicePdf($client_project, $invoice);
+
+        return $pdf->stream($this->invoicePdfFilename($client_project, $invoice));
+    }
+
+    /**
      * Stream the stored receipt PDF (generated at mark-paid time). If the
      * stored file is missing for any reason we regenerate on demand.
      */
@@ -398,6 +417,64 @@ class ClientProjectInvoiceController extends Controller
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('invoice')
             ->with('success', "Invoice {$invoice->invoice_number} emailed to {$client_project->clientEmailRecipientsLabel()} (v{$invoice->version}).");
+    }
+
+    /**
+     * SMS the client a Mocean message with a signed link to open/view the invoice PDF (no attachment).
+     * Does not email, mark sent, or bump invoice version — purely a link delivery channel.
+     */
+    public function sendInvoiceSms(
+        ClientProject $client_project,
+        ClientProjectInvoice $invoice,
+        MoceanSmsService $moceanSms,
+    ) {
+        $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if ($invoice->isPaid()) {
+            return back()->with('error', 'This invoice has already been paid.');
+        }
+
+        $blocked = $this->invoiceSmsBlockers($client_project, $invoice, $moceanSms);
+        if ($blocked !== []) {
+            return back()->with('error', implode(' ', $blocked));
+        }
+
+        $smsTo = ClientProject::phoneDigitsForSms($client_project->client_phone);
+        if ($smsTo === null) {
+            return back()->with('error', 'Cannot send SMS — client phone number is missing or not valid for texting.');
+        }
+
+        $signedUrl = URL::temporarySignedRoute(
+            'public.client-project.invoice-pdf',
+            now()->addYear(),
+            ['client_project' => $client_project, 'invoice' => $invoice],
+        );
+
+        $totalFmt = ClientProject::formatMoney((float) $invoice->total);
+        $smsBody = "Zanini Renovations — Invoice {$invoice->invoice_number}. Total: {$totalFmt}. For details & PDF: {$signedUrl}";
+
+        $result = $moceanSms->send($smsTo, $smsBody);
+
+        $summary = "Invoice {$invoice->invoice_number} SMS link — ".$totalFmt.' — "'.Str::limit($smsBody, 120).'"';
+
+        app(ClientCommunicationLogger::class)->logSms(
+            $client_project,
+            ClientCommunicationLog::REASON_INVOICE_SMS_LINK,
+            $smsTo,
+            $summary,
+            ClientCommunicationLog::DIRECTION_TO_CLIENT,
+            $result['ok'],
+            $result['ok'] ? null : $result['detail'],
+        );
+
+        if (! $result['ok']) {
+            return back()->with('error', 'SMS could not be sent: '.$result['detail']);
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('invoice')
+            ->with('success', 'SMS sent to the client with an invoice link.');
     }
 
     /**
@@ -697,6 +774,45 @@ class ClientProjectInvoiceController extends Controller
     }
 
     // --- Helpers ----------------------------------------------------------
+
+    /**
+     * Blockers for sending the invoice PDF link by SMS (content + Mocean + phone).
+     * Does not require client email — SMS can be used when email is missing.
+     *
+     * @return list<string>
+     */
+    protected function invoiceSmsBlockers(ClientProject $project, ClientProjectInvoice $invoice, MoceanSmsService $mocean): array
+    {
+        $out = [];
+
+        $completeItems = array_filter(
+            $invoice->cleanItems(),
+            fn ($row) => trim((string) ($row['description'] ?? '')) !== '' && (float) ($row['amount'] ?? 0) > 0
+        );
+        if (count($completeItems) === 0) {
+            $out[] = 'Add at least one line item with a description and an amount greater than $0.';
+        }
+
+        if (empty($invoice->due_on)) {
+            $out[] = 'Set a payment due date on the invoice before sending an SMS link.';
+        }
+
+        if (!$invoice->isManual()) {
+            if (! $project->invoiceLineSumMatchesInstallmentLock($invoice)) {
+                $out[] = 'Line-item subtotal must match the locked installment amount before sending.';
+            }
+        }
+
+        if (!$mocean->isConfigured()) {
+            $out[] = 'SMS is not configured — set MOCEAN_API_TOKEN on the server.';
+        }
+
+        if (ClientProject::phoneDigitsForSms($project->client_phone) === null) {
+            $out[] = 'Add a mobile phone number the client uses for texting (save on Edit project).';
+        }
+
+        return $out;
+    }
 
     protected function authorizeInvoiceForProject(ClientProject $project, ClientProjectInvoice $invoice): void
     {

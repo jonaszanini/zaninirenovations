@@ -349,7 +349,10 @@
 
 {{-- PROFIT / HST SUMMARY ---------------------------------------------- --}}
 <div class="admin-card cp-profit-card">
-  <h3>Profit summary <span class="cp-hint" title="Revenue = paid installments (fixed) or rate × logged hours (hourly). HST set aside at 13% of revenue (Canadian HST).">?</span></h3>
+  <h3>Profit summary
+    <span class="cp-hint" title="{{ $isHourly
+      ? 'Revenue = rate × logged hours (pre-tax labour). Expenses on Financials track materials reimbursed by the client—they are shown as cash tracked but do not reduce gross/net profit below. HST set aside = 13% of labour revenue.'
+      : 'Revenue = paid installments (fixed price). HST set aside at 13% of revenue (Canadian HST).' }}">?</span></h3>
   @php
     $revenue = $project->totalRevenueCollected();
     $spent = $project->totalSpent();
@@ -363,8 +366,16 @@
       <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($revenue) }}</div>
     </div>
     <div class="cp-profit-tile">
-      <div class="cp-profit-label">Total spent (expenses − returns)</div>
-      <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($spent) }}</div>
+      @if ($isHourly)
+        <div class="cp-profit-label">Total spent (tracked)</div>
+        <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($spent) }}</div>
+        <p class="admin-form-help" style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#6b7280;">
+          Materials reimbursed on client invoices—not deducted from gross or net profit below.
+        </p>
+      @else
+        <div class="cp-profit-label">Total spent (expenses − returns)</div>
+        <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($spent) }}</div>
+      @endif
     </div>
     <div class="cp-profit-tile">
       <div class="cp-profit-label">Gross profit</div>
