@@ -35,6 +35,10 @@ class ClientProjectController extends Controller
             'q' => trim((string) $request->query('q', '')),
             'from' => (string) $request->query('from', ''),
             'to' => (string) $request->query('to', ''),
+            /** `ongoing` (default): hide completed & rejected unless a specific status is chosen. `all`: show every status when status filter is empty. */
+            'list' => in_array((string) $request->query('list', 'ongoing'), ['ongoing', 'all'], true)
+                ? (string) $request->query('list', 'ongoing')
+                : 'ongoing',
         ];
 
         $query = ClientProject::query()
@@ -54,6 +58,12 @@ class ClientProjectController extends Controller
 
         if ($filters['status'] !== '') {
             $query->where('status', $filters['status']);
+        } elseif ($filters['list'] === 'ongoing') {
+            // Emphasise active pipeline: exclude terminal states unless viewing "All".
+            $query->whereNotIn('status', [
+                ClientProject::STATUS_COMPLETED,
+                ClientProject::STATUS_REJECTED,
+            ]);
         }
 
         if ($filters['q'] !== '') {

@@ -3,6 +3,14 @@
 @section('heading', 'Projects')
 
 @section('content')
+  @php
+    $toggleQueryBase = fn (string $listMode) => array_merge(
+        \Illuminate\Support\Arr::except(request()->query(), ['page']),
+        ['list' => $listMode],
+    );
+    $isOngoingList = (($filters['list'] ?? 'ongoing') === 'ongoing');
+  @endphp
+
   <div class="admin-toolbar">
     <p class="admin-toolbar-lede">Manage every project from quote request to completion. Status changes and emails are logged automatically.</p>
     <a href="{{ route('admin.client-projects.create') }}" class="admin-btn admin-btn--primary">
@@ -10,7 +18,31 @@
     </a>
   </div>
 
+  <div class="cp-projects-scope-bar">
+    <div class="cp-projects-scope-head">
+      <span class="cp-projects-scope-label">Show</span>
+      <div class="cp-projects-scope-toggles">
+        <a href="{{ route('admin.client-projects.index', $toggleQueryBase('ongoing')) }}"
+           class="cp-projects-scope-chip {{ $isOngoingList ? 'cp-projects-scope-chip--active' : '' }}"
+           aria-current="{{ $isOngoingList ? 'page' : 'false' }}"
+           title="Hide Completed and Rejected (focus on work in motion).">
+          <i class="fa fa-spinner"></i> Ongoing pipeline
+        </a>
+        <a href="{{ route('admin.client-projects.index', $toggleQueryBase('all')) }}"
+           class="cp-projects-scope-chip {{ ! $isOngoingList ? 'cp-projects-scope-chip--active' : '' }}"
+           aria-current="{{ ! $isOngoingList ? 'page' : 'false' }}"
+           title="Include Completed and Rejected with every other status.">
+          <i class="fa fa-th-large"></i> All projects
+        </a>
+      </div>
+    </div>
+    <p class="cp-projects-scope-hint">
+      <i class="fa fa-filter"></i> By default Completed and Rejected are hidden. Use All projects or the Status filter below to surface them.
+    </p>
+  </div>
+
   <form method="get" action="{{ route('admin.client-projects.index') }}" class="cp-filters">
+    <input type="hidden" name="list" value="{{ $filters['list'] ?? 'ongoing' }}">
     <div class="cp-filter">
       <label for="cp-filter-q">Search</label>
       <input type="text" id="cp-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project or client name">
@@ -41,8 +73,16 @@
   @if ($projects->isEmpty())
     <div class="admin-table-wrap">
       <div class="admin-empty">
-        <p>No projects match these filters.</p>
-        <a href="{{ route('admin.client-projects.create') }}" class="admin-btn admin-btn--primary">Create your first project</a>
+        <p>{{ (($filters['list'] ?? 'ongoing') === 'ongoing') && ($filters['status'] ?? '') === ''
+          ? 'No ongoing pipeline projects match these filters. Try All projects or adjust search and dates.'
+          : 'No projects match these filters.' }}</p>
+        <p class="admin-form-help" style="margin-top:12px;">
+          @if (($filters['list'] ?? 'ongoing') === 'ongoing' && ($filters['status'] ?? '') === '')
+            Completed and rejected are hidden in the default view.&nbsp;<a href="{{ route('admin.client-projects.index', $toggleQueryBase('all')) }}">Show all projects</a>
+            &nbsp;
+          @endif
+          <a href="{{ route('admin.client-projects.create') }}">Create a new project</a>
+        </p>
       </div>
     </div>
   @else

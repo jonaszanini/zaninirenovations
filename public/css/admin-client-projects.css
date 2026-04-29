@@ -47,6 +47,62 @@
   }
 }
 
+/* Ongoing vs All — list scope (client projects index) */
+.cp-projects-scope-bar {
+  margin-bottom: 14px;
+}
+.cp-projects-scope-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.cp-projects-scope-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+.cp-projects-scope-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+a.cp-projects-scope-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+a.cp-projects-scope-chip:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #0f172a;
+}
+a.cp-projects-scope-chip.cp-projects-scope-chip--active {
+  border-color: #024768;
+  background: rgba(2, 71, 104, 0.09);
+  color: #024768;
+  font-weight: 600;
+}
+.cp-projects-scope-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+}
+.cp-projects-scope-hint .fa {
+  margin-right: 6px;
+  color: #94a3b8;
+}
+
 /* =================================================================
    Shared: badges, subtle labels, table helpers
    ================================================================= */

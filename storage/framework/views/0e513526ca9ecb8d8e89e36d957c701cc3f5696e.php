@@ -1,32 +1,56 @@
 
 
 <?php
-  // Build a list of reasons the invoice can't be sent yet. The server
-  // enforces these too, but surfacing them up-front stops the user from
-  // clicking into the editor just to see the error.
-  $sendBlockers = [];
-  if (!$hasContactInfo) {
-      $sendBlockers[] = 'Missing client info: '.implode(', ', $missing);
-  }
+  use App\Services\MoceanSmsService;
+
+  /** @var MoceanSmsService $moceanSms */
+  $moceanSms = app(MoceanSmsService::class);
+  $moceanReady = $moceanSms->isConfigured();
+
+  // Content/readiness checks shared — email also needs full contact card.
+  $contentBlockers = [];
   if ($invoice) {
       $completeItems = array_filter(
           $invoice->cleanItems(),
           fn ($row) => trim((string) ($row['description'] ?? '')) !== '' && (float) ($row['amount'] ?? 0) > 0
       );
       if (count($completeItems) === 0) {
-          $sendBlockers[] = 'Add at least one line item with a description and amount.';
+          $contentBlockers[] = 'Add at least one line item with a description and amount.';
       }
       if (empty($invoice->due_on)) {
-          $sendBlockers[] = 'Set a due date in the editor.';
+          $contentBlockers[] = 'Set a payment due date — open the invoice editor and fill in the Due date field.';
+      }
+      if (!$invoice->isManual() && ! $project->invoiceLineSumMatchesInstallmentLock($invoice)) {
+          $contentBlockers[] = 'Line-item subtotal must match the locked installment amount.';
       }
   }
 
+  $contactBlockersForEmail = [];
+  if (!$hasContactInfo) {
+      $contactBlockersForEmail[] = 'Missing client info: '.implode(', ', $missing);
+  }
+
+  $sendBlockers = array_merge($contactBlockersForEmail, $contentBlockers);
   $canSend = empty($sendBlockers);
   $sendTitle = $canSend
     ? 'Generate a fresh PDF and email it to the client.'
     : implode(' ', $sendBlockers);
-?>
 
+  $smsBlockers = $contentBlockers;
+  if (!$moceanReady) {
+      $smsBlockers[] = 'SMS gateway is not configured on the server (MOCEAN_API_TOKEN).';
+  }
+  if ($invoice && \App\Models\ClientProject::phoneDigitsForSms($project->client_phone) === null) {
+      $smsBlockers[] = 'Add a mobile phone number for the client (Edit project → phone).';
+  }
+  $canSms = empty($smsBlockers);
+  $smsTitle = $canSms
+    ? 'Text the client a secure link to open this invoice PDF in the browser.'
+    : implode(' ', $smsBlockers);
+
+  /** @var list<string> */
+  $actionBlockers = array_values(array_unique(array_merge($sendBlockers, $smsBlockers)));
+?>
 <?php if(!$invoice): ?>
   
   <form action="<?php echo e(route('admin.client-projects.invoices.create', $project)); ?>"
@@ -40,6 +64,23 @@
     </button>
   </form>
 <?php else: ?>
+  <?php if(!$invoice->isPaid() && (! $canSend || ! $canSms)): ?>
+    <div class="cp-contract-warning cp-invoice-send-warning">
+      <i class="fa fa-exclamation-triangle"></i>
+      <div>
+        <strong>Send email and/or SMS may be disabled.</strong>
+        Address the items below — then the buttons will activate:
+        <ul class="cp-invoice-send-blockers">
+          <?php $__currentLoopData = $actionBlockers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $hint): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <li><?php echo e($hint); ?></li>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        </ul>
+        <a href="<?php echo e(route('admin.client-projects.invoices.edit', [$project, $invoice])); ?>" class="cp-invoice-send-warning-link">
+          Open invoice editor
+        </a>
+      </div>
+    </div>
+  <?php endif; ?>
   <div class="cp-invoice-actions">
     
     <?php if (! ($invoice->isPaid())): ?>
@@ -81,6 +122,25 @@
                 disabled
                 title="<?php echo e($sendTitle); ?>">
           <i class="fa fa-paper-plane"></i> Send
+        </button>
+      <?php endif; ?>
+
+      <?php if($canSms): ?>
+        <form action="<?php echo e(route('admin.client-projects.invoices.sms', [$project, $invoice])); ?>"
+              method="post"
+              class="cp-inline-form"
+              onsubmit="return confirm('Send an SMS to the client with a secure link to view or download this invoice PDF?');">
+          <?php echo csrf_field(); ?>
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="<?php echo e($smsTitle); ?>">
+            <i class="fa fa-comment"></i> SMS
+          </button>
+        </form>
+      <?php else: ?>
+        <button type="button"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                disabled
+                title="<?php echo e($smsTitle); ?>">
+          <i class="fa fa-comment"></i> SMS
         </button>
       <?php endif; ?>
     <?php endif; ?>
