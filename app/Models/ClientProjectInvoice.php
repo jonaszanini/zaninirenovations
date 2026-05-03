@@ -32,6 +32,12 @@ class ClientProjectInvoice extends Model
     /** Default due period (days after send) when not explicitly set. */
     public const DEFAULT_DUE_DAYS = 10;
 
+    /** Invoice line maps to hourly labour — HST applies. */
+    public const LINE_KIND_LABOUR = 'labour';
+
+    /** Invoice line maps to materials; amount is stored tax-included; no extra HST. */
+    public const LINE_KIND_MATERIALS = 'materials';
+
     protected $fillable = [
         'client_project_id',
         'installment_number',
@@ -79,6 +85,14 @@ class ClientProjectInvoice extends Model
     {
         return $this->hasMany(ClientProjectTimeEntry::class, 'client_project_invoice_id')
             ->orderBy('occurred_on');
+    }
+
+    /**
+     * Expense rows pulled onto an hourly invoice as materials lines (snapshot).
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(ClientProjectExpense::class, 'client_project_invoice_id');
     }
 
     /**
@@ -146,7 +160,7 @@ class ClientProjectInvoice extends Model
 
     // --- Item helpers -----------------------------------------------------
 
-    /** Sanitised line items: drops blank rows and coerces amounts to float. */
+    /** Sanitised line items: drops blank rows; preserves `line_kind` and `expense_id` for hourly. */
     public function cleanItems(): array
     {
         $items = is_array($this->items) ? $this->items : [];
@@ -158,10 +172,21 @@ class ClientProjectInvoice extends Model
             if ($description === '' && $amount == 0.0) {
                 continue;
             }
-            $clean[] = [
+
+            $lineKind = strtolower((string) ($row['line_kind'] ?? self::LINE_KIND_LABOUR));
+            if ($lineKind !== self::LINE_KIND_MATERIALS) {
+                $lineKind = self::LINE_KIND_LABOUR;
+            }
+
+            $out = [
                 'description' => $description,
                 'amount' => round($amount, 2),
+                'line_kind' => $lineKind,
             ];
+            if (! empty($row['expense_id'])) {
+                $out['expense_id'] = (int) $row['expense_id'];
+            }
+            $clean[] = $out;
         }
 
         return $clean;
@@ -172,11 +197,44 @@ class ClientProjectInvoice extends Model
         return count($this->cleanItems()) > 0;
     }
 
+    /** Pre-HST labour subtotal from line items (hourly split). */
+    public function hourlyLabourTotalFromItems(): float
+    {
+        $sum = 0.0;
+        foreach ($this->cleanItems() as $row) {
+            if (($row['line_kind'] ?? self::LINE_KIND_LABOUR) === self::LINE_KIND_MATERIALS) {
+                continue;
+            }
+            $sum += (float) ($row['amount'] ?? 0);
+        }
+
+        return round($sum, 2);
+    }
+
+    /** Materials bucket: amounts are tax-included (hourly). */
+    public function hourlyMaterialsTotalFromItems(): float
+    {
+        $sum = 0.0;
+        foreach ($this->cleanItems() as $row) {
+            if (($row['line_kind'] ?? self::LINE_KIND_LABOUR) === self::LINE_KIND_MATERIALS) {
+                $sum += (float) ($row['amount'] ?? 0);
+            }
+        }
+
+        return round($sum, 2);
+    }
+
+    /**
+     * @deprecated Use persisted subtotal/hst/total; kept for simple non-hourly checks.
+     */
     public function computedSubtotal(): float
     {
         return round(array_sum(array_column($this->cleanItems(), 'amount')), 2);
     }
 
+    /**
+     * @deprecated Applies 13% to full line sum — wrong for hourly materials split.
+     */
     public function computedHst(): float
     {
         return round($this->computedSubtotal() * self::HST_RATE, 2);

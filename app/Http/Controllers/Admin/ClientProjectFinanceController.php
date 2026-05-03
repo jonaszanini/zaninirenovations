@@ -213,6 +213,12 @@ class ClientProjectFinanceController extends Controller
     public function destroyExpense(ClientProject $client_project, ClientProjectExpense $expense)
     {
         abort_unless($expense->client_project_id === $client_project->id, 404);
+        if ($expense->client_project_invoice_id !== null) {
+            return back()->with(
+                'error',
+                'This expense is attached to an invoice line. Remove or edit it on that invoice draft first, then you can delete the expense.'
+            );
+        }
         $expense->delete();
 
         return back()->with('success', 'Expense removed.');

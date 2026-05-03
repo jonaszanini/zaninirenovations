@@ -1,0 +1,273 @@
+<?php
+  $isHourly = $project->isHourly();
+  $totalHours = $project->totalHours();
+  $netAfterHst = $project->netProfitAfterHst();
+  $hourlyRate = $project->effectiveHourlyRate();
+  $configuredRate = $isHourly ? (float) ($project->hourly_rate ?? 0) : null;
+
+  // 15-minute slots 08:00–20:00. Values stay zero-padded HH:MM for DB
+  // consistency; labels use 24h without a leading zero on the hour
+  // (9:00, 13:00) for easier reading on phones.
+  $timeOptions = [];
+  for ($minutes = 8 * 60; $minutes <= 20 * 60; $minutes += 15) {
+    $h = intdiv($minutes, 60);
+    $m = $minutes % 60;
+    $value = sprintf('%02d:%02d', $h, $m);
+    $timeOptions[$value] = sprintf('%d:%02d', $h, $m);
+  }
+?>
+
+<div class="admin-card">
+  <h3>Log time</h3>
+  <form action="<?php echo e(route('admin.client-projects.time.store', $project)); ?>" method="post" class="cp-finance-form" id="cp-time-form" data-cp-time-form>
+    <?php echo csrf_field(); ?>
+    <div class="cp-time-form-grid">
+      <div class="admin-form-group">
+        <label>Date</label>
+        <input type="date" name="occurred_on" required value="<?php echo e(now()->toDateString()); ?>">
+      </div>
+      <div class="admin-form-group">
+        <label>Start time</label>
+        <select name="start_time" class="cp-time-select" data-cp-time-start>
+          <option value="">—</option>
+          <?php $__currentLoopData = $timeOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $val => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <option value="<?php echo e($val); ?>"><?php echo e($label); ?></option>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        </select>
+      </div>
+      <div class="admin-form-group">
+        <label>End time</label>
+        <select name="end_time" class="cp-time-select" data-cp-time-end>
+          <option value="">—</option>
+          <?php $__currentLoopData = $timeOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $val => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <option value="<?php echo e($val); ?>"><?php echo e($label); ?></option>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        </select>
+      </div>
+      <div class="admin-form-group">
+        <label>Hours
+          <span class="cp-hint" title="Optional. Filled automatically when you pick start + end. Leave empty + leave end blank to start an open entry.">?</span>
+        </label>
+        <input type="text" name="hours"
+               class="cp-hours-input"
+               inputmode="decimal"
+               autocomplete="off"
+               placeholder="auto"
+               data-cp-time-hours>
+      </div>
+      <div class="admin-form-group">
+        <label>Note (optional)</label>
+        <input type="text" name="note" maxlength="500">
+      </div>
+    </div>
+    <p class="admin-form-help cp-time-help">
+      Tip: pick <strong>Start</strong> + <strong>End</strong> and Hours fills in automatically. Pick only <strong>Start</strong> to log an in-progress entry — you can come back later and add the End time.
+    </p>
+    <?php $__errorArgs = ['hours'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+    <?php $__errorArgs = ['end_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+    <div class="cp-time-submit">
+      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add time entry</button>
+    </div>
+  </form>
+
+  <?php if($project->timeEntries->isNotEmpty()): ?>
+    <h4 class="cp-time-saved-heading">Saved entries</h4>
+    <p class="admin-form-help cp-time-saved-help">Newest at the top. Tap a row to expand; use Edit to change times.</p>
+    <div class="cp-time-entries">
+      <?php $__currentLoopData = $project->timeEntries; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $entry): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+        <?php
+          $isOpen = $entry->isOpen();
+          $dm = $entry->occurred_on ? $entry->occurred_on->format('d/m') : '—';
+          $st = \App\Models\ClientProjectTimeEntry::formatTime($entry->start_time);
+          $et = \App\Models\ClientProjectTimeEntry::formatTime($entry->end_time);
+          if ($isOpen) {
+            $hoursPart = 'in progress';
+          } elseif ($entry->hours !== null) {
+            $hoursPart = rtrim(rtrim(number_format((float) $entry->hours, 2, '.', ''), '0'), '.').' hrs';
+          } else {
+            $hoursPart = '—';
+          }
+          $summaryLine = $dm.': '.$st.' - '.$et.' = '.$hoursPart;
+        ?>
+        <details class="cp-time-entry <?php echo e($isOpen ? 'cp-time-entry--open' : ''); ?>" data-cp-entry-row="<?php echo e($entry->id); ?>">
+          <summary class="cp-time-entry__summary">
+            <span class="cp-time-entry__summary-text"><?php echo e($summaryLine); ?></span>
+            <?php if($isOpen): ?>
+              <span class="cp-time-entry__badge cp-time-entry__badge--progress">In progress</span>
+            <?php endif; ?>
+          </summary>
+          <div class="cp-time-entry__panel">
+            <?php if(filled($entry->note)): ?>
+              <p class="cp-time-entry__note"><strong>Note:</strong> <?php echo e($entry->note); ?></p>
+            <?php endif; ?>
+            <div class="cp-time-entry__actions">
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-edit-toggle="<?php echo e($entry->id); ?>">
+                <?php echo e($isOpen ? 'Set end time' : 'Edit'); ?>
+
+              </button>
+              <form action="<?php echo e(route('admin.client-projects.time.destroy', [$project, $entry])); ?>" method="post" onsubmit="return confirm('Delete this time entry?');" class="cp-inline-form">
+                <?php echo csrf_field(); ?>
+                <?php echo method_field('DELETE'); ?>
+                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
+              </form>
+            </div>
+            <div class="cp-time-entry__edit" data-cp-edit-row="<?php echo e($entry->id); ?>" hidden>
+              <form action="<?php echo e(route('admin.client-projects.time.update', [$project, $entry])); ?>" method="post" class="cp-time-edit-form" data-cp-time-form>
+                <?php echo csrf_field(); ?>
+                <?php echo method_field('PUT'); ?>
+                <div class="cp-time-form-grid">
+                  <div class="admin-form-group">
+                    <label>Date</label>
+                    <input type="date" name="occurred_on" required value="<?php echo e(optional($entry->occurred_on)->toDateString()); ?>">
+                  </div>
+                  <div class="admin-form-group">
+                    <label>Start time</label>
+                    <select name="start_time" class="cp-time-select" data-cp-time-start>
+                      <option value="">—</option>
+                      <?php $__currentLoopData = $timeOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $val => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <option value="<?php echo e($val); ?>" <?php if($entry->start_time === $val): echo 'selected'; endif; ?>><?php echo e($label); ?></option>
+                      <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </select>
+                  </div>
+                  <div class="admin-form-group">
+                    <label>End time</label>
+                    <select name="end_time" class="cp-time-select" data-cp-time-end>
+                      <option value="">—</option>
+                      <?php $__currentLoopData = $timeOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $val => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <option value="<?php echo e($val); ?>" <?php if($entry->end_time === $val): echo 'selected'; endif; ?>><?php echo e($label); ?></option>
+                      <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </select>
+                  </div>
+                  <div class="admin-form-group">
+                    <label>Hours</label>
+                    <input type="text" name="hours"
+                           class="cp-hours-input"
+                           inputmode="decimal"
+                           autocomplete="off"
+                           placeholder="auto"
+                           value="<?php echo e($entry->hours !== null ? rtrim(rtrim(number_format((float) $entry->hours, 2, '.', ''), '0'), '.') : ''); ?>"
+                           data-cp-time-hours>
+                  </div>
+                  <div class="admin-form-group">
+                    <label>Note</label>
+                    <input type="text" name="note" maxlength="500" value="<?php echo e($entry->note); ?>">
+                  </div>
+                </div>
+                <div class="cp-time-submit cp-time-edit-actions">
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-edit-cancel="<?php echo e($entry->id); ?>">Cancel</button>
+                  <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </details>
+      <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+    </div>
+  <?php else: ?>
+    <p class="admin-form-help">No time entries recorded yet.</p>
+  <?php endif; ?>
+</div>
+
+<div class="admin-card cp-profit-card">
+  <h3>Time summary</h3>
+  <div class="cp-profit-grid">
+    <div class="cp-profit-tile">
+      <div class="cp-profit-label">Total hours (closed)</div>
+      <div class="cp-profit-value"><?php echo e(number_format($totalHours, 2)); ?></div>
+    </div>
+    <?php if($isHourly): ?>
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Configured rate</div>
+        <div class="cp-profit-value">
+          <?php echo e($configuredRate > 0 ? \App\Models\ClientProject::formatMoney($configuredRate).' / h' : 'Not set'); ?>
+
+        </div>
+      </div>
+      <div class="cp-profit-tile cp-profit-tile--highlight">
+        <div class="cp-profit-label">Earned (rate × hours)</div>
+        <div class="cp-profit-value"><?php echo e(\App\Models\ClientProject::formatMoney($project->hourlyAmountEarned())); ?></div>
+      </div>
+    <?php endif; ?>
+    <?php if($isHourly): ?>
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Final amount after HST</div>
+        <div class="cp-profit-value <?php echo e($project->hourlyFinalAmountAfterHst() >= 0 ? 'is-positive' : 'is-negative'); ?>">
+          <?php echo e(\App\Models\ClientProject::formatMoney($project->hourlyFinalAmountAfterHst())); ?>
+
+        </div>
+      </div>
+    <?php else: ?>
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Net profit after HST</div>
+        <div class="cp-profit-value <?php echo e($netAfterHst >= 0 ? 'is-positive' : 'is-negative'); ?>">
+          <?php echo e(\App\Models\ClientProject::formatMoney($netAfterHst)); ?>
+
+        </div>
+      </div>
+    <?php endif; ?>
+    <?php if (! ($isHourly)): ?>
+      <div class="cp-profit-tile cp-profit-tile--highlight">
+        <div class="cp-profit-label">Effective hourly rate</div>
+        <div class="cp-profit-value">
+          <?php echo e($hourlyRate === null ? 'N/A' : \App\Models\ClientProject::formatMoney($hourlyRate).' / h'); ?>
+
+        </div>
+      </div>
+    <?php endif; ?>
+  </div>
+
+  <?php if($isHourly): ?>
+    <?php
+      $closedForSummary = $project->timeEntries->filter(fn ($e) => $e->hours !== null)->count();
+      $hasClientEmail = filled($project->client_email);
+      $hasClientName = filled($project->client_name);
+      $canSendTimeSummary = $closedForSummary > 0 && $hasClientEmail && $hasClientName;
+    ?>
+    <div class="cp-time-summary-email" style="margin-top:20px;padding-top:20px;border-top:1px solid #e5e7eb;">
+      <h4 class="cp-time-saved-heading" style="margin-top:0;">Send summary to client</h4>
+      <p class="admin-form-help" style="margin-bottom:12px;">
+        Email the client a full breakdown: each day worked (start, end, hours, notes), total hours, and amounts before and after 13% HST.
+        <?php echo e($project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : ''); ?>
+
+      </p>
+      <?php if(!$hasClientEmail || !$hasClientName): ?>
+        <p class="admin-form-help" style="color:#b45309;">
+          <i class="fa fa-exclamation-triangle"></i>
+          Add the client’s name and email on the
+          <a href="<?php echo e(route('admin.client-projects.edit', $project)); ?>">edit project</a> page before sending.
+        </p>
+      <?php elseif($closedForSummary === 0): ?>
+        <p class="admin-form-help" style="color:#b45309;">
+          <i class="fa fa-exclamation-triangle"></i>
+          Close at least one time entry (with hours) before sending — open “in progress” rows are listed separately but not included in totals.
+        </p>
+      <?php endif; ?>
+      <form action="<?php echo e(route('admin.client-projects.time-tracking-summary.send', $project)); ?>"
+            method="post"
+            onsubmit="return confirm('Send the time tracking summary to <?php echo e(e($project->clientEmailRecipientsLabel() ?: 'the client')); ?>?');">
+        <?php echo csrf_field(); ?>
+        <button type="submit"
+                class="admin-btn admin-btn--primary admin-btn--sm"
+                <?php if(!$canSendTimeSummary): echo 'disabled'; endif; ?>>
+          <i class="fa fa-paper-plane"></i>
+          Send time summary to client
+        </button>
+      </form>
+    </div>
+  <?php endif; ?>
+</div>
+<?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/admin/client_projects/_time.blade.php ENDPATH**/ ?>
