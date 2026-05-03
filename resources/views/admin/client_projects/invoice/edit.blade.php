@@ -28,6 +28,7 @@
     $manualDescription = old('manual_description', $invoice->installment_description);
     $manualTotal = old('manual_total', $invoice->subtotal > 0 ? number_format((float) $invoice->subtotal, 2, '.', '') : '');
     $dueOn = old('due_on', $invoice->due_on ? $invoice->due_on->toDateString() : null);
+    $hstExempt = (bool) old('hst_exempt', $invoice->isHstExempt());
 
     // $lockedSubtotal + $lockedHst + $lockedTotalWithHst are provided by
     // the controller. For installment-linked invoices, $lockedHst is the
@@ -131,6 +132,12 @@
         </div>
       </div>
 
+      {{-- The HST toggle now lives inline in the totals breakdown below
+           (look for the checkbox next to the HST row). We still need a
+           hidden input so the form posts the current value — JS keeps it
+           in sync with the inline checkbox. --}}
+      <input type="hidden" name="hst_exempt" id="cp-invoice-hst-exempt-hidden" value="{{ $hstExempt ? '1' : '0' }}">
+
       @if ($isManual)
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
@@ -167,6 +174,10 @@
           @endunless
         </div>
       @else
+        @php
+          $lockedHstDisplay = $hstExempt ? 0.0 : (float) $lockedHst;
+          $lockedTotalDisplay = $hstExempt ? (float) $lockedSubtotal : (float) $lockedTotalWithHst;
+        @endphp
         <div class="cp-invoice-locked-total">
           <div>
             <span class="admin-form-help">Locked total (from Financials — must match):</span>
@@ -175,11 +186,12 @@
             <div class="cp-invoice-locked-total-subtotal">
               Subtotal: <strong>{{ \App\Models\ClientProject::formatMoney($lockedSubtotal) }}</strong>
             </div>
-            <div class="cp-invoice-locked-total-subtotal">
-              HST (from quotation share): <strong>{{ \App\Models\ClientProject::formatMoney($lockedHst) }}</strong>
+            <div class="cp-invoice-locked-total-subtotal" id="cp-invoice-locked-hst-row" @if ($hstExempt) style="display:none;" @endif>
+              HST (from quotation share): <strong id="cp-invoice-locked-hst">{{ \App\Models\ClientProject::formatMoney($lockedHstDisplay) }}</strong>
             </div>
             <div class="cp-invoice-locked-total-grand">
-              Total (incl. HST): <strong>{{ \App\Models\ClientProject::formatMoney($lockedTotalWithHst) }}</strong>
+              <span id="cp-invoice-locked-total-label">{{ $hstExempt ? 'Total (no HST):' : 'Total (incl. HST):' }}</span>
+              <strong id="cp-invoice-locked-total">{{ \App\Models\ClientProject::formatMoney($lockedTotalDisplay) }}</strong>
             </div>
           </div>
         </div>
@@ -266,12 +278,19 @@
               <span>Materials (tax-included)</span>
               <span id="cp-invoice-materials-sub">CA$0.00</span>
             </div>
-            <div class="cp-quotation-totals-row">
-              <span id="cp-invoice-hst-label">HST (13% on labour)</span>
+            <div class="cp-quotation-totals-row cp-invoice-hst-row">
+              <span class="cp-invoice-hst-toggle">
+                <input type="checkbox"
+                       id="cp-invoice-include-hst"
+                       class="cp-invoice-include-hst"
+                       title="Uncheck to exclude HST (e.g. cash payment)."
+                       @checked(!$hstExempt)>
+                <label for="cp-invoice-include-hst" id="cp-invoice-hst-label">HST (13% on labour)</label>
+              </span>
               <span id="cp-invoice-hst">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row cp-quotation-totals-grand">
-              <span>Total due</span>
+              <span id="cp-invoice-grand-label">Total due</span>
               <span id="cp-invoice-grand">CA$0.00</span>
             </div>
           </div>
@@ -281,12 +300,19 @@
               <span>Subtotal</span>
               <span id="cp-invoice-subtotal">CA$0.00</span>
             </div>
-            <div class="cp-quotation-totals-row">
-              <span id="cp-invoice-hst-label">{{ $isManual ? 'HST (13%)' : 'HST (from quotation share)' }}</span>
+            <div class="cp-quotation-totals-row cp-invoice-hst-row">
+              <span class="cp-invoice-hst-toggle">
+                <input type="checkbox"
+                       id="cp-invoice-include-hst"
+                       class="cp-invoice-include-hst"
+                       title="Uncheck to exclude HST (e.g. cash payment)."
+                       @checked(!$hstExempt)>
+                <label for="cp-invoice-include-hst" id="cp-invoice-hst-label">{{ $isManual ? 'HST (13%)' : 'HST (from quotation share)' }}</label>
+              </span>
               <span id="cp-invoice-hst">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row cp-quotation-totals-grand">
-              <span>Total with HST</span>
+              <span id="cp-invoice-grand-label">Total with HST</span>
               <span id="cp-invoice-grand">CA$0.00</span>
             </div>
             @unless ($isManual)
@@ -400,9 +426,49 @@
       var labourEl = document.getElementById('cp-invoice-labour-sub');
       var materialsEl = document.getElementById('cp-invoice-materials-sub');
       var hstEl = document.getElementById('cp-invoice-hst');
+      var hstLabelEl = document.getElementById('cp-invoice-hst-label');
+      var hstRowEl = document.querySelector('.cp-invoice-hst-row');
       var grandEl = document.getElementById('cp-invoice-grand');
+      var grandLabelEl = document.getElementById('cp-invoice-grand-label');
       var mismatchEl = document.getElementById('cp-invoice-mismatch');
       var diffEl = document.getElementById('cp-invoice-diff');
+      // Inline "include HST" checkbox: checked = HST applies, unchecked = exempt.
+      var includeHstCb = document.getElementById('cp-invoice-include-hst');
+      var hstExemptHidden = document.getElementById('cp-invoice-hst-exempt-hidden');
+      var ORIGINAL_GRAND_LABEL = grandLabelEl ? grandLabelEl.textContent : '';
+      var EXEMPT_GRAND_LABEL = HOURLY_MANUAL ? 'Total due (no HST)' : 'Total (no HST)';
+
+      // Locked-total panel (installment-linked invoices only).
+      var lockedHstRow = document.getElementById('cp-invoice-locked-hst-row');
+      var lockedHstEl = document.getElementById('cp-invoice-locked-hst');
+      var lockedTotalEl = document.getElementById('cp-invoice-locked-total');
+      var lockedTotalLabelEl = document.getElementById('cp-invoice-locked-total-label');
+      var LOCKED_HST_BASE = {{ $isManual ? 'null' : json_encode(round((float) $lockedHst, 2)) }};
+      var LOCKED_TOTAL_BASE = {{ $isManual ? 'null' : json_encode(round((float) ($lockedTotalWithHst ?? 0), 2)) }};
+
+      function isExempt() {
+        // No checkbox = treat as not exempt (HST applies).
+        return !!(includeHstCb && !includeHstCb.checked);
+      }
+      function syncHstExemptHidden() {
+        if (hstExemptHidden) hstExemptHidden.value = isExempt() ? '1' : '0';
+      }
+
+      function syncLockedPanel() {
+        if (!lockedTotalEl) return;
+        var exempt = isExempt();
+        if (lockedHstRow) lockedHstRow.style.display = exempt ? 'none' : '';
+        if (lockedHstEl && LOCKED_HST_BASE !== null) {
+          lockedHstEl.textContent = formatMoney(exempt ? 0 : LOCKED_HST_BASE);
+        }
+        if (lockedTotalEl && LOCKED_TOTAL_BASE !== null) {
+          var sub = LOCKED_SUBTOTAL || 0;
+          lockedTotalEl.textContent = formatMoney(exempt ? sub : LOCKED_TOTAL_BASE);
+        }
+        if (lockedTotalLabelEl) {
+          lockedTotalLabelEl.textContent = exempt ? 'Total (no HST):' : 'Total (incl. HST):';
+        }
+      }
 
       function formatMoney(n) {
         var v = (typeof n === 'number' && !isNaN(n)) ? n : 0;
@@ -426,6 +492,12 @@
       }
 
       function recalc() {
+        var exempt = isExempt();
+        // Visual cue: grey out the HST row when excluded, swap the grand
+        // label so users know HST isn't part of the total.
+        if (hstRowEl) hstRowEl.classList.toggle('cp-invoice-hst-row--excluded', exempt);
+        if (grandLabelEl) grandLabelEl.textContent = exempt ? EXEMPT_GRAND_LABEL : ORIGINAL_GRAND_LABEL;
+
         if (HOURLY_MANUAL) {
           var labour = 0;
           var materials = 0;
@@ -437,7 +509,7 @@
           });
           labour = Math.round(labour * 100) / 100;
           materials = Math.round(materials * 100) / 100;
-          var hst = Math.round(labour * HST_RATE * 100) / 100;
+          var hst = exempt ? 0 : Math.round(labour * HST_RATE * 100) / 100;
           if (labourEl) labourEl.textContent = formatMoney(labour);
           if (materialsEl) materialsEl.textContent = formatMoney(materials);
           if (hstEl) hstEl.textContent = formatMoney(hst);
@@ -453,7 +525,9 @@
         subtotal = Math.round(subtotal * 100) / 100;
 
         var hst;
-        if (LOCKED_HST !== null) {
+        if (exempt) {
+          hst = 0;
+        } else if (LOCKED_HST !== null) {
           hst = LOCKED_HST;
         } else {
           hst = Math.round(subtotal * HST_RATE * 100) / 100;
@@ -522,6 +596,15 @@
       tbody.addEventListener('change', function (e) {
         if (e.target.classList.contains('cp-invoice-line-kind')) recalc();
       });
+
+      if (includeHstCb) includeHstCb.addEventListener('change', function () {
+        syncHstExemptHidden();
+        recalc();
+        syncLockedPanel();
+      });
+
+      syncHstExemptHidden();
+      syncLockedPanel();
 
       var intentField = document.getElementById('cp-invoice-intent');
       document.querySelectorAll('[data-cp-invoice-intent]').forEach(function (btn) {

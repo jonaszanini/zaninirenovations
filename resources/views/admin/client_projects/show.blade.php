@@ -95,15 +95,6 @@
             if (submitting) return;
             if (select.value === form.getAttribute('data-current-status')) return;
 
-            var label = select.options[select.selectedIndex].text;
-            // Light confirm so an accidental click doesn't change project
-            // status (an irreversible event in some workflows).
-            if (!window.confirm('Change status to "' + label + '"?')) {
-              // Revert the select back to the previous value.
-              select.value = form.getAttribute('data-current-status');
-              return;
-            }
-
             submitting = true;
             select.disabled = true;
             if (note) note.disabled = true;
@@ -189,6 +180,24 @@
 
   {{-- SCHEDULE / CALENDAR TAB ---------------------------------------------- --}}
   <section class="cp-tab-panel" data-panel="schedule" id="schedule">
+    @php
+      $datesSet = $project->start_date && $project->end_date;
+      $hasContact = $project->hasClientContactInfo();
+      $canSendDates = !$isRejected && $datesSet && $hasContact;
+      $lastSentDates = \App\Models\ClientCommunicationLog::query()
+        ->where('client_project_id', $project->id)
+        ->where('reason', \App\Models\ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL)
+        ->where('status', \App\Models\ClientCommunicationLog::STATUS_SENT)
+        ->latest('sent_at')
+        ->first();
+      $lastSentRecipients = $lastSentDates
+        ? trim($lastSentDates->recipient.($lastSentDates->cc ? ', '.$lastSentDates->cc : ''), ', ')
+        : null;
+      $sendDatesConfirm = $lastSentDates
+        ? 'Re-send the project dates to '.($project->clientEmailRecipientsLabel() ?: 'the client').'?'
+        : 'Email the project dates to '.($project->clientEmailRecipientsLabel() ?: 'the client').'?';
+    @endphp
+
     <form id="cp-schedule-dates-form" action="{{ route('admin.client-projects.update', $project) }}" method="post" class="cp-schedule-form">
       @csrf
       @method('PUT')
@@ -270,70 +279,60 @@
           </div>
         @endif
 
-        <button type="submit" class="admin-btn admin-btn--primary">Save dates</button>
+        @unless ($isRejected)
+          @if (!$datesSet)
+            <p class="admin-form-help cp-send-dates-note cp-send-dates-note--warn">
+              <i class="fa fa-exclamation-triangle"></i>
+              Save both dates first to enable <strong>Send dates to client</strong>.
+            </p>
+          @elseif (!$hasContact)
+            <p class="admin-form-help cp-send-dates-note cp-send-dates-note--warn">
+              <i class="fa fa-exclamation-triangle"></i>
+              Missing client contact info: {{ implode(', ', $project->missingClientContactFields()) }}.
+              <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project details</a> to fix.
+            </p>
+          @endif
+
+          @if ($lastSentDates)
+            <p class="admin-form-help cp-send-dates-note">
+              <i class="fa fa-check-circle" style="color:#10b981;"></i>
+              Dates last emailed on
+              <strong>{{ \App\Models\ClientProject::formatDateTime($lastSentDates->sent_at) }}</strong>
+              to {{ $lastSentRecipients ?: $project->clientEmailRecipientsLabel() }}.
+            </p>
+          @endif
+        @endunless
+
+        <div class="cp-schedule-actions">
+          <button type="submit" class="admin-btn admin-btn--primary">Save dates</button>
+          @unless ($isRejected)
+            {{-- This button lives in the dates card but submits the small
+                 #cp-send-dates-form below via the HTML5 `form=` attribute. --}}
+            <button type="submit"
+                    form="cp-send-dates-form"
+                    class="admin-btn admin-btn--primary cp-send-dates-btn"
+                    @disabled(!$canSendDates)
+                    title="Email {{ $project->clientEmailRecipientsLabel() ?: 'the client' }} the scheduled dates.">
+              <i class="fa fa-paper-plane"></i>
+              {{ $lastSentDates ? 'Re-send dates to client' : 'Send dates to client' }}
+            </button>
+          @endunless
+        </div>
       </div>
     </form>
 
-    {{-- Manual "send dates to client" — works for any billing type and can
-         be re-sent freely. Lives in its own form so it doesn't piggyback on
-         the dates form's hidden-name/email payload. --}}
+    {{-- Standalone form for the "Send dates to client" button placed inside
+         the dates card above (referenced via `form="cp-send-dates-form"`).
+         Kept separate so its POST doesn't piggyback on the project-update
+         payload. --}}
     @unless ($isRejected)
-      @php
-        $datesSet = $project->start_date && $project->end_date;
-        $hasContact = $project->hasClientContactInfo();
-        $canSendDates = $datesSet && $hasContact;
-        $lastSentDates = \App\Models\ClientCommunicationLog::query()
-          ->where('client_project_id', $project->id)
-          ->where('reason', \App\Models\ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL)
-          ->where('status', \App\Models\ClientCommunicationLog::STATUS_SENT)
-          ->latest('sent_at')
-          ->first();
-        $lastSentRecipients = $lastSentDates
-          ? trim($lastSentDates->recipient.($lastSentDates->cc ? ', '.$lastSentDates->cc : ''), ', ')
-          : null;
-      @endphp
-      <div class="admin-card cp-send-dates-card">
-        <h3>Send dates to client</h3>
-        <p class="admin-form-help">
-          Email <strong>{{ $project->clientEmailRecipientsLabel() ?: 'the client' }}</strong> the scheduled start and end dates.
-          You can send this any time — it does not change the project status and can be re-sent (e.g. after a date change or as a reminder).
-        </p>
-
-        @if (!$datesSet)
-          <p class="admin-form-help" style="color:#b45309;">
-            <i class="fa fa-exclamation-triangle"></i>
-            Save both the start and end dates above before you can send the schedule.
-          </p>
-        @elseif (!$hasContact)
-          <p class="admin-form-help" style="color:#b45309;">
-            <i class="fa fa-exclamation-triangle"></i>
-            Missing client contact info: {{ implode(', ', $project->missingClientContactFields()) }}.
-            <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project details</a> to fix.
-          </p>
-        @endif
-
-        @if ($lastSentDates)
-          <p class="admin-form-help">
-            <i class="fa fa-check-circle" style="color:#10b981;"></i>
-            Last sent on
-            <strong>{{ \App\Models\ClientProject::formatDateTime($lastSentDates->sent_at) }}</strong>
-            to {{ $lastSentRecipients ?: $project->clientEmailRecipientsLabel() }}.
-          </p>
-        @endif
-
-        <form action="{{ route('admin.client-projects.schedule-dates.send', $project) }}"
-              method="post"
-              class="cp-schedule-form"
-              onsubmit="return confirm('{{ $lastSentDates ? 'Re-send the project dates to '.($project->clientEmailRecipientsLabel() ?: 'the client').'?' : 'Email the project dates to '.($project->clientEmailRecipientsLabel() ?: 'the client').'?' }}');">
-          @csrf
-          <button type="submit"
-                  class="admin-btn admin-btn--primary"
-                  @disabled(!$canSendDates)>
-            <i class="fa fa-paper-plane"></i>
-            {{ $lastSentDates ? 'Re-send dates to client' : 'Send dates to client' }}
-          </button>
-        </form>
-      </div>
+      <form id="cp-send-dates-form"
+            action="{{ route('admin.client-projects.schedule-dates.send', $project) }}"
+            method="post"
+            class="cp-send-dates-form"
+            onsubmit="return confirm('{{ $sendDatesConfirm }}');">
+        @csrf
+      </form>
     @endunless
 
     {{-- Hourly-only: manual "service confirmation" email. The rate was

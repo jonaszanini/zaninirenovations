@@ -1,10 +1,15 @@
 
 
 <?php
+  use App\Models\ClientProjectInvoice;
   use App\Services\MoceanSmsService;
 
   /** @var MoceanSmsService $moceanSms */
   $moceanSms = app(MoceanSmsService::class);
+
+  /** First paid invoice on this project prompts for a project status in the mark-paid modal. */
+  $showMarkPaidStatusPicker = $project->invoices->where('status', ClientProjectInvoice::STATUS_PAID)->isEmpty()
+      && ! $project->isRejected();
   $moceanReady = $moceanSms->isConfigured();
 
   // Content/readiness checks shared — email also needs full contact card.
@@ -168,15 +173,33 @@
     <?php endif; ?>
 
     
-    <?php if($invoice->isSent()): ?>
-      <button type="button"
-              class="admin-btn admin-btn--success admin-btn--sm"
-              data-cp-markpaid-url="<?php echo e(route('admin.client-projects.invoices.mark-paid', [$project, $invoice])); ?>"
-              data-cp-markpaid-amount="<?php echo e(number_format((float) $invoice->total, 2, '.', '')); ?>"
-              data-cp-markpaid-label="Invoice #<?php echo e($invoice->invoice_number); ?>"
-              title="Mark as paid and generate a receipt.">
-        <i class="fa fa-check"></i> Mark paid
-      </button>
+    <?php if (! ($invoice->isPaid())): ?>
+      <?php
+        $canMarkPaid = $invoice->hasContent() && (float) $invoice->total > 0;
+        $markPaidTitle = $canMarkPaid
+          ? ($invoice->isSent()
+              ? 'Mark as paid and generate a receipt.'
+              : 'Mark this draft invoice as paid (e.g. cash payment) and generate a receipt.')
+          : 'Add at least one line item with a description and amount before marking paid.';
+      ?>
+      <?php if($canMarkPaid): ?>
+        <button type="button"
+                class="admin-btn admin-btn--success admin-btn--sm"
+                data-cp-markpaid-url="<?php echo e(route('admin.client-projects.invoices.mark-paid', [$project, $invoice])); ?>"
+                data-cp-markpaid-amount="<?php echo e(number_format((float) $invoice->total, 2, '.', '')); ?>"
+                data-cp-markpaid-label="Invoice #<?php echo e($invoice->invoice_number); ?>"
+                data-cp-markpaid-first-paid="<?php echo e($showMarkPaidStatusPicker ? '1' : '0'); ?>"
+                title="<?php echo e($markPaidTitle); ?>">
+          <i class="fa fa-check"></i> Mark paid
+        </button>
+      <?php else: ?>
+        <button type="button"
+                class="admin-btn admin-btn--success admin-btn--sm"
+                disabled
+                title="<?php echo e($markPaidTitle); ?>">
+          <i class="fa fa-check"></i> Mark paid
+        </button>
+      <?php endif; ?>
     <?php endif; ?>
 
     

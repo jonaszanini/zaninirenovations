@@ -357,19 +357,21 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 
 /* Visual rhythm between sibling sections inside a tab panel: ~28px gap +
    a soft hairline so each .admin-card / form feels deliberately separated.
-   Matches both top-level siblings (admin-card, form) and the cards stacked
-   inside the schedule form. */
+   Form pairs use the direct-child combinator (> form + form) so nested
+   inline forms (e.g. Send + SMS in the invoice Actions cell) are not
+   mistaken for top-level tab sections — those were drawing a stray hairline
+   between wrapped action buttons. */
 .cp-tab-panel .admin-card + .admin-card,
 .cp-tab-panel form + .admin-card,
 .cp-tab-panel .admin-card + form,
-.cp-tab-panel form + form {
+.cp-tab-panel > form + form {
   margin-top: 28px;
   position: relative;
 }
 .cp-tab-panel .admin-card + .admin-card::before,
 .cp-tab-panel form + .admin-card::before,
 .cp-tab-panel .admin-card + form::before,
-.cp-tab-panel form + form::before {
+.cp-tab-panel > form + form::before {
   content: "";
   position: absolute;
   left: 15%;
@@ -1593,6 +1595,96 @@ textarea.admin-input {
   color: #024768;
 }
 
+/* Mark-as-paid modal: payment method radio group (e-Transfer / Cash). */
+.cp-mark-paid-method {
+  margin-top: 12px;
+}
+.cp-mark-paid-method-label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: #334155;
+  margin: 0 0 6px;
+}
+.cp-mark-paid-method-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cp-mark-paid-method-option {
+  flex: 1 1 140px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+.cp-mark-paid-method-option:hover {
+  border-color: #94a3b8;
+}
+.cp-mark-paid-method-option input[type="radio"] {
+  margin: 0;
+  accent-color: #024768;
+}
+.cp-mark-paid-method-option:has(input[type="radio"]:checked) {
+  border-color: #024768;
+  background: #eef5fa;
+  color: #024768;
+}
+
+.cp-mark-paid-project-status {
+  margin-top: 16px;
+  padding: 14px 14px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.cp-mark-paid-project-status:disabled {
+  display: none;
+}
+.cp-mark-paid-project-status-legend {
+  float: none;
+  width: auto;
+  padding: 0 6px 0 0;
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Inline "include HST" toggle inside the invoice editor totals breakdown.
+   Layout puts the checkbox + label on the left of the row, amount on the
+   right (matches the rest of .cp-quotation-totals-row). */
+.cp-invoice-hst-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cp-invoice-hst-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #024768;
+}
+.cp-invoice-hst-toggle label {
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+}
+/* Excluded state — strike + grey out so it's obvious HST isn't billed. */
+.cp-invoice-hst-row--excluded .cp-invoice-hst-toggle label,
+.cp-invoice-hst-row--excluded #cp-invoice-hst {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
 .visually-hidden {
   position: absolute !important;
   height: 1px;
@@ -2558,6 +2650,42 @@ body.cp-modal-open {
   cursor: default;
 }
 
+/* Schedule tab — action row at the bottom of the Start & End dates card.
+   Save dates sits left, "Send dates to client" pushes to the right edge.
+   Stacks vertically on narrow viewports. */
+.cp-schedule-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+.cp-send-dates-btn {
+  margin-left: auto;
+}
+.cp-send-dates-note {
+  margin: 6px 0 0;
+}
+.cp-send-dates-note--warn {
+  color: #b45309;
+}
+/* Standalone CSRF-only <form> used by the inline Send-dates button — keep
+   it visually inert so it doesn't add margin or trip the tab-panel
+   sibling-divider rule. */
+.cp-send-dates-form {
+  display: contents;
+}
+
+@media (max-width: 640px) {
+  .cp-send-dates-btn {
+    margin-left: 0;
+    width: 100%;
+  }
+  .cp-schedule-actions .admin-btn {
+    flex: 1 1 100%;
+  }
+}
+
 /* Date-picker modal (Calendar tab) ----------------------------------- */
 .cp-schedule-pick-row {
   display: flex;
@@ -2646,4 +2774,21 @@ body.cp-modal-open {
   .cp-date-picker-clear {
     margin-left: 0;
   }
+}
+
+/* Client directory (admin) + Tom Select on project forms */
+.cp-clients-toolbar-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cp-client-directory-picker .ts-control {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  padding: 6px 10px;
+}
+.cp-client-directory-picker .ts-wrapper.single .ts-control {
+  background: #fff;
 }

@@ -269,13 +269,21 @@
     @endif
     @if (!empty($isHourlyManual))
       <tr>
-        <td class="label">Labour subtotal (pre-HST)</td>
+        <td class="label">{{ $invoice->isHstExempt() ? 'Labour subtotal' : 'Labour subtotal (pre-HST)' }}</td>
         <td class="value" style="font-weight:400;color:#4b5563;">{{ $fmt($hourlyLabourTotal) }}</td>
       </tr>
-      <tr>
-        <td class="label">HST (13% on labour)</td>
-        <td class="value" style="font-weight:400;color:#4b5563;">{{ $fmt($invoice->hst) }}</td>
-      </tr>
+      @if ($invoice->isHstExempt())
+        <tr>
+          <td class="label" colspan="2" style="font-weight:400;color:#4b5563;font-style:italic;">
+            No HST charged (cash payment).
+          </td>
+        </tr>
+      @else
+        <tr>
+          <td class="label">HST (13% on labour)</td>
+          <td class="value" style="font-weight:400;color:#4b5563;">{{ $fmt($invoice->hst) }}</td>
+        </tr>
+      @endif
       @if (($hourlyMaterialsTotal ?? 0) > 0.0001)
         <tr>
           <td class="label">Materials (tax-included)</td>
@@ -283,14 +291,22 @@
         </tr>
       @endif
     @else
-    <tr>
-      <td class="label">Subtotal</td>
-      <td class="value" style="font-weight:400;color:#4b5563;">{{ $fmt($invoice->subtotal) }}</td>
-    </tr>
-    <tr>
-      <td class="label">HST (13%)</td>
-      <td class="value" style="font-weight:400;color:#4b5563;">{{ $fmt($invoice->hst) }}</td>
-    </tr>
+      <tr>
+        <td class="label">Subtotal</td>
+        <td class="value" style="font-weight:400;color:#4b5563;">{{ $fmt($invoice->subtotal) }}</td>
+      </tr>
+      @if ($invoice->isHstExempt())
+        <tr>
+          <td class="label" colspan="2" style="font-weight:400;color:#4b5563;font-style:italic;">
+            No HST charged (cash payment).
+          </td>
+        </tr>
+      @else
+        <tr>
+          <td class="label">HST (13%)</td>
+          <td class="value" style="font-weight:400;color:#4b5563;">{{ $fmt($invoice->hst) }}</td>
+        </tr>
+      @endif
     @endif
     <tr>
       <td class="label">Invoice total</td>
@@ -300,6 +316,12 @@
       <td class="label">Payment date</td>
       <td class="value" style="font-weight:400;color:#1f2937;">{{ $paidOn }}</td>
     </tr>
+    @if ($invoice->paymentMethodLabel())
+      <tr>
+        <td class="label">Payment method</td>
+        <td class="value" style="font-weight:400;color:#1f2937;">{{ $invoice->paymentMethodLabel() }}</td>
+      </tr>
+    @endif
     <tr class="paid-row">
       <td class="label">Amount paid</td>
       <td class="value">{{ $fmt($paidAmount) }}</td>

@@ -29,6 +29,16 @@ class ClientProjectInvoice extends Model
 
     public const HST_RATE = 0.13;
 
+    /** Payment methods captured when the invoice is marked paid. */
+    public const PAYMENT_METHOD_CASH = 'cash';
+    public const PAYMENT_METHOD_ETRANSFER = 'etransfer';
+
+    /** Display labels for the receipt PDF + admin UI. */
+    public const PAYMENT_METHOD_LABELS = [
+        self::PAYMENT_METHOD_CASH => 'Cash',
+        self::PAYMENT_METHOD_ETRANSFER => 'e-Transfer',
+    ];
+
     /** Default due period (days after send) when not explicitly set. */
     public const DEFAULT_DUE_DAYS = 10;
 
@@ -46,12 +56,14 @@ class ClientProjectInvoice extends Model
         'items',
         'subtotal',
         'hst',
+        'hst_exempt',
         'total',
         'status',
         'sent_at',
         'due_on',
         'paid_at',
         'paid_amount',
+        'payment_method',
         'invoice_pdf_path',
         'receipt_pdf_path',
         'version',
@@ -62,6 +74,7 @@ class ClientProjectInvoice extends Model
         'items' => 'array',
         'subtotal' => 'decimal:2',
         'hst' => 'decimal:2',
+        'hst_exempt' => 'boolean',
         'total' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'sent_at' => 'datetime',
@@ -156,6 +169,32 @@ class ClientProjectInvoice extends Model
     public function isManual(): bool
     {
         return $this->installment_number === null;
+    }
+
+    /**
+     * True when the admin has flagged this invoice as HST-exempt (typically
+     * for cash payments). Side effects: HST is forced to $0 and the total
+     * collapses to the subtotal at save time, the PDF / receipt hide the
+     * HST row, and the editor swaps the breakdown to a "no HST" line.
+     */
+    public function isHstExempt(): bool
+    {
+        return (bool) $this->hst_exempt;
+    }
+
+    /**
+     * Friendly label for the payment method ("Cash", "e-Transfer", …).
+     * Returns null if the invoice was paid before this field existed or
+     * the method wasn't captured at mark-paid time.
+     */
+    public function paymentMethodLabel(): ?string
+    {
+        if (!$this->payment_method) {
+            return null;
+        }
+
+        return self::PAYMENT_METHOD_LABELS[$this->payment_method]
+            ?? ucfirst($this->payment_method);
     }
 
     // --- Item helpers -----------------------------------------------------

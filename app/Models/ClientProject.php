@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
@@ -38,6 +39,7 @@ class ClientProject extends Model
     public const BILLING_HOURLY = 'hourly';
 
     protected $fillable = [
+        'client_id',
         'name',
         'client_name',
         'client_email',
@@ -66,6 +68,7 @@ class ClientProject extends Model
     ];
 
     protected $casts = [
+        'client_id' => 'integer',
         'start_date' => 'date',
         'day_before_start_sent_for_date' => 'date',
         'end_date' => 'date',
@@ -136,6 +139,11 @@ class ClientProject extends Model
     }
 
     // --- Relationships -----------------------------------------------------
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
 
     public function installments(): HasMany
     {

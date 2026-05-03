@@ -34,6 +34,12 @@
           </a>
         </li>
         <li>
+          <a href="{{ route('admin.clients.index') }}" class="{{ request()->routeIs('admin.clients.*') ? 'is-active' : '' }}">
+            <i class="fa fa-address-book"></i>
+            Clients
+          </a>
+        </li>
+        <li>
           <a href="{{ route('admin.client-projects.calendar') }}" class="{{ request()->routeIs('admin.client-projects.calendar') ? 'is-active' : '' }}">
             <i class="fa fa-calendar"></i>
             Project Calendar

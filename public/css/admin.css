@@ -272,7 +272,10 @@ body.admin-body {
   font-weight: 600;
   font-family: inherit;
   border-radius: 8px;
-  border: none;
+  /* Transparent placeholder border so filled variants (--primary, --danger,
+     etc.) end up exactly the same height as outlined ones (--ghost) — the
+     bordered variant otherwise added 2px to its total height. */
+  border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
   transition: background 0.15s, color 0.15s, border-color 0.15s;

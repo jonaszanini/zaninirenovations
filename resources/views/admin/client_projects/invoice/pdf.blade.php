@@ -367,13 +367,21 @@
     <table class="items">
       <tfoot>
         <tr>
-          <td class="totals-label">Labour subtotal (pre-HST)</td>
+          <td class="totals-label">{{ $invoice->isHstExempt() ? 'Labour subtotal' : 'Labour subtotal (pre-HST)' }}</td>
           <td class="amount">{{ $fmt($hourlyLabourTotal ?? $subtotal) }}</td>
         </tr>
-        <tr>
-          <td class="totals-label">HST (13% on labour only)</td>
-          <td class="amount">{{ $fmt($hst) }}</td>
-        </tr>
+        @if ($invoice->isHstExempt())
+          <tr>
+            <td class="totals-label" colspan="2" style="font-style:italic;color:#4b5563;font-size:9.5pt;">
+              No HST charged on this invoice (cash payment).
+            </td>
+          </tr>
+        @else
+          <tr>
+            <td class="totals-label">HST (13% on labour only)</td>
+            <td class="amount">{{ $fmt($hst) }}</td>
+          </tr>
+        @endif
         @if (($hourlyMaterialsTotal ?? 0) > 0.0001)
           <tr>
             <td class="totals-label">Materials (tax-included)</td>
@@ -413,10 +421,18 @@
         <td class="totals-label">Subtotal</td>
         <td class="amount">{{ $fmt($subtotal) }}</td>
       </tr>
-      <tr>
-        <td class="totals-label">HST (13%)</td>
-        <td class="amount">{{ $fmt($hst) }}</td>
-      </tr>
+      @if ($invoice->isHstExempt())
+        <tr>
+          <td class="totals-label" colspan="2" style="font-style:italic;color:#4b5563;font-size:9.5pt;">
+            No HST charged on this invoice (cash payment).
+          </td>
+        </tr>
+      @else
+        <tr>
+          <td class="totals-label">HST (13%)</td>
+          <td class="amount">{{ $fmt($hst) }}</td>
+        </tr>
+      @endif
       <tr class="grand">
         <td class="totals-label">Total</td>
         <td class="amount">{{ $fmt($total) }}</td>

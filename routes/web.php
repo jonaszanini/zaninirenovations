@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\ClientProjectInvoiceController;
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -93,6 +94,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->parameters(['portfolio' => 'project'])
         ->except(['show']);
     Route::resource('categories', CategoryController::class)->except(['show']);
+
+    // Client directory (shared contacts for new projects).
+    Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
+    Route::resource('clients', ClientController::class)->except(['show']);
 
     // Client Projects management (quote → completion lifecycle).
     Route::get('client-projects/calendar', [\App\Http\Controllers\Admin\ClientProjectController::class, 'calendar'])

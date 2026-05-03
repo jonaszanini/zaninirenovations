@@ -17,6 +17,11 @@
       <div class="admin-form-section">
         <h3>Client information</h3>
 
+        @include('admin.client_projects._client_directory_picker', [
+          'clientsSearchUrl' => $clientsSearchUrl,
+          'initialClientForPicker' => null,
+        ])
+
         <div class="admin-form-group">
           <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
           <input type="text" id="cp-client-name" name="client_name" value="{{ old('client_name') }}" required maxlength="255"

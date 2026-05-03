@@ -165,7 +165,12 @@ class ClientProjectInvoiceController extends Controller
             'manual_total' => ['nullable', 'numeric', 'min:0'],
             'due_on' => ['nullable', 'date'],
             'intent' => ['nullable', 'in:draft,close'],
+            'hst_exempt' => ['nullable', 'boolean'],
         ]);
+
+        // Persist the HST-exempt flag BEFORE we recompute totals so the
+        // helpers that derive HST below see the new value.
+        $invoice->hst_exempt = (bool) ($data['hst_exempt'] ?? false);
 
         $isHourlyManual = $client_project->isHourly() && $invoice->isManual();
 
@@ -185,7 +190,9 @@ class ClientProjectInvoiceController extends Controller
             $invoice->items = $items;
             // subtotal column = taxable labour base (pre-HST) only — matches PDF wording.
             $invoice->subtotal = $labour;
-            $invoice->hst = round($labour * ClientProjectInvoice::HST_RATE, 2);
+            $invoice->hst = $invoice->isHstExempt()
+                ? 0.0
+                : round($labour * ClientProjectInvoice::HST_RATE, 2);
             $invoice->total = round($labour + $invoice->hst + $materials, 2);
             $this->syncHourlyExpenseLinks($client_project, $invoice, $items);
         } else {
@@ -588,14 +595,36 @@ class ClientProjectInvoiceController extends Controller
             return back()->with('error', 'This invoice is already marked paid.');
         }
 
-        if (!$invoice->isSent()) {
-            return back()->with('error', 'Only sent invoices can be marked paid. Send the invoice to the client first.');
+        // Drafts can be marked paid too (e.g. client paid in person/cash and
+        // we skipped the email/SMS step). We only require the invoice to
+        // have something to put on the receipt — at least one line item
+        // and a non-zero total.
+        if (!$invoice->hasContent() || (float) $invoice->total <= 0) {
+            return back()->with('error', 'Add at least one line item with a description and amount before marking the invoice paid.');
         }
+
+        $allowedStatusesOnFirstPaid = array_values(array_filter(
+            ClientProject::statuses(),
+            fn (string $s) => $s !== ClientProject::STATUS_REJECTED
+        ));
+
+        $isFirstPaidInvoice = ! $client_project->invoices()
+            ->where('status', ClientProjectInvoice::STATUS_PAID)
+            ->exists();
 
         $data = $request->validate([
             'paid_on' => ['required', 'date'],
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'also_email_receipt' => ['nullable', 'boolean'],
+            'payment_method' => ['required', Rule::in([
+                ClientProjectInvoice::PAYMENT_METHOD_CASH,
+                ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER,
+            ])],
+            'project_status' => [
+                'nullable',
+                'string',
+                Rule::in($allowedStatusesOnFirstPaid),
+            ],
         ]);
 
         // Track whether this mark-paid flipped the first installment from
@@ -605,6 +634,7 @@ class ClientProjectInvoiceController extends Controller
         DB::transaction(function () use ($invoice, $client_project, $data, &$firstInstallmentJustPaid) {
             $invoice->paid_at = $data['paid_on'];
             $invoice->paid_amount = round((float) $data['paid_amount'], 2);
+            $invoice->payment_method = $data['payment_method'];
             $invoice->status = ClientProjectInvoice::STATUS_PAID;
 
             // Generate + persist the Receipt PDF BEFORE saving status so
@@ -719,6 +749,28 @@ class ClientProjectInvoiceController extends Controller
         $flash = $emailSent
             ? "Invoice marked paid. Receipt emailed to {$client_project->clientEmailRecipientsLabel()}."
             : 'Invoice marked paid. (Email not sent.)';
+
+        $targetStatus = isset($data['project_status']) ? trim((string) $data['project_status']) : '';
+        if ($isFirstPaidInvoice && ! $client_project->isRejected() && $targetStatus !== '') {
+            $proj = $client_project->fresh();
+            if ($proj && $targetStatus !== $proj->status) {
+                try {
+                    $updated = $statusService->transition(
+                        $proj,
+                        $targetStatus,
+                        'Status set while marking the first paid invoice.'
+                    );
+                    $flash .= ' Project status updated to '.$updated->statusLabel().'.';
+                } catch (\Throwable $e) {
+                    Log::warning('markPaid: project_status transition failed', [
+                        'project_id' => $client_project->id,
+                        'invoice_id' => $invoice->id,
+                        'target_status' => $targetStatus,
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
 
         // If paying this invoice just flipped the 1st installment to paid,
         // trigger the admin calendar email — or warn that dates are still
@@ -1030,6 +1082,11 @@ class ClientProjectInvoiceController extends Controller
      */
     protected function computeInvoiceHst(ClientProject $project, ClientProjectInvoice $invoice, float $subtotal): float
     {
+        // Cash-paid invoices: no HST charged regardless of installment vs manual.
+        if ($invoice->isHstExempt()) {
+            return 0.0;
+        }
+
         if ($invoice->isManual()) {
             return round($subtotal * ClientProjectInvoice::HST_RATE, 2);
         }
@@ -1055,6 +1112,10 @@ class ClientProjectInvoiceController extends Controller
      */
     protected function lockedHst(ClientProject $project, ClientProjectInvoice $invoice): float
     {
+        if ($invoice->isHstExempt()) {
+            return 0.0;
+        }
+
         if ($invoice->isManual()) {
             $sub = $this->lockedSubtotal($project, $invoice);
 

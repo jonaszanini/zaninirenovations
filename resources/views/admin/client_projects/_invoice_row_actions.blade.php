@@ -12,10 +12,15 @@
 --}}
 
 @php
+  use App\Models\ClientProjectInvoice;
   use App\Services\MoceanSmsService;
 
   /** @var MoceanSmsService $moceanSms */
   $moceanSms = app(MoceanSmsService::class);
+
+  /** First paid invoice on this project prompts for a project status in the mark-paid modal. */
+  $showMarkPaidStatusPicker = $project->invoices->where('status', ClientProjectInvoice::STATUS_PAID)->isEmpty()
+      && ! $project->isRejected();
   $moceanReady = $moceanSms->isConfigured();
 
   // Content/readiness checks shared — email also needs full contact card.
@@ -177,17 +182,38 @@
       @endif
     @endif
 
-    {{-- Mark as paid (only once sent) --}}
-    @if ($invoice->isSent())
-      <button type="button"
-              class="admin-btn admin-btn--success admin-btn--sm"
-              data-cp-markpaid-url="{{ route('admin.client-projects.invoices.mark-paid', [$project, $invoice]) }}"
-              data-cp-markpaid-amount="{{ number_format((float) $invoice->total, 2, '.', '') }}"
-              data-cp-markpaid-label="Invoice #{{ $invoice->invoice_number }}"
-              title="Mark as paid and generate a receipt.">
-        <i class="fa fa-check"></i> Mark paid
-      </button>
-    @endif
+    {{-- Mark as paid — available on any non-paid invoice with content,
+         even drafts. Useful when the client paid in person/cash and we
+         skip the email/SMS step. We still require line items + a total so
+         the receipt PDF has something meaningful to render. --}}
+    @unless ($invoice->isPaid())
+      @php
+        $canMarkPaid = $invoice->hasContent() && (float) $invoice->total > 0;
+        $markPaidTitle = $canMarkPaid
+          ? ($invoice->isSent()
+              ? 'Mark as paid and generate a receipt.'
+              : 'Mark this draft invoice as paid (e.g. cash payment) and generate a receipt.')
+          : 'Add at least one line item with a description and amount before marking paid.';
+      @endphp
+      @if ($canMarkPaid)
+        <button type="button"
+                class="admin-btn admin-btn--success admin-btn--sm"
+                data-cp-markpaid-url="{{ route('admin.client-projects.invoices.mark-paid', [$project, $invoice]) }}"
+                data-cp-markpaid-amount="{{ number_format((float) $invoice->total, 2, '.', '') }}"
+                data-cp-markpaid-label="Invoice #{{ $invoice->invoice_number }}"
+                data-cp-markpaid-first-paid="{{ $showMarkPaidStatusPicker ? '1' : '0' }}"
+                title="{{ $markPaidTitle }}">
+          <i class="fa fa-check"></i> Mark paid
+        </button>
+      @else
+        <button type="button"
+                class="admin-btn admin-btn--success admin-btn--sm"
+                disabled
+                title="{{ $markPaidTitle }}">
+          <i class="fa fa-check"></i> Mark paid
+        </button>
+      @endif
+    @endunless
 
     {{-- Receipt download (only once paid) --}}
     @if ($invoice->isPaid())

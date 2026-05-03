@@ -169,9 +169,22 @@
                       {{ $entryCount }} time entr{{ $entryCount === 1 ? 'y' : 'ies' }} snapshotted
                     </div>
                   @endif
+                  @if ($invoice->isHstExempt())
+                    <div style="margin-top:4px;">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                        <i class="fa fa-money"></i> HST excluded
+                      </span>
+                    </div>
+                  @endif
                 </td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->hst) }}</td>
+                <td class="cp-col-amount">
+                  @if ($invoice->isHstExempt())
+                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                  @else
+                    {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
+                  @endif
+                </td>
                 <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
                 <td>
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
@@ -334,9 +347,22 @@
                       Delete and recreate this invoice to refresh.
                     </div>
                   @endif
+                  @if ($invoice && $invoice->isHstExempt())
+                    <div style="margin-top:4px;">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                        <i class="fa fa-money"></i> HST excluded
+                      </span>
+                    </div>
+                  @endif
                 </td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($rowSubtotal) }}</td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($rowHst) }}</td>
+                <td class="cp-col-amount">
+                  @if ($invoice && $invoice->isHstExempt())
+                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                  @else
+                    {{ \App\Models\ClientProject::formatMoney($rowHst) }}
+                  @endif
+                </td>
                 <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($rowTotal) }}</strong></td>
                 <td>
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
@@ -392,9 +418,22 @@
               <tr>
                 <td>
                   {{ $invoice->installment_description ?: 'Manual invoice' }}
+                  @if ($invoice->isHstExempt())
+                    <div style="margin-top:4px;">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                        <i class="fa fa-money"></i> HST excluded
+                      </span>
+                    </div>
+                  @endif
                 </td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->hst) }}</td>
+                <td class="cp-col-amount">
+                  @if ($invoice->isHstExempt())
+                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                  @else
+                    {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
+                  @endif
+                </td>
                 <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
                 <td>
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
@@ -458,6 +497,40 @@
                      required>
             </div>
           </div>
+          <div class="admin-form-group cp-mark-paid-method">
+            <label class="cp-mark-paid-method-label">Payment method</label>
+            <div class="cp-mark-paid-method-options" role="radiogroup" aria-label="Payment method">
+              <label class="cp-mark-paid-method-option">
+                <input type="radio" name="payment_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER }}" checked>
+                <span><i class="fa fa-bank"></i> e-Transfer</span>
+              </label>
+              <label class="cp-mark-paid-method-option">
+                <input type="radio" name="payment_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CASH }}">
+                <span><i class="fa fa-money"></i> Cash</span>
+              </label>
+            </div>
+          </div>
+
+          @php
+            $markPaidStatusLabels = collect(\App\Models\ClientProject::statusLabels())
+              ->reject(fn ($label, $key) => $key === \App\Models\ClientProject::STATUS_REJECTED);
+          @endphp
+          <fieldset id="cp-mark-paid-status-fieldset" class="cp-mark-paid-project-status" disabled>
+            <legend class="cp-mark-paid-project-status-legend">Project status</legend>
+            <p class="admin-form-help" style="margin:0 0 8px;">
+              This is the <strong>first paid invoice</strong> on this project. Optionally move the project to a new workflow step now.
+            </p>
+            <div class="admin-form-group" style="margin-bottom:0;">
+              <label for="cp-mark-paid-project-status">Set project status to</label>
+              <select id="cp-mark-paid-project-status" name="project_status" class="admin-input">
+                <option value="">Keep current — {{ $project->statusLabel() }}</option>
+                @foreach ($markPaidStatusLabels as $key => $lbl)
+                  <option value="{{ $key }}">{{ $lbl }}</option>
+                @endforeach
+              </select>
+            </div>
+          </fieldset>
+
           <label class="cp-checkbox-row" style="margin-top:10px;">
             <input type="hidden" name="also_email_receipt" value="0">
             <input type="checkbox" name="also_email_receipt" value="1" checked>
@@ -481,14 +554,24 @@
       var form = document.getElementById('cp-mark-paid-form');
       var amountInput = document.getElementById('cp-mark-paid-amount');
       var label = document.getElementById('cp-mark-paid-invoice-label');
+      var statusFieldset = document.getElementById('cp-mark-paid-status-fieldset');
+      var statusSelect = document.getElementById('cp-mark-paid-project-status');
 
       function openModal(trigger) {
         var action = trigger.getAttribute('data-cp-markpaid-url');
         var amount = trigger.getAttribute('data-cp-markpaid-amount') || '0.00';
         var invoiceLabel = trigger.getAttribute('data-cp-markpaid-label') || 'this invoice';
+        var askStatus = trigger.getAttribute('data-cp-markpaid-first-paid') === '1';
         form.action = action;
         amountInput.value = amount;
         label.textContent = invoiceLabel;
+
+        if (statusFieldset) {
+          statusFieldset.disabled = !askStatus;
+        }
+        if (statusSelect && askStatus) {
+          statusSelect.value = '';
+        }
 
         // Re-wire the money mask on the freshly-shown input.
         if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {

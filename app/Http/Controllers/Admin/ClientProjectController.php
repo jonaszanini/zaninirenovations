@@ -114,7 +114,9 @@ class ClientProjectController extends Controller
 
     public function create()
     {
-        return view('admin.client_projects.create');
+        return view('admin.client_projects.create', [
+            'clientsSearchUrl' => route('admin.clients.search'),
+        ]);
     }
 
     public function store(Request $request, ClientProjectStatusService $service)
@@ -123,6 +125,7 @@ class ClientProjectController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'client_id' => ['nullable', 'integer', 'exists:clients,id'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
             'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
@@ -271,8 +274,21 @@ class ClientProjectController extends Controller
 
     public function edit(ClientProject $client_project)
     {
+        $client_project->load('client');
+
+        $initialClientForPicker = null;
+        if ($client_project->client) {
+            $c = $client_project->client;
+            $initialClientForPicker = array_merge($c->toPickerArray(), [
+                'display' => $c->searchLabel(),
+                'phone_display' => $c->phone ? ClientProject::formatPhone($c->phone) : '',
+            ]);
+        }
+
         return view('admin.client_projects.edit', [
             'project' => $client_project,
+            'clientsSearchUrl' => route('admin.clients.search'),
+            'initialClientForPicker' => $initialClientForPicker,
         ]);
     }
 
@@ -282,6 +298,7 @@ class ClientProjectController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
+            'client_id' => ['sometimes', 'nullable', 'integer', 'exists:clients,id'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
             'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
