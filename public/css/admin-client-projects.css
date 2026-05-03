@@ -181,6 +181,17 @@
   color: #334155;
   margin: 0;
 }
+.cp-status-form-help {
+  font-size: 12px;
+  color: #6b7280;
+  margin-left: 4px;
+}
+/* When auto-submit is wired, the dropdown saves on change so the explicit
+   Save button is redundant — hide it (the Save button still ships in HTML
+   for the no-JS fallback). */
+.cp-status-form--auto .cp-status-save {
+  display: none;
+}
 .cp-status-controls {
   display: flex;
   align-items: stretch;
@@ -286,6 +297,31 @@
 }
 .cp-tab-panel.is-active {
   display: block;
+}
+
+/* Visual rhythm between sibling sections inside a tab panel: ~28px gap +
+   a soft hairline so each .admin-card / form feels deliberately separated.
+   Matches both top-level siblings (admin-card, form) and the cards stacked
+   inside the schedule form. */
+.cp-tab-panel .admin-card + .admin-card,
+.cp-tab-panel form + .admin-card,
+.cp-tab-panel .admin-card + form,
+.cp-tab-panel form + form {
+  margin-top: 28px;
+  position: relative;
+}
+.cp-tab-panel .admin-card + .admin-card::before,
+.cp-tab-panel form + .admin-card::before,
+.cp-tab-panel .admin-card + form::before,
+.cp-tab-panel form + form::before {
+  content: "";
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  top: -15px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #d1d5db 50%, transparent);
+  pointer-events: none;
 }
 
 /* =================================================================
@@ -2446,3 +2482,92 @@ body.cp-modal-open {
   cursor: default;
 }
 
+/* Date-picker modal (Calendar tab) ----------------------------------- */
+.cp-schedule-pick-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cp-schedule-pick-hint {
+  margin: 0;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.cp-date-picker-backdrop {
+  /* Calendar needs more breathing room than the regular confirmation modal. */
+  align-items: flex-start;
+  padding-top: 40px;
+}
+.cp-date-picker-modal {
+  max-width: 880px;
+}
+.cp-date-picker-body {
+  padding: 16px 18px 4px;
+}
+.cp-date-picker-help {
+  margin: 0 0 12px;
+}
+.cp-date-picker-selection {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+.cp-date-picker-selection > div {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.cp-date-picker-selection-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+.cp-date-picker-selection strong {
+  font-size: 15px;
+  color: #024768;
+}
+.cp-date-picker-selection-arrow {
+  color: #94a3b8;
+  font-size: 18px;
+}
+.cp-date-picker-clear {
+  margin-left: auto;
+}
+.cp-date-picker-conflict {
+  margin-bottom: 12px;
+}
+.cp-date-picker-calendar {
+  /* Cap calendar height so the modal stays scrollable on shorter screens. */
+  max-height: 60vh;
+  overflow: auto;
+}
+.cp-date-picker-calendar .fc {
+  font-size: 13px;
+}
+.cp-date-picker-calendar .fc .fc-toolbar-title {
+  font-size: 16px;
+}
+.cp-date-picker-calendar .fc-daygrid-day {
+  cursor: pointer;
+}
+.cp-date-picker-calendar .fc-daygrid-day:hover {
+  background: #eff6ff;
+}
+
+@media (max-width: 700px) {
+  .cp-date-picker-modal {
+    max-width: calc(100vw - 24px);
+  }
+  .cp-date-picker-clear {
+    margin-left: 0;
+  }
+}

@@ -2,6 +2,10 @@
 
 @section('heading', $project->name)
 
+@push('head')
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+@endpush
+
 @section('content')
   @php
     $statusLabels = \App\Models\ClientProject::statusLabels();
@@ -52,11 +56,12 @@
            height via .admin-input so the note no longer looks shorter
            than the select. Wraps cleanly to a single-column stack on
            narrow viewports. --}}
-      <form action="{{ route('admin.client-projects.status.update', $project) }}" method="post" class="cp-status-form">
+      <form action="{{ route('admin.client-projects.status.update', $project) }}" method="post" class="cp-status-form" id="cp-status-form" data-current-status="{{ $project->status }}">
         @csrf
         <div class="cp-status-form-head">
           <label for="cp-status-select" class="cp-status-form-label">Change status</label>
           <span class="cp-hint" title="Workflow: Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
+          <span class="cp-status-form-help">Pick a status to save it instantly. Type a note first if you want it logged with the change.</span>
         </div>
         <div class="cp-status-controls">
           <select id="cp-status-select" name="status" class="admin-input cp-status-select">
@@ -66,11 +71,52 @@
           </select>
           <input type="text" id="cp-status-note" name="note" placeholder="Optional note about this status change…"
                  maxlength="2000" class="admin-input cp-status-note">
+          {{-- The Save button stays for the no-JS fallback; the auto-submit
+               script below adds .cp-status-form--auto to the form which
+               hides it (see admin-client-projects.css). --}}
           <button type="submit" class="admin-btn admin-btn--primary cp-status-save">
             <i class="fa fa-save"></i> Save status
           </button>
         </div>
       </form>
+      <script>
+        (function () {
+          var form = document.getElementById('cp-status-form');
+          if (!form) return;
+          var select = form.querySelector('#cp-status-select');
+          var note = form.querySelector('#cp-status-note');
+          if (!select) return;
+
+          // Hide the Save button now that we know JS is on.
+          form.classList.add('cp-status-form--auto');
+
+          var submitting = false;
+          select.addEventListener('change', function () {
+            if (submitting) return;
+            if (select.value === form.getAttribute('data-current-status')) return;
+
+            var label = select.options[select.selectedIndex].text;
+            // Light confirm so an accidental click doesn't change project
+            // status (an irreversible event in some workflows).
+            if (!window.confirm('Change status to "' + label + '"?')) {
+              // Revert the select back to the previous value.
+              select.value = form.getAttribute('data-current-status');
+              return;
+            }
+
+            submitting = true;
+            select.disabled = true;
+            if (note) note.disabled = true;
+            // Re-add the disabled select's value so it still posts.
+            var hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'status';
+            hidden.value = select.value;
+            form.appendChild(hidden);
+            form.submit();
+          });
+        })();
+      </script>
     @else
       <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>
     @endunless
@@ -186,6 +232,13 @@
         <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link.</p>
         <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
 
+        <div class="cp-schedule-pick-row">
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="cp-open-date-picker">
+            <i class="fa fa-calendar"></i> Pick on calendar
+          </button>
+          <span class="admin-form-help cp-schedule-pick-hint">See other projects' booked days and click two days (start, then end) to fill the dates below.</span>
+        </div>
+
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="cp-start">Start date</label>
@@ -220,6 +273,68 @@
         <button type="submit" class="admin-btn admin-btn--primary">Save dates</button>
       </div>
     </form>
+
+    {{-- Manual "send dates to client" — works for any billing type and can
+         be re-sent freely. Lives in its own form so it doesn't piggyback on
+         the dates form's hidden-name/email payload. --}}
+    @unless ($isRejected)
+      @php
+        $datesSet = $project->start_date && $project->end_date;
+        $hasContact = $project->hasClientContactInfo();
+        $canSendDates = $datesSet && $hasContact;
+        $lastSentDates = \App\Models\ClientCommunicationLog::query()
+          ->where('client_project_id', $project->id)
+          ->where('reason', \App\Models\ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL)
+          ->where('status', \App\Models\ClientCommunicationLog::STATUS_SENT)
+          ->latest('sent_at')
+          ->first();
+        $lastSentRecipients = $lastSentDates
+          ? trim($lastSentDates->recipient.($lastSentDates->cc ? ', '.$lastSentDates->cc : ''), ', ')
+          : null;
+      @endphp
+      <div class="admin-card cp-send-dates-card">
+        <h3>Send dates to client</h3>
+        <p class="admin-form-help">
+          Email <strong>{{ $project->clientEmailRecipientsLabel() ?: 'the client' }}</strong> the scheduled start and end dates.
+          You can send this any time — it does not change the project status and can be re-sent (e.g. after a date change or as a reminder).
+        </p>
+
+        @if (!$datesSet)
+          <p class="admin-form-help" style="color:#b45309;">
+            <i class="fa fa-exclamation-triangle"></i>
+            Save both the start and end dates above before you can send the schedule.
+          </p>
+        @elseif (!$hasContact)
+          <p class="admin-form-help" style="color:#b45309;">
+            <i class="fa fa-exclamation-triangle"></i>
+            Missing client contact info: {{ implode(', ', $project->missingClientContactFields()) }}.
+            <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project details</a> to fix.
+          </p>
+        @endif
+
+        @if ($lastSentDates)
+          <p class="admin-form-help">
+            <i class="fa fa-check-circle" style="color:#10b981;"></i>
+            Last sent on
+            <strong>{{ \App\Models\ClientProject::formatDateTime($lastSentDates->sent_at) }}</strong>
+            to {{ $lastSentRecipients ?: $project->clientEmailRecipientsLabel() }}.
+          </p>
+        @endif
+
+        <form action="{{ route('admin.client-projects.schedule-dates.send', $project) }}"
+              method="post"
+              class="cp-schedule-form"
+              onsubmit="return confirm('{{ $lastSentDates ? 'Re-send the project dates to '.($project->clientEmailRecipientsLabel() ?: 'the client').'?' : 'Email the project dates to '.($project->clientEmailRecipientsLabel() ?: 'the client').'?' }}');">
+          @csrf
+          <button type="submit"
+                  class="admin-btn admin-btn--primary"
+                  @disabled(!$canSendDates)>
+            <i class="fa fa-paper-plane"></i>
+            {{ $lastSentDates ? 'Re-send dates to client' : 'Send dates to client' }}
+          </button>
+        </form>
+      </div>
+    @endunless
 
     {{-- Hourly-only: manual "service confirmation" email. The rate was
          agreed verbally up front, so the client doesn't get the automatic
@@ -277,6 +392,45 @@
         </form>
       </div>
     @endif
+
+    {{-- DATE-PICKER MODAL: shows other projects' booked days so the admin
+         can pick a non-overlapping start/end. Lazy-initialised on first open. --}}
+    <div class="cp-modal-backdrop cp-date-picker-backdrop" id="cp-date-picker-modal" hidden>
+      <div class="cp-modal cp-date-picker-modal" role="dialog" aria-labelledby="cp-date-picker-title" aria-modal="true">
+        <div class="cp-modal-header">
+          <h3 id="cp-date-picker-title">Pick start &amp; end dates</h3>
+          <button type="button" class="cp-modal-close" data-cp-modal-close aria-label="Close">&times;</button>
+        </div>
+        <div class="cp-modal-body cp-date-picker-body">
+          <p class="admin-form-help cp-date-picker-help">
+            Click a day to set the <strong>start</strong>, then click another day to set the <strong>end</strong>
+            (or drag across multiple days). Coloured blocks are other projects already scheduled.
+          </p>
+          <div class="cp-date-picker-selection">
+            <div>
+              <span class="cp-date-picker-selection-label">Start</span>
+              <strong id="cp-date-picker-start">—</strong>
+            </div>
+            <span class="cp-date-picker-selection-arrow" aria-hidden="true">→</span>
+            <div>
+              <span class="cp-date-picker-selection-label">End</span>
+              <strong id="cp-date-picker-end">—</strong>
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm cp-date-picker-clear" id="cp-date-picker-clear">
+              Clear
+            </button>
+          </div>
+          <div id="cp-date-picker-conflict" class="admin-flash admin-flash--warning cp-date-picker-conflict" style="display:none;" role="alert"></div>
+          <div id="cp-date-picker-calendar" class="cp-date-picker-calendar"></div>
+        </div>
+        <div class="cp-modal-footer">
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-modal-close>Cancel</button>
+          <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-date-picker-confirm" disabled>
+            <i class="fa fa-check"></i> Use these dates
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 
   {{-- TIME TRACKING TAB --------------------------------------------------- --}}
@@ -450,6 +604,225 @@
           e.preventDefault();
           if (warn) warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+      });
+    })();
+  </script>
+
+  {{-- Date-picker modal (Calendar tab) ----------------------------------- --}}
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script>
+    (function () {
+      var openBtn = document.getElementById('cp-open-date-picker');
+      var modal = document.getElementById('cp-date-picker-modal');
+      if (!openBtn || !modal) return;
+
+      var calendarEl = document.getElementById('cp-date-picker-calendar');
+      var startLabel = document.getElementById('cp-date-picker-start');
+      var endLabel = document.getElementById('cp-date-picker-end');
+      var clearBtn = document.getElementById('cp-date-picker-clear');
+      var confirmBtn = document.getElementById('cp-date-picker-confirm');
+      var conflictBox = document.getElementById('cp-date-picker-conflict');
+      var startInput = document.getElementById('cp-start');
+      var endInput = document.getElementById('cp-end');
+
+      var BUSY_EVENTS = @json($scheduleEvents);
+      var calendar = null;
+      var selection = { start: null, end: null };
+
+      function fmtIso(date) {
+        var y = date.getFullYear();
+        var m = String(date.getMonth() + 1).padStart(2, '0');
+        var d = String(date.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+      function parseIso(iso) {
+        // Build a local-date (avoid UTC drift you'd get from `new Date('2026-06-10')`).
+        var parts = iso.split('-');
+        return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+      }
+      function fmtDisplay(iso) {
+        if (!iso) return '—';
+        var d = parseIso(iso);
+        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+      function addDaysIso(iso, days) {
+        var d = parseIso(iso);
+        d.setDate(d.getDate() + days);
+        return fmtIso(d);
+      }
+
+      function rangeOverlapsBusy(startIso, endIso) {
+        if (!startIso || !endIso) return null;
+        var startMs = parseIso(startIso).getTime();
+        var endMs = parseIso(endIso).getTime();
+        for (var i = 0; i < BUSY_EVENTS.length; i++) {
+          var ev = BUSY_EVENTS[i];
+          var evStart = parseIso(ev.start).getTime();
+          // Stored end is exclusive (FullCalendar all-day), make it inclusive.
+          var evEnd = parseIso(addDaysIso(ev.end, -1)).getTime();
+          if (startMs <= evEnd && endMs >= evStart) {
+            return ev;
+          }
+        }
+        return null;
+      }
+
+      function refreshSelectionDisplay() {
+        startLabel.textContent = fmtDisplay(selection.start);
+        endLabel.textContent = fmtDisplay(selection.end);
+        confirmBtn.disabled = !(selection.start && selection.end);
+
+        if (calendar) {
+          var sources = calendar.getEventSources();
+          for (var i = 0; i < sources.length; i++) {
+            if (sources[i].id === 'cp-selection') sources[i].remove();
+          }
+          if (selection.start && selection.end) {
+            calendar.addEventSource({
+              id: 'cp-selection',
+              events: [{
+                id: 'cp-selection',
+                start: selection.start,
+                end: addDaysIso(selection.end, 1),
+                allDay: true,
+                display: 'background',
+                color: '#2563eb',
+              }]
+            });
+          }
+        }
+
+        var conflict = rangeOverlapsBusy(selection.start, selection.end);
+        if (conflict) {
+          conflictBox.style.display = 'block';
+          conflictBox.innerHTML = 'Heads up: this range overlaps <strong>' +
+            (conflict.title || 'another project') + '</strong>. You can still confirm, but check the calendar first.';
+        } else {
+          conflictBox.style.display = 'none';
+          conflictBox.textContent = '';
+        }
+      }
+
+      function setSelection(startIso, endIso) {
+        if (startIso && endIso && startIso > endIso) {
+          var tmp = startIso; startIso = endIso; endIso = tmp;
+        }
+        selection.start = startIso || null;
+        selection.end = endIso || null;
+        refreshSelectionDisplay();
+      }
+
+      function handleDayClick(iso) {
+        // No selection yet, or both dates already set → start fresh.
+        if (!selection.start || (selection.start && selection.end)) {
+          setSelection(iso, null);
+          return;
+        }
+        // Have a start, no end → set the end (auto-swap if click is earlier).
+        setSelection(selection.start, iso);
+      }
+
+      function initCalendar() {
+        if (calendar || !calendarEl || typeof FullCalendar === 'undefined') return;
+
+        // Seed initial date from the existing inputs (if any) so the calendar
+        // opens on the right month.
+        var initialDate = startInput && startInput.value ? startInput.value : new Date();
+
+        calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth',
+          initialDate: initialDate,
+          firstDay: 0,
+          height: 'auto',
+          headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+          selectable: true,
+          unselectAuto: false,
+          longPressDelay: 150,
+          eventDisplay: 'block',
+          events: BUSY_EVENTS,
+          eventDidMount: function (info) {
+            if (info.event.extendedProps && info.event.extendedProps.status) {
+              info.el.setAttribute('title', info.event.title + ' — ' + info.event.extendedProps.status);
+            }
+          },
+          // We intentionally do NOT use `dateClick` here: with `selectable: true`,
+          // a single-day click ALSO fires `select`, and the two handlers race
+          // (each overwriting the other's state). Routing everything through
+          // `select` keeps a single source of truth.
+          select: function (info) {
+            // FullCalendar's `end` is exclusive for all-day selections.
+            var startIso = fmtIso(info.start);
+            var endIso = fmtIso(new Date(info.end.getTime() - 24 * 60 * 60 * 1000));
+            if (startIso === endIso) {
+              // Single-day click → behaves like the 2-step "click start, click end" flow.
+              handleDayClick(startIso);
+            } else {
+              // Drag across multiple days → take the whole range at once.
+              setSelection(startIso, endIso);
+            }
+            calendar.unselect();
+          },
+        });
+        calendar.render();
+      }
+
+      function openModal() {
+        // Pre-seed selection from current input values when the modal opens.
+        if (startInput && startInput.value && endInput && endInput.value) {
+          selection.start = startInput.value;
+          selection.end = endInput.value;
+        } else if (startInput && startInput.value) {
+          selection.start = startInput.value;
+          selection.end = null;
+        } else {
+          selection.start = null;
+          selection.end = null;
+        }
+
+        modal.hidden = false;
+        document.body.classList.add('cp-modal-open');
+
+        // Defer init so the modal has real dimensions when the calendar lays out.
+        setTimeout(function () {
+          initCalendar();
+          if (calendar) {
+            if (selection.start) calendar.gotoDate(selection.start);
+            calendar.updateSize();
+          }
+          refreshSelectionDisplay();
+        }, 0);
+      }
+
+      function closeModal() {
+        modal.hidden = true;
+        document.body.classList.remove('cp-modal-open');
+      }
+
+      openBtn.addEventListener('click', openModal);
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal || (e.target.matches && e.target.matches('[data-cp-modal-close]'))) {
+          closeModal();
+        }
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) closeModal();
+      });
+
+      clearBtn.addEventListener('click', function () {
+        setSelection(null, null);
+      });
+
+      confirmBtn.addEventListener('click', function () {
+        if (!selection.start || !selection.end) return;
+        if (startInput) {
+          startInput.value = selection.start;
+          startInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (endInput) {
+          endInput.value = selection.end;
+          endInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        closeModal();
       });
     })();
   </script>

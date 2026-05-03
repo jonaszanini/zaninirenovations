@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ClientProjectScheduleDatesClient;
 use App\Mail\ClientProjectServiceConfirmationClient;
 use App\Mail\ClientProjectTimeTrackingSummaryClient;
 use App\Models\ClientCommunicationLog;
@@ -186,10 +187,76 @@ class ClientProjectController extends Controller
 
         $calendarLink = GoogleCalendarLink::forProject($client_project);
 
+        // Other-project events shown inside the date-picker modal on the
+        // Calendar tab so the admin can see what days are already taken
+        // before choosing a start/end. Excludes the current project so its
+        // own dates don't show up as "conflicts".
+        $scheduleEvents = $this->buildSchedulePickerEvents($client_project);
+
         return view('admin.client_projects.show', [
             'project' => $client_project,
             'calendarLink' => $calendarLink,
+            'scheduleEvents' => $scheduleEvents,
         ]);
+    }
+
+    /**
+     * Build calendar events (job spans + visit days) for every active project
+     * EXCEPT the given one. Used by the start/end date-picker modal so the
+     * admin can pick dates without overlapping other scheduled work.
+     */
+    protected function buildSchedulePickerEvents(ClientProject $current): array
+    {
+        $projects = ClientProject::query()
+            ->where('id', '!=', $current->id)
+            ->where('status', '!=', ClientProject::STATUS_REJECTED)
+            ->where(function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereNotNull('start_date')->whereNotNull('end_date');
+                })->orWhereNotNull('visit_date');
+            })
+            ->get();
+
+        $events = [];
+
+        foreach ($projects as $p) {
+            if ($p->start_date && $p->end_date) {
+                $events[] = [
+                    'id' => 'job-'.$p->id,
+                    'title' => $p->name.' — '.$p->client_name,
+                    'start' => $p->start_date->toDateString(),
+                    // FullCalendar treats `end` as exclusive for all-day events.
+                    'end' => \Illuminate\Support\Carbon::parse($p->end_date)->addDay()->toDateString(),
+                    'allDay' => true,
+                    'backgroundColor' => $p->statusColor(),
+                    'borderColor' => $p->statusColor(),
+                    'extendedProps' => [
+                        'kind' => 'job',
+                        'status' => $p->statusLabel(),
+                    ],
+                ];
+            }
+
+            if ($p->visit_date) {
+                $visitDone = (bool) $p->visit_done;
+                $visitColor = $visitDone ? '#94a3b8' : $p->statusColor();
+                $events[] = [
+                    'id' => 'visit-'.$p->id,
+                    'title' => ($visitDone ? 'Visit (done): ' : 'Visit: ').$p->name.' — '.$p->client_name,
+                    'start' => $p->visit_date->toDateString(),
+                    'end' => \Illuminate\Support\Carbon::parse($p->visit_date)->addDay()->toDateString(),
+                    'allDay' => true,
+                    'backgroundColor' => $visitColor,
+                    'borderColor' => $visitColor,
+                    'extendedProps' => [
+                        'kind' => 'visit',
+                        'status' => $visitDone ? 'Visit (completed)' : 'Visit — '.$p->statusLabel(),
+                    ],
+                ];
+            }
+        }
+
+        return $events;
     }
 
     public function edit(ClientProject $client_project)
@@ -475,6 +542,83 @@ class ClientProjectController extends Controller
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('schedule')
             ->with('success', "Service confirmation emailed to {$client_project->clientEmailRecipientsLabel()}.");
+    }
+
+    /**
+     * Manual on-demand "here are your dates" email — sendable any time from
+     * the Calendar tab regardless of billing type or project status. Doesn't
+     * mutate status or any sent-at flag, so the admin can re-send freely
+     * (e.g. after pushing a date or as a reminder a few days out).
+     */
+    public function sendScheduleDates(ClientProject $client_project, ClientProjectStatusService $statusService)
+    {
+        if (!$client_project->start_date || !$client_project->end_date) {
+            return back()->with('error', 'Please set both the start and end dates before emailing the schedule.');
+        }
+
+        if (!$client_project->hasClientContactInfo()) {
+            $missing = implode(', ', $client_project->missingClientContactFields());
+
+            return back()->with('error', "Cannot send the schedule — missing client info: {$missing}.");
+        }
+
+        $cc = $client_project->secondaryClientEmail();
+        $subject = 'Your project dates with Zanini Renovations';
+        $description = 'Schedule dates emailed manually — '
+            .\Carbon\Carbon::parse($client_project->start_date)->format('M j, Y')
+            .' to '.\Carbon\Carbon::parse($client_project->end_date)->format('M j, Y');
+
+        try {
+            $mailer = Mail::to($client_project->client_email, $client_project->client_name);
+            if ($cc) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectScheduleDatesClient($client_project));
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL,
+                $client_project->client_email,
+                $cc,
+                $subject,
+                $description,
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to email manual schedule dates', [
+                'project_id' => $client_project->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL,
+                $client_project->client_email,
+                $cc,
+                $subject,
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
+
+            return back()->with('error', 'Failed to send the schedule email: '.$e->getMessage());
+        }
+
+        $sendNote = "Schedule dates emailed to {$client_project->clientEmailRecipientsLabel()}.";
+
+        try {
+            $statusService->recordEvent($client_project, $sendNote);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to record schedule-dates history entry', [
+                'project_id' => $client_project->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('schedule')
+            ->with('success', $sendNote);
     }
 
     /**

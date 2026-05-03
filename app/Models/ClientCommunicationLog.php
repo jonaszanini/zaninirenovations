@@ -41,6 +41,7 @@ class ClientCommunicationLog extends Model
     public const REASON_QUOTE_RECEIVED_AUTO = 'quote_received_auto';
     public const REASON_SERVICE_CONFIRMATION = 'service_confirmation';
     public const REASON_FIXED_SCHEDULE_CONFIRMATION = 'fixed_schedule_confirmation';
+    public const REASON_SCHEDULE_DATES_MANUAL = 'schedule_dates_manual';
     public const REASON_TIME_TRACKING_SUMMARY = 'time_tracking_summary';
     public const REASON_THANK_YOU = 'thank_you';
     public const REASON_COMMENCEMENT_EVE_SMS = 'commencement_eve_sms';
@@ -58,6 +59,7 @@ class ClientCommunicationLog extends Model
         self::REASON_QUOTE_RECEIVED_AUTO => 'Quote received (auto-reply)',
         self::REASON_SERVICE_CONFIRMATION => 'Service confirmation',
         self::REASON_FIXED_SCHEDULE_CONFIRMATION => 'Schedule confirmation',
+        self::REASON_SCHEDULE_DATES_MANUAL => 'Schedule dates (manual)',
         self::REASON_TIME_TRACKING_SUMMARY => 'Time-tracking summary',
         self::REASON_THANK_YOU => 'Thank you / review',
         self::REASON_COMMENCEMENT_EVE_SMS => 'Save the date (day before)',
@@ -145,7 +147,8 @@ class ClientCommunicationLog extends Model
             self::REASON_INVOICE_REMINDER => '#f59e0b',              // amber
             self::REASON_RECEIPT_SENT => '#22c55e',                  // green
             self::REASON_SERVICE_CONFIRMATION,
-            self::REASON_FIXED_SCHEDULE_CONFIRMATION => '#10b981',   // emerald
+            self::REASON_FIXED_SCHEDULE_CONFIRMATION,
+            self::REASON_SCHEDULE_DATES_MANUAL => '#10b981',         // emerald
             self::REASON_COMMENCEMENT_EVE_SMS,
             self::REASON_COMMENCEMENT_EVE_ADMIN => '#0891b2',        // cyan
             self::REASON_THANK_YOU => '#ec4899',                     // pink

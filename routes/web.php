@@ -157,6 +157,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // the project dates are locked in.
     Route::post('client-projects/{client_project}/service-confirmation/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendServiceConfirmation'])
         ->name('client-projects.service-confirmation.send');
+    // Generic on-demand "your project dates are…" email — works for any
+    // billing type and can be re-sent freely (no idempotency flag).
+    Route::post('client-projects/{client_project}/schedule-dates/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendScheduleDates'])
+        ->name('client-projects.schedule-dates.send');
     Route::post('client-projects/{client_project}/time-tracking-summary/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendTimeTrackingSummary'])
         ->name('client-projects.time-tracking-summary.send');
 
