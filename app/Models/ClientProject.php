@@ -726,7 +726,7 @@ class ClientProject extends Model
     }
 
     /**
-     * Date + time shown as Eastern Standard Time (subtract one hour during EDT).
+     * Date + time in {@see EasternStandardTimeDisplay::easternTimezone()} (EST/EDT).
      */
     public static function formatDateTime($dateTime): string
     {

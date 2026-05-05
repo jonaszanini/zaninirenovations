@@ -10,7 +10,7 @@ return [
     /*
      * Default: America/Toronto — Ontario Eastern (observes EST/EDT).
      * Storage and Carbon math use this IANA zone; human-facing datetimes
-     * are normalized to EST labels via App\Support\EasternStandardTimeDisplay.
+     * use App\Support\EasternStandardTimeDisplay for consistent Eastern display.
      * Override with APP_TIMEZONE in .env if needed.
      */
     'timezone' => env('APP_TIMEZONE', 'America/Toronto'),

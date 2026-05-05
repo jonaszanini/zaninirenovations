@@ -6,32 +6,20 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
- * Human-facing datetimes are shown as Eastern Standard Time (nominal UTC-5).
- * When {@see easternTimezone()} is in daylight time (EDT), the local wall clock
- * is moved back one hour for display only. Storage and business logic are unchanged.
+ * Human-facing instants use {@see easternTimezone()} (default America/Toronto)
+ * local wall clock with PHP’s zone abbreviation (EST or EDT). Storage and
+ * business logic are unchanged.
  *
  * Calendar-only fields (visit date, start/end dates, due dates) use
- * {@see formatCalendarDate()} / {@see formatCalendarLongDate()} — no hour shift,
- * so midnight-backed date casts stay on the correct civil day.
+ * {@see formatCalendarDate()} / {@see formatCalendarLongDate()} — date in
+ * Eastern with no time-of-day semantics, so midnight-backed date casts stay
+ * on the correct civil day.
  */
 final class EasternStandardTimeDisplay
 {
     public static function easternTimezone(): string
     {
         return (string) config('app.timezone', 'America/Toronto');
-    }
-
-    /**
-     * Instant in app Eastern zone; subtract one hour while DST (EDT) is in effect.
-     */
-    public static function toEstWallClock(CarbonInterface $instant): Carbon
-    {
-        $c = $instant->copy()->timezone(self::easternTimezone());
-        if ((int) $c->format('I') === 1) {
-            $c = $c->copy()->subHour();
-        }
-
-        return $c;
     }
 
     public static function formatDateTime($dateTime): string
@@ -43,9 +31,9 @@ final class EasternStandardTimeDisplay
             ? $dateTime->copy()
             : Carbon::parse((string) $dateTime);
 
-        $c = self::toEstWallClock($c);
+        $c = $c->timezone(self::easternTimezone());
 
-        return $c->format('d/m/Y H:i').' EST';
+        return $c->format('d/m/Y H:i T');
     }
 
     /**
@@ -131,7 +119,7 @@ final class EasternStandardTimeDisplay
     }
 
     /**
-     * Calendar day from an instant (e.g. updated_at) after EST display adjustment.
+     * Calendar day from an instant (e.g. updated_at) in Eastern local date.
      */
     public static function formatInstantCalendarDate($dateTime): string
     {
@@ -142,7 +130,7 @@ final class EasternStandardTimeDisplay
             ? $dateTime->copy()
             : Carbon::parse((string) $dateTime);
 
-        return self::toEstWallClock($c)->format('d/m/Y');
+        return $c->timezone(self::easternTimezone())->format('d/m/Y');
     }
 
     public static function formatInstantLongDate($dateTime): string
@@ -154,7 +142,7 @@ final class EasternStandardTimeDisplay
             ? $dateTime->copy()
             : Carbon::parse((string) $dateTime);
 
-        return self::toEstWallClock($c)->format('F j, Y');
+        return $c->timezone(self::easternTimezone())->format('F j, Y');
     }
 
     public static function todayLongDate(): string
@@ -171,14 +159,13 @@ final class EasternStandardTimeDisplay
         $c = $dateTime instanceof CarbonInterface
             ? $dateTime->copy()
             : Carbon::parse((string) $dateTime);
-        $c = self::toEstWallClock($c);
+        $c = $c->timezone(self::easternTimezone());
 
-        return $c->format('l, M j, Y g:i A').' EST';
+        return $c->format('l, M j, Y g:i A T');
     }
 
     /**
-     * HH:MM entered as local Eastern (Toronto) civil time on {@see $calendarDate},
-     * converted to EST display (subtract one hour when that date is in EDT).
+     * HH:MM entered as local Eastern (Toronto) civil time on {@see $calendarDate}.
      */
     public static function formatLocalTimeOnDateAsEst(?string $hhmm, $calendarDate): string
     {
@@ -198,8 +185,7 @@ final class EasternStandardTimeDisplay
             : Carbon::parse((string) $calendarDate);
         $day = $day->timezone(self::easternTimezone())->startOfDay();
         $base = $day->copy()->addHours($h)->addMinutes($mm);
-        $adj = self::toEstWallClock($base);
 
-        return $adj->format('H:i');
+        return $base->format('H:i');
     }
 }
