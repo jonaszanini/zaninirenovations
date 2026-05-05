@@ -3,16 +3,17 @@
 @section('heading', 'Fence Quotations')
 
 @section('content')
+  @php $qpid = request('project'); @endphp
   <div class="admin-toolbar fq-list-toolbar">
     <div class="admin-toolbar-group">
-      <a href="{{ route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+      <a href="{{ route('admin.quotations.index', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> All quotation types
       </a>
       <a href="{{ route('admin.quotations.fence.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-cog"></i> Configuration
       </a>
     </div>
-    <a href="{{ route('admin.quotations.fence.create') }}" class="admin-btn admin-btn--primary">
+    <a href="{{ route('admin.quotations.fence.create', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> New fence quotation
     </a>
   </div>

@@ -3,13 +3,14 @@
 @section('heading', 'Paving stone quotations')
 
 @section('content')
+  @php $qpid = request('project'); @endphp
   <div class="admin-toolbar fq-list-toolbar">
     <div class="admin-toolbar-group">
-      <a href="{{ route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+      <a href="{{ route('admin.quotations.index', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> All quotation types
       </a>
     </div>
-    <a href="{{ route('admin.quotations.paving.create') }}" class="admin-btn admin-btn--primary">
+    <a href="{{ route('admin.quotations.paving.create', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> New paving quotation
     </a>
   </div>

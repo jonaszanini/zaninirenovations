@@ -18,9 +18,12 @@ class StandardQuotation extends Model
 
     protected $fillable = [
         'client_project_id',
+        'document_type',
         'quote_number',
         'client_name',
         'work_description',
+        'includes_material',
+        'includes_labour',
         'materials',
         'labour_mode',
         'labour_quantity',
@@ -41,6 +44,8 @@ class StandardQuotation extends Model
     ];
 
     protected $casts = [
+        'includes_material' => 'boolean',
+        'includes_labour' => 'boolean',
         'materials' => 'array',
         'labour_quantity' => 'decimal:2',
         'labour_hours' => 'decimal:2',

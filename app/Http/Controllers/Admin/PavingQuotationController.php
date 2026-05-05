@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
@@ -18,6 +19,8 @@ use Illuminate\Validation\ValidationException;
 
 class PavingQuotationController extends Controller
 {
+    use ResolvesQuotationProjectLink;
+
     public function index()
     {
         $quotations = PavingQuotation::query()
@@ -28,9 +31,9 @@ class PavingQuotationController extends Controller
         return view('admin.quotations.paving.index', compact('quotations'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return $this->formView(null);
+        return $this->formView(null, $request);
     }
 
     public function store(Request $request)
@@ -48,16 +51,33 @@ class PavingQuotationController extends Controller
             'version' => 1,
         ]);
 
-        return redirect()
-            ->route('admin.quotations.paving.edit', $quote)
+        $warnings = [];
+        $hubProjectRequested = $this->quotationLinkCandidateProject($request);
+        $newlyLinked = $this->autoLinkPavingIfRequested($quote->fresh(), $request, $warnings);
+
+        if ($newlyLinked && $hubProjectRequested) {
+            $resp = redirect()
+                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
+                ->withFragment('quotation')
+                ->with('success', $intent === 'draft'
+                    ? 'Paving quotation saved as draft and linked.'
+                    : 'Paving quotation '.$quote->quote_number.' saved and linked to this project.');
+
+            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        }
+
+        $resp = redirect()
+            ->route('admin.quotations.paving.edit', $quote->fresh())
             ->with('success', $intent === 'draft'
                 ? 'Paving quotation saved as draft.'
                 : 'Paving quotation '.$quote->quote_number.' saved.');
+
+        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
 
-    public function edit(PavingQuotation $paving_quotation)
+    public function edit(Request $request, PavingQuotation $paving_quotation)
     {
-        return $this->formView($paving_quotation);
+        return $this->formView($paving_quotation, $request);
     }
 
     public function update(Request $request, PavingQuotation $paving_quotation)
@@ -74,9 +94,24 @@ class PavingQuotationController extends Controller
             'version' => $paving_quotation->version + 1,
         ])->save();
 
-        return redirect()
+        $warnings = [];
+        $hubProjectRequested = $this->quotationLinkCandidateProject($request);
+        $newlyLinked = $this->autoLinkPavingIfRequested($paving_quotation->fresh(), $request, $warnings);
+
+        if ($newlyLinked && $hubProjectRequested) {
+            $resp = redirect()
+                ->route('admin.client-projects.show', $paving_quotation->fresh()->client_project_id)
+                ->withFragment('quotation')
+                ->with('success', 'Paving quotation '.$paving_quotation->quote_number.' updated and linked.');
+
+            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        }
+
+        $resp = redirect()
             ->route('admin.quotations.paving.edit', $paving_quotation)
             ->with('success', 'Paving quotation '.$paving_quotation->quote_number.' updated (v'.$paving_quotation->version.').');
+
+        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
 
     public function preview(Request $request)
@@ -197,8 +232,10 @@ class PavingQuotationController extends Controller
             ->with('success', 'Paving quotation deleted.');
     }
 
-    protected function formView(?PavingQuotation $quotation)
+    protected function formView(?PavingQuotation $quotation, ?Request $request = null)
     {
+        $request = $request ?? request();
+
         $stoneTypes = PavingStoneType::query()->orderBy('sort_order')->get();
         $materialRates = PavingMaterialRate::query()->orderBy('sort_order')->get();
         $pricingTiers = PavingPricingTier::query()->orderBy('area_sq_ft')->get();
@@ -208,12 +245,18 @@ class PavingQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
+        $linkProject = $this->quotationLinkCandidateProject($request);
+        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
+            $linkProject = null;
+        }
+
         return view('admin.quotations.paving.create', [
             'quotation' => $quotation,
             'stoneTypes' => $stoneTypes,
             'materialRates' => $materialRates,
             'pricingTiers' => $pricingTiers,
             'linkableProjects' => $linkableProjects,
+            'linkProject' => $linkProject,
         ]);
     }
 
@@ -350,6 +393,47 @@ class PavingQuotationController extends Controller
                 continue;
             }
             $request->merge([$key => str_replace(',', '', $v)]);
+        }
+    }
+
+    protected function autoLinkPavingIfRequested(PavingQuotation $pq, Request $request, array &$warnings): bool
+    {
+        if ($pq->isLinked()) {
+            return false;
+        }
+
+        if ($pq->is_draft) {
+            return false;
+        }
+
+        $project = $this->quotationLinkCandidateProject($request);
+        if (! $project) {
+            return false;
+        }
+
+        if (! $this->quotationProjectAllowsNewLink($project)) {
+            $warnings[] = 'This project cannot accept linked quotations anymore. Save your work and link manually.';
+
+            return false;
+        }
+
+        if ((float) $pq->final_quote_total <= 0) {
+            $warnings[] = 'Set a final quote total greater than zero before it can attach to the project.';
+
+            return false;
+        }
+
+        try {
+            $lineDesc = $pq->summaryDescription();
+            DB::transaction(function () use ($project, $pq, $lineDesc) {
+                $this->appendPavingLineToProjectQuotation($project, $pq->fresh(), $lineDesc);
+            });
+
+            return true;
+        } catch (\Throwable $e) {
+            $warnings[] = 'Could not link to the project automatically: '.$e->getMessage();
+
+            return false;
         }
     }
 

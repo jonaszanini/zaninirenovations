@@ -153,11 +153,11 @@ class ClientProjectController extends Controller
         // Hourly projects imply the price has already been agreed verbally,
         // so we skip the pre-quote stages (visit / quote pending) and land
         // directly at Proposal Accepted. Fixed-price projects start at
-        // Visit scheduled (first workflow step).
+        // Quote pending (quote preparation before send).
         $isHourly = $data['billing_type'] === ClientProject::BILLING_HOURLY;
         $initialStatus = $isHourly
             ? ClientProject::STATUS_PROPOSAL_ACCEPTED
-            : ClientProject::STATUS_VISIT_SCHEDULED;
+            : ClientProject::STATUS_QUOTE_PENDING;
 
         $project = DB::transaction(function () use ($data, $initialStatus) {
             $project = ClientProject::create(array_merge($data, [
@@ -173,9 +173,9 @@ class ClientProjectController extends Controller
         if ($isHourly) {
             $successMessage = 'Project created. Status set to Proposal Accepted — no email sent to the client yet.';
         } elseif ($sendClientEmail && filled($project->client_email)) {
-            $successMessage = 'Project created. Status set to Visit scheduled. Acknowledgement emailed to the client.';
+            $successMessage = 'Project created. Status set to Quote pending. Acknowledgement emailed to the client.';
         } else {
-            $successMessage = 'Project created. Status set to Visit scheduled. No client email sent.';
+            $successMessage = 'Project created. Status set to Quote pending. No client email sent.';
         }
 
         return redirect()

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
@@ -28,6 +29,8 @@ use Illuminate\Validation\Rule;
  */
 class FenceQuotationController extends Controller
 {
+    use ResolvesQuotationProjectLink;
+
     /** The Fence hub: list of existing fence quotes + "New" button. */
     public function index()
     {
@@ -42,7 +45,7 @@ class FenceQuotationController extends Controller
     }
 
     /** Render the calculator form for a brand-new fence quote. */
-    public function create()
+    public function create(Request $request)
     {
         $settings = FenceFormulaSetting::current();
         $materials = FenceMaterial::query()->orderBy('sort_order')->get();
@@ -56,12 +59,18 @@ class FenceQuotationController extends Controller
             ->values()
             ->all();
 
+        $linkProject = $this->quotationLinkCandidateProject($request);
+        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
+            $linkProject = null;
+        }
+
         return view('admin.quotations.fence.create', [
             'quotation' => null,
             'settings' => $settings,
             'materials' => $materials,
             'zeroPricedMaterials' => $zeroPricedKeys,
             'linkableProjects' => collect(),
+            'linkProject' => $linkProject,
         ]);
     }
 
@@ -88,13 +97,28 @@ class FenceQuotationController extends Controller
             'version' => 1,
         ]);
 
-        return redirect()
-            ->route('admin.quotations.fence.edit', $quote)
+        $warnings = [];
+        $hubProjectRequested = $this->quotationLinkCandidateProject($request);
+        $newlyLinked = $this->autoLinkFenceIfRequested($quote->fresh(), $request, $warnings);
+
+        if ($newlyLinked && $hubProjectRequested) {
+            $resp = redirect()
+                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
+                ->withFragment('quotation')
+                ->with('success', 'Fence quotation '.$quote->quote_number.' saved and linked to this project.');
+
+            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        }
+
+        $resp = redirect()
+            ->route('admin.quotations.fence.edit', $quote->fresh())
             ->with('success', 'Fence quotation '.$quote->quote_number.' saved.');
+
+        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
 
     /** Open an existing quote back in the calculator for editing. */
-    public function edit(FenceQuotation $fence_quotation)
+    public function edit(Request $request, FenceQuotation $fence_quotation)
     {
         $settings = FenceFormulaSetting::current();
         $materials = FenceMaterial::query()->orderBy('sort_order')->get();
@@ -113,12 +137,18 @@ class FenceQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
+        $linkProject = $this->quotationLinkCandidateProject($request);
+        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
+            $linkProject = null;
+        }
+
         return view('admin.quotations.fence.create', [
             'quotation' => $fence_quotation,
             'settings' => $settings,
             'materials' => $materials,
             'zeroPricedMaterials' => $zeroPricedKeys,
             'linkableProjects' => $linkableProjects,
+            'linkProject' => $linkProject,
         ]);
     }
 
@@ -148,9 +178,24 @@ class FenceQuotationController extends Controller
             'version' => $fence_quotation->version + 1,
         ])->save();
 
-        return redirect()
+        $warnings = [];
+        $hubProjectRequested = $this->quotationLinkCandidateProject($request);
+        $newlyLinked = $this->autoLinkFenceIfRequested($fence_quotation->fresh(), $request, $warnings);
+
+        if ($newlyLinked && $hubProjectRequested) {
+            $resp = redirect()
+                ->route('admin.client-projects.show', $fence_quotation->fresh()->client_project_id)
+                ->withFragment('quotation')
+                ->with('success', 'Fence quotation '.$fence_quotation->quote_number.' updated and linked.');
+
+            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        }
+
+        $resp = redirect()
             ->route('admin.quotations.fence.edit', $fence_quotation)
             ->with('success', 'Fence quotation '.$fence_quotation->quote_number.' updated (v'.$fence_quotation->version.').');
+
+        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
 
     /**
@@ -268,6 +313,43 @@ class FenceQuotationController extends Controller
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')
             ->with('success', 'Project created (fixed price). The fence line item was added to the Quotation tab.');
+    }
+
+    protected function autoLinkFenceIfRequested(FenceQuotation $fq, Request $request, array &$warnings): bool
+    {
+        if ($fq->isLinked()) {
+            return false;
+        }
+
+        $project = $this->quotationLinkCandidateProject($request);
+        if (! $project) {
+            return false;
+        }
+
+        if (! $this->quotationProjectAllowsNewLink($project)) {
+            $warnings[] = 'This project cannot accept linked quotations anymore. Save your work and link manually.';
+
+            return false;
+        }
+
+        $preTaxLine = round((float) $fq->materials_subtotal + (float) $fq->labour_total, 2);
+        if ($preTaxLine <= 0) {
+            $warnings[] = 'Pre-tax labour + materials must be greater than zero before this quote can attach to the project.';
+
+            return false;
+        }
+
+        try {
+            DB::transaction(function () use ($project, $fq) {
+                $this->appendFenceLineToProjectQuotation($project, $fq->fresh());
+            });
+
+            return true;
+        } catch (\Throwable $e) {
+            $warnings[] = 'Could not link to the project automatically: '.$e->getMessage();
+
+            return false;
+        }
     }
 
     /**

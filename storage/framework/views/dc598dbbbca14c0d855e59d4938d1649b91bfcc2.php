@@ -3,18 +3,31 @@
 <?php $__env->startSection('heading', 'Quotations'); ?>
 
 <?php $__env->startSection('content'); ?>
-  <div class="admin-card fq-hub-intro">
-    <h3 style="margin:0 0 8px;">Standalone quotations</h3>
-    <p class="admin-form-help" style="margin:0;">
-      These calculators generate quotes that don't have to be tied to a client project.
-      You can still link a saved estimate to an existing project later to add it as a
-      line item on that project's Quotation.
-    </p>
-  </div>
+  <?php
+    $pq = ($hubProject ?? null) ? ['project' => $hubProject->id] : [];
+  ?>
+
+  <?php if(!empty($hubProjectError)): ?>
+    <div class="admin-flash admin-flash--danger" style="margin-bottom:16px;"><?php echo e($hubProjectError); ?></div>
+  <?php endif; ?>
+
+  <?php if($hubProject ?? null): ?>
+    <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
+      Creating quotations for project <strong><?php echo e($hubProject->name); ?></strong> (<?php echo e($hubProject->client_name); ?>).
+      The first saved quotation will attach to this project automatically.
+    </div>
+  <?php else: ?>
+    <div class="admin-card fq-hub-intro">
+      <h3 style="margin:0 0 8px;">Standalone quotations</h3>
+      <p class="admin-form-help" style="margin:0;">
+        Calculators produce saved quotes that you can tie to a project when you're ready —
+        either from here or via the project's Quotation tab.
+      </p>
+    </div>
+  <?php endif; ?>
 
   <div class="fq-hub-grid">
-    
-    <a href="<?php echo e(route('admin.quotations.fence.index')); ?>" class="fq-hub-card">
+    <a href="<?php echo e(route('admin.quotations.fence.index', $pq)); ?>" class="fq-hub-card">
       <div class="fq-hub-card-icon" aria-hidden="true">
         <i class="fa fa-th-large"></i>
       </div>
@@ -28,7 +41,7 @@
       </div>
     </a>
 
-    <a href="<?php echo e(route('admin.quotations.standard.index')); ?>" class="fq-hub-card">
+    <a href="<?php echo e(route('admin.quotations.standard.index', $pq)); ?>" class="fq-hub-card">
       <div class="fq-hub-card-icon" aria-hidden="true">
         <i class="fa fa-table"></i>
       </div>
@@ -36,13 +49,13 @@
         <h4>Standard</h4>
         <p>
           Build a quote from material line items (with optional 13% HST) plus hourly labour.
-          Save standalone or link the total into a project quotation.
+          Output becomes the client-facing document on the project.
         </p>
         <span class="fq-hub-card-cta">Open standard quotation <i class="fa fa-arrow-right"></i></span>
       </div>
     </a>
 
-    <a href="<?php echo e(route('admin.quotations.paving.index')); ?>" class="fq-hub-card">
+    <a href="<?php echo e(route('admin.quotations.paving.index', $pq)); ?>" class="fq-hub-card">
       <div class="fq-hub-card-icon" aria-hidden="true">
         <i class="fa fa-th"></i>
       </div>

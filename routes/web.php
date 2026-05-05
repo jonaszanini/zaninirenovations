@@ -136,12 +136,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.contract.send');
 
     // Quotation / Estimate (structured, PDF generation, email-to-client).
-    Route::get('client-projects/{client_project}/quotation/edit', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'editLegacy'])
-        ->name('client-projects.quotation.open');
     Route::get('client-projects/{client_project}/quotations/{quotation}/edit', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'edit'])
         ->name('client-projects.quotation.edit');
-    Route::put('client-projects/{client_project}/quotations/{quotation}', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'update'])
-        ->name('client-projects.quotation.update');
     Route::get('client-projects/{client_project}/quotations/{quotation}/pdf', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'downloadPdf'])
         ->name('client-projects.quotation.pdf');
     Route::post('client-projects/{client_project}/quotations/{quotation}/send', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'send'])

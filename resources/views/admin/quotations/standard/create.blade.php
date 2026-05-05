@@ -1,6 +1,8 @@
 @extends('admin.layouts.app')
 
 @php
+  use App\Models\ClientProjectQuotation;
+
   $isEdit = filled($quotation);
   $title = $isEdit ? 'Edit standard quotation '.$quotation->quote_number : 'New standard quotation';
 
@@ -51,6 +53,23 @@
           $contingencyPercent = '10';
       }
   }
+
+  $linkProject = $linkProject ?? null;
+
+  $cqSentLock = false;
+  if ($isEdit) {
+      $linkedCpq = ClientProjectQuotation::query()
+          ->where('source_type', ClientProjectQuotation::SOURCE_STANDARD)
+          ->where('source_id', $quotation->id)
+          ->first();
+      $cqSentLock = $linkedCpq && $linkedCpq->isSent();
+  }
+
+  $defaultDocType = $isEdit
+      ? (($quotation->document_type ?? null) ?: ClientProjectQuotation::TYPE_QUOTATION)
+      : ClientProjectQuotation::TYPE_QUOTATION;
+
+  $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
 
 @section('heading', $title)
@@ -64,14 +83,22 @@
           <i class="fa fa-arrow-left"></i> Back to project
         </a>
       @else
-        <a href="{{ route('admin.quotations.standard.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <a href="{{ route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-arrow-left"></i> All standard quotations
         </a>
-        <a href="{{ route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <a href="{{ route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-th"></i> Quotation types
         </a>
       @endif
     </div>
+    @if ($isEdit && $quotation->isLinked() && !$returnToProject)
+      <div class="admin-toolbar-group">
+        <a href="{{ route('admin.client-projects.show', $quotation->client_project_id) }}#quotation"
+           class="admin-btn admin-btn--primary admin-btn--sm">
+          <i class="fa fa-briefcase"></i> Open linked project
+        </a>
+      </div>
+    @endif
   </div>
 
   @if ($returnToProject && $projectForReturn)
@@ -89,23 +116,26 @@
   @if (session('error'))
     <div class="admin-flash admin-flash--danger" style="margin-bottom:16px;">{{ session('error') }}</div>
   @endif
+  @if (session('warning'))
+    <div class="admin-flash admin-flash--warning" style="margin-bottom:16px;">{{ session('warning') }}</div>
+  @endif
 
   @if (session('standard_flash') === 'saved' || session('standard_flash') === 'linked')
     <div class="admin-card sq-success-card">
       <h4 style="margin:0 0 8px;">Next steps</h4>
       <div class="sq-success-actions">
-        <a href="{{ route('admin.quotations.standard.create') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-plus"></i> Create another standard quotation
-        </a>
-        <a href="{{ route('admin.quotations.standard.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-list"></i> View all saved quotations
-        </a>
         @if (session('standard_linked_project_id'))
           <a href="{{ route('admin.client-projects.show', session('standard_linked_project_id')) }}#quotation"
-             class="admin-btn admin-btn--primary admin-btn--sm">
-            <i class="fa fa-briefcase"></i> Open linked project
+             class="admin-btn admin-btn--primary sq-success-project-btn">
+            <i class="fa fa-briefcase"></i> Open linked project (Quotation tab)
           </a>
         @endif
+        <a href="{{ route('admin.quotations.standard.create', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-plus"></i> Create another standard quotation
+        </a>
+        <a href="{{ route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-list"></i> View all saved quotations
+        </a>
       </div>
     </div>
   @endif
@@ -115,6 +145,9 @@
     @if ($isEdit)
       @method('PUT')
     @endif
+    @if ($linkProject)
+      <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
+    @endif
 
     <div class="admin-card sq-intro-card">
       <h3 style="margin:0 0 8px;">Client</h3>
@@ -122,9 +155,54 @@
         <label for="sq-client-name">Client name <span class="cp-required">*</span></label>
         <input type="text" id="sq-client-name" name="client_name" class="admin-input @error('client_name') is-invalid @enderror"
                maxlength="160" required
-               value="{{ old('client_name', $isEdit ? $quotation->client_name : '') }}"
+               value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
                placeholder="e.g. Jane Smith">
         @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
+      <div class="admin-form-group" style="margin-top:18px;">
+        <span class="admin-form-label" style="display:block;margin-bottom:8px;">Document type</span>
+        @php $docSel = old('document_type', $defaultDocType); @endphp
+        @if ($cqSentLock)
+          <input type="hidden" name="document_type" value="{{ $docSel }}">
+          <p class="admin-form-help" style="margin:0 0 6px;">
+            <strong>{{ $docSel === ClientProjectQuotation::TYPE_ESTIMATE ? 'Estimate' : 'Quotation (firm price)' }}</strong>
+            — locked after this document was emailed to the client.
+          </p>
+        @else
+          <div style="display:flex;flex-wrap:wrap;gap:16px;">
+            <label class="cp-checkbox-row">
+              <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_QUOTATION }}" @checked($docSel === ClientProjectQuotation::TYPE_QUOTATION)>
+              <span>Quotation (firm price)</span>
+            </label>
+            <label class="cp-checkbox-row">
+              <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_ESTIMATE }}" @checked($docSel === ClientProjectQuotation::TYPE_ESTIMATE)>
+              <span>Estimate</span>
+            </label>
+          </div>
+          <p class="admin-form-help">Choose before sending; you can change it later only until the client email goes out.</p>
+        @endif
+        @error('document_type') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
+      <div class="admin-form-group" style="margin-top:18px;">
+        <span class="admin-form-label" style="display:block;margin-bottom:8px;">Includes (PDF wording)</span>
+        @php
+          $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '1';
+          $labDef = $isEdit ? (($quotation->includes_labour ?? true) ? '1' : '0') : '1';
+        @endphp
+        <label class="cp-checkbox-row">
+          <input type="hidden" name="includes_material" value="0">
+          <input type="checkbox" name="includes_material" value="1" @checked((string) old('includes_material', $matDef) === '1')>
+          <span>Material</span>
+        </label>
+        <label class="cp-checkbox-row" style="margin-top:6px;">
+          <input type="hidden" name="includes_labour" value="0">
+          <input type="checkbox" name="includes_labour" value="1" @checked((string) old('includes_labour', $labDef) === '1')>
+          <span>Labour</span>
+        </label>
+        <p class="admin-form-help">Controls the introductory line on the project quotation PDF (same as the old line-item editor).</p>
+        @error('includes_material') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
       {{-- Free-form description of the work/service. Surfaced on the
@@ -145,9 +223,6 @@
       <div class="admin-card sq-panel">
         <div class="sq-panel-head">
           <h3 style="margin:0;">Materials</h3>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sq-add-material">
-            <i class="fa fa-plus"></i> Add material
-          </button>
         </div>
         <p class="admin-form-help">Unit prices are <strong>before HST</strong>. Per-row HST (13%) is optional (on by default).</p>
 
@@ -227,6 +302,12 @@
               </div>
             </div>
           @endforeach
+        </div>
+
+        <div class="sq-add-material-wrap">
+          <button type="button" class="admin-btn admin-btn--ghost sq-add-material-wide" id="sq-add-material">
+            <i class="fa fa-plus"></i> Add material
+          </button>
         </div>
 
         {{-- Contingency Allowance ---------------------------------- --}}
@@ -473,7 +554,7 @@
           <div class="sq-mat-field sq-mat-field--qty">
             <label>Qty</label>
             <input type="text" inputmode="decimal" autocomplete="off" name="materials[__I__][quantity]"
-                   class="admin-input sq-mat-qty" placeholder="1">
+                   class="admin-input sq-mat-qty" placeholder="1" value="1">
           </div>
         </div>
 
@@ -523,6 +604,9 @@
   }
 
   function parseMoney(raw) {
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
+      return window.cpMoneyMask.parse(raw);
+    }
     if (raw == null) return 0;
     var s = String(raw).replace(/[^\d.-]/g, '');
     if (s === '' || s === '-') return 0;
@@ -685,8 +769,12 @@
     var html = template.innerHTML.replace(/__I__/g, String(list.querySelectorAll('.sq-material-row').length));
     var wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
-    list.appendChild(wrap.firstElementChild);
+    var newRow = wrap.firstElementChild;
+    list.appendChild(newRow);
     reindexMaterialNames();
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+      window.cpMoneyMask.wire(newRow.querySelectorAll('.cp-money-input'));
+    }
     recalcMaterials();
   }
 

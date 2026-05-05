@@ -22,56 +22,35 @@ use Illuminate\Validation\Rule;
 
 /**
  * Manages the structured Quotation/Estimate attached to a ClientProject.
+ * Line items come from Fence / Standard / Paving calculators; legacy manual
+ * rows are read-only in the UI.
  *
- * Mirrors ClientProjectContractController exactly so the two flows
- * behave identically from the user's perspective:
- *   - edit()         shows the structured editor (creating the row on demand)
- *   - update()       saves type/labour/material/items (Save Draft / Save & Close)
- *   - downloadPdf()  generates a fresh PDF on the fly and returns it inline
- *   - send()         generates a fresh PDF, persists it under storage/app/quotations/,
- *                    emails it to the client, and updates sent_at + version
+ * Responsibilities here: edit() redirects into calculators, PDF, email, status.
  */
 class ClientProjectQuotationController extends Controller
 {
     /**
-     * Legacy URL: ensure at least one editable manual quotation exists,
-     * then redirect to the canonical editor URL for that row.
-     *
-     * When multiple Standard quotations are linked, show the picker so the
-     * admin opens the right specialised editor.
-     */
-    public function editLegacy(ClientProject $client_project)
-    {
-        if ($client_project->standardQuotations()->count() > 1) {
-            return view('admin.client_projects.quotation.selector', [
-                'project' => $client_project,
-                'standardQuotations' => $client_project->standardQuotations()->get(),
-            ]);
-        }
-
-        $quotation = $this->firstOrCreateQuotation($client_project);
-
-        return redirect()->route('admin.client-projects.quotation.edit', [$client_project, $quotation]);
-    }
-
-    /**
-     * Structured quotation editor for one {@see ClientProjectQuotation} row.
      * Linked Fence / Standard / Paving rows redirect into their standalone
-     * calculators — those modules sync copies back onto the project row.
+     * calculators. Legacy manual rows have no editor — archived read-only on
+     * the project's Quotation tab.
      */
     public function edit(ClientProject $client_project, ClientProjectQuotation $quotation)
     {
         $this->authorizeQuotation($client_project, $quotation);
+
+        if ($quotation->isLegacyManualSource()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('quotation')
+                ->with('warning', 'This document was created with the retired line-item editor. It is read-only; create a new quotation from the hub if you need changes.');
+        }
 
         $redirect = $this->redirectToSpecialisedEditorIfLinked($quotation);
         if ($redirect) {
             return $redirect;
         }
 
-        return view('admin.client_projects.quotation.edit', [
-            'project' => $client_project,
-            'quotation' => $quotation,
-        ]);
+        abort(404);
     }
 
     protected function redirectToSpecialisedEditorIfLinked(ClientProjectQuotation $quotation): ?\Illuminate\Http\RedirectResponse
@@ -101,64 +80,6 @@ class ClientProjectQuotationController extends Controller
     protected function authorizeQuotation(ClientProject $project, ClientProjectQuotation $quotation): void
     {
         abort_unless((int) $quotation->client_project_id === (int) $project->id, 404);
-    }
-
-    /**
-     * Save the quotation. The "intent" field controls where we redirect:
-     * "draft" stays on the editor, "close" goes back to the Quotation tab.
-     */
-    public function update(Request $request, ClientProject $client_project, ClientProjectQuotation $quotation)
-    {
-        $this->authorizeQuotation($client_project, $quotation);
-
-        $data = $request->validate([
-            'type' => ['required', 'in:quotation,estimate'],
-            'labour' => ['nullable'],
-            'material' => ['nullable'],
-            'items' => ['nullable', 'array'],
-            'items.*.description' => ['nullable', 'string', 'max:2000'],
-            'items.*.amount' => ['nullable', 'numeric'],
-            'items.*.apply_hst' => ['nullable'],
-            'work_description' => ['nullable', 'string', 'max:5000'],
-            'intent' => ['nullable', 'in:draft,close'],
-        ]);
-
-        // Toggle the prefix (QUO/EST) when type changes BEFORE the quotation
-        // has been sent — this keeps the displayed number consistent with
-        // the current type. After the first send, the number is locked.
-        $newType = $data['type'];
-        if (!$quotation->isSent() && $quotation->type !== $newType) {
-            $quotation->quotation_number = $this->swapNumberPrefix(
-                $quotation->quotation_number,
-                $newType
-            );
-        }
-
-        $quotation->type = $newType;
-        $quotation->labour = $request->boolean('labour');
-        $quotation->material = $request->boolean('material');
-        $quotation->items = $this->normaliseItems($data['items'] ?? []);
-
-        $workDescription = trim((string) ($data['work_description'] ?? ''));
-        $quotation->work_description = $workDescription === '' ? null : $workDescription;
-
-        $quotation->save();
-
-        $client_project->refresh();
-        $client_project->syncFixedContractTotalsFromQuotation();
-
-        $intent = $data['intent'] ?? 'draft';
-
-        if ($intent === 'close') {
-            return redirect()
-                ->route('admin.client-projects.show', $client_project)
-                ->with('success', $quotation->typeLabel().' saved.')
-                ->withFragment('quotation');
-        }
-
-        return redirect()
-            ->route('admin.client-projects.quotation.edit', [$client_project, $quotation])
-            ->with('success', 'Draft saved.');
     }
 
     /**
@@ -417,76 +338,5 @@ class ClientProjectQuotationController extends Controller
         $type = strtolower($quotation->typeLabel());
 
         return "{$type}-{$quotation->quotation_number}-{$slug}.pdf";
-    }
-
-    /**
-     * Get-or-create the primary manual quotation row (legacy rows use
-     * source_type null). Used by {@see editLegacy()} only.
-     */
-    protected function firstOrCreateQuotation(ClientProject $project): ClientProjectQuotation
-    {
-        $existing = $project->quotations()
-            ->where(function ($q) {
-                $q->whereNull('source_type')
-                    ->orWhere('source_type', ClientProjectQuotation::SOURCE_MANUAL);
-            })
-            ->orderBy('id')
-            ->first();
-
-        if ($existing) {
-            return $existing;
-        }
-
-        return $project->quotations()->create([
-            'title' => 'Quotation',
-            'status' => ClientProjectQuotation::STATUS_DRAFT,
-            'source_type' => ClientProjectQuotation::SOURCE_MANUAL,
-            'type' => ClientProjectQuotation::TYPE_QUOTATION,
-            'labour' => true,
-            'material' => true,
-            'items' => [],
-            'quotation_number' => ClientProjectQuotation::generateNumber(ClientProjectQuotation::TYPE_QUOTATION),
-            'version' => 1,
-        ]);
-    }
-
-    /**
-     * Filter empty rows out of the items array and coerce each amount to
-     * a positive float. Stored back into `items` (cast as JSON).
-     */
-    protected function normaliseItems(array $rows): array
-    {
-        $clean = [];
-        foreach ($rows as $row) {
-            $description = trim((string) ($row['description'] ?? ''));
-            $amount = (float) ($row['amount'] ?? 0);
-            if ($description === '' && $amount == 0.0) {
-                continue;
-            }
-            $applyHst = !array_key_exists('apply_hst', $row)
-                || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
-            $clean[] = [
-                'description' => $description,
-                'amount' => round($amount, 2),
-                'apply_hst' => $applyHst,
-            ];
-        }
-
-        return $clean;
-    }
-
-    /**
-     * Replace just the prefix of a quotation number ("QUO-2026-0327" →
-     * "EST-2026-0327"). Used when the user toggles type before sending.
-     */
-    protected function swapNumberPrefix(?string $number, string $newType): ?string
-    {
-        if (!$number) {
-            return ClientProjectQuotation::generateNumber($newType);
-        }
-
-        $newPrefix = $newType === ClientProjectQuotation::TYPE_ESTIMATE ? 'EST' : 'QUO';
-
-        return preg_replace('/^[A-Z]+/', $newPrefix, $number);
     }
 }

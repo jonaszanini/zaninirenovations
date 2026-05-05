@@ -583,6 +583,7 @@ class AdminDashboardService
                 $potential += (float) $p->total_amount * (1 + ClientProject::HST_RATE);
             }
         }
+        $fenceOpen = (int) FenceQuotation::query()->whereNull('client_project_id')->count();
         $fenceValue = (float) FenceQuotation::query()->whereNull('client_project_id')->sum('grand_total');
 
         return [

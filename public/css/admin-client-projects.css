@@ -2303,11 +2303,20 @@ body.cp-modal-open {
 }
 .sq-panel-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+/* Full-width "+ Add material" after material cards, before contingency —
+   same vertical position new rows are appended in the DOM. */
+.sq-add-material-wrap {
+  margin-top: 10px;
+}
+.sq-add-material-wide {
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
 }
 .sq-materials-table .sq-col-short-name { width: 140px; }
 .sq-materials-table .sq-col-money { width: 100px; white-space: nowrap; }
@@ -2331,8 +2340,8 @@ body.cp-modal-open {
   justify-content: flex-start;
 }
 
-/* Contingency allowance: sits between the material rows and the
-   materials-totals box. Compact one-line layout on desktop, wraps
+/* Contingency allowance: sits between the material rows (and Add button)
+   and the materials-totals box. Compact one-line layout on desktop, wraps
    gracefully on narrow viewports. */
 .sq-contingency-block {
   margin-top: 14px;
@@ -2664,6 +2673,19 @@ body.cp-modal-open {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-items: center;
+}
+.sq-success-actions .sq-success-project-btn {
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
+}
+@media (min-width: 560px) {
+  .sq-success-actions .sq-success-project-btn {
+    width: auto;
+    flex: 1 1 220px;
+    min-width: min(100%, 280px);
+  }
 }
 
 /* Visit date (Calendar tab + edit project) */

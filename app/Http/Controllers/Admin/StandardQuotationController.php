@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
@@ -12,12 +13,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Standalone Standard quotation (materials table + labour).
  */
 class StandardQuotationController extends Controller
 {
+    use ResolvesQuotationProjectLink;
+
     public function index()
     {
         $quotations = StandardQuotation::query()
@@ -30,11 +34,17 @@ class StandardQuotationController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $linkProject = $this->quotationLinkCandidateProject($request);
+        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
+            $linkProject = null;
+        }
+
         return view('admin.quotations.standard.create', [
             'quotation' => null,
             'linkableProjects' => collect(),
+            'linkProject' => $linkProject,
         ]);
     }
 
@@ -47,38 +57,74 @@ class StandardQuotationController extends Controller
             'version' => 1,
         ]));
 
-        return redirect()
+        $warnings = [];
+        $hubProjectRequested = $this->quotationLinkCandidateProject($request);
+        $newlyLinked = $this->autoLinkStandardIfRequested($quote, $request, $warnings);
+
+        if ($newlyLinked && $hubProjectRequested) {
+            $resp = redirect()
+                ->route('admin.client-projects.show', $quote->client_project_id)
+                ->withFragment('quotation')
+                ->with('success', 'Standard quotation '.$quote->quote_number.' saved and linked to this project.')
+                ->with('standard_flash', 'linked')
+                ->with('standard_linked_project_id', $quote->client_project_id);
+
+            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        }
+
+        $resp = redirect()
             ->route('admin.quotations.standard.edit', $quote)
             ->with('success', 'Standard quotation '.$quote->quote_number.' saved.')
             ->with('standard_flash', 'saved');
+
+        if ($warnings !== []) {
+            $resp = $resp->with('warning', implode(' ', $warnings));
+        }
+
+        if ($quote->fresh()->isLinked() && $quote->client_project_id) {
+            $resp = $resp
+                ->with('standard_flash', 'linked')
+                ->with('standard_linked_project_id', $quote->client_project_id);
+        }
+
+        return $resp;
     }
 
-    public function edit(StandardQuotation $standard_quotation)
+    public function edit(Request $request, StandardQuotation $standard_quotation)
     {
         $linkableProjects = ClientProject::query()
             ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED])
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
+        $linkProject = $this->quotationLinkCandidateProject($request);
+        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
+            $linkProject = null;
+        }
+
         return view('admin.quotations.standard.create', [
             'quotation' => $standard_quotation,
             'linkableProjects' => $linkableProjects,
+            'linkProject' => $linkProject,
         ]);
     }
 
     public function update(Request $request, StandardQuotation $standard_quotation)
     {
-        $calc = $this->validatedSnapshot($request, new StandardQuotationCalculator());
+        $calc = $this->validatedSnapshot($request, new StandardQuotationCalculator(), $standard_quotation);
 
         $standard_quotation->fill(array_merge($calc['persistence'], [
             'version' => $standard_quotation->version + 1,
         ]))->save();
 
+        $warnings = [];
+        $this->autoLinkStandardIfRequested($standard_quotation->fresh(), $request, $warnings);
+
+        $standard_quotation->refresh();
+
         // If this standard quotation is linked to a project, re-sync the
         // project quotation's line items so the project's Quotation tab /
-        // PDF reflect the latest amounts. Manual line items are not kept:
-        // when an SQ is linked the project Quotation is fully driven by
-        // its linked SQ(s) (decision: overwrite_all).
+        // PDF reflect the latest amounts.
         if ($standard_quotation->isLinked() && $standard_quotation->project) {
             DB::transaction(function () use ($standard_quotation) {
                 $this->syncStandardLinesIntoProjectQuotation(
@@ -92,16 +138,23 @@ class StandardQuotationController extends Controller
         // "Edit quotation" entry point so the user lands back on the
         // project's Quotation tab (not the standalone editor).
         if ($this->shouldReturnToProject($request, $standard_quotation)) {
-            return redirect()
+            $r = redirect()
                 ->route('admin.client-projects.show', $standard_quotation->client_project_id)
                 ->withFragment('quotation')
                 ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').');
+            if ($warnings !== []) {
+                $r = $r->with('warning', implode(' ', $warnings));
+            }
+
+            return $r;
         }
 
-        return redirect()
+        $resp = redirect()
             ->route('admin.quotations.standard.edit', $standard_quotation)
             ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').')
             ->with('standard_flash', 'saved');
+
+        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
 
     /**
@@ -231,12 +284,74 @@ class StandardQuotationController extends Controller
     }
 
     /**
+     * When POST/query carries `link_client_project_id` / `project`, attaches
+     * this SQ once grand total allows. Returns whether a NEW link succeeded.
+     */
+    protected function autoLinkStandardIfRequested(StandardQuotation $sq, Request $request, array &$warnings): bool
+    {
+        if ($sq->isLinked()) {
+            return false;
+        }
+
+        $project = $this->quotationLinkCandidateProject($request);
+        if (! $project) {
+            return false;
+        }
+
+        if (! $this->quotationProjectAllowsNewLink($project)) {
+            $warnings[] = 'This project cannot accept linked quotations anymore. Save your work and link manually.';
+
+            return false;
+        }
+
+        if ((float) $sq->grand_total <= 0) {
+            $warnings[] = 'Set a grand total greater than zero before it can attach to this project.';
+
+            return false;
+        }
+
+        try {
+            DB::transaction(function () use ($project, $sq) {
+                $this->appendStandardLineToProjectQuotation($project, $sq, 'Standard quotation');
+            });
+
+            return true;
+        } catch (\Throwable $e) {
+            $warnings[] = 'Could not link to the project automatically: '.$e->getMessage();
+
+            return false;
+        }
+    }
+
+    /**
      * @return array{persistence: array<string, mixed>}
      */
-    protected function validatedSnapshot(Request $request, StandardQuotationCalculator $calculator): array
-    {
+    protected function validatedSnapshot(
+        Request $request,
+        StandardQuotationCalculator $calculator,
+        ?StandardQuotation $existing = null
+    ): array {
+        if ($existing) {
+            $cpq = ClientProjectQuotation::query()
+                ->where('source_type', ClientProjectQuotation::SOURCE_STANDARD)
+                ->where('source_id', $existing->id)
+                ->first();
+            if ($cpq && $cpq->isSent()) {
+                $lockedType = $existing->getAttribute('document_type');
+                if ($lockedType !== ClientProjectQuotation::TYPE_QUOTATION
+                    && $lockedType !== ClientProjectQuotation::TYPE_ESTIMATE) {
+                    $lockedType = $cpq->type;
+                }
+                $request->merge(['document_type' => $lockedType]);
+            }
+        }
+
         $data = $request->validate([
             'client_name' => ['required', 'string', 'max:160'],
+            'document_type' => ['required', Rule::in([
+                ClientProjectQuotation::TYPE_QUOTATION,
+                ClientProjectQuotation::TYPE_ESTIMATE,
+            ])],
             'work_description' => ['nullable', 'string', 'max:5000'],
             'materials' => ['nullable', 'array'],
             'materials.*.short_name' => ['nullable', 'string', 'max:60'],
@@ -244,6 +359,8 @@ class StandardQuotationController extends Controller
             'materials.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'materials.*.quantity' => ['nullable', 'numeric', 'min:0'],
             'materials.*.apply_hst' => ['nullable'],
+            'includes_material' => ['nullable'],
+            'includes_labour' => ['nullable'],
             'labour_hourly_rate' => ['required', 'numeric', 'min:0'],
             'labour_mode' => ['required', Rule::in(['hours', 'days'])],
             'labour_quantity' => ['required', 'numeric', 'min:0', 'max:100000'],
@@ -251,13 +368,23 @@ class StandardQuotationController extends Controller
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], [
             'client_name.required' => 'Client name is required.',
+            'document_type.required' => 'Pick whether this is a quotation or an estimate.',
             'labour_hourly_rate.required' => 'Hourly rate is required.',
             'contingency_percent.numeric' => 'Contingency percent must be a number.',
             'contingency_percent.max' => 'Contingency percent cannot exceed 100.',
         ]);
 
+        $includesMaterial = $request->boolean('includes_material');
+        $includesLabour = $request->boolean('includes_labour');
+
+        if (! $includesMaterial && ! $includesLabour) {
+            throw ValidationException::withMessages([
+                'includes_material' => 'Select Material and/or Labour for the PDF intro.',
+            ]);
+        }
+
         $materialRows = $data['materials'] ?? [];
-        if (!is_array($materialRows)) {
+        if (! is_array($materialRows)) {
             $materialRows = [];
         }
         foreach ($materialRows as &$mRow) {
@@ -295,6 +422,9 @@ class StandardQuotationController extends Controller
         return [
             'persistence' => [
                 'client_name' => trim($data['client_name']),
+                'document_type' => $data['document_type'],
+                'includes_material' => $includesMaterial,
+                'includes_labour' => $includesLabour,
                 'work_description' => $workDescription === '' ? null : $workDescription,
                 'materials' => $materialsForStorage,
                 'labour_mode' => $data['labour_mode'],
@@ -394,18 +524,36 @@ class StandardQuotationController extends Controller
             'source_id' => $standardQuotation->id,
         ]);
 
-        if (!$row->exists) {
+        $docType = $standardQuotation->document_type;
+        if ($docType !== ClientProjectQuotation::TYPE_QUOTATION
+            && $docType !== ClientProjectQuotation::TYPE_ESTIMATE) {
+            $docType = ClientProjectQuotation::TYPE_QUOTATION;
+        }
+
+        $includeLabour = (bool) $standardQuotation->includes_labour;
+        $includeMaterial = (bool) $standardQuotation->includes_material;
+
+        if (! $row->exists) {
             $row->fill([
                 'title' => $lineDescription,
                 'status' => ClientProjectQuotation::STATUS_DRAFT,
-                'type' => ClientProjectQuotation::TYPE_QUOTATION,
-                'labour' => true,
-                'material' => true,
-                'quotation_number' => ClientProjectQuotation::generateNumber(
-                    ClientProjectQuotation::TYPE_QUOTATION
-                ),
+                'type' => $docType,
+                'labour' => $includeLabour,
+                'material' => $includeMaterial,
+                'quotation_number' => ClientProjectQuotation::generateNumber($docType),
                 'version' => 1,
             ]);
+        } else {
+            $row->labour = $includeLabour;
+            $row->material = $includeMaterial;
+
+            if (! $row->isSent() && $row->type !== $docType) {
+                $row->quotation_number = ClientProjectQuotation::swapNumberPrefixForType(
+                    $row->quotation_number,
+                    $docType
+                );
+                $row->type = $docType;
+            }
         }
 
         $row->items = $sqLines;

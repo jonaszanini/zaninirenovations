@@ -8,12 +8,10 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * ClientProjectQuotation — structured quotation/estimate attached to a
- * ClientProject. Unlike the rich-text Contract, the body is structured
- * data (line items) so the PDF can be auto-rendered and totals
- * (subtotal / HST / grand total) auto-calculated.
+ * ClientProject. Line items are synced from Fence / Standard / Paving
+ * calculators; legacy manual rows remain as read-only snapshots.
  *
- * A project may have multiple quotations (manual line items, linked fence,
- * standard, paving, etc.). Use {@see ClientProject::quotations()}.
+ * A project may have multiple quotations. Use {@see ClientProject::quotations()}.
  */
 class ClientProjectQuotation extends Model
 {
@@ -30,7 +28,7 @@ class ClientProjectQuotation extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
-    /** Line-item editor only (no standalone calculator link). */
+    /** Legacy: line items were edited on the project before calculator-only flow. */
     public const SOURCE_MANUAL = 'manual';
 
     public const SOURCE_FENCE = 'fence';
@@ -106,6 +104,29 @@ class ClientProjectQuotation extends Model
     public function isEstimate(): bool
     {
         return $this->type === self::TYPE_ESTIMATE;
+    }
+
+    /**
+     * Rows created by the old manual line-item editor (`source_type` null
+     * or explicit `manual`). Read-only in the admin UI; edit in calculators.
+     */
+    public function isLegacyManualSource(): bool
+    {
+        return $this->source_type === null || $this->source_type === self::SOURCE_MANUAL;
+    }
+
+    /**
+     * Swap QUO ↔ EST prefix before the first send; same rule as the old
+     * project editor.
+     */
+    public static function swapNumberPrefixForType(?string $number, string $newType): string
+    {
+        if (! $number) {
+            return static::generateNumber($newType);
+        }
+        $newPrefix = $newType === self::TYPE_ESTIMATE ? 'EST' : 'QUO';
+
+        return preg_replace('/^[A-Z]+/', $newPrefix, $number);
     }
 
     /** Human-friendly type label ("Quotation" or "Estimate"). */

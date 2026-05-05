@@ -22,6 +22,8 @@
   // Initial breakdown (if editing, use the stored snapshot so the page
   // renders with real data before the first preview XHR returns).
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
+
+  $linkProject = $linkProject ?? null;
 @endphp
 
 @section('heading', $title)
@@ -261,13 +263,16 @@
     <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card">
       @csrf
       @if ($isEdit) @method('PUT') @endif
+      @if ($linkProject)
+        <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
+      @endif
 
       {{-- Client name -------------------------------------------- --}}
       <div class="admin-form-group">
         <label for="fq-client-name">Client name <span class="admin-required">*</span></label>
         <input id="fq-client-name" type="text" name="client_name"
                class="admin-input @class(['is-invalid' => $errors->has('client_name')])"
-               value="{{ old('client_name', $isEdit ? $quotation->client_name : '') }}"
+               value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
                maxlength="160" required>
       </div>
 

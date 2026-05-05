@@ -95,7 +95,7 @@
           <label>Total with HST (from quotation)</label>
           @if ($hasQuot)
             <p class="cp-financials-locked-total" id="cp-total-with-hst-display">{{ \App\Models\ClientProject::formatMoney($quotGrand) }}</p>
-            <p class="admin-form-help">Pre-tax subtotal (used for installment %): {{ \App\Models\ClientProject::formatMoney($quotSub) }}. Edit line items and HST checkboxes on the <a href="{{ route('admin.client-projects.quotation.open', $project) }}">Quotation tab</a>.</p>
+            <p class="admin-form-help">Pre-tax subtotal (used for installment %): {{ \App\Models\ClientProject::formatMoney($quotSub) }}. Manage quotations on the <a href="{{ route('admin.client-projects.show', $project) }}#quotation">Quotation tab</a>.</p>
           @else
             <p class="cp-financials-locked-total">—</p>
             <p class="admin-form-help">Add a quotation with line items first. @if ($paidInstallmentCount > 0) Payment totals stay fixed while installments are paid. @endif</p>

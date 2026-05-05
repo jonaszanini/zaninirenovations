@@ -1,13 +1,17 @@
 {{--
-  Quotation tab: list every ClientProjectQuotation (manual, fence, standard, …).
+  Quotation tab: list every ClientProjectQuotation (linked fence / standard /
+  paving documents, plus archived legacy manual rows).
 
   Variables: $project (ClientProject)
 --}}
 
 @php
+  use App\Models\ClientProjectQuotation;
+
   $quotationRows = $project->quotations->sortBy('id');
   $acceptedGrand = \App\Models\ClientProjectQuotation::acceptedGrandTotalForProject($project);
   $missing = $project->missingClientContactFields();
+  $quotationHub = route('admin.quotations.index', ['project' => $project->id]);
 @endphp
 
 <div class="admin-card" style="margin-bottom:1rem;">
@@ -22,9 +26,9 @@
         @endif
       </p>
     </div>
-    <a href="{{ route('admin.client-projects.quotation.open', $project) }}"
+    <a href="{{ $quotationHub }}"
        class="admin-btn admin-btn--primary admin-btn--sm">
-      <i class="fa fa-plus"></i> Open main quotation editor
+      <i class="fa fa-plus"></i> Create quotation
     </a>
   </div>
 </div>
@@ -33,15 +37,13 @@
   <div class="admin-card cp-contract-empty">
     <h3>Quotation</h3>
     <p class="admin-form-help">
-      Create the quotation (or estimate) for this project. Add line items
-      with the price excluding HST. Apply 13&nbsp;% HST per line (defaults on);
-      uncheck for tax-exempt lines. When you're ready, you can download a
-      PDF or email it directly to the client.
+      Create a quotation or estimate from the Fence, Standard, or Paving calculators.
+      The first time you save, it attaches to this project automatically.
     </p>
     <div class="cp-contract-empty-action">
-      <a href="{{ route('admin.client-projects.quotation.open', $project) }}"
+      <a href="{{ $quotationHub }}"
          class="admin-btn admin-btn--primary admin-btn--lg">
-        <i class="fa fa-file-text-o"></i> Create Quotation
+        <i class="fa fa-th"></i> Choose quotation type
       </a>
     </div>
   </div>
@@ -52,6 +54,7 @@
       $canSend = empty($missing) && $hasContent;
       $typeLabel = $quotation->typeLabel();
       $title = $quotation->title ?: $typeLabel;
+      $legacy = $quotation->isLegacyManualSource();
     @endphp
 
     @if ($hasContent)
@@ -70,6 +73,9 @@
               <span class="cp-quotation-number">{{ $quotation->quotation_number }}</span>
             </h3>
             <div class="cp-contract-meta-row">
+              @if ($legacy)
+                <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy (read-only)</span>
+              @endif
               <span class="cp-badge" style="background:#e0e7ff;color:#3730a3;">{{ $quotation->statusLabel() }}</span>
               @if ($quotation->isSent())
                 <span class="cp-badge" style="background:#22c55e20;color:#15803d;">
@@ -86,10 +92,19 @@
           </div>
 
           <div class="cp-contract-actions">
-            <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
-               class="admin-btn admin-btn--ghost admin-btn--sm">
-              <i class="fa fa-pencil"></i> Edit
-            </a>
+            @unless ($legacy)
+              <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
+                 class="admin-btn admin-btn--ghost admin-btn--sm">
+                <i class="fa fa-pencil"></i> Edit
+              </a>
+            @endunless
+
+            @if ($legacy)
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" disabled title="Archived — open a new quotation from Quotations instead.">
+                <i class="fa fa-ban"></i> Read-only
+              </button>
+            @endif
+
             <a href="{{ route('admin.client-projects.quotation.pdf', [$project, $quotation]) }}"
                target="_blank"
                rel="noopener"
@@ -97,7 +112,7 @@
               <i class="fa fa-download"></i> PDF
             </a>
 
-            @if ($canSend)
+            @if ($canSend && ! $legacy)
               <form action="{{ route('admin.client-projects.quotation.send', [$project, $quotation]) }}"
                     method="post"
                     class="cp-inline-form"
@@ -112,7 +127,7 @@
               <button type="button"
                       class="admin-btn admin-btn--primary admin-btn--sm"
                       disabled
-                      title="{{ empty($missing) ? 'Add at least one line item first.' : 'Missing: '.implode(', ', $missing) }}">
+                      title="{{ $legacy ? 'Legacy document — not emailable from this flow.' : (empty($missing) ? 'Add at least one line item first.' : 'Missing: '.implode(', ', $missing)) }}">
                 <i class="fa fa-paper-plane"></i> Send
               </button>
             @endif
@@ -126,15 +141,15 @@
               @csrf
               <label for="cp-q-status-{{ $quotation->id }}" class="admin-form-help" style="margin:0;">Workflow status</label>
               <select id="cp-q-status-{{ $quotation->id }}" name="status" class="admin-input" style="width:auto;min-width:160px;" onchange="this.form.submit()">
-                <option value="{{ \App\Models\ClientProjectQuotation::STATUS_DRAFT }}" @selected($quotation->status === \App\Models\ClientProjectQuotation::STATUS_DRAFT)>Draft</option>
-                <option value="{{ \App\Models\ClientProjectQuotation::STATUS_SENT }}" @selected($quotation->status === \App\Models\ClientProjectQuotation::STATUS_SENT)>Sent</option>
-                <option value="{{ \App\Models\ClientProjectQuotation::STATUS_ACCEPTED }}" @selected($quotation->status === \App\Models\ClientProjectQuotation::STATUS_ACCEPTED)>Accepted</option>
-                <option value="{{ \App\Models\ClientProjectQuotation::STATUS_REJECTED }}" @selected($quotation->status === \App\Models\ClientProjectQuotation::STATUS_REJECTED)>Rejected</option>
+                <option value="{{ ClientProjectQuotation::STATUS_DRAFT }}" @selected($quotation->status === ClientProjectQuotation::STATUS_DRAFT)>Draft</option>
+                <option value="{{ ClientProjectQuotation::STATUS_SENT }}" @selected($quotation->status === ClientProjectQuotation::STATUS_SENT)>Sent</option>
+                <option value="{{ ClientProjectQuotation::STATUS_ACCEPTED }}" @selected($quotation->status === ClientProjectQuotation::STATUS_ACCEPTED)>Accepted</option>
+                <option value="{{ ClientProjectQuotation::STATUS_REJECTED }}" @selected($quotation->status === ClientProjectQuotation::STATUS_REJECTED)>Rejected</option>
               </select>
             </form>
           </div>
 
-          @if (!empty($missing))
+          @if (!empty($missing) && ! $legacy)
             <div class="cp-contract-warning">
               <i class="fa fa-exclamation-triangle"></i>
               <div>
@@ -209,11 +224,18 @@
     @else
       <div class="admin-card cp-contract-empty" style="margin-bottom:1rem;">
         <h3>{{ $title }}</h3>
-        <p class="admin-form-help">No line items yet.</p>
-        <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
-           class="admin-btn admin-btn--primary admin-btn--sm">
-          <i class="fa fa-pencil"></i> Add items
-        </a>
+        @if ($legacy)
+          <p class="admin-form-help">Legacy document with no line items on file. Open a new quotation from the hub if you need to replace it.</p>
+          <a href="{{ $quotationHub }}" class="admin-btn admin-btn--primary admin-btn--sm">
+            <i class="fa fa-th"></i> Create quotation
+          </a>
+        @else
+          <p class="admin-form-help">No line items yet.</p>
+          <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
+             class="admin-btn admin-btn--primary admin-btn--sm">
+            <i class="fa fa-pencil"></i> Edit in calculator
+          </a>
+        @endif
       </div>
     @endif
   @endforeach

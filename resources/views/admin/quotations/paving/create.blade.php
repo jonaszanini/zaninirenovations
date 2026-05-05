@@ -12,6 +12,8 @@
       }
   }
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
+
+  $linkProject = $linkProject ?? null;
 @endphp
 
 @section('heading', $title)
@@ -227,14 +229,17 @@
             @method('PUT')
           @endif
           <input type="hidden" name="save_intent" id="pq-save-intent" value="publish">
+          @if ($linkProject)
+            <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
+          @endif
 
           <div class="admin-card">
             <h3 style="margin:0 0 14px;">Section A — Project inputs</h3>
             <div class="admin-form-group">
               <label for="pq-client">Client name @if(!$isEdit || !$quotation->is_draft)<span class="cp-required">*</span>@endif</label>
               <input type="text" id="pq-client" name="client_name" class="admin-input"
-                     value="{{ old('client_name', $quotation->client_name ?? '') }}"
-                     maxlength="160" @if(!old('client_name', $quotation->client_name ?? '') && (!$isEdit || !($quotation->is_draft ?? false))) required @endif>
+                     value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
+                     maxlength="160" @if(!old('client_name', $isEdit ? ($quotation->client_name ?? '') : '') && (!$isEdit || !($quotation->is_draft ?? false))) required @endif>
               <p class="pq-hint">Required for a published quotation; optional for drafts.</p>
             </div>
             <div class="pq-form-grid">

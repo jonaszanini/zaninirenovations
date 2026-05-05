@@ -1,9 +1,12 @@
 
 
 <?php
+  use App\Models\ClientProjectQuotation;
+
   $quotationRows = $project->quotations->sortBy('id');
   $acceptedGrand = \App\Models\ClientProjectQuotation::acceptedGrandTotalForProject($project);
   $missing = $project->missingClientContactFields();
+  $quotationHub = route('admin.quotations.index', ['project' => $project->id]);
 ?>
 
 <div class="admin-card" style="margin-bottom:1rem;">
@@ -18,9 +21,9 @@
         <?php endif; ?>
       </p>
     </div>
-    <a href="<?php echo e(route('admin.client-projects.quotation.open', $project)); ?>"
+    <a href="<?php echo e($quotationHub); ?>"
        class="admin-btn admin-btn--primary admin-btn--sm">
-      <i class="fa fa-plus"></i> Open main quotation editor
+      <i class="fa fa-plus"></i> Create quotation
     </a>
   </div>
 </div>
@@ -29,15 +32,13 @@
   <div class="admin-card cp-contract-empty">
     <h3>Quotation</h3>
     <p class="admin-form-help">
-      Create the quotation (or estimate) for this project. Add line items
-      with the price excluding HST. Apply 13&nbsp;% HST per line (defaults on);
-      uncheck for tax-exempt lines. When you're ready, you can download a
-      PDF or email it directly to the client.
+      Create a quotation or estimate from the Fence, Standard, or Paving calculators.
+      The first time you save, it attaches to this project automatically.
     </p>
     <div class="cp-contract-empty-action">
-      <a href="<?php echo e(route('admin.client-projects.quotation.open', $project)); ?>"
+      <a href="<?php echo e($quotationHub); ?>"
          class="admin-btn admin-btn--primary admin-btn--lg">
-        <i class="fa fa-file-text-o"></i> Create Quotation
+        <i class="fa fa-th"></i> Choose quotation type
       </a>
     </div>
   </div>
@@ -48,6 +49,7 @@
       $canSend = empty($missing) && $hasContent;
       $typeLabel = $quotation->typeLabel();
       $title = $quotation->title ?: $typeLabel;
+      $legacy = $quotation->isLegacyManualSource();
     ?>
 
     <?php if($hasContent): ?>
@@ -67,6 +69,9 @@
               <span class="cp-quotation-number"><?php echo e($quotation->quotation_number); ?></span>
             </h3>
             <div class="cp-contract-meta-row">
+              <?php if($legacy): ?>
+                <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy (read-only)</span>
+              <?php endif; ?>
               <span class="cp-badge" style="background:#e0e7ff;color:#3730a3;"><?php echo e($quotation->statusLabel()); ?></span>
               <?php if($quotation->isSent()): ?>
                 <span class="cp-badge" style="background:#22c55e20;color:#15803d;">
@@ -85,10 +90,19 @@
           </div>
 
           <div class="cp-contract-actions">
-            <a href="<?php echo e(route('admin.client-projects.quotation.edit', [$project, $quotation])); ?>"
-               class="admin-btn admin-btn--ghost admin-btn--sm">
-              <i class="fa fa-pencil"></i> Edit
-            </a>
+            <?php if (! ($legacy)): ?>
+              <a href="<?php echo e(route('admin.client-projects.quotation.edit', [$project, $quotation])); ?>"
+                 class="admin-btn admin-btn--ghost admin-btn--sm">
+                <i class="fa fa-pencil"></i> Edit
+              </a>
+            <?php endif; ?>
+
+            <?php if($legacy): ?>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" disabled title="Archived — open a new quotation from Quotations instead.">
+                <i class="fa fa-ban"></i> Read-only
+              </button>
+            <?php endif; ?>
+
             <a href="<?php echo e(route('admin.client-projects.quotation.pdf', [$project, $quotation])); ?>"
                target="_blank"
                rel="noopener"
@@ -96,7 +110,7 @@
               <i class="fa fa-download"></i> PDF
             </a>
 
-            <?php if($canSend): ?>
+            <?php if($canSend && ! $legacy): ?>
               <form action="<?php echo e(route('admin.client-projects.quotation.send', [$project, $quotation])); ?>"
                     method="post"
                     class="cp-inline-form"
@@ -112,7 +126,7 @@
               <button type="button"
                       class="admin-btn admin-btn--primary admin-btn--sm"
                       disabled
-                      title="<?php echo e(empty($missing) ? 'Add at least one line item first.' : 'Missing: '.implode(', ', $missing)); ?>">
+                      title="<?php echo e($legacy ? 'Legacy document — not emailable from this flow.' : (empty($missing) ? 'Add at least one line item first.' : 'Missing: '.implode(', ', $missing))); ?>">
                 <i class="fa fa-paper-plane"></i> Send
               </button>
             <?php endif; ?>
@@ -126,15 +140,15 @@
               <?php echo csrf_field(); ?>
               <label for="cp-q-status-<?php echo e($quotation->id); ?>" class="admin-form-help" style="margin:0;">Workflow status</label>
               <select id="cp-q-status-<?php echo e($quotation->id); ?>" name="status" class="admin-input" style="width:auto;min-width:160px;" onchange="this.form.submit()">
-                <option value="<?php echo e(\App\Models\ClientProjectQuotation::STATUS_DRAFT); ?>" <?php if($quotation->status === \App\Models\ClientProjectQuotation::STATUS_DRAFT): echo 'selected'; endif; ?>>Draft</option>
-                <option value="<?php echo e(\App\Models\ClientProjectQuotation::STATUS_SENT); ?>" <?php if($quotation->status === \App\Models\ClientProjectQuotation::STATUS_SENT): echo 'selected'; endif; ?>>Sent</option>
-                <option value="<?php echo e(\App\Models\ClientProjectQuotation::STATUS_ACCEPTED); ?>" <?php if($quotation->status === \App\Models\ClientProjectQuotation::STATUS_ACCEPTED): echo 'selected'; endif; ?>>Accepted</option>
-                <option value="<?php echo e(\App\Models\ClientProjectQuotation::STATUS_REJECTED); ?>" <?php if($quotation->status === \App\Models\ClientProjectQuotation::STATUS_REJECTED): echo 'selected'; endif; ?>>Rejected</option>
+                <option value="<?php echo e(ClientProjectQuotation::STATUS_DRAFT); ?>" <?php if($quotation->status === ClientProjectQuotation::STATUS_DRAFT): echo 'selected'; endif; ?>>Draft</option>
+                <option value="<?php echo e(ClientProjectQuotation::STATUS_SENT); ?>" <?php if($quotation->status === ClientProjectQuotation::STATUS_SENT): echo 'selected'; endif; ?>>Sent</option>
+                <option value="<?php echo e(ClientProjectQuotation::STATUS_ACCEPTED); ?>" <?php if($quotation->status === ClientProjectQuotation::STATUS_ACCEPTED): echo 'selected'; endif; ?>>Accepted</option>
+                <option value="<?php echo e(ClientProjectQuotation::STATUS_REJECTED); ?>" <?php if($quotation->status === ClientProjectQuotation::STATUS_REJECTED): echo 'selected'; endif; ?>>Rejected</option>
               </select>
             </form>
           </div>
 
-          <?php if(!empty($missing)): ?>
+          <?php if(!empty($missing) && ! $legacy): ?>
             <div class="cp-contract-warning">
               <i class="fa fa-exclamation-triangle"></i>
               <div>
@@ -209,11 +223,18 @@
     <?php else: ?>
       <div class="admin-card cp-contract-empty" style="margin-bottom:1rem;">
         <h3><?php echo e($title); ?></h3>
-        <p class="admin-form-help">No line items yet.</p>
-        <a href="<?php echo e(route('admin.client-projects.quotation.edit', [$project, $quotation])); ?>"
-           class="admin-btn admin-btn--primary admin-btn--sm">
-          <i class="fa fa-pencil"></i> Add items
-        </a>
+        <?php if($legacy): ?>
+          <p class="admin-form-help">Legacy document with no line items on file. Open a new quotation from the hub if you need to replace it.</p>
+          <a href="<?php echo e($quotationHub); ?>" class="admin-btn admin-btn--primary admin-btn--sm">
+            <i class="fa fa-th"></i> Create quotation
+          </a>
+        <?php else: ?>
+          <p class="admin-form-help">No line items yet.</p>
+          <a href="<?php echo e(route('admin.client-projects.quotation.edit', [$project, $quotation])); ?>"
+             class="admin-btn admin-btn--primary admin-btn--sm">
+            <i class="fa fa-pencil"></i> Edit in calculator
+          </a>
+        <?php endif; ?>
       </div>
     <?php endif; ?>
   <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
