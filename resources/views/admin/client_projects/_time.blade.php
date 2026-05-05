@@ -77,9 +77,9 @@
       @foreach ($project->timeEntries as $entry)
         @php
           $isOpen = $entry->isOpen();
-          $dm = $entry->occurred_on ? $entry->occurred_on->format('d/m') : '—';
-          $st = \App\Models\ClientProjectTimeEntry::formatTime($entry->start_time);
-          $et = \App\Models\ClientProjectTimeEntry::formatTime($entry->end_time);
+          $dm = $entry->occurred_on ? \App\Support\EasternStandardTimeDisplay::formatCalendarDayMonth($entry->occurred_on) : '—';
+          $st = \App\Models\ClientProjectTimeEntry::formatTimeForDisplay($entry->start_time, $entry->occurred_on);
+          $et = \App\Models\ClientProjectTimeEntry::formatTimeForDisplay($entry->end_time, $entry->occurred_on);
           if ($isOpen) {
             $hoursPart = 'in progress';
           } elseif ($entry->hours !== null) {

@@ -2705,6 +2705,27 @@ body.cp-modal-open {
   width: auto;
   margin: 0;
 }
+/* Visit section — date + "Visit done" reveal under "Visit required" */
+.cp-visit-expandable {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+.cp-visit-expandable.is-open {
+  grid-template-rows: 1fr;
+}
+.cp-visit-expandable__inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.cp-visit-expandable.is-open .cp-visit-expandable__inner > .admin-form-group:first-child {
+  padding-top: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-visit-expandable {
+    transition: none;
+  }
+}
 .cp-visit-date input[type="date"]:disabled,
 .cp-visit-date input[type="date"].cp-visit-date-input--locked {
   opacity: 0.55;
@@ -2858,31 +2879,52 @@ body.cp-modal-open {
   background: #fff;
 }
 
-/* Edit project — fixed Save/Cancel (always reachable without scrolling) */
-.cp-edit-project-actions-dock {
-  position: fixed;
-  z-index: 120;
+/* Edit project — form + Save/Cancel column beside the narrow card */
+.cp-edit-project-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 720px) minmax(140px, max-content);
+  gap: 1.25rem;
+  align-items: start;
+  margin-bottom: 1.25rem;
+}
+.cp-edit-project-form-card {
+  min-width: 0;
+}
+.cp-edit-project-actions-aside {
+  position: sticky;
+  top: 1rem;
+  z-index: 5;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
-  justify-content: flex-end;
-  align-items: center;
-  top: max(0.75rem, env(safe-area-inset-top, 0px));
-  right: max(1rem, env(safe-area-inset-right, 0px));
-  max-width: min(100vw - 2rem, 320px);
-  padding: 10px 12px;
+  padding: 12px 14px;
   background: #fff;
   border: 1px solid var(--admin-border, #d8dee4);
   border-radius: var(--admin-radius, 12px);
   box-shadow: var(--admin-shadow-md, 0 8px 30px rgba(55, 52, 53, 0.08));
 }
-.cp-edit-project-actions-dock .admin-btn {
+.cp-edit-project-actions-aside .admin-btn {
   margin: 0;
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
 }
 @media (max-width: 900px) {
-  /* Clear sticky admin topbar + menu toggle */
-  .cp-edit-project-actions-dock {
+  .cp-edit-project-layout {
+    grid-template-columns: 1fr;
+  }
+  .cp-edit-project-actions-aside {
+    order: -1;
     top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
-    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    z-index: 100;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: none;
+  }
+  .cp-edit-project-actions-aside .admin-btn {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 120px;
   }
 }

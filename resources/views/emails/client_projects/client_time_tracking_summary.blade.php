@@ -66,14 +66,14 @@
         <tr style="background:{{ $loop->iteration % 2 === 0 ? '#f9fafb' : '#ffffff' }};">
           <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;white-space:nowrap;">
             @if ($entry->occurred_on)
-              {{ $entry->occurred_on->copy()->timezone(config('app.timezone'))->format('D') }}
+              {{ \App\Support\EasternStandardTimeDisplay::formatCalendarWeekdayShort($entry->occurred_on) }}
             @else
               —
             @endif
           </td>
           <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">{{ ClientProject::formatDate($entry->occurred_on) }}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">{{ ClientProjectTimeEntry::formatTime($entry->start_time) }}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">{{ ClientProjectTimeEntry::formatTime($entry->end_time) }}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">{{ ClientProjectTimeEntry::formatTimeForDisplay($entry->start_time, $entry->occurred_on) }}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">{{ ClientProjectTimeEntry::formatTimeForDisplay($entry->end_time, $entry->occurred_on) }}</td>
           <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-variant-numeric:tabular-nums;">{{ number_format((float) $entry->hours, 2) }}</td>
           <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;color:#4b5563;">{{ $entry->note ? \Illuminate\Support\Str::limit($entry->note, 120) : '—' }}</td>
         </tr>
@@ -107,10 +107,10 @@
       @foreach ($openEntries as $entry)
         <li style="margin-bottom:6px;">
           @if ($entry->occurred_on)
-            {{ $entry->occurred_on->copy()->timezone(config('app.timezone'))->format('D') }},
+            {{ \App\Support\EasternStandardTimeDisplay::formatCalendarWeekdayShort($entry->occurred_on) }},
           @endif
           {{ ClientProject::formatDate($entry->occurred_on) }} —
-          start {{ ClientProjectTimeEntry::formatTime($entry->start_time) }}
+          start {{ ClientProjectTimeEntry::formatTimeForDisplay($entry->start_time, $entry->occurred_on) }}
           @if (filled($entry->note))
             — <em>{{ \Illuminate\Support\Str::limit($entry->note, 100) }}</em>
           @endif

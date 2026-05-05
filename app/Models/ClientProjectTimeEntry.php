@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\EasternStandardTimeDisplay;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -99,6 +100,21 @@ class ClientProjectTimeEntry extends Model
         $m = $minutes % 60;
 
         return sprintf('%d:%02d', $h24, $m);
+    }
+
+    /**
+     * Same as {@see formatTime} but shifts clock to EST when the work date falls in EDT.
+     */
+    public static function formatTimeForDisplay(?string $value, $occurredOn = null): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+        if ($occurredOn === null || $occurredOn === '') {
+            return self::formatTime($value);
+        }
+
+        return EasternStandardTimeDisplay::formatLocalTimeOnDateAsEst($value, $occurredOn);
     }
 
     private static function parseHhMm(?string $value): ?int

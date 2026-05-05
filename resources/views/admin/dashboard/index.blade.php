@@ -18,7 +18,7 @@
     <div class="dash-toolbar">
       <div>
         <p class="dash-toolbar-meta" style="margin:0 0 4px;">
-          Snapshot for {{ \Illuminate\Support\Carbon::parse($d['generated_at'])->timezone(config('app.timezone'))->format('l, M j, Y g:i A T') }}
+          Snapshot for {{ \App\Support\EasternStandardTimeDisplay::formatDateTimeMedium($d['generated_at']) }}
         </p>
         <strong style="font-size:1.05rem;">Business overview</strong>
       </div>

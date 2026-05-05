@@ -55,7 +55,7 @@
                   @endif
                 </td>
                 <td>
-                  <span class="admin-form-help">{{ $q->updated_at?->format('d/m/Y') }}</span>
+                  <span class="admin-form-help">{{ $q->updated_at ? \App\Support\EasternStandardTimeDisplay::formatInstantCalendarDate($q->updated_at) : '' }}</span>
                 </td>
                 <td>
                   <div class="fq-list-actions">

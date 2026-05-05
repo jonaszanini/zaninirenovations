@@ -13,7 +13,7 @@
       $acceptanceDateRaw = now();
   }
 
-  $acceptanceDate = \Illuminate\Support\Carbon::parse($acceptanceDateRaw)->format('F j, Y');
+  $acceptanceDate = \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($acceptanceDateRaw);
 @endphp
 
 @component('emails.client_projects.layout', ['title' => 'Your contract'])
@@ -50,8 +50,8 @@
 
   @if (!empty($calendarLink))
     @php
-      $startFormatted = \Illuminate\Support\Carbon::parse($project->start_date)->format('F j, Y');
-      $endFormatted = \Illuminate\Support\Carbon::parse($project->end_date)->format('F j, Y');
+      $startFormatted = \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($project->start_date);
+      $endFormatted = \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($project->end_date);
       $sameDay = $project->start_date && $project->end_date
           && \Illuminate\Support\Carbon::parse($project->start_date)->isSameDay(\Illuminate\Support\Carbon::parse($project->end_date));
     @endphp

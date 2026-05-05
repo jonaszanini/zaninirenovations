@@ -3,17 +3,11 @@
 @section('heading', 'Edit project')
 
 @section('content')
-  <div class="cp-edit-project-actions-dock" role="region" aria-label="Project form actions">
-    <button type="submit" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm">
-      <i class="fa fa-check"></i> Save changes
-    </button>
-    <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-  </div>
-
-  <div class="admin-card admin-card--narrow">
-    <form id="cp-edit-project-form" action="{{ route('admin.client-projects.update', $project) }}" method="post">
-      @csrf
-      @method('PUT')
+  <div class="cp-edit-project-layout">
+    <div class="admin-card admin-card--narrow cp-edit-project-form-card">
+      <form id="cp-edit-project-form" action="{{ route('admin.client-projects.update', $project) }}" method="post">
+        @csrf
+        @method('PUT')
 
       <div class="admin-form-group">
         <label for="cp-name">Project name <span class="cp-required">*</span></label>
@@ -76,6 +70,13 @@
         </div>
       </div>
 
+      @php
+        $cpEditVisitDateVal = old('visit_date', optional($project->visit_date)?->toDateString());
+        $cpEditVisitExpandOpen = (bool) old('visit_required', $project->visit_required)
+          || (bool) old('visit_done', $project->visit_done)
+          || filled($cpEditVisitDateVal)
+          || $errors->has('visit_date');
+      @endphp
       <div class="admin-form-section">
         <h3>Visit date</h3>
         <p class="admin-form-help">On-site visit before quoting. Enable only when the client has asked for a visit.</p>
@@ -87,19 +88,24 @@
             <span>Visit required</span>
           </label>
         </div>
-        <div class="admin-form-group cp-visit-date">
-          <label for="cp-edit-visit-date">Visit date</label>
-          <input type="date" id="cp-edit-visit-date" name="visit_date"
-            value="{{ old('visit_date', optional($project->visit_date)->toDateString()) }}">
-          @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
-        </div>
-        <input type="hidden" name="visit_done" value="0">
-        <div class="admin-form-group">
-          <label class="cp-checkbox-label">
-            <input type="checkbox" name="visit_done" value="1" id="cp-edit-visit-done"
-              @checked(old('visit_done', $project->visit_done))>
-            <span>Visit done</span>
-          </label>
+        <div id="cp-edit-visit-expandable" class="cp-visit-expandable @if ($cpEditVisitExpandOpen) is-open @endif"
+             aria-hidden="{{ $cpEditVisitExpandOpen ? 'false' : 'true' }}">
+          <div class="cp-visit-expandable__inner">
+            <div class="admin-form-group cp-visit-date">
+              <label for="cp-edit-visit-date">Visit date</label>
+              <input type="date" id="cp-edit-visit-date" name="visit_date"
+                value="{{ $cpEditVisitDateVal }}">
+              @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+            <input type="hidden" name="visit_done" value="0">
+            <div class="admin-form-group">
+              <label class="cp-checkbox-label">
+                <input type="checkbox" name="visit_done" value="1" id="cp-edit-visit-done"
+                  @checked(old('visit_done', $project->visit_done))>
+                <span>Visit done</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -172,6 +178,14 @@
         <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>
+    </div>
+
+    <aside class="cp-edit-project-actions-aside" role="region" aria-label="Project form actions">
+      <button type="submit" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-check"></i> Save changes
+      </button>
+      <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+    </aside>
   </div>
 
   <div class="admin-card cp-danger-card">
@@ -194,6 +208,17 @@
       var visitCb = document.getElementById('cp-edit-visit-required');
       var visitDate = document.getElementById('cp-edit-visit-date');
       var visitDoneCb = document.getElementById('cp-edit-visit-done');
+      var visitExpand = document.getElementById('cp-edit-visit-expandable');
+
+      function syncEditVisitExpandable() {
+        if (!visitExpand) return;
+        var required = visitCb ? visitCb.checked : false;
+        var done = visitDoneCb ? visitDoneCb.checked : false;
+        var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
+        var open = required || done || hasDate;
+        visitExpand.classList.toggle('is-open', open);
+        visitExpand.setAttribute('aria-hidden', open ? 'false' : 'true');
+      }
 
       function syncEditVisitFields() {
         if (!visitDate) return;
@@ -202,6 +227,7 @@
         visitDate.readOnly = !!done;
         visitDate.disabled = !done && !required;
         visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
+        syncEditVisitExpandable();
       }
 
       function checkEditDates() {
@@ -227,6 +253,8 @@
       }
       if (visitCb) visitCb.addEventListener('change', syncEditVisitFields);
       if (visitDoneCb) visitDoneCb.addEventListener('change', syncEditVisitFields);
+      if (visitDate) visitDate.addEventListener('change', syncEditVisitExpandable);
+      if (visitDate) visitDate.addEventListener('input', syncEditVisitExpandable);
       syncEditVisitFields();
 
       form.addEventListener('submit', function (e) {

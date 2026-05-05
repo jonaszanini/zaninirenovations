@@ -35,7 +35,7 @@
               <td><strong>{{ $project->title }}</strong></td>
               <td><span class="admin-badge">{{ $project->categoryLabel() }}</span></td>
               <td>{{ $project->photos_count }} / 15</td>
-              <td>{{ optional($project->completed_on)->format('M j, Y') ?? '—' }}</td>
+              <td>{{ $project->completed_on ? \App\Support\EasternStandardTimeDisplay::formatCalendarMediumDate($project->completed_on) : '—' }}</td>
               <td style="white-space:nowrap;">
                 <a href="{{ route('admin.portfolio.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
                 <form action="{{ route('admin.portfolio.destroy', $project) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this project and all photos?');">

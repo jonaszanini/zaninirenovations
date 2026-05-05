@@ -50,7 +50,7 @@
                     <span class="admin-form-help">—</span>
                   @endif
                 </td>
-                <td><span class="admin-form-help">{{ $q->updated_at?->format('d/m/Y') }}</span></td>
+                <td><span class="admin-form-help">{{ $q->updated_at ? \App\Support\EasternStandardTimeDisplay::formatInstantCalendarDate($q->updated_at) : '' }}</span></td>
                 <td>
                   <div class="fq-list-actions">
                     <a href="{{ route('admin.quotations.paving.edit', $q) }}" class="admin-btn admin-btn--ghost admin-btn--sm">

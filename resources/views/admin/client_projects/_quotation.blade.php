@@ -166,7 +166,7 @@
           <div class="cp-quotation-doc-meta">
             <div>
               <div class="cp-quotation-doc-title">{{ $typeLabel }} #{{ $quotation->quotation_number }}</div>
-              <div class="cp-quotation-doc-date">Date: {{ now()->format('F j, Y') }}</div>
+              <div class="cp-quotation-doc-date">Date: {{ \App\Support\EasternStandardTimeDisplay::todayLongDate() }}</div>
             </div>
             <div class="cp-quotation-doc-client">
               <div class="cp-party-label">CLIENT</div>

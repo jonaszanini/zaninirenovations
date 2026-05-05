@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\ClientProject;
+use App\Support\EasternStandardTimeDisplay;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -25,7 +26,7 @@ class ClientProjectCommencementEveAdmin extends Mailable
     public function build(): self
     {
         $start = $this->project->start_date
-            ? $this->project->start_date->format('l, F j, Y')
+            ? EasternStandardTimeDisplay::formatCalendarLongDateWithWeekday($this->project->start_date)
             : '';
 
         $subject = '[Tomorrow] Work begins — '.$this->project->name;

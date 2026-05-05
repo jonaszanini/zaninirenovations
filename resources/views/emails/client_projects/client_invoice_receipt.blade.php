@@ -15,7 +15,7 @@
         <strong>Amount received:</strong>
         {{ \App\Models\ClientProject::formatMoney($invoice->paid_amount ?? $invoice->total) }}
         @if ($invoice->paid_at)
-          &nbsp;·&nbsp; <strong>Received on:</strong> {{ $invoice->paid_at->format('F j, Y') }}
+          &nbsp;·&nbsp; <strong>Received on:</strong> {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($invoice->paid_at) }}
         @endif
       </td>
     </tr>

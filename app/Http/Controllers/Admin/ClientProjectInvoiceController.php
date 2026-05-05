@@ -1004,14 +1004,14 @@ class ClientProjectInvoiceController extends Controller
             $parts = [];
 
             if ($entry->occurred_on) {
-                $parts[] = $entry->occurred_on->format('d/m/Y');
+                $parts[] = ClientProject::formatDate($entry->occurred_on);
             }
 
             if (!empty($entry->start_time) && !empty($entry->end_time)) {
                 $parts[] = sprintf(
                     '%s – %s',
-                    ClientProjectTimeEntry::formatTime($entry->start_time),
-                    ClientProjectTimeEntry::formatTime($entry->end_time)
+                    ClientProjectTimeEntry::formatTimeForDisplay($entry->start_time, $entry->occurred_on),
+                    ClientProjectTimeEntry::formatTimeForDisplay($entry->end_time, $entry->occurred_on)
                 );
             }
 

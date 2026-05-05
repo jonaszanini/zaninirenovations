@@ -10,6 +10,7 @@ use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Support\EasternStandardTimeDisplay;
 use App\Services\GoogleCalendarLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -490,8 +491,8 @@ class ClientProjectController extends Controller
         $cc = $client_project->secondaryClientEmail();
         $confirmationSubject = 'Service confirmation from Zanini Renovations';
         $confirmationDescription = 'Service booking confirmed — '
-            .\Carbon\Carbon::parse($client_project->start_date)->format('M j, Y')
-            .' to '.\Carbon\Carbon::parse($client_project->end_date)->format('M j, Y');
+            .EasternStandardTimeDisplay::formatCalendarMediumDate($client_project->start_date)
+            .' to '.EasternStandardTimeDisplay::formatCalendarMediumDate($client_project->end_date);
 
         try {
             $mailer = Mail::to($client_project->client_email, $client_project->client_name);
@@ -592,8 +593,8 @@ class ClientProjectController extends Controller
         $cc = $client_project->secondaryClientEmail();
         $subject = 'Your project dates with Zanini Renovations';
         $description = 'Schedule dates emailed manually — '
-            .\Carbon\Carbon::parse($client_project->start_date)->format('M j, Y')
-            .' to '.\Carbon\Carbon::parse($client_project->end_date)->format('M j, Y');
+            .EasternStandardTimeDisplay::formatCalendarMediumDate($client_project->start_date)
+            .' to '.EasternStandardTimeDisplay::formatCalendarMediumDate($client_project->end_date);
 
         try {
             $mailer = Mail::to($client_project->client_email, $client_project->client_name);

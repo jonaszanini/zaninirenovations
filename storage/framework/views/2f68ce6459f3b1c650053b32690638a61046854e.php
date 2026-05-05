@@ -3,10 +3,11 @@
 <?php $__env->startSection('heading', 'Edit project'); ?>
 
 <?php $__env->startSection('content'); ?>
-  <div class="admin-card admin-card--narrow">
-    <form id="cp-edit-project-form" action="<?php echo e(route('admin.client-projects.update', $project)); ?>" method="post">
-      <?php echo csrf_field(); ?>
-      <?php echo method_field('PUT'); ?>
+  <div class="cp-edit-project-layout">
+    <div class="admin-card admin-card--narrow cp-edit-project-form-card">
+      <form id="cp-edit-project-form" action="<?php echo e(route('admin.client-projects.update', $project)); ?>" method="post">
+        <?php echo csrf_field(); ?>
+        <?php echo method_field('PUT'); ?>
 
       <div class="admin-form-group">
         <label for="cp-name">Project name <span class="cp-required">*</span></label>
@@ -249,6 +250,14 @@ unset($__errorArgs, $__bag); ?>
         <a href="<?php echo e(route('admin.client-projects.show', $project)); ?>" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>
+    </div>
+
+    <aside class="cp-edit-project-actions-aside" role="region" aria-label="Project form actions">
+      <button type="submit" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-check"></i> Save changes
+      </button>
+      <a href="<?php echo e(route('admin.client-projects.show', $project)); ?>" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+    </aside>
   </div>
 
   <div class="admin-card cp-danger-card">

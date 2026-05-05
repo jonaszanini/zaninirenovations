@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\EasternStandardTimeDisplay;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -721,30 +722,15 @@ class ClientProject extends Model
 
     public static function formatDate($date): string
     {
-        if (!$date) {
-            return '—';
-        }
-        if (!$date instanceof \DateTimeInterface) {
-            $date = \Illuminate\Support\Carbon::parse((string) $date);
-        }
-
-        return $date->format('d/m/Y');
+        return EasternStandardTimeDisplay::formatCalendarDate($date);
     }
 
     /**
-     * Date + time in the app timezone (default America/Toronto = Eastern),
-     * with a short zone suffix (EST / EDT).
+     * Date + time shown as Eastern Standard Time (subtract one hour during EDT).
      */
     public static function formatDateTime($dateTime): string
     {
-        if ($dateTime === null) {
-            return '—';
-        }
-        $c = $dateTime instanceof \Carbon\CarbonInterface
-            ? $dateTime->copy()
-            : \Illuminate\Support\Carbon::parse((string) $dateTime);
-
-        return $c->timezone(config('app.timezone'))->format('d/m/Y H:i T');
+        return EasternStandardTimeDisplay::formatDateTime($dateTime);
     }
 
     /**

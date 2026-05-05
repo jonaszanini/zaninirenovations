@@ -336,7 +336,7 @@
     <tr>
       <td class="left">
         <p class="quote-title">{{ $quotation->typeLabel() }} #{{ $quotation->quotation_number }}</p>
-        <p class="quote-date">Date: {{ now()->format('F j, Y') }}</p>
+        <p class="quote-date">Date: {{ \App\Support\EasternStandardTimeDisplay::todayLongDate() }}</p>
       </td>
       <td class="right">
         <div class="quote-client">

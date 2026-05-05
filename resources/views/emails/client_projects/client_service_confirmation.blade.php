@@ -3,8 +3,8 @@
 
   $clientName = $project->client_name;
 
-  $startFormatted = $project->start_date ? Carbon::parse($project->start_date)->format('F j, Y') : null;
-  $endFormatted = $project->end_date ? Carbon::parse($project->end_date)->format('F j, Y') : null;
+  $startFormatted = $project->start_date ? \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($project->start_date) : null;
+  $endFormatted = $project->end_date ? \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($project->end_date) : null;
   $sameDay = $project->start_date && $project->end_date
       && Carbon::parse($project->start_date)->isSameDay(Carbon::parse($project->end_date));
 

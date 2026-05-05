@@ -16,10 +16,13 @@
     $total = (float) $invoice->total;
 
     $fmt = fn ($n) => 'CA$'.number_format((float) $n, 2, '.', ',');
-    $dateStr = ($invoice->sent_at ?: now())->format('F j, Y');
+    $dateStr = \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($invoice->sent_at ?: now());
     $dueStr = $invoice->due_on
-      ? \Illuminate\Support\Carbon::parse($invoice->due_on)->format('F j, Y')
-      : now()->addDays(\App\Models\ClientProjectInvoice::DEFAULT_DUE_DAYS)->format('F j, Y');
+      ? \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on)
+      : \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate(
+          \Illuminate\Support\Carbon::now(\App\Support\EasternStandardTimeDisplay::easternTimezone())
+              ->addDays(\App\Models\ClientProjectInvoice::DEFAULT_DUE_DAYS)
+      );
   @endphp
   <style>
     @page {

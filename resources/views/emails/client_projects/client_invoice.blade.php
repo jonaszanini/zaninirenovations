@@ -14,7 +14,7 @@
       <td style="padding: 6px 12px; background: #f4fafe; border: 1px solid #024768; font-size: 15px;">
         <strong>Total due:</strong> {{ \App\Models\ClientProject::formatMoney($invoice->total) }}
         @if ($invoice->due_on)
-          &nbsp;·&nbsp; <strong>Due:</strong> {{ \Illuminate\Support\Carbon::parse($invoice->due_on)->format('F j, Y') }}
+          &nbsp;·&nbsp; <strong>Due:</strong> {{ \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on) }}
         @endif
       </td>
     </tr>

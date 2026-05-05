@@ -7,8 +7,8 @@
     $fontDir = str_replace('\\', '/', public_path('fonts/roboto'));
     $fmt = fn ($n) => 'CA$'.number_format((float) $n, 2, '.', ',');
     $paidOn = $invoice->paid_at
-      ? $invoice->paid_at->format('F j, Y')
-      : now()->format('F j, Y');
+      ? \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($invoice->paid_at)
+      : \App\Support\EasternStandardTimeDisplay::todayLongDate();
     $paidAmount = (float) ($invoice->paid_amount ?? $invoice->total);
   @endphp
   <style>
@@ -237,7 +237,7 @@
   <table class="receipt-meta">
     <tr>
       <td class="left">
-        <p style="margin:0;font-size:10.5pt;color:#4b5563;"><strong style="color:#1f2937;">Receipt date:</strong> {{ now()->format('F j, Y') }}</p>
+        <p style="margin:0;font-size:10.5pt;color:#4b5563;"><strong style="color:#1f2937;">Receipt date:</strong> {{ \App\Support\EasternStandardTimeDisplay::todayLongDate() }}</p>
         <p style="margin:4pt 0 0;font-size:10.5pt;color:#4b5563;"><strong style="color:#1f2937;">Payment received:</strong> {{ $paidOn }}</p>
       </td>
       <td class="right">

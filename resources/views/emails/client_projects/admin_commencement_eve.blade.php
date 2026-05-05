@@ -17,7 +17,7 @@
     @if ($project->end_date)
       <tr>
         <td style="padding:6px 12px 6px 0;color:#6b7280;">End date</td>
-        <td style="padding:6px 0;">{{ $project->end_date->format('l, F j, Y') }}</td>
+        <td style="padding:6px 0;">{{ \App\Support\EasternStandardTimeDisplay::formatCalendarLongDateWithWeekday($project->end_date) }}</td>
       </tr>
     @endif
     @if ($project->client_phone)

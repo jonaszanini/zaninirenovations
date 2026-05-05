@@ -15,9 +15,9 @@
     @endif
     on your <strong>{{ $project->name }}</strong> project is
     @if ($overdue)
-      currently <strong style="color:#b91c1c;">past its due date</strong> ({{ $due->format('F j, Y') }}).
+      currently <strong style="color:#b91c1c;">past its due date</strong> ({{ \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on) }}).
     @elseif ($due)
-      due on <strong>{{ $due->format('F j, Y') }}</strong>.
+      due on <strong>{{ \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on) }}</strong>.
     @else
       still outstanding.
     @endif

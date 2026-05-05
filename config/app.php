@@ -8,8 +8,9 @@ return [
     'debug' => (bool) env('APP_DEBUG', false),
     'url' => env('APP_URL', 'http://localhost'),
     /*
-     * Default: America/Toronto — Ontario Eastern Time (EST in winter, EDT
-     * in summer). History, sent_at, updated_at, etc. all use this zone.
+     * Default: America/Toronto — Ontario Eastern (observes EST/EDT).
+     * Storage and Carbon math use this IANA zone; human-facing datetimes
+     * are normalized to EST labels via App\Support\EasternStandardTimeDisplay.
      * Override with APP_TIMEZONE in .env if needed.
      */
     'timezone' => env('APP_TIMEZONE', 'America/Toronto'),

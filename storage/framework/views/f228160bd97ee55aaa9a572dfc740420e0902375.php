@@ -5,7 +5,9 @@
 
   $quotationRows = $project->quotations->sortBy('id');
   $acceptedGrand = \App\Models\ClientProjectQuotation::acceptedGrandTotalForProject($project);
-  $missing = $project->missingClientContactFields();
+  $missingDelivery = $project->missingQuotationDeliveryChannels();
+  $canDeliverByEmail = filled(trim((string) $project->client_email));
+  $canDeliverBySms = \App\Models\ClientProject::phoneDigitsForSms($project->client_phone) !== null;
   $quotationHub = route('admin.quotations.index', ['project' => $project->id]);
 ?>
 
@@ -46,7 +48,7 @@
   <?php $__currentLoopData = $quotationRows; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $quotation): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
     <?php
       $hasContent = $quotation->hasContent();
-      $canSend = empty($missing) && $hasContent;
+      $canSend = $hasContent && ($canDeliverByEmail || $canDeliverBySms);
       $typeLabel = $quotation->typeLabel();
       $title = $quotation->title ?: $typeLabel;
       $legacy = $quotation->isLegacyManualSource();
@@ -126,7 +128,7 @@
               <button type="button"
                       class="admin-btn admin-btn--primary admin-btn--sm"
                       disabled
-                      title="<?php echo e($legacy ? 'Legacy document — not emailable from this flow.' : (empty($missing) ? 'Add at least one line item first.' : 'Missing: '.implode(', ', $missing))); ?>">
+                      title="<?php echo e($legacy ? 'Legacy document — not sendable from this flow.' : (($canDeliverByEmail || $canDeliverBySms) ? 'Add at least one line item first.' : 'Add at least one delivery channel: '.implode(', ', $missingDelivery))); ?>">
                 <i class="fa fa-paper-plane"></i> Send
               </button>
             <?php endif; ?>
@@ -148,11 +150,11 @@
             </form>
           </div>
 
-          <?php if(!empty($missing) && ! $legacy): ?>
+          <?php if(!$canDeliverByEmail && !$canDeliverBySms && ! $legacy): ?>
             <div class="cp-contract-warning">
               <i class="fa fa-exclamation-triangle"></i>
               <div>
-                <strong>Cannot email until client contact details are complete.</strong>
+                <strong>Cannot send until at least one delivery channel exists (email or SMS-capable phone).</strong>
                 <a href="<?php echo e(route('admin.client-projects.edit', $project)); ?>">Edit project</a>
               </div>
             </div>
