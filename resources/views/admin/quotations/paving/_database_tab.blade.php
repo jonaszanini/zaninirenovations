@@ -122,8 +122,15 @@
                   <td>{{ $idx + 1 }}</td>
                   <td><input type="number" name="tiers[{{ $idx }}][area_sq_ft]" value="{{ $tier->area_sq_ft }}" step="0.01" min="1" class="admin-input" required aria-label="Tier area"></td>
                   <td>
-                    {{-- number (not cp-money-input): mask is 2 decimals; engine uses up to 4 dp --}}
-                    <input type="number" name="tiers[{{ $idx }}][price_per_sq_ft]" value="{{ $tier->price_per_sq_ft }}" step="0.0001" min="0" class="admin-input" required aria-label="Price per sq ft">
+                    <input type="text"
+                           name="tiers[{{ $idx }}][price_per_sq_ft]"
+                           value="{{ number_format((float) $tier->price_per_sq_ft, 4, '.', '') }}"
+                           class="admin-input cp-money-input"
+                           data-cp-money-places="4"
+                           inputmode="decimal"
+                           autocomplete="off"
+                           required
+                           aria-label="Price per sq ft (CAD)">
                   </td>
                 </tr>
               @endforeach
@@ -174,8 +181,12 @@
         var tr = document.createElement('tr');
         tr.innerHTML = '<td>' + (n + 1) + '</td>' +
           '<td><input type="number" name="tiers[' + n + '][area_sq_ft]" value="900" step="0.01" min="1" class="admin-input" required aria-label="Tier area"></td>' +
-          '<td><input type="number" name="tiers[' + n + '][price_per_sq_ft]" value="25" step="0.0001" min="0" class="admin-input" required aria-label="Price per sq ft"></td>';
+          '<td><input type="text" name="tiers[' + n + '][price_per_sq_ft]" value="25" class="admin-input cp-money-input" data-cp-money-places="4" inputmode="decimal" autocomplete="off" required aria-label="Price per sq ft (CAD)"></td>';
         tb.appendChild(tr);
+        var newPrice = tr.querySelector('input[name*="[price_per_sq_ft]"]');
+        if (window.cpMoneyMask && newPrice) {
+          window.cpMoneyMask.wire(newPrice);
+        }
       });
     }
   })();

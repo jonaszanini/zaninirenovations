@@ -369,11 +369,14 @@ class ClientProjectQuotationController extends Controller
                 ->with('error', 'Add line items before setting a subtotal override.');
         }
 
-        $request->merge([
-            'subtotal_override' => $request->input('subtotal_override') === '' || $request->input('subtotal_override') === null
-                ? null
-                : $request->input('subtotal_override'),
-        ]);
+        $rawIn = $request->input('subtotal_override');
+        if ($rawIn === null || $rawIn === '') {
+            $normalized = null;
+        } else {
+            $normalized = str_replace([',', ' ', "\u{00A0}"], '', (string) $rawIn);
+            $normalized = $normalized === '' ? null : $normalized;
+        }
+        $request->merge(['subtotal_override' => $normalized]);
 
         $data = $request->validate([
             'subtotal_override' => ['nullable', 'numeric', 'min:0'],

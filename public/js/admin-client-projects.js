@@ -8,75 +8,88 @@
  *     live and a "Remaining to allocate" counter shows how far from 100% they are.
  *
  * Money mask (inputs with class `.cp-money-input`):
+ *   - Optional `data-cp-money-places="4"` sets fractional digits (default 2).
+ *     Standard CAD amounts use 2; paving tier $/sq ft uses 4.
  *   - Calculator-style entry: only digits are accepted, and they accumulate
- *     from the right so `1` -> `0.01`, `12` -> `0.12`, `123` -> `1.23`,
+ *     from the right so (2 places) `1` -> `0.01`, `12` -> `0.12`, `123` -> `1.23`,
  *     `12345` -> `123.45`, `1234567` -> `12,345.67`.
  *   - Thousand separators (",") are inserted and refreshed on every keystroke
  *     (including backspace).
  *   - On form submit the visible value is replaced with a plain numeric string
  *     (e.g. `12345.67`) so server-side numeric validation keeps working.
+ *   - Calling `cpMoneyMask.wire(input)` again on the same element re-formats
+ *     the current value (e.g. mark-paid modal preset).
  */
 (function () {
   // --- CAD money mask ---------------------------------------------------
 
-  function formatCentsAsCad(cents) {
-    var whole = Math.floor(cents / 100);
-    var frac = cents % 100;
-    var wholeStr = whole.toLocaleString('en-US'); // 1234567 -> "1,234,567"
-    var fracStr = frac < 10 ? '0' + frac : String(frac);
+  function moneyPlaces(input) {
+    var p = parseInt(input && input.getAttribute('data-cp-money-places'), 10);
+    if (!isFinite(p) || p < 2 || p > 8) {
+      p = 2;
+    }
+    return p;
+  }
+
+  /** minorUnits = amount × 10^places (integer). */
+  function formatMinorUnits(minorUnits, places) {
+    var divisor = Math.pow(10, places);
+    var whole = Math.floor(minorUnits / divisor);
+    var frac = minorUnits % divisor;
+    var wholeStr = whole.toLocaleString('en-US');
+    if (places < 1) {
+      return wholeStr;
+    }
+    var fracStr = String(frac).padStart(places, '0');
+    while (fracStr.length > 1 && fracStr.endsWith('0')) {
+      fracStr = fracStr.slice(0, -1);
+    }
+    if (fracStr === '' || /^0+$/.test(fracStr)) {
+      return wholeStr;
+    }
     return wholeStr + '.' + fracStr;
   }
 
-  // Read a raw visible value ("1,234.56" or "1234.56" or "") and turn it
-  // into integer cents. Empty / NaN -> 0.
-  function parseToCents(value) {
+  // Raw visible value -> integer minor units (digits only, right-aligned).
+  function parseToMinorUnits(value) {
     if (value == null) return 0;
     var digits = String(value).replace(/\D/g, '');
     if (!digits) return 0;
-    // Strip leading zeros so "00000123" -> "123".
     digits = digits.replace(/^0+(?=\d)/, '');
     var n = parseInt(digits, 10);
     return isNaN(n) ? 0 : n;
   }
 
-  // Blade renders pre-existing amounts as "1234.56" (no commas). Convert that
-  // to the calculator representation: the whole string is treated as a real
-  // dollar amount, so "1234.56" -> 123456 cents -> "1,234.56".
-  function initExistingValue(input) {
+  // Blade / presets often use plain "1234.56". Reformat to masked calculator display.
+  function initExistingValue(input, places) {
     var raw = (input.value || '').trim();
     if (!raw) return;
     var num = parseFloat(raw.replace(/,/g, ''));
-    if (!isFinite(num) || num <= 0) {
+    if (!isFinite(num) || num < 0) {
       input.value = '';
       return;
     }
-    var cents = Math.round(num * 100);
-    input.value = formatCentsAsCad(cents);
+    var minor = Math.round(num * Math.pow(10, places));
+    input.value = formatMinorUnits(minor, places);
   }
 
-  function onMoneyInput(e) {
+  function onMoneyInput(e, places) {
     var input = e.target;
     var raw = input.value;
-    // If the field was fully cleared, keep it empty — calculator style means
-    // the user can get back to a blank slate by deleting everything.
     if (!raw.replace(/\D/g, '')) {
       input.value = '';
       return;
     }
-    var cents = parseToCents(raw);
-    if (cents === 0) {
+    var minor = parseToMinorUnits(raw);
+    if (minor === 0) {
       input.value = '';
       return;
     }
-    input.value = formatCentsAsCad(cents);
-    // Always keep caret at the end; it's the calculator-entry convention and
-    // avoids the "cursor jumps around after reformat" problem.
+    input.value = formatMinorUnits(minor, places);
     var end = input.value.length;
-    try { input.setSelectionRange(end, end); } catch (err) { /* some input types disallow this */ }
+    try { input.setSelectionRange(end, end); } catch (err) { /* ignore */ }
   }
 
-  // Strip thousand separators just before the form is submitted, so the
-  // backend sees "1234.56" instead of "1,234.56".
   function onFormSubmitStripCommas(e) {
     var form = e.target;
     if (!form || !form.querySelectorAll) return;
@@ -85,18 +98,18 @@
     });
   }
 
-  // Wire a single .cp-money-input. Idempotent — calling it twice on the
-  // same element is a no-op. Exposed on `window.cpMoneyMask` so views
-  // that build inputs dynamically (e.g. the quotation editor's add-row
-  // button) can re-wire freshly cloned rows.
   function wireMoneyInput(input) {
-    if (!input || input._cpMoneyWired) return;
+    if (!input) return;
+    var places = moneyPlaces(input);
+    if (input._cpMoneyWired) {
+      initExistingValue(input, places);
+      return;
+    }
     input._cpMoneyWired = true;
-    initExistingValue(input);
-    input.addEventListener('input', onMoneyInput);
-    // Block weird key combos that would insert letters (e.g. "e" in some
-    // locales) — the input filter in onMoneyInput handles it too, but this
-    // keeps the field from flickering.
+    initExistingValue(input, places);
+    input.addEventListener('input', function (e) {
+      onMoneyInput(e, moneyPlaces(input));
+    });
     input.addEventListener('keydown', function (ev) {
       if (ev.key && ev.key.length === 1 && !/[\d]/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) {
         ev.preventDefault();
@@ -112,9 +125,6 @@
     document.querySelectorAll('.cp-money-input').forEach(wireMoneyInput);
   }
 
-  // Public entry-point for view-level scripts that need to wire money
-  // inputs they create after page load. Accepts a single element or a
-  // NodeList / array.
   window.cpMoneyMask = {
     wire: function (target) {
       if (!target) return;

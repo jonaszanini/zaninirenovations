@@ -85,6 +85,23 @@ class PavingDatabaseController extends Controller
 
     public function syncTiers(Request $request)
     {
+        $tierInputs = $request->input('tiers', []);
+        if (is_array($tierInputs)) {
+            foreach ($tierInputs as $i => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                if (isset($row['price_per_sq_ft']) && is_string($row['price_per_sq_ft'])) {
+                    $tierInputs[$i]['price_per_sq_ft'] = str_replace(
+                        [',', ' ', "\u{00A0}"],
+                        '',
+                        $row['price_per_sq_ft']
+                    );
+                }
+            }
+            $request->merge(['tiers' => $tierInputs]);
+        }
+
         $data = $request->validate([
             'tiers' => ['required', 'array', 'min:2'],
             'tiers.*.area_sq_ft' => ['required', 'numeric', 'min:1', 'max:100000'],
