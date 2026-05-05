@@ -178,6 +178,15 @@ class FenceQuotationController extends Controller
             'version' => $fence_quotation->version + 1,
         ])->save();
 
+        if ($fence_quotation->isLinked()) {
+            $project = ClientProject::query()->find($fence_quotation->client_project_id);
+            if ($project) {
+                DB::transaction(function () use ($project, $fence_quotation) {
+                    $this->syncFenceLineToProjectQuotation($project, $fence_quotation->fresh());
+                });
+            }
+        }
+
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkFenceIfRequested($fence_quotation->fresh(), $request, $warnings);
@@ -353,11 +362,11 @@ class FenceQuotationController extends Controller
     }
 
     /**
-     * Append this fence quote as its own {@see ClientProjectQuotation} row
-     * (draft, linked to the fence record). Totals roll into Financials once
-     * the quotation is accepted.
+     * Push the current fence totals/description into the linked
+     * {@see ClientProjectQuotation} row (and project financials). Does not
+     * change {@see FenceQuotation::$linked_at} — use that only on first link.
      */
-    protected function appendFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
+    protected function syncFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
         $lineAmount = round(
             (float) $fence_quotation->materials_subtotal + (float) $fence_quotation->labour_total,
@@ -411,6 +420,16 @@ class FenceQuotationController extends Controller
 
         $project->refresh();
         $project->syncFixedContractTotalsFromQuotation();
+    }
+
+    /**
+     * Append this fence quote as its own {@see ClientProjectQuotation} row
+     * (draft, linked to the fence record). Totals roll into Financials once
+     * the quotation is accepted.
+     */
+    protected function appendFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
+    {
+        $this->syncFenceLineToProjectQuotation($project, $fence_quotation);
 
         $fence_quotation->update([
             'client_project_id' => $project->id,
