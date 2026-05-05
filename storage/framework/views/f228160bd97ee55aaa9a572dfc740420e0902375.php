@@ -89,7 +89,7 @@
 
     <?php if($useQuotationAccordion): ?>
       
-      <details class="cp-quotation-accordion admin-card cp-contract-card" <?php if($loop->first): ?> open <?php endif; ?>>
+      <details class="cp-quotation-accordion admin-card cp-contract-card">
         <summary class="cp-quotation-accordion__summary">
           <span class="cp-quotation-accordion__chevron" aria-hidden="true"><i class="fa fa-chevron-right"></i></span>
           <div class="cp-quotation-accordion__core">

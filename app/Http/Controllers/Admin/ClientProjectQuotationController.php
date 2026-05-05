@@ -345,6 +345,60 @@ class ClientProjectQuotationController extends Controller
     }
 
     /**
+     * Optional pre-tax subtotal override (non-zero replaces the sum of line items;
+     * HST is scaled to match the line items' taxable / exempt split).
+     */
+    public function updateSubtotalOverride(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectQuotation $quotation,
+    ) {
+        $this->authorizeQuotation($client_project, $quotation);
+
+        if ($quotation->isLegacyManualSource()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('quotation')
+                ->with('error', 'Legacy documents cannot be edited here.');
+        }
+
+        if (! $quotation->hasContent()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('quotation')
+                ->with('error', 'Add line items before setting a subtotal override.');
+        }
+
+        $request->merge([
+            'subtotal_override' => $request->input('subtotal_override') === '' || $request->input('subtotal_override') === null
+                ? null
+                : $request->input('subtotal_override'),
+        ]);
+
+        $data = $request->validate([
+            'subtotal_override' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $raw = $data['subtotal_override'] ?? null;
+        if ($raw === null) {
+            $quotation->subtotal_override = null;
+        } else {
+            $v = round((float) $raw, 2);
+            $quotation->subtotal_override = $v === 0.0 ? null : $v;
+        }
+
+        $quotation->save();
+
+        $client_project->refresh();
+        $client_project->syncFixedContractTotalsFromQuotation();
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('quotation')
+            ->with('success', 'Subtotal override updated.');
+    }
+
+    /**
      * Remove a calculator-linked quotation from the project and delete the
      * underlying Fence / Standard / Paving record (same net effect as the hub).
      */

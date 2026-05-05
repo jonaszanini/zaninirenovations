@@ -204,6 +204,12 @@
             </form>
           </div>
 
+          @include('admin.client_projects._quotation_subtotal_override_form', [
+              'project' => $project,
+              'quotation' => $quotation,
+              'legacy' => $legacy,
+          ])
+
           @if (!$canDeliverByEmail && !$canDeliverBySms && ! $legacy)
             <div class="cp-contract-warning">
               <i class="fa fa-exclamation-triangle"></i>
@@ -237,6 +243,13 @@
                   <div class="cp-quotation-work-description-title">Description of the work</div>
                   <div class="cp-quotation-work-description-body">{!! nl2br(e($previewWorkDesc)) !!}</div>
                 </div>
+              @endif
+
+              @if ($quotation->hasSubtotalOverrideActive())
+                <p class="admin-form-help" style="margin:0 0 10px;">
+                  Subtotal below is overridden. Line items still reflect calculator totals (sum
+                  {{ \App\Models\ClientProject::formatMoney($quotation->lineItemsSubtotal()) }}).
+                </p>
               @endif
 
               <table class="cp-quotation-items">
@@ -388,6 +401,12 @@
             </form>
           </div>
 
+          @include('admin.client_projects._quotation_subtotal_override_form', [
+              'project' => $project,
+              'quotation' => $quotation,
+              'legacy' => $legacy,
+          ])
+
           @if (!$canDeliverByEmail && !$canDeliverBySms && ! $legacy)
             <div class="cp-contract-warning">
               <i class="fa fa-exclamation-triangle"></i>
@@ -421,6 +440,13 @@
               <div class="cp-quotation-work-description-title">Description of the work</div>
               <div class="cp-quotation-work-description-body">{!! nl2br(e($previewWorkDesc)) !!}</div>
             </div>
+          @endif
+
+          @if ($quotation->hasSubtotalOverrideActive())
+            <p class="admin-form-help" style="margin:0 0 10px;">
+              Subtotal below is overridden. Line items still reflect calculator totals (sum
+              {{ \App\Models\ClientProject::formatMoney($quotation->lineItemsSubtotal()) }}).
+            </p>
           @endif
 
           <table class="cp-quotation-items">

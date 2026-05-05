@@ -413,6 +413,12 @@
       </tr>
     </tfoot>
   </table>
+  @if ($quotation->hasSubtotalOverrideActive())
+    <p style="font-size:9.5pt;color:#4b5563;margin:8pt 0 0;">
+      The subtotal replaces the sum of the listed line amounts ({{ $fmt($quotation->lineItemsSubtotal()) }}).
+      HST is scaled to keep the same taxable and exempt mix as those lines.
+    </p>
+  @endif
 
   {{-- Closing block --}}
   <div class="closing">

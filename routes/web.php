@@ -148,6 +148,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.quotation.send');
     Route::post('client-projects/{client_project}/quotations/{quotation}/status', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'updateStatus'])
         ->name('client-projects.quotation.status');
+    Route::post('client-projects/{client_project}/quotations/{quotation}/subtotal-override', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'updateSubtotalOverride'])
+        ->name('client-projects.quotation.subtotal-override');
     Route::delete('client-projects/{client_project}/quotations/{quotation}', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'destroy'])
         ->name('client-projects.quotation.destroy');
 

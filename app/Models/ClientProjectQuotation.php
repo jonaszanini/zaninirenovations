@@ -43,6 +43,7 @@ class ClientProjectQuotation extends Model
         'title',
         'status',
         'total_amount',
+        'subtotal_override',
         'source_type',
         'source_id',
         'source_snapshot',
@@ -65,6 +66,7 @@ class ClientProjectQuotation extends Model
         'sent_at' => 'datetime',
         'version' => 'integer',
         'total_amount' => 'decimal:2',
+        'subtotal_override' => 'decimal:2',
     ];
 
     public function project(): BelongsTo
@@ -174,23 +176,83 @@ class ClientProjectQuotation extends Model
         return count($this->cleanItems()) > 0;
     }
 
-    public function subtotal(): float
+    /**
+     * Sum of line-item pre-tax amounts (ignores {@see $subtotal_override}).
+     */
+    public function lineItemsSubtotal(): float
     {
         return round(array_sum(array_column($this->cleanItems(), 'amount')), 2);
+    }
+
+    /**
+     * When non-null and not 0.00, {@see subtotal()} and {@see hst()} use this
+     * instead of the raw line sum (HST is scaled to preserve taxable vs exempt mix).
+     */
+    public function hasSubtotalOverrideActive(): bool
+    {
+        if ($this->subtotal_override === null) {
+            return false;
+        }
+
+        return round((float) $this->subtotal_override, 2) != 0.0;
+    }
+
+    /** Effective pre-tax subtotal (override or sum of lines). */
+    public function subtotal(): float
+    {
+        if ($this->hasSubtotalOverrideActive()) {
+            return round((float) $this->subtotal_override, 2);
+        }
+
+        return $this->lineItemsSubtotal();
     }
 
     /** 13% HST only on rows where `apply_hst` is true (default). */
     public function hst(): float
     {
-        $sum = 0.0;
-        foreach ($this->cleanItems() as $row) {
-            if (empty($row['apply_hst'])) {
-                continue;
+        $items = $this->cleanItems();
+
+        if (! $this->hasSubtotalOverrideActive()) {
+            $sum = 0.0;
+            foreach ($items as $row) {
+                if (empty($row['apply_hst'])) {
+                    continue;
+                }
+                $sum += (float) ($row['amount'] ?? 0) * self::HST_RATE;
             }
-            $sum += (float) ($row['amount'] ?? 0) * self::HST_RATE;
+
+            return round($sum, 2);
         }
 
-        return round($sum, 2);
+        $lineSub = $this->lineItemsSubtotal();
+        $override = round((float) $this->subtotal_override, 2);
+
+        if ($lineSub > 0.00001) {
+            $ratio = $override / $lineSub;
+            $sum = 0.0;
+            foreach ($items as $row) {
+                if (empty($row['apply_hst'])) {
+                    continue;
+                }
+                $sum += (float) ($row['amount'] ?? 0) * $ratio * self::HST_RATE;
+            }
+
+            return round($sum, 2);
+        }
+
+        $anyTaxable = false;
+        foreach ($items as $row) {
+            if (! empty($row['apply_hst'])) {
+                $anyTaxable = true;
+                break;
+            }
+        }
+
+        if ($anyTaxable) {
+            return round($override * self::HST_RATE, 2);
+        }
+
+        return 0.0;
     }
 
     public function grandTotal(): float

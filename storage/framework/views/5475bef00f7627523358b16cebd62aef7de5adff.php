@@ -9,6 +9,20 @@
   $hasContactInfo = empty($missing);
 ?>
 
+<?php if($project->usesInvoiceBillingOverride()): ?>
+  <div class="admin-card" style="margin-bottom:1rem;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+    <p style="margin:0;font-size:14px;color:#1e3a5f;">
+      <strong>Invoice bill-to:</strong> <?php echo e($project->invoiceBillToName()); ?>
+
+      <?php if(filled(trim((string) $project->invoice_billing_address))): ?>
+        <span class="admin-form-help" style="display:block;margin-top:6px;white-space:pre-line;"><?php echo e($project->invoice_billing_address); ?></span>
+      <?php endif; ?>
+    </p>
+    <p class="admin-form-help" style="margin:8px 0 0;">PDFs use this legal name/address. Emails and SMS still use the client contact on file (<?php echo e($project->client_name ?: '—'); ?>).</p>
+    <a href="<?php echo e(route('admin.client-projects.edit', $project)); ?>" class="admin-btn admin-btn--ghost admin-btn--sm" style="margin-top:10px;">Edit project</a>
+  </div>
+<?php endif; ?>
+
 <?php if($isHourly): ?>
   
   <?php
