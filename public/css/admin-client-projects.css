@@ -1733,6 +1733,158 @@ textarea.admin-input {
   white-space: nowrap;
 }
 
+/* =================================================================
+   Quotation tab — multiple documents (accordion summaries)
+   ================================================================= */
+.cp-quotation-accordion {
+  margin-bottom: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.cp-quotation-accordion[open] {
+  border-color: #a5b4fc;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
+}
+.cp-quotation-accordion__summary {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cp-quotation-accordion__summary::-webkit-details-marker {
+  display: none;
+}
+.cp-quotation-accordion__chevron {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  margin-top: 2px;
+  transition: transform 0.18s ease;
+}
+.cp-quotation-accordion[open] .cp-quotation-accordion__chevron {
+  transform: rotate(90deg);
+}
+.cp-quotation-accordion__core {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.cp-quotation-accordion__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+.cp-quotation-accordion__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+.cp-quotation-accordion__total-block {
+  text-align: right;
+}
+.cp-quotation-accordion__total-hint {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+.cp-quotation-accordion__total {
+  font-size: 17px;
+  font-weight: 700;
+  color: #024768;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cp-quotation-accordion__total--muted {
+  font-size: 15px;
+  font-weight: 600;
+  color: #9ca3af;
+}
+.cp-quotation-accordion__desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cp-quotation-accordion__badges {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.cp-quotation-accordion__actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+  max-width: 100%;
+}
+.cp-quotation-accordion__actions .cp-inline-form {
+  margin: 0;
+}
+.cp-quotation-accordion__panel {
+  padding: 0 16px 16px;
+  border-top: 1px dashed #e5e7eb;
+  background: #f8fafc;
+}
+.cp-quotation-accordion__panel-meta {
+  margin: 0;
+  padding-top: 12px;
+}
+.cp-quotation-accordion__status-row {
+  margin-top: 10px;
+  padding-bottom: 4px;
+}
+.cp-quotation-accordion__panel .cp-contract-warning {
+  margin-top: 12px;
+}
+.cp-quotation-accordion__panel .cp-quotation-preview {
+  margin-top: 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+.cp-quotation-accordion__empty-body {
+  margin-top: 12px;
+  padding: 14px;
+  background: #fff;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+}
+@media (max-width: 720px) {
+  .cp-quotation-accordion__actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 /* -- Preview (in tab) -------------------------------------------------- */
 .cp-quotation-preview {
   /* inherits typography from .cp-contract-preview */

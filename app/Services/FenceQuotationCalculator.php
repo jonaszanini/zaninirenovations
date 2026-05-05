@@ -51,7 +51,7 @@ class FenceQuotationCalculator
         $normalised = $this->normaliseInputs($inputs);
         $geometry = $this->computeGeometry($normalised);
         $materials = $this->computeMaterials($normalised, $geometry);
-        $totals = $this->computeTotals($materials, $geometry);
+        $totals = $this->computeTotals($materials, $geometry, $normalised);
 
         return [
             'inputs' => $normalised,
@@ -433,14 +433,17 @@ class FenceQuotationCalculator
      *   TOTALS — materials subtotal, HST, labour, grand total.
      *  ================================================================ */
 
-    private function computeTotals(array $materials, array $geom): array
+    private function computeTotals(array $materials, array $geom, array $in): array
     {
         $materialsSubtotal = round(array_sum(array_column($materials, 'subtotal')), 2);
         $hst = round($materialsSubtotal * FenceQuotation::HST_RATE, 2);
 
+        $heightFt = (float) ($in['fence_height_ft'] ?? 6);
+        $labourRatePerFt = $this->settings->labourRatePerFtForHeight($heightFt);
+
         // Labour is priced per linear foot on the total run. No HST on
-        // labour per the project spec.
-        $labour = round((float) $geom['total_linear_ft'] * (float) $this->settings->labour_rate_per_ft, 2);
+        // labour per the project spec. Rate depends on 6' vs 8' fence.
+        $labour = round((float) $geom['total_linear_ft'] * $labourRatePerFt, 2);
 
         return [
             'materials_subtotal' => $materialsSubtotal,
@@ -448,7 +451,7 @@ class FenceQuotationCalculator
             'labour_subtotal' => $labour,
             'grand_total' => round($materialsSubtotal + $hst + $labour, 2),
             'hst_rate' => FenceQuotation::HST_RATE,
-            'labour_rate_per_ft' => (float) $this->settings->labour_rate_per_ft,
+            'labour_rate_per_ft' => $labourRatePerFt,
         ];
     }
 }

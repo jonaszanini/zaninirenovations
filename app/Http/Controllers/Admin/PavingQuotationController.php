@@ -225,7 +225,16 @@ class PavingQuotationController extends Controller
 
     public function destroy(PavingQuotation $paving_quotation)
     {
-        $paving_quotation->delete();
+        $cpq = ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_PAVING)
+            ->where('source_id', $paving_quotation->id)
+            ->first();
+
+        if ($cpq) {
+            ClientProjectQuotation::deleteWithLinkedCalculatorSource($cpq);
+        } else {
+            $paving_quotation->delete();
+        }
 
         return redirect()
             ->route('admin.quotations.paving.index')

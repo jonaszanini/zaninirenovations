@@ -148,6 +148,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.quotation.send');
     Route::post('client-projects/{client_project}/quotations/{quotation}/status', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'updateStatus'])
         ->name('client-projects.quotation.status');
+    Route::delete('client-projects/{client_project}/quotations/{quotation}', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'destroy'])
+        ->name('client-projects.quotation.destroy');
 
     // Invoices (structured, PDF generation, email-to-client). Multiple allowed
     // per project — one per installment plus optional manual invoices.

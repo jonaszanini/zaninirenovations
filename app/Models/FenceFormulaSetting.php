@@ -12,7 +12,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * The migration seeds sensible defaults matching the Ontario Building
  * Code conventions the app uses in the spec (1/8" gaps, 8' max post
- * spacing, 1.78 bags/post for 6' fences, etc.).
+ * spacing, 1.78 bags/post for 6' fences, etc.). Labour per foot is
+ * stored separately for 6' and 8' fence heights.
  */
 class FenceFormulaSetting extends Model
 {
@@ -21,6 +22,7 @@ class FenceFormulaSetting extends Model
         'concrete_per_post_6ft',
         'concrete_per_post_8ft',
         'labour_rate_per_ft',
+        'labour_rate_8ft_per_ft',
         'rails_per_section_6ft',
         'rails_per_section_8ft',
         'nails_per_picket',
@@ -34,6 +36,7 @@ class FenceFormulaSetting extends Model
         'concrete_per_post_6ft' => 'decimal:3',
         'concrete_per_post_8ft' => 'decimal:3',
         'labour_rate_per_ft' => 'decimal:2',
+        'labour_rate_8ft_per_ft' => 'decimal:2',
         'rails_per_section_6ft' => 'integer',
         'rails_per_section_8ft' => 'integer',
         'nails_per_picket' => 'integer',
@@ -74,5 +77,16 @@ class FenceFormulaSetting extends Model
         return (int) (((int) round($heightFt)) === 8
             ? $this->rails_per_section_8ft
             : $this->rails_per_section_6ft);
+    }
+
+    /**
+     * Labour charged per linear foot for a given fence height (6' or 8').
+     * Falls back to the 6' rate if height is anything else.
+     */
+    public function labourRatePerFtForHeight(float $heightFt): float
+    {
+        return (float) (((int) round($heightFt)) === 8
+            ? $this->labour_rate_8ft_per_ft
+            : $this->labour_rate_per_ft);
     }
 }

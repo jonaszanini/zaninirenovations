@@ -223,10 +223,19 @@
               @endphp
               <tr class="cp-quotation-row">
                 <td class="col-description">
-                  <textarea name="items[{{ $i }}][description]"
-                            class="admin-input cp-quotation-row-desc"
-                            rows="2"
-                            placeholder="Describe this line item">{{ $row['description'] }}</textarea>
+                  @if ($isManual)
+                    <input type="text"
+                           name="items[{{ $i }}][description]"
+                           class="admin-input cp-quotation-row-desc"
+                           maxlength="2000"
+                           value="{{ $row['description'] }}"
+                           placeholder="Describe this line item">
+                  @else
+                    <textarea name="items[{{ $i }}][description]"
+                              class="admin-input cp-quotation-row-desc"
+                              rows="2"
+                              placeholder="Describe this line item">{{ $row['description'] }}</textarea>
+                  @endif
                 </td>
                 @if ($isHourlyManual)
                   <td class="col-line-kind">
@@ -356,10 +365,11 @@
     <template id="cp-invoice-row-template-hourly">
       <tr class="cp-quotation-row">
         <td class="col-description">
-          <textarea name="items[__INDEX__][description]"
-                    class="admin-input cp-quotation-row-desc"
-                    rows="2"
-                    placeholder="Describe this line item"></textarea>
+          <input type="text"
+                 name="items[__INDEX__][description]"
+                 class="admin-input cp-quotation-row-desc"
+                 maxlength="2000"
+                 placeholder="Describe this line item">
         </td>
         <td class="col-line-kind">
           <select name="items[__INDEX__][line_kind]" class="admin-input cp-invoice-line-kind" aria-label="Line type">
@@ -388,10 +398,18 @@
     <template id="cp-invoice-row-template">
       <tr class="cp-quotation-row">
         <td class="col-description">
-          <textarea name="items[__INDEX__][description]"
-                    class="admin-input cp-quotation-row-desc"
-                    rows="2"
-                    placeholder="Describe this line item"></textarea>
+          @if ($isManual)
+            <input type="text"
+                   name="items[__INDEX__][description]"
+                   class="admin-input cp-quotation-row-desc"
+                   maxlength="2000"
+                   placeholder="Describe this line item">
+          @else
+            <textarea name="items[__INDEX__][description]"
+                      class="admin-input cp-quotation-row-desc"
+                      rows="2"
+                      placeholder="Describe this line item"></textarea>
+          @endif
         </td>
         <td class="col-amount">
           <input type="text"

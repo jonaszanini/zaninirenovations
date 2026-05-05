@@ -27,6 +27,11 @@
           <span class="cp-contract-version">· {{ $quotationRows->count() }} document{{ $quotationRows->count() === 1 ? '' : 's' }}</span>
         @endif
       </p>
+      @if ($quotationRows->count() > 1)
+        <p class="admin-form-help" style="margin:8px 0 0;">
+          Each quotation is collapsed to a short summary — expand one to view the full PDF-style preview and workflow status.
+        </p>
+      @endif
     </div>
     <a href="{{ $quotationHub }}"
        class="admin-btn admin-btn--primary admin-btn--sm">
@@ -50,6 +55,9 @@
     </div>
   </div>
 @else
+  @php
+    $useQuotationAccordion = $quotationRows->count() > 1;
+  @endphp
   @foreach ($quotationRows as $quotation)
     @php
       $hasContent = $quotation->hasContent();
@@ -60,16 +68,229 @@
       $typeLabel = $quotation->typeLabel();
       $title = $quotation->title ?: $typeLabel;
       $legacy = $quotation->isLegacyManualSource();
+      $deleteConfirm = 'Delete '.$title.' ('.$quotation->quotation_number.') from this project? This also removes the calculator quotation from the Quotations hub.';
+      $items = $hasContent ? $quotation->cleanItems() : [];
+      $subtotal = $hasContent ? $quotation->subtotal() : 0.0;
+      $hst = $hasContent ? $quotation->hst() : 0.0;
+      $grand = $hasContent ? $quotation->grandTotal() : 0.0;
+      $summDesc = $title;
+      if ($hasContent && count($items) > 0) {
+          $firstDesc = trim((string) ($items[0]['description'] ?? ''));
+          if ($firstDesc !== '') {
+              $summDesc = \Illuminate\Support\Str::limit($firstDesc, 160);
+          }
+      }
+      if ($summDesc === $title) {
+          $wd = trim((string) ($quotation->work_description ?? ''));
+          if ($wd !== '') {
+              $summDesc = \Illuminate\Support\Str::limit($wd, 160);
+          }
+      }
+      if (! $hasContent) {
+          $summDesc = 'No line items yet — open the calculator to add scope.';
+      }
+      $previewWorkDesc = trim((string) ($quotation->work_description ?? ''));
     @endphp
 
-    @if ($hasContent)
-      @php
-        $items = $quotation->cleanItems();
-        $subtotal = $quotation->subtotal();
-        $hst = $quotation->hst();
-        $grand = $quotation->grandTotal();
-      @endphp
+    @if ($useQuotationAccordion)
+      {{-- Compact accordion when several quotations exist on one project --}}
+      <details class="cp-quotation-accordion admin-card cp-contract-card">
+        <summary class="cp-quotation-accordion__summary">
+          <span class="cp-quotation-accordion__chevron" aria-hidden="true"><i class="fa fa-chevron-right"></i></span>
+          <div class="cp-quotation-accordion__core">
+            <div class="cp-quotation-accordion__title-row">
+              <h3 class="cp-quotation-accordion__title">
+                {{ $title }}
+                <span class="cp-quotation-number">{{ $quotation->quotation_number }}</span>
+              </h3>
+              <div class="cp-quotation-accordion__total-block">
+                @if ($hasContent)
+                  <span class="cp-quotation-accordion__total-hint">Total w/ HST</span>
+                  <span class="cp-quotation-accordion__total">{{ \App\Models\ClientProject::formatMoney($grand) }}</span>
+                @else
+                  <span class="cp-quotation-accordion__total cp-quotation-accordion__total--muted">—</span>
+                @endif
+              </div>
+            </div>
+            <p class="cp-quotation-accordion__desc">{{ $summDesc }}</p>
+            <div class="cp-quotation-accordion__badges">
+              @if ($legacy)
+                <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy</span>
+              @endif
+              <span class="cp-badge" style="background:#e0e7ff;color:#3730a3;">{{ $quotation->statusLabel() }}</span>
+              @if ($quotation->isSent())
+                <span class="cp-badge" style="background:#22c55e20;color:#15803d;">
+                  <i class="fa fa-check"></i> Sent
+                </span>
+              @else
+                <span class="cp-badge" style="background:#f59e0b20;color:#b45309;">Not emailed</span>
+              @endif
+              <span class="cp-contract-version">{{ $typeLabel }}</span>
+            </div>
+          </div>
+          <div class="cp-quotation-accordion__actions" onclick="event.stopPropagation();">
+            @unless ($legacy)
+              <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
+                 class="admin-btn admin-btn--ghost admin-btn--sm">
+                <i class="fa fa-pencil"></i> Edit
+              </a>
+            @endunless
+            @if ($legacy)
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" disabled title="Read-only legacy document.">
+                <i class="fa fa-ban"></i>
+              </button>
+            @endif
+            @if ($hasContent)
+              <a href="{{ route('admin.client-projects.quotation.pdf', [$project, $quotation]) }}"
+                 target="_blank" rel="noopener"
+                 class="admin-btn admin-btn--ghost admin-btn--sm">
+                <i class="fa fa-download"></i> PDF
+              </a>
+            @else
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" disabled title="Add line items before PDF is available.">
+                <i class="fa fa-download"></i> PDF
+              </button>
+            @endif
+            @if ($canSend && ! $legacy)
+              <form action="{{ route('admin.client-projects.quotation.send', [$project, $quotation]) }}"
+                    method="post" class="cp-inline-form"
+                    onsubmit='return confirm(@json($sendConfirmMessage));'>
+                @csrf
+                <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
+                  <i class="fa fa-paper-plane"></i> {{ $quotation->isSent() ? 'Resend' : 'Send' }}
+                </button>
+              </form>
+            @else
+              <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" disabled
+                      title="{{ $legacy ? 'Not sendable.' : (($canDeliverByEmail || $canDeliverBySms) ? 'Add line items first.' : 'Add a delivery channel.') }}">
+                <i class="fa fa-paper-plane"></i>
+              </button>
+            @endif
+            @unless ($legacy)
+              <form action="{{ route('admin.client-projects.quotation.destroy', [$project, $quotation]) }}"
+                    method="post" class="cp-inline-form"
+                    onsubmit='return confirm(@json($deleteConfirm));'>
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" title="Delete quotation">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </form>
+            @endunless
+          </div>
+        </summary>
 
+        <div class="cp-quotation-accordion__panel">
+          <div class="cp-contract-meta-row cp-quotation-accordion__panel-meta">
+            @if ($quotation->isSent())
+              <span class="cp-contract-version">Sent {{ \App\Models\ClientProject::formatDateTime($quotation->sent_at) }} · Version {{ $quotation->version }}</span>
+            @endif
+            <span class="cp-contract-version">Last saved {{ \App\Models\ClientProject::formatDateTime($quotation->updated_at) }}</span>
+          </div>
+
+          <div class="cp-quotation-accordion__status-row">
+            <form method="post"
+                  action="{{ route('admin.client-projects.quotation.status', [$project, $quotation]) }}"
+                  class="cp-inline-form"
+                  style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              @csrf
+              <label for="cp-q-status-{{ $quotation->id }}" class="admin-form-help" style="margin:0;">Workflow status</label>
+              <select id="cp-q-status-{{ $quotation->id }}" name="status" class="admin-input" style="width:auto;min-width:160px;" onchange="this.form.submit()">
+                <option value="{{ ClientProjectQuotation::STATUS_DRAFT }}" @selected($quotation->status === ClientProjectQuotation::STATUS_DRAFT)>Draft</option>
+                <option value="{{ ClientProjectQuotation::STATUS_SENT }}" @selected($quotation->status === ClientProjectQuotation::STATUS_SENT)>Sent</option>
+                <option value="{{ ClientProjectQuotation::STATUS_ACCEPTED }}" @selected($quotation->status === ClientProjectQuotation::STATUS_ACCEPTED)>Accepted</option>
+                <option value="{{ ClientProjectQuotation::STATUS_REJECTED }}" @selected($quotation->status === ClientProjectQuotation::STATUS_REJECTED)>Rejected</option>
+              </select>
+            </form>
+          </div>
+
+          @if (!$canDeliverByEmail && !$canDeliverBySms && ! $legacy)
+            <div class="cp-contract-warning">
+              <i class="fa fa-exclamation-triangle"></i>
+              <div>
+                <strong>Cannot send until at least one delivery channel exists (email or SMS-capable phone).</strong>
+                <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project</a>
+              </div>
+            </div>
+          @endif
+
+          @if ($hasContent)
+            <div class="cp-contract-preview cp-quotation-preview">
+              <div class="cp-quotation-doc-meta">
+                <div>
+                  <div class="cp-quotation-doc-title">{{ $typeLabel }} #{{ $quotation->quotation_number }}</div>
+                  <div class="cp-quotation-doc-date">Date: {{ \App\Support\EasternStandardTimeDisplay::todayLongDate() }}</div>
+                </div>
+                <div class="cp-quotation-doc-client">
+                  <div class="cp-party-label">CLIENT</div>
+                  <div class="cp-party-name">{{ $project->client_name ?: '—' }}</div>
+                  <div>{{ $project->client_address ?: '—' }}</div>
+                  <div>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</div>
+                  <div>{{ $project->client_email ?: '—' }}</div>
+                </div>
+              </div>
+
+              <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
+
+              @if ($previewWorkDesc !== '')
+                <div class="cp-quotation-work-description">
+                  <div class="cp-quotation-work-description-title">Description of the work</div>
+                  <div class="cp-quotation-work-description-body">{!! nl2br(e($previewWorkDesc)) !!}</div>
+                </div>
+              @endif
+
+              <table class="cp-quotation-items">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th class="cp-quotation-hst-col">HST</th>
+                    <th class="amount">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @foreach ($items as $row)
+                    <tr>
+                      <td>{!! nl2br(e($row['description'])) !!}</td>
+                      <td class="cp-quotation-hst-col">{{ !empty($row['apply_hst']) ? '13%' : '—' }}</td>
+                      <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
+                    </tr>
+                  @endforeach
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td class="totals-label" colspan="2">Subtotal</td>
+                    <td class="amount">{{ \App\Models\ClientProject::formatMoney($subtotal) }}</td>
+                  </tr>
+                  <tr>
+                    <td class="totals-label" colspan="2">HST (13% on marked lines)</td>
+                    <td class="amount">{{ \App\Models\ClientProject::formatMoney($hst) }}</td>
+                  </tr>
+                  <tr class="grand-row">
+                    <td class="totals-label" colspan="2">Total with HST</td>
+                    <td class="amount">{{ \App\Models\ClientProject::formatMoney($grand) }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          @else
+            <div class="cp-quotation-accordion__empty-body">
+              @if ($legacy)
+                <p class="admin-form-help">Legacy document with no line items on file.</p>
+                <a href="{{ $quotationHub }}" class="admin-btn admin-btn--primary admin-btn--sm">
+                  <i class="fa fa-th"></i> Create quotation
+                </a>
+              @else
+                <p class="admin-form-help">No line items yet.</p>
+                <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
+                   class="admin-btn admin-btn--primary admin-btn--sm">
+                  <i class="fa fa-pencil"></i> Edit in calculator
+                </a>
+              @endif
+            </div>
+          @endif
+        </div>
+      </details>
+    @elseif ($hasContent)
       <div class="admin-card cp-contract-card" style="margin-bottom:1.25rem;">
         <div class="cp-contract-header">
           <div class="cp-contract-meta">
@@ -136,6 +357,19 @@
                 <i class="fa fa-paper-plane"></i> Send
               </button>
             @endif
+
+            @unless ($legacy)
+              <form action="{{ route('admin.client-projects.quotation.destroy', [$project, $quotation]) }}"
+                    method="post"
+                    class="cp-inline-form"
+                    onsubmit='return confirm(@json($deleteConfirm));'>
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" title="Remove this document from the project and delete the linked calculator quote.">
+                  <i class="fa fa-trash"></i> Delete
+                </button>
+              </form>
+            @endunless
           </div>
 
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">
@@ -182,9 +416,6 @@
 
           <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
 
-          @php
-            $previewWorkDesc = trim((string) ($quotation->work_description ?? ''));
-          @endphp
           @if ($previewWorkDesc !== '')
             <div class="cp-quotation-work-description">
               <div class="cp-quotation-work-description-title">Description of the work</div>
@@ -236,10 +467,24 @@
           </a>
         @else
           <p class="admin-form-help">No line items yet.</p>
-          <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
-             class="admin-btn admin-btn--primary admin-btn--sm">
-            <i class="fa fa-pencil"></i> Edit in calculator
-          </a>
+          <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+            <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
+               class="admin-btn admin-btn--primary admin-btn--sm">
+              <i class="fa fa-pencil"></i> Edit in calculator
+            </a>
+            @unless ($legacy)
+              <form action="{{ route('admin.client-projects.quotation.destroy', [$project, $quotation]) }}"
+                    method="post"
+                    class="cp-inline-form"
+                    onsubmit='return confirm(@json($deleteConfirm));'>
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">
+                  <i class="fa fa-trash"></i> Delete
+                </button>
+              </form>
+            @endunless
+          </div>
         @endif
       </div>
     @endif

@@ -345,6 +345,30 @@ class ClientProjectQuotationController extends Controller
     }
 
     /**
+     * Remove a calculator-linked quotation from the project and delete the
+     * underlying Fence / Standard / Paving record (same net effect as the hub).
+     */
+    public function destroy(ClientProject $client_project, ClientProjectQuotation $quotation)
+    {
+        $this->authorizeQuotation($client_project, $quotation);
+
+        if ($quotation->isLegacyManualSource()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('quotation')
+                ->with('error', 'Legacy documents cannot be deleted from here.');
+        }
+
+        $number = $quotation->quotation_number;
+        ClientProjectQuotation::deleteWithLinkedCalculatorSource($quotation);
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('quotation')
+            ->with('success', 'Quotation '.$number.' was removed from this project.');
+    }
+
+    /**
      * Build the PDF object from the Blade template. Centralised so that
      * download/email use the exact same template + dompdf options as the
      * Contract feature (Roboto via @font-face, A4, remote enabled, html5

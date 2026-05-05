@@ -276,7 +276,16 @@ class StandardQuotationController extends Controller
 
     public function destroy(StandardQuotation $standard_quotation)
     {
-        $standard_quotation->delete();
+        $cpq = ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_STANDARD)
+            ->where('source_id', $standard_quotation->id)
+            ->first();
+
+        if ($cpq) {
+            ClientProjectQuotation::deleteWithLinkedCalculatorSource($cpq);
+        } else {
+            $standard_quotation->delete();
+        }
 
         return redirect()
             ->route('admin.quotations.standard.index')

@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 /**
  * Handles the Fence module's configuration pages — the materials
  * catalogue (product fields, price, URL, nail box size) and the formula settings
- * (labour rate, concrete-per-post, rails-per-section, etc).
+ * (labour rates per fence height, concrete-per-post, rails-per-section, etc).
  *
  * Materials are never created or deleted through the UI; catalogue
  * fields (including product metadata) are writeable. This keeps the
@@ -73,6 +73,7 @@ class FenceConfigController extends Controller
             'concrete_per_post_6ft' => ['required', 'numeric', 'min:0', 'max:20'],
             'concrete_per_post_8ft' => ['required', 'numeric', 'min:0', 'max:20'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'rails_per_section_6ft' => ['required', 'integer', 'min:1', 'max:10'],
             'rails_per_section_8ft' => ['required', 'integer', 'min:1', 'max:10'],
             'nails_per_picket' => ['required', 'integer', 'min:1', 'max:50'],

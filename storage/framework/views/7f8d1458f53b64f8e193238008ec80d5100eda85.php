@@ -206,6 +206,13 @@
       <input type="hidden" name="client_address" value="<?php echo e($project->client_address); ?>">
       <input type="hidden" name="notes" value="<?php echo e($project->notes); ?>">
 
+      <?php
+        $cpShowVisitDateVal = old('visit_date', optional($project->visit_date)?->toDateString());
+        $cpShowVisitExpandOpen = (bool) old('visit_required', $project->visit_required)
+          || (bool) old('visit_done', $project->visit_done)
+          || filled($cpShowVisitDateVal)
+          || $errors->has('visit_date');
+      ?>
       <div class="admin-card cp-visit-card">
         <h3>Visit date</h3>
         <p class="admin-form-help">Use this when the client wants an on-site visit before work is scheduled. Turn on <strong>Visit required</strong> to set a date. Check <strong>Visit done</strong> after the visit — the project list will then show job start/end dates again.</p>
@@ -217,11 +224,14 @@
             <span>Visit required</span>
           </label>
         </div>
-        <div class="admin-form-group cp-visit-date">
-          <label for="cp-visit-date">Visit date</label>
-          <input type="date" id="cp-visit-date" name="visit_date"
-            value="<?php echo e(old('visit_date', optional($project->visit_date)->toDateString())); ?>">
-          <?php $__errorArgs = ['visit_date'];
+        <div id="cp-schedule-visit-expandable" class="cp-visit-expandable <?php if($cpShowVisitExpandOpen): ?> is-open <?php endif; ?>"
+             aria-hidden="<?php echo e($cpShowVisitExpandOpen ? 'false' : 'true'); ?>">
+          <div class="cp-visit-expandable__inner">
+            <div class="admin-form-group cp-visit-date">
+              <label for="cp-visit-date">Visit date</label>
+              <input type="date" id="cp-visit-date" name="visit_date"
+                value="<?php echo e($cpShowVisitDateVal); ?>">
+              <?php $__errorArgs = ['visit_date'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -229,14 +239,16 @@ $message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php 
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
-        </div>
-        <input type="hidden" name="visit_done" value="0">
-        <div class="admin-form-group cp-visit-toggle">
-          <label class="cp-checkbox-label">
-            <input type="checkbox" name="visit_done" value="1" id="cp-visit-done"
-              <?php if(old('visit_done', $project->visit_done)): echo 'checked'; endif; ?>>
-            <span>Visit done</span>
-          </label>
+            </div>
+            <input type="hidden" name="visit_done" value="0">
+            <div class="admin-form-group cp-visit-toggle">
+              <label class="cp-checkbox-label">
+                <input type="checkbox" name="visit_done" value="1" id="cp-visit-done"
+                  <?php if(old('visit_done', $project->visit_done)): echo 'checked'; endif; ?>>
+                <span>Visit done</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -573,6 +585,17 @@ unset($__errorArgs, $__bag); ?>
       var visitCb = document.getElementById('cp-visit-required');
       var visitDate = document.getElementById('cp-visit-date');
       var visitDoneCb = document.getElementById('cp-visit-done');
+      var visitExpand = document.getElementById('cp-schedule-visit-expandable');
+
+      function syncVisitExpandable() {
+        if (!visitExpand) return;
+        var required = visitCb ? visitCb.checked : false;
+        var done = visitDoneCb ? visitDoneCb.checked : false;
+        var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
+        var open = required || done || hasDate;
+        visitExpand.classList.toggle('is-open', open);
+        visitExpand.setAttribute('aria-hidden', open ? 'false' : 'true');
+      }
 
       function syncVisitFields() {
         if (!visitDate) return;
@@ -581,6 +604,7 @@ unset($__errorArgs, $__bag); ?>
         visitDate.readOnly = !!done;
         visitDate.disabled = !done && !required;
         visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
+        syncVisitExpandable();
       }
 
       function checkScheduleDates() {
@@ -606,6 +630,8 @@ unset($__errorArgs, $__bag); ?>
       }
       if (visitCb) visitCb.addEventListener('change', syncVisitFields);
       if (visitDoneCb) visitDoneCb.addEventListener('change', syncVisitFields);
+      if (visitDate) visitDate.addEventListener('change', syncVisitExpandable);
+      if (visitDate) visitDate.addEventListener('input', syncVisitExpandable);
       syncVisitFields();
 
       form.addEventListener('submit', function (e) {

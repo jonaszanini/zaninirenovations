@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -210,6 +211,35 @@ class ClientProjectQuotation extends Model
     public function isAccepted(): bool
     {
         return $this->status === self::STATUS_ACCEPTED;
+    }
+
+    /**
+     * Delete this row and the linked Fence / Standard / Paving calculator
+     * record. Does nothing for legacy manual documents — callers must guard.
+     */
+    public static function deleteWithLinkedCalculatorSource(self $quotation): void
+    {
+        DB::transaction(function () use ($quotation) {
+            $projectId = (int) $quotation->client_project_id;
+            $sourceType = $quotation->source_type;
+            $sourceId = (int) ($quotation->source_id ?? 0);
+
+            $quotation->delete();
+
+            if ($sourceId > 0) {
+                match ($sourceType) {
+                    self::SOURCE_FENCE => FenceQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_STANDARD => StandardQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_PAVING => PavingQuotation::query()->whereKey($sourceId)->delete(),
+                    default => null,
+                };
+            }
+
+            $project = ClientProject::query()->find($projectId);
+            if ($project && ! $project->isHourly()) {
+                $project->syncFixedContractTotalsFromQuotation();
+            }
+        });
     }
 
     /** Sum of accepted quotations' stored total_amount (grand total, incl. line HST). */
