@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Storage;
  * data (line items) so the PDF can be auto-rendered and totals
  * (subtotal / HST / grand total) auto-calculated.
  *
- * One quotation per project (unique on client_project_id).
+ * A project may have multiple quotations (manual line items, linked fence,
+ * standard, paving, etc.). Use {@see ClientProject::quotations()}.
  */
 class ClientProjectQuotation extends Model
 {
@@ -21,8 +22,31 @@ class ClientProjectQuotation extends Model
 
     public const HST_RATE = 0.13;
 
+    public const STATUS_DRAFT = 'draft';
+
+    public const STATUS_SENT = 'sent';
+
+    public const STATUS_ACCEPTED = 'accepted';
+
+    public const STATUS_REJECTED = 'rejected';
+
+    /** Line-item editor only (no standalone calculator link). */
+    public const SOURCE_MANUAL = 'manual';
+
+    public const SOURCE_FENCE = 'fence';
+
+    public const SOURCE_PAVING = 'paving';
+
+    public const SOURCE_STANDARD = 'standard';
+
     protected $fillable = [
         'client_project_id',
+        'title',
+        'status',
+        'total_amount',
+        'source_type',
+        'source_id',
+        'source_snapshot',
         'type',
         'labour',
         'material',
@@ -38,8 +62,10 @@ class ClientProjectQuotation extends Model
         'labour' => 'boolean',
         'material' => 'boolean',
         'items' => 'array',
+        'source_snapshot' => 'array',
         'sent_at' => 'datetime',
         'version' => 'integer',
+        'total_amount' => 'decimal:2',
     ];
 
     public function project(): BelongsTo
@@ -61,6 +87,12 @@ class ClientProjectQuotation extends Model
         static::deleting(function (self $quotation): void {
             if (filled($quotation->pdf_path)) {
                 Storage::disk('local')->delete($quotation->pdf_path);
+            }
+        });
+
+        static::saving(function (self $quotation): void {
+            if ($quotation->hasContent()) {
+                $quotation->total_amount = $quotation->grandTotal();
             }
         });
     }
@@ -142,6 +174,33 @@ class ClientProjectQuotation extends Model
     public function grandTotal(): float
     {
         return round($this->subtotal() + $this->hst(), 2);
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            self::STATUS_SENT => 'Sent',
+            self::STATUS_ACCEPTED => 'Accepted',
+            self::STATUS_REJECTED => 'Rejected',
+            default => 'Draft',
+        };
+    }
+
+    public function isAccepted(): bool
+    {
+        return $this->status === self::STATUS_ACCEPTED;
+    }
+
+    /** Sum of accepted quotations' stored total_amount (grand total, incl. line HST). */
+    public static function acceptedGrandTotalForProject(ClientProject $project): float
+    {
+        return round(
+            (float) static::query()
+                ->where('client_project_id', $project->id)
+                ->where('status', self::STATUS_ACCEPTED)
+                ->sum('total_amount'),
+            2
+        );
     }
 
     /** HST amount attributed to a single cleaned row (for PDFs / previews). */

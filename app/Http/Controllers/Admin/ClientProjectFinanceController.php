@@ -47,15 +47,12 @@ class ClientProjectFinanceController extends Controller
         $paidCount = $client_project->installments()->where('is_paid', true)->count();
 
         if ($paidCount === 0) {
-            $quotation = $client_project->quotation;
-            if (!$quotation || !$quotation->hasContent()) {
+            $total = $client_project->quotationSubtotalForFinancials();
+            if ($total === null || $total < 0.01) {
                 return back()
-                    ->with('error', 'Add and save a quotation with line items first. The payment plan uses the quotation pre-tax subtotal per installment; invoices add 13% HST on each installment amount.');
+                    ->with('error', 'Accept at least one quotation with line items first (or add items to an accepted quotation). The payment plan uses the combined pre-tax subtotal of accepted quotations; invoices allocate HST in proportion to those lines.');
             }
-            $total = round((float) $quotation->subtotal(), 2);
-            if ($total < 0.01) {
-                return back()->with('error', 'Quotation line items must sum to more than zero before saving the payment plan.');
-            }
+            $total = round((float) $total, 2);
         } else {
             $total = round((float) $client_project->total_amount, 2);
             if ($total < 0.01) {

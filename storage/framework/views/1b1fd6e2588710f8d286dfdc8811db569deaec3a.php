@@ -70,7 +70,7 @@
       </p>
     </div>
 
-    <form action="<?php echo e(route('admin.client-projects.quotation.update', $project)); ?>"
+    <form action="<?php echo e(route('admin.client-projects.quotation.update', [$project, $quotation])); ?>"
           method="post"
           id="cp-quotation-form">
       <?php echo csrf_field(); ?>

@@ -358,31 +358,47 @@ class PavingQuotationController extends Controller
         PavingQuotation $pavingQuotation,
         string $lineDescription
     ): void {
-        /** @var ClientProjectQuotation $projectQuote */
-        $projectQuote = $project->quotation()->firstOrNew([]);
-
-        if (! $projectQuote->exists) {
-            $projectQuote->client_project_id = $project->id;
-            $projectQuote->type = ClientProjectQuotation::TYPE_QUOTATION;
-            $projectQuote->labour = true;
-            $projectQuote->material = true;
-            $projectQuote->quotation_number = ClientProjectQuotation::generateNumber(
-                ClientProjectQuotation::TYPE_QUOTATION
-            );
-            $projectQuote->items = [];
-            $projectQuote->version = 1;
-        }
-
-        $items = is_array($projectQuote->items) ? $projectQuote->items : [];
         $ref = '(see '.$pavingQuotation->quote_number.')';
-        $items[] = [
+
+        $items = [[
             'description' => $lineDescription.' '.$ref,
             'amount' => round((float) $pavingQuotation->final_quote_total, 2),
             'apply_hst' => false,
-        ];
+        ]];
 
-        $projectQuote->items = $items;
-        $projectQuote->save();
+        $snapshot = $pavingQuotation->only([
+            'quote_number',
+            'client_name',
+            'inputs',
+            'calculation',
+            'final_quote_total',
+            'version',
+        ]);
+
+        /** @var ClientProjectQuotation $row */
+        $row = ClientProjectQuotation::firstOrNew([
+            'client_project_id' => $project->id,
+            'source_type' => ClientProjectQuotation::SOURCE_PAVING,
+            'source_id' => $pavingQuotation->id,
+        ]);
+
+        if (!$row->exists) {
+            $row->fill([
+                'title' => 'Paving — '.$pavingQuotation->quote_number,
+                'status' => ClientProjectQuotation::STATUS_DRAFT,
+                'type' => ClientProjectQuotation::TYPE_QUOTATION,
+                'labour' => true,
+                'material' => true,
+                'quotation_number' => ClientProjectQuotation::generateNumber(
+                    ClientProjectQuotation::TYPE_QUOTATION
+                ),
+                'version' => 1,
+            ]);
+        }
+
+        $row->items = $items;
+        $row->source_snapshot = $snapshot;
+        $row->save();
 
         $project->refresh();
         $project->syncFixedContractTotalsFromQuotation();

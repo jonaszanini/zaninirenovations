@@ -38,17 +38,16 @@ class ClientProjectInstallment extends Model
 
     /**
      * HST attributable to this installment, sliced proportionally from
-     * the quotation's actual HST.
+     * all accepted project quotations' combined HST.
      *
      * Why proportional, not 13% × amount?
      * Quotation lines can opt out of HST individually (apply_hst flag),
-     * so the quotation's effective HST rate is whatever
-     *   quotation.hst() / quotation.subtotal()
-     * works out to — never assume 13% across the board.
+     * so the effective rate is
+     *   sum(quotation.hst()) / sum(quotation.subtotal())
+     * across accepted quotations — never assume 13% across the board.
      *
-     * Falls back to 13% × amount only when the project has no quotation
-     * (legacy / manually-set total_amount). New projects always have a
-     * quotation since saveInstallments() refuses to run without one.
+     * Falls back to 13% × amount only when there is no accepted quotation
+     * basis (legacy / manually-set total_amount).
      */
     public function effectiveHst(): float
     {
@@ -62,26 +61,21 @@ class ClientProjectInstallment extends Model
             return round($amount * self::FALLBACK_HST_RATE, 2);
         }
 
-        $quotation = $project->relationLoaded('quotation') ? $project->quotation : $project->quotation()->first();
-        if (!$quotation || !$quotation->hasContent()) {
+        $sub = $project->acceptedQuotationsFinancialAggregateSubtotal();
+        if ($sub < 0.01) {
             return round($amount * self::FALLBACK_HST_RATE, 2);
         }
 
-        $sub = (float) $quotation->subtotal();
-        if ($sub < 0.01) {
-            return 0.0;
-        }
-
+        $hstSum = $project->acceptedQuotationsFinancialAggregateHst();
         $share = $amount / $sub;
 
-        return round((float) $quotation->hst() * $share, 2);
+        return round($hstSum * $share, 2);
     }
 
     /**
      * What the client actually pays for this installment: pre-tax amount +
-     * its proportional slice of the quotation's HST. Equivalent to
-     * percentage × quotation.grandTotal() / 100, but routed through the
-     * stored amount so it stays correct even if the quotation drifted
+     * its proportional slice of the combined accepted quotations' HST. Routed
+     * through the stored amount so it stays correct if quotations change
      * after the payment plan was saved.
      */
     public function effectiveTotal(): float
@@ -90,11 +84,11 @@ class ClientProjectInstallment extends Model
     }
 
     /**
-     * Effective HST rate for THIS installment, derived from the quotation.
+     * Effective HST rate for THIS installment, derived from accepted quotations.
      * Used by the Financials JS preview so the live "Amount (incl. HST)"
      * stays in sync with the server-side numbers when percentages change.
      *
-     * Returns FALLBACK_HST_RATE when no quotation is available.
+     * Returns FALLBACK_HST_RATE when no accepted quotation basis is available.
      */
     public function effectiveHstRate(): float
     {
@@ -103,16 +97,11 @@ class ClientProjectInstallment extends Model
             return self::FALLBACK_HST_RATE;
         }
 
-        $quotation = $project->relationLoaded('quotation') ? $project->quotation : $project->quotation()->first();
-        if (!$quotation || !$quotation->hasContent()) {
+        $sub = $project->acceptedQuotationsFinancialAggregateSubtotal();
+        if ($sub < 0.01) {
             return self::FALLBACK_HST_RATE;
         }
 
-        $sub = (float) $quotation->subtotal();
-        if ($sub < 0.01) {
-            return 0.0;
-        }
-
-        return (float) $quotation->hst() / $sub;
+        return $project->acceptedQuotationsFinancialAggregateHst() / $sub;
     }
 }

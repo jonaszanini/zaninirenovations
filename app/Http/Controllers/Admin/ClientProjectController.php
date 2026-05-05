@@ -192,7 +192,7 @@ class ClientProjectController extends Controller
             'timeEntries',
             'statusHistory.user',
             'contract',
-            'quotation',
+            'quotations',
             // invoices.timeEntries is used by the hourly invoice tab to
             // show "N time entries snapshotted" under each invoice row.
             'invoices.timeEntries',

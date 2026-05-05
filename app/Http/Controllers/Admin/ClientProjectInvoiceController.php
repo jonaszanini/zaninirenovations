@@ -10,6 +10,7 @@ use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInvoice;
+use App\Models\ClientProjectQuotation;
 use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
@@ -914,11 +915,21 @@ class ClientProjectInvoiceController extends Controller
                 $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
             }
         } else {
-            // Manual invoice with empty seed total. HST is irrelevant on
-            // a $0 draft but we keep the 13% formula here so saves later
-            // (with a real subtotal) re-compute correctly.
-            $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
+            // Manual invoice: seed pre-tax / HST from accepted quotations on fixed-price jobs.
+            if (!$project->isHourly()) {
+                $qSub = $project->quotationSubtotalForFinancials();
+                if ($qSub !== null && $qSub >= 0.01) {
+                    $subtotal = $qSub;
+                    $hst = round((float) $project->acceptedQuotationsFinancialAggregateHst(), 2);
+                } else {
+                    $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
+                }
+            } else {
+                $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
+            }
         }
+
+        $snap = $this->buildAcceptedQuotationsSnapshot($project);
 
         return $project->invoices()->create([
             'installment_number' => $installmentNumber,
@@ -927,10 +938,36 @@ class ClientProjectInvoiceController extends Controller
             'items' => $items,
             'subtotal' => $subtotal,
             'hst' => $hst,
+            'hst_exempt' => false,
             'total' => round($subtotal + $hst, 2),
             'status' => ClientProjectInvoice::STATUS_DRAFT,
             'version' => 1,
+            'included_project_quotation_ids' => $snap['ids'],
+            'included_quotations_snapshot' => $snap['rows'],
         ]);
+    }
+
+    /**
+     * @return array{ids: list<int>, rows: list<array<string, mixed>>}
+     */
+    protected function buildAcceptedQuotationsSnapshot(ClientProject $project): array
+    {
+        $accepted = ClientProjectQuotation::query()
+            ->where('client_project_id', $project->id)
+            ->where('status', ClientProjectQuotation::STATUS_ACCEPTED)
+            ->orderBy('id')
+            ->get(['id', 'title', 'quotation_number', 'status', 'total_amount']);
+
+        return [
+            'ids' => $accepted->pluck('id')->values()->all(),
+            'rows' => $accepted->map(static fn (ClientProjectQuotation $q) => [
+                'id' => $q->id,
+                'title' => $q->title,
+                'quotation_number' => $q->quotation_number,
+                'status' => $q->status,
+                'total_amount' => $q->total_amount !== null ? (float) $q->total_amount : null,
+            ])->values()->all(),
+        ];
     }
 
     /**
@@ -1019,6 +1056,8 @@ class ClientProjectInvoiceController extends Controller
         // with the invoice insert — an exception anywhere rolls back
         // and leaves the entries unbilled.
         return DB::transaction(function () use ($project, $items, $labour, $hst, $grand, $unbilledEntries) {
+            $snap = $this->buildAcceptedQuotationsSnapshot($project);
+
             $invoice = $project->invoices()->create([
                 'installment_number' => null,
                 'installment_description' => 'Hourly work',
@@ -1026,9 +1065,12 @@ class ClientProjectInvoiceController extends Controller
                 'items' => $items,
                 'subtotal' => $labour,
                 'hst' => $hst,
+                'hst_exempt' => false,
                 'total' => $grand,
                 'status' => ClientProjectInvoice::STATUS_DRAFT,
                 'version' => 1,
+                'included_project_quotation_ids' => $snap['ids'],
+                'included_quotations_snapshot' => $snap['rows'],
             ]);
 
             // Attach the time entries to this invoice so they're treated

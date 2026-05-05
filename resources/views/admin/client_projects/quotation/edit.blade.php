@@ -73,7 +73,7 @@
       </p>
     </div>
 
-    <form action="{{ route('admin.client-projects.quotation.update', $project) }}"
+    <form action="{{ route('admin.client-projects.quotation.update', [$project, $quotation]) }}"
           method="post"
           id="cp-quotation-form">
       @csrf

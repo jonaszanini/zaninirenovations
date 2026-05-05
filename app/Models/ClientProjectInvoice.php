@@ -67,6 +67,8 @@ class ClientProjectInvoice extends Model
         'invoice_pdf_path',
         'receipt_pdf_path',
         'version',
+        'included_project_quotation_ids',
+        'included_quotations_snapshot',
     ];
 
     protected $casts = [
@@ -81,6 +83,8 @@ class ClientProjectInvoice extends Model
         'paid_at' => 'datetime',
         'due_on' => 'date',
         'version' => 'integer',
+        'included_project_quotation_ids' => 'array',
+        'included_quotations_snapshot' => 'array',
     ];
 
     public function project(): BelongsTo

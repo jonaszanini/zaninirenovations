@@ -49,7 +49,7 @@ class AdminDashboardService
             ->with([
                 'installments' => fn ($q) => $q->orderBy('sort_order'),
                 'invoices',
-                'quotation',
+                'quotations',
             ])
             ->where('status', '!=', ClientProject::STATUS_REJECTED)
             ->get();
@@ -574,15 +574,15 @@ class AdminDashboardService
 
         $potential = 0.0;
         foreach ($openProjects as $p) {
-            $q = $p->quotation;
-            if ($q && $q->hasContent()) {
-                $potential += $q->grandTotal();
+            $fromQuotes = (float) $p->quotations->sum(function ($q) {
+                return $q->hasContent() ? $q->grandTotal() : 0.0;
+            });
+            if ($fromQuotes >= 0.01) {
+                $potential += $fromQuotes;
             } elseif ((float) ($p->total_amount ?? 0) > 0) {
                 $potential += (float) $p->total_amount * (1 + ClientProject::HST_RATE);
             }
         }
-
-        $fenceOpen = FenceQuotation::query()->whereNull('client_project_id')->count();
         $fenceValue = (float) FenceQuotation::query()->whereNull('client_project_id')->sum('grand_total');
 
         return [

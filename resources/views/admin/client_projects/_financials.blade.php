@@ -6,9 +6,9 @@
   $paidInstallmentCount = $installments->where('is_paid', true)->count();
   $planIsLocked = $paidInstallmentCount > 0;
   $hourlyRateConfigured = (float) ($project->hourly_rate ?? 0);
-  $hasQuot = $project->quotation && $project->quotation->hasContent();
-  $quotSub = $hasQuot ? (float) $project->quotation->subtotal() : null;
-  $quotGrand = $hasQuot ? (float) $project->quotation->grandTotal() : null;
+  $quotSub = $project->quotationSubtotalForFinancials();
+  $quotGrand = $project->quotationGrandTotalForFinancials();
+  $hasQuot = $quotSub !== null && $quotSub >= 0.01;
   // Pre-tax basis for installment % (matches DB total_amount when in sync).
   $hiddenPreTax = $paidInstallmentCount > 0
       ? $totalAmount
@@ -25,7 +25,7 @@
   // quotation's HST ÷ subtotal, so it equals 13% only when every line
   // had HST applied. See ClientProjectInstallment::effectiveHst().
   $effectiveHstRate = $hasQuot && $quotSub > 0
-      ? (float) $project->quotation->hst() / (float) $quotSub
+      ? (float) $project->acceptedQuotationsFinancialAggregateHst() / (float) $quotSub
       : \App\Models\ClientProject::HST_RATE;
 @endphp
 
@@ -95,7 +95,7 @@
           <label>Total with HST (from quotation)</label>
           @if ($hasQuot)
             <p class="cp-financials-locked-total" id="cp-total-with-hst-display">{{ \App\Models\ClientProject::formatMoney($quotGrand) }}</p>
-            <p class="admin-form-help">Pre-tax subtotal (used for installment %): {{ \App\Models\ClientProject::formatMoney($quotSub) }}. Edit line items and HST checkboxes on the <a href="{{ route('admin.client-projects.quotation.edit', $project) }}">Quotation editor</a>.</p>
+            <p class="admin-form-help">Pre-tax subtotal (used for installment %): {{ \App\Models\ClientProject::formatMoney($quotSub) }}. Edit line items and HST checkboxes on the <a href="{{ route('admin.client-projects.quotation.open', $project) }}">Quotation tab</a>.</p>
           @else
             <p class="cp-financials-locked-total">—</p>
             <p class="admin-form-help">Add a quotation with line items first. @if ($paidInstallmentCount > 0) Payment totals stay fixed while installments are paid. @endif</p>

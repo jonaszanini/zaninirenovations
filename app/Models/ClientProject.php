@@ -178,17 +178,10 @@ class ClientProject extends Model
         return $this->hasOne(ClientProjectContract::class);
     }
 
-    public function quotation(): HasOne
+    public function quotations(): HasMany
     {
-        return $this->hasOne(ClientProjectQuotation::class);
+        return $this->hasMany(ClientProjectQuotation::class, 'client_project_id')->orderBy('id');
     }
-
-    /**
-     * Specialised quotations (Standard, future Fence, etc.) that have
-     * been linked to this project. The project's own ClientProjectQuotation
-     * acts as the rendered view of these — line items are auto-synced
-     * each time a linked specialised quotation is saved.
-     */
     public function standardQuotations(): HasMany
     {
         return $this->hasMany(StandardQuotation::class)->orderByDesc('id');
@@ -390,34 +383,83 @@ class ClientProject extends Model
     }
 
     /**
-     * Fixed-price: sum of quotation line amounts (pre-HST). Used as the basis
-     * for payment-plan percentages — matches invoice line subtotals + 13% HST.
+     * Accepted project quotations: used for payment-plan and installment
+     * HST allocation (sum of per-line HST; lines may be HST-exempt).
+     *
+     * @return \Illuminate\Support\Collection<int, ClientProjectQuotation>
+     */
+    public function acceptedQuotationsForFinancials()
+    {
+        $rows = $this->relationLoaded('quotations')
+            ? $this->quotations
+            : $this->quotations()->orderBy('id')->get();
+
+        return $rows
+            ->where('status', ClientProjectQuotation::STATUS_ACCEPTED)
+            ->values();
+    }
+
+    /** Sum of pre-tax subtotals for all accepted quotations. */
+    public function acceptedQuotationsFinancialAggregateSubtotal(): float
+    {
+        $sum = 0.0;
+        foreach ($this->acceptedQuotationsForFinancials() as $q) {
+            $sum += $q->subtotal();
+        }
+
+        return round($sum, 2);
+    }
+
+    /** Sum of HST for all accepted quotations (reflects per-line HST flags). */
+    public function acceptedQuotationsFinancialAggregateHst(): float
+    {
+        $sum = 0.0;
+        foreach ($this->acceptedQuotationsForFinancials() as $q) {
+            $sum += $q->hst();
+        }
+
+        return round($sum, 2);
+    }
+
+    /**
+     * Fixed-price: sum of accepted quotation line amounts (pre-HST). Used as the basis
+     * for payment-plan percentages — matches invoice line subtotals + proportional HST.
      */
     public function quotationSubtotalForFinancials(): ?float
     {
         if ($this->isHourly()) {
             return null;
         }
-        $q = $this->relationLoaded('quotation') ? $this->quotation : $this->quotation()->first();
-        if (!$q || !$q->hasContent()) {
-            return null;
-        }
 
-        return round($q->subtotal(), 2);
+        $sub = $this->acceptedQuotationsFinancialAggregateSubtotal();
+
+        return $sub >= 0.01 ? $sub : null;
     }
 
-    /** Fixed-price: quotation total including per-line HST (client-facing). */
+    /** Fixed-price: sum of accepted quotations' totals (incl. per-line HST). */
     public function quotationGrandTotalForFinancials(): ?float
     {
         if ($this->isHourly()) {
             return null;
         }
-        $q = $this->relationLoaded('quotation') ? $this->quotation : $this->quotation()->first();
-        if (!$q || !$q->hasContent()) {
-            return null;
-        }
 
-        return round($q->grandTotal(), 2);
+        $grand = ClientProjectQuotation::acceptedGrandTotalForProject($this);
+
+        return $grand >= 0.01 ? $grand : null;
+    }
+
+    /**
+     * First quotation with content, otherwise first row — for contract email / legacy links.
+     */
+    public function primaryQuotation(): ?ClientProjectQuotation
+    {
+        $rows = $this->relationLoaded('quotations')
+            ? $this->quotations
+            : $this->quotations()->orderBy('id')->get();
+
+        $firstWithContent = $rows->first(fn (ClientProjectQuotation $q) => $q->hasContent());
+
+        return $firstWithContent ?? $rows->first();
     }
 
     /**

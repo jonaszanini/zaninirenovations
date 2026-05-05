@@ -337,21 +337,8 @@ class StandardQuotationController extends Controller
     }
 
     /**
-     * Refresh the project's ClientProjectQuotation so its line items
-     * mirror the current state of $standardQuotation.
-     *
-     * Items belonging to this SQ are identified by either:
-     *   - the explicit marker `source_standard_quotation_id` (set by
-     *     this method), or
-     *   - the legacy "(see {quote_number})" suffix on the description
-     *     (so older links keep working through their first re-sync).
-     *
-     * Any line items NOT belonging to this SQ are preserved — that
-     * makes the method safe to call when multiple SQs are linked to
-     * the same project: each SQ refreshes only its own lines.
-     *
-     * The default $lineDescription is "Standard quotation"; pass a
-     * project-supplied label when linking from the form.
+     * Sync one {@see ClientProjectQuotation} row (per standard quotation
+     * id) so its line items mirror the current state of $standardQuotation.
      */
     protected function syncStandardLinesIntoProjectQuotation(
         ClientProject $project,
@@ -365,51 +352,7 @@ class StandardQuotationController extends Controller
             $lineDescription = 'Standard quotation';
         }
 
-        /** @var ClientProjectQuotation $projectQuote */
-        $projectQuote = $project->quotation()->firstOrNew([]);
-
-        if (!$projectQuote->exists) {
-            $projectQuote->client_project_id = $project->id;
-            $projectQuote->type = ClientProjectQuotation::TYPE_QUOTATION;
-            $projectQuote->labour = true;
-            $projectQuote->material = true;
-            $projectQuote->quotation_number = ClientProjectQuotation::generateNumber(
-                ClientProjectQuotation::TYPE_QUOTATION
-            );
-            $projectQuote->items = [];
-            $projectQuote->version = 1;
-        }
-
-        $existingItems = is_array($projectQuote->items) ? $projectQuote->items : [];
-
-        // Drop any item that came from THIS SQ: either tagged with the
-        // explicit marker, or (legacy) referencing this quote number in
-        // its description suffix. Other items survive untouched.
         $quoteRef = '(see '.$standardQuotation->quote_number.')';
-        $remainingItems = array_values(array_filter(
-            $existingItems,
-            static function ($item) use ($standardQuotation, $quoteRef) {
-                if (!is_array($item)) {
-                    return true;
-                }
-                $sqId = $item['source_standard_quotation_id'] ?? null;
-                if ((int) $sqId === (int) $standardQuotation->id) {
-                    return false;
-                }
-                $desc = (string) ($item['description'] ?? '');
-                if ($sqId === null && str_contains($desc, $quoteRef)) {
-                    return false;
-                }
-
-                return true;
-            }
-        ));
-
-        // Push PRE-HST amounts into the project quotation so the project
-        // quotation's own "Apply HST" toggle is the single source of HST
-        // (no double taxation). What travels here is the taxable subtotal
-        // of materials + contingency + labour, and (if present) any
-        // HST-exempt materials/contingency portion as a separate line.
         $taxablePreHst = $this->preHstTaxableForLink($standardQuotation);
         $exemptPreHst = $this->preHstExemptForLink($standardQuotation);
         $refSuffix = ' '.$quoteRef;
@@ -444,15 +387,31 @@ class StandardQuotationController extends Controller
             ];
         }
 
-        $projectQuote->items = array_merge($remainingItems, $sqLines);
+        /** @var ClientProjectQuotation $row */
+        $row = ClientProjectQuotation::firstOrNew([
+            'client_project_id' => $project->id,
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'source_id' => $standardQuotation->id,
+        ]);
 
-        // Description of the work is owned by the SQ when there is a
-        // linked SQ — the project quote's own work_description column
-        // is intentionally cleared so the rendering layer reads from
-        // the SQ directly (single source of truth).
-        $projectQuote->work_description = null;
+        if (!$row->exists) {
+            $row->fill([
+                'title' => $lineDescription,
+                'status' => ClientProjectQuotation::STATUS_DRAFT,
+                'type' => ClientProjectQuotation::TYPE_QUOTATION,
+                'labour' => true,
+                'material' => true,
+                'quotation_number' => ClientProjectQuotation::generateNumber(
+                    ClientProjectQuotation::TYPE_QUOTATION
+                ),
+                'version' => 1,
+            ]);
+        }
 
-        $projectQuote->save();
+        $row->items = $sqLines;
+        $row->work_description = $standardQuotation->work_description;
+        $row->source_snapshot = $standardQuotation->only($standardQuotation->getFillable());
+        $row->save();
 
         $project->refresh();
         $project->syncFixedContractTotalsFromQuotation();

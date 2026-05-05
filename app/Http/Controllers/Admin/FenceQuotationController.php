@@ -271,39 +271,62 @@ class FenceQuotationController extends Controller
     }
 
     /**
-     * Append this fence quote as one line item on the project's main
-     * quotation and mark the fence row as linked.
+     * Append this fence quote as its own {@see ClientProjectQuotation} row
+     * (draft, linked to the fence record). Totals roll into Financials once
+     * the quotation is accepted.
      */
     protected function appendFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
-        /** @var ClientProjectQuotation $projectQuote */
-        $projectQuote = $project->quotation()->firstOrNew([]);
+        $lineAmount = round(
+            (float) $fence_quotation->materials_subtotal + (float) $fence_quotation->labour_total,
+            2
+        );
 
-        if (!$projectQuote->exists) {
-            $projectQuote->client_project_id = $project->id;
-            $projectQuote->type = ClientProjectQuotation::TYPE_QUOTATION;
-            $projectQuote->labour = true;
-            $projectQuote->material = true;
-            $projectQuote->quotation_number = ClientProjectQuotation::generateNumber(
-                ClientProjectQuotation::TYPE_QUOTATION
-            );
-            $projectQuote->items = [];
-            $projectQuote->version = 1;
-        }
-
-        $items = is_array($projectQuote->items) ? $projectQuote->items : [];
-        $items[] = [
+        $items = [[
             'description' => $fence_quotation->summaryDescription()
                 .' (see fence quote '.$fence_quotation->quote_number.')',
-            'amount' => round(
-                (float) $fence_quotation->materials_subtotal + (float) $fence_quotation->labour_total,
-                2
-            ),
+            'amount' => $lineAmount,
             'apply_hst' => true,
-        ];
+        ]];
 
-        $projectQuote->items = $items;
-        $projectQuote->save();
+        $snapshot = $fence_quotation->only([
+            'quote_number',
+            'client_name',
+            'fence_height_ft',
+            'board_style',
+            'gate_count',
+            'sides',
+            'calculation',
+            'materials_subtotal',
+            'hst',
+            'labour_total',
+            'grand_total',
+        ]);
+
+        /** @var ClientProjectQuotation $row */
+        $row = ClientProjectQuotation::firstOrNew([
+            'client_project_id' => $project->id,
+            'source_type' => ClientProjectQuotation::SOURCE_FENCE,
+            'source_id' => $fence_quotation->id,
+        ]);
+
+        if (!$row->exists) {
+            $row->fill([
+                'title' => 'Fence — '.$fence_quotation->quote_number,
+                'status' => ClientProjectQuotation::STATUS_DRAFT,
+                'type' => ClientProjectQuotation::TYPE_QUOTATION,
+                'labour' => true,
+                'material' => true,
+                'quotation_number' => ClientProjectQuotation::generateNumber(
+                    ClientProjectQuotation::TYPE_QUOTATION
+                ),
+                'version' => 1,
+            ]);
+        }
+
+        $row->items = $items;
+        $row->source_snapshot = $snapshot;
+        $row->save();
 
         $project->refresh();
         $project->syncFixedContractTotalsFromQuotation();

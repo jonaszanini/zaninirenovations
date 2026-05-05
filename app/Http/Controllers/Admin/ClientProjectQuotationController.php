@@ -7,6 +7,9 @@ use App\Mail\ClientProjectQuotationClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
+use App\Models\FenceQuotation;
+use App\Models\PavingQuotation;
+use App\Models\StandardQuotation;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -15,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * Manages the structured Quotation/Estimate attached to a ClientProject.
@@ -30,41 +34,39 @@ use Illuminate\Support\Str;
 class ClientProjectQuotationController extends Controller
 {
     /**
-     * Show the editor. The flow branches on which specialised quotation
-     * (Standard, future Fence, ...) is linked to this project:
+     * Legacy URL: ensure at least one editable manual quotation exists,
+     * then redirect to the canonical editor URL for that row.
      *
-     *   - 0 linked specialised quotations → render the generic
-     *     line-item editor (the historical behaviour).
-     *   - 1 linked → redirect into that specialised quotation's editor
-     *     with ?return=project so saving lands the user back on the
-     *     project's Quotation tab. The project's own ClientProjectQuotation
-     *     line items + work_description are driven entirely by the
-     *     linked SQ from that point on.
-     *   - 2+ linked → render a selector page so the user picks which
-     *     one to edit.
-     *
-     * An empty ClientProjectQuotation row is created on demand for the
-     * fallback editor so the form has something to bind against.
+     * When multiple Standard quotations are linked, show the picker so the
+     * admin opens the right specialised editor.
      */
-    public function edit(ClientProject $client_project)
+    public function editLegacy(ClientProject $client_project)
     {
-        $linkedStandard = $client_project->standardQuotations()->get();
-
-        if ($linkedStandard->count() === 1) {
-            $sq = $linkedStandard->first();
-
-            return redirect()
-                ->route('admin.quotations.standard.edit', [$sq, 'return' => 'project']);
-        }
-
-        if ($linkedStandard->count() > 1) {
+        if ($client_project->standardQuotations()->count() > 1) {
             return view('admin.client_projects.quotation.selector', [
                 'project' => $client_project,
-                'standardQuotations' => $linkedStandard,
+                'standardQuotations' => $client_project->standardQuotations()->get(),
             ]);
         }
 
         $quotation = $this->firstOrCreateQuotation($client_project);
+
+        return redirect()->route('admin.client-projects.quotation.edit', [$client_project, $quotation]);
+    }
+
+    /**
+     * Structured quotation editor for one {@see ClientProjectQuotation} row.
+     * Linked Fence / Standard / Paving rows redirect into their standalone
+     * calculators — those modules sync copies back onto the project row.
+     */
+    public function edit(ClientProject $client_project, ClientProjectQuotation $quotation)
+    {
+        $this->authorizeQuotation($client_project, $quotation);
+
+        $redirect = $this->redirectToSpecialisedEditorIfLinked($quotation);
+        if ($redirect) {
+            return $redirect;
+        }
 
         return view('admin.client_projects.quotation.edit', [
             'project' => $client_project,
@@ -72,22 +74,42 @@ class ClientProjectQuotationController extends Controller
         ]);
     }
 
+    protected function redirectToSpecialisedEditorIfLinked(ClientProjectQuotation $quotation): ?\Illuminate\Http\RedirectResponse
+    {
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_STANDARD && $quotation->source_id) {
+            $sq = StandardQuotation::find($quotation->source_id);
+            if ($sq) {
+                return redirect()->route('admin.quotations.standard.edit', [$sq, 'return' => 'project']);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_FENCE && $quotation->source_id) {
+            $fq = FenceQuotation::find($quotation->source_id);
+            if ($fq) {
+                return redirect()->route('admin.quotations.fence.edit', $fq);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_PAVING && $quotation->source_id) {
+            $pq = PavingQuotation::find($quotation->source_id);
+            if ($pq) {
+                return redirect()->route('admin.quotations.paving.edit', $pq);
+            }
+        }
+
+        return null;
+    }
+
+    protected function authorizeQuotation(ClientProject $project, ClientProjectQuotation $quotation): void
+    {
+        abort_unless((int) $quotation->client_project_id === (int) $project->id, 404);
+    }
+
     /**
      * Save the quotation. The "intent" field controls where we redirect:
      * "draft" stays on the editor, "close" goes back to the Quotation tab.
      */
-    public function update(Request $request, ClientProject $client_project)
+    public function update(Request $request, ClientProject $client_project, ClientProjectQuotation $quotation)
     {
-        // When a specialised quotation (Standard, Fence, ...) is linked to
-        // this project, the project Quotation is fully driven by that SQ
-        // (decision: overwrite_all). Block manual edits coming through
-        // this generic endpoint and route the user back to the SQ-aware
-        // edit flow so the line items stay consistent.
-        if ($client_project->standardQuotations()->exists()) {
-            return redirect()
-                ->route('admin.client-projects.quotation.edit', $client_project)
-                ->with('error', 'This project is linked to a specialised quotation. Edit it from there to keep the project quotation in sync.');
-        }
+        $this->authorizeQuotation($client_project, $quotation);
 
         $data = $request->validate([
             'type' => ['required', 'in:quotation,estimate'],
@@ -100,8 +122,6 @@ class ClientProjectQuotationController extends Controller
             'work_description' => ['nullable', 'string', 'max:5000'],
             'intent' => ['nullable', 'in:draft,close'],
         ]);
-
-        $quotation = $this->firstOrCreateQuotation($client_project);
 
         // Toggle the prefix (QUO/EST) when type changes BEFORE the quotation
         // has been sent — this keeps the displayed number consistent with
@@ -137,7 +157,7 @@ class ClientProjectQuotationController extends Controller
         }
 
         return redirect()
-            ->route('admin.client-projects.quotation.edit', $client_project)
+            ->route('admin.client-projects.quotation.edit', [$client_project, $quotation])
             ->with('success', 'Draft saved.');
     }
 
@@ -145,11 +165,11 @@ class ClientProjectQuotationController extends Controller
      * Render and stream the PDF inline (so the browser displays it instead
      * of downloading by default). Used by the "Download PDF" button.
      */
-    public function downloadPdf(ClientProject $client_project)
+    public function downloadPdf(ClientProject $client_project, ClientProjectQuotation $quotation)
     {
-        $quotation = $client_project->quotation;
+        $this->authorizeQuotation($client_project, $quotation);
 
-        if (!$quotation || !$quotation->hasContent()) {
+        if (!$quotation->hasContent()) {
             return back()->with('error', 'There is no quotation to download yet. Please add at least one line item first.');
         }
 
@@ -162,11 +182,11 @@ class ClientProjectQuotationController extends Controller
      * Generate a fresh PDF, persist it under storage/app/quotations/, email
      * it to the client, and bump the version + sent_at.
      */
-    public function send(ClientProject $client_project, ClientProjectStatusService $statusService)
+    public function send(ClientProject $client_project, ClientProjectQuotation $quotation, ClientProjectStatusService $statusService)
     {
-        $quotation = $client_project->quotation;
+        $this->authorizeQuotation($client_project, $quotation);
 
-        if (!$quotation || !$quotation->hasContent()) {
+        if (!$quotation->hasContent()) {
             return back()->with('error', 'Please add at least one line item before sending the quotation.');
         }
 
@@ -186,8 +206,9 @@ class ClientProjectQuotationController extends Controller
         $bytes = $pdf->output();
 
         $relativePath = sprintf(
-            'quotations/project-%d-v%d.pdf',
+            'quotations/project-%d-q%d-v%d.pdf',
             $client_project->id,
+            $quotation->id,
             $quotation->version
         );
 
@@ -195,6 +216,9 @@ class ClientProjectQuotationController extends Controller
 
         $quotation->pdf_path = $relativePath;
         $quotation->sent_at = now();
+        if ($quotation->status !== ClientProjectQuotation::STATUS_ACCEPTED) {
+            $quotation->status = ClientProjectQuotation::STATUS_SENT;
+        }
         $quotation->save();
 
         $cc = $client_project->secondaryClientEmail();
@@ -295,6 +319,38 @@ class ClientProjectQuotationController extends Controller
     }
 
     /**
+     * Set workflow status (draft / sent / accepted / rejected) for one quotation document.
+     */
+    public function updateStatus(Request $request, ClientProject $client_project, ClientProjectQuotation $quotation)
+    {
+        $this->authorizeQuotation($client_project, $quotation);
+
+        $data = $request->validate([
+            'status' => [
+                'required',
+                'string',
+                Rule::in([
+                    ClientProjectQuotation::STATUS_DRAFT,
+                    ClientProjectQuotation::STATUS_SENT,
+                    ClientProjectQuotation::STATUS_ACCEPTED,
+                    ClientProjectQuotation::STATUS_REJECTED,
+                ]),
+            ],
+        ]);
+
+        $quotation->status = $data['status'];
+        $quotation->save();
+
+        $client_project->refresh();
+        $client_project->syncFixedContractTotalsFromQuotation();
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('quotation')
+            ->with('success', 'Quotation status updated.');
+    }
+
+    /**
      * Build the PDF object from the Blade template. Centralised so that
      * download/email use the exact same template + dompdf options as the
      * Contract feature (Roboto via @font-face, A4, remote enabled, html5
@@ -364,26 +420,34 @@ class ClientProjectQuotationController extends Controller
     }
 
     /**
-     * Get-or-create the quotation row. We assign the number lazily on
-     * first creation so the user can land on the editor without dirtying
-     * the sequence if they change their mind and never save anything.
-     *
-     * Note: firstOrCreate() is atomic via the unique(client_project_id)
-     * constraint on the table — concurrent requests can't create two rows.
+     * Get-or-create the primary manual quotation row (legacy rows use
+     * source_type null). Used by {@see editLegacy()} only.
      */
     protected function firstOrCreateQuotation(ClientProject $project): ClientProjectQuotation
     {
-        return $project->quotation()->firstOrCreate(
-            [],
-            [
-                'type' => ClientProjectQuotation::TYPE_QUOTATION,
-                'labour' => true,
-                'material' => true,
-                'items' => [],
-                'quotation_number' => ClientProjectQuotation::generateNumber(ClientProjectQuotation::TYPE_QUOTATION),
-                'version' => 1,
-            ]
-        );
+        $existing = $project->quotations()
+            ->where(function ($q) {
+                $q->whereNull('source_type')
+                    ->orWhere('source_type', ClientProjectQuotation::SOURCE_MANUAL);
+            })
+            ->orderBy('id')
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return $project->quotations()->create([
+            'title' => 'Quotation',
+            'status' => ClientProjectQuotation::STATUS_DRAFT,
+            'source_type' => ClientProjectQuotation::SOURCE_MANUAL,
+            'type' => ClientProjectQuotation::TYPE_QUOTATION,
+            'labour' => true,
+            'material' => true,
+            'items' => [],
+            'quotation_number' => ClientProjectQuotation::generateNumber(ClientProjectQuotation::TYPE_QUOTATION),
+            'version' => 1,
+        ]);
     }
 
     /**
