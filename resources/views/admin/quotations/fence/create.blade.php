@@ -120,13 +120,50 @@
       font-weight: 600;
     }
     .fq-inline-controls {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: flex-end;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+    .fq-inline-controls .admin-form-group {
+      margin: 0;
+      min-width: 0;
+    }
+    .fq-inline-controls .admin-input {
+      width: 100%;
+    }
+    @media (max-width: 1100px) {
+      .fq-inline-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 640px) {
+      .fq-inline-controls {
+        grid-template-columns: 1fr;
+      }
     }
     .fq-overlap-wrap { display: none; }
     .fq-overlap-wrap.is-active { display: block; }
+    .fq-sides-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .fq-sides-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 640px) {
+      .fq-sides-actions {
+        width: 100%;
+      }
+      .fq-sides-actions .admin-btn {
+        flex: 1 1 calc(50% - 3px);
+      }
+    }
     .fq-form-toolbar {
       display: flex;
       justify-content: space-between;
@@ -278,7 +315,7 @@
 
       {{-- Fence height + gates + style --------------------------- --}}
       <div class="fq-inline-controls">
-        <div class="admin-form-group" style="min-width:160px;flex:1;">
+        <div class="admin-form-group">
           <label>Fence height</label>
           <select name="fence_height_ft" id="fq-height" class="admin-input">
             <option value="6" @selected((int) $initialHeight === 6)>6 feet</option>
@@ -287,7 +324,7 @@
           <p class="admin-form-help">6' uses 10' posts + 6' boards. 8' uses 12' + 8'.</p>
         </div>
 
-        <div class="admin-form-group" style="min-width:140px;flex:1;">
+        <div class="admin-form-group">
           <label for="fq-gates">Gates</label>
           <input id="fq-gates" type="number" min="0" max="10" step="1"
                  name="gate_count" class="admin-input"
@@ -295,7 +332,7 @@
           <p class="admin-form-help">Each gate adds 1 post and {{ $settings->gate_rails }} rails.</p>
         </div>
 
-        <div class="admin-form-group" style="min-width:200px;flex:1;">
+        <div class="admin-form-group">
           <label>Board style</label>
           <select name="board_style" id="fq-style" class="admin-input">
             <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_STANDARD }}"
@@ -310,7 +347,7 @@
         </div>
 
         <div class="admin-form-group fq-overlap-wrap" id="fq-overlap-wrap"
-             style="min-width:160px;flex:1;{{ $initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING ? 'display:block;' : '' }}">
+             style="{{ $initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING ? 'display:block;' : '' }}">
           <label for="fq-overlap">Overlap (inches)</label>
           <input id="fq-overlap" type="number" min="0" max="6" step="0.125"
                  name="overlap_in" class="admin-input"
@@ -320,12 +357,12 @@
 
       {{-- Sides ---------------------------------------------------- --}}
       <div class="admin-form-group" style="margin-top:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div class="fq-sides-header">
           <div>
             <label style="margin-bottom:0;">Sides (up to 4)</label>
             <p class="admin-form-help" style="margin:2px 0 0;">Enter each side's length in feet.</p>
           </div>
-          <div style="display:flex;gap:6px;">
+          <div class="fq-sides-actions">
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-add-side">
               <i class="fa fa-plus"></i> Add side
             </button>

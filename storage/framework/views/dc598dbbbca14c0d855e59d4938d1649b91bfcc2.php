@@ -27,45 +27,30 @@
   <?php endif; ?>
 
   <div class="fq-hub-grid">
-    <a href="<?php echo e(route('admin.quotations.fence.index', $pq)); ?>" class="fq-hub-card">
-      <div class="fq-hub-card-icon" aria-hidden="true">
-        <i class="fa fa-th-large"></i>
-      </div>
-      <div class="fq-hub-card-body">
-        <h4>Fence</h4>
-        <p>
-          Calculate materials and labour for 6' and 8' pressure-treated wood fences
-          against the Ontario Building Code structural rules.
-        </p>
-        <span class="fq-hub-card-cta">Open calculator <i class="fa fa-arrow-right"></i></span>
-      </div>
-    </a>
-
     <a href="<?php echo e(route('admin.quotations.standard.index', $pq)); ?>" class="fq-hub-card">
-      <div class="fq-hub-card-icon" aria-hidden="true">
-        <i class="fa fa-table"></i>
+      <div class="fq-hub-card-image-wrap" aria-hidden="true">
+        <img src="<?php echo e(asset('images/quotations/standard.webp')); ?>" alt="" class="fq-hub-card-image">
       </div>
       <div class="fq-hub-card-body">
         <h4>Standard</h4>
-        <p>
-          Build a quote from material line items (with optional 13% HST) plus hourly labour.
-          Output becomes the client-facing document on the project.
-        </p>
-        <span class="fq-hub-card-cta">Open standard quotation <i class="fa fa-arrow-right"></i></span>
+      </div>
+    </a>
+
+    <a href="<?php echo e(route('admin.quotations.fence.index', $pq)); ?>" class="fq-hub-card">
+      <div class="fq-hub-card-image-wrap" aria-hidden="true">
+        <img src="<?php echo e(asset('images/quotations/fence.webp')); ?>" alt="" class="fq-hub-card-image">
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Fence</h4>
       </div>
     </a>
 
     <a href="<?php echo e(route('admin.quotations.paving.index', $pq)); ?>" class="fq-hub-card">
-      <div class="fq-hub-card-icon" aria-hidden="true">
-        <i class="fa fa-th"></i>
+      <div class="fq-hub-card-image-wrap" aria-hidden="true">
+        <img src="<?php echo e(asset('images/quotations/flooring.webp')); ?>" alt="" class="fq-hub-card-image">
       </div>
       <div class="fq-hub-card-body">
         <h4>Paving stones</h4>
-        <p>
-          Ottawa 2026 paving calculator: materials, fixed costs, scaled labour, pricing-engine
-          suggestions, optional marble inlay — with an editable price database.
-        </p>
-        <span class="fq-hub-card-cta">Open paving calculator <i class="fa fa-arrow-right"></i></span>
       </div>
     </a>
   </div>
