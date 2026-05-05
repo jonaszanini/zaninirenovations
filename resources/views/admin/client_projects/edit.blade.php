@@ -3,6 +3,13 @@
 @section('heading', 'Edit project')
 
 @section('content')
+  <div class="cp-edit-project-actions-dock" role="region" aria-label="Project form actions">
+    <button type="submit" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <i class="fa fa-check"></i> Save changes
+    </button>
+    <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+  </div>
+
   <div class="admin-card admin-card--narrow">
     <form id="cp-edit-project-form" action="{{ route('admin.client-projects.update', $project) }}" method="post">
       @csrf

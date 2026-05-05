@@ -228,6 +228,34 @@ class ClientProject extends Model
         return $missing;
     }
 
+    /**
+     * Quotation delivery requires at least one outbound channel:
+     * a primary email OR an SMS-capable phone number.
+     */
+    public function hasQuotationDeliveryChannel(): bool
+    {
+        return filled(trim((string) $this->client_email))
+            || self::phoneDigitsForSms($this->client_phone) !== null;
+    }
+
+    /**
+     * Human labels for missing quotation delivery channels.
+     *
+     * @return list<string>
+     */
+    public function missingQuotationDeliveryChannels(): array
+    {
+        $missing = [];
+        if (blank(trim((string) $this->client_email))) {
+            $missing[] = 'Client email';
+        }
+        if (self::phoneDigitsForSms($this->client_phone) === null) {
+            $missing[] = 'Client phone (SMS-capable)';
+        }
+
+        return $missing;
+    }
+
     /** @deprecated Use hasClientContactInfo(); kept for the contract feature. */
     public function hasContactInfoForContract(): bool
     {

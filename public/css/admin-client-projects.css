@@ -2857,3 +2857,32 @@ body.cp-modal-open {
 .cp-client-directory-picker .ts-wrapper.single .ts-control {
   background: #fff;
 }
+
+/* Edit project — fixed Save/Cancel (always reachable without scrolling) */
+.cp-edit-project-actions-dock {
+  position: fixed;
+  z-index: 120;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  top: max(0.75rem, env(safe-area-inset-top, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  max-width: min(100vw - 2rem, 320px);
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--admin-border, #d8dee4);
+  border-radius: var(--admin-radius, 12px);
+  box-shadow: var(--admin-shadow-md, 0 8px 30px rgba(55, 52, 53, 0.08));
+}
+.cp-edit-project-actions-dock .admin-btn {
+  margin: 0;
+}
+@media (max-width: 900px) {
+  /* Clear sticky admin topbar + menu toggle */
+  .cp-edit-project-actions-dock {
+    top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+}

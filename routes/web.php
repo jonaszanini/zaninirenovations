@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\ClientProjectInvoiceController;
+use App\Http\Controllers\Admin\ClientProjectQuotationController;
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -47,6 +48,9 @@ Route::get('/robots.txt', function () {
 Route::get('/client/invoice/{client_project}/{invoice}', [ClientProjectInvoiceController::class, 'guestDownloadInvoicePdf'])
     ->middleware('signed')
     ->name('public.client-project.invoice-pdf');
+Route::get('/client/quotation/{client_project}/{quotation}', [ClientProjectQuotationController::class, 'guestDownloadQuotationPdf'])
+    ->middleware('signed')
+    ->name('public.client-project.quotation-pdf');
 
 Route::get('/', function () {
     $projects = Project::query()

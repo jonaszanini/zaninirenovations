@@ -12,11 +12,13 @@ use App\Models\PavingQuotation;
 use App\Models\StandardQuotation;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Services\MoceanSmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -100,10 +102,31 @@ class ClientProjectQuotationController extends Controller
     }
 
     /**
+     * Public, signed URL (no login) so clients can open quotation PDFs from SMS.
+     */
+    public function guestDownloadQuotationPdf(ClientProject $client_project, ClientProjectQuotation $quotation)
+    {
+        abort_unless((int) $quotation->client_project_id === (int) $client_project->id, 404);
+
+        if (!$quotation->hasContent()) {
+            abort(404, 'Quotation not available.');
+        }
+
+        $pdf = $this->renderPdf($client_project, $quotation);
+
+        return $pdf->stream($this->pdfFilename($client_project, $quotation));
+    }
+
+    /**
      * Generate a fresh PDF, persist it under storage/app/quotations/, email
      * it to the client, and bump the version + sent_at.
      */
-    public function send(ClientProject $client_project, ClientProjectQuotation $quotation, ClientProjectStatusService $statusService)
+    public function send(
+        ClientProject $client_project,
+        ClientProjectQuotation $quotation,
+        ClientProjectStatusService $statusService,
+        MoceanSmsService $moceanSms,
+    )
     {
         $this->authorizeQuotation($client_project, $quotation);
 
@@ -111,10 +134,15 @@ class ClientProjectQuotationController extends Controller
             return back()->with('error', 'Please add at least one line item before sending the quotation.');
         }
 
-        if (!$client_project->hasClientContactInfo()) {
-            $missing = implode(', ', $client_project->missingClientContactFields());
+        $emailTo = trim((string) $client_project->client_email);
+        $smsTo = ClientProject::phoneDigitsForSms($client_project->client_phone);
+        $canEmail = $emailTo !== '';
+        $canSms = $smsTo !== null;
 
-            return back()->with('error', "Cannot send the {$quotation->typeLabel()} — missing client info: {$missing}.");
+        if (!$canEmail && !$canSms) {
+            $missing = implode(', ', $client_project->missingQuotationDeliveryChannels());
+
+            return back()->with('error', "Cannot send the {$quotation->typeLabel()} — add at least one delivery channel ({$missing}).");
         }
 
         // If the quotation has already been sent at least once, the next save
@@ -142,54 +170,100 @@ class ClientProjectQuotationController extends Controller
         }
         $quotation->save();
 
-        $cc = $client_project->secondaryClientEmail();
         $quoteSubject = "{$quotation->typeLabel()} {$quotation->quotation_number} from Zanini Renovations";
         $quoteDescription = "{$quotation->typeLabel()} {$quotation->quotation_number} v{$quotation->version} — total "
             .ClientProject::formatMoney((float) $quotation->grandTotal());
+        $deliverySummary = '';
+        $deliverySuccessFlash = '';
 
-        try {
-            $mailer = Mail::to($client_project->client_email);
-            if ($cc) {
-                $mailer->cc($cc);
+        if ($canEmail) {
+            $cc = $client_project->secondaryClientEmail();
+
+            try {
+                $mailer = Mail::to($emailTo);
+                if ($cc) {
+                    $mailer->cc($cc);
+                }
+                $mailer->send(new ClientProjectQuotationClient(
+                    $client_project,
+                    $quotation,
+                    $bytes,
+                    $this->pdfFilename($client_project, $quotation)
+                ));
+
+                app(ClientCommunicationLogger::class)->logEmail(
+                    $client_project,
+                    ClientCommunicationLog::REASON_QUOTATION_SENT,
+                    $emailTo,
+                    $cc,
+                    $quoteSubject,
+                    $quoteDescription,
+                );
+
+                $deliverySummary = "emailed to {$client_project->clientEmailRecipientsLabel()}";
+                $deliverySuccessFlash = "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to {$client_project->clientEmailRecipientsLabel()} (v{$quotation->version}).";
+            } catch (\Throwable $e) {
+                Log::error('Failed to email quotation', [
+                    'project_id' => $client_project->id,
+                    'quotation_id' => $quotation->id,
+                    'exception' => $e->getMessage(),
+                ]);
+
+                app(ClientCommunicationLogger::class)->logEmail(
+                    $client_project,
+                    ClientCommunicationLog::REASON_QUOTATION_SENT,
+                    $emailTo,
+                    $cc,
+                    $quoteSubject,
+                    $quoteDescription,
+                    ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                    false,
+                    $e->getMessage(),
+                );
+
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('error', 'The PDF was generated but the email could not be sent: '.$e->getMessage());
             }
-            $mailer->send(new ClientProjectQuotationClient(
-                $client_project,
-                $quotation,
-                $bytes,
-                $this->pdfFilename($client_project, $quotation)
-            ));
+        } else {
+            if (!$moceanSms->isConfigured()) {
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('error', 'SMS delivery is not configured (missing MOCEAN_API_TOKEN).');
+            }
 
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_QUOTATION_SENT,
-                $client_project->client_email,
-                $cc,
-                $quoteSubject,
-                $quoteDescription,
+            $signedUrl = URL::temporarySignedRoute(
+                'public.client-project.quotation-pdf',
+                now()->addYear(),
+                ['client_project' => $client_project, 'quotation' => $quotation],
             );
-        } catch (\Throwable $e) {
-            Log::error('Failed to email quotation', [
-                'project_id' => $client_project->id,
-                'quotation_id' => $quotation->id,
-                'exception' => $e->getMessage(),
-            ]);
 
-            app(ClientCommunicationLogger::class)->logEmail(
+            $totalFmt = ClientProject::formatMoney((float) $quotation->grandTotal());
+            $smsBody = "Zanini Renovations — {$quotation->typeLabel()} {$quotation->quotation_number}. Total: {$totalFmt}. View PDF: {$signedUrl}";
+            $result = $moceanSms->send((string) $smsTo, $smsBody);
+            $summary = "{$quotation->typeLabel()} {$quotation->quotation_number} SMS link — {$totalFmt} — \"".Str::limit($smsBody, 120).'"';
+
+            app(ClientCommunicationLogger::class)->logSms(
                 $client_project,
                 ClientCommunicationLog::REASON_QUOTATION_SENT,
-                $client_project->client_email,
-                $cc,
-                $quoteSubject,
-                $quoteDescription,
+                (string) $smsTo,
+                $summary,
                 ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                false,
-                $e->getMessage(),
+                $result['ok'],
+                $result['ok'] ? null : $result['detail'],
             );
 
-            return redirect()
-                ->route('admin.client-projects.show', $client_project)
-                ->withFragment('quotation')
-                ->with('error', 'The PDF was generated but the email could not be sent: '.$e->getMessage());
+            if (!$result['ok']) {
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('error', 'The PDF was generated but the SMS could not be sent: '.$result['detail']);
+            }
+
+            $deliverySummary = "sent by SMS to {$smsTo}";
+            $deliverySuccessFlash = "{$quotation->typeLabel()} {$quotation->quotation_number} SMS link sent to {$smsTo} (v{$quotation->version}).";
         }
 
         // Auto-transition the project to "Quote Sent" once the email leaves
@@ -197,8 +271,7 @@ class ClientProjectQuotationController extends Controller
         // never regress a project that's already moved past this point (e.g.
         // proposal accepted, in progress, completed) just because the user
         // re-sent an updated quotation version.
-        $sendNote = "{$quotation->typeLabel()} {$quotation->quotation_number} "
-            ."emailed to {$client_project->clientEmailRecipientsLabel()} (v{$quotation->version}).";
+        $sendNote = "{$quotation->typeLabel()} {$quotation->quotation_number} {$deliverySummary} (v{$quotation->version}).";
 
         if ($client_project->isAwaitingQuotePreparation()) {
             try {
@@ -236,7 +309,7 @@ class ClientProjectQuotationController extends Controller
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('quotation')
-            ->with('success', "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to {$client_project->clientEmailRecipientsLabel()} (v{$quotation->version}).");
+            ->with('success', $deliverySuccessFlash);
     }
 
     /**
