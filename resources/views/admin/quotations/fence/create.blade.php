@@ -41,6 +41,12 @@
     @media (max-width: 1100px) {
       .fq-calc-layout { grid-template-columns: 1fr; }
     }
+    .fq-left-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+    }
     .fq-sides-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -182,18 +188,15 @@
     }
     .fq-link-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
+      grid-template-columns: 1fr;
+      gap: 0;
       margin-top: 14px;
       align-items: start;
     }
-    @media (max-width: 900px) {
-      .fq-link-grid { grid-template-columns: 1fr; }
-      .fq-link-col--stack {
-        border-top: 1px dashed #cbd5e1;
-        padding-top: 18px;
-        margin-top: 4px;
-      }
+    .fq-link-divider {
+      border: 0;
+      border-top: 1px solid #d7e4ef;
+      margin: 16px 0;
     }
     .fq-link-col h5 {
       margin: 0 0 8px;
@@ -297,86 +300,176 @@
 
   <div class="fq-calc-layout">
     {{-- ====================== LEFT: FORM =========================== --}}
-    <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card">
-      @csrf
-      @if ($isEdit) @method('PUT') @endif
-      @if ($linkProject)
-        <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
+    <div class="fq-left-stack">
+      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card">
+        @csrf
+        @if ($isEdit) @method('PUT') @endif
+        @if ($linkProject)
+          <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
+        @endif
+
+        {{-- Client name -------------------------------------------- --}}
+        <div class="admin-form-group">
+          <label for="fq-client-name">Client name <span class="admin-required">*</span></label>
+          <input id="fq-client-name" type="text" name="client_name"
+                 class="admin-input @class(['is-invalid' => $errors->has('client_name')])"
+                 value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
+                 maxlength="160" required>
+        </div>
+
+        {{-- Fence height + gates + style --------------------------- --}}
+        <div class="fq-inline-controls">
+          <div class="admin-form-group">
+            <label>Fence height</label>
+            <select name="fence_height_ft" id="fq-height" class="admin-input">
+              <option value="6" @selected((int) $initialHeight === 6)>6 feet</option>
+              <option value="8" @selected((int) $initialHeight === 8)>8 feet</option>
+            </select>
+            <p class="admin-form-help">6' uses 10' posts + 6' boards. 8' uses 12' + 8'.</p>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="fq-gates">Gates</label>
+            <input id="fq-gates" type="number" min="0" max="10" step="1"
+                   name="gate_count" class="admin-input"
+                   value="{{ old('gate_count', $initialGates) }}">
+            <p class="admin-form-help">Each gate adds 1 post and {{ $settings->gate_rails }} rails.</p>
+          </div>
+
+          <div class="admin-form-group">
+            <label>Board style</label>
+            <select name="board_style" id="fq-style" class="admin-input">
+              <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_STANDARD }}"
+                      @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_STANDARD)>
+                Standard (1/8" gap)
+              </option>
+              <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING }}"
+                      @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING)>
+                Overlapping
+              </option>
+            </select>
+          </div>
+
+          <div class="admin-form-group fq-overlap-wrap" id="fq-overlap-wrap"
+               style="{{ $initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING ? 'display:block;' : '' }}">
+            <label for="fq-overlap">Overlap (inches)</label>
+            <input id="fq-overlap" type="number" min="0" max="6" step="0.125"
+                   name="overlap_in" class="admin-input"
+                   value="{{ old('overlap_in', $initialOverlap) }}">
+          </div>
+        </div>
+
+        {{-- Sides ---------------------------------------------------- --}}
+        <div class="admin-form-group" style="margin-top:10px;">
+          <div class="fq-sides-header">
+            <div>
+              <label style="margin-bottom:0;">Sides (up to 4)</label>
+              <p class="admin-form-help" style="margin:2px 0 0;">Enter each side's length in feet.</p>
+            </div>
+            <div class="fq-sides-actions">
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-add-side">
+                <i class="fa fa-plus"></i> Add side
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-remove-side">
+                <i class="fa fa-minus"></i> Remove last
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="fq-sides" class="fq-sides-grid"></div>
+
+        <input type="hidden" name="_serialised" id="fq-serialised" value="">
+      </form>
+
+      {{-- Project settings: link existing OR create new (edit, not linked) --}}
+      @if ($isEdit && !$quotation->project)
+        @php
+          $linkable = $linkableProjects ?? collect();
+        @endphp
+        <div class="admin-card fq-link-project-card">
+          <h4 style="margin:0 0 6px;">Connect to a project</h4>
+          <p class="admin-form-help" style="margin:0;">
+            Add this fence estimate as a line on a project <strong>Quotation</strong> (pre-tax materials + labour — the project quotation adds HST).
+          </p>
+
+          <div class="fq-link-grid">
+            <div class="fq-link-col">
+              <h5><i class="fa fa-link"></i> Existing project</h5>
+              @if ($linkable->isNotEmpty())
+                <form method="post" action="{{ route('admin.quotations.fence.link', $quotation) }}" class="fq-link-existing-form">
+                  @csrf
+                  <div class="fq-link-existing-row">
+                    <div class="admin-form-group" style="margin:0;">
+                      <label for="fq-link-project">Project</label>
+                      <select id="fq-link-project" name="client_project_id" class="admin-input" required>
+                        <option value="" disabled selected>Choose a project…</option>
+                        @foreach ($linkable as $p)
+                          <option value="{{ $p->id }}">{{ $p->client_name }} — {{ $p->name }}</option>
+                        @endforeach
+                      </select>
+                    </div>
+                    <button type="submit" class="admin-btn admin-btn--primary">
+                      <i class="fa fa-link"></i> Link
+                    </button>
+                  </div>
+                </form>
+              @else
+                <p class="admin-form-help" style="margin:0;">No active projects to link. Create a new one below, or finish a rejected/completed project first.</p>
+              @endif
+            </div>
+
+            <hr class="fq-link-divider">
+
+            <div class="fq-link-col">
+              <h5><i class="fa fa-plus-circle"></i> New project</h5>
+              <p class="admin-form-help" style="margin:0 0 12px;">
+                Always <strong>fixed price</strong>. Only client name is required. No automated client email is sent from here.
+              </p>
+              <form method="post"
+                    action="{{ route('admin.quotations.fence.create-project', $quotation) }}"
+                    class="fq-create-project-form">
+                @csrf
+                <div class="admin-form-group">
+                  <label for="fq-new-project-name">Project name <span class="admin-form-help">(optional)</span></label>
+                  <input type="text" id="fq-new-project-name" name="fp_project_name" class="admin-input" maxlength="255"
+                         value="{{ old('fp_project_name') }}"
+                         placeholder="Defaults to: Client name — Fence">
+                </div>
+                <div class="admin-form-group">
+                  <label for="fq-new-client-name">Client name <span class="admin-required">*</span></label>
+                  <input type="text" id="fq-new-client-name" name="fp_client_name" class="admin-input @error('fp_client_name') is-invalid @enderror"
+                         maxlength="255" required value="{{ old('fp_client_name') }}">
+                  @error('fp_client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+                </div>
+                <div class="admin-form-group">
+                  <label for="fq-new-client-email">Email</label>
+                  <input type="email" id="fq-new-client-email" name="fp_client_email" class="admin-input @error('fp_client_email') is-invalid @enderror"
+                         maxlength="255" value="{{ old('fp_client_email') }}">
+                  @error('fp_client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
+                </div>
+                <div class="admin-form-group">
+                  <label for="fq-new-client-phone">Phone</label>
+                  <input type="text" id="fq-new-client-phone" name="fp_client_phone"
+                         class="admin-input cp-phone-input @error('fp_client_phone') is-invalid @enderror"
+                         inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx"
+                         value="{{ old('fp_client_phone') ? \App\Models\ClientProject::formatPhone(old('fp_client_phone')) : '' }}">
+                  @error('fp_client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
+                </div>
+                <div class="admin-form-group">
+                  <label for="fq-new-client-address">Address</label>
+                  <input type="text" id="fq-new-client-address" name="fp_client_address" class="admin-input" maxlength="500"
+                         value="{{ old('fp_client_address') }}">
+                </div>
+                <button type="submit" class="admin-btn admin-btn--primary">
+                  <i class="fa fa-briefcase"></i> Create project &amp; add to quotation
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
       @endif
-
-      {{-- Client name -------------------------------------------- --}}
-      <div class="admin-form-group">
-        <label for="fq-client-name">Client name <span class="admin-required">*</span></label>
-        <input id="fq-client-name" type="text" name="client_name"
-               class="admin-input @class(['is-invalid' => $errors->has('client_name')])"
-               value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
-               maxlength="160" required>
-      </div>
-
-      {{-- Fence height + gates + style --------------------------- --}}
-      <div class="fq-inline-controls">
-        <div class="admin-form-group">
-          <label>Fence height</label>
-          <select name="fence_height_ft" id="fq-height" class="admin-input">
-            <option value="6" @selected((int) $initialHeight === 6)>6 feet</option>
-            <option value="8" @selected((int) $initialHeight === 8)>8 feet</option>
-          </select>
-          <p class="admin-form-help">6' uses 10' posts + 6' boards. 8' uses 12' + 8'.</p>
-        </div>
-
-        <div class="admin-form-group">
-          <label for="fq-gates">Gates</label>
-          <input id="fq-gates" type="number" min="0" max="10" step="1"
-                 name="gate_count" class="admin-input"
-                 value="{{ old('gate_count', $initialGates) }}">
-          <p class="admin-form-help">Each gate adds 1 post and {{ $settings->gate_rails }} rails.</p>
-        </div>
-
-        <div class="admin-form-group">
-          <label>Board style</label>
-          <select name="board_style" id="fq-style" class="admin-input">
-            <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_STANDARD }}"
-                    @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_STANDARD)>
-              Standard (1/8" gap)
-            </option>
-            <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING }}"
-                    @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING)>
-              Overlapping
-            </option>
-          </select>
-        </div>
-
-        <div class="admin-form-group fq-overlap-wrap" id="fq-overlap-wrap"
-             style="{{ $initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING ? 'display:block;' : '' }}">
-          <label for="fq-overlap">Overlap (inches)</label>
-          <input id="fq-overlap" type="number" min="0" max="6" step="0.125"
-                 name="overlap_in" class="admin-input"
-                 value="{{ old('overlap_in', $initialOverlap) }}">
-        </div>
-      </div>
-
-      {{-- Sides ---------------------------------------------------- --}}
-      <div class="admin-form-group" style="margin-top:10px;">
-        <div class="fq-sides-header">
-          <div>
-            <label style="margin-bottom:0;">Sides (up to 4)</label>
-            <p class="admin-form-help" style="margin:2px 0 0;">Enter each side's length in feet.</p>
-          </div>
-          <div class="fq-sides-actions">
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-add-side">
-              <i class="fa fa-plus"></i> Add side
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-remove-side">
-              <i class="fa fa-minus"></i> Remove last
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div id="fq-sides" class="fq-sides-grid"></div>
-
-      <input type="hidden" name="_serialised" id="fq-serialised" value="">
-    </form>
+    </div>
 
     {{-- ====================== RIGHT: BREAKDOWN ==================== --}}
     <aside class="admin-card fq-breakdown-card">
@@ -422,91 +515,6 @@
     </aside>
   </div>
 
-  {{-- Connect to project: link existing OR create new (edit, not linked) --}}
-  @if ($isEdit && !$quotation->project)
-    @php
-      $linkable = $linkableProjects ?? collect();
-    @endphp
-    <div class="admin-card fq-link-project-card">
-      <h4 style="margin:0 0 6px;">Connect to a project</h4>
-      <p class="admin-form-help" style="margin:0;">
-        Add this fence estimate as a line on a project <strong>Quotation</strong> (pre-tax materials + labour — the project quotation adds HST).
-      </p>
-
-      <div class="fq-link-grid">
-        <div class="fq-link-col">
-          <h5><i class="fa fa-link"></i> Existing project</h5>
-          @if ($linkable->isNotEmpty())
-            <form method="post" action="{{ route('admin.quotations.fence.link', $quotation) }}" class="fq-link-existing-form">
-              @csrf
-              <div class="fq-link-existing-row">
-                <div class="admin-form-group" style="margin:0;">
-                  <label for="fq-link-project">Project</label>
-                  <select id="fq-link-project" name="client_project_id" class="admin-input" required>
-                    <option value="" disabled selected>Choose a project…</option>
-                    @foreach ($linkable as $p)
-                      <option value="{{ $p->id }}">{{ $p->client_name }} — {{ $p->name }}</option>
-                    @endforeach
-                  </select>
-                </div>
-                <button type="submit" class="admin-btn admin-btn--primary">
-                  <i class="fa fa-link"></i> Link
-                </button>
-              </div>
-            </form>
-          @else
-            <p class="admin-form-help" style="margin:0;">No active projects to link. Create a new one on the right, or finish a rejected/completed project first.</p>
-          @endif
-        </div>
-
-        <div class="fq-link-col fq-link-col--stack">
-          <h5><i class="fa fa-plus-circle"></i> New project</h5>
-          <p class="admin-form-help" style="margin:0 0 12px;">
-            Always <strong>fixed price</strong>. Only client name is required. No automated client email is sent from here.
-          </p>
-          <form method="post"
-                action="{{ route('admin.quotations.fence.create-project', $quotation) }}"
-                class="fq-create-project-form">
-            @csrf
-            <div class="admin-form-group">
-              <label for="fq-new-project-name">Project name <span class="admin-form-help">(optional)</span></label>
-              <input type="text" id="fq-new-project-name" name="fp_project_name" class="admin-input" maxlength="255"
-                     value="{{ old('fp_project_name') }}"
-                     placeholder="Defaults to: Client name — Fence">
-            </div>
-            <div class="admin-form-group">
-              <label for="fq-new-client-name">Client name <span class="admin-required">*</span></label>
-              <input type="text" id="fq-new-client-name" name="fp_client_name" class="admin-input @error('fp_client_name') is-invalid @enderror"
-                     maxlength="255" required value="{{ old('fp_client_name') }}">
-              @error('fp_client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-            </div>
-            <div class="admin-form-group">
-              <label for="fq-new-client-email">Email</label>
-              <input type="email" id="fq-new-client-email" name="fp_client_email" class="admin-input @error('fp_client_email') is-invalid @enderror"
-                     maxlength="255" value="{{ old('fp_client_email') }}">
-              @error('fp_client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
-            </div>
-            <div class="admin-form-group">
-              <label for="fq-new-client-phone">Phone</label>
-              <input type="text" id="fq-new-client-phone" name="fp_client_phone"
-                     class="admin-input cp-phone-input @error('fp_client_phone') is-invalid @enderror"
-                     inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx"
-                     value="{{ old('fp_client_phone') ? \App\Models\ClientProject::formatPhone(old('fp_client_phone')) : '' }}">
-              @error('fp_client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
-            </div>
-            <div class="admin-form-group">
-              <label for="fq-new-client-address">Address</label>
-              <input type="text" id="fq-new-client-address" name="fp_client_address" class="admin-input" maxlength="500"
-                     value="{{ old('fp_client_address') }}">
-            </div>
-            <button type="submit" class="admin-btn admin-btn--primary">
-              <i class="fa fa-briefcase"></i> Create project &amp; add to quotation
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  @endif
 @endsection
 
 @push('scripts')
