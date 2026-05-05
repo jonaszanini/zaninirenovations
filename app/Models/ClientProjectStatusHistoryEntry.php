@@ -58,7 +58,7 @@ class ClientProjectStatusHistoryEntry extends Model
 
     /**
      * When column for the History tab — always shown in the app timezone
-     * (default America/Toronto = Eastern) with EST/EDT abbreviation.
+     * (default America/Toronto = Eastern), labelled {@see \App\Support\EasternStandardTimeDisplay::DISPLAY_TIMEZONE_LABEL}.
      */
     public function changedAtDisplay(): string
     {

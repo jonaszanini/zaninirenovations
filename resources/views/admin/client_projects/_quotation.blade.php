@@ -54,6 +54,9 @@
     @php
       $hasContent = $quotation->hasContent();
       $canSend = $hasContent && ($canDeliverByEmail || $canDeliverBySms);
+      $sendConfirmMessage = $canDeliverByEmail
+          ? 'Email this document to '.$project->clientEmailRecipientsLabel().'?'
+          : 'Send an SMS with a secure PDF link to '.\App\Models\ClientProject::formatPhone($project->client_phone).'?';
       $typeLabel = $quotation->typeLabel();
       $title = $quotation->title ?: $typeLabel;
       $legacy = $quotation->isLegacyManualSource();
@@ -118,7 +121,7 @@
               <form action="{{ route('admin.client-projects.quotation.send', [$project, $quotation]) }}"
                     method="post"
                     class="cp-inline-form"
-                    onsubmit="return confirm('Email this document to the client?');">
+                    onsubmit='return confirm(@json($sendConfirmMessage));'>
                 @csrf
                 <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
                   <i class="fa fa-paper-plane"></i>

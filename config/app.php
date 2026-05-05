@@ -9,8 +9,8 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
     /*
      * Default: America/Toronto — Ontario Eastern (observes EST/EDT).
-     * Storage and Carbon math use this IANA zone; human-facing datetimes
-     * use App\Support\EasternStandardTimeDisplay for consistent Eastern display.
+     * Storage and Carbon math use this IANA zone; human-facing datetimes use
+     * EasternStandardTimeDisplay (Toronto wall clock, “EST” label).
      * Override with APP_TIMEZONE in .env if needed.
      */
     'timezone' => env('APP_TIMEZONE', 'America/Toronto'),

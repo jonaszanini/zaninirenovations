@@ -103,7 +103,7 @@ class ClientProjectTimeEntry extends Model
     }
 
     /**
-     * Same as {@see formatTime} but shifts clock to EST when the work date falls in EDT.
+     * Same as {@see formatTime}, interpreted on {@see $occurredOn} in Eastern local time.
      */
     public static function formatTimeForDisplay(?string $value, $occurredOn = null): string
     {

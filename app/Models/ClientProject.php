@@ -726,7 +726,7 @@ class ClientProject extends Model
     }
 
     /**
-     * Date + time in {@see EasternStandardTimeDisplay::easternTimezone()} (EST/EDT).
+     * Date + time: Toronto wall clock, suffixed with {@see EasternStandardTimeDisplay::DISPLAY_TIMEZONE_LABEL}.
      */
     public static function formatDateTime($dateTime): string
     {

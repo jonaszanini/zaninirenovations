@@ -7,8 +7,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * Human-facing instants use {@see easternTimezone()} (default America/Toronto)
- * local wall clock with PHP’s zone abbreviation (EST or EDT). Storage and
- * business logic are unchanged.
+ * local wall clock. The suffix is always {@see DISPLAY_TIMEZONE_LABEL} (“EST”)
+ * for consistent copy even when daylight time is in effect; the hour/minute
+ * match Toronto civil time. Storage and business logic are unchanged.
  *
  * Calendar-only fields (visit date, start/end dates, due dates) use
  * {@see formatCalendarDate()} / {@see formatCalendarLongDate()} — date in
@@ -17,6 +18,9 @@ use Illuminate\Support\Carbon;
  */
 final class EasternStandardTimeDisplay
 {
+    /** Suffix appended to {@see formatDateTime} / {@see formatDateTimeMedium}. */
+    public const DISPLAY_TIMEZONE_LABEL = 'EST';
+
     public static function easternTimezone(): string
     {
         return (string) config('app.timezone', 'America/Toronto');
@@ -33,7 +37,7 @@ final class EasternStandardTimeDisplay
 
         $c = $c->timezone(self::easternTimezone());
 
-        return $c->format('d/m/Y H:i T');
+        return $c->format('d/m/Y H:i').' '.self::DISPLAY_TIMEZONE_LABEL;
     }
 
     /**
@@ -161,7 +165,7 @@ final class EasternStandardTimeDisplay
             : Carbon::parse((string) $dateTime);
         $c = $c->timezone(self::easternTimezone());
 
-        return $c->format('l, M j, Y g:i A T');
+        return $c->format('l, M j, Y g:i A').' '.self::DISPLAY_TIMEZONE_LABEL;
     }
 
     /**
