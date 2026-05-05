@@ -1,6 +1,12 @@
 @component('emails.client_projects.layout', ['title' => 'Invoice #'.$invoice->invoice_number.' – '.$project->name])
   <p>Hi {{ $project->client_name }},</p>
 
+  @if ($project->usesInvoiceBillingOverride())
+    <p style="font-size:14px;color:#374151;">
+      The attached PDF is addressed to <strong>{{ $project->invoiceBillToName() }}</strong> for billing purposes.
+    </p>
+  @endif
+
   <p>
     Please find attached <strong>Invoice #{{ $invoice->invoice_number }}</strong>
     @if (!$invoice->isManual())

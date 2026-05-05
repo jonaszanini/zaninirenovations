@@ -132,6 +132,8 @@ class ClientProjectController extends Controller
             'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
             'client_phone' => ['nullable', 'digits:10'],
             'client_address' => ['nullable', 'string', 'max:500'],
+            'invoice_billing_name' => ['nullable', 'string', 'max:255'],
+            'invoice_billing_address' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'billing_type' => ['required', \Illuminate\Validation\Rule::in([
                 ClientProject::BILLING_FIXED,
@@ -150,6 +152,12 @@ class ClientProjectController extends Controller
         // on the projects table — it controls the onCreated side-effect.
         $sendClientEmail = (bool) ($data['send_client_email'] ?? true);
         unset($data['send_client_email']);
+
+        foreach (['invoice_billing_name', 'invoice_billing_address'] as $k) {
+            if (array_key_exists($k, $data) && $data[$k] === '') {
+                $data[$k] = null;
+            }
+        }
 
         // Hourly projects imply the price has already been agreed verbally,
         // so we skip the pre-quote stages (visit / quote pending) and land
@@ -305,6 +313,8 @@ class ClientProjectController extends Controller
             'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
             'client_phone' => ['nullable', 'digits:10'],
             'client_address' => ['nullable', 'string', 'max:500'],
+            'invoice_billing_name' => ['nullable', 'string', 'max:255'],
+            'invoice_billing_address' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
@@ -334,6 +344,12 @@ class ClientProjectController extends Controller
         }
 
         $data = $validator->validated();
+
+        foreach (['invoice_billing_name', 'invoice_billing_address'] as $k) {
+            if (array_key_exists($k, $data) && $data[$k] === '') {
+                $data[$k] = null;
+            }
+        }
 
         // billing_type is optional on update — some narrower forms (like the
         // schedule-only partial on the show page) don't post it. Only update

@@ -301,8 +301,8 @@
       <td class="right">
         <div class="quote-client">
           <p class="label">Bill to</p>
-          <p class="name">{{ $project->client_name ?: '—' }}</p>
-          <p class="line">{{ $project->client_address ?: '—' }}</p>
+          <p class="name">{{ $project->invoiceBillToName() ?: '—' }}</p>
+          <p class="line">{!! nl2br(e($project->invoiceBillToAddress() !== '' ? $project->invoiceBillToAddress() : '—')) !!}</p>
           <p class="line">{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</p>
           <p class="line">{{ $project->client_email ?: '—' }}</p>
           <p class="line" style="margin-top:4pt;font-style:italic;color:#4b5563;">

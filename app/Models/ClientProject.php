@@ -47,6 +47,8 @@ class ClientProject extends Model
         'client_email_secondary',
         'client_phone',
         'client_address',
+        'invoice_billing_name',
+        'invoice_billing_address',
         'notes',
         'status',
         'status_changed_at',
@@ -630,6 +632,36 @@ class ClientProject extends Model
     public function revenueForProfit(): float
     {
         return $this->totalRevenueCollected();
+    }
+
+    /**
+     * Legal / accounting name shown on invoice & receipt PDFs when the payer
+     * is a corporation (or other entity) distinct from the day-to-day contact.
+     */
+    public function invoiceBillToName(): string
+    {
+        $override = trim((string) ($this->invoice_billing_name ?? ''));
+
+        return $override !== '' ? $override : (string) ($this->client_name ?? '');
+    }
+
+    /**
+     * Address block for invoice & receipt PDFs. Uses the optional billing
+     * address when set; otherwise the project client address.
+     */
+    public function invoiceBillToAddress(): string
+    {
+        $override = trim((string) ($this->invoice_billing_address ?? ''));
+        if ($override !== '') {
+            return $override;
+        }
+
+        return (string) ($this->client_address ?? '');
+    }
+
+    public function usesInvoiceBillingOverride(): bool
+    {
+        return filled(trim((string) ($this->invoice_billing_name ?? '')));
     }
 
     /** Money earned so far on an hourly project = rate × closed-entry hours. */

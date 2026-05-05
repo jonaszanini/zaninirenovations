@@ -8,6 +8,12 @@
 @component('emails.client_projects.layout', ['title' => 'Reminder: Invoice #'.$invoice->invoice_number])
   <p>Hi {{ $project->client_name }},</p>
 
+  @if ($project->usesInvoiceBillingOverride())
+    <p style="font-size:14px;color:#374151;">
+      That invoice is addressed to <strong>{{ $project->invoiceBillToName() }}</strong> on the PDF.
+    </p>
+  @endif
+
   <p>
     Just a friendly reminder that <strong>Invoice #{{ $invoice->invoice_number }}</strong>
     @if (!$invoice->isManual())

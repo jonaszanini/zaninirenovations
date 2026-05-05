@@ -80,6 +80,25 @@
                  @class(['is-invalid' => $errors->has('client_address')])>
           @error('client_address') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
+
+        <div class="admin-form-section" style="margin-top:1rem;padding-top:1rem;border-top:1px dashed #e5e7eb;">
+          <h3 style="font-size:1rem;">Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span></h3>
+          <p class="admin-form-help">If invoices should be addressed to a corporation or other legal entity, enter that name and address here. Otherwise leave blank.</p>
+          <div class="admin-form-group">
+            <label for="cp-invoice-billing-name">Legal billing name</label>
+            <input type="text" id="cp-invoice-billing-name" name="invoice_billing_name"
+                   value="{{ old('invoice_billing_name') }}" maxlength="255"
+                   placeholder="e.g. ABC Renovations Inc."
+                   @class(['is-invalid' => $errors->has('invoice_billing_name')])>
+            @error('invoice_billing_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+          <div class="admin-form-group">
+            <label for="cp-invoice-billing-address">Billing address</label>
+            <textarea id="cp-invoice-billing-address" name="invoice_billing_address" rows="3" maxlength="2000"
+                      class="admin-input" placeholder="Registered office or mailing address for AP">{{ old('invoice_billing_address') }}</textarea>
+            @error('invoice_billing_address') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+        </div>
       </div>
 
       <div class="admin-form-section">
