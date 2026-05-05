@@ -365,8 +365,7 @@ class FenceQuotationController extends Controller
         );
 
         $items = [[
-            'description' => $fence_quotation->summaryDescription()
-                .' (see fence quote '.$fence_quotation->quote_number.')',
+            'description' => $fence_quotation->summaryDescription(),
             'amount' => $lineAmount,
             'apply_hst' => true,
         ]];

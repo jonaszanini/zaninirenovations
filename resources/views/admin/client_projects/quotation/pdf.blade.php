@@ -341,10 +341,10 @@
       <td class="right">
         <div class="quote-client">
           <p class="label">Prepared for</p>
-          <p class="name">{{ $project->client_name ?: '—' }}</p>
-          <p class="line">{{ $project->client_address ?: '—' }}</p>
-          <p class="line">{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</p>
-          <p class="line">{{ $project->client_email ?: '—' }}</p>
+          <p class="name">{{ $project->client_name ?: 'TBD' }}</p>
+          <p class="line">Address: {{ $project->client_address ?: 'TBD' }}</p>
+          <p class="line">Phone: {{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: 'TBD' }}</p>
+          <p class="line">Email: {{ $project->client_email ?: 'TBD' }}</p>
           <p class="line" style="margin-top:4pt;font-style:italic;color:#4b5563;">
             Project: {{ $project->name }}
           </p>
