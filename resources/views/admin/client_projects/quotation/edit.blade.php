@@ -126,11 +126,6 @@
       <div class="cp-quotation-items-card">
         <div class="cp-quotation-items-header">
           <h4>Line items</h4>
-          <button type="button"
-                  id="cp-quotation-add-row"
-                  class="admin-btn admin-btn--ghost admin-btn--sm">
-            <i class="fa fa-plus"></i> Add row
-          </button>
         </div>
 
         <table class="cp-quotation-items-table" id="cp-quotation-items">
@@ -179,6 +174,14 @@
             @endforeach
           </tbody>
         </table>
+
+        <div class="cp-quotation-add-row-slot">
+          <button type="button"
+                  id="cp-quotation-add-row"
+                  class="cp-quotation-add-row-btn">
+            <i class="fa fa-plus"></i> Add row
+          </button>
+        </div>
 
         <div class="cp-quotation-totals">
           <div class="cp-quotation-totals-row">

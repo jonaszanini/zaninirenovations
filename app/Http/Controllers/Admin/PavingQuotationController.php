@@ -1,0 +1,407 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\ClientProject;
+use App\Models\ClientProjectQuotation;
+use App\Models\PavingMaterialRate;
+use App\Models\PavingPricingTier;
+use App\Models\PavingQuotation;
+use App\Models\PavingStoneType;
+use App\Services\ClientProjectStatusService;
+use App\Services\PavingQuotationCalculator;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+class PavingQuotationController extends Controller
+{
+    public function index()
+    {
+        $quotations = PavingQuotation::query()
+            ->with('project')
+            ->orderByDesc('id')
+            ->paginate(30);
+
+        return view('admin.quotations.paving.index', compact('quotations'));
+    }
+
+    public function create()
+    {
+        return $this->formView(null);
+    }
+
+    public function store(Request $request)
+    {
+        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $calc = $this->validatedCalculation($request, $intent);
+
+        $quote = PavingQuotation::create([
+            'quote_number' => PavingQuotation::generateNumber(),
+            'client_name' => $calc['client_name'],
+            'is_draft' => $intent === 'draft',
+            'inputs' => $calc['inputs'],
+            'calculation' => $calc['calculation'],
+            'final_quote_total' => $calc['final_quote_total'],
+            'version' => 1,
+        ]);
+
+        return redirect()
+            ->route('admin.quotations.paving.edit', $quote)
+            ->with('success', $intent === 'draft'
+                ? 'Paving quotation saved as draft.'
+                : 'Paving quotation '.$quote->quote_number.' saved.');
+    }
+
+    public function edit(PavingQuotation $paving_quotation)
+    {
+        return $this->formView($paving_quotation);
+    }
+
+    public function update(Request $request, PavingQuotation $paving_quotation)
+    {
+        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $calc = $this->validatedCalculation($request, $intent);
+
+        $paving_quotation->fill([
+            'client_name' => $calc['client_name'],
+            'is_draft' => $intent === 'draft',
+            'inputs' => $calc['inputs'],
+            'calculation' => $calc['calculation'],
+            'final_quote_total' => $calc['final_quote_total'],
+            'version' => $paving_quotation->version + 1,
+        ])->save();
+
+        return redirect()
+            ->route('admin.quotations.paving.edit', $paving_quotation)
+            ->with('success', 'Paving quotation '.$paving_quotation->quote_number.' updated (v'.$paving_quotation->version.').');
+    }
+
+    public function preview(Request $request)
+    {
+        $inputs = $this->gatherInputsFromRequest($request);
+        $calc = (new PavingQuotationCalculator)->calculate($inputs);
+
+        return response()->json($calc);
+    }
+
+    public function linkToProject(Request $request, PavingQuotation $paving_quotation)
+    {
+        if ($paving_quotation->isLinked()) {
+            return back()->with('error', 'This paving quotation is already linked to a project.');
+        }
+        if ($paving_quotation->is_draft) {
+            return back()->with('error', 'Publish the quotation (save without draft) before linking.');
+        }
+        if ((float) $paving_quotation->final_quote_total <= 0) {
+            return back()->with('error', 'Set a final quote total greater than zero before linking.');
+        }
+
+        $data = $request->validate([
+            'client_project_id' => ['required', 'integer', 'exists:client_projects,id'],
+            'link_line_description' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $project = ClientProject::query()->findOrFail($data['client_project_id']);
+        if (in_array($project->status, [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED], true)) {
+            return back()->with('error', 'Cannot link to a rejected or completed project.');
+        }
+
+        $lineDesc = trim((string) ($data['link_line_description'] ?? ''));
+        if ($lineDesc === '') {
+            $lineDesc = $paving_quotation->summaryDescription();
+        }
+
+        DB::transaction(function () use ($project, $paving_quotation, $lineDesc) {
+            $this->appendPavingLineToProjectQuotation($project, $paving_quotation, $lineDesc);
+        });
+
+        return redirect()
+            ->route('admin.quotations.paving.edit', $paving_quotation)
+            ->with('success', 'Linked to project "'.$project->name.'". A line item was added to the project\'s Quotation.');
+    }
+
+    public function createProjectAndLink(
+        Request $request,
+        PavingQuotation $paving_quotation,
+        ClientProjectStatusService $statusService
+    ) {
+        if ($paving_quotation->isLinked()) {
+            return back()->with('error', 'This paving quotation is already linked to a project.');
+        }
+        if ($paving_quotation->is_draft) {
+            return back()->with('error', 'Publish the quotation before creating a project.');
+        }
+        if ((float) $paving_quotation->final_quote_total <= 0) {
+            return back()->with('error', 'Set a final quote total greater than zero before creating a project.');
+        }
+
+        $this->normalisePhoneOnRequest($request);
+
+        $data = $request->validate([
+            'link_line_description' => ['nullable', 'string', 'max:500'],
+            'fp_project_name' => ['nullable', 'string', 'max:255'],
+            'fp_client_name' => ['required', 'string', 'max:255'],
+            'fp_client_email' => ['nullable', 'email', 'max:255'],
+            'fp_client_phone' => ['nullable', 'digits:10'],
+            'fp_client_address' => ['nullable', 'string', 'max:500'],
+        ], [
+            'fp_client_phone.digits' => 'Phone number must have exactly 10 digits.',
+        ]);
+
+        $lineDesc = trim((string) ($data['link_line_description'] ?? ''));
+        if ($lineDesc === '') {
+            $lineDesc = $paving_quotation->summaryDescription();
+        }
+
+        $clientName = trim($data['fp_client_name']);
+        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
+        if ($projectTitle === '') {
+            $projectTitle = $clientName.' — Paving';
+        }
+        $projectTitle = Str::limit($projectTitle, 255, '');
+
+        $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $paving_quotation, $lineDesc) {
+            $project = ClientProject::create([
+                'name' => $projectTitle,
+                'client_name' => $clientName,
+                'client_email' => $data['fp_client_email'] ?: null,
+                'client_phone' => $data['fp_client_phone'] ?: null,
+                'client_address' => $data['fp_client_address'] ?: null,
+                'billing_type' => ClientProject::BILLING_FIXED,
+                'hourly_rate' => null,
+                'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+                'status_changed_at' => now(),
+            ]);
+
+            $this->appendPavingLineToProjectQuotation($project, $paving_quotation, $lineDesc);
+
+            return $project;
+        });
+
+        $statusService->onCreated($project, false);
+
+        return redirect()
+            ->to(route('admin.client-projects.show', $project).'#quotation')
+            ->with('success', 'Project created. The paving line was added to the Quotation tab.');
+    }
+
+    public function destroy(PavingQuotation $paving_quotation)
+    {
+        $paving_quotation->delete();
+
+        return redirect()
+            ->route('admin.quotations.paving.index')
+            ->with('success', 'Paving quotation deleted.');
+    }
+
+    protected function formView(?PavingQuotation $quotation)
+    {
+        $stoneTypes = PavingStoneType::query()->orderBy('sort_order')->get();
+        $materialRates = PavingMaterialRate::query()->orderBy('sort_order')->get();
+        $pricingTiers = PavingPricingTier::query()->orderBy('area_sq_ft')->get();
+
+        $linkableProjects = ClientProject::query()
+            ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED])
+            ->orderByDesc('id')
+            ->get(['id', 'name', 'client_name', 'status']);
+
+        return view('admin.quotations.paving.create', [
+            'quotation' => $quotation,
+            'stoneTypes' => $stoneTypes,
+            'materialRates' => $materialRates,
+            'pricingTiers' => $pricingTiers,
+            'linkableProjects' => $linkableProjects,
+        ]);
+    }
+
+    /**
+     * @return array{inputs: array, calculation: array, final_quote_total: float, client_name: ?string}
+     */
+    protected function validatedCalculation(Request $request, string $intent): array
+    {
+        $clientRules = $intent === 'draft'
+            ? ['nullable', 'string', 'max:160']
+            : ['required', 'string', 'max:160'];
+
+        $request->validate([
+            'client_name' => $clientRules,
+            'save_intent' => ['nullable', 'in:draft,publish'],
+        ], [
+            'client_name.required' => 'Client name is required to save a published quotation.',
+        ]);
+
+        $inputs = $this->gatherInputsFromRequest($request);
+        $calc = (new PavingQuotationCalculator)->calculate($inputs);
+        $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
+
+        return [
+            'client_name' => trim((string) $request->input('client_name')) ?: null,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => round($final, 2),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function gatherInputsFromRequest(Request $request): array
+    {
+        $this->normalizeCadMoneyStringsOnRequest($request);
+
+        $data = $request->validate([
+            'total_area_sq_ft' => ['required', 'numeric', 'min:1', 'max:1000000'],
+            'paving_stone_type_id' => ['nullable', 'integer', 'exists:paving_stone_types,id'],
+            'stone_sq_ft_per_stone' => ['required', 'numeric', 'min:0.0001', 'max:100'],
+            'stone_price_per_stone' => ['required', 'numeric', 'min:0', 'max:99999'],
+            'helper_hourly_rate' => ['required', 'numeric', 'min:0', 'max:500'],
+            'owner_hourly_rate' => ['required', 'numeric', 'min:0', 'max:500'],
+            'mini_skid_days' => ['required', 'numeric', 'min:0', 'max:365'],
+            'plate_compactor_days' => ['required', 'numeric', 'min:0', 'max:365'],
+            'profit_margin' => ['required', 'numeric', 'min:0', 'max:100'],
+            'waste_factor' => ['required', 'numeric', 'min:0', 'max:100'],
+            'excavation_depth_in' => ['required', 'numeric', 'min:1', 'max:48'],
+            'hst_rate' => ['required', 'numeric', 'min:0', 'max:30'],
+            'marble_stone_type_id' => ['nullable', 'integer', 'exists:paving_stone_types,id'],
+            'marble_area_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'marble_sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
+            'marble_price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'manual_price_override' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $profitMargin = (float) $data['profit_margin'];
+        if ($profitMargin > 1) {
+            $profitMargin /= 100;
+        }
+        $waste = (float) $data['waste_factor'];
+        if ($waste > 1) {
+            $waste /= 100;
+        }
+        $hst = (float) $data['hst_rate'];
+        if ($hst > 0.5) {
+            $hst /= 100;
+        }
+
+        $marbleOn = filter_var($data['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($marbleOn && (float) ($data['marble_area_sq_ft'] ?? 0) > 0 && empty($data['marble_stone_type_id'])) {
+            throw ValidationException::withMessages([
+                'marble_stone_type_id' => 'Select a marble / accent stone type when marble area is greater than zero.',
+            ]);
+        }
+
+        $marbleStone = ! empty($data['marble_stone_type_id'])
+            ? PavingStoneType::query()->find($data['marble_stone_type_id'])
+            : null;
+
+        return [
+            'total_area_sq_ft' => (float) $data['total_area_sq_ft'],
+            'paving_stone_type_id' => $data['paving_stone_type_id'] ?? null,
+            'stone_sq_ft_per_stone' => (float) $data['stone_sq_ft_per_stone'],
+            'stone_price_per_stone' => (float) $data['stone_price_per_stone'],
+            'helper_hourly_rate' => (float) $data['helper_hourly_rate'],
+            'owner_hourly_rate' => (float) $data['owner_hourly_rate'],
+            'mini_skid_days' => (float) $data['mini_skid_days'],
+            'plate_compactor_days' => (float) $data['plate_compactor_days'],
+            'profit_margin' => $profitMargin,
+            'waste_factor' => $waste,
+            'excavation_depth_in' => (float) $data['excavation_depth_in'],
+            'hst_rate' => $hst,
+            'add_polymeric_sand' => $request->boolean('add_polymeric_sand'),
+            'include_old_surface_removal' => $request->boolean('include_old_surface_removal'),
+            'include_geotextile' => $request->boolean('include_geotextile'),
+            'marble_enabled' => $request->boolean('marble_enabled'),
+            'marble_stone_type_id' => $data['marble_stone_type_id'] ?? null,
+            'marble_area_sq_ft' => isset($data['marble_area_sq_ft']) ? (float) $data['marble_area_sq_ft'] : 0,
+            'marble_sq_ft_per_stone' => isset($data['marble_sq_ft_per_stone']) && $data['marble_sq_ft_per_stone'] !== ''
+                ? (float) $data['marble_sq_ft_per_stone']
+                : ($marbleStone ? (float) $marbleStone->sq_ft_per_stone : null),
+            'marble_price_per_stone' => isset($data['marble_price_per_stone']) && $data['marble_price_per_stone'] !== ''
+                ? (float) $data['marble_price_per_stone']
+                : ($marbleStone ? (float) $marbleStone->price_per_stone : null),
+            'manual_price_override' => isset($data['manual_price_override']) && $data['manual_price_override'] !== ''
+                ? (float) $data['manual_price_override']
+                : null,
+        ];
+    }
+
+    /**
+     * Strip thousands separators from CAD calculator inputs before validation.
+     * Preview uses fetch(FormData) without running submit handlers that strip commas.
+     */
+    protected function normalizeCadMoneyStringsOnRequest(Request $request): void
+    {
+        $moneyKeys = ['stone_price_per_stone', 'helper_hourly_rate', 'owner_hourly_rate', 'marble_price_per_stone', 'manual_price_override'];
+        $optionalEmptyToNull = ['marble_price_per_stone', 'manual_price_override'];
+
+        foreach ($moneyKeys as $key) {
+            if (! $request->exists($key)) {
+                continue;
+            }
+            $v = $request->input($key);
+            if (($v === '' || $v === null) && in_array($key, $optionalEmptyToNull, true)) {
+                $request->merge([$key => null]);
+
+                continue;
+            }
+            if (! is_string($v)) {
+                continue;
+            }
+            $request->merge([$key => str_replace(',', '', $v)]);
+        }
+    }
+
+    protected function appendPavingLineToProjectQuotation(
+        ClientProject $project,
+        PavingQuotation $pavingQuotation,
+        string $lineDescription
+    ): void {
+        /** @var ClientProjectQuotation $projectQuote */
+        $projectQuote = $project->quotation()->firstOrNew([]);
+
+        if (! $projectQuote->exists) {
+            $projectQuote->client_project_id = $project->id;
+            $projectQuote->type = ClientProjectQuotation::TYPE_QUOTATION;
+            $projectQuote->labour = true;
+            $projectQuote->material = true;
+            $projectQuote->quotation_number = ClientProjectQuotation::generateNumber(
+                ClientProjectQuotation::TYPE_QUOTATION
+            );
+            $projectQuote->items = [];
+            $projectQuote->version = 1;
+        }
+
+        $items = is_array($projectQuote->items) ? $projectQuote->items : [];
+        $ref = '(see '.$pavingQuotation->quote_number.')';
+        $items[] = [
+            'description' => $lineDescription.' '.$ref,
+            'amount' => round((float) $pavingQuotation->final_quote_total, 2),
+            'apply_hst' => false,
+        ];
+
+        $projectQuote->items = $items;
+        $projectQuote->save();
+
+        $project->refresh();
+        $project->syncFixedContractTotalsFromQuotation();
+
+        $pavingQuotation->update([
+            'client_project_id' => $project->id,
+            'linked_at' => now(),
+        ]);
+    }
+
+    protected function normalisePhoneOnRequest(Request $request): void
+    {
+        if (! $request->has('fp_client_phone')) {
+            return;
+        }
+        $raw = (string) $request->input('fp_client_phone');
+        $digits = preg_replace('/\D/', '', $raw);
+        $request->merge([
+            'fp_client_phone' => $digits === '' ? null : $digits,
+        ]);
+    }
+}

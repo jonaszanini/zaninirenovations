@@ -41,5 +41,19 @@
         <span class="fq-hub-card-cta">Open standard quotation <i class="fa fa-arrow-right"></i></span>
       </div>
     </a>
+
+    <a href="{{ route('admin.quotations.paving.index') }}" class="fq-hub-card">
+      <div class="fq-hub-card-icon" aria-hidden="true">
+        <i class="fa fa-th"></i>
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Paving stones</h4>
+        <p>
+          Ottawa 2026 paving calculator: materials, fixed costs, scaled labour, pricing-engine
+          suggestions, optional marble inlay — with an editable price database.
+        </p>
+        <span class="fq-hub-card-cta">Open paving calculator <i class="fa fa-arrow-right"></i></span>
+      </div>
+    </a>
   </div>
 @endsection

@@ -1,0 +1,83 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class PavingQuotation extends Model
+{
+    protected $fillable = [
+        'client_project_id',
+        'quote_number',
+        'client_name',
+        'is_draft',
+        'inputs',
+        'calculation',
+        'final_quote_total',
+        'version',
+        'linked_at',
+    ];
+
+    protected $casts = [
+        'inputs' => 'array',
+        'calculation' => 'array',
+        'is_draft' => 'boolean',
+        'final_quote_total' => 'decimal:2',
+        'version' => 'integer',
+        'linked_at' => 'datetime',
+    ];
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(ClientProject::class, 'client_project_id');
+    }
+
+    public function isLinked(): bool
+    {
+        return $this->client_project_id !== null;
+    }
+
+    public function summaryDescription(): string
+    {
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+        $area = (float) ($inputs['total_area_sq_ft'] ?? 0);
+        $stoneId = $inputs['paving_stone_type_id'] ?? null;
+        $stoneName = 'Paving stones';
+        if ($stoneId) {
+            $st = PavingStoneType::query()->find($stoneId);
+            if ($st) {
+                $stoneName = $st->name;
+            }
+        }
+        $marble = filter_var($inputs['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $marblePart = $marble && ($inputs['marble_area_sq_ft'] ?? 0) > 0
+            ? ' with marble inlay'
+            : '';
+
+        return sprintf(
+            'Paving Stones — %s sq ft %s%s',
+            rtrim(rtrim(number_format($area, 2), '0'), '.'),
+            $stoneName,
+            $marblePart
+        );
+    }
+
+    public static function generateNumber(): string
+    {
+        $year = (int) date('Y');
+        $latest = static::query()
+            ->where('quote_number', 'like', "PQ-{$year}-%")
+            ->orderByDesc('quote_number')
+            ->first();
+
+        if ($latest) {
+            $parts = explode('-', $latest->quote_number);
+            $next = (int) end($parts) + 1;
+        } else {
+            $next = random_int(100, 400);
+        }
+
+        return sprintf('PQ-%d-%04d', $year, $next);
+    }
+}

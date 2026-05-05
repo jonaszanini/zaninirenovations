@@ -1499,7 +1499,7 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-quotation-items-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 .cp-quotation-items-table th,
 .cp-quotation-items-table td {
@@ -1540,6 +1540,45 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-quotation-items-table .cp-quotation-row-amount {
   width: 100%;
   text-align: right;
+}
+
+/* Full-width “insert line here” control — sits after the last row, before totals */
+.cp-quotation-add-row-slot {
+  margin: 0 0 12px;
+}
+.cp-quotation-add-row-btn {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.65rem 1rem;
+  border: 1px dashed var(--admin-border-strong, #c5cdd6);
+  border-radius: 8px;
+  background: var(--admin-surface-hover, #f4f6f8);
+  color: var(--admin-primary, #024768);
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: inherit;
+  line-height: 1.3;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.cp-quotation-add-row-btn:hover {
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.08));
+  border-color: var(--admin-primary, #024768);
+  border-style: solid;
+  color: var(--admin-primary-hover, #013a52);
+}
+.cp-quotation-add-row-btn:focus {
+  outline: none;
+}
+.cp-quotation-add-row-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--admin-surface, #fff), 0 0 0 4px var(--admin-primary-ring, rgba(2, 71, 104, 0.22));
 }
 
 /* Generic input styling for the quotation editor (and any other admin

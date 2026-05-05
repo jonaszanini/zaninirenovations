@@ -94,6 +94,7 @@ class AdminDashboardService
         return [
             ['label' => 'Create new project', 'route' => 'admin.client-projects.create', 'icon' => 'fa-plus-circle', 'variant' => 'primary'],
             ['label' => 'New fence quotation', 'route' => 'admin.quotations.fence.create', 'icon' => 'fa-calculator', 'variant' => 'primary'],
+            ['label' => 'New paving quotation', 'route' => 'admin.quotations.paving.create', 'icon' => 'fa-th', 'variant' => 'primary'],
             ['label' => 'All active projects', 'route' => 'admin.client-projects.index', 'icon' => 'fa-briefcase', 'variant' => 'secondary', 'query' => []],
             ['label' => 'Project calendar', 'route' => 'admin.client-projects.calendar', 'icon' => 'fa-calendar', 'variant' => 'secondary'],
         ];

@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GooglePhotosController;
+use App\Http\Controllers\Admin\PavingDatabaseController;
+use App\Http\Controllers\Admin\PavingQuotationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\ContactFormController;
 use App\Models\Project;
@@ -237,6 +239,37 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.standard.create-project');
     Route::delete('quotations/standard/{standard_quotation}', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'destroy'])
         ->name('quotations.standard.destroy');
+
+    // Paving stone quotations (Excel-aligned calculator + editable price DB).
+    Route::get('quotations/paving', [PavingQuotationController::class, 'index'])
+        ->name('quotations.paving.index');
+    Route::get('quotations/paving/create', [PavingQuotationController::class, 'create'])
+        ->name('quotations.paving.create');
+    Route::post('quotations/paving', [PavingQuotationController::class, 'store'])
+        ->name('quotations.paving.store');
+    Route::post('quotations/paving/preview', [PavingQuotationController::class, 'preview'])
+        ->name('quotations.paving.preview');
+    Route::get('quotations/paving/{paving_quotation}/edit', [PavingQuotationController::class, 'edit'])
+        ->name('quotations.paving.edit');
+    Route::put('quotations/paving/{paving_quotation}', [PavingQuotationController::class, 'update'])
+        ->name('quotations.paving.update');
+    Route::post('quotations/paving/{paving_quotation}/link', [PavingQuotationController::class, 'linkToProject'])
+        ->name('quotations.paving.link');
+    Route::post('quotations/paving/{paving_quotation}/create-project', [PavingQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.paving.create-project');
+    Route::delete('quotations/paving/{paving_quotation}', [PavingQuotationController::class, 'destroy'])
+        ->name('quotations.paving.destroy');
+
+    Route::post('quotations/paving/database/stones', [PavingDatabaseController::class, 'storeStone'])
+        ->name('quotations.paving.database.stones.store');
+    Route::put('quotations/paving/database/stones/{paving_stone_type}', [PavingDatabaseController::class, 'updateStone'])
+        ->name('quotations.paving.database.stones.update');
+    Route::delete('quotations/paving/database/stones/{paving_stone_type}', [PavingDatabaseController::class, 'destroyStone'])
+        ->name('quotations.paving.database.stones.destroy');
+    Route::put('quotations/paving/database/rates/{paving_material_rate}', [PavingDatabaseController::class, 'updateRate'])
+        ->name('quotations.paving.database.rates.update');
+    Route::post('quotations/paving/database/tiers/sync', [PavingDatabaseController::class, 'syncTiers'])
+        ->name('quotations.paving.database.tiers.sync');
 
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
