@@ -2437,10 +2437,77 @@ body.cp-modal-open {
 .fq-materials-table td {
   vertical-align: top;
 }
+.fq-materials-table th {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.fq-materials-table td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.fq-materials-table .admin-input {
+  min-height: 34px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+.fq-materials-table .admin-form-help {
+  margin-top: 1px;
+}
+.fq-url-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fq-url-field .admin-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fq-url-open {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: #0b7a75;
+  background: #e8f7f6;
+  border: 1px solid #bfe8e4;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.fq-url-open:hover,
+.fq-url-open:focus-visible {
+  color: #066a65;
+  background: #d8f1ef;
+  border-color: #9ad8d2;
+}
 .fq-formula-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
+}
+.fq-formula-grid .admin-form-group {
+  margin-bottom: 0;
+}
+.fq-formula-grid .admin-form-group > label {
+  display: block;
+  min-height: 30px;
+  margin-bottom: 5px;
+  font-size: 10.5px;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #5f6b7a;
+}
+.fq-formula-grid .admin-input {
+  min-height: 34px;
+}
+.fq-formula-grid .admin-form-help {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #9aa4b2;
 }
 
 @media (max-width: 640px) {

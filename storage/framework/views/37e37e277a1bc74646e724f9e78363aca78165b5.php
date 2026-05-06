@@ -94,16 +94,23 @@
                 <?php endif; ?>
               </td>
               <td>
-                <input type="url"
-                       name="materials[<?php echo e($i); ?>][url]"
-                       class="admin-input"
-                       placeholder="https://..."
-                       value="<?php echo e(old('materials.'.$i.'.url', $m->url)); ?>">
-                <?php if($m->url): ?>
-                  <a href="<?php echo e($m->url); ?>" target="_blank" rel="noopener" class="admin-form-help" style="display:inline-block;margin-top:4px;">
-                    <i class="fa fa-external-link"></i> Open
-                  </a>
-                <?php endif; ?>
+                <div class="fq-url-field">
+                  <input type="url"
+                         name="materials[<?php echo e($i); ?>][url]"
+                         class="admin-input"
+                         placeholder="https://..."
+                         value="<?php echo e(old('materials.'.$i.'.url', $m->url)); ?>">
+                  <?php if($m->url): ?>
+                    <a href="<?php echo e($m->url); ?>"
+                       target="_blank"
+                       rel="noopener"
+                       class="fq-url-open"
+                       aria-label="Open product URL in new tab"
+                       title="Open product URL">
+                      <i class="fa fa-external-link"></i>
+                    </a>
+                  <?php endif; ?>
+                </div>
               </td>
             </tr>
           <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -143,6 +150,14 @@
                class="admin-input cp-money-input" inputmode="decimal"
                value="<?php echo e(old('labour_rate_8ft_per_ft', number_format((float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft), 2, '.', ''))); ?>">
         <p class="admin-form-help">Used when fence height is 8&prime;. HST is not applied to labour.</p>
+      </div>
+
+      <div class="admin-form-group">
+        <label for="fq-labour-additional-gate">Labour per additional gate (CAD$)</label>
+        <input id="fq-labour-additional-gate" type="text" name="labour_per_additional_gate"
+               class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
+               value="<?php echo e(old('labour_per_additional_gate', number_format((float) ($settings->labour_per_additional_gate ?? 0), 2, '.', ''))); ?>">
+        <p class="admin-form-help">Added to labour for gate #2 and each gate after that.</p>
       </div>
 
       <div class="admin-form-group">
@@ -213,5 +228,6 @@
     </div>
   </form>
 <?php $__env->stopSection(); ?>
+
 
 <?php echo $__env->make('admin.layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\ZaniniRenovations\resources\views/admin/quotations/fence/config/index.blade.php ENDPATH**/ ?>

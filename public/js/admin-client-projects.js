@@ -41,12 +41,6 @@
       return wholeStr;
     }
     var fracStr = String(frac).padStart(places, '0');
-    while (fracStr.length > 1 && fracStr.endsWith('0')) {
-      fracStr = fracStr.slice(0, -1);
-    }
-    if (fracStr === '' || /^0+$/.test(fracStr)) {
-      return wholeStr;
-    }
     return wholeStr + '.' + fracStr;
   }
 

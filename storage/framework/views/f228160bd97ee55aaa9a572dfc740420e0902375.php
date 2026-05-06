@@ -201,6 +201,12 @@
             </form>
           </div>
 
+          <?php echo $__env->make('admin.client_projects._quotation_subtotal_override_form', [
+              'project' => $project,
+              'quotation' => $quotation,
+              'legacy' => $legacy,
+          ], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+
           <?php if(!$canDeliverByEmail && !$canDeliverBySms && ! $legacy): ?>
             <div class="cp-contract-warning">
               <i class="fa fa-exclamation-triangle"></i>
@@ -234,6 +240,13 @@
                   <div class="cp-quotation-work-description-title">Description of the work</div>
                   <div class="cp-quotation-work-description-body"><?php echo nl2br(e($previewWorkDesc)); ?></div>
                 </div>
+              <?php endif; ?>
+
+              <?php if($quotation->hasSubtotalOverrideActive()): ?>
+                <p class="admin-form-help" style="margin:0 0 10px;">
+                  Subtotal below is overridden. Line items still reflect calculator totals (sum
+                  <?php echo e(\App\Models\ClientProject::formatMoney($quotation->lineItemsSubtotal())); ?>).
+                </p>
               <?php endif; ?>
 
               <table class="cp-quotation-items">
@@ -389,6 +402,12 @@
             </form>
           </div>
 
+          <?php echo $__env->make('admin.client_projects._quotation_subtotal_override_form', [
+              'project' => $project,
+              'quotation' => $quotation,
+              'legacy' => $legacy,
+          ], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+
           <?php if(!$canDeliverByEmail && !$canDeliverBySms && ! $legacy): ?>
             <div class="cp-contract-warning">
               <i class="fa fa-exclamation-triangle"></i>
@@ -422,6 +441,13 @@
               <div class="cp-quotation-work-description-title">Description of the work</div>
               <div class="cp-quotation-work-description-body"><?php echo nl2br(e($previewWorkDesc)); ?></div>
             </div>
+          <?php endif; ?>
+
+          <?php if($quotation->hasSubtotalOverrideActive()): ?>
+            <p class="admin-form-help" style="margin:0 0 10px;">
+              Subtotal below is overridden. Line items still reflect calculator totals (sum
+              <?php echo e(\App\Models\ClientProject::formatMoney($quotation->lineItemsSubtotal())); ?>).
+            </p>
           <?php endif; ?>
 
           <table class="cp-quotation-items">

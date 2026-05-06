@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('heading', 'Quotations'); ?>
 
 <?php $__env->startSection('content'); ?>
@@ -51,6 +49,34 @@
       </div>
       <div class="fq-hub-card-body">
         <h4>Paving stones</h4>
+      </div>
+    </a>
+
+    
+    <a href="#" class="fq-hub-card fq-hub-card--placeholder" onclick="event.preventDefault();" aria-label="Tile quotation (coming soon)">
+      <div class="fq-hub-card-image-wrap" aria-hidden="true">
+        <img src="<?php echo e(asset('images/quotations/tile.webp')); ?>" alt="" class="fq-hub-card-image">
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Tile</h4>
+      </div>
+    </a>
+
+    <a href="#" class="fq-hub-card fq-hub-card--placeholder" onclick="event.preventDefault();" aria-label="Painting quotation (coming soon)">
+      <div class="fq-hub-card-image-wrap" aria-hidden="true">
+        <img src="<?php echo e(asset('images/quotations/painting.webp')); ?>" alt="" class="fq-hub-card-image">
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Painting</h4>
+      </div>
+    </a>
+
+    <a href="#" class="fq-hub-card fq-hub-card--placeholder" onclick="event.preventDefault();" aria-label="Stairs quotation (coming soon)">
+      <div class="fq-hub-card-image-wrap" aria-hidden="true">
+        <img src="<?php echo e(asset('images/quotations/stairs.webp')); ?>" alt="" class="fq-hub-card-image">
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Stairs</h4>
       </div>
     </a>
   </div>

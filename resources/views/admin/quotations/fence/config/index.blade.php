@@ -98,16 +98,23 @@
                 @endif
               </td>
               <td>
-                <input type="url"
-                       name="materials[{{ $i }}][url]"
-                       class="admin-input"
-                       placeholder="https://..."
-                       value="{{ old('materials.'.$i.'.url', $m->url) }}">
-                @if ($m->url)
-                  <a href="{{ $m->url }}" target="_blank" rel="noopener" class="admin-form-help" style="display:inline-block;margin-top:4px;">
-                    <i class="fa fa-external-link"></i> Open
-                  </a>
-                @endif
+                <div class="fq-url-field">
+                  <input type="url"
+                         name="materials[{{ $i }}][url]"
+                         class="admin-input"
+                         placeholder="https://..."
+                         value="{{ old('materials.'.$i.'.url', $m->url) }}">
+                  @if ($m->url)
+                    <a href="{{ $m->url }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="fq-url-open"
+                       aria-label="Open product URL in new tab"
+                       title="Open product URL">
+                      <i class="fa fa-external-link"></i>
+                    </a>
+                  @endif
+                </div>
               </td>
             </tr>
           @endforeach
@@ -153,8 +160,8 @@
 
       <div class="admin-form-group">
         <label for="fq-labour-additional-gate">Labour per additional gate (CAD$)</label>
-        <input id="fq-labour-additional-gate" type="number" min="0" step="0.01" name="labour_per_additional_gate"
-               class="admin-input" inputmode="decimal"
+        <input id="fq-labour-additional-gate" type="text" name="labour_per_additional_gate"
+               class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
                value="{{ old('labour_per_additional_gate', number_format((float) ($settings->labour_per_additional_gate ?? 0), 2, '.', '')) }}">
         <p class="admin-form-help">Added to labour for gate #2 and each gate after that.</p>
       </div>
@@ -227,3 +234,4 @@
     </div>
   </form>
 @endsection
+
