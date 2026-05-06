@@ -153,8 +153,8 @@
 
       <div class="admin-form-group">
         <label for="fq-labour-additional-gate">Labour per additional gate (CAD$)</label>
-        <input id="fq-labour-additional-gate" type="text" name="labour_per_additional_gate"
-               class="admin-input cp-money-input" inputmode="decimal"
+        <input id="fq-labour-additional-gate" type="number" min="0" step="0.01" name="labour_per_additional_gate"
+               class="admin-input" inputmode="decimal"
                value="{{ old('labour_per_additional_gate', number_format((float) ($settings->labour_per_additional_gate ?? 0), 2, '.', '')) }}">
         <p class="admin-form-help">Added to labour for gate #2 and each gate after that.</p>
       </div>
