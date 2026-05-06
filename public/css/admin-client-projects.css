@@ -2389,6 +2389,15 @@ body.cp-modal-open {
   font-size: 17px;
   color: #024768;
 }
+/* Hub cards with no destination yet (calculator TBD) */
+.fq-hub-card--placeholder {
+  cursor: default;
+}
+.fq-hub-card--placeholder:hover {
+  border-color: #e0e4ea;
+  box-shadow: none;
+  transform: none;
+}
 
 /* List page --------------------------------------------------------- */
 .fq-list-toolbar {

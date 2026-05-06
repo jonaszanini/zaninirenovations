@@ -440,10 +440,14 @@ class FenceQuotationCalculator
 
         $heightFt = (float) ($in['fence_height_ft'] ?? 6);
         $labourRatePerFt = $this->settings->labourRatePerFtForHeight($heightFt);
+        $labourPerAdditionalGate = (float) ($this->settings->labour_per_additional_gate ?? 0);
+        $additionalGates = max(0, ((int) ($in['gate_count'] ?? 0)) - 1);
 
         // Labour is priced per linear foot on the total run. No HST on
         // labour per the project spec. Rate depends on 6' vs 8' fence.
-        $labour = round((float) $geom['total_linear_ft'] * $labourRatePerFt, 2);
+        $linearLabour = (float) $geom['total_linear_ft'] * $labourRatePerFt;
+        $additionalGateLabour = $additionalGates * $labourPerAdditionalGate;
+        $labour = round($linearLabour + $additionalGateLabour, 2);
 
         return [
             'materials_subtotal' => $materialsSubtotal,
@@ -452,6 +456,8 @@ class FenceQuotationCalculator
             'grand_total' => round($materialsSubtotal + $hst + $labour, 2),
             'hst_rate' => FenceQuotation::HST_RATE,
             'labour_rate_per_ft' => $labourRatePerFt,
+            'labour_per_additional_gate' => round($labourPerAdditionalGate, 2),
+            'additional_gates_count' => $additionalGates,
         ];
     }
 }
