@@ -206,6 +206,55 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   margin-right: 4px;
   color: #94a3b8;
 }
+.cp-notes-popover-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.cp-notes-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #dbe6f2;
+  background: #f8fbff;
+  color: #56728f;
+  font-size: 12px;
+}
+.cp-notes-indicator--btn {
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.2;
+}
+.cp-notes-indicator--btn[aria-expanded="true"] {
+  background: #eaf3ff;
+  border-color: #b6d2f0;
+  color: #355f88;
+}
+.cp-notes-indicator .fa {
+  margin-right: 0;
+  color: #6f8ba8;
+}
+.cp-notes-popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  min-width: 220px;
+  max-width: min(520px, 85vw);
+  max-height: min(280px, 50vh);
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.25);
+  overflow: auto;
+}
+.cp-notes-popover-body {
+  white-space: pre-line;
+}
 .cp-updated {
   color: #94a3b8;
   font-size: 12px;

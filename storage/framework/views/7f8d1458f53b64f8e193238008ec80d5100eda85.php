@@ -40,6 +40,23 @@
                  title="Open in Google Maps"><?php echo e($project->client_address); ?></a>
             </span>
           <?php endif; ?>
+          <?php if(filled($project->notes)): ?>
+            <?php
+              $notesPreview = \Illuminate\Support\Str::limit(trim((string) $project->notes), 800);
+            ?>
+            <span class="cp-notes-popover-wrap">
+              <button type="button"
+                      class="cp-notes-indicator cp-notes-indicator--btn"
+                      id="cp-notes-toggle"
+                      aria-expanded="false"
+                      aria-controls="cp-notes-popover">
+                <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Notes
+              </button>
+              <div class="cp-notes-popover" id="cp-notes-popover" role="dialog" aria-label="Project notes preview" hidden>
+                <div class="cp-notes-popover-body"><?php echo e($notesPreview); ?></div>
+              </div>
+            </span>
+          <?php endif; ?>
         </div>
       </div>
       <div class="cp-header-status">
@@ -58,7 +75,7 @@
         <div class="cp-status-form-head">
           <label for="cp-status-select" class="cp-status-form-label">Change status</label>
           <span class="cp-hint" title="Workflow: Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
-          <span class="cp-status-form-help">Pick a status to save it instantly. Type a note first if you want it logged with the change.</span>
+          <span class="cp-status-form-help">Pick a status to save it instantly.</span>
         </div>
         <div class="cp-status-controls">
           <select id="cp-status-select" name="status" class="admin-input cp-status-select">
@@ -66,8 +83,6 @@
               <option value="<?php echo e($key); ?>" <?php if($project->status === $key): echo 'selected'; endif; ?>><?php echo e($label); ?></option>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
           </select>
-          <input type="text" id="cp-status-note" name="note" placeholder="Optional note about this status change…"
-                 maxlength="2000" class="admin-input cp-status-note">
           
           <button type="submit" class="admin-btn admin-btn--primary cp-status-save">
             <i class="fa fa-save"></i> Save status
@@ -79,7 +94,6 @@
           var form = document.getElementById('cp-status-form');
           if (!form) return;
           var select = form.querySelector('#cp-status-select');
-          var note = form.querySelector('#cp-status-note');
           if (!select) return;
 
           // Hide the Save button now that we know JS is on.
@@ -92,7 +106,6 @@
 
             submitting = true;
             select.disabled = true;
-            if (note) note.disabled = true;
             // Re-add the disabled select's value so it still posts.
             var hidden = document.createElement('input');
             hidden.type = 'hidden';
@@ -103,6 +116,44 @@
           });
         })();
       </script>
+      <?php if(filled($project->notes)): ?>
+        <script>
+          (function () {
+            var toggle = document.getElementById('cp-notes-toggle');
+            var popover = document.getElementById('cp-notes-popover');
+            if (!toggle || !popover) return;
+
+            function closePopover() {
+              toggle.setAttribute('aria-expanded', 'false');
+              popover.hidden = true;
+            }
+
+            function openPopover() {
+              toggle.setAttribute('aria-expanded', 'true');
+              popover.hidden = false;
+            }
+
+            toggle.addEventListener('click', function (e) {
+              e.preventDefault();
+              if (popover.hidden) {
+                openPopover();
+              } else {
+                closePopover();
+              }
+            });
+
+            document.addEventListener('click', function (e) {
+              if (popover.hidden) return;
+              if (toggle.contains(e.target) || popover.contains(e.target)) return;
+              closePopover();
+            });
+
+            document.addEventListener('keydown', function (e) {
+              if (e.key === 'Escape') closePopover();
+            });
+          })();
+        </script>
+      <?php endif; ?>
     <?php else: ?>
       <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>
     <?php endif; ?>

@@ -110,8 +110,49 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
         </div>
+
+        <div class="admin-form-section" style="margin-top:1rem;padding-top:1rem;border-top:1px dashed #e5e7eb;">
+          <h3 style="font-size:1rem;">Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span></h3>
+          <p class="admin-form-help">When the payer is a company or a different legal entity, enter the name and address that should appear in the <strong>Bill to</strong> block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.</p>
+          <div class="admin-form-group">
+            <label for="cp-invoice-billing-name">Legal billing name</label>
+            <input type="text" id="cp-invoice-billing-name" name="invoice_billing_name"
+                   value="<?php echo e(old('invoice_billing_name', $project->invoice_billing_name)); ?>" maxlength="255"
+                   placeholder="e.g. ABC Renovations Inc."
+                   class="<?php echo \Illuminate\Support\Arr::toCssClasses(['is-invalid' => $errors->has('invoice_billing_name')]) ?>">
+            <?php $__errorArgs = ['invoice_billing_name'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+          </div>
+          <div class="admin-form-group">
+            <label for="cp-invoice-billing-address">Billing address</label>
+            <textarea id="cp-invoice-billing-address" name="invoice_billing_address" rows="3" maxlength="2000"
+                      class="admin-input" placeholder="Registered office or mailing address for AP"><?php echo e(old('invoice_billing_address', $project->invoice_billing_address)); ?></textarea>
+            <?php $__errorArgs = ['invoice_billing_address'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+            <p class="admin-form-help">Leave blank to use the client address above on PDFs.</p>
+          </div>
+        </div>
       </div>
 
+      <?php
+        $cpEditVisitDateVal = old('visit_date', optional($project->visit_date)?->toDateString());
+        $cpEditVisitExpandOpen = (bool) old('visit_required', $project->visit_required)
+          || (bool) old('visit_done', $project->visit_done)
+          || filled($cpEditVisitDateVal)
+          || $errors->has('visit_date');
+      ?>
       <div class="admin-form-section">
         <h3>Visit date</h3>
         <p class="admin-form-help">On-site visit before quoting. Enable only when the client has asked for a visit.</p>
@@ -123,11 +164,14 @@ unset($__errorArgs, $__bag); ?>
             <span>Visit required</span>
           </label>
         </div>
-        <div class="admin-form-group cp-visit-date">
-          <label for="cp-edit-visit-date">Visit date</label>
-          <input type="date" id="cp-edit-visit-date" name="visit_date"
-            value="<?php echo e(old('visit_date', optional($project->visit_date)->toDateString())); ?>">
-          <?php $__errorArgs = ['visit_date'];
+        <div id="cp-edit-visit-expandable" class="cp-visit-expandable <?php if($cpEditVisitExpandOpen): ?> is-open <?php endif; ?>"
+             aria-hidden="<?php echo e($cpEditVisitExpandOpen ? 'false' : 'true'); ?>">
+          <div class="cp-visit-expandable__inner">
+            <div class="admin-form-group cp-visit-date">
+              <label for="cp-edit-visit-date">Visit date</label>
+              <input type="date" id="cp-edit-visit-date" name="visit_date"
+                value="<?php echo e($cpEditVisitDateVal); ?>">
+              <?php $__errorArgs = ['visit_date'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -135,14 +179,16 @@ $message = $__bag->first($__errorArgs[0]); ?> <p class="admin-form-error"><?php 
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
-        </div>
-        <input type="hidden" name="visit_done" value="0">
-        <div class="admin-form-group">
-          <label class="cp-checkbox-label">
-            <input type="checkbox" name="visit_done" value="1" id="cp-edit-visit-done"
-              <?php if(old('visit_done', $project->visit_done)): echo 'checked'; endif; ?>>
-            <span>Visit done</span>
-          </label>
+            </div>
+            <input type="hidden" name="visit_done" value="0">
+            <div class="admin-form-group">
+              <label class="cp-checkbox-label">
+                <input type="checkbox" name="visit_done" value="1" id="cp-edit-visit-done"
+                  <?php if(old('visit_done', $project->visit_done)): echo 'checked'; endif; ?>>
+                <span>Visit done</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -280,6 +326,17 @@ unset($__errorArgs, $__bag); ?>
       var visitCb = document.getElementById('cp-edit-visit-required');
       var visitDate = document.getElementById('cp-edit-visit-date');
       var visitDoneCb = document.getElementById('cp-edit-visit-done');
+      var visitExpand = document.getElementById('cp-edit-visit-expandable');
+
+      function syncEditVisitExpandable() {
+        if (!visitExpand) return;
+        var required = visitCb ? visitCb.checked : false;
+        var done = visitDoneCb ? visitDoneCb.checked : false;
+        var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
+        var open = required || done || hasDate;
+        visitExpand.classList.toggle('is-open', open);
+        visitExpand.setAttribute('aria-hidden', open ? 'false' : 'true');
+      }
 
       function syncEditVisitFields() {
         if (!visitDate) return;
@@ -288,6 +345,7 @@ unset($__errorArgs, $__bag); ?>
         visitDate.readOnly = !!done;
         visitDate.disabled = !done && !required;
         visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
+        syncEditVisitExpandable();
       }
 
       function checkEditDates() {
@@ -313,6 +371,8 @@ unset($__errorArgs, $__bag); ?>
       }
       if (visitCb) visitCb.addEventListener('change', syncEditVisitFields);
       if (visitDoneCb) visitDoneCb.addEventListener('change', syncEditVisitFields);
+      if (visitDate) visitDate.addEventListener('change', syncEditVisitExpandable);
+      if (visitDate) visitDate.addEventListener('input', syncEditVisitExpandable);
       syncEditVisitFields();
 
       form.addEventListener('submit', function (e) {
