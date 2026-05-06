@@ -204,6 +204,11 @@
       <div class="row clearfix">
         <div class="col-md-12 col-sm-12 text-center clearfix">
           <p class="copyright-text">Copyright © {{ date('Y') }}. All rights reserved by Zanini Renovations</p>
+          <p class="copyright-text" style="margin-top: 4px;">
+            <a href="{{ route('privacy-policy') }}">Privacy Policy</a>
+            &nbsp;|&nbsp;
+            <a href="{{ route('terms-and-conditions') }}">Terms and Conditions</a>
+          </p>
         </div>
 
       </div>

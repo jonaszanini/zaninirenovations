@@ -204,6 +204,11 @@
       <div class="row clearfix">
         <div class="col-md-12 col-sm-12 text-center clearfix">
           <p class="copyright-text">Copyright © <?php echo e(date('Y')); ?>. All rights reserved by Zanini Renovations</p>
+          <p class="copyright-text" style="margin-top: 4px;">
+            <a href="<?php echo e(route('privacy-policy')); ?>">Privacy Policy</a>
+            &nbsp;|&nbsp;
+            <a href="<?php echo e(route('terms-and-conditions')); ?>">Terms and Conditions</a>
+          </p>
         </div>
 
       </div>

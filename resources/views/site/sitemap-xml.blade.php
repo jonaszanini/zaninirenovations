@@ -13,6 +13,18 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>{{ url('/privacy-policy') }}</loc>
+    <lastmod>{{ now()->toAtomString() }}</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>{{ url('/terms-and-conditions') }}</loc>
+    <lastmod>{{ now()->toAtomString() }}</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>{{ url('/services/custom-kitchen-remodel') }}</loc>
     <lastmod>{{ now()->toAtomString() }}</lastmod>
     <changefreq>monthly</changefreq>
