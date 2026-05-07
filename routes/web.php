@@ -22,7 +22,7 @@ Route::view('/warranty', 'site.warranty')->name('warranty');
 Route::view('/privacy-policy', 'site.privacy-policy')->name('privacy-policy');
 Route::view('/terms-and-conditions', 'site.terms-and-conditions')->name('terms-and-conditions');
 
-Route::view('/services/custom-kitchen-remodel', 'site.service-kitchen')->name('service.kitchen');
+Route::permanentRedirect('/services/custom-kitchen-remodel', '/');
 
 Route::get('/sitemap.xml', function () {
     return response()

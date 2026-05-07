@@ -201,44 +201,4 @@ class SeoStructuredData
             'itemListElement' => $elements,
         ];
     }
-
-    /** Service node for embedding in @graph (no @context). */
-    public static function serviceKitchenNode(): array
-    {
-        $url = rtrim(config('app.url'), '/');
-
-        return [
-            '@type' => 'Service',
-            '@id' => $url.'/services/custom-kitchen-remodel#service',
-            'name' => 'Custom Kitchen Remodel',
-            'serviceType' => 'Kitchen Cabinet Refacing Ottawa',
-            'provider' => ['@id' => $url.'/#business'],
-            'areaServed' => ['Ottawa', 'Kanata', 'Carleton Place'],
-            'description' => (string) config('seo.lsi_verbatim', ''),
-        ];
-    }
-
-    public static function kitchenGraph(): array
-    {
-        $url = rtrim(config('app.url'), '/');
-        $pageUrl = $url.'/services/custom-kitchen-remodel';
-
-        return [
-            '@context' => 'https://schema.org',
-            '@graph' => [
-                [
-                    '@type' => 'WebPage',
-                    '@id' => $pageUrl.'#webpage',
-                    'url' => $pageUrl,
-                    'name' => 'Kitchen Refacing Kanata, Ottawa | O.Reg. 332/12 | Zanini Renovations',
-                    'isPartOf' => ['@id' => $url.'/#website'],
-                ],
-                self::breadcrumb([
-                    ['name' => 'Home', 'url' => $url.'/'],
-                    ['name' => 'Custom Kitchen Remodel', 'url' => $pageUrl],
-                ]),
-                self::serviceKitchenNode(),
-            ],
-        ];
-    }
 }
