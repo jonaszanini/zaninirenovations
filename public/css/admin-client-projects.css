@@ -191,6 +191,9 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   margin: 0 0 6px 0;
   font-size: 22px;
 }
+.cp-contacted-via-line {
+  margin: -2px 0 10px 0;
+}
 .cp-header-meta {
   display: flex;
   flex-wrap: wrap;

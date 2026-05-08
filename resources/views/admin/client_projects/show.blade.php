@@ -21,6 +21,7 @@
       <div class="cp-header-title">
         <div class="cp-client">{{ $project->client_name }}</div>
         <h2>{{ $project->name }}</h2>
+        <div class="cp-subtle cp-contacted-via-line">Contacted via: {{ $project->contactedViaDisplay() }}</div>
         <div class="cp-header-meta">
           @if ($project->client_phone)
             <span><i class="fa fa-phone"></i> {{ \App\Models\ClientProject::formatPhone($project->client_phone) }}</span>

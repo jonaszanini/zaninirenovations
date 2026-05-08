@@ -14,6 +14,17 @@
         @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
+      <div class="admin-form-group">
+        <label for="cp-contacted-via">Contacted via <span class="cp-required">*</span></label>
+        <select id="cp-contacted-via" name="contacted_via" required @class(['admin-input', 'is-invalid' => $errors->has('contacted_via')])>
+          <option value="" disabled @selected(old('contacted_via') === null)>Select…</option>
+          @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
+            <option value="{{ $value }}" @selected(old('contacted_via') === $value)>{{ $label }}</option>
+          @endforeach
+        </select>
+        @error('contacted_via') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
       <div class="admin-form-section">
         <h3>Client information</h3>
 

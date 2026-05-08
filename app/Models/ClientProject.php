@@ -39,9 +39,18 @@ class ClientProject extends Model
     public const BILLING_FIXED = 'fixed';
     public const BILLING_HOURLY = 'hourly';
 
+    /** How the client first reached you (intake source). */
+    public const CONTACTED_VIA_WEBSITE_FORM = 'website_form';
+    public const CONTACTED_VIA_SMS = 'sms';
+    public const CONTACTED_VIA_CALL = 'call';
+    public const CONTACTED_VIA_FACEBOOK = 'facebook';
+    public const CONTACTED_VIA_INSTAGRAM = 'instagram';
+    public const CONTACTED_VIA_WHATSAPP = 'whatsapp';
+
     protected $fillable = [
         'client_id',
         'name',
+        'contacted_via',
         'client_name',
         'client_email',
         'client_email_secondary',
@@ -341,6 +350,29 @@ class ClientProject extends Model
             self::STATUS_COMPLETED,
             self::STATUS_REJECTED,
         ];
+    }
+
+    /** Intake channel options for create/edit forms (key → label). */
+    public static function contactedViaOptions(): array
+    {
+        return [
+            self::CONTACTED_VIA_WEBSITE_FORM => 'Web site form',
+            self::CONTACTED_VIA_SMS => 'SMS',
+            self::CONTACTED_VIA_CALL => 'Call',
+            self::CONTACTED_VIA_FACEBOOK => 'Facebook',
+            self::CONTACTED_VIA_INSTAGRAM => 'Instagram',
+            self::CONTACTED_VIA_WHATSAPP => 'WhatsApp',
+        ];
+    }
+
+    /** Label for list/detail UI; em dash when unset or unknown. */
+    public function contactedViaDisplay(): string
+    {
+        if ($this->contacted_via === null || $this->contacted_via === '') {
+            return '—';
+        }
+
+        return self::contactedViaOptions()[$this->contacted_via] ?? '—';
     }
 
     /** Mapping of status key → human readable label. */

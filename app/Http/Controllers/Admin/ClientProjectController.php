@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * CRUD for ClientProject (full lifecycle management). The model's show view
@@ -123,9 +124,13 @@ class ClientProjectController extends Controller
     public function store(Request $request, ClientProjectStatusService $service)
     {
         $this->normalisePhoneOnRequest($request);
+        $this->normaliseContactedViaOnRequest($request);
+
+        $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'contacted_via' => ['required', Rule::in($contactedViaKeys)],
             'client_id' => ['nullable', 'integer', 'exists:clients,id'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
@@ -304,9 +309,13 @@ class ClientProjectController extends Controller
     public function update(Request $request, ClientProject $client_project, ClientProjectStatusService $service)
     {
         $this->normalisePhoneOnRequest($request);
+        $this->normaliseContactedViaOnRequest($request);
+
+        $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
+            'contacted_via' => ['sometimes', 'nullable', Rule::in($contactedViaKeys)],
             'client_id' => ['sometimes', 'nullable', 'integer', 'exists:clients,id'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
@@ -467,6 +476,19 @@ class ClientProjectController extends Controller
         $request->merge([
             'client_phone' => $digits === '' ? null : $digits,
         ]);
+    }
+
+    /** Empty string → null so `nullable|in:…` passes on partial update forms. */
+    protected function normaliseContactedViaOnRequest(Request $request): void
+    {
+        if (!$request->has('contacted_via')) {
+            return;
+        }
+
+        $v = $request->input('contacted_via');
+        if ($v === '' || $v === null) {
+            $request->merge(['contacted_via' => null]);
+        }
     }
 
     public function destroy(ClientProject $client_project)
