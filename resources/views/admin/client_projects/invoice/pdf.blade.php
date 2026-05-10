@@ -452,7 +452,7 @@
         </tr>
       @else
         <tr>
-          <td class="totals-label">HST (13%)</td>
+          <td class="totals-label">{{ $invoice->hstPdfRowLabel() }}</td>
           <td class="amount">{{ $fmt($hst) }}</td>
         </tr>
       @endif

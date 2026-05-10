@@ -318,6 +318,17 @@ class ClientProjectInvoice extends Model
     }
 
     /**
+     * Label for the HST row on invoice / receipt PDFs.
+     * Manual invoices use flat 13% on the subtotal; installment invoices use
+     * the accepted quotation’s tax mix (scaled), which is not always 13% × the
+     * amount shown — so we avoid implying "13% of subtotal" on those PDFs.
+     */
+    public function hstPdfRowLabel(): string
+    {
+        return $this->isManual() ? 'HST (13%)' : 'HST (from accepted quotation)';
+    }
+
+    /**
      * @deprecated Applies 13% to full line sum — wrong for hourly materials split.
      */
     public function computedHst(): float
