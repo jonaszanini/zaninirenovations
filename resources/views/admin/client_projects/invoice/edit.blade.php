@@ -30,6 +30,19 @@
     $dueOn = old('due_on', $invoice->due_on ? $invoice->due_on->toDateString() : null);
     $hstExempt = (bool) old('hst_exempt', $invoice->isHstExempt());
 
+    $discountPercent = old(
+        'discount_percent',
+        $invoice->discount_percent !== null
+            ? number_format((float) $invoice->discount_percent, 4, '.', '')
+            : ''
+    );
+    $discountAmount = old(
+        'discount_amount',
+        $invoice->discount_amount !== null
+            ? number_format((float) $invoice->discount_amount, 2, '.', '')
+            : ''
+    );
+
     // $lockedSubtotal + $lockedHst + $lockedTotalWithHst are provided by
     // the controller. For installment-linked invoices, $lockedHst is the
     // proportional share of the quotation's HST (NOT a flat 13% of the
@@ -84,7 +97,7 @@
           Manual invoice — no installment link. Enter the pre-HST total and optionally itemise the work below.
         @else
           <strong>{{ $invoice->installmentTitle() }}</strong>.
-          The invoice total is locked to the installment amount from the Financials payment plan.
+          Amounts below follow the Financials installment as a reference; you may apply a pre-tax discount before HST.
         @endif
       </p>
     </div>
@@ -180,7 +193,7 @@
         @endphp
         <div class="cp-invoice-locked-total">
           <div>
-            <span class="admin-form-help">Locked total (from Financials — must match):</span>
+            <span class="admin-form-help">Locked total (from Financials — reference):</span>
           </div>
           <div class="cp-invoice-locked-total-value">
             <div class="cp-invoice-locked-total-subtotal">
@@ -308,10 +321,54 @@
           </div>
         @else
           <div class="cp-quotation-totals" id="cp-invoice-standard-totals">
-            <div class="cp-quotation-totals-row">
-              <span>Subtotal</span>
-              <span id="cp-invoice-subtotal">CA$0.00</span>
-            </div>
+            @unless ($isManual || $isHourlyManual)
+              <div class="cp-quotation-totals-row">
+                <span>Line items subtotal</span>
+                <span id="cp-invoice-line-subtotal">CA$0.00</span>
+              </div>
+              <div class="cp-quotation-totals-row cp-invoice-discount-field-row">
+                <span><label for="cp-invoice-discount-pct">Discount (%)</label></span>
+                <span style="text-align:right;">
+                  <input type="text"
+                         inputmode="decimal"
+                         name="discount_percent"
+                         id="cp-invoice-discount-pct"
+                         class="admin-input"
+                         style="max-width:110px;text-align:right;"
+                         value="{{ $discountPercent }}"
+                         placeholder="0"
+                         autocomplete="off">
+                </span>
+              </div>
+              <div class="cp-quotation-totals-row cp-invoice-discount-field-row">
+                <span><label for="cp-invoice-discount-amt">Discount (CAD)</label></span>
+                <span style="text-align:right;">
+                  <input type="text"
+                         inputmode="decimal"
+                         name="discount_amount"
+                         id="cp-invoice-discount-amt"
+                         class="admin-input cp-money-input"
+                         data-cp-money-entry="direct"
+                         data-cp-money-hybrid="1"
+                         style="max-width:110px;text-align:right;"
+                         value="{{ $discountAmount }}"
+                         placeholder="0.00"
+                         autocomplete="off">
+                </span>
+              </div>
+              <p class="admin-form-help" style="margin:0 0 8px;text-align:right;font-size:12px;color:#4b5563;">
+                <strong>Discount (CAD):</strong> same as line items — <strong>digits only</strong> while typing (e.g. <strong>13000</strong> → <strong>$130.00</strong>). Paste works for values like <strong>130.50</strong>. Totals update as you type.
+              </p>
+              <div class="cp-quotation-totals-row">
+                <span>Net subtotal (pre-tax)</span>
+                <span id="cp-invoice-net-subtotal">CA$0.00</span>
+              </div>
+            @else
+              <div class="cp-quotation-totals-row">
+                <span>Subtotal</span>
+                <span id="cp-invoice-subtotal">CA$0.00</span>
+              </div>
+            @endunless
             <div class="cp-quotation-totals-row cp-invoice-hst-row">
               <span class="cp-invoice-hst-toggle">
                 <input type="checkbox"
@@ -328,12 +385,10 @@
               <span id="cp-invoice-grand">CA$0.00</span>
             </div>
             @unless ($isManual)
-              <div class="cp-quotation-totals-row cp-invoice-mismatch" id="cp-invoice-mismatch" style="display:none;">
+              <div class="cp-quotation-totals-row cp-invoice-plan-diff" id="cp-invoice-plan-diff" style="display:none;">
                 <span>
-                  <i class="fa fa-exclamation-triangle"></i>
-                  Line-item subtotal must equal
-                  <strong>{{ \App\Models\ClientProject::formatMoney($lockedSubtotal) }}</strong>
-                  to match the locked installment. Current difference: <span id="cp-invoice-diff">—</span>
+                  <i class="fa fa-info-circle"></i>
+                  Net subtotal differs from the Financials installment ({{ \App\Models\ClientProject::formatMoney($lockedSubtotal) }}) by <span id="cp-invoice-diff">—</span>.
                 </span>
               </div>
             @endunless
@@ -434,9 +489,10 @@
     (function () {
       // Manual invoices use a flat 13% on the full line sum, except hourly manual:
       // labour lines are pre-tax; materials are tax-included; HST = 13% × labour only.
-      // Installment-linked invoices freeze HST to the quotation share.
+      // Installment-linked invoices scale quotation-share HST when the net subtotal changes.
       var HST_RATE = 0.13;
       var HOURLY_MANUAL = {{ $isHourlyManual ? 'true' : 'false' }};
+      var INSTALLMENT_EDITOR = {{ (!$isManual && !$isHourlyManual) ? 'true' : 'false' }};
       var LOCKED_SUBTOTAL = {{ $isManual ? 'null' : json_encode(round((float) $lockedSubtotal, 2)) }};
       var LOCKED_HST = {{ $isManual ? 'null' : json_encode(round((float) $lockedHst, 2)) }};
 
@@ -444,6 +500,8 @@
       var addBtn = document.getElementById('cp-invoice-add-row');
       var template = document.getElementById(HOURLY_MANUAL ? 'cp-invoice-row-template-hourly' : 'cp-invoice-row-template');
       var subtotalEl = document.getElementById('cp-invoice-subtotal');
+      var lineSubtotalEl = document.getElementById('cp-invoice-line-subtotal');
+      var netSubtotalEl = document.getElementById('cp-invoice-net-subtotal');
       var labourEl = document.getElementById('cp-invoice-labour-sub');
       var materialsEl = document.getElementById('cp-invoice-materials-sub');
       var hstEl = document.getElementById('cp-invoice-hst');
@@ -451,7 +509,7 @@
       var hstRowEl = document.querySelector('.cp-invoice-hst-row');
       var grandEl = document.getElementById('cp-invoice-grand');
       var grandLabelEl = document.getElementById('cp-invoice-grand-label');
-      var mismatchEl = document.getElementById('cp-invoice-mismatch');
+      var planDiffEl = document.getElementById('cp-invoice-plan-diff');
       var diffEl = document.getElementById('cp-invoice-diff');
       // Inline "include HST" checkbox: checked = HST applies, unchecked = exempt.
       var includeHstCb = document.getElementById('cp-invoice-include-hst');
@@ -505,6 +563,13 @@
         return isFinite(n) ? n : 0;
       }
 
+      /** Discount (%) only — not calculator-masked. */
+      function parsePlainDecimal(input) {
+        if (!input) return 0;
+        var n = parseFloat(String(input.value || '').replace(/,/g, '').trim());
+        return isFinite(n) ? n : 0;
+      }
+
       function rowLineKind(tr) {
         var hidden = tr.querySelector('input[type="hidden"][name*="[line_kind]"]');
         if (hidden) return hidden.value || 'labour';
@@ -539,11 +604,59 @@
         }
 
         var inputs = tbody.querySelectorAll('.cp-quotation-row-amount');
-        var subtotal = 0;
+        var gross = 0;
         inputs.forEach(function (input) {
-          subtotal += parseAmount(input);
+          gross += parseAmount(input);
         });
-        subtotal = Math.round(subtotal * 100) / 100;
+        gross = Math.round(gross * 100) / 100;
+
+        if (INSTALLMENT_EDITOR) {
+          var pctInput = document.getElementById('cp-invoice-discount-pct');
+          var amtInput = document.getElementById('cp-invoice-discount-amt');
+          var pct = pctInput ? parsePlainDecimal(pctInput) : 0;
+          var amtRaw = 0;
+          if (amtInput) {
+            if (window.cpMoneyMask && typeof window.cpMoneyMask.parseHybridCadMoney === 'function') {
+              amtRaw = window.cpMoneyMask.parseHybridCadMoney(amtInput.value, 2);
+            } else {
+              amtRaw = parseAmount(amtInput);
+            }
+          }
+          var discount = 0;
+          if (pct > 0.00001) {
+            discount = Math.round(Math.min(gross * pct / 100, gross) * 100) / 100;
+          } else if (amtRaw > 0.00001) {
+            discount = Math.round(Math.min(amtRaw, gross) * 100) / 100;
+          }
+          var net = Math.round(Math.max(0, gross - discount) * 100) / 100;
+
+          var hstInst;
+          if (exempt) {
+            hstInst = 0;
+          } else if (LOCKED_SUBTOTAL !== null && LOCKED_HST !== null && LOCKED_SUBTOTAL > 0.00001) {
+            hstInst = Math.round(LOCKED_HST * (net / LOCKED_SUBTOTAL) * 100) / 100;
+          } else if (LOCKED_HST !== null) {
+            hstInst = LOCKED_HST;
+          } else {
+            hstInst = Math.round(net * HST_RATE * 100) / 100;
+          }
+
+          if (lineSubtotalEl) lineSubtotalEl.textContent = formatMoney(gross);
+          if (netSubtotalEl) netSubtotalEl.textContent = formatMoney(net);
+          if (hstEl) hstEl.textContent = formatMoney(hstInst);
+          if (grandEl) grandEl.textContent = formatMoney(Math.round((net + hstInst) * 100) / 100);
+
+          if (LOCKED_SUBTOTAL !== null && planDiffEl && diffEl) {
+            var diff = Math.round((net - LOCKED_SUBTOTAL) * 100) / 100;
+            if (Math.abs(diff) > 0.01) {
+              planDiffEl.style.display = '';
+              diffEl.textContent = (diff > 0 ? '+' : '') + formatMoney(diff);
+            } else {
+              planDiffEl.style.display = 'none';
+            }
+          }
+          return;
+        }
 
         var hst;
         if (exempt) {
@@ -551,22 +664,12 @@
         } else if (LOCKED_HST !== null) {
           hst = LOCKED_HST;
         } else {
-          hst = Math.round(subtotal * HST_RATE * 100) / 100;
+          hst = Math.round(gross * HST_RATE * 100) / 100;
         }
 
-        if (subtotalEl) subtotalEl.textContent = formatMoney(subtotal);
+        if (subtotalEl) subtotalEl.textContent = formatMoney(gross);
         if (hstEl) hstEl.textContent = formatMoney(hst);
-        if (grandEl) grandEl.textContent = formatMoney(Math.round((subtotal + hst) * 100) / 100);
-
-        if (LOCKED_SUBTOTAL !== null && mismatchEl && diffEl) {
-          var diff = Math.round((subtotal - LOCKED_SUBTOTAL) * 100) / 100;
-          if (Math.abs(diff) > 0.01) {
-            mismatchEl.style.display = '';
-            diffEl.textContent = (diff > 0 ? '+' : '') + formatMoney(diff);
-          } else {
-            mismatchEl.style.display = 'none';
-          }
-        }
+        if (grandEl) grandEl.textContent = formatMoney(Math.round((gross + hst) * 100) / 100);
       }
 
       function reindex() {
@@ -618,6 +721,15 @@
         if (e.target.classList.contains('cp-invoice-line-kind')) recalc();
       });
 
+      var discountPctEl = document.getElementById('cp-invoice-discount-pct');
+      var discountAmtEl = document.getElementById('cp-invoice-discount-amt');
+      if (discountAmtEl && window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+        window.cpMoneyMask.wire(discountAmtEl);
+      }
+      if (discountPctEl) discountPctEl.addEventListener('input', recalc);
+      if (discountAmtEl) discountAmtEl.addEventListener('input', recalc);
+      if (discountAmtEl) discountAmtEl.addEventListener('blur', recalc);
+
       if (includeHstCb) includeHstCb.addEventListener('change', function () {
         syncHstExemptHidden();
         recalc();
@@ -635,6 +747,10 @@
       });
 
       recalc();
+
+      document.addEventListener('DOMContentLoaded', function () {
+        if (INSTALLMENT_EDITOR) recalc();
+      });
     })();
   </script>
 @endsection

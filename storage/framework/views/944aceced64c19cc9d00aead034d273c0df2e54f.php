@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('heading', 'Projects'); ?>
 
 <?php $__env->startSection('content'); ?>
@@ -112,6 +110,7 @@
               <td>
                 <?php echo e($project->name); ?>
 
+                <?php echo $__env->make('admin.client_projects._contacted_via_display', ['project' => $project], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
               </td>
               <td>
                 <span class="cp-badge" style="background: <?php echo e($statusColors[$project->status] ?? '#6b7280'); ?>20; color: <?php echo e($statusColors[$project->status] ?? '#6b7280'); ?>;">

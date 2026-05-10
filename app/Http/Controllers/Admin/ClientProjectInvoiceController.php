@@ -167,6 +167,8 @@ class ClientProjectInvoiceController extends Controller
             'due_on' => ['nullable', 'date'],
             'intent' => ['nullable', 'in:draft,close'],
             'hst_exempt' => ['nullable', 'boolean'],
+            'discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'discount_amount' => ['nullable', 'string', 'max:40'],
         ]);
 
         // Persist the HST-exempt flag BEFORE we recompute totals so the
@@ -198,25 +200,39 @@ class ClientProjectInvoiceController extends Controller
             $this->syncHourlyExpenseLinks($client_project, $invoice, $items);
         } else {
             $invoice->items = $items;
-            $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
-            $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
-            $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
+            $gross = round((float) array_sum(array_column($items, 'amount')), 2);
 
-            if ($invoice->isManual() && $data['manual_total'] !== null && ! $client_project->isHourly()) {
-                // Manual fixed-price invoices: if the items don't add up to the user-entered
-                // manual_total, we still persist a draft so work isn't lost — the
-                // UI surfaces a validation warning. For the "send" action this
-                // mismatch is a hard stop (see send()).
-                $invoice->subtotal = (float) $data['manual_total'];
+            if (!$invoice->isManual()) {
+                [$pctStored, $amtStored, $discountVal] = $this->resolveInstallmentDiscountFromRequest($request, $gross);
+                $invoice->discount_percent = $pctStored;
+                $invoice->discount_amount = $amtStored;
+                $net = round(max(0.0, $gross - $discountVal), 2);
+                $invoice->subtotal = $net;
+                $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $net);
+                $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
+            } else {
+                $invoice->discount_percent = null;
+                $invoice->discount_amount = null;
+                $invoice->subtotal = $gross;
                 $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
                 $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
 
-                if (abs((float) array_sum(array_column($items, 'amount')) - (float) $data['manual_total']) > 0.01 && count($items)) {
-                    // Fall back to items-sum as the authoritative subtotal if
-                    // the user actually typed line items (prefer item sum).
-                    $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
+                if ($data['manual_total'] !== null && ! $client_project->isHourly()) {
+                    // Manual fixed-price invoices: if the items don't add up to the user-entered
+                    // manual_total, we still persist a draft so work isn't lost — the
+                    // UI surfaces a validation warning. For the "send" action this
+                    // mismatch is a hard stop (see send()).
+                    $invoice->subtotal = (float) $data['manual_total'];
                     $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
                     $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
+
+                    if (abs((float) array_sum(array_column($items, 'amount')) - (float) $data['manual_total']) > 0.01 && count($items)) {
+                        // Fall back to items-sum as the authoritative subtotal if
+                        // the user actually typed line items (prefer item sum).
+                        $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
+                        $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
+                        $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
+                    }
                 }
             }
         }
@@ -327,18 +343,6 @@ class ClientProjectInvoiceController extends Controller
             $missing = implode(', ', $client_project->missingClientContactFields());
 
             return back()->with('error', "Cannot send the invoice — missing client info: {$missing}.");
-        }
-
-        if (!$invoice->isManual()) {
-            $lockedSubtotal = $this->lockedSubtotal($client_project, $invoice);
-            $actualSubtotal = round(array_sum(array_column($invoice->cleanItems(), 'amount')), 2);
-            if (abs($lockedSubtotal - $actualSubtotal) > 0.01) {
-                return back()->with('error', sprintf(
-                    'Line-item subtotal (%s) must match the locked installment amount (%s) before sending.',
-                    ClientProject::formatMoney($actualSubtotal),
-                    ClientProject::formatMoney($lockedSubtotal)
-                ));
-            }
         }
 
         // Bump version on re-send so the PDF history is preserved on disk.
@@ -850,12 +854,6 @@ class ClientProjectInvoiceController extends Controller
             $out[] = 'Set a payment due date on the invoice before sending an SMS link.';
         }
 
-        if (!$invoice->isManual()) {
-            if (! $project->invoiceLineSumMatchesInstallmentLock($invoice)) {
-                $out[] = 'Line-item subtotal must match the locked installment amount before sending.';
-            }
-        }
-
         if (!$mocean->isConfigured()) {
             $out[] = 'SMS is not configured — set MOCEAN_API_TOKEN on the server.';
         }
@@ -1117,8 +1115,8 @@ class ClientProjectInvoiceController extends Controller
      * Installment-linked invoices: HST is sliced proportionally from the
      * quotation's actual HST (some quotation lines may have been HST-exempt,
      * so 13% × subtotal would over-charge). The split is anchored on the
-     * locked installment subtotal — never on the typed line items, which
-     * are constrained to sum to that amount anyway.
+     * locked installment subtotal. When the billed subtotal differs (discount),
+     * HST scales by the same ratio so the quotation's tax mix is preserved.
      *
      * Manual / hourly invoices: standard 13% on the supplied subtotal.
      */
@@ -1143,7 +1141,14 @@ class ClientProjectInvoiceController extends Controller
             return round($subtotal * ClientProjectInvoice::HST_RATE, 2);
         }
 
-        return round((float) $installment->effectiveHst(), 2);
+        $lockedBase = round((float) ($installment->amount ?? 0), 2);
+        $lockedHst = round((float) $installment->effectiveHst(), 2);
+
+        if ($lockedBase <= 0.00001) {
+            return round($subtotal * ClientProjectInvoice::HST_RATE, 2);
+        }
+
+        return round($lockedHst * ($subtotal / $lockedBase), 2);
     }
 
     /**
@@ -1170,6 +1175,71 @@ class ClientProjectInvoiceController extends Controller
     protected function lockedTotalWithHst(ClientProject $project, ClientProjectInvoice $invoice): float
     {
         return round($this->lockedSubtotal($project, $invoice) + $this->lockedHst($project, $invoice), 2);
+    }
+
+    /**
+     * Resolve installment invoice discount: percentage takes precedence over a fixed amount.
+     *
+     * @return array{0: float|null, 1: float|null, 2: float} Stored percent, stored amount column, dollars discounted.
+     */
+    protected function resolveInstallmentDiscountFromRequest(Request $request, float $grossLineSubtotal): array
+    {
+        $rawPct = $request->input('discount_percent');
+        $rawAmt = $request->input('discount_amount');
+        $pct = is_numeric($rawPct) ? (float) $rawPct : 0.0;
+        $amt = $this->parseHybridDiscountCadInput($rawAmt, $grossLineSubtotal);
+
+        if ($pct > 0.00001) {
+            $d = round(min($grossLineSubtotal * $pct / 100, $grossLineSubtotal), 2);
+
+            return [round($pct, 4), null, $d];
+        }
+
+        if ($amt > 0.00001) {
+            $d = round(min($amt, $grossLineSubtotal), 2);
+
+            return [null, $d, $d];
+        }
+
+        return [null, null, 0.0];
+    }
+
+    /**
+     * Matches JS cpMoneyMask.parseHybridCadMoney: no "." → digits are minor units / 100;
+     * includes "." → plain decimal dollars.
+     */
+    protected function parseHybridDiscountCadInput(mixed $raw, float $grossLineSubtotal): float
+    {
+        if ($raw === null || $raw === '') {
+            return 0.0;
+        }
+
+        $s = preg_replace('/\s+/u', '', str_replace(',', '', trim((string) $raw)));
+        if ($s === '') {
+            return 0.0;
+        }
+
+        if (str_contains($s, '.')) {
+            if (! is_numeric($s)) {
+                return 0.0;
+            }
+
+            return round(min(max(0.0, (float) $s), $grossLineSubtotal), 2);
+        }
+
+        $digits = preg_replace('/\D+/', '', $s);
+        if ($digits === '') {
+            return 0.0;
+        }
+
+        $digits = ltrim($digits, '0');
+        if ($digits === '') {
+            $digits = '0';
+        }
+
+        $minor = (int) $digits;
+
+        return round(min($minor / 100.0, $grossLineSubtotal), 2);
     }
 
     protected function normaliseItems(array $rows): array

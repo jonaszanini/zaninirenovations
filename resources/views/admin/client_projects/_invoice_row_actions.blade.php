@@ -36,9 +36,6 @@
       if (empty($invoice->due_on)) {
           $contentBlockers[] = 'Set a payment due date — open the invoice editor and fill in the Due date field.';
       }
-      if (!$invoice->isManual() && ! $project->invoiceLineSumMatchesInstallmentLock($invoice)) {
-          $contentBlockers[] = 'Line-item subtotal must match the locked installment amount.';
-      }
   }
 
   $contactBlockersForEmail = [];

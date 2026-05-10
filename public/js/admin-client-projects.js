@@ -19,6 +19,15 @@
  *     (e.g. `12345.67`) so server-side numeric validation keeps working.
  *   - Calling `cpMoneyMask.wire(input)` again on the same element re-formats
  *     the current value (e.g. mark-paid modal preset).
+ *
+ *   - Optional `data-cp-money-entry="direct"` on a `.cp-money-input`:
+ *     normal decimal typing (130 or 130.00) with thousand separators applied
+ *     on blur — use where calculator-style cents entry would be confusing
+ *     (e.g. invoice discount).
+ *
+ *   - Optional `data-cp-money-hybrid="1"` on a direct-entry field: digit-only
+ *     strings use calculator minor-units (13000 → 130.00); a "." means plain
+ *     dollars (13000.00 → thirteen thousand). Same rules as parseHybridCadMoney.
  */
 (function () {
   // --- CAD money mask ---------------------------------------------------
@@ -92,8 +101,159 @@
     });
   }
 
+  /** Same semantics as line-item calculator: digits form minor units; dollars = minor / 10^places. */
+  function parseHybridCadMoney(value, places) {
+    places = places || 2;
+    var s = String(value == null ? '' : value).replace(/,/g, '').trim();
+    if (!s) {
+      return 0;
+    }
+    if (s.indexOf('.') !== -1) {
+      var n = parseFloat(s);
+      return isFinite(n) ? n : 0;
+    }
+    var digits = s.replace(/\D/g, '');
+    if (!digits) {
+      return 0;
+    }
+    digits = digits.replace(/^0+(?=\d)/, '');
+    var minor = parseInt(digits, 10);
+    if (isNaN(minor)) {
+      return 0;
+    }
+    return minor / Math.pow(10, places);
+  }
+
+  /** Format a plain decimal amount using the same grouping as calculator mode. */
+  function normalizeDirectMoneyOnBlur(input, places) {
+    places = places || 2;
+    var raw = (input.value || '').trim().replace(/,/g, '');
+    if (!raw) {
+      return;
+    }
+    var num;
+    if (input.getAttribute('data-cp-money-hybrid') === '1') {
+      num = parseHybridCadMoney(raw, places);
+    } else {
+      num = parseFloat(raw);
+    }
+    if (!isFinite(num) || num < 0) {
+      input.value = '';
+      return;
+    }
+    var minor = Math.round(num * Math.pow(10, places));
+    input.value = formatMinorUnits(minor, places);
+  }
+
+  /**
+   * Money field: type dollars/decimals normally (not calculator cents entry).
+   * Live value stays parseable by cpMoneyMask.parse (strip commas → parseFloat).
+   */
+  function wireDirectMoneyEntry(input) {
+    if (!input) return;
+    var places = moneyPlaces(input);
+    if (input._cpMoneyWired) {
+      normalizeDirectMoneyOnBlur(input, places);
+      return;
+    }
+    input._cpMoneyWired = true;
+    normalizeDirectMoneyOnBlur(input, places);
+
+    input.addEventListener('keydown', function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (
+        ev.key === 'Backspace' ||
+        ev.key === 'Delete' ||
+        ev.key === 'Tab' ||
+        ev.key === 'ArrowLeft' ||
+        ev.key === 'ArrowRight' ||
+        ev.key === 'ArrowUp' ||
+        ev.key === 'ArrowDown' ||
+        ev.key === 'Home' ||
+        ev.key === 'End'
+      ) {
+        return;
+      }
+      // Hybrid discount: same as calculator line items — digits only (no "." while typing).
+      if (input.getAttribute('data-cp-money-hybrid') === '1') {
+        if (ev.key && ev.key.length === 1 && !/[\d]/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) {
+          ev.preventDefault();
+        }
+        return;
+      }
+      if (ev.key.length === 1) {
+        if (/\d/.test(ev.key)) return;
+        if (places > 0 && (ev.key === '.' || ev.key === ',')) {
+          var cur = input.value.replace(/,/g, '');
+          if (cur.indexOf('.') !== -1) {
+            ev.preventDefault();
+          }
+          return;
+        }
+        ev.preventDefault();
+      }
+    });
+
+    input.addEventListener('input', function () {
+      var raw = input.value.replace(/,/g, '');
+      var hybrid = input.getAttribute('data-cp-money-hybrid') === '1';
+
+      // Hybrid: always use calculator semantics (same as line-item mask). Never branch on "." in
+      // the formatted display — that wrongly switched to decimal truncation after the first digit.
+      if (hybrid) {
+        if (!raw.replace(/\D/g, '')) {
+          input.value = '';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+        var minor = parseToMinorUnits(raw);
+        if (minor === 0) {
+          input.value = '';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+        var nextVal = formatMinorUnits(minor, places);
+        if (input.value !== nextVal) {
+          input.value = nextVal;
+          var end = input.value.length;
+          try {
+            input.setSelectionRange(end, end);
+          } catch (err) { /* ignore */ }
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        return;
+      }
+
+      var v = raw.replace(/[^\d.]/g, '');
+      var dot = v.indexOf('.');
+      if (dot !== -1) {
+        v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '');
+        if (places > 0) {
+          v = v.slice(0, dot + 1 + places);
+        }
+      }
+      if (v !== raw) {
+        input.value = v;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+
+    input.addEventListener('blur', function () {
+      normalizeDirectMoneyOnBlur(input, places);
+    });
+
+    if (input.form && !input.form._cpMoneyFormWired) {
+      input.form._cpMoneyFormWired = true;
+      input.form.addEventListener('submit', onFormSubmitStripCommas);
+    }
+  }
+
   function wireMoneyInput(input) {
     if (!input) return;
+    if (input.getAttribute('data-cp-money-entry') === 'direct') {
+      wireDirectMoneyEntry(input);
+      return;
+    }
     var places = moneyPlaces(input);
     if (input._cpMoneyWired) {
       initExistingValue(input, places);
@@ -133,7 +293,9 @@
       if (value == null || value === '') return 0;
       var n = parseFloat(String(value).replace(/,/g, ''));
       return isFinite(n) ? n : 0;
-    }
+    },
+    /** Direct discount field: digits only → minor/100; includes "." → parseFloat. */
+    parseHybridCadMoney: parseHybridCadMoney
   };
 
   // --- Time-entry form: start/end → hours -----------------------------

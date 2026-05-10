@@ -58,6 +58,8 @@ class ClientProjectInvoice extends Model
         'hst',
         'hst_exempt',
         'total',
+        'discount_percent',
+        'discount_amount',
         'status',
         'sent_at',
         'due_on',
@@ -78,6 +80,8 @@ class ClientProjectInvoice extends Model
         'hst' => 'decimal:2',
         'hst_exempt' => 'boolean',
         'total' => 'decimal:2',
+        'discount_percent' => 'decimal:4',
+        'discount_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'sent_at' => 'datetime',
         'paid_at' => 'datetime',
@@ -273,6 +277,33 @@ class ClientProjectInvoice extends Model
     public function computedSubtotal(): float
     {
         return round(array_sum(array_column($this->cleanItems(), 'amount')), 2);
+    }
+
+    /** Sum of line-item amounts (pre-discount). */
+    public function grossLineSubtotal(): float
+    {
+        return $this->computedSubtotal();
+    }
+
+    /**
+     * Pre-tax discount for installment-linked invoices (percentage or fixed amount).
+     */
+    public function effectiveDiscountAmount(): float
+    {
+        if ($this->isManual() || $this->installment_number === null) {
+            return 0.0;
+        }
+
+        $gross = $this->grossLineSubtotal();
+        $pct = (float) ($this->discount_percent ?? 0);
+
+        if ($pct > 0.00001) {
+            return round(min($gross * $pct / 100, $gross), 2);
+        }
+
+        $amt = (float) ($this->discount_amount ?? 0);
+
+        return round(min($amt, $gross), 2);
     }
 
     /**

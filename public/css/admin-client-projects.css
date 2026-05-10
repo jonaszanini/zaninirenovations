@@ -2260,7 +2260,17 @@ textarea.admin-input {
   font-size: 13px;
   line-height: 1.4;
 }
-.cp-invoice-mismatch .fa {
+.cp-invoice-plan-diff {
+  color: #0369a1 !important;
+  background: #f0f9ff;
+  border: 1px solid rgba(3, 105, 161, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.cp-invoice-plan-diff .fa {
   margin-right: 6px;
 }
 

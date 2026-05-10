@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('heading', $project->name); ?>
 
 <?php $__env->startPush('head'); ?>
@@ -21,6 +19,7 @@
       <div class="cp-header-title">
         <div class="cp-client"><?php echo e($project->client_name); ?></div>
         <h2><?php echo e($project->name); ?></h2>
+        <?php echo $__env->make('admin.client_projects._contacted_via_display', ['project' => $project, 'lineClass' => 'cp-contacted-via-line'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
         <div class="cp-header-meta">
           <?php if($project->client_phone): ?>
             <span><i class="fa fa-phone"></i> <?php echo e(\App\Models\ClientProject::formatPhone($project->client_phone)); ?></span>

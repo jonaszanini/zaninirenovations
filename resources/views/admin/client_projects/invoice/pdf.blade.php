@@ -16,6 +16,11 @@
     $total = (float) $invoice->total;
 
     $fmt = fn ($n) => 'CA$'.number_format((float) $n, 2, '.', ',');
+    $grossPdf = $invoice->grossLineSubtotal();
+    $discPdf = $invoice->effectiveDiscountAmount();
+    $showDiscPdf = !$invoice->isManual()
+      && $invoice->installment_number !== null
+      && $discPdf > 0.0001;
     $dateStr = \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($invoice->sent_at ?: now());
     $dueStr = $invoice->due_on
       ? \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on)
@@ -420,10 +425,25 @@
       @endforelse
     </tbody>
     <tfoot>
+      @if ($showDiscPdf)
+        <tr>
+          <td class="totals-label">Subtotal (line items)</td>
+          <td class="amount">{{ $fmt($grossPdf) }}</td>
+        </tr>
+        <tr>
+          <td class="totals-label">Discount</td>
+          <td class="amount">−{{ $fmt($discPdf) }}</td>
+        </tr>
+        <tr>
+          <td class="totals-label">Net subtotal (pre-tax)</td>
+          <td class="amount">{{ $fmt($subtotal) }}</td>
+        </tr>
+      @else
       <tr>
         <td class="totals-label">Subtotal</td>
         <td class="amount">{{ $fmt($subtotal) }}</td>
       </tr>
+      @endif
       @if ($invoice->isHstExempt())
         <tr>
           <td class="totals-label" colspan="2" style="font-style:italic;color:#4b5563;font-size:9.5pt;">

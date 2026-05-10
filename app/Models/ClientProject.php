@@ -602,32 +602,6 @@ class ClientProject extends Model
         return $this->status === self::STATUS_VISIT_SCHEDULED && !$this->visit_done;
     }
 
-    /**
-     * Installment-linked invoice: typed line totals must equal the Financials installment pre-tax amount.
-     * Hourly/manual invoices skip this check.
-     */
-    public function invoiceLineSumMatchesInstallmentLock(ClientProjectInvoice $invoice): bool
-    {
-        if ($invoice->isManual() || $invoice->installment_number === null) {
-            return true;
-        }
-
-        $installment = $this->installments()
-            ->orderBy('sort_order')
-            ->get()
-            ->values()
-            ->get(((int) $invoice->installment_number) - 1);
-
-        if ($installment === null) {
-            return false;
-        }
-
-        $locked = round((float) ($installment->amount ?? 0), 2);
-        $actual = round(array_sum(array_column($invoice->cleanItems(), 'amount')), 2);
-
-        return abs($locked - $actual) <= 0.01;
-    }
-
     // --- Money & profit calculations --------------------------------------
 
     /** Sum of expense amounts (without subtracting returns). */

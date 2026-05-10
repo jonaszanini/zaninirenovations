@@ -327,12 +327,11 @@
                     <span class="cp-badge" style="background:#22c55e20;color:#15803d;margin-left:4px;">Installment paid</span>
                   <?php endif; ?>
                   <?php if($hasMismatch): ?>
-                    <div class="admin-form-help" style="margin-top:4px;color:#b45309;">
-                      <i class="fa fa-exclamation-triangle"></i>
-                      Stored invoice total (<?php echo e(\App\Models\ClientProject::formatMoney($rowTotal)); ?>)
-                      doesn't match the current expected total
-                      (<?php echo e(\App\Models\ClientProject::formatMoney($expectedTotal)); ?>).
-                      Delete and recreate this invoice to refresh.
+                    <div class="admin-form-help" style="margin-top:4px;color:#0369a1;">
+                      <i class="fa fa-info-circle"></i>
+                      <strong><?php echo e(\App\Models\ClientProject::formatMoney($rowTotal)); ?></strong> vs plan <?php echo e(\App\Models\ClientProject::formatMoney($expectedTotal)); ?>
+
+                      (Difference: <?php echo e(\App\Models\ClientProject::formatMoney(abs($rowTotal - $expectedTotal))); ?>). Expected when discounted or edited.
                     </div>
                   <?php endif; ?>
                   <?php if($invoice && $invoice->isHstExempt()): ?>
