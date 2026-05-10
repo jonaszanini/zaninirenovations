@@ -194,6 +194,27 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-contacted-via-line {
   margin: -2px 0 10px 0;
 }
+.cp-contacted-via-value {
+  font-weight: 700;
+}
+.cp-contacted-via-value--website_form {
+  color: #024768;
+}
+.cp-contacted-via-value--sms {
+  color: #1ab1bc;
+}
+.cp-contacted-via-value--call {
+  color: #000000;
+}
+.cp-contacted-via-value--facebook {
+  color: #0966fe;
+}
+.cp-contacted-via-value--instagram {
+  color: #fc8e5c;
+}
+.cp-contacted-via-value--whatsapp {
+  color: #26d367;
+}
 .cp-header-meta {
   display: flex;
   flex-wrap: wrap;

@@ -375,6 +375,20 @@ class ClientProject extends Model
         return self::contactedViaOptions()[$this->contacted_via] ?? '—';
     }
 
+    /**
+     * Stored `contacted_via` key when it maps to a known option (for CSS styling).
+     */
+    public function contactedViaStyleKey(): ?string
+    {
+        if ($this->contacted_via === null || $this->contacted_via === '') {
+            return null;
+        }
+
+        return array_key_exists($this->contacted_via, self::contactedViaOptions())
+            ? $this->contacted_via
+            : null;
+    }
+
     /** Mapping of status key → human readable label. */
     public static function statusLabels(): array
     {

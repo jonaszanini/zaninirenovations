@@ -111,7 +111,7 @@
               </td>
               <td>
                 {{ $project->name }}
-                <div class="cp-subtle">Contacted via: {{ $project->contactedViaDisplay() }}</div>
+                @include('admin.client_projects._contacted_via_display', ['project' => $project])
               </td>
               <td>
                 <span class="cp-badge" style="background: {{ $statusColors[$project->status] ?? '#6b7280' }}20; color: {{ $statusColors[$project->status] ?? '#6b7280' }};">
