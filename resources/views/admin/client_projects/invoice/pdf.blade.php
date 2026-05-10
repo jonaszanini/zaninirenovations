@@ -431,7 +431,7 @@
           <td class="amount">{{ $fmt($grossPdf) }}</td>
         </tr>
         <tr>
-          <td class="totals-label">Discount</td>
+          <td class="totals-label">{{ $invoice->discountPdfLabel() }}</td>
           <td class="amount">−{{ $fmt($discPdf) }}</td>
         </tr>
         <tr>

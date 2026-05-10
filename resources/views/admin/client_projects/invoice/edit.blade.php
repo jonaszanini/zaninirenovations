@@ -42,6 +42,7 @@
             ? number_format((float) $invoice->discount_amount, 2, '.', '')
             : ''
     );
+    $discountComment = old('discount_comment', $invoice->discount_comment ?? '');
 
     // $lockedSubtotal + $lockedHst + $lockedTotalWithHst are provided by
     // the controller. For installment-linked invoices, $lockedHst is the
@@ -356,9 +357,20 @@
                          autocomplete="off">
                 </span>
               </div>
-              <p class="admin-form-help" style="margin:0 0 8px;text-align:right;font-size:12px;color:#4b5563;">
-                <strong>Discount (CAD):</strong> same as line items — <strong>digits only</strong> while typing (e.g. <strong>13000</strong> → <strong>$130.00</strong>). Paste works for values like <strong>130.50</strong>. Totals update as you type.
-              </p>
+              <div class="cp-quotation-totals-row cp-invoice-discount-field-row">
+                <span><label for="cp-invoice-discount-comment">Discount note</label> <span class="admin-form-help">(optional, PDF)</span></span>
+                <span style="text-align:right;">
+                  <input type="text"
+                         name="discount_comment"
+                         id="cp-invoice-discount-comment"
+                         class="admin-input"
+                         style="max-width:200px;text-align:right;"
+                         maxlength="120"
+                         value="{{ $discountComment }}"
+                         placeholder="e.g. Material"
+                         autocomplete="off">
+                </span>
+              </div>
               <div class="cp-quotation-totals-row">
                 <span>Net subtotal (pre-tax)</span>
                 <span id="cp-invoice-net-subtotal">CA$0.00</span>

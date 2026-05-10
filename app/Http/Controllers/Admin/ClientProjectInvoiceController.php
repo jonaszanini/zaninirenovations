@@ -169,6 +169,7 @@ class ClientProjectInvoiceController extends Controller
             'hst_exempt' => ['nullable', 'boolean'],
             'discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'discount_amount' => ['nullable', 'string', 'max:40'],
+            'discount_comment' => ['nullable', 'string', 'max:120'],
         ]);
 
         // Persist the HST-exempt flag BEFORE we recompute totals so the
@@ -191,6 +192,9 @@ class ClientProjectInvoiceController extends Controller
         if ($isHourlyManual) {
             [$labour, $materials] = $this->partitionHourlyLineAmounts($items);
             $invoice->items = $items;
+            $invoice->discount_percent = null;
+            $invoice->discount_amount = null;
+            $invoice->discount_comment = null;
             // subtotal column = taxable labour base (pre-HST) only — matches PDF wording.
             $invoice->subtotal = $labour;
             $invoice->hst = $invoice->isHstExempt()
@@ -206,6 +210,8 @@ class ClientProjectInvoiceController extends Controller
                 [$pctStored, $amtStored, $discountVal] = $this->resolveInstallmentDiscountFromRequest($request, $gross);
                 $invoice->discount_percent = $pctStored;
                 $invoice->discount_amount = $amtStored;
+                $comment = trim((string) ($data['discount_comment'] ?? ''));
+                $invoice->discount_comment = $comment !== '' ? Str::limit($comment, 120, '') : null;
                 $net = round(max(0.0, $gross - $discountVal), 2);
                 $invoice->subtotal = $net;
                 $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $net);
@@ -213,6 +219,7 @@ class ClientProjectInvoiceController extends Controller
             } else {
                 $invoice->discount_percent = null;
                 $invoice->discount_amount = null;
+                $invoice->discount_comment = null;
                 $invoice->subtotal = $gross;
                 $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
                 $invoice->total = round($invoice->subtotal + $invoice->hst, 2);

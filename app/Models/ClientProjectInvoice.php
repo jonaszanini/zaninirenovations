@@ -60,6 +60,7 @@ class ClientProjectInvoice extends Model
         'total',
         'discount_percent',
         'discount_amount',
+        'discount_comment',
         'status',
         'sent_at',
         'due_on',
@@ -304,6 +305,16 @@ class ClientProjectInvoice extends Model
         $amt = (float) ($this->discount_amount ?? 0);
 
         return round(min($amt, $gross), 2);
+    }
+
+    /**
+     * PDF label for the discount row: default "Discount", or the saved comment verbatim.
+     */
+    public function discountPdfLabel(): string
+    {
+        $c = trim((string) ($this->discount_comment ?? ''));
+
+        return $c !== '' ? $c : 'Discount';
     }
 
     /**
