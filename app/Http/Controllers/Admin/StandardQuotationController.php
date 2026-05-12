@@ -368,9 +368,18 @@ class StandardQuotationController extends Controller
             'materials.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'materials.*.quantity' => ['nullable', 'numeric', 'min:0'],
             'materials.*.apply_hst' => ['nullable'],
+            'materials.*.hst_includes_unit' => ['nullable'],
             'includes_material' => ['nullable'],
             'includes_labour' => ['nullable'],
-            'labour_hourly_rate' => ['required', 'numeric', 'min:0'],
+            'labour_use_fixed' => ['nullable'],
+            'labour_fixed_amount' => ['nullable', 'numeric', 'min:0'],
+            'labour_fixed_hst_included' => ['nullable'],
+            'labour_hourly_rate' => [
+                Rule::requiredIf(fn () => ! $request->boolean('labour_use_fixed')),
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
             'labour_mode' => ['required', Rule::in(['hours', 'days'])],
             'labour_quantity' => ['required', 'numeric', 'min:0', 'max:100000'],
             'contingency_enabled' => ['nullable'],
@@ -378,7 +387,7 @@ class StandardQuotationController extends Controller
         ], [
             'client_name.required' => 'Client name is required.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',
-            'labour_hourly_rate.required' => 'Hourly rate is required.',
+            'labour_hourly_rate.required' => 'Enter an hourly rate, or enable flat labour fee.',
             'contingency_percent.numeric' => 'Contingency percent must be a number.',
             'contingency_percent.max' => 'Contingency percent cannot exceed 100.',
         ]);
@@ -397,7 +406,9 @@ class StandardQuotationController extends Controller
             $materialRows = [];
         }
         foreach ($materialRows as &$mRow) {
-            $mRow['apply_hst'] = filter_var($mRow['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $inc = filter_var($mRow['hst_includes_unit'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $mRow['hst_includes_unit'] = $inc;
+            $mRow['apply_hst'] = $inc ? true : filter_var($mRow['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN);
         }
         unset($mRow);
 
@@ -407,13 +418,20 @@ class StandardQuotationController extends Controller
             $contingencyPercent = 10.0;
         }
 
+        $labourUseFixed = $request->boolean('labour_use_fixed');
+        $labourFixedHstInc = $request->boolean('labour_fixed_hst_included');
+        $labourFixedAmt = round((float) ($data['labour_fixed_amount'] ?? 0), 2);
+
         $computed = $calculator->compute(
             $materialRows,
-            (float) $data['labour_hourly_rate'],
+            (float) ($data['labour_hourly_rate'] ?? 0),
             (string) $data['labour_mode'],
             (float) $data['labour_quantity'],
             $contingencyEnabled,
-            (float) $contingencyPercent
+            (float) $contingencyPercent,
+            $labourUseFixed,
+            $labourFixedAmt,
+            $labourFixedHstInc
         );
 
         $materialsForStorage = array_map(static function (array $m): array {
@@ -423,6 +441,7 @@ class StandardQuotationController extends Controller
                 'unit_price' => $m['unit_price'],
                 'quantity' => $m['quantity'],
                 'apply_hst' => $m['apply_hst'],
+                'hst_includes_unit' => (bool) ($m['hst_includes_unit'] ?? false),
             ];
         }, $computed['materials']);
 
@@ -439,7 +458,10 @@ class StandardQuotationController extends Controller
                 'labour_mode' => $data['labour_mode'],
                 'labour_quantity' => round((float) $data['labour_quantity'], 2),
                 'labour_hours' => $computed['labour_hours'],
-                'labour_hourly_rate' => round((float) $data['labour_hourly_rate'], 2),
+                'labour_hourly_rate' => round((float) ($data['labour_hourly_rate'] ?? 0), 2),
+                'labour_use_fixed' => $labourUseFixed,
+                'labour_fixed_amount' => $labourUseFixed ? $labourFixedAmt : null,
+                'labour_fixed_hst_included' => $labourUseFixed && $labourFixedHstInc,
                 'materials_subtotal_before_hst' => $computed['materials_subtotal_before_hst'],
                 'materials_hst' => $computed['materials_hst'],
                 'materials_with_hst' => $computed['materials_with_hst'],
@@ -611,17 +633,12 @@ class StandardQuotationController extends Controller
         $materials = is_array($sq->materials) ? $sq->materials : [];
 
         foreach ($materials as $m) {
-            $unit = (float) ($m['unit_price'] ?? 0);
-            $qty = (float) ($m['quantity'] ?? 0);
-            $line = round($unit * $qty, 2);
-            $applyHst = !array_key_exists('apply_hst', $m)
-                || filter_var($m['apply_hst'], FILTER_VALIDATE_BOOLEAN);
-
-            if ($applyHst) {
-                $taxable += $line;
-            } else {
-                $exempt += $line;
+            $b = StandardQuotationCalculator::breakdownMaterialRow($m);
+            if ($b === null) {
+                continue;
             }
+            $taxable += $b['taxable_pre'];
+            $exempt += $b['exempt_pre'];
         }
 
         return [round($taxable, 2), round($exempt, 2)];
