@@ -22,6 +22,13 @@
            class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-arrow-left"></i> Back to project
         </a>
+        <button type="button"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                id="cp-contract-open-context-modal"
+                aria-haspopup="dialog"
+                aria-controls="cp-contract-context-dialog">
+          <i class="fa fa-file-text-o"></i> Project &amp; quote details
+        </button>
       </div>
       <div class="cp-contract-editor-toolbar-right">
         <a href="{{ route('admin.client-projects.show', $project) }}#contract"
@@ -87,6 +94,34 @@
     </form>
   </div>
 
+  <div class="cp-modal-backdrop" id="cp-contract-context-modal" hidden>
+    <div class="cp-modal" id="cp-contract-context-dialog" role="dialog" aria-modal="true" aria-labelledby="cp-contract-context-title" style="max-width:720px;">
+      <div class="cp-modal-header">
+        <h3 id="cp-contract-context-title">Project &amp; quotation details</h3>
+        <button type="button" class="cp-modal-close" data-cp-modal-close aria-label="Close">&times;</button>
+      </div>
+      <div class="cp-modal-body">
+        <p class="admin-form-help" style="margin-top:0;">
+          Accepted quotations (line items, work descriptions, calculator snapshots), client and site info, schedule, billing, and <strong>internal project notes</strong> — for pasting into an AI assistant to help draft the contract. Not sent to the client.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+          <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-contract-copy-context">
+            <i class="fa fa-clipboard"></i> Copy to clipboard
+          </button>
+          <span id="cp-contract-copy-feedback" class="admin-form-help" style="margin:0;color:#15803d;display:none;" aria-live="polite">Copied.</span>
+        </div>
+        <textarea id="cp-contract-context-textarea"
+                  readonly
+                  rows="22"
+                  class="admin-input"
+                  style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;line-height:1.45;resize:vertical;min-height:280px;">{{ $contractDraftingContext }}</textarea>
+      </div>
+      <div class="cp-modal-footer">
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-modal-close>Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       // Init TinyMCE on the contract textarea.
@@ -129,6 +164,91 @@
           intentField.value = btn.getAttribute('data-cp-contract-intent') || 'draft';
         });
       });
+    })();
+  </script>
+  <script>
+    (function () {
+      var openBtn = document.getElementById('cp-contract-open-context-modal');
+      var modal = document.getElementById('cp-contract-context-modal');
+      var ta = document.getElementById('cp-contract-context-textarea');
+      var copyBtn = document.getElementById('cp-contract-copy-context');
+      var feedback = document.getElementById('cp-contract-copy-feedback');
+      if (!openBtn || !modal) return;
+
+      function openModal() {
+        modal.hidden = false;
+        document.body.classList.add('cp-modal-open');
+        setTimeout(function () {
+          if (ta) {
+            ta.focus();
+            ta.select();
+          }
+        }, 0);
+      }
+
+      function closeModal() {
+        modal.hidden = true;
+        document.body.classList.remove('cp-modal-open');
+      }
+
+      openBtn.addEventListener('click', openModal);
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal || (e.target.matches && e.target.matches('[data-cp-modal-close]'))) {
+          closeModal();
+        }
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) {
+          closeModal();
+        }
+      });
+
+      if (copyBtn && ta) {
+        copyBtn.addEventListener('click', function () {
+          var text = ta.value;
+
+          function showOk() {
+            if (feedback) {
+              feedback.style.display = '';
+              setTimeout(function () {
+                if (feedback) {
+                  feedback.style.display = 'none';
+                }
+              }, 2000);
+            }
+          }
+
+          function showErr() {
+            window.alert('Could not copy to clipboard. Select the text in the box and copy manually (Ctrl+C).');
+          }
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(showOk).catch(function () {
+              try {
+                ta.select();
+                if (document.execCommand('copy')) {
+                  showOk();
+                } else {
+                  showErr();
+                }
+              } catch (err) {
+                showErr();
+              }
+            });
+          } else {
+            try {
+              ta.select();
+              if (document.execCommand('copy')) {
+                showOk();
+              } else {
+                showErr();
+              }
+            } catch (err2) {
+              showErr();
+            }
+          }
+        });
+      }
     })();
   </script>
 @endsection

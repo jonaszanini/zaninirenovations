@@ -763,6 +763,148 @@ class ClientProject extends Model
         return round(($this->totalRevenueCollected() / (float) $this->total_amount) * 100, 2);
     }
 
+    /**
+     * Plain-text bundle of project settings + accepted quotations (line items,
+     * work descriptions, calculator snapshots) for pasting into an external AI
+     * when drafting contract language. Not client-facing.
+     */
+    public function contractDraftingContextPlainText(): string
+    {
+        $this->loadMissing('quotations');
+
+        $lines = [];
+        $lines[] = '=== PROJECT CONTEXT (internal — draft contract assistance) ===';
+        $lines[] = 'Generated: '.self::formatDateTime(now());
+        $lines[] = 'Project ID: '.(string) $this->id;
+        $lines[] = '';
+        $lines[] = '--- Project ---';
+        $lines[] = 'Name: '.$this->name;
+        $lines[] = 'Status: '.$this->statusLabel();
+        $lines[] = 'Contacted via: '.$this->contactedViaDisplay();
+        $lines[] = 'Billing: '.$this->billingSummaryLine();
+        if ($this->isHourly() && $this->hourly_rate !== null) {
+            $lines[] = 'Hourly rate: '.self::formatMoney((float) $this->hourly_rate).' / hour';
+        }
+        if (!$this->isHourly() && $this->total_amount !== null) {
+            $lines[] = 'Contract total (fixed): '.self::formatMoney((float) $this->total_amount);
+        }
+        if (!$this->isHourly() && $this->payment_plan) {
+            $lines[] = 'Payment plan: '.(string) $this->payment_plan.' installment(s)';
+        }
+        if ($this->start_date) {
+            $lines[] = 'Start date: '.self::formatDate($this->start_date);
+        }
+        if ($this->end_date) {
+            $lines[] = 'End date: '.self::formatDate($this->end_date);
+        }
+        if ($this->visit_required || $this->visit_done || $this->visit_date) {
+            $lines[] = 'Visit required: '.($this->visit_required ? 'Yes' : 'No');
+            if ($this->visit_date) {
+                $lines[] = 'Visit date: '.self::formatDate($this->visit_date);
+            }
+            $lines[] = 'Visit done: '.($this->visit_done ? 'Yes' : 'No');
+        }
+
+        $lines[] = '';
+        $lines[] = '--- Client & site ---';
+        $lines[] = 'Client name: '.($this->client_name ?: '—');
+        $lines[] = 'Email: '.(trim((string) $this->client_email) !== '' ? $this->client_email : '—');
+        if (trim((string) ($this->client_email_secondary ?? '')) !== '') {
+            $lines[] = 'Secondary email (CC): '.$this->client_email_secondary;
+        }
+        $lines[] = 'Phone: '.(trim((string) $this->client_phone) !== '' ? self::formatPhone($this->client_phone) : '—');
+        $lines[] = 'Service address: '.(trim((string) ($this->client_address ?? '')) !== '' ? $this->client_address : '—');
+        if (trim((string) ($this->invoice_billing_name ?? '')) !== '') {
+            $lines[] = 'Invoice billing name: '.$this->invoice_billing_name;
+        }
+        if (trim((string) ($this->invoice_billing_address ?? '')) !== '') {
+            $lines[] = 'Invoice billing address: '.$this->invoice_billing_address;
+        }
+
+        $notes = trim((string) ($this->notes ?? ''));
+        $lines[] = '';
+        $lines[] = '--- Internal notes (from Edit project) ---';
+        $lines[] = $notes !== '' ? $notes : '(none)';
+
+        $accepted = $this->acceptedQuotationsForFinancials();
+        $nonAccepted = $this->quotations
+            ->where('status', '!=', ClientProjectQuotation::STATUS_ACCEPTED)
+            ->count();
+        if ($nonAccepted > 0) {
+            $lines[] = '';
+            $lines[] = "Note: {$nonAccepted} other quotation row(s) on this project are not Accepted (details below are Accepted only).";
+        }
+
+        $lines[] = '';
+        $lines[] = '--- Accepted quotations ---';
+        if ($accepted->isEmpty()) {
+            $lines[] = '(No quotations are marked Accepted. Accept quotations on the project Quotations tab to include them in financials and in this export.)';
+        }
+        $i = 0;
+        foreach ($accepted as $q) {
+            $i++;
+            $lines[] = '';
+            $lines[] = "=== Accepted quotation #{$i} ===";
+            $lines[] = 'Document: '.($q->quotation_number ?: '—').' ('.$q->typeLabel().')';
+            $lines[] = 'Title: '.(trim((string) ($q->title ?? '')) !== '' ? $q->title : '—');
+            $lines[] = 'Source: '.$this->quotationSourceCalculatorLabel($q);
+            $lines[] = 'Labour line on quote: '.($q->labour ? 'Yes' : 'No').' | Material line on quote: '.($q->material ? 'Yes' : 'No');
+            $wd = $this->plainTextFromPossibleHtml($q->work_description);
+            $lines[] = '';
+            $lines[] = 'Work / scope description (client-facing on quote):';
+            $lines[] = $wd !== '' ? $wd : '(none)';
+            $lines[] = '';
+            $lines[] = 'Line items (pre-tax amounts; HST column reflects per-line flags):';
+            foreach ($q->cleanItems() as $row) {
+                $hst = !empty($row['apply_hst']) ? 'HST 13%' : 'No HST';
+                $lines[] = '  - '.($row['description'] !== '' ? $row['description'] : '(no description)')
+                    .' | '.self::formatMoney((float) $row['amount']).' | '.$hst;
+            }
+            if ($q->hasSubtotalOverrideActive()) {
+                $lines[] = 'Subtotal override (pre-tax): '.self::formatMoney((float) $q->subtotal_override);
+            }
+            $lines[] = 'Subtotal (pre-tax): '.self::formatMoney($q->subtotal());
+            $lines[] = 'HST: '.self::formatMoney($q->hst());
+            $lines[] = 'Total (with HST): '.self::formatMoney($q->grandTotal());
+            $snap = $q->source_snapshot;
+            if (is_array($snap) && $snap !== []) {
+                $json = json_encode(
+                    $snap,
+                    JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+                );
+                $lines[] = '';
+                $lines[] = 'Linked calculator snapshot (fields when linked to the project; JSON):';
+                $lines[] = $json !== false ? $json : '(could not encode snapshot)';
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function billingSummaryLine(): string
+    {
+        return $this->isHourly() ? 'Hourly' : 'Fixed price';
+    }
+
+    private function quotationSourceCalculatorLabel(ClientProjectQuotation $q): string
+    {
+        return match ($q->source_type) {
+            ClientProjectQuotation::SOURCE_FENCE => 'Fence calculator',
+            ClientProjectQuotation::SOURCE_STANDARD => 'Standard calculator',
+            ClientProjectQuotation::SOURCE_PAVING => 'Paving calculator',
+            ClientProjectQuotation::SOURCE_MANUAL => 'Manual / legacy',
+            null, '' => 'Manual / legacy',
+            default => (string) $q->source_type,
+        };
+    }
+
+    private function plainTextFromPossibleHtml(?string $html): string
+    {
+        $t = trim(html_entity_decode(strip_tags((string) ($html ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+        return preg_replace("/[ \t]+\n/", "\n", $t) ?? $t;
+    }
+
     // --- Presentation helpers ---------------------------------------------
 
     public static function formatMoney(?float $amount): string

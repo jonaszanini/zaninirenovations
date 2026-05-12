@@ -38,9 +38,12 @@ class ClientProjectContractController extends Controller
             'version' => 1,
         ]);
 
+        $client_project->loadMissing('quotations');
+
         return view('admin.client_projects.contract.edit', [
             'project' => $client_project,
             'contract' => $contract,
+            'contractDraftingContext' => $client_project->contractDraftingContextPlainText(),
         ]);
     }
 
