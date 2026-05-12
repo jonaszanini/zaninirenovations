@@ -18,8 +18,9 @@ use Illuminate\Support\Facades\Storage;
  * number of manual (non-installment) invoices.
  *
  * When marked as paid, a separate Receipt PDF is generated and emailed
- * to the client; the linked installment (if any) is automatically
- * marked paid on the Financials payment plan.
+ * to the client; the linked installment (if any) is updated to the
+ * invoice’s billed pre-tax subtotal and marked paid on the Financials
+ * payment plan.
  */
 class ClientProjectInvoice extends Model
 {

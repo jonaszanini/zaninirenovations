@@ -636,7 +636,11 @@ class ClientProject extends Model
         return $this->totalSpent();
     }
 
-    /** Sum of paid installments (revenue recognised so far). */
+    /**
+     * Sum of paid installments (pre-tax `ClientProjectInstallment::amount`).
+     * For installment invoices, amounts are aligned to the invoice’s billed
+     * subtotal (after discount) when the invoice is marked paid.
+     */
     public function totalRevenueCollected(): float
     {
         if ($this->isHourly()) {
