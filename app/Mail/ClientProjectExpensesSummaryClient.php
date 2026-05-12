@@ -46,10 +46,8 @@ class ClientProjectExpensesSummaryClient extends Mailable
                 $base = 'receipt';
             }
             $as = $base.'-'.$expense->id.'-'.($expense->occurred_on?->format('Y-m-d') ?? 'date').'.webp';
-            $this->attachFromStorageDisk('public', $path, [
-                'as' => $as,
-                'mime' => 'image/webp',
-            ]);
+            // Third arg is the attachment display name; fourth is options (not a single options array as arg 3).
+            $this->attachFromStorageDisk('public', $path, $as, ['mime' => 'image/webp']);
         }
 
         return $this;
