@@ -38,7 +38,7 @@ class ClientProjectContractController extends Controller
             'version' => 1,
         ]);
 
-        $client_project->loadMissing('quotations');
+        $client_project->loadMissing(['quotations', 'installments']);
 
         return view('admin.client_projects.contract.edit', [
             'project' => $client_project,

@@ -102,7 +102,7 @@
       </div>
       <div class="cp-modal-body">
         <p class="admin-form-help" style="margin-top:0;">
-          Accepted quotations (line items, work descriptions, calculator snapshots), client and site info, schedule, billing, and <strong>internal project notes</strong> — for pasting into an AI assistant to help draft the contract. Not sent to the client.
+          All quotations linked to this project (calculator / fence / standard / paving data as JSON, line items, totals), client and site info, Financials installment amounts, schedule, billing, <strong>internal project notes</strong>, and e-transfer instructions — for pasting into an AI assistant to help draft the contract. Not sent to the client.
         </p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
           <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-contract-copy-context">

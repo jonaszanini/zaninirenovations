@@ -768,23 +768,17 @@ class ClientProject extends Model
     }
 
     /**
-     * Plain-text bundle of project settings + accepted quotations (line items,
-     * work descriptions, calculator snapshots) for pasting into an external AI
-     * when drafting contract language. Not client-facing.
+     * Plain-text bundle of project settings + every quotation linked to the
+     * project (calculator snapshots, line items, totals) for pasting into an
+     * external AI when drafting contract language. Not client-facing.
      */
     public function contractDraftingContextPlainText(): string
     {
-        $this->loadMissing('quotations');
+        $this->loadMissing(['quotations', 'installments']);
 
         $lines = [];
-        $lines[] = '=== PROJECT CONTEXT (internal — draft contract assistance) ===';
-        $lines[] = 'Generated: '.self::formatDateTime(now());
-        $lines[] = 'Project ID: '.(string) $this->id;
-        $lines[] = '';
         $lines[] = '--- Project ---';
         $lines[] = 'Name: '.$this->name;
-        $lines[] = 'Status: '.$this->statusLabel();
-        $lines[] = 'Contacted via: '.$this->contactedViaDisplay();
         $lines[] = 'Billing: '.$this->billingSummaryLine();
         if ($this->isHourly() && $this->hourly_rate !== null) {
             $lines[] = 'Hourly rate: '.self::formatMoney((float) $this->hourly_rate).' / hour';
@@ -792,21 +786,25 @@ class ClientProject extends Model
         if (!$this->isHourly() && $this->total_amount !== null) {
             $lines[] = 'Contract total (fixed): '.self::formatMoney((float) $this->total_amount);
         }
-        if (!$this->isHourly() && $this->payment_plan) {
-            $lines[] = 'Payment plan: '.(string) $this->payment_plan.' installment(s)';
-        }
-        if ($this->start_date) {
-            $lines[] = 'Start date: '.self::formatDate($this->start_date);
-        }
-        if ($this->end_date) {
-            $lines[] = 'End date: '.self::formatDate($this->end_date);
-        }
-        if ($this->visit_required || $this->visit_done || $this->visit_date) {
-            $lines[] = 'Visit required: '.($this->visit_required ? 'Yes' : 'No');
-            if ($this->visit_date) {
-                $lines[] = 'Visit date: '.self::formatDate($this->visit_date);
+        $this->appendContractContextInstallmentLines($lines);
+        $lines[] = 'e-Transfer: zaninirenovations@gmail.com (include the invoice number in the payment message when applicable).';
+
+        if ($this->start_date || $this->end_date || $this->visit_required || $this->visit_done || $this->visit_date) {
+            $lines[] = '';
+            $lines[] = '--- Schedule ---';
+            if ($this->start_date) {
+                $lines[] = 'Start date: '.self::formatDate($this->start_date);
             }
-            $lines[] = 'Visit done: '.($this->visit_done ? 'Yes' : 'No');
+            if ($this->end_date) {
+                $lines[] = 'End date: '.self::formatDate($this->end_date);
+            }
+            if ($this->visit_required || $this->visit_done || $this->visit_date) {
+                $lines[] = 'Visit required: '.($this->visit_required ? 'Yes' : 'No');
+                if ($this->visit_date) {
+                    $lines[] = 'Visit date: '.self::formatDate($this->visit_date);
+                }
+                $lines[] = 'Visit done: '.($this->visit_done ? 'Yes' : 'No');
+            }
         }
 
         $lines[] = '';
@@ -830,59 +828,104 @@ class ClientProject extends Model
         $lines[] = '--- Internal notes (from Edit project) ---';
         $lines[] = $notes !== '' ? $notes : '(none)';
 
-        $accepted = $this->acceptedQuotationsForFinancials();
-        $nonAccepted = $this->quotations
-            ->where('status', '!=', ClientProjectQuotation::STATUS_ACCEPTED)
-            ->count();
-        if ($nonAccepted > 0) {
-            $lines[] = '';
-            $lines[] = "Note: {$nonAccepted} other quotation row(s) on this project are not Accepted (details below are Accepted only).";
-        }
-
         $lines[] = '';
-        $lines[] = '--- Accepted quotations ---';
-        if ($accepted->isEmpty()) {
-            $lines[] = '(No quotations are marked Accepted. Accept quotations on the project Quotations tab to include them in financials and in this export.)';
-        }
-        $i = 0;
-        foreach ($accepted as $q) {
-            $i++;
-            $lines[] = '';
-            $lines[] = "=== Accepted quotation #{$i} ===";
-            $lines[] = 'Document: '.($q->quotation_number ?: '—').' ('.$q->typeLabel().')';
-            $lines[] = 'Title: '.(trim((string) ($q->title ?? '')) !== '' ? $q->title : '—');
-            $lines[] = 'Source: '.$this->quotationSourceCalculatorLabel($q);
-            $lines[] = 'Labour line on quote: '.($q->labour ? 'Yes' : 'No').' | Material line on quote: '.($q->material ? 'Yes' : 'No');
-            $wd = $this->plainTextFromPossibleHtml($q->work_description);
-            $lines[] = '';
-            $lines[] = 'Work / scope description (client-facing on quote):';
-            $lines[] = $wd !== '' ? $wd : '(none)';
-            $lines[] = '';
-            $lines[] = 'Line items (pre-tax amounts; HST column reflects per-line flags):';
-            foreach ($q->cleanItems() as $row) {
-                $hst = !empty($row['apply_hst']) ? 'HST 13%' : 'No HST';
-                $lines[] = '  - '.($row['description'] !== '' ? $row['description'] : '(no description)')
-                    .' | '.self::formatMoney((float) $row['amount']).' | '.$hst;
-            }
-            if ($q->hasSubtotalOverrideActive()) {
-                $lines[] = 'Subtotal override (pre-tax): '.self::formatMoney((float) $q->subtotal_override);
-            }
-            $lines[] = 'Subtotal (pre-tax): '.self::formatMoney($q->subtotal());
-            $lines[] = 'HST: '.self::formatMoney($q->hst());
-            $lines[] = 'Total (with HST): '.self::formatMoney($q->grandTotal());
-            $snap = $q->source_snapshot;
-            if (is_array($snap) && $snap !== []) {
-                $json = json_encode(
-                    $snap,
-                    JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
-                );
-                $lines[] = '';
-                $lines[] = 'Linked calculator snapshot (fields when linked to the project; JSON):';
-                $lines[] = $json !== false ? $json : '(could not encode snapshot)';
+        $lines[] = '--- Quotations (linked to this project) ---';
+        $quotes = $this->quotations->sortBy('id')->values();
+        if ($quotes->isEmpty()) {
+            $lines[] = '(No quotations linked to this project yet.)';
+        } else {
+            $i = 0;
+            foreach ($quotes as $q) {
+                $i++;
+                $this->appendContractContextQuotation($lines, $q, $i);
             }
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @param  list<string>  $lines
+     */
+    private function appendContractContextInstallmentLines(array &$lines): void
+    {
+        if ($this->isHourly()) {
+            return;
+        }
+
+        $sorted = $this->installments->sortBy('sort_order')->values();
+        if ($sorted->isEmpty()) {
+            return;
+        }
+
+        $plan = (int) ($this->payment_plan ?? 0);
+        if ($plan >= 1) {
+            $lines[] = 'Payment plan: '.$plan.' installment(s)';
+        } else {
+            $lines[] = 'Installments (from Financials):';
+        }
+
+        $n = 0;
+        foreach ($sorted as $inst) {
+            $n++;
+            $inst->setRelation('project', $this);
+            $label = trim((string) ($inst->label ?? '')) !== '' ? $inst->label : 'Installment '.$n;
+            $pre = (float) $inst->amount;
+            $hst = $inst->effectiveHst();
+            $tot = $inst->effectiveTotal();
+            $paid = $inst->is_paid ? ' [paid]' : '';
+            $lines[] = '  '.$n.'. '.$label.$paid;
+            $lines[] = '     Pre-tax: '.self::formatMoney($pre).' | HST: '.self::formatMoney($hst).' | Total incl. HST: '.self::formatMoney($tot);
+        }
+    }
+
+    /**
+     * @param  list<string>  $lines
+     */
+    private function appendContractContextQuotation(array &$lines, ClientProjectQuotation $q, int $ordinal): void
+    {
+        $lines[] = '';
+        $lines[] = '=== Quotation #'.$ordinal.' ===';
+        $lines[] = 'Status: '.$q->statusLabel();
+        $lines[] = 'Document: '.($q->quotation_number ?: '—').' ('.$q->typeLabel().')';
+        $lines[] = 'Title: '.(trim((string) ($q->title ?? '')) !== '' ? $q->title : '—');
+        $lines[] = 'Source: '.$this->quotationSourceCalculatorLabel($q);
+        $lines[] = 'Labour line on quote: '.($q->labour ? 'Yes' : 'No').' | Material line on quote: '.($q->material ? 'Yes' : 'No');
+
+        $snap = $q->source_snapshot;
+        if (is_array($snap) && $snap !== []) {
+            $json = json_encode(
+                $snap,
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+            );
+            $lines[] = '';
+            $lines[] = 'Calculator / linked document fields (JSON — e.g. fence heights, sides, gates, materials grid):';
+            $lines[] = $json !== false ? $json : '(could not encode snapshot)';
+        }
+
+        $wd = $this->plainTextFromPossibleHtml($q->work_description);
+        $lines[] = '';
+        $lines[] = 'Work / scope description (as on quotation):';
+        $lines[] = $wd !== '' ? $wd : '(none)';
+
+        $items = $q->cleanItems();
+        $lines[] = '';
+        if ($items === []) {
+            $lines[] = 'Line items: (none — see calculator JSON above if linked from a calculator.)';
+        } else {
+            $lines[] = 'Line items (pre-tax; HST per line):';
+            foreach ($items as $row) {
+                $hst = !empty($row['apply_hst']) ? 'HST 13%' : 'No HST';
+                $lines[] = '  - '.($row['description'] !== '' ? $row['description'] : '(no description)')
+                    .' | '.self::formatMoney((float) $row['amount']).' | '.$hst;
+            }
+        }
+        if ($q->hasSubtotalOverrideActive()) {
+            $lines[] = 'Subtotal override (pre-tax): '.self::formatMoney((float) $q->subtotal_override);
+        }
+        $lines[] = 'Subtotal (pre-tax): '.self::formatMoney($q->subtotal());
+        $lines[] = 'HST: '.self::formatMoney($q->hst());
+        $lines[] = 'Total (with HST): '.self::formatMoney($q->grandTotal());
     }
 
     private function billingSummaryLine(): string

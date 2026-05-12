@@ -11,9 +11,6 @@
             Subtotal override (pre-tax)
           </label>
           <div class="cp-quotation-subtotal-override__row" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" style="flex-shrink:0;">
-              <i class="fa fa-save"></i> Save override
-            </button>
             <input type="text"
                    id="cp-q-sub-override-{{ $quotation->id }}"
                    name="subtotal_override"
@@ -23,11 +20,10 @@
                    style="min-width:10rem;max-width:14rem;flex:1;"
                    placeholder="0.00"
                    value="{{ old('subtotal_override', $quotation->hasSubtotalOverrideActive() ? number_format((float) $quotation->subtotal_override, 2, '.', '') : '') }}">
+            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" style="flex-shrink:0;">
+              <i class="fa fa-save"></i> Save override
+            </button>
           </div>
-          <p class="admin-form-help" style="margin:8px 0 0;">
-            Blank or 0 uses the line-item sum (<strong>{{ \App\Models\ClientProject::formatMoney($quotation->lineItemsSubtotal()) }}</strong>).
-            Any other value replaces that pre-tax subtotal; HST scales with the taxable portion of the lines.
-          </p>
         </div>
       </form>
     </div>
