@@ -222,6 +222,22 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   font-size: 13px;
   color: #4b5563;
 }
+.cp-billing-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 12px;
+  color: #334155;
+}
+.cp-billing-type .fa {
+  margin-right: 0;
+  color: #64748b;
+}
 .cp-header-meta a {
   color: #024768;
   text-decoration: none;

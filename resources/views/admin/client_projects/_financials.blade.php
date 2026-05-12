@@ -352,13 +352,14 @@
   <h3>Profit summary
     <span class="cp-hint" title="{{ $isHourly
       ? 'Revenue = rate × logged hours (pre-tax labour). Expenses on Financials track materials reimbursed by the client—they are shown as cash tracked but do not reduce gross/net profit below. HST set aside = 13% of labour revenue.'
-      : 'Revenue = sum of pre-tax installment amounts for paid rows. When you mark an installment invoice paid, each row’s amount is updated to match that invoice’s billed subtotal (after discount), so this matches actual billed pre-tax revenue. HST set aside at 13% of that revenue (simplified).' }}">?</span></h3>
+      : 'Revenue = sum of pre-tax installment amounts for paid rows. When you mark an installment invoice paid, each row’s amount is updated to match that invoice’s billed subtotal (after discount), so this matches actual billed pre-tax revenue. HST set aside at 13% of that revenue (simplified). With closed hours on Time Tracking, Effective hourly rate = net profit after HST ÷ those hours.' }}">?</span></h3>
   @php
     $revenue = $project->totalRevenueCollected();
     $spent = $project->totalSpent();
     $gross = $project->grossProfit();
     $hst = $project->hstToSave();
     $netAfterHst = $project->netProfitAfterHst();
+    $effectiveHourlyFromTime = !$isHourly ? $project->effectiveHourlyRate() : null;
   @endphp
   <div class="cp-profit-grid">
     <div class="cp-profit-tile">
@@ -389,5 +390,16 @@
       <div class="cp-profit-label">Net profit after HST</div>
       <div class="cp-profit-value {{ $netAfterHst >= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($netAfterHst) }}</div>
     </div>
+    @if ($effectiveHourlyFromTime !== null)
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Effective hourly rate</div>
+        <div class="cp-profit-value {{ $effectiveHourlyFromTime >= 0 ? 'is-positive' : 'is-negative' }}">
+          {{ \App\Models\ClientProject::formatMoney($effectiveHourlyFromTime) }} / h
+        </div>
+        <p class="admin-form-help" style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#6b7280;">
+          Net profit after HST divided by closed hours from Time Tracking.
+        </p>
+      </div>
+    @endif
   </div>
 </div>

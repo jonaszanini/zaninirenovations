@@ -23,6 +23,13 @@
         <h2><?php echo e($project->name); ?></h2>
         <?php echo $__env->make('admin.client_projects._contacted_via_display', ['project' => $project, 'lineClass' => 'cp-contacted-via-line'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
         <div class="cp-header-meta">
+          <span class="cp-billing-type" title="How this project is billed">
+            <?php if($project->isHourly()): ?>
+              <i class="fa fa-clock-o" aria-hidden="true"></i> Hourly rate
+            <?php else: ?>
+              <i class="fa fa-tag" aria-hidden="true"></i> Fixed price
+            <?php endif; ?>
+          </span>
           <?php if($project->client_phone): ?>
             <span><i class="fa fa-phone"></i> <?php echo e(\App\Models\ClientProject::formatPhone($project->client_phone)); ?></span>
           <?php endif; ?>
