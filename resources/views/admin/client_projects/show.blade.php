@@ -23,6 +23,13 @@
         <h2>{{ $project->name }}</h2>
         @include('admin.client_projects._contacted_via_display', ['project' => $project, 'lineClass' => 'cp-contacted-via-line'])
         <div class="cp-header-meta">
+          <span class="cp-billing-type" title="How this project is billed">
+            @if ($project->isHourly())
+              <i class="fa fa-clock-o" aria-hidden="true"></i> Hourly rate
+            @else
+              <i class="fa fa-tag" aria-hidden="true"></i> Fixed price
+            @endif
+          </span>
           @if ($project->client_phone)
             <span><i class="fa fa-phone"></i> {{ \App\Models\ClientProject::formatPhone($project->client_phone) }}</span>
           @endif

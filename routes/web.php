@@ -118,6 +118,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.installments.toggle-paid');
     Route::post('client-projects/{client_project}/expenses', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeExpense'])
         ->name('client-projects.expenses.store');
+    Route::post('client-projects/{client_project}/expenses/send', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'sendExpensesToClient'])
+        ->name('client-projects.expenses.send');
     Route::delete('client-projects/{client_project}/expenses/{expense}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyExpense'])
         ->name('client-projects.expenses.destroy');
     Route::post('client-projects/{client_project}/returns', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeReturn'])

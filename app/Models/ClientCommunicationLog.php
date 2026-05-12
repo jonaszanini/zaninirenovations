@@ -45,6 +45,7 @@ class ClientCommunicationLog extends Model
     public const REASON_FIXED_SCHEDULE_CONFIRMATION = 'fixed_schedule_confirmation';
     public const REASON_SCHEDULE_DATES_MANUAL = 'schedule_dates_manual';
     public const REASON_TIME_TRACKING_SUMMARY = 'time_tracking_summary';
+    public const REASON_EXPENSES_SUMMARY = 'expenses_summary';
     public const REASON_THANK_YOU = 'thank_you';
     public const REASON_COMMENCEMENT_EVE_SMS = 'commencement_eve_sms';
     public const REASON_COMMENCEMENT_EVE_ADMIN = 'commencement_eve_admin';
@@ -64,6 +65,7 @@ class ClientCommunicationLog extends Model
         self::REASON_FIXED_SCHEDULE_CONFIRMATION => 'Schedule confirmation',
         self::REASON_SCHEDULE_DATES_MANUAL => 'Schedule dates (manual)',
         self::REASON_TIME_TRACKING_SUMMARY => 'Time-tracking summary',
+        self::REASON_EXPENSES_SUMMARY => 'Expenses summary',
         self::REASON_THANK_YOU => 'Thank you / review',
         self::REASON_COMMENCEMENT_EVE_SMS => 'Save the date (day before)',
         self::REASON_COMMENCEMENT_EVE_ADMIN => 'Day-before (admin)',
@@ -157,6 +159,7 @@ class ClientCommunicationLog extends Model
             self::REASON_COMMENCEMENT_EVE_ADMIN => '#0891b2',        // cyan
             self::REASON_THANK_YOU => '#ec4899',                     // pink
             self::REASON_TIME_TRACKING_SUMMARY => '#6366f1',         // indigo
+            self::REASON_EXPENSES_SUMMARY => '#0d9488',              // teal
             default => '#6b7280',                                    // slate
         };
     }

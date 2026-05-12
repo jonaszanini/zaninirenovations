@@ -223,9 +223,12 @@
 @endif
 
 {{-- EXPENSES ----------------------------------------------------------- --}}
+@php
+  $expenseSendHasClient = $project->hasClientContactInfo();
+@endphp
 <div class="admin-card">
   <h3>Expenses</h3>
-  <form action="{{ route('admin.client-projects.expenses.store', $project) }}" method="post" class="cp-finance-form">
+  <form action="{{ route('admin.client-projects.expenses.store', $project) }}" method="post" enctype="multipart/form-data" class="cp-finance-form">
     @csrf
     <div class="cp-finance-form-grid">
       <div class="admin-form-group">
@@ -234,7 +237,7 @@
       </div>
       <div class="admin-form-group">
         <label>Description</label>
-        <input type="text" name="description" required maxlength="500">
+        <input type="text" name="description" required maxlength="500" value="{{ old('description') }}">
       </div>
       <div class="admin-form-group">
         <label>Amount (CAD)</label>
@@ -242,20 +245,27 @@
                class="cp-money-input"
                inputmode="decimal"
                autocomplete="off"
-               placeholder="0.00">
+               placeholder="0.00"
+               value="{{ old('amount') }}">
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add expense</button>
       </div>
     </div>
+    <div class="admin-form-group cp-expense-receipt-field">
+      <label for="cp-expense-receipt">Receipt photo (optional)</label>
+      <input type="file" id="cp-expense-receipt" name="receipt" accept="image/*">
+      <p class="admin-form-help">JPEG, PNG, or WebP — stored as WebP (same as portfolio photos). On a phone you can take a new photo or pick one from your gallery.</p>
+    </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
+    @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
   </form>
 
   @if ($project->expenses->isNotEmpty())
     <div class="admin-table-scroll">
     <table class="admin-table">
       <thead>
-        <tr><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th></th></tr>
+        <tr><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th>Receipt</th><th></th></tr>
       </thead>
       <tbody>
         @foreach ($project->expenses as $expense)
@@ -263,6 +273,15 @@
             <td>{{ \App\Models\ClientProject::formatDate($expense->occurred_on) }}</td>
             <td>{{ $expense->description }}</td>
             <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($expense->amount) }}</td>
+            <td class="cp-expense-receipt-cell">
+              @if ($expense->receiptUrl())
+                <a href="{{ $expense->receiptUrl() }}" target="_blank" rel="noopener" title="Open receipt">
+                  <img src="{{ $expense->receiptUrl() }}" alt="" class="cp-expense-receipt-thumb" width="56" height="56" loading="lazy">
+                </a>
+              @else
+                —
+              @endif
+            </td>
             <td>
               <form action="{{ route('admin.client-projects.expenses.destroy', [$project, $expense]) }}" method="post" onsubmit="return confirm('Delete this expense?');" class="cp-inline-form">
                 @csrf
@@ -276,9 +295,36 @@
           <td colspan="2"><strong>Total expenses</strong></td>
           <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($project->totalExpensesAmount()) }}</strong></td>
           <td></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
+    </div>
+
+    <div class="cp-expenses-send-email">
+      <h4 class="cp-expenses-send-heading">Send to client</h4>
+      <p class="admin-form-help">
+        Email the client a table of every expense and the running total. Receipt photos are attached to the message as WebP files when present.
+        {{ $project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : '' }}
+      </p>
+      @if (! $expenseSendHasClient)
+        <p class="admin-form-help" style="color:#b45309;">
+          <i class="fa fa-exclamation-triangle"></i>
+          Add the client’s name and email on the
+          <a href="{{ route('admin.client-projects.edit', $project) }}">edit project</a> page before sending.
+        </p>
+      @endif
+      <form action="{{ route('admin.client-projects.expenses.send', $project) }}"
+            method="post"
+            onsubmit="return confirm('Send the expenses summary to {{ e($project->clientEmailRecipientsLabel() ?: 'the client') }}?');">
+        @csrf
+        <button type="submit"
+                class="admin-btn admin-btn--primary admin-btn--sm"
+                @disabled(! $expenseSendHasClient)>
+          <i class="fa fa-paper-plane"></i>
+          Send expenses to client
+        </button>
+      </form>
     </div>
   @else
     <p class="admin-form-help">No expenses recorded yet.</p>
@@ -352,13 +398,14 @@
   <h3>Profit summary
     <span class="cp-hint" title="{{ $isHourly
       ? 'Revenue = rate × logged hours (pre-tax labour). Expenses on Financials track materials reimbursed by the client—they are shown as cash tracked but do not reduce gross/net profit below. HST set aside = 13% of labour revenue.'
-      : 'Revenue = paid installments (fixed price). HST set aside at 13% of revenue (Canadian HST).' }}">?</span></h3>
+      : 'Revenue = sum of pre-tax installment amounts for paid rows. When you mark an installment invoice paid, each row’s amount is updated to match that invoice’s billed subtotal (after discount), so this matches actual billed pre-tax revenue. HST set aside at 13% of that revenue (simplified). With closed hours on Time Tracking, Effective hourly rate = net profit after HST ÷ those hours.' }}">?</span></h3>
   @php
     $revenue = $project->totalRevenueCollected();
     $spent = $project->totalSpent();
     $gross = $project->grossProfit();
     $hst = $project->hstToSave();
     $netAfterHst = $project->netProfitAfterHst();
+    $effectiveHourlyFromTime = !$isHourly ? $project->effectiveHourlyRate() : null;
   @endphp
   <div class="cp-profit-grid">
     <div class="cp-profit-tile">
@@ -389,5 +436,16 @@
       <div class="cp-profit-label">Net profit after HST</div>
       <div class="cp-profit-value {{ $netAfterHst >= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($netAfterHst) }}</div>
     </div>
+    @if ($effectiveHourlyFromTime !== null)
+      <div class="cp-profit-tile">
+        <div class="cp-profit-label">Effective hourly rate</div>
+        <div class="cp-profit-value {{ $effectiveHourlyFromTime >= 0 ? 'is-positive' : 'is-negative' }}">
+          {{ \App\Models\ClientProject::formatMoney($effectiveHourlyFromTime) }} / h
+        </div>
+        <p class="admin-form-help" style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#6b7280;">
+          Net profit after HST divided by closed hours from Time Tracking.
+        </p>
+      </div>
+    @endif
   </div>
 </div>

@@ -38,8 +38,9 @@ use Illuminate\Validation\ValidationException;
  *   - send()             generates invoice PDF, emails it, marks status = sent
  *   - sendReminder()     emails a payment reminder (no new PDF)
  *   - markPaid()         accepts date + amount, generates a Receipt PDF, emails
- *                        it, transitions status = paid, and auto-marks the
- *                        linked Financials installment as paid when present.
+ *                        it, transitions status = paid, aligns the linked
+ *                        installment’s pre-tax amount to the invoice subtotal,
+ *                        and marks that installment paid when it was not already.
  *   - destroy()          deletes the invoice (and its PDFs) while it is still a draft.
  *
  * Totals are always computed server-side from the raw items + HST rate,
@@ -659,10 +660,9 @@ class ClientProjectInvoiceController extends Controller
 
             $invoice->save();
 
-            // Auto-sync: mark the linked installment as paid on the
-            // Financials payment plan. Only if we're linked to one and
-            // it isn't already paid — so the user can manually toggle
-            // it first without collision.
+            // Auto-sync: align the linked installment’s pre-tax amount to what
+            // was actually billed on this invoice (subtotal after discount), and
+            // mark it paid when it wasn’t already (manual toggle may have paid it first).
             if (!$invoice->isManual()) {
                 $installment = $client_project->installments()
                     ->orderBy('sort_order')
@@ -670,12 +670,21 @@ class ClientProjectInvoiceController extends Controller
                     ->values()
                     ->get($invoice->installment_number - 1);
 
-                if ($installment && !$installment->is_paid) {
-                    $installment->is_paid = true;
-                    $installment->paid_on = $data['paid_on'];
+                if ($installment) {
+                    $wasPaid = (bool) $installment->is_paid;
+
+                    if (!$client_project->isHourly()) {
+                        $installment->amount = round(max(0.0, (float) $invoice->subtotal), 2);
+                    }
+
+                    if (!$wasPaid) {
+                        $installment->is_paid = true;
+                        $installment->paid_on = $data['paid_on'];
+                    }
+
                     $installment->save();
 
-                    if ((int) $invoice->installment_number === 1) {
+                    if (!$wasPaid && (int) $invoice->installment_number === 1) {
                         $firstInstallmentJustPaid = true;
                     }
                 }

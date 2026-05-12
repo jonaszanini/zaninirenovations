@@ -375,7 +375,7 @@ unset($__errorArgs, $__bag); ?>
   <h3>Profit summary
     <span class="cp-hint" title="<?php echo e($isHourly
       ? 'Revenue = rate × logged hours (pre-tax labour). Expenses on Financials track materials reimbursed by the client—they are shown as cash tracked but do not reduce gross/net profit below. HST set aside = 13% of labour revenue.'
-      : 'Revenue = paid installments (fixed price). HST set aside at 13% of revenue (Canadian HST).'); ?>">?</span></h3>
+      : 'Revenue = sum of pre-tax installment amounts for paid rows. When you mark an installment invoice paid, each row’s amount is updated to match that invoice’s billed subtotal (after discount), so this matches actual billed pre-tax revenue. HST set aside at 13% of that revenue (simplified).'); ?>">?</span></h3>
   <?php
     $revenue = $project->totalRevenueCollected();
     $spent = $project->totalSpent();

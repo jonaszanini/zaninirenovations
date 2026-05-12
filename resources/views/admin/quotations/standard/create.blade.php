@@ -27,12 +27,22 @@
       $matRows = is_array($quotation->materials) ? $quotation->materials : [];
   }
   if (!is_array($matRows) || count($matRows) === 0) {
-      $matRows = [['short_name' => '', 'description' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true]];
+      $matRows = [['short_name' => '', 'description' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false]];
   }
 
   $labourMode = old('labour_mode', $isEdit ? $quotation->labour_mode : 'hours');
   $labourQty = old('labour_quantity', $isEdit ? (string) $quotation->labour_quantity : '');
   $labourRate = old('labour_hourly_rate', $isEdit ? number_format((float) $quotation->labour_hourly_rate, 2, '.', '') : '65.00');
+
+  $labourUseFixed = old('labour_use_fixed', $isEdit ? (bool) ($quotation->labour_use_fixed ?? false) : false);
+  $labourFixedAmount = old('labour_fixed_amount');
+  if ($labourFixedAmount === null && $isEdit && $quotation->labour_fixed_amount !== null) {
+      $labourFixedAmount = number_format((float) $quotation->labour_fixed_amount, 2, '.', '');
+  }
+  if ($labourFixedAmount === null) {
+      $labourFixedAmount = '';
+  }
+  $labourFixedHstInc = old('labour_fixed_hst_included', $isEdit ? (bool) ($quotation->labour_fixed_hst_included ?? false) : false);
 
   // Contingency allowance defaults: enabled with 10% on new quotes; for
   // existing quotes use whatever was saved (column was added with default
@@ -224,7 +234,7 @@
         <div class="sq-panel-head">
           <h3 style="margin:0;">Materials</h3>
         </div>
-        <p class="admin-form-help">Unit prices are <strong>before HST</strong>. Per-row HST (13%) is optional (on by default).</p>
+        <p class="admin-form-help">By default, unit price is <strong>before HST</strong> and <strong>Pre-tax + HST</strong> adds 13% on the line. Check <strong>HST-incl. price</strong> when the unit price already includes HST (subtotal is back-calculated).</p>
 
         {{-- Each material is rendered as a small two-line "form card" so
              the inputs stop getting squeezed on narrow viewports. Line 1
@@ -236,7 +246,11 @@
         <div class="sq-materials-list" id="sq-materials-list">
           @foreach ($matRows as $i => $row)
             @php
+              $hstInc = array_key_exists('hst_includes_unit', $row) ? filter_var($row['hst_includes_unit'], FILTER_VALIDATE_BOOLEAN) : false;
               $apply = array_key_exists('apply_hst', $row) ? filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN) : true;
+              if ($hstInc) {
+                  $apply = true;
+              }
             @endphp
             <div class="sq-material-card sq-material-row">
               <div class="sq-mat-fields">
@@ -285,12 +299,19 @@
                     <div class="sq-mat-readout"><span class="sq-mat-total">—</span></div>
                   </div>
                   <div class="sq-mat-field sq-mat-field--apply">
-                    <label>HST</label>
-                    <input type="hidden" name="materials[{{ $i }}][apply_hst]" value="0">
-                    <label class="sq-checkbox-label sq-mat-apply-label">
-                      <input type="checkbox" name="materials[{{ $i }}][apply_hst]" value="1" class="sq-mat-hst-cb" @checked($apply)>
-                      <span>Apply</span>
-                    </label>
+                    <label class="sq-mat-hst-toggles-label">HST</label>
+                    <div class="sq-mat-hst-toggles">
+                      <input type="hidden" name="materials[{{ $i }}][hst_includes_unit]" value="0">
+                      <label class="sq-checkbox-label sq-mat-apply-label">
+                        <input type="checkbox" name="materials[{{ $i }}][hst_includes_unit]" value="1" class="sq-mat-hst-inclusive-cb" @checked($hstInc)>
+                        <span>HST-incl. price</span>
+                      </label>
+                      <input type="hidden" name="materials[{{ $i }}][apply_hst]" value="0">
+                      <label class="sq-checkbox-label sq-mat-apply-label">
+                        <input type="checkbox" name="materials[{{ $i }}][apply_hst]" value="1" class="sq-mat-hst-cb" @checked($apply)>
+                        <span>Pre-tax + HST</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -365,12 +386,35 @@
       {{-- Labour --------------------------------------------------- --}}
       <div class="admin-card sq-panel">
         <h3 style="margin:0 0 8px;">Labour</h3>
-        <p class="admin-form-help">Labour is <strong>HST-taxable</strong> at 13%. <span title="1 day = 8 hours">8 hours = 1 day</span>.</p>
+        <p class="admin-form-help">Labour is <strong>HST-taxable</strong> at 13%. Use a <strong>flat labour fee</strong> for a fixed dollar amount, or estimate by <strong>rate × hours/days</strong> (<span title="1 day = 8 hours">8 h = 1 day</span>).</p>
 
+        <div class="admin-form-group sq-labour-fixed-block">
+          <input type="hidden" name="labour_use_fixed" value="0">
+          <label class="sq-checkbox-label" style="margin-bottom:10px;">
+            <input type="checkbox" name="labour_use_fixed" value="1" id="sq-labour-use-fixed" class="sq-labour-use-fixed-cb" @checked($labourUseFixed)>
+            <span><strong>Flat labour fee</strong> (skip rate &amp; hours)</span>
+          </label>
+          <div class="sq-labour-fixed-fields" id="sq-labour-fixed-fields">
+            <label for="sq-labour-fixed-amount">Amount (CAD)</label>
+            <input type="text" inputmode="decimal" autocomplete="off" id="sq-labour-fixed-amount" name="labour_fixed_amount"
+                   class="admin-input cp-money-input" placeholder="0.00" value="{{ $labourFixedAmount }}">
+            <div style="margin-top:10px;">
+              <input type="hidden" name="labour_fixed_hst_included" value="0">
+              <label class="sq-checkbox-label sq-mat-apply-label" style="display:inline-flex;">
+                <input type="checkbox" name="labour_fixed_hst_included" value="1" id="sq-labour-fixed-hst-inc" class="sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
+                <span>HST included</span>
+              </label>
+            </div>
+            <p class="admin-form-help" style="margin-top:8px;">When <strong>HST included</strong> is checked, the amount is the total with tax; before-tax labour is calculated the same way as materials with <strong>HST-incl. price</strong>.</p>
+          </div>
+          @error('labour_fixed_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+
+        <div class="sq-labour-rate-fields" id="sq-labour-rate-fields">
         <div class="admin-form-group">
-          <label for="sq-labour-rate">Hourly rate (CAD) <span class="cp-required">*</span></label>
+          <label for="sq-labour-rate">Hourly rate (CAD) @unless($labourUseFixed)<span class="cp-required">*</span>@endunless</label>
           <input type="text" inputmode="decimal" id="sq-labour-rate" name="labour_hourly_rate" class="admin-input cp-money-input"
-                 required placeholder="65.00" value="{{ $labourRate }}">
+                 @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}">
           @error('labour_hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -393,6 +437,7 @@
           @error('labour_quantity') <p class="admin-form-error">{{ $message }}</p> @enderror
           @error('labour_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
           <p class="admin-form-help" id="sq-labour-equiv" style="margin-top:6px;"></p>
+        </div>
         </div>
 
         <div class="cp-quotation-totals sq-labour-totals">
@@ -572,12 +617,19 @@
             <div class="sq-mat-readout"><span class="sq-mat-total">—</span></div>
           </div>
           <div class="sq-mat-field sq-mat-field--apply">
-            <label>HST</label>
-            <input type="hidden" name="materials[__I__][apply_hst]" value="0">
-            <label class="sq-checkbox-label sq-mat-apply-label">
-              <input type="checkbox" name="materials[__I__][apply_hst]" value="1" class="sq-mat-hst-cb" checked>
-              <span>Apply</span>
-            </label>
+            <label class="sq-mat-hst-toggles-label">HST</label>
+            <div class="sq-mat-hst-toggles">
+              <input type="hidden" name="materials[__I__][hst_includes_unit]" value="0">
+              <label class="sq-checkbox-label sq-mat-apply-label">
+                <input type="checkbox" name="materials[__I__][hst_includes_unit]" value="1" class="sq-mat-hst-inclusive-cb">
+                <span>HST-incl. price</span>
+              </label>
+              <input type="hidden" name="materials[__I__][apply_hst]" value="0">
+              <label class="sq-checkbox-label sq-mat-apply-label">
+                <input type="checkbox" name="materials[__I__][apply_hst]" value="1" class="sq-mat-hst-cb" checked>
+                <span>Pre-tax + HST</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -627,6 +679,30 @@
   var modeRadios = document.querySelectorAll('.sq-labour-mode');
   var qtyLabel = document.getElementById('sq-labour-qty-label');
   var equivEl = document.getElementById('sq-labour-equiv');
+  var useFixedCb = document.getElementById('sq-labour-use-fixed');
+  var fixedAmtInput = document.getElementById('sq-labour-fixed-amount');
+  var fixedHstInc = document.getElementById('sq-labour-fixed-hst-inc');
+  var rateFields = document.getElementById('sq-labour-rate-fields');
+
+  function syncFixedLabourUI() {
+    var on = useFixedCb && useFixedCb.checked;
+    if (rateFields) {
+      rateFields.style.opacity = on ? '0.55' : '';
+      rateFields.style.pointerEvents = on ? 'none' : '';
+    }
+    if (rateInput) {
+      rateInput.disabled = !!on;
+      if (on) {
+        rateInput.removeAttribute('required');
+      } else {
+        rateInput.setAttribute('required', 'required');
+      }
+    }
+    if (qtyInput) qtyInput.disabled = !!on;
+    modeRadios.forEach(function (r) { r.disabled = !!on; });
+    if (fixedAmtInput) fixedAmtInput.disabled = !on;
+    if (fixedHstInc) fixedHstInc.disabled = !on;
+  }
 
   var elMatSub = document.getElementById('sq-mat-subtotal');
   var elMatHst = document.getElementById('sq-mat-with-hst');
@@ -669,6 +745,18 @@
     return labourMode() === 'days' ? q * HPD : q;
   }
 
+  function syncHstToggles(row) {
+    var inc = row.querySelector('.sq-mat-hst-inclusive-cb');
+    var apply = row.querySelector('.sq-mat-hst-cb');
+    if (!inc || !apply) return;
+    if (inc.checked) {
+      apply.checked = true;
+      apply.disabled = true;
+    } else {
+      apply.disabled = false;
+    }
+  }
+
   function recalcMaterials() {
     var rows = list.querySelectorAll('.sq-material-row');
     var subSum = 0;
@@ -676,16 +764,32 @@
     var withSum = 0;
 
     rows.forEach(function (row) {
+      syncHstToggles(row);
       var unit = parseMoney(row.querySelector('.sq-mat-unit').value);
       var qty = parseQty(row.querySelector('.sq-mat-qty').value);
-      var cb = row.querySelector('.sq-mat-hst-cb');
-      var apply = cb && cb.checked;
-      var lineSub = Math.round(unit * qty * 100) / 100;
-      var lineHst = apply ? Math.round(lineSub * HST * 100) / 100 : 0;
-      var lineTot = Math.round((lineSub + lineHst) * 100) / 100;
+      var inclusive = row.querySelector('.sq-mat-hst-inclusive-cb') && row.querySelector('.sq-mat-hst-inclusive-cb').checked;
+      var applyCb = row.querySelector('.sq-mat-hst-cb');
+      var chargePreTax = applyCb && applyCb.checked;
+      var lineGross = Math.round(unit * qty * 100) / 100;
+      var lineSub;
+      var lineHst;
+      var lineTot;
+      if (inclusive) {
+        lineSub = Math.round(lineGross / (1 + HST) * 100) / 100;
+        lineHst = Math.round((lineGross - lineSub) * 100) / 100;
+        lineTot = lineGross;
+      } else if (chargePreTax) {
+        lineSub = lineGross;
+        lineHst = Math.round(lineSub * HST * 100) / 100;
+        lineTot = Math.round((lineSub + lineHst) * 100) / 100;
+      } else {
+        lineSub = lineGross;
+        lineHst = 0;
+        lineTot = lineSub;
+      }
 
       row.querySelector('.sq-mat-sub').textContent = money(lineSub);
-      row.querySelector('.sq-mat-hst').textContent = apply ? money(lineHst) : '—';
+      row.querySelector('.sq-mat-hst').textContent = (inclusive || chargePreTax) ? money(lineHst) : '—';
       row.querySelector('.sq-mat-total').textContent = money(lineTot);
 
       subSum += lineSub;
@@ -727,11 +831,28 @@
     elMatSub.textContent = money(subSum);
     elMatHst.textContent = money(withSumWithCont);
 
-    var rate = parseMoney(rateInput.value);
-    var hrs = labourHoursTotal();
-    var lab = Math.round(rate * hrs * 100) / 100;
-    var labHst = Math.round(lab * HST * 100) / 100;
-    var labWithHst = Math.round((lab + labHst) * 100) / 100;
+    var useFixed = useFixedCb && useFixedCb.checked;
+    var lab;
+    var labHst;
+    var labWithHst;
+    if (useFixed) {
+      var fa = parseMoney(fixedAmtInput ? fixedAmtInput.value : '');
+      if (fixedHstInc && fixedHstInc.checked) {
+        lab = Math.round(fa / (1 + HST) * 100) / 100;
+        labHst = Math.round((fa - lab) * 100) / 100;
+        labWithHst = fa;
+      } else {
+        lab = Math.round(fa * 100) / 100;
+        labHst = Math.round(lab * HST * 100) / 100;
+        labWithHst = Math.round((lab + labHst) * 100) / 100;
+      }
+    } else {
+      var rate = parseMoney(rateInput.value);
+      var hrs = labourHoursTotal();
+      lab = Math.round(rate * hrs * 100) / 100;
+      labHst = Math.round(lab * HST * 100) / 100;
+      labWithHst = Math.round((lab + labHst) * 100) / 100;
+    }
     elLabour.textContent = money(lab);
     if (elLabourHst) elLabourHst.textContent = money(labHst);
     if (elLabourWithHst) elLabourWithHst.textContent = money(labWithHst);
@@ -744,6 +865,9 @@
     if (gLabTot) gLabTot.textContent = money(labWithHst);
     gGrand.textContent = money(withSumWithCont + labWithHst);
 
+    if (useFixed) {
+      if (equivEl) equivEl.textContent = '';
+    } else {
     var lq = parseQty(qtyInput.value);
     if (labourMode() === 'days') {
       qtyLabel.textContent = 'Estimated days';
@@ -753,6 +877,7 @@
       qtyLabel.textContent = 'Estimated hours';
       var daysFromHrs = lq / HPD;
       equivEl.textContent = lq > 0 ? ('≈ ' + (Math.round(daysFromHrs * 1000) / 1000) + ' days (8 h/day)') : '';
+    }
     }
   }
 
@@ -819,16 +944,20 @@
     if (e.target && e.target.id === 'sq-contingency-percent') {
       sanitizeDecimalInput(e.target);
     }
-    if (e.target && e.target.closest('#sq-materials-list, #sq-labour-rate, #sq-labour-qty, #sq-contingency-block')) {
+    if (e.target && e.target.closest('#sq-materials-list, #sq-labour-rate, #sq-labour-qty, #sq-contingency-block, #sq-labour-fixed-fields')) {
       recalcMaterials();
     }
   });
   document.getElementById('sq-standard-form').addEventListener('change', function (e) {
     if (e.target && (
         e.target.classList.contains('sq-mat-hst-cb') ||
+        e.target.classList.contains('sq-mat-hst-inclusive-cb') ||
         e.target.classList.contains('sq-labour-mode') ||
-        e.target.id === 'sq-contingency-enabled'
+        e.target.id === 'sq-contingency-enabled' ||
+        e.target.id === 'sq-labour-use-fixed' ||
+        e.target.classList.contains('sq-labour-fixed-hst-inc-cb')
     )) {
+      if (e.target.id === 'sq-labour-use-fixed') syncFixedLabourUI();
       recalcMaterials();
     }
   });
@@ -850,6 +979,7 @@
     });
   }
 
+  syncFixedLabourUI();
   recalcMaterials();
 })();
 </script>

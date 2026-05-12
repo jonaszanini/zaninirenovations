@@ -30,16 +30,20 @@ class ProjectPhotoWebpStorage
         $originalName = basename($absolutePath);
         $upload = new UploadedFile($absolutePath, $originalName, $mime, null, true);
 
-        return $this->store($upload, $projectId);
+        return $this->store($upload, $projectId, 'project-photos');
     }
 
-    public function store(UploadedFile $file, int $projectId): string
+    /**
+     * @param  string  $storageFolder  Top-level folder under the public disk (e.g. project-photos, expense-receipts).
+     */
+    public function store(UploadedFile $file, int $projectId, string $storageFolder = 'project-photos'): string
     {
         $mime = strtolower((string) $file->getMimeType());
         $ext = strtolower((string) $file->getClientOriginalExtension());
 
         $basename = Str::uuid()->toString().'.webp';
-        $directory = "project-photos/{$projectId}";
+        $storageFolder = trim(str_replace(['\\', '..'], '', $storageFolder), '/');
+        $directory = "{$storageFolder}/{$projectId}";
         $relativePath = $directory.'/'.$basename;
 
         if ($mime === 'image/webp' || $ext === 'webp') {

@@ -4,8 +4,8 @@ namespace App\Services;
 
 /**
  * Computes totals for a Standard standalone quotation from material rows
- * (unit price × qty, optional 13% HST per row) plus untaxed labour
- * (hourly rate × hours).
+ * (unit price × qty, optional 13% HST per row, or tax-included unit pricing)
+ * plus untaxed labour (hourly rate × hours).
  */
 class StandardQuotationCalculator
 {
@@ -14,9 +14,83 @@ class StandardQuotationCalculator
     public const LABOUR_HOURS_PER_DAY = 8;
 
     /**
-     * @param  array<int, array{short_name?: string, description?: string, unit_price?: float|int|string, quantity?: float|int|string, apply_hst?: bool|string|int}>  $materialRows
+     * Parse one material row into pre-tax / HST / totals. Returns null when
+     * the row is empty and should be ignored.
+     *
      * @return array{
-     *   materials: list<array{short_name: string, description: string, unit_price: float, quantity: float, apply_hst: bool, line_subtotal: float, line_hst: float, line_total_with_hst: float}>,
+     *   hst_includes_unit: bool,
+     *   apply_hst: bool,
+     *   line_subtotal: float,
+     *   line_hst: float,
+     *   line_total_with_hst: float,
+     *   taxable_pre: float,
+     *   exempt_pre: float
+     * }|null
+     */
+    public static function breakdownMaterialRow(array $row): ?array
+    {
+        $shortName = trim((string) ($row['short_name'] ?? ''));
+        $desc = trim((string) ($row['description'] ?? ''));
+        $unit = round((float) ($row['unit_price'] ?? 0), 2);
+        $qty = (float) ($row['quantity'] ?? 0);
+
+        if ($shortName === '' && $desc === '' && $unit == 0.0 && ($qty == 0.0 || $qty === 0.0)) {
+            return null;
+        }
+
+        $hstIncludes = filter_var($row['hst_includes_unit'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $chargePreTaxHst = !array_key_exists('apply_hst', $row)
+            || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
+
+        $lineGross = round($unit * $qty, 2);
+
+        if ($hstIncludes) {
+            $lineSub = round($lineGross / (1 + self::HST_RATE), 2);
+            $lineHst = round($lineGross - $lineSub, 2);
+            $lineTotal = $lineGross;
+
+            return [
+                'hst_includes_unit' => true,
+                'apply_hst' => true,
+                'line_subtotal' => $lineSub,
+                'line_hst' => $lineHst,
+                'line_total_with_hst' => $lineTotal,
+                'taxable_pre' => $lineSub,
+                'exempt_pre' => 0.0,
+            ];
+        }
+
+        if ($chargePreTaxHst) {
+            $lineSub = $lineGross;
+            $lineHst = round($lineSub * self::HST_RATE, 2);
+            $lineTotal = round($lineSub + $lineHst, 2);
+
+            return [
+                'hst_includes_unit' => false,
+                'apply_hst' => true,
+                'line_subtotal' => $lineSub,
+                'line_hst' => $lineHst,
+                'line_total_with_hst' => $lineTotal,
+                'taxable_pre' => $lineSub,
+                'exempt_pre' => 0.0,
+            ];
+        }
+
+        return [
+            'hst_includes_unit' => false,
+            'apply_hst' => false,
+            'line_subtotal' => $lineGross,
+            'line_hst' => 0.0,
+            'line_total_with_hst' => $lineGross,
+            'taxable_pre' => 0.0,
+            'exempt_pre' => $lineGross,
+        ];
+    }
+
+    /**
+     * @param  array<int, array{short_name?: string, description?: string, unit_price?: float|int|string, quantity?: float|int|string, apply_hst?: bool|string|int, hst_includes_unit?: bool|string|int}>  $materialRows
+     * @return array{
+     *   materials: list<array{short_name: string, description: string, unit_price: float, quantity: float, apply_hst: bool, hst_includes_unit: bool, line_subtotal: float, line_hst: float, line_total_with_hst: float}>,
      *   materials_subtotal_before_hst: float,
      *   materials_subtotal_taxable: float,
      *   materials_subtotal_exempt: float,
@@ -43,7 +117,10 @@ class StandardQuotationCalculator
         string $labourMode,
         float $labourQuantity,
         bool $contingencyEnabled = true,
-        float $contingencyPercent = 10.0
+        float $contingencyPercent = 10.0,
+        bool $labourUseFixed = false,
+        float $labourFixedAmount = 0.0,
+        bool $labourFixedHstIncluded = false
     ): array {
         $cleanMaterials = [];
         $subBefore = 0.0;
@@ -53,40 +130,32 @@ class StandardQuotationCalculator
         $withHstSum = 0.0;
 
         foreach ($materialRows as $row) {
+            $b = self::breakdownMaterialRow($row);
+            if ($b === null) {
+                continue;
+            }
+
             $shortName = trim((string) ($row['short_name'] ?? ''));
             $desc = trim((string) ($row['description'] ?? ''));
             $unit = round((float) ($row['unit_price'] ?? 0), 2);
             $qty = (float) ($row['quantity'] ?? 0);
-            $applyHst = !array_key_exists('apply_hst', $row)
-                || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
 
-            // Drop fully-empty rows (no name, no description, no money/qty).
-            if ($shortName === '' && $desc === '' && $unit == 0.0 && ($qty == 0.0 || $qty === 0.0)) {
-                continue;
-            }
-
-            $lineSub = round($unit * $qty, 2);
-            $lineHst = $applyHst ? round($lineSub * self::HST_RATE, 2) : 0.0;
-            $lineTotal = round($lineSub + $lineHst, 2);
-
-            $subBefore += $lineSub;
-            if ($applyHst) {
-                $subTaxable += $lineSub;
-            } else {
-                $subExempt += $lineSub;
-            }
-            $hstSum += $lineHst;
-            $withHstSum += $lineTotal;
+            $subBefore += $b['line_subtotal'];
+            $subTaxable += $b['taxable_pre'];
+            $subExempt += $b['exempt_pre'];
+            $hstSum += $b['line_hst'];
+            $withHstSum += $b['line_total_with_hst'];
 
             $cleanMaterials[] = [
                 'short_name' => $shortName,
                 'description' => $desc,
                 'unit_price' => $unit,
                 'quantity' => $qty,
-                'apply_hst' => $applyHst,
-                'line_subtotal' => $lineSub,
-                'line_hst' => $lineHst,
-                'line_total_with_hst' => $lineTotal,
+                'apply_hst' => $b['apply_hst'],
+                'hst_includes_unit' => $b['hst_includes_unit'],
+                'line_subtotal' => $b['line_subtotal'],
+                'line_hst' => $b['line_hst'],
+                'line_total_with_hst' => $b['line_total_with_hst'],
             ];
         }
 
@@ -127,16 +196,32 @@ class StandardQuotationCalculator
 
         $labourMode = $labourMode === 'days' ? 'days' : 'hours';
         $qty = max(0.0, $labourQuantity);
-        $labourHours = $labourMode === 'days'
-            ? round($qty * self::LABOUR_HOURS_PER_DAY, 2)
-            : round($qty, 2);
 
-        $labourTotal = round(max(0.0, $hourlyRate) * $labourHours, 2);
+        if ($labourUseFixed) {
+            $labourHours = 0.0;
+            if ($labourFixedAmount > 0.00001) {
+                $fixedGross = round(max(0.0, $labourFixedAmount), 2);
+                if ($labourFixedHstIncluded) {
+                    $labourTotal = round($fixedGross / (1 + self::HST_RATE), 2);
+                    $labourHst = round($fixedGross - $labourTotal, 2);
+                } else {
+                    $labourTotal = $fixedGross;
+                    $labourHst = round($labourTotal * self::HST_RATE, 2);
+                }
+            } else {
+                $labourTotal = 0.0;
+                $labourHst = 0.0;
+            }
+        } else {
+            $labourHours = $labourMode === 'days'
+                ? round($qty * self::LABOUR_HOURS_PER_DAY, 2)
+                : round($qty, 2);
 
-        // Labour is now always HST-taxable (renovation services are HST
-        // applicable in Ontario). The HST is computed and stored separately
-        // so the totals box and grand summary can show the breakdown.
-        $labourHst = round($labourTotal * self::HST_RATE, 2);
+            $labourTotal = round(max(0.0, $hourlyRate) * $labourHours, 2);
+
+            // Labour is HST-taxable at 13% when priced from rate × time.
+            $labourHst = round($labourTotal * self::HST_RATE, 2);
+        }
 
         // Pre-HST splits used by the linking flow to push one or two line
         // items into the project quotation: a taxable line (apply_hst=true)
