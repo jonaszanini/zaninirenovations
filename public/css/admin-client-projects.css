@@ -759,6 +759,34 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   min-height: 44px;      /* match input height */
   white-space: nowrap;
 }
+.cp-expense-receipt-field {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+.cp-expense-receipt-field input[type="file"] {
+  max-width: 100%;
+}
+.cp-expense-receipt-cell {
+  vertical-align: middle;
+  text-align: center;
+  width: 72px;
+}
+.cp-expense-receipt-thumb {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+.cp-expenses-send-email {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+.cp-expenses-send-heading {
+  margin-top: 0;
+}
 @media (max-width: 820px) {
   .cp-finance-form-grid {
     grid-template-columns: 1fr 1fr;

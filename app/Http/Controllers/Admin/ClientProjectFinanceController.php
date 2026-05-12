@@ -3,15 +3,23 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ClientProjectExpensesSummaryClient;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInstallment;
 use App\Models\ClientProjectReturn;
 use App\Models\ClientProjectTimeEntry;
+use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Services\ProjectPhotoWebpStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 
 /**
  * Handles CRUD for the financial + time sections of a ClientProject:
@@ -200,11 +208,123 @@ class ClientProjectFinanceController extends Controller
             'occurred_on' => ['required', 'date'],
             'description' => ['required', 'string', 'max:500'],
             'amount' => ['required', 'numeric', 'min:0.01'],
+            'receipt' => ['nullable', 'file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
         ]);
 
-        $client_project->expenses()->create($data);
+        $receiptPath = null;
+        if ($request->hasFile('receipt')) {
+            try {
+                $receiptPath = app(ProjectPhotoWebpStorage::class)->store(
+                    $request->file('receipt'),
+                    $client_project->id,
+                    'expense-receipts'
+                );
+            } catch (RuntimeException $e) {
+                return back()
+                    ->withErrors(['receipt' => $e->getMessage()])
+                    ->withInput();
+            }
+        }
+
+        $client_project->expenses()->create([
+            'occurred_on' => $data['occurred_on'],
+            'description' => $data['description'],
+            'amount' => $data['amount'],
+            'receipt_path' => $receiptPath,
+        ]);
 
         return back()->with('success', 'Expense added.');
+    }
+
+    /**
+     * Email the client an expenses table and attach receipt WebP files when present.
+     */
+    public function sendExpensesToClient(ClientProject $client_project, ClientProjectStatusService $statusService)
+    {
+        if (! $client_project->isAccepted()) {
+            return back()
+                ->withFragment('financials')
+                ->with('error', 'Expenses email is available once the proposal is accepted.');
+        }
+
+        $client_project->load('expenses');
+
+        if ($client_project->expenses->isEmpty()) {
+            return back()
+                ->withFragment('financials')
+                ->with('error', 'Add at least one expense before sending to the client.');
+        }
+
+        if (! $client_project->hasClientContactInfo()) {
+            return back()
+                ->withFragment('financials')
+                ->with('error', 'Cannot send expenses — the client name and email are required. Edit the project to add them.');
+        }
+
+        $cc = $client_project->secondaryClientEmail();
+        $count = $client_project->expenses->count();
+        $receiptCount = $client_project->expenses->filter(fn ($e) => filled($e->receipt_path))->count();
+        $total = (float) $client_project->expenses->sum('amount');
+        $subject = 'Project expenses: '.$client_project->name.' — '.config('mail.from.name', 'Zanini Renovations');
+        $description = 'Expenses summary — '.$count.' '.Str::plural('expense', $count)
+            .', total '.ClientProject::formatMoney($total);
+        if ($receiptCount > 0) {
+            $description .= ', '.$receiptCount.' receipt '.Str::plural('photo', $receiptCount).' attached';
+        }
+
+        try {
+            $mailer = Mail::to($client_project->client_email, $client_project->client_name);
+            if ($cc) {
+                $mailer->cc($cc);
+            }
+            $mailer->send(new ClientProjectExpensesSummaryClient($client_project));
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_EXPENSES_SUMMARY,
+                $client_project->client_email,
+                $cc,
+                $subject,
+                $description,
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to email expenses summary', [
+                'project_id' => $client_project->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $client_project,
+                ClientCommunicationLog::REASON_EXPENSES_SUMMARY,
+                $client_project->client_email,
+                $cc,
+                $subject,
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
+                false,
+                $e->getMessage(),
+            );
+
+            return back()
+                ->withFragment('financials')
+                ->with('error', 'Failed to send the expenses email: '.$e->getMessage());
+        }
+
+        $sendNote = 'Expenses summary emailed to '.$client_project->clientEmailRecipientsLabel().'.';
+
+        try {
+            $statusService->recordEvent($client_project, $sendNote);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to record expenses-summary history entry', [
+                'project_id' => $client_project->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('financials')
+            ->with('success', $sendNote);
     }
 
     public function destroyExpense(ClientProject $client_project, ClientProjectExpense $expense)

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class ClientProjectExpense extends Model
 {
@@ -13,12 +14,38 @@ class ClientProjectExpense extends Model
         'occurred_on',
         'description',
         'amount',
+        'receipt_path',
     ];
 
     protected $casts = [
         'occurred_on' => 'date',
         'amount' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $expense): void {
+            if (! filled($expense->receipt_path)) {
+                return;
+            }
+            $rel = ltrim(str_replace('\\', '/', (string) $expense->receipt_path), '/');
+            Storage::disk('public')->delete($rel);
+            $mirror = public_path('storage/'.$rel);
+            if (is_file($mirror)) {
+                @unlink($mirror);
+            }
+        });
+    }
+
+    /** Public URL for the receipt WebP, or null when none. */
+    public function receiptUrl(): ?string
+    {
+        if (! filled($this->receipt_path)) {
+            return null;
+        }
+
+        return asset('storage/'.ltrim(str_replace('\\', '/', $this->receipt_path), '/'));
+    }
 
     public function project(): BelongsTo
     {
