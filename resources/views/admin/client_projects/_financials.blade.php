@@ -255,7 +255,7 @@
     <div class="admin-form-group cp-expense-receipt-field">
       <label for="cp-expense-receipt">Receipt photo (optional)</label>
       <input type="file" id="cp-expense-receipt" name="receipt" accept="image/*">
-      <p class="admin-form-help">JPEG, PNG, or WebP — stored as WebP (same as portfolio photos). On a phone you can take a new photo or pick one from your gallery.</p>
+      <p class="admin-form-help">JPEG, PNG, or WebP — stored as WebP named <strong>Receipt-#</strong> (same number as the # column) so the client can match attachments to each line. On a phone you can take a new photo or pick one from your gallery.</p>
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -265,18 +265,19 @@
     <div class="admin-table-scroll">
     <table class="admin-table">
       <thead>
-        <tr><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th>Receipt</th><th></th></tr>
+        <tr><th class="cp-expense-ref-col">#</th><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th>Receipt</th><th></th></tr>
       </thead>
       <tbody>
         @foreach ($project->expenses as $expense)
           <tr>
+            <td class="cp-expense-ref-col">{{ $expense->expense_ref }}</td>
             <td>{{ \App\Models\ClientProject::formatDate($expense->occurred_on) }}</td>
             <td>{{ $expense->description }}</td>
             <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($expense->amount) }}</td>
             <td class="cp-expense-receipt-cell">
               @if ($expense->receiptUrl())
                 <a href="{{ $expense->receiptUrl() }}" target="_blank" rel="noopener" title="Open receipt">
-                  <img src="{{ $expense->receiptUrl() }}" alt="" class="cp-expense-receipt-thumb" width="56" height="56" loading="lazy">
+                  <img src="{{ $expense->receiptUrl() }}" alt="Receipt {{ $expense->expense_ref }}" class="cp-expense-receipt-thumb" width="56" height="56" loading="lazy">
                 </a>
               @else
                 —
@@ -292,6 +293,7 @@
           </tr>
         @endforeach
         <tr class="cp-totals-row">
+          <td class="cp-expense-ref-col"></td>
           <td colspan="2"><strong>Total expenses</strong></td>
           <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($project->totalExpensesAmount()) }}</strong></td>
           <td></td>
@@ -304,7 +306,7 @@
     <div class="cp-expenses-send-email">
       <h4 class="cp-expenses-send-heading">Send to client</h4>
       <p class="admin-form-help">
-        Email the client a table of every expense and the running total. Receipt photos are attached to the message as WebP files when present.
+        Email the client a table of every expense, any returns/credits, and the <strong>net materials total</strong> (expenses minus returns). Receipt photos are attached as WebP files named <strong>Receipt-#</strong> to match the # column when present.
         {{ $project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : '' }}
       </p>
       @if (! $expenseSendHasClient)

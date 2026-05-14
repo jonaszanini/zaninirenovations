@@ -11,6 +11,7 @@ class ClientProjectExpense extends Model
     protected $fillable = [
         'client_project_id',
         'client_project_invoice_id',
+        'expense_ref',
         'occurred_on',
         'description',
         'amount',
@@ -20,6 +21,7 @@ class ClientProjectExpense extends Model
     protected $casts = [
         'occurred_on' => 'date',
         'amount' => 'decimal:2',
+        'expense_ref' => 'integer',
     ];
 
     protected static function booted(): void
@@ -35,6 +37,12 @@ class ClientProjectExpense extends Model
                 @unlink($mirror);
             }
         });
+    }
+
+    /** Filename used for email attachments and on-disk WebP (matches the # column). */
+    public function receiptAttachmentBasename(): string
+    {
+        return 'Receipt-'.(int) $this->expense_ref.'.webp';
     }
 
     /** Public URL for the receipt WebP, or null when none. */

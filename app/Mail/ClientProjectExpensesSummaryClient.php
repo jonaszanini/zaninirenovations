@@ -7,7 +7,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
  * Sends the client a table of project expenses and attaches receipt WebP files when present.
@@ -41,11 +40,7 @@ class ClientProjectExpensesSummaryClient extends Mailable
             if (! Storage::disk('public')->exists($path)) {
                 continue;
             }
-            $base = Str::slug(Str::limit((string) $expense->description, 40, ''));
-            if ($base === '') {
-                $base = 'receipt';
-            }
-            $as = $base.'-'.$expense->id.'-'.($expense->occurred_on?->format('Y-m-d') ?? 'date').'.webp';
+            $as = $expense->receiptAttachmentBasename();
             // Third arg is the attachment display name; fourth is options (not a single options array as arg 3).
             $this->attachFromStorageDisk('public', $path, $as, ['mime' => 'image/webp']);
         }

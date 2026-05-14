@@ -165,12 +165,16 @@ class ClientProject extends Model
 
     public function expenses(): HasMany
     {
-        return $this->hasMany(ClientProjectExpense::class)->orderBy('occurred_on');
+        return $this->hasMany(ClientProjectExpense::class)
+            ->orderBy('occurred_on')
+            ->orderBy('id');
     }
 
     public function returns(): HasMany
     {
-        return $this->hasMany(ClientProjectReturn::class)->orderBy('occurred_on');
+        return $this->hasMany(ClientProjectReturn::class)
+            ->orderBy('occurred_on')
+            ->orderBy('id');
     }
 
     public function timeEntries(): HasMany

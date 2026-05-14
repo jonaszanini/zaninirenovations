@@ -211,27 +211,35 @@ class ClientProjectFinanceController extends Controller
             'receipt' => ['nullable', 'file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
         ]);
 
-        $receiptPath = null;
-        if ($request->hasFile('receipt')) {
-            try {
-                $receiptPath = app(ProjectPhotoWebpStorage::class)->store(
-                    $request->file('receipt'),
-                    $client_project->id,
-                    'expense-receipts'
-                );
-            } catch (RuntimeException $e) {
-                return back()
-                    ->withErrors(['receipt' => $e->getMessage()])
-                    ->withInput();
-            }
-        }
+        try {
+            DB::transaction(function () use ($request, $client_project, $data) {
+                ClientProject::whereKey($client_project->id)->lockForUpdate()->first();
 
-        $client_project->expenses()->create([
-            'occurred_on' => $data['occurred_on'],
-            'description' => $data['description'],
-            'amount' => $data['amount'],
-            'receipt_path' => $receiptPath,
-        ]);
+                $nextRef = (int) ClientProjectExpense::where('client_project_id', $client_project->id)->max('expense_ref') + 1;
+
+                $expense = $client_project->expenses()->create([
+                    'expense_ref' => $nextRef,
+                    'occurred_on' => $data['occurred_on'],
+                    'description' => $data['description'],
+                    'amount' => $data['amount'],
+                    'receipt_path' => null,
+                ]);
+
+                if ($request->hasFile('receipt')) {
+                    $receiptPath = app(ProjectPhotoWebpStorage::class)->store(
+                        $request->file('receipt'),
+                        $client_project->id,
+                        'expense-receipts',
+                        'Receipt-'.$nextRef
+                    );
+                    $expense->update(['receipt_path' => $receiptPath]);
+                }
+            });
+        } catch (RuntimeException $e) {
+            return back()
+                ->withErrors(['receipt' => $e->getMessage()])
+                ->withInput();
+        }
 
         return back()->with('success', 'Expense added.');
     }
@@ -247,7 +255,7 @@ class ClientProjectFinanceController extends Controller
                 ->with('error', 'Expenses email is available once the proposal is accepted.');
         }
 
-        $client_project->load('expenses');
+        $client_project->load(['expenses', 'returns']);
 
         if ($client_project->expenses->isEmpty()) {
             return back()
@@ -264,10 +272,16 @@ class ClientProjectFinanceController extends Controller
         $cc = $client_project->secondaryClientEmail();
         $count = $client_project->expenses->count();
         $receiptCount = $client_project->expenses->filter(fn ($e) => filled($e->receipt_path))->count();
-        $total = (float) $client_project->expenses->sum('amount');
+        $grossExpenses = $client_project->totalExpensesAmount();
+        $returnsTotal = $client_project->totalReturnsAmount();
+        $netMaterials = $client_project->totalSpent();
         $subject = 'Project expenses: '.$client_project->name.' — '.config('mail.from.name', 'Zanini Renovations');
         $description = 'Expenses summary — '.$count.' '.Str::plural('expense', $count)
-            .', total '.ClientProject::formatMoney($total);
+            .', expenses '.ClientProject::formatMoney($grossExpenses);
+        if ($returnsTotal > 0) {
+            $description .= ', returns '.ClientProject::formatMoney($returnsTotal);
+        }
+        $description .= ', net (materials) '.ClientProject::formatMoney($netMaterials);
         if ($receiptCount > 0) {
             $description .= ', '.$receiptCount.' receipt '.Str::plural('photo', $receiptCount).' attached';
         }

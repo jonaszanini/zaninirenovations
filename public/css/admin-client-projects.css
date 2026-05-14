@@ -769,6 +769,13 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-expense-receipt-field input[type="file"] {
   max-width: 100%;
 }
+.cp-expense-ref-col {
+  width: 44px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #374151;
+}
 .cp-expense-receipt-cell {
   vertical-align: middle;
   text-align: center;
@@ -3170,9 +3177,6 @@ body.cp-modal-open {
 }
 .cp-date-picker-body {
   padding: 16px 18px 4px;
-}
-.cp-date-picker-help {
-  margin: 0 0 12px;
 }
 .cp-date-picker-selection {
   display: flex;

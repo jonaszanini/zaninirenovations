@@ -470,10 +470,6 @@
           <button type="button" class="cp-modal-close" data-cp-modal-close aria-label="Close">&times;</button>
         </div>
         <div class="cp-modal-body cp-date-picker-body">
-          <p class="admin-form-help cp-date-picker-help">
-            Click a day to set the <strong>start</strong>, then click another day to set the <strong>end</strong>
-            (or drag across multiple days). Coloured blocks are other projects already scheduled.
-          </p>
           <div class="cp-date-picker-selection">
             <div>
               <span class="cp-date-picker-selection-label">Start</span>

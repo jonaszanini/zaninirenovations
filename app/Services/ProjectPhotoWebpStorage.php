@@ -35,13 +35,21 @@ class ProjectPhotoWebpStorage
 
     /**
      * @param  string  $storageFolder  Top-level folder under the public disk (e.g. project-photos, expense-receipts).
+     * @param  string|null  $preferredBasenameSansExt  When set (e.g. "Receipt-3"), stored file is "{sanitized}.webp" instead of a UUID.
      */
-    public function store(UploadedFile $file, int $projectId, string $storageFolder = 'project-photos'): string
+    public function store(UploadedFile $file, int $projectId, string $storageFolder = 'project-photos', ?string $preferredBasenameSansExt = null): string
     {
         $mime = strtolower((string) $file->getMimeType());
         $ext = strtolower((string) $file->getClientOriginalExtension());
 
-        $basename = Str::uuid()->toString().'.webp';
+        $leaf = null;
+        if (is_string($preferredBasenameSansExt) && trim($preferredBasenameSansExt) !== '') {
+            $leaf = trim(preg_replace('/[^A-Za-z0-9_-]/', '', str_replace(' ', '-', $preferredBasenameSansExt)), '-');
+        }
+        if ($leaf === null || $leaf === '') {
+            $leaf = Str::uuid()->toString();
+        }
+        $basename = $leaf.'.webp';
         $storageFolder = trim(str_replace(['\\', '..'], '', $storageFolder), '/');
         $directory = "{$storageFolder}/{$projectId}";
         $relativePath = $directory.'/'.$basename;
