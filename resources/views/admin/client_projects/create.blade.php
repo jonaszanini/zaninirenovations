@@ -15,7 +15,7 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="cp-contacted-via">Contacted via <span class="cp-required">*</span></label>
+        <label for="cp-contacted-via">Contact via <span class="cp-required">*</span></label>
         <select id="cp-contacted-via" name="contacted_via" required @class(['admin-input', 'is-invalid' => $errors->has('contacted_via')])>
           <option value="" disabled @selected(old('contacted_via') === null)>Select…</option>
           @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)

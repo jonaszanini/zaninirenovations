@@ -203,6 +203,9 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-contacted-via-value--sms {
   color: #1ab1bc;
 }
+.cp-contacted-via-value--email {
+  color: #7c3aed;
+}
 .cp-contacted-via-value--call {
   color: #000000;
 }

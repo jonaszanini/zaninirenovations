@@ -42,6 +42,7 @@ class ClientProject extends Model
     /** How the client first reached you (intake source). */
     public const CONTACTED_VIA_WEBSITE_FORM = 'website_form';
     public const CONTACTED_VIA_SMS = 'sms';
+    public const CONTACTED_VIA_EMAIL = 'email';
     public const CONTACTED_VIA_CALL = 'call';
     public const CONTACTED_VIA_FACEBOOK = 'facebook';
     public const CONTACTED_VIA_INSTAGRAM = 'instagram';
@@ -358,6 +359,7 @@ class ClientProject extends Model
         return [
             self::CONTACTED_VIA_WEBSITE_FORM => 'Web site form',
             self::CONTACTED_VIA_SMS => 'SMS',
+            self::CONTACTED_VIA_EMAIL => 'Email',
             self::CONTACTED_VIA_CALL => 'Call',
             self::CONTACTED_VIA_FACEBOOK => 'Facebook',
             self::CONTACTED_VIA_INSTAGRAM => 'Instagram',
