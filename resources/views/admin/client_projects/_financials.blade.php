@@ -269,6 +269,10 @@
       </thead>
       <tbody>
         @foreach ($project->expenses as $expense)
+          @php
+            $expenseOnInvoice = $expense->client_project_invoice_id !== null;
+            $expenseEditOpen = (int) session('open_expense_edit', 0) === (int) $expense->id;
+          @endphp
           <tr>
             <td class="cp-expense-ref-col">{{ $expense->expense_ref }}</td>
             <td>{{ \App\Models\ClientProject::formatDate($expense->occurred_on) }}</td>
@@ -283,12 +287,74 @@
                 —
               @endif
             </td>
-            <td>
-              <form action="{{ route('admin.client-projects.expenses.destroy', [$project, $expense]) }}" method="post" onsubmit="return confirm('Delete this expense?');" class="cp-inline-form">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
-              </form>
+            <td class="cp-expense-actions-cell">
+              <div class="cp-expense-actions">
+                <button type="button" class="admin-btn admin-btn--sm" data-cp-expense-edit-toggle="{{ $expense->id }}">Edit</button>
+                <form action="{{ route('admin.client-projects.expenses.destroy', [$project, $expense]) }}" method="post" onsubmit="return confirm('Delete this expense?');" class="cp-inline-form">
+                  @csrf
+                  @method('DELETE')
+                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <tr class="cp-expense-edit-row" data-cp-expense-edit-row="{{ $expense->id }}" @if (! $expenseEditOpen) hidden @endif>
+            <td colspan="6">
+              <div class="cp-expense-edit-panel">
+                <h4 class="cp-expense-edit-heading">Edit expense #{{ $expense->expense_ref }}</h4>
+                @if ($expenseOnInvoice)
+                  <p class="admin-form-help">This expense is on an invoice line — only the receipt photo can be added or replaced here. To change the amount or description, adjust the invoice draft first.</p>
+                @endif
+                <form action="{{ route('admin.client-projects.expenses.update', [$project, $expense]) }}" method="post" enctype="multipart/form-data" class="cp-finance-form">
+                  @csrf
+                  @method('PUT')
+                  @if (! $expenseOnInvoice)
+                    <div class="cp-finance-form-grid">
+                      <div class="admin-form-group">
+                        <label for="cp-expense-edit-date-{{ $expense->id }}">Date</label>
+                        <input type="date" id="cp-expense-edit-date-{{ $expense->id }}" name="occurred_on" required value="{{ old('occurred_on', $expense->occurred_on->toDateString()) }}">
+                      </div>
+                      <div class="admin-form-group">
+                        <label for="cp-expense-edit-desc-{{ $expense->id }}">Description</label>
+                        <input type="text" id="cp-expense-edit-desc-{{ $expense->id }}" name="description" required maxlength="500" value="{{ old('description', $expense->description) }}">
+                      </div>
+                      <div class="admin-form-group">
+                        <label for="cp-expense-edit-amt-{{ $expense->id }}">Amount (CAD)</label>
+                        <input type="text" id="cp-expense-edit-amt-{{ $expense->id }}" name="amount" required
+                               class="cp-money-input"
+                               inputmode="decimal"
+                               autocomplete="off"
+                               value="{{ old('amount', $expense->amount) }}">
+                      </div>
+                    </div>
+                  @endif
+                  <div class="admin-form-group cp-expense-receipt-field">
+                    <label for="cp-expense-edit-receipt-{{ $expense->id }}">
+                      @if ($expenseOnInvoice)
+                        Receipt photo
+                      @else
+                        Receipt photo <span class="cp-hint">(optional)</span>
+                      @endif
+                    </label>
+                    <input type="file" id="cp-expense-edit-receipt-{{ $expense->id }}" name="receipt" accept="image/*" @if ($expenseOnInvoice) required @endif>
+                    @if (! $expenseOnInvoice)
+                      <p class="admin-form-help">Leave blank to keep the current receipt. Choose a file to add one or replace the existing WebP (<strong>Receipt-{{ $expense->expense_ref }}</strong>).</p>
+                    @else
+                      <p class="admin-form-help">JPEG, PNG, or WebP — stored as WebP named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</p>
+                    @endif
+                  </div>
+                  @if ($errors->any() && $expenseEditOpen)
+                    @error('occurred_on') <p class="admin-form-error">{{ $message }}</p> @enderror
+                    @error('description') <p class="admin-form-error">{{ $message }}</p> @enderror
+                    @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
+                    @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
+                  @endif
+                  <div class="cp-expense-edit-footer">
+                    <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save</button>
+                    <button type="button" class="admin-btn admin-btn--sm" data-cp-expense-edit-cancel="{{ $expense->id }}">Cancel</button>
+                  </div>
+                </form>
+              </div>
             </td>
           </tr>
         @endforeach

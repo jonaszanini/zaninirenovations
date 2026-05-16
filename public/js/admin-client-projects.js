@@ -707,11 +707,42 @@
     }
   };
 
+  function initExpenseEditToggles() {
+    document.querySelectorAll('[data-cp-expense-edit-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var id = btn.getAttribute('data-cp-expense-edit-toggle');
+        var row = document.querySelector('[data-cp-expense-edit-row="' + id + '"]');
+        if (!row) return;
+        var opening = row.hidden;
+        document.querySelectorAll('[data-cp-expense-edit-row]').forEach(function (r) {
+          r.hidden = true;
+        });
+        if (opening) {
+          row.hidden = false;
+          var mi = row.querySelector('.cp-money-input');
+          if (mi && window.cpMoneyMask) {
+            window.cpMoneyMask.wire(mi);
+          }
+        }
+      });
+    });
+    document.querySelectorAll('[data-cp-expense-edit-cancel]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var id = btn.getAttribute('data-cp-expense-edit-cancel');
+        var row = document.querySelector('[data-cp-expense-edit-row="' + id + '"]');
+        if (row) row.hidden = true;
+      });
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initMoneyMask();
     initPhoneMask();
     initTimeForms();
     initTimeEditToggles();
+    initExpenseEditToggles();
     initBillingTypeToggle();
 
     var planSelect = document.getElementById('cp-plan');

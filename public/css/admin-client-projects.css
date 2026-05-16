@@ -789,6 +789,37 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   border-radius: 6px;
   border: 1px solid #e5e7eb;
 }
+.cp-expense-actions-cell {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.cp-expense-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cp-expense-edit-row td {
+  padding: 0;
+  border-top: none;
+  background: #f9fafb;
+}
+.cp-expense-edit-panel {
+  padding: 16px 20px 20px;
+  border-top: 1px dashed #e5e7eb;
+}
+.cp-expense-edit-heading {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.cp-expense-edit-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
 .cp-expenses-send-email {
   margin-top: 20px;
   padding-top: 20px;

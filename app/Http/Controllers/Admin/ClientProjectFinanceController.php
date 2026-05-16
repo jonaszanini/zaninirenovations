@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use RuntimeException;
@@ -25,7 +27,7 @@ use RuntimeException;
  * Handles CRUD for the financial + time sections of a ClientProject:
  *   - Total amount + payment plan + installment percentages
  *   - Mark an installment as paid / unpaid
- *   - Expenses (add / delete)
+ *   - Expenses (add / update / delete)
  *   - Returns / credits (add / delete)
  *   - Time entries (add / delete)
  */
@@ -353,6 +355,110 @@ class ClientProjectFinanceController extends Controller
         $expense->delete();
 
         return back()->with('success', 'Expense removed.');
+    }
+
+    public function updateExpense(Request $request, ClientProject $client_project, ClientProjectExpense $expense)
+    {
+        if (! $client_project->isAccepted()) {
+            return back()
+                ->withFragment('financials')
+                ->with('error', 'Expenses are available once the proposal is accepted.');
+        }
+
+        abort_unless($expense->client_project_id === $client_project->id, 404);
+
+        $billed = $expense->client_project_invoice_id !== null;
+
+        $receiptRule = ['nullable', 'file', 'mimes:webp,jpeg,jpg,png', 'max:10240'];
+        if ($billed) {
+            $validator = Validator::make($request->all(), [
+                'receipt' => ['required', 'file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
+            ]);
+        } else {
+            $validator = Validator::make($request->all(), [
+                'occurred_on' => ['required', 'date'],
+                'description' => ['required', 'string', 'max:500'],
+                'amount' => ['required', 'numeric', 'min:0.01'],
+                'receipt' => $receiptRule,
+            ]);
+        }
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput()
+                ->with('open_expense_edit', $expense->id)
+                ->withFragment('financials');
+        }
+
+        $data = $validator->validated();
+
+        try {
+            DB::transaction(function () use ($request, $client_project, $expense, $data, $billed) {
+                ClientProject::whereKey($client_project->id)->lockForUpdate()->first();
+
+                $ref = (int) $expense->expense_ref;
+                $basename = 'Receipt-'.$ref;
+
+                if ($billed) {
+                    $oldPath = $expense->receipt_path;
+                    $newPath = app(ProjectPhotoWebpStorage::class)->store(
+                        $request->file('receipt'),
+                        $client_project->id,
+                        'expense-receipts',
+                        $basename
+                    );
+                    if (filled($oldPath) && $oldPath !== $newPath) {
+                        $this->deleteExpenseReceiptFromStorage($oldPath);
+                    }
+                    $expense->update(['receipt_path' => $newPath]);
+                } else {
+                    $update = [
+                        'occurred_on' => $data['occurred_on'],
+                        'description' => $data['description'],
+                        'amount' => $data['amount'],
+                    ];
+                    if ($request->hasFile('receipt')) {
+                        $oldPath = $expense->receipt_path;
+                        $newPath = app(ProjectPhotoWebpStorage::class)->store(
+                            $request->file('receipt'),
+                            $client_project->id,
+                            'expense-receipts',
+                            $basename
+                        );
+                        if (filled($oldPath) && $oldPath !== $newPath) {
+                            $this->deleteExpenseReceiptFromStorage($oldPath);
+                        }
+                        $update['receipt_path'] = $newPath;
+                    }
+                    $expense->update($update);
+                }
+            });
+        } catch (RuntimeException $e) {
+            return back()
+                ->withErrors(['receipt' => $e->getMessage()])
+                ->withInput()
+                ->with('open_expense_edit', $expense->id)
+                ->withFragment('financials');
+        }
+
+        return back()
+            ->withFragment('financials')
+            ->with('success', 'Expense updated.');
+    }
+
+    private function deleteExpenseReceiptFromStorage(?string $relativePath): void
+    {
+        if (! filled($relativePath)) {
+            return;
+        }
+
+        $rel = ltrim(str_replace('\\', '/', (string) $relativePath), '/');
+        Storage::disk('public')->delete($rel);
+        $mirror = public_path('storage/'.$rel);
+        if (is_file($mirror)) {
+            @unlink($mirror);
+        }
     }
 
     public function storeReturn(Request $request, ClientProject $client_project)
