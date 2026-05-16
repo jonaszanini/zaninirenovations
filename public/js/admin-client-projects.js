@@ -351,15 +351,19 @@
       var endMin = parseHhMm(endSel.value);
 
       if (startMin !== null && endMin !== null) {
-        if (endMin <= startMin) {
+        if (endMin === startMin) {
           hoursInput.readOnly = false;
           hoursInput.classList.remove('is-locked');
           hoursInput.value = '';
-          hoursInput.setCustomValidity('End time must be after start time.');
-          hoursInput.title = 'End time must be after start time.';
+          hoursInput.setCustomValidity('Start and end must differ.');
+          hoursInput.title = 'Start and end must differ.';
           return;
         }
-        var hours = (endMin - startMin) / 60;
+        var endForCalc = endMin;
+        if (endForCalc < startMin) {
+          endForCalc += 24 * 60;
+        }
+        var hours = (endForCalc - startMin) / 60;
         hoursInput.value = (Math.round(hours * 100) / 100).toString();
         hoursInput.readOnly = true;
         hoursInput.classList.add('is-locked');

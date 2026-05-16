@@ -70,7 +70,9 @@ class ClientProjectTimeEntry extends Model
 
     /**
      * Compute decimal hours from "HH:MM" start_time → end_time.
-     * Returns null if either side is missing or the range is invalid.
+     * When end is earlier on the clock than start, the range is treated as
+     * crossing midnight (e.g. 20:00–08:00 → 12h). Returns null if either side
+     * is missing, unparsable, or start and end are identical.
      */
     public static function computeHoursFromRange(?string $start, ?string $end): ?float
     {
@@ -79,8 +81,11 @@ class ClientProjectTimeEntry extends Model
         if ($startMin === null || $endMin === null) {
             return null;
         }
-        if ($endMin <= $startMin) {
+        if ($endMin === $startMin) {
             return null;
+        }
+        if ($endMin < $startMin) {
+            $endMin += 24 * 60;
         }
 
         return round(($endMin - $startMin) / 60, 2);

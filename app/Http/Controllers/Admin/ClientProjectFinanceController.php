@@ -433,7 +433,8 @@ class ClientProjectFinanceController extends Controller
     /**
      * Shared validation for create/update of a time entry.
      * Either hours OR start_time must be provided. End time is optional;
-     * if provided, it must be after start_time.
+     * if provided with start_time, duration is same-day when end > start,
+     * or overnight when end < start (next calendar morning).
      */
     private function validateTimeEntry(Request $request): array
     {
@@ -476,9 +477,8 @@ class ClientProjectFinanceController extends Controller
         if ($start && $end) {
             $computed = ClientProjectTimeEntry::computeHoursFromRange($start, $end);
             if ($computed === null) {
-                // Range was invalid (end <= start). Surface as a validation error.
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'end_time' => 'End time must be after start time.',
+                    'end_time' => 'Start and end must differ. For overnight work, set end to the next morning on the clock (e.g. 20:00 → 8:00).',
                 ]);
             }
             $hours = $computed;
