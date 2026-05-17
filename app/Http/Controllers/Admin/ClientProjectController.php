@@ -125,12 +125,14 @@ class ClientProjectController extends Controller
     {
         $this->normalisePhoneOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
+        $this->normaliseConversationOnOnRequest($request);
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'contacted_via' => ['required', Rule::in($contactedViaKeys)],
+            'conversation_on' => ['nullable', Rule::in($contactedViaKeys)],
             'client_id' => ['nullable', 'integer', 'exists:clients,id'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
@@ -158,7 +160,7 @@ class ClientProjectController extends Controller
         $sendClientEmail = (bool) ($data['send_client_email'] ?? true);
         unset($data['send_client_email']);
 
-        foreach (['invoice_billing_name', 'invoice_billing_address'] as $k) {
+        foreach (['invoice_billing_name', 'invoice_billing_address', 'conversation_on'] as $k) {
             if (array_key_exists($k, $data) && $data[$k] === '') {
                 $data[$k] = null;
             }
@@ -310,12 +312,14 @@ class ClientProjectController extends Controller
     {
         $this->normalisePhoneOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
+        $this->normaliseConversationOnOnRequest($request);
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'contacted_via' => ['sometimes', 'nullable', Rule::in($contactedViaKeys)],
+            'conversation_on' => ['sometimes', 'nullable', Rule::in($contactedViaKeys)],
             'client_id' => ['sometimes', 'nullable', 'integer', 'exists:clients,id'],
             'client_name' => ['required', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
@@ -354,7 +358,7 @@ class ClientProjectController extends Controller
 
         $data = $validator->validated();
 
-        foreach (['invoice_billing_name', 'invoice_billing_address'] as $k) {
+        foreach (['invoice_billing_name', 'invoice_billing_address', 'conversation_on'] as $k) {
             if (array_key_exists($k, $data) && $data[$k] === '') {
                 $data[$k] = null;
             }
@@ -488,6 +492,19 @@ class ClientProjectController extends Controller
         $v = $request->input('contacted_via');
         if ($v === '' || $v === null) {
             $request->merge(['contacted_via' => null]);
+        }
+    }
+
+    /** Empty string → null for optional follow-up channel. */
+    protected function normaliseConversationOnOnRequest(Request $request): void
+    {
+        if (! $request->has('conversation_on')) {
+            return;
+        }
+
+        $v = $request->input('conversation_on');
+        if ($v === '' || $v === null) {
+            $request->merge(['conversation_on' => null]);
         }
     }
 

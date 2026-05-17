@@ -1979,6 +1979,45 @@ textarea.admin-input {
   color: #111827;
   line-height: 1.3;
 }
+.cp-quotation-accordion__title.cp-quotation-primary-heading--standard {
+  font-weight: 400;
+}
+
+/* Calculator heading: optional StandardQuotation display title + kind + number */
+.cp-quotation-primary-heading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+.cp-quotation-primary-heading--standard {
+  font-weight: 400;
+}
+.cp-quotation-primary-heading__display-title {
+  display: block;
+  font-weight: 700;
+  font-size: 16px;
+  color: #111827;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.cp-quotation-primary-heading__kind-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 2px;
+  font-weight: 400;
+}
+.cp-quotation-primary-heading__kind {
+  font-weight: 400;
+}
+.cp-contract-meta .cp-quotation-primary-heading {
+  font-size: 18px;
+}
+.cp-contract-meta .cp-quotation-primary-heading__display-title {
+  font-size: 18px;
+}
 .cp-quotation-accordion__total-block {
   text-align: right;
 }
@@ -2084,11 +2123,22 @@ textarea.admin-input {
   padding-bottom: 14px;
   border-bottom: 1px solid #e5e7eb;
 }
+.cp-quotation-doc-display-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #024768;
+  line-height: 1.15;
+  margin: 0 0 4px;
+}
 .cp-quotation-doc-title {
   font-size: 22px;
   font-weight: 700;
   color: #024768;
   line-height: 1.15;
+}
+.cp-quotation-doc-title--standard {
+  font-weight: 400;
+  font-size: 20px;
 }
 .cp-quotation-doc-date {
   font-size: 13px;

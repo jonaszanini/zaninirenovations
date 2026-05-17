@@ -357,6 +357,7 @@ class StandardQuotationController extends Controller
 
         $data = $request->validate([
             'client_name' => ['required', 'string', 'max:160'],
+            'display_title' => ['nullable', 'string', 'max:255'],
             'document_type' => ['required', Rule::in([
                 ClientProjectQuotation::TYPE_QUOTATION,
                 ClientProjectQuotation::TYPE_ESTIMATE,
@@ -458,10 +459,12 @@ class StandardQuotationController extends Controller
         }, $computed['materials']);
 
         $workDescription = trim((string) ($data['work_description'] ?? ''));
+        $displayTitle = trim((string) ($data['display_title'] ?? ''));
 
         return [
             'persistence' => [
                 'client_name' => trim($data['client_name']),
+                'display_title' => $displayTitle === '' ? null : $displayTitle,
                 'document_type' => $data['document_type'],
                 'includes_material' => $includesMaterial,
                 'includes_labour' => $includesLabour,

@@ -3,10 +3,7 @@
 @php
   use App\Models\ClientProjectQuotation;
 
-  $isEdit = filled($quotation);
-  $title = $isEdit ? 'Edit standard quotation '.$quotation->quote_number : 'New standard quotation';
-
-  // Project-context mode: this editor was opened from a project's
+  $isEdit = filled($quotation); this editor was opened from a project's
   // "Edit quotation" entry point. The form posts with ?return=project
   // so the controller redirects the user back to the project's
   // Quotation tab on save (instead of staying on the standalone
@@ -82,7 +79,15 @@
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
 
-@section('heading', $title)
+@section('heading')
+  @php
+    $headDisplay = old('display_title', $isEdit ? ($quotation->display_title ?? '') : '');
+  @endphp
+  @if (filled($headDisplay))
+    <span class="admin-sq-heading-display" style="display:block;font-weight:700;margin-bottom:8px;">{{ $headDisplay }}</span>
+  @endif
+  <span @if (filled($headDisplay)) style="font-weight:400;" @endif>{{ $isEdit ? 'Edit standard quotation '.$quotation->quote_number : 'New standard quotation' }}</span>
+@endsection
 
 @section('content')
   <div class="admin-toolbar fq-list-toolbar">
@@ -168,6 +173,15 @@
                value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
                placeholder="e.g. Jane Smith">
         @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
+      <div class="admin-form-group" style="max-width:480px;">
+        <label for="sq-display-title">Title <span class="admin-form-help">(optional)</span></label>
+        <input type="text" id="sq-display-title" name="display_title" class="admin-input @error('display_title') is-invalid @enderror"
+               maxlength="255"
+               value="{{ old('display_title', $isEdit ? $quotation->display_title : '') }}"
+               placeholder="Shown above “Standard quotation” on the project document and PDF">
+        @error('display_title') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
       <div class="admin-form-group" style="margin-top:18px;">

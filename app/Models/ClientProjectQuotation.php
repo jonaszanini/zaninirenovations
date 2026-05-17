@@ -138,6 +138,24 @@ class ClientProjectQuotation extends Model
         return $this->isEstimate() ? 'Estimate' : 'Quotation';
     }
 
+    /**
+     * Optional heading line from the linked {@see StandardQuotation}, stored in
+     * {@see $source_snapshot} after sync. Used in the admin preview and client PDF.
+     */
+    public function standardDisplayTitle(): ?string
+    {
+        if ($this->source_type !== self::SOURCE_STANDARD) {
+            return null;
+        }
+        $snap = $this->source_snapshot;
+        if (! is_array($snap)) {
+            return null;
+        }
+        $t = trim((string) ($snap['display_title'] ?? ''));
+
+        return $t !== '' ? $t : null;
+    }
+
     /** Document number prefix matching the current type. */
     public function numberPrefix(): string
     {
