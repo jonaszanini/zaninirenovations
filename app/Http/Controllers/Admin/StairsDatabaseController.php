@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\StairsMaterialType;
 use App\Models\StairsSettings;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class StairsDatabaseController extends Controller
 {
@@ -23,38 +25,65 @@ class StairsDatabaseController extends Controller
         ));
     }
 
+    /**
+     * Serve material images through the app so they work even when public/storage is not symlinked.
+     */
+    public function materialPhoto(StairsMaterialType $stairs_material_type)
+    {
+        if (! filled($stairs_material_type->photo_path)) {
+            abort(404);
+        }
+
+        $relative = ltrim(str_replace('\\', '/', (string) $stairs_material_type->photo_path), '/');
+        if ($relative === '' || str_contains($relative, '..')) {
+            abort(404);
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($relative)) {
+            abort(404);
+        }
+
+        $full = $disk->path($relative);
+        $root = realpath(storage_path('app/public'));
+        $real = realpath($full);
+        if ($root === false || $real === false || ! str_starts_with($real, $root)) {
+            abort(404);
+        }
+
+        return response()->file($real);
+    }
+
     public function update(Request $request)
     {
         $fileRules = [];
         foreach (StairsMaterialType::query()->pluck('id') as $mid) {
-            $fileRules['material_photo_'.$mid] = ['nullable', 'file', 'image', 'max:5120'];
+            // max: size in KB; permissive mimes so screenshots still pass (stricter `image` can reject some PNGs)
+            $fileRules['material_photo_'.$mid] = [
+                'nullable',
+                'file',
+                'mimes:jpg,jpeg,png,webp,gif',
+                'max:20480',
+            ];
         }
 
-        $data = $request->validate(array_merge([
+        $request->validate(array_merge([
             'stain_per_step' => ['required', 'numeric', 'min:0'],
             'clear_coat_per_step' => ['required', 'numeric', 'min:0'],
             'carpet_removal_per_step' => ['required', 'numeric', 'min:0'],
-            'materials' => ['required', 'array'],
-            'materials.*.id' => ['required', 'integer', 'exists:stairs_material_types,id'],
         ], $fileRules));
 
         $settings = StairsSettings::query()->find(1);
         if ($settings) {
             $settings->update([
-                'stain_per_step' => round((float) $data['stain_per_step'], 2),
-                'clear_coat_per_step' => round((float) $data['clear_coat_per_step'], 2),
-                'carpet_removal_per_step' => round((float) $data['carpet_removal_per_step'], 2),
+                'stain_per_step' => round((float) $request->input('stain_per_step'), 2),
+                'clear_coat_per_step' => round((float) $request->input('clear_coat_per_step'), 2),
+                'carpet_removal_per_step' => round((float) $request->input('carpet_removal_per_step'), 2),
             ]);
         }
 
-        foreach ($data['materials'] as $row) {
-            $id = (int) $row['id'];
-            $mat = StairsMaterialType::query()->find($id);
-            if (! $mat) {
-                continue;
-            }
-
-            $prefix = 'material_photo_'.$id;
+        foreach (StairsMaterialType::query()->orderBy('sort_order')->get() as $mat) {
+            $id = (int) $mat->id;
             $pricing = $mat->mergedPricing();
 
             foreach (['no_open', 'one_open'] as $side) {
@@ -66,8 +95,7 @@ class StairsDatabaseController extends Controller
                     }
                 }
             }
-            $key2 = 'two_open_standard';
-            $val2 = $request->input('materials.'.$id.'.'.$key2);
+            $val2 = $request->input('materials.'.$id.'.two_open_standard');
             if ($val2 !== null && $val2 !== '') {
                 $pricing['two_open']['standard'] = round((float) str_replace(',', '', (string) $val2), 2);
             }
@@ -82,9 +110,24 @@ class StairsDatabaseController extends Controller
 
             $mat->pricing = $pricing;
 
+            $prefix = 'material_photo_'.$id;
             $upload = $request->file($prefix);
-            if ($upload instanceof \Illuminate\Http\UploadedFile && $upload->isValid()) {
+            if ($upload instanceof UploadedFile) {
+                if (! $upload->isValid()) {
+                    $msg = $upload->getErrorMessage() ?: 'Upload was rejected (check PHP upload_max_filesize / post_max_size on the server).';
+
+                    throw ValidationException::withMessages([
+                        $prefix => $msg,
+                    ]);
+                }
+
                 $path = $upload->store('stairs-materials', 'public');
+                if ($path === false) {
+                    throw ValidationException::withMessages([
+                        $prefix => 'Could not store the image on disk. Check storage permissions.',
+                    ]);
+                }
+
                 if ($mat->photo_path && Storage::disk('public')->exists($mat->photo_path)) {
                     Storage::disk('public')->delete($mat->photo_path);
                 }

@@ -89,6 +89,10 @@ class StairsMaterialType extends Model
         };
     }
 
+    /**
+     * URL for the material photo in admin (price config + quotation calculator).
+     * Uses an authenticated route so images load even if public/storage is not linked to storage/app/public.
+     */
     public function photoUrl(): ?string
     {
         if (! filled($this->photo_path)) {
@@ -102,7 +106,10 @@ class StairsMaterialType extends Model
             return null;
         }
 
-        // Use asset() so the URL matches the current request host (avoids broken images when APP_URL is wrong).
+        if (! app()->runningInConsole()) {
+            return route('admin.quotations.stairs.material-photo', $this);
+        }
+
         return asset('storage/'.$path);
     }
 }

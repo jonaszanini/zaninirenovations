@@ -42,5 +42,16 @@
     These rates power the stairs calculator. After saving, return to the list to create or edit quotations.
   </p>
 
+  @if ($errors->any())
+    <div class="admin-flash admin-flash--danger" style="margin-bottom:16px;">
+      <strong>Could not save.</strong>
+      <ul style="margin:8px 0 0 18px;padding:0;">
+        @foreach ($errors->all() as $err)
+          <li>{{ $err }}</li>
+        @endforeach
+      </ul>
+    </div>
+  @endif
+
   @include('admin.quotations.stairs._database_tab', ['hideDatabaseHeading' => true])
 @endsection
