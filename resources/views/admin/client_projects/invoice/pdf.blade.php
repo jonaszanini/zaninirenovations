@@ -204,6 +204,32 @@
     .items tbody tr:nth-child(even) td {
       background: #f9fafb;
     }
+    /* Labour credit lines — clear visual emphasis (pre-tax deduction). */
+    .items tbody tr.item-row-credit td {
+      background: #ecfdf5;
+      border-left: 3pt solid #16a34a;
+      padding-left: 8pt;
+    }
+    .items tbody tr.item-row-credit:nth-child(even) td {
+      background: #ecfdf5;
+    }
+    .item-credit-tag {
+      display: inline-block;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #ffffff;
+      background: #15803d;
+      padding: 2pt 5pt;
+      border-radius: 2pt;
+      margin-right: 5pt;
+      vertical-align: baseline;
+    }
+    .item-credit-amount {
+      color: #15803d;
+      font-weight: 700;
+    }
     .items tfoot td {
       background: #ffffff;
       border: 0 none transparent;
@@ -334,14 +360,24 @@
           @foreach ($labourRows as $row)
             @php
               $pdfLineKind = strtolower((string) ($row['line_kind'] ?? 'labour'));
-              $pdfAmt = (float) ($row['amount'] ?? 0);
-              if ($pdfLineKind === \App\Models\ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
-                  $pdfAmt = -abs($pdfAmt);
-              }
+              $isPdfCredit = $pdfLineKind === \App\Models\ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT;
+              $creditAbs = $isPdfCredit ? round(abs((float) ($row['amount'] ?? 0)), 2) : null;
             @endphp
-            <tr>
-              <td>{{ $row['description'] }}</td>
-              <td class="amount">{{ $fmt($pdfAmt) }}</td>
+            <tr class="{{ $isPdfCredit ? 'item-row-credit' : '' }}">
+              <td>
+                @if ($isPdfCredit)
+                  <span class="item-credit-tag">Credit</span>
+                @endif
+                {{ $row['description'] }}
+              </td>
+              <td class="amount">
+                @if ($isPdfCredit)
+                  {{-- Unicode minus (U+2212) before currency reads clearer than CA$-312.00 --}}
+                  <span class="item-credit-amount">−CA${{ number_format($creditAbs, 2, '.', ',') }}</span>
+                @else
+                  {{ $fmt((float) ($row['amount'] ?? 0)) }}
+                @endif
+              </td>
             </tr>
           @endforeach
         </tbody>
