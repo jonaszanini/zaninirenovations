@@ -55,7 +55,11 @@
       <div class="sq-db-material admin-card" style="margin-bottom:16px;background:#f8fafc;">
         <input type="hidden" name="materials[{{ $mat->id }}][id]" value="{{ $mat->id }}">
         <div>
-          <h4 style="margin:0 0 6px;">{{ $mat->name }}</h4>
+          <h4 style="margin:0 0 6px;line-height:1.3;">
+            @foreach ($mat->adminDisplayLines() as $line)
+              <span style="display:block;">{{ $line }}</span>
+            @endforeach
+          </h4>
           <p class="pq-hint" style="margin:0;">
             Nosing:
             @if ($mat->nosing_mode === \App\Models\StairsMaterialType::NOSING_CHOICE)
@@ -68,14 +72,6 @@
 
         <div class="admin-form-group" style="margin-top:12px;">
           <label>Material photo</label>
-          @if (filled($mat->photo_path))
-            <p class="pq-hint" style="margin:0 0 6px;">
-              Saved file: <strong>{{ basename($mat->photo_path) }}</strong>
-              @unless ($mat->photoUrl())
-                <span style="color:#b45309;"> (file missing on disk — re-upload or check storage link)</span>
-              @endunless
-            </p>
-          @endif
           @if ($mat->photoUrl())
             <div style="margin:6px 0;"><img src="{{ $mat->photoUrl() }}" alt="" style="max-height:120px;border-radius:6px;border:1px solid #e2e8f0;"></div>
           @endif

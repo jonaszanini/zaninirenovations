@@ -114,7 +114,8 @@
       box-shadow: 0 0 0 2px var(--admin-primary-ring);
     }
     .sq-material-card img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 8px; background: #f1f5f9; }
-    .sq-material-card__name { font-weight: 600; font-size: 13px; line-height: 1.3; }
+    .sq-material-card__name { font-weight: 600; font-size: 13px; line-height: 1.3; display: flex; flex-direction: column; gap: 2px; }
+    .sq-material-card__name-line { display: block; }
     .sq-seg-row { display: grid; grid-template-columns: 1fr 110px auto; gap: 10px; align-items: end; margin-bottom: 10px; }
     @media (max-width: 600px) { .sq-seg-row { grid-template-columns: 1fr; } }
   </style>
@@ -232,7 +233,11 @@
                   @else
                     <div style="height:100px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;">No photo</div>
                   @endif
-                  <div class="sq-material-card__name">{{ $mat->name }}</div>
+                  <div class="sq-material-card__name">
+                    @foreach ($mat->adminDisplayLines() as $line)
+                      <span class="sq-material-card__name-line">{{ $line }}</span>
+                    @endforeach
+                  </div>
                 </label>
               @endforeach
             </div>

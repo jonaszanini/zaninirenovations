@@ -15,13 +15,11 @@ class StairsDatabaseController extends Controller
         $materialTypes = StairsMaterialType::query()->orderBy('sort_order')->get();
         $settings = StairsSettings::current();
         $qpid = $request->filled('project') ? (int) $request->query('project') : null;
-        $publicStorageLinked = is_link(public_path('storage'));
 
         return view('admin.quotations.stairs.price_configuration', compact(
             'materialTypes',
             'settings',
-            'qpid',
-            'publicStorageLinked'
+            'qpid'
         ));
     }
 

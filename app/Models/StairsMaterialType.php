@@ -75,6 +75,20 @@ class StairsMaterialType extends Model
         return array_replace_recursive(self::defaultPricingArray(), is_array($this->pricing) ? $this->pricing : []);
     }
 
+    /**
+     * Lines for admin UI (price config + quotation material cards). Database `name` stays full for exports/PDFs.
+     *
+     * @return list<string>
+     */
+    public function adminDisplayLines(): array
+    {
+        return match ($this->key) {
+            'unfinished_solid_oak_tread' => ['Unfinished Solid', 'Oak Stair Tread'],
+            'unfinished_oak_tread_cape' => ['Unfinished Oak', 'Stair Tread cape'],
+            default => [$this->name],
+        };
+    }
+
     public function photoUrl(): ?string
     {
         if (! filled($this->photo_path)) {
