@@ -83,8 +83,8 @@ class StairsQuotationCalculator
         $breakdown = [];
         $subtotalPreHst = 0.0;
 
-        if ($carpetRemoval && $material && $totalSteps > 0) {
-            $rate = (float) $material->carpet_removal_per_step;
+        if ($carpetRemoval && $totalSteps > 0) {
+            $rate = (float) $settings->carpet_removal_per_step;
             $amt = round($rate * $totalSteps, 2);
             $subtotalPreHst += $amt;
             $breakdown[] = [

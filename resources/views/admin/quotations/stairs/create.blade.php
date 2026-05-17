@@ -86,51 +86,6 @@
 
     .pq-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.95fr); gap: 20px; align-items: start; }
     @media (max-width: 1100px) { .pq-layout { grid-template-columns: 1fr; } }
-    .pq-nav-tabs {
-      list-style: none;
-      margin: 0 0 1.1rem;
-      padding: 0;
-      display: flex;
-      flex-wrap: wrap;
-      border-bottom: 1px solid var(--admin-border);
-      gap: 0;
-    }
-    .pq-nav-tabs .nav-item { margin: 0 0 -1px 0; }
-    .pq-nav-tabs .nav-link {
-      display: block;
-      margin: 0;
-      padding: 0.5rem 1rem;
-      border: 1px solid transparent;
-      border-top-left-radius: 0.25rem;
-      border-top-right-radius: 0.25rem;
-      background: transparent;
-      color: var(--admin-primary);
-      font-weight: 600;
-      font-size: 0.9rem;
-      font-family: inherit;
-      line-height: 1.4;
-      cursor: pointer;
-      text-align: left;
-      text-decoration: none;
-      box-shadow: none;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-    .pq-nav-tabs .nav-link:hover:not(.active):not(:disabled) {
-      color: var(--admin-primary-hover);
-      border-color: var(--admin-surface-hover) var(--admin-surface-hover) var(--admin-border);
-      background: var(--admin-surface-hover);
-    }
-    .pq-nav-tabs .nav-link:focus { outline: none; }
-    .pq-nav-tabs .nav-link:focus-visible {
-      box-shadow: 0 0 0 2px var(--admin-surface), 0 0 0 4px var(--admin-primary-ring);
-    }
-    .pq-nav-tabs .nav-link.active {
-      color: var(--admin-text);
-      background: var(--admin-surface);
-      border-color: var(--admin-border) var(--admin-border) var(--admin-bg);
-    }
-    .pq-panel[hidden] { display: none !important; }
     .pq-sticky { position: sticky; top: 88px; }
     .pq-summary-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; background: #fafbfc; }
     .pq-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 13px; }
@@ -162,19 +117,6 @@
     .sq-material-card__name { font-weight: 600; font-size: 13px; line-height: 1.3; }
     .sq-seg-row { display: grid; grid-template-columns: 1fr 110px auto; gap: 10px; align-items: end; margin-bottom: 10px; }
     @media (max-width: 600px) { .sq-seg-row { grid-template-columns: 1fr; } }
-    /* Price database — bordered groups per open-sides type */
-    .sq-db-open-block {
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      background: #fff;
-    }
-    .sq-db-open-block__title {
-      margin: 0 0 10px;
-      font-weight: 600;
-      font-size: 13px;
-    }
   </style>
 @endpush
 
@@ -184,6 +126,9 @@
       <i class="fa fa-arrow-left"></i> Back to list
     </a>
     <div class="fq-form-toolbar-right">
+      <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        Price configuration
+      </a>
       @if ($returnToProject && $projectForReturn)
         <a href="{{ route('admin.client-projects.show', $projectForReturn) }}#quotation" class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-arrow-left"></i> Back to project
@@ -211,17 +156,7 @@
     <div class="admin-flash admin-flash--danger" style="margin-bottom:14px;">{{ $message }}</div>
   @enderror
 
-  <ul class="nav nav-tabs pq-nav-tabs pq-nav-tabs--primary" role="tablist" aria-label="Quotation mode">
-    <li class="nav-item" role="presentation">
-      <button type="button" class="nav-link active" data-sq-tab="calc" role="tab" aria-selected="true">Calculator</button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button type="button" class="nav-link" data-sq-tab="db" role="tab" aria-selected="false">Price database</button>
-    </li>
-  </ul>
-
-  <div id="sq-panel-calc" class="pq-panel">
-    <div class="pq-layout">
+  <div class="pq-layout">
       <div>
         <form id="sq-main-form" method="post" action="{{ $formAction }}">
           @csrf
@@ -254,7 +189,7 @@
             <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;">
               <input type="checkbox" name="carpet_removal" value="1" class="sq-calc-in" id="sq-carpet"
                 @checked(old('carpet_removal', $inputs['carpet_removal'] ?? false))>
-              <span>Carpet removal required (priced per step from material settings)</span>
+              <span>Carpet removal required (priced per step from <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
             </label>
           </div>
 
@@ -318,11 +253,11 @@
             <h3 style="margin:0 0 14px;">Step 5 — Additional options</h3>
             <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;">
               <input type="checkbox" name="requires_stain" value="1" class="sq-calc-in" @checked(old('requires_stain', $inputs['requires_stain'] ?? false))>
-              <span>Requires stain ($/step from database)</span>
+              <span>Requires stain ($/step — <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
             </label>
             <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;">
               <input type="checkbox" name="requires_clear_coat" value="1" class="sq-calc-in" @checked(old('requires_clear_coat', $inputs['requires_clear_coat'] ?? false))>
-              <span>Requires clear coat protection ($/step from database)</span>
+              <span>Requires clear coat protection ($/step — <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
             </label>
           </div>
         </form>
@@ -396,11 +331,6 @@
         </div>
       </aside>
     </div>
-  </div>
-
-  <div id="sq-panel-db" class="pq-panel" hidden>
-    @include('admin.quotations.stairs._database_tab')
-  </div>
 
   <script>
     (function () {
@@ -419,24 +349,6 @@
         double_landing: 'Double landing',
         single_landing: 'Single landing'
       };
-
-      document.querySelectorAll('[data-sq-tab]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var key = btn.getAttribute('data-sq-tab');
-          document.querySelectorAll('[data-sq-tab]').forEach(function (b) {
-            var on = b === btn;
-            b.classList.toggle('active', on);
-            b.setAttribute('aria-selected', on ? 'true' : 'false');
-          });
-          document.getElementById('sq-panel-calc').hidden = key !== 'calc';
-          document.getElementById('sq-panel-db').hidden = key !== 'db';
-        });
-      });
-
-      if (window.location.hash === '#stairs-db') {
-        var dbBtn = document.querySelector('[data-sq-tab="db"]');
-        if (dbBtn) dbBtn.click();
-      }
 
       var form = document.getElementById('sq-main-form');
       var intent = document.getElementById('sq-save-intent');

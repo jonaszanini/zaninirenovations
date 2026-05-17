@@ -23,14 +23,12 @@ class StairsMaterialType extends Model
         'key',
         'name',
         'nosing_mode',
-        'carpet_removal_per_step',
         'photo_path',
         'pricing',
         'sort_order',
     ];
 
     protected $casts = [
-        'carpet_removal_per_step' => 'decimal:2',
         'pricing' => 'array',
         'sort_order' => 'integer',
     ];

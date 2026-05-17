@@ -9,6 +9,9 @@
       <a href="{{ route('admin.quotations.index', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> All quotation types
       </a>
+      <a href="{{ route('admin.quotations.stairs.price-configuration', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        Price configuration
+      </a>
     </div>
     <a href="{{ route('admin.quotations.stairs.create', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> New stairs quotation

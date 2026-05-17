@@ -292,6 +292,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.stairs.index');
     Route::get('quotations/stairs/create', [StairsQuotationController::class, 'create'])
         ->name('quotations.stairs.create');
+    Route::get('quotations/stairs/price-configuration', [StairsDatabaseController::class, 'edit'])
+        ->name('quotations.stairs.price-configuration');
     Route::post('quotations/stairs', [StairsQuotationController::class, 'store'])
         ->name('quotations.stairs.store');
     Route::post('quotations/stairs/preview', [StairsQuotationController::class, 'preview'])

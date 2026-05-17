@@ -3,15 +3,21 @@
   /** @var \App\Models\StairsSettings $settings */
 @endphp
 <div class="pq-db-wrap admin-card">
+  @unless ($hideDatabaseHeading ?? false)
   <h3 style="margin:0 0 12px;">Stairs price database</h3>
-  <p class="admin-form-help">Set per-step rates (before HST) for each material. Photos appear in the quotation calculator.</p>
+  @endunless
+  <p class="admin-form-help">Set per-step rates (before HST). Carpet removal, stain, and clear coat are global — one price for all materials. Other fields are per material type.</p>
 
   <form method="post" action="{{ route('admin.quotations.stairs.database.update') }}" enctype="multipart/form-data" class="sq-db-form">
     @csrf
     @method('PUT')
-    <input type="hidden" name="redirect_tab" value="db">
 
-    <div class="pq-form-grid" style="margin-bottom:20px;">
+    <div class="pq-form-grid sq-db-global-grid" style="margin-bottom:20px;">
+      <div class="admin-form-group">
+        <label for="sq-db-carpet">Carpet removal ($/step)</label>
+        <input type="text" id="sq-db-carpet" name="carpet_removal_per_step" class="admin-input cp-money-input" inputmode="decimal" required
+               value="{{ old('carpet_removal_per_step', number_format((float) $settings->carpet_removal_per_step, 2, '.', '')) }}">
+      </div>
       <div class="admin-form-group">
         <label for="sq-db-stain">Requires stain ($/step)</label>
         <input type="text" id="sq-db-stain" name="stain_per_step" class="admin-input cp-money-input" inputmode="decimal" required
@@ -49,23 +55,16 @@
       @endphp
       <div class="sq-db-material admin-card" style="margin-bottom:16px;background:#f8fafc;">
         <input type="hidden" name="materials[{{ $mat->id }}][id]" value="{{ $mat->id }}">
-        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:space-between;">
-          <div>
-            <h4 style="margin:0 0 6px;">{{ $mat->name }}</h4>
-            <p class="pq-hint" style="margin:0;">
-              Nosing:
-              @if ($mat->nosing_mode === \App\Models\StairsMaterialType::NOSING_CHOICE)
-                add-on (set prices below)
-              @else
-                included in material rates
-              @endif
-            </p>
-          </div>
-          <div class="admin-form-group" style="min-width:200px;">
-            <label>Carpet removal ($/step)</label>
-            <input type="text" name="materials[{{ $mat->id }}][carpet_removal_per_step]" class="admin-input cp-money-input" required inputmode="decimal"
-                   value="{{ old('materials.'.$mat->id.'.carpet_removal_per_step', number_format((float) $mat->carpet_removal_per_step, 2, '.', '')) }}">
-          </div>
+        <div>
+          <h4 style="margin:0 0 6px;">{{ $mat->name }}</h4>
+          <p class="pq-hint" style="margin:0;">
+            Nosing:
+            @if ($mat->nosing_mode === \App\Models\StairsMaterialType::NOSING_CHOICE)
+              add-on (set prices below)
+            @else
+              included in material rates
+            @endif
+          </p>
         </div>
 
         <div class="admin-form-group" style="margin-top:12px;">

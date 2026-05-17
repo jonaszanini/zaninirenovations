@@ -10,14 +10,23 @@ use Illuminate\Support\Facades\Storage;
 
 class StairsDatabaseController extends Controller
 {
+    public function edit(Request $request)
+    {
+        $materialTypes = StairsMaterialType::query()->orderBy('sort_order')->get();
+        $settings = StairsSettings::current();
+        $qpid = $request->filled('project') ? (int) $request->query('project') : null;
+
+        return view('admin.quotations.stairs.price_configuration', compact('materialTypes', 'settings', 'qpid'));
+    }
+
     public function update(Request $request)
     {
         $data = $request->validate([
             'stain_per_step' => ['required', 'numeric', 'min:0'],
             'clear_coat_per_step' => ['required', 'numeric', 'min:0'],
+            'carpet_removal_per_step' => ['required', 'numeric', 'min:0'],
             'materials' => ['required', 'array'],
             'materials.*.id' => ['required', 'integer', 'exists:stairs_material_types,id'],
-            'materials.*.carpet_removal_per_step' => ['required', 'numeric', 'min:0'],
         ]);
 
         $settings = StairsSettings::query()->find(1);
@@ -25,6 +34,7 @@ class StairsDatabaseController extends Controller
             $settings->update([
                 'stain_per_step' => round((float) $data['stain_per_step'], 2),
                 'clear_coat_per_step' => round((float) $data['clear_coat_per_step'], 2),
+                'carpet_removal_per_step' => round((float) $data['carpet_removal_per_step'], 2),
             ]);
         }
 
@@ -62,7 +72,6 @@ class StairsDatabaseController extends Controller
             }
 
             $mat->pricing = $pricing;
-            $mat->carpet_removal_per_step = round((float) $row['carpet_removal_per_step'], 2);
 
             if ($request->hasFile($prefix)) {
                 $request->validate([
@@ -78,11 +87,8 @@ class StairsDatabaseController extends Controller
             $mat->save();
         }
 
-        $tab = $request->input('redirect_tab', '');
-
         return redirect()
             ->back()
-            ->withFragment($tab === 'db' ? 'stairs-db' : '')
             ->with('success', 'Stairs price database updated.');
     }
 }

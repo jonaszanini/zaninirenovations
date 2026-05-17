@@ -11,11 +11,13 @@ class StairsSettings extends Model
     protected $fillable = [
         'stain_per_step',
         'clear_coat_per_step',
+        'carpet_removal_per_step',
     ];
 
     protected $casts = [
         'stain_per_step' => 'decimal:2',
         'clear_coat_per_step' => 'decimal:2',
+        'carpet_removal_per_step' => 'decimal:2',
     ];
 
     public static function current(): self
@@ -23,6 +25,7 @@ class StairsSettings extends Model
         return static::query()->find(1) ?? new self([
             'stain_per_step' => 0,
             'clear_coat_per_step' => 0,
+            'carpet_removal_per_step' => 0,
         ]);
     }
 }
