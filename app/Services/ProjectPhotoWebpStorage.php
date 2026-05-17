@@ -34,6 +34,42 @@ class ProjectPhotoWebpStorage
     }
 
     /**
+     * Store a project expense receipt: images → WebP (same as {@see store()} with
+     * a fixed basename); PDFs are stored without conversion as "{basename}.pdf".
+     *
+     * @param  string  $preferredBasenameSansExt  e.g. "Receipt-3" → Receipt-3.webp or Receipt-3.pdf
+     */
+    public function storeExpenseReceipt(UploadedFile $file, int $projectId, string $preferredBasenameSansExt): string
+    {
+        $mime = strtolower((string) $file->getMimeType());
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+
+        if ($mime === 'application/pdf' || $ext === 'pdf') {
+            $leaf = trim(preg_replace('/[^A-Za-z0-9_-]/', '', str_replace(' ', '-', $preferredBasenameSansExt)), '-');
+            if ($leaf === '') {
+                throw new RuntimeException('Invalid receipt name.');
+            }
+            $storageFolder = 'expense-receipts';
+            $directory = "{$storageFolder}/{$projectId}";
+            $relativePath = $directory.'/'.$leaf.'.pdf';
+            $realPath = $file->getRealPath();
+            if ($realPath === false) {
+                throw new RuntimeException('Could not read the uploaded file.');
+            }
+            $bytes = file_get_contents($realPath);
+            if ($bytes === false || $bytes === '') {
+                throw new RuntimeException('Could not read the PDF file.');
+            }
+            Storage::disk('public')->put($relativePath, $bytes);
+            $this->syncPublicStorageFallback($relativePath);
+
+            return $relativePath;
+        }
+
+        return $this->store($file, $projectId, 'expense-receipts', $preferredBasenameSansExt);
+    }
+
+    /**
      * @param  string  $storageFolder  Top-level folder under the public disk (e.g. project-photos, expense-receipts).
      * @param  string|null  $preferredBasenameSansExt  When set (e.g. "Receipt-3"), stored file is "{sanitized}.webp" instead of a UUID.
      */

@@ -29,7 +29,7 @@
 
   @if ($withReceipts > 0)
     <p style="margin:16px 0;color:#374151;">
-      <strong>{{ $withReceipts }}</strong> receipt photo{{ $withReceipts === 1 ? '' : 's' }} {{ $withReceipts === 1 ? 'is' : 'are' }} attached as WebP images. Each filename is <strong>Receipt-#</strong> where # is the number in the first column of the expenses table.
+      <strong>{{ $withReceipts }}</strong> receipt file{{ $withReceipts === 1 ? '' : 's' }} {{ $withReceipts === 1 ? 'is' : 'are' }} attached. Each filename is <strong>Receipt-#</strong> (image receipts as <strong>.webp</strong>, PDF as <strong>.pdf</strong>) matching the number in the first column of the expenses table.
     </p>
   @endif
 
@@ -51,7 +51,7 @@
           <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">{{ ClientProject::formatDate($expense->occurred_on) }}</td>
           <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">{{ $expense->description }}</td>
           <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-variant-numeric:tabular-nums;">{{ $fmtMoney($expense->amount) }}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center;">{{ filled($expense->receipt_path) ? 'Yes (Receipt-'.$expense->expense_ref.'.webp)' : '—' }}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center;">{{ filled($expense->receipt_path) ? 'Yes ('.$expense->receiptAttachmentBasename().')' : '—' }}</td>
         </tr>
       @endforeach
       <tr style="background:#eef6fb;font-weight:600;">

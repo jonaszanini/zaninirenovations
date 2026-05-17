@@ -5,10 +5,10 @@
   $hourlyRate = $project->effectiveHourlyRate();
   $configuredRate = $isHourly ? (float) ($project->hourly_rate ?? 0) : null;
 
-  // 15-minute slots for the full day (00:00–23:45). Values stay zero-padded
-  // HH:MM for DB consistency; labels use 24h without a leading zero on the
-  // hour (9:00, 13:00) for easier reading on phones. When end < start,
-  // duration spans midnight (e.g. 20:00 → 8:00).
+  // 15-minute slots (00:00–23:45) plus 23:59 as end-of-day. Values stay
+  // zero-padded HH:MM for DB consistency; labels use 24h without a leading
+  // zero on the hour (9:00, 13:00) for easier reading on phones. When end <
+  // start, duration spans midnight (e.g. 20:00 → 8:00).
   $timeOptions = [];
   for ($minutes = 0; $minutes < 24 * 60; $minutes += 15) {
     $h = intdiv($minutes, 60);
@@ -16,6 +16,7 @@
     $value = sprintf('%02d:%02d', $h, $m);
     $timeOptions[$value] = sprintf('%d:%02d', $h, $m);
   }
+  $timeOptions['23:59'] = '23:59';
 @endphp
 
 <div class="admin-card">

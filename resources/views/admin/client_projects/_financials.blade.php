@@ -253,9 +253,9 @@
       </div>
     </div>
     <div class="admin-form-group cp-expense-receipt-field">
-      <label for="cp-expense-receipt">Receipt photo (optional)</label>
-      <input type="file" id="cp-expense-receipt" name="receipt" accept="image/*">
-      <p class="admin-form-help">JPEG, PNG, or WebP — stored as WebP named <strong>Receipt-#</strong> (same number as the # column) so the client can match attachments to each line. On a phone you can take a new photo or pick one from your gallery.</p>
+      <label for="cp-expense-receipt">Receipt (optional)</label>
+      <input type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf">
+      <p class="admin-form-help">Image (JPEG, PNG, WebP) — stored as WebP; or <strong>PDF</strong> — stored as-is. Filename <strong>Receipt-#</strong> matches the # column for the client. On a phone you can take a photo, pick from gallery, or choose a PDF.</p>
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -281,7 +281,11 @@
             <td class="cp-expense-receipt-cell">
               @if ($expense->receiptUrl())
                 <a href="{{ $expense->receiptUrl() }}" target="_blank" rel="noopener" title="Open receipt">
-                  <img src="{{ $expense->receiptUrl() }}" alt="Receipt {{ $expense->expense_ref }}" class="cp-expense-receipt-thumb" width="56" height="56" loading="lazy">
+                  @if ($expense->receiptIsImagePreview())
+                    <img src="{{ $expense->receiptUrl() }}" alt="Receipt {{ $expense->expense_ref }}" class="cp-expense-receipt-thumb" width="56" height="56" loading="lazy">
+                  @else
+                    <span class="cp-expense-receipt-pdf">PDF</span>
+                  @endif
                 </a>
               @else
                 —
@@ -303,7 +307,7 @@
               <div class="cp-expense-edit-panel">
                 <h4 class="cp-expense-edit-heading">Edit expense #{{ $expense->expense_ref }}</h4>
                 @if ($expenseOnInvoice)
-                  <p class="admin-form-help">This expense is on an invoice line — only the receipt photo can be added or replaced here. To change the amount or description, adjust the invoice draft first.</p>
+                  <p class="admin-form-help">This expense is on an invoice line — only the receipt file can be added or replaced here. To change the amount or description, adjust the invoice draft first.</p>
                 @endif
                 <form action="{{ route('admin.client-projects.expenses.update', [$project, $expense]) }}" method="post" enctype="multipart/form-data" class="cp-finance-form">
                   @csrf
@@ -331,16 +335,16 @@
                   <div class="admin-form-group cp-expense-receipt-field">
                     <label for="cp-expense-edit-receipt-{{ $expense->id }}">
                       @if ($expenseOnInvoice)
-                        Receipt photo
+                        Receipt
                       @else
-                        Receipt photo <span class="cp-hint">(optional)</span>
+                        Receipt <span class="cp-hint">(optional)</span>
                       @endif
                     </label>
-                    <input type="file" id="cp-expense-edit-receipt-{{ $expense->id }}" name="receipt" accept="image/*" @if ($expenseOnInvoice) required @endif>
+                    <input type="file" id="cp-expense-edit-receipt-{{ $expense->id }}" name="receipt" accept="image/*,application/pdf" @if ($expenseOnInvoice) required @endif>
                     @if (! $expenseOnInvoice)
-                      <p class="admin-form-help">Leave blank to keep the current receipt. Choose a file to add one or replace the existing WebP (<strong>Receipt-{{ $expense->expense_ref }}</strong>).</p>
+                      <p class="admin-form-help">Leave blank to keep the current receipt. Add or replace with an image (stored as WebP) or a PDF — filename <strong>Receipt-{{ $expense->expense_ref }}</strong> with the matching extension.</p>
                     @else
-                      <p class="admin-form-help">JPEG, PNG, or WebP — stored as WebP named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</p>
+                      <p class="admin-form-help">Image (JPEG, PNG, WebP) or PDF — stored as WebP or PDF named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</p>
                     @endif
                   </div>
                   @if ($errors->any() && $expenseEditOpen)
@@ -372,7 +376,7 @@
     <div class="cp-expenses-send-email">
       <h4 class="cp-expenses-send-heading">Send to client</h4>
       <p class="admin-form-help">
-        Email the client a table of every expense, any returns/credits, and the <strong>net materials total</strong> (expenses minus returns). Receipt photos are attached as WebP files named <strong>Receipt-#</strong> to match the # column when present.
+        Email the client a table of every expense, any returns/credits, and the <strong>net materials total</strong> (expenses minus returns). Receipt files are attached as WebP or PDF named <strong>Receipt-#</strong> to match the # column when present.
         {{ $project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : '' }}
       </p>
       @if (! $expenseSendHasClient)

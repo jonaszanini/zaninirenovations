@@ -210,7 +210,7 @@ class ClientProjectFinanceController extends Controller
             'occurred_on' => ['required', 'date'],
             'description' => ['required', 'string', 'max:500'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'receipt' => ['nullable', 'file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
+            'receipt' => $this->expenseReceiptFileRules(false),
         ]);
 
         try {
@@ -228,10 +228,9 @@ class ClientProjectFinanceController extends Controller
                 ]);
 
                 if ($request->hasFile('receipt')) {
-                    $receiptPath = app(ProjectPhotoWebpStorage::class)->store(
+                    $receiptPath = app(ProjectPhotoWebpStorage::class)->storeExpenseReceipt(
                         $request->file('receipt'),
                         $client_project->id,
-                        'expense-receipts',
                         'Receipt-'.$nextRef
                     );
                     $expense->update(['receipt_path' => $receiptPath]);
@@ -247,7 +246,7 @@ class ClientProjectFinanceController extends Controller
     }
 
     /**
-     * Email the client an expenses table and attach receipt WebP files when present.
+     * Email the client an expenses table and attach receipt files (WebP or PDF) when present.
      */
     public function sendExpensesToClient(ClientProject $client_project, ClientProjectStatusService $statusService)
     {
@@ -285,7 +284,7 @@ class ClientProjectFinanceController extends Controller
         }
         $description .= ', net (materials) '.ClientProject::formatMoney($netMaterials);
         if ($receiptCount > 0) {
-            $description .= ', '.$receiptCount.' receipt '.Str::plural('photo', $receiptCount).' attached';
+            $description .= ', '.$receiptCount.' receipt '.Str::plural('file', $receiptCount).' attached';
         }
 
         try {
@@ -369,17 +368,16 @@ class ClientProjectFinanceController extends Controller
 
         $billed = $expense->client_project_invoice_id !== null;
 
-        $receiptRule = ['nullable', 'file', 'mimes:webp,jpeg,jpg,png', 'max:10240'];
         if ($billed) {
             $validator = Validator::make($request->all(), [
-                'receipt' => ['required', 'file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
+                'receipt' => $this->expenseReceiptFileRules(true),
             ]);
         } else {
             $validator = Validator::make($request->all(), [
                 'occurred_on' => ['required', 'date'],
                 'description' => ['required', 'string', 'max:500'],
                 'amount' => ['required', 'numeric', 'min:0.01'],
-                'receipt' => $receiptRule,
+                'receipt' => $this->expenseReceiptFileRules(false),
             ]);
         }
 
@@ -402,10 +400,9 @@ class ClientProjectFinanceController extends Controller
 
                 if ($billed) {
                     $oldPath = $expense->receipt_path;
-                    $newPath = app(ProjectPhotoWebpStorage::class)->store(
+                    $newPath = app(ProjectPhotoWebpStorage::class)->storeExpenseReceipt(
                         $request->file('receipt'),
                         $client_project->id,
-                        'expense-receipts',
                         $basename
                     );
                     if (filled($oldPath) && $oldPath !== $newPath) {
@@ -420,10 +417,9 @@ class ClientProjectFinanceController extends Controller
                     ];
                     if ($request->hasFile('receipt')) {
                         $oldPath = $expense->receipt_path;
-                        $newPath = app(ProjectPhotoWebpStorage::class)->store(
+                        $newPath = app(ProjectPhotoWebpStorage::class)->storeExpenseReceipt(
                             $request->file('receipt'),
                             $client_project->id,
-                            'expense-receipts',
                             $basename
                         );
                         if (filled($oldPath) && $oldPath !== $newPath) {
@@ -459,6 +455,16 @@ class ClientProjectFinanceController extends Controller
         if (is_file($mirror)) {
             @unlink($mirror);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function expenseReceiptFileRules(bool $required): array
+    {
+        $inner = ['file', 'mimes:pdf,webp,jpeg,jpg,png', 'max:10240'];
+
+        return $required ? array_merge(['required'], $inner) : array_merge(['nullable'], $inner);
     }
 
     public function storeReturn(Request $request, ClientProject $client_project)
