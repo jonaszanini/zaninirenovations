@@ -298,7 +298,7 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.stairs.store');
     Route::post('quotations/stairs/preview', [StairsQuotationController::class, 'preview'])
         ->name('quotations.stairs.preview');
-    Route::put('quotations/stairs/database', [StairsDatabaseController::class, 'update'])
+    Route::post('quotations/stairs/database', [StairsDatabaseController::class, 'update'])
         ->name('quotations.stairs.database.update');
     Route::get('quotations/stairs/{stairs_quotation}/edit', [StairsQuotationController::class, 'edit'])
         ->name('quotations.stairs.edit');

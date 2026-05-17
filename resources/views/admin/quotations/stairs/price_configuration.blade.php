@@ -42,5 +42,13 @@
     These rates power the stairs calculator. After saving, return to the list to create or edit quotations.
   </p>
 
+  @if (! ($publicStorageLinked ?? true))
+    <div class="admin-flash admin-flash--warning" style="margin-bottom:16px;">
+      Public storage is not linked. Images will not load in the browser until you run
+      <code style="background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px;">php artisan storage:link</code>
+      from the Laravel project root (once per server). On shared hosting, ensure <code style="background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px;">public/storage</code> points to <code style="background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px;">storage/app/public</code>.
+    </div>
+  @endif
+
   @include('admin.quotations.stairs._database_tab', ['hideDatabaseHeading' => true])
 @endsection

@@ -80,10 +80,15 @@ class StairsMaterialType extends Model
         if (! filled($this->photo_path)) {
             return null;
         }
-        if (! Storage::disk('public')->exists($this->photo_path)) {
+
+        $path = str_replace('\\', '/', (string) $this->photo_path);
+        $path = ltrim($path, '/');
+
+        if (! Storage::disk('public')->exists($path)) {
             return null;
         }
 
-        return Storage::disk('public')->url($this->photo_path);
+        // Use asset() so the URL matches the current request host (avoids broken images when APP_URL is wrong).
+        return asset('storage/'.$path);
     }
 }

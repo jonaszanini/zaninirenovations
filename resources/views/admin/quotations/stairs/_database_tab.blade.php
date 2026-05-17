@@ -10,7 +10,6 @@
 
   <form method="post" action="{{ route('admin.quotations.stairs.database.update') }}" enctype="multipart/form-data" class="sq-db-form">
     @csrf
-    @method('PUT')
 
     <div class="pq-form-grid sq-db-global-grid" style="margin-bottom:20px;">
       <div class="admin-form-group">
@@ -69,10 +68,19 @@
 
         <div class="admin-form-group" style="margin-top:12px;">
           <label>Material photo</label>
+          @if (filled($mat->photo_path))
+            <p class="pq-hint" style="margin:0 0 6px;">
+              Saved file: <strong>{{ basename($mat->photo_path) }}</strong>
+              @unless ($mat->photoUrl())
+                <span style="color:#b45309;"> (file missing on disk — re-upload or check storage link)</span>
+              @endunless
+            </p>
+          @endif
           @if ($mat->photoUrl())
-            <div style="margin:6px 0;"><img src="{{ $mat->photoUrl() }}" alt="" style="max-height:72px;border-radius:6px;border:1px solid #e2e8f0;"></div>
+            <div style="margin:6px 0;"><img src="{{ $mat->photoUrl() }}" alt="" style="max-height:120px;border-radius:6px;border:1px solid #e2e8f0;"></div>
           @endif
           <input type="file" name="material_photo_{{ $mat->id }}" class="admin-input" accept="image/*">
+          <p class="pq-hint" style="margin-top:6px;">Choose a new image to replace the current one. Leave empty to keep the existing photo.</p>
         </div>
 
         <div class="sq-db-open-block">

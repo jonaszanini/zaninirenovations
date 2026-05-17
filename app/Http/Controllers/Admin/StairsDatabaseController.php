@@ -15,19 +15,30 @@ class StairsDatabaseController extends Controller
         $materialTypes = StairsMaterialType::query()->orderBy('sort_order')->get();
         $settings = StairsSettings::current();
         $qpid = $request->filled('project') ? (int) $request->query('project') : null;
+        $publicStorageLinked = is_link(public_path('storage'));
 
-        return view('admin.quotations.stairs.price_configuration', compact('materialTypes', 'settings', 'qpid'));
+        return view('admin.quotations.stairs.price_configuration', compact(
+            'materialTypes',
+            'settings',
+            'qpid',
+            'publicStorageLinked'
+        ));
     }
 
     public function update(Request $request)
     {
-        $data = $request->validate([
+        $fileRules = [];
+        foreach (StairsMaterialType::query()->pluck('id') as $mid) {
+            $fileRules['material_photo_'.$mid] = ['nullable', 'file', 'image', 'max:5120'];
+        }
+
+        $data = $request->validate(array_merge([
             'stain_per_step' => ['required', 'numeric', 'min:0'],
             'clear_coat_per_step' => ['required', 'numeric', 'min:0'],
             'carpet_removal_per_step' => ['required', 'numeric', 'min:0'],
             'materials' => ['required', 'array'],
             'materials.*.id' => ['required', 'integer', 'exists:stairs_material_types,id'],
-        ]);
+        ], $fileRules));
 
         $settings = StairsSettings::query()->find(1);
         if ($settings) {
@@ -73,11 +84,9 @@ class StairsDatabaseController extends Controller
 
             $mat->pricing = $pricing;
 
-            if ($request->hasFile($prefix)) {
-                $request->validate([
-                    $prefix => ['nullable', 'image', 'max:5120'],
-                ]);
-                $path = $request->file($prefix)->store('stairs-materials', 'public');
+            $upload = $request->file($prefix);
+            if ($upload instanceof \Illuminate\Http\UploadedFile && $upload->isValid()) {
+                $path = $upload->store('stairs-materials', 'public');
                 if ($mat->photo_path && Storage::disk('public')->exists($mat->photo_path)) {
                     Storage::disk('public')->delete($mat->photo_path);
                 }
