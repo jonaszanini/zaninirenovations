@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GooglePhotosController;
 use App\Http\Controllers\Admin\PavingDatabaseController;
 use App\Http\Controllers\Admin\PavingQuotationController;
+use App\Http\Controllers\Admin\StairsDatabaseController;
+use App\Http\Controllers\Admin\StairsQuotationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\ContactFormController;
 use App\Models\Project;
@@ -284,6 +286,28 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.paving.database.rates.update');
     Route::post('quotations/paving/database/tiers/sync', [PavingDatabaseController::class, 'syncTiers'])
         ->name('quotations.paving.database.tiers.sync');
+
+    // Stairs renovation quotations (configurable materials + per-step pricing).
+    Route::get('quotations/stairs', [StairsQuotationController::class, 'index'])
+        ->name('quotations.stairs.index');
+    Route::get('quotations/stairs/create', [StairsQuotationController::class, 'create'])
+        ->name('quotations.stairs.create');
+    Route::post('quotations/stairs', [StairsQuotationController::class, 'store'])
+        ->name('quotations.stairs.store');
+    Route::post('quotations/stairs/preview', [StairsQuotationController::class, 'preview'])
+        ->name('quotations.stairs.preview');
+    Route::get('quotations/stairs/{stairs_quotation}/edit', [StairsQuotationController::class, 'edit'])
+        ->name('quotations.stairs.edit');
+    Route::put('quotations/stairs/{stairs_quotation}', [StairsQuotationController::class, 'update'])
+        ->name('quotations.stairs.update');
+    Route::post('quotations/stairs/{stairs_quotation}/link', [StairsQuotationController::class, 'linkToProject'])
+        ->name('quotations.stairs.link');
+    Route::post('quotations/stairs/{stairs_quotation}/create-project', [StairsQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.stairs.create-project');
+    Route::delete('quotations/stairs/{stairs_quotation}', [StairsQuotationController::class, 'destroy'])
+        ->name('quotations.stairs.destroy');
+    Route::put('quotations/stairs/database', [StairsDatabaseController::class, 'update'])
+        ->name('quotations.stairs.database.update');
 
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);

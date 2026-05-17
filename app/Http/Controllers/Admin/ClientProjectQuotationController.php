@@ -9,6 +9,7 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
 use App\Models\FenceQuotation;
 use App\Models\PavingQuotation;
+use App\Models\StairsQuotation;
 use App\Models\StandardQuotation;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
@@ -24,7 +25,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Manages the structured Quotation/Estimate attached to a ClientProject.
- * Line items come from Fence / Standard / Paving calculators; legacy manual
+ * Line items come from Fence / Standard / Paving / Stairs calculators; legacy manual
  * rows are read-only in the UI.
  *
  * Responsibilities here: edit() redirects into calculators, PDF, email, status.
@@ -32,7 +33,7 @@ use Illuminate\Validation\Rule;
 class ClientProjectQuotationController extends Controller
 {
     /**
-     * Linked Fence / Standard / Paving rows redirect into their standalone
+     * Linked Fence / Standard / Paving / Stairs rows redirect into their standalone
      * calculators. Legacy manual rows have no editor — archived read-only on
      * the project's Quotation tab.
      */
@@ -73,6 +74,12 @@ class ClientProjectQuotationController extends Controller
             $pq = PavingQuotation::find($quotation->source_id);
             if ($pq) {
                 return redirect()->route('admin.quotations.paving.edit', $pq);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_STAIRS && $quotation->source_id) {
+            $st = StairsQuotation::find($quotation->source_id);
+            if ($st) {
+                return redirect()->route('admin.quotations.stairs.edit', [$st, 'return' => 'project']);
             }
         }
 
@@ -403,7 +410,7 @@ class ClientProjectQuotationController extends Controller
 
     /**
      * Remove a calculator-linked quotation from the project and delete the
-     * underlying Fence / Standard / Paving record (same net effect as the hub).
+     * underlying Fence / Standard / Paving / Stairs record (same net effect as the hub).
      */
     public function destroy(ClientProject $client_project, ClientProjectQuotation $quotation)
     {

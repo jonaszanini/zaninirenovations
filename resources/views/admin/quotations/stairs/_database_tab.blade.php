@@ -1,0 +1,127 @@
+@php
+  /** @var \Illuminate\Support\Collection<int, \App\Models\StairsMaterialType> $materialTypes */
+  /** @var \App\Models\StairsSettings $settings */
+@endphp
+<div class="pq-db-wrap admin-card">
+  <h3 style="margin:0 0 12px;">Stairs price database</h3>
+  <p class="admin-form-help">Set per-step rates (before HST) for each material. Photos appear in the quotation calculator.</p>
+
+  <form method="post" action="{{ route('admin.quotations.stairs.database.update') }}" enctype="multipart/form-data" class="sq-db-form">
+    @csrf
+    @method('PUT')
+    <input type="hidden" name="redirect_tab" value="db">
+
+    <div class="pq-form-grid" style="margin-bottom:20px;">
+      <div class="admin-form-group">
+        <label for="sq-db-stain">Requires stain ($/step)</label>
+        <input type="text" id="sq-db-stain" name="stain_per_step" class="admin-input cp-money-input" inputmode="decimal" required
+               value="{{ old('stain_per_step', number_format((float) $settings->stain_per_step, 2, '.', '')) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="sq-db-clear">Clear coat protection ($/step)</label>
+        <input type="text" id="sq-db-clear" name="clear_coat_per_step" class="admin-input cp-money-input" inputmode="decimal" required
+               value="{{ old('clear_coat_per_step', number_format((float) $settings->clear_coat_per_step, 2, '.', '')) }}">
+      </div>
+    </div>
+
+    @foreach ($materialTypes as $mat)
+      @php
+        $p = $mat->mergedPricing();
+        $materialOldBase = 'materials.'.$mat->id;
+        $val = function (string $path) use ($materialOldBase, $p) {
+            $flatKey = $materialOldBase.'.'.str_replace(['.', '[', ']'], ['_', '', ''], $path);
+            $o = old(str_replace('materials.'.$materialOldBase, $materialOldBase, $flatKey));
+            $pathParts = explode('.', $path);
+            $lookupKey = implode('_', $pathParts);
+            $o = old($materialOldBase.'.'.$lookupKey);
+            if ($o !== null && $o !== '') {
+                return is_numeric($o) ? number_format((float) $o, 2, '.', '') : $o;
+            }
+            $cur = $p;
+            foreach ($pathParts as $seg) {
+                if (! is_array($cur) || ! array_key_exists($seg, $cur)) {
+                    return '0.00';
+                }
+                $cur = $cur[$seg];
+            }
+            return number_format((float) $cur, 2, '.', '');
+        };
+      @endphp
+      <div class="sq-db-material admin-card" style="margin-bottom:16px;background:#f8fafc;">
+        <input type="hidden" name="materials[{{ $mat->id }}][id]" value="{{ $mat->id }}">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:space-between;">
+          <div>
+            <h4 style="margin:0 0 6px;">{{ $mat->name }}</h4>
+            <p class="pq-hint" style="margin:0;">
+              Nosing:
+              @if ($mat->nosing_mode === \App\Models\StairsMaterialType::NOSING_CHOICE)
+                add-on (set prices below)
+              @else
+                included in material rates
+              @endif
+            </p>
+          </div>
+          <div class="admin-form-group" style="min-width:200px;">
+            <label>Carpet removal ($/step)</label>
+            <input type="text" name="materials[{{ $mat->id }}][carpet_removal_per_step]" class="admin-input cp-money-input" required inputmode="decimal"
+                   value="{{ old('materials.'.$mat->id.'.carpet_removal_per_step', number_format((float) $mat->carpet_removal_per_step, 2, '.', '')) }}">
+          </div>
+        </div>
+
+        <div class="admin-form-group" style="margin-top:12px;">
+          <label>Material photo</label>
+          @if ($mat->photoUrl())
+            <div style="margin:6px 0;"><img src="{{ $mat->photoUrl() }}" alt="" style="max-height:72px;border-radius:6px;border:1px solid #e2e8f0;"></div>
+          @endif
+          <input type="file" name="material_photo_{{ $mat->id }}" class="admin-input" accept="image/*">
+        </div>
+
+        <p style="margin:14px 0 8px;font-weight:600;font-size:13px;">No open sides ($/step)</p>
+        <div class="pq-form-grid">
+          @foreach (['standard' => 'Standard stairs', 'winder' => 'Winder', 'double_landing' => 'Double landing', 'single_landing' => 'Single landing'] as $st => $lbl)
+            <div class="admin-form-group">
+              <label>{{ $lbl }}</label>
+              <input type="text" name="materials[{{ $mat->id }}][no_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
+                     value="{{ old('materials.'.$mat->id.'.no_open_'.$st, number_format((float) ($p['no_open'][$st] ?? 0), 2, '.', '')) }}">
+            </div>
+          @endforeach
+        </div>
+
+        <p style="margin:14px 0 8px;font-weight:600;font-size:13px;">One open side ($/step)</p>
+        <div class="pq-form-grid">
+          @foreach (['standard' => 'Standard stairs', 'winder' => 'Winder', 'double_landing' => 'Double landing', 'single_landing' => 'Single landing'] as $st => $lbl)
+            <div class="admin-form-group">
+              <label>{{ $lbl }}</label>
+              <input type="text" name="materials[{{ $mat->id }}][one_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
+                     value="{{ old('materials.'.$mat->id.'.one_open_'.$st, number_format((float) ($p['one_open'][$st] ?? 0), 2, '.', '')) }}">
+            </div>
+          @endforeach
+        </div>
+
+        <p style="margin:14px 0 8px;font-weight:600;font-size:13px;">Two open sides ($/step)</p>
+        <div class="admin-form-group" style="max-width:240px;">
+          <label>Standard stairs only</label>
+          <input type="text" name="materials[{{ $mat->id }}][two_open_standard]" class="admin-input cp-money-input" inputmode="decimal"
+                 value="{{ old('materials.'.$mat->id.'.two_open_standard', number_format((float) ($p['two_open']['standard'] ?? 0), 2, '.', '')) }}">
+        </div>
+
+        @if ($mat->nosing_mode === \App\Models\StairsMaterialType::NOSING_CHOICE)
+          <p style="margin:14px 0 8px;font-weight:600;font-size:13px;">Nosing options ($/step)</p>
+          <div class="pq-form-grid">
+            @foreach (\App\Models\StairsMaterialType::nosingChoiceLabels() as $nk => $nLabel)
+              <div class="admin-form-group">
+                <label>{{ $nLabel }}</label>
+                <input type="text" name="materials[{{ $mat->id }}][nosing_{{ $nk }}]" class="admin-input cp-money-input" inputmode="decimal"
+                       value="{{ old('materials.'.$mat->id.'.nosing_'.$nk, number_format((float) ($p['nosing_prices'][$nk] ?? 0), 2, '.', '')) }}">
+              </div>
+            @endforeach
+          </div>
+        @endif
+      </div>
+    @endforeach
+
+    <button type="submit" class="admin-btn admin-btn--primary">
+      <i class="fa fa-save"></i> Save price database
+    </button>
+  </form>
+</div>

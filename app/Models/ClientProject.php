@@ -970,6 +970,7 @@ class ClientProject extends Model
             ClientProjectQuotation::SOURCE_FENCE => 'Fence calculator',
             ClientProjectQuotation::SOURCE_STANDARD => 'Standard calculator',
             ClientProjectQuotation::SOURCE_PAVING => 'Paving calculator',
+            ClientProjectQuotation::SOURCE_STAIRS => 'Stairs calculator',
             ClientProjectQuotation::SOURCE_MANUAL => 'Manual / legacy',
             null, '' => 'Manual / legacy',
             default => (string) $q->source_type,

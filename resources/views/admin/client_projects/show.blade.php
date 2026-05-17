@@ -21,7 +21,28 @@
       <div class="cp-header-title">
         <div class="cp-client">{{ $project->client_name }}</div>
         <h2>{{ $project->name }}</h2>
-        @include('admin.client_projects._contacted_via_display', ['project' => $project, 'lineClass' => 'cp-contacted-via-line'])
+        <div class="cp-header-contact-block">
+          @if (filled($project->notes))
+            @php
+              $notesPreview = \Illuminate\Support\Str::limit(trim((string) $project->notes), 800);
+            @endphp
+            <span class="cp-notes-popover-wrap">
+              <button type="button"
+                      class="cp-notes-indicator cp-notes-indicator--btn"
+                      id="cp-notes-toggle"
+                      aria-expanded="false"
+                      aria-controls="cp-notes-popover">
+                <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Notes
+              </button>
+              <div class="cp-notes-popover" id="cp-notes-popover" role="dialog" aria-label="Project notes preview" hidden>
+                <div class="cp-notes-popover-body">{{ $notesPreview }}</div>
+              </div>
+            </span>
+          @endif
+          <div class="cp-header-contact-via-block">
+            @include('admin.client_projects._contacted_via_display', ['project' => $project, 'lineClass' => 'cp-contacted-via-line'])
+          </div>
+        </div>
         <div class="cp-header-meta">
           <span class="cp-billing-type" title="How this project is billed">
             @if ($project->isHourly())
@@ -46,23 +67,6 @@
                  target="_blank"
                  rel="noopener noreferrer"
                  title="Open in Google Maps">{{ $project->client_address }}</a>
-            </span>
-          @endif
-          @if (filled($project->notes))
-            @php
-              $notesPreview = \Illuminate\Support\Str::limit(trim((string) $project->notes), 800);
-            @endphp
-            <span class="cp-notes-popover-wrap">
-              <button type="button"
-                      class="cp-notes-indicator cp-notes-indicator--btn"
-                      id="cp-notes-toggle"
-                      aria-expanded="false"
-                      aria-controls="cp-notes-popover">
-                <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Notes
-              </button>
-              <div class="cp-notes-popover" id="cp-notes-popover" role="dialog" aria-label="Project notes preview" hidden>
-                <div class="cp-notes-popover-body">{{ $notesPreview }}</div>
-              </div>
             </span>
           @endif
         </div>

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * ClientProjectQuotation — structured quotation/estimate attached to a
- * ClientProject. Line items are synced from Fence / Standard / Paving
+ * ClientProject. Line items are synced from Fence / Standard / Paving / Stairs
  * calculators; legacy manual rows remain as read-only snapshots.
  *
  * A project may have multiple quotations. Use {@see ClientProject::quotations()}.
@@ -37,6 +37,8 @@ class ClientProjectQuotation extends Model
     public const SOURCE_PAVING = 'paving';
 
     public const SOURCE_STANDARD = 'standard';
+
+    public const SOURCE_STAIRS = 'stairs';
 
     protected $fillable = [
         'client_project_id',
@@ -302,7 +304,7 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Delete this row and the linked Fence / Standard / Paving calculator
+     * Delete this row and the linked Fence / Standard / Paving / Stairs calculator
      * record. Does nothing for legacy manual documents — callers must guard.
      */
     public static function deleteWithLinkedCalculatorSource(self $quotation): void
@@ -319,6 +321,7 @@ class ClientProjectQuotation extends Model
                     self::SOURCE_FENCE => FenceQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_STANDARD => StandardQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_PAVING => PavingQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_STAIRS => StairsQuotation::query()->whereKey($sourceId)->delete(),
                     default => null,
                 };
             }

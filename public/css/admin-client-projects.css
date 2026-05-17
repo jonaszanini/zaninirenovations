@@ -194,6 +194,24 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-contacted-via-line {
   margin: -2px 0 10px 0;
 }
+.cp-header-contact-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 16px;
+  margin: -2px 0 10px 0;
+}
+.cp-header-contact-block .cp-notes-popover-wrap {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.cp-header-contact-via-block {
+  flex: 1;
+  min-width: min(100%, 200px);
+}
+.cp-header-contact-via-block .cp-contacted-via-line {
+  margin: 0;
+}
 .cp-contacted-via-value {
   font-weight: 700;
 }
