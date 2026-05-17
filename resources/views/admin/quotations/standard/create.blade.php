@@ -3,7 +3,9 @@
 @php
   use App\Models\ClientProjectQuotation;
 
-  $isEdit = filled($quotation); this editor was opened from a project's
+  $isEdit = filled($quotation);
+
+  // Project-context mode: this editor was opened from a project's
   // "Edit quotation" entry point. The form posts with ?return=project
   // so the controller redirects the user back to the project's
   // Quotation tab on save (instead of staying on the standalone
