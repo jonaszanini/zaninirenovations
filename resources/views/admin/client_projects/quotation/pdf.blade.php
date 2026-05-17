@@ -18,11 +18,8 @@
     $grand = $quotation->grandTotal();
 
     $fmt = fn ($n) => 'CA$'.number_format((float) $n, 2, '.', ',');
-    $pdfStandardDisplayTitle = $quotation->standardDisplayTitle();
+    $pdfStandardDisplayTitle = trim((string) ($quotation->standardDisplayTitle() ?? ''));
     $pdfIsStandard = $quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_STANDARD;
-    $pdfDocKindLabel = $pdfIsStandard
-        ? ($quotation->title ?: $quotation->typeLabel())
-        : $quotation->typeLabel();
   @endphp
   <style>
     /* ============================================================
@@ -147,9 +144,6 @@
       color: #024768;
       margin: 0 0 4pt;
       line-height: 1.15;
-    }
-    .quote-title.quote-title--standard {
-      font-weight: 400;
     }
     .quote-date {
       font-size: 10.5pt;
@@ -350,10 +344,16 @@
   <table class="quote-doc-meta">
     <tr>
       <td class="left">
-        @if ($pdfIsStandard && filled($pdfStandardDisplayTitle))
-          <p class="quote-display-title">{{ $pdfStandardDisplayTitle }}</p>
+        @if ($pdfIsStandard)
+          @php
+            $pdfHeading = $pdfStandardDisplayTitle !== ''
+                ? $pdfStandardDisplayTitle
+                : $quotation->typeLabel().' #'.$quotation->quotation_number;
+          @endphp
+          <p class="quote-display-title">{{ $pdfHeading }}</p>
+        @else
+          <p class="quote-title">{{ $quotation->typeLabel() }} #{{ $quotation->quotation_number }}</p>
         @endif
-        <p class="quote-title {{ $pdfIsStandard ? 'quote-title--standard' : '' }}">{{ $pdfDocKindLabel }} #{{ $quotation->quotation_number }}</p>
         <p class="quote-date">Date: {{ \App\Support\EasternStandardTimeDisplay::todayLongDate() }}</p>
       </td>
       <td class="right">

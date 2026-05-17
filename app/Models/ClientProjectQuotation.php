@@ -139,8 +139,9 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Optional heading line from the linked {@see StandardQuotation}, stored in
-     * {@see $source_snapshot} after sync. Used in the admin preview and client PDF.
+     * Heading line from the linked {@see StandardQuotation}. Prefer
+     * {@see $source_snapshot} when in sync; otherwise read the live SQ row
+     * (e.g. after a DB backfill before the next save).
      */
     public function standardDisplayTitle(): ?string
     {
@@ -148,10 +149,17 @@ class ClientProjectQuotation extends Model
             return null;
         }
         $snap = $this->source_snapshot;
-        if (! is_array($snap)) {
+        if (is_array($snap)) {
+            $t = trim((string) ($snap['display_title'] ?? ''));
+            if ($t !== '') {
+                return $t;
+            }
+        }
+        $sourceId = (int) ($this->source_id ?? 0);
+        if ($sourceId <= 0) {
             return null;
         }
-        $t = trim((string) ($snap['display_title'] ?? ''));
+        $t = trim((string) (StandardQuotation::query()->whereKey($sourceId)->value('display_title') ?? ''));
 
         return $t !== '' ? $t : null;
     }

@@ -355,9 +355,13 @@ class StandardQuotationController extends Controller
             }
         }
 
+        $request->merge([
+            'display_title' => trim((string) $request->input('display_title', '')),
+        ]);
+
         $data = $request->validate([
             'client_name' => ['required', 'string', 'max:160'],
-            'display_title' => ['nullable', 'string', 'max:255'],
+            'display_title' => ['required', 'string', 'max:255'],
             'document_type' => ['required', Rule::in([
                 ClientProjectQuotation::TYPE_QUOTATION,
                 ClientProjectQuotation::TYPE_ESTIMATE,
@@ -397,6 +401,7 @@ class StandardQuotationController extends Controller
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], [
             'client_name.required' => 'Client name is required.',
+            'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',
             'labour_hourly_rate.required' => 'Enter an hourly rate, or enable flat labour fee.',
             'labour_mode.required' => 'Pick hours or days, or enable flat labour fee.',
@@ -459,12 +464,11 @@ class StandardQuotationController extends Controller
         }, $computed['materials']);
 
         $workDescription = trim((string) ($data['work_description'] ?? ''));
-        $displayTitle = trim((string) ($data['display_title'] ?? ''));
 
         return [
             'persistence' => [
                 'client_name' => trim($data['client_name']),
-                'display_title' => $displayTitle === '' ? null : $displayTitle,
+                'display_title' => \Illuminate\Support\Str::limit($data['display_title'], 255, ''),
                 'document_type' => $data['document_type'],
                 'includes_material' => $includesMaterial,
                 'includes_labour' => $includesLabour,

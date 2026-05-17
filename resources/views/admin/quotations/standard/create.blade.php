@@ -178,11 +178,11 @@
       </div>
 
       <div class="admin-form-group" style="max-width:480px;">
-        <label for="sq-display-title">Title <span class="admin-form-help">(optional)</span></label>
+        <label for="sq-display-title">Title <span class="cp-required">*</span></label>
         <input type="text" id="sq-display-title" name="display_title" class="admin-input @error('display_title') is-invalid @enderror"
-               maxlength="255"
+               maxlength="255" required
                value="{{ old('display_title', $isEdit ? $quotation->display_title : '') }}"
-               placeholder="Shown above “Standard quotation” on the project document and PDF">
+               placeholder="Shown at the top of the client quotation PDF">
         @error('display_title') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
