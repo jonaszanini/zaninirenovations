@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\StairsQuotationCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -47,17 +48,35 @@ class StairsQuotation extends Model
         $mid = $inputs['material_type_id'] ?? null;
         $material = $mid ? StairsMaterialType::query()->find($mid) : null;
         $matName = $material ? $material->name : 'Stairs';
-        $open = match ($inputs['open_sides'] ?? 'none') {
-            'one' => 'One open side',
-            'two' => 'Two open sides',
-            default => 'No open sides',
-        };
+
+        $legacy = $inputs['open_sides'] ?? null;
+        $legacy = is_string($legacy) ? $legacy : null;
+        $segments = is_array($inputs['segments'] ?? null) ? $inputs['segments'] : [];
+        $openKeys = [];
+        foreach ($segments as $seg) {
+            if (! is_array($seg)) {
+                continue;
+            }
+            $qty = max(0, (int) ($seg['qty'] ?? 0));
+            if ($qty < 1) {
+                continue;
+            }
+            $openKeys[] = StairsQuotationCalculator::normalizeSegmentOpenSides($seg, $legacy);
+        }
+        $openKeys = array_values(array_unique($openKeys));
+        if (count($openKeys) === 0) {
+            $openPhrase = StairsQuotationCalculator::openSidesLabel(StairsQuotationCalculator::normalizeSegmentOpenSides([], $legacy));
+        } elseif (count($openKeys) === 1) {
+            $openPhrase = StairsQuotationCalculator::openSidesLabel($openKeys[0]);
+        } else {
+            $openPhrase = 'Mixed open-side sections';
+        }
 
         return sprintf(
             'Stairs renovation — %d steps, %s, %s',
             $steps,
             $matName,
-            $open
+            $openPhrase
         );
     }
 

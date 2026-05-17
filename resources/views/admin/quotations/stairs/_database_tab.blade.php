@@ -26,6 +26,23 @@
         <label for="sq-db-clear">Clear coat protection ($/step)</label>
         <input type="text" id="sq-db-clear" name="clear_coat_per_step" class="admin-input cp-money-input" inputmode="decimal" required
                value="{{ old('clear_coat_per_step', number_format((float) $settings->clear_coat_per_step, 2, '.', '')) }}">
+        </div>
+    </div>
+
+    <div class="admin-card sq-db-nosing-photos" style="margin-bottom:20px;background:#f1f5f9;border:1px solid #e2e8f0;">
+      <h4 style="margin:0 0 8px;font-size:14px;">Nosing option photos (quotation picker)</h4>
+      <p class="admin-form-help" style="margin:0 0 14px;">These images appear when quoting <strong>Vinyl without nosing</strong> (materials where nosing is an add-on). Same image format as material photos.</p>
+      <div class="pq-form-grid">
+        @foreach (\App\Models\StairsMaterialType::nosingChoiceLabels() as $nk => $nLabel)
+          <div class="admin-form-group" style="margin-bottom:0;">
+            <label>{{ $nLabel }}</label>
+            @if ($settings->nosingOptionPhotoUrl($nk))
+              <div style="margin:6px 0;"><img src="{{ $settings->nosingOptionPhotoUrl($nk) }}" alt="" style="max-height:100px;border-radius:6px;border:1px solid #e2e8f0;"></div>
+            @endif
+            <input type="file" name="nosing_option_photo_{{ $nk }}" class="admin-input" accept="image/*" data-nosing-key="{{ $nk }}">
+            <p class="pq-hint" style="margin-top:6px;">Leave empty to keep the current image.</p>
+          </div>
+        @endforeach
       </div>
     </div>
 

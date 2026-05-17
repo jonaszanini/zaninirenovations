@@ -373,7 +373,7 @@ class StairsQuotationController extends Controller
         }
         if (! is_array($segs) || $segs === [] || $sum < 1) {
             $ts = max(0, (int) $defaults['total_steps']);
-            $defaults['segments'] = [['stair_type' => 'standard', 'qty' => max(1, $ts)]];
+            $defaults['segments'] = [['stair_type' => 'standard', 'qty' => max(1, $ts), 'open_sides' => StairsQuotationCalculator::OPEN_NONE]];
         }
 
         return $defaults;
@@ -384,33 +384,30 @@ class StairsQuotationController extends Controller
      */
     protected function gatherInputsFromRequest(Request $request, bool $draft = false): array
     {
+        $openSideRule = Rule::in([
+            StairsQuotationCalculator::OPEN_NONE,
+            StairsQuotationCalculator::OPEN_ONE,
+            StairsQuotationCalculator::OPEN_TWO,
+        ]);
         if ($draft) {
             $data = $request->validate([
                 'total_steps' => ['nullable', 'integer', 'min:0', 'max:500'],
-                'open_sides' => ['nullable', Rule::in([
-                    StairsQuotationCalculator::OPEN_NONE,
-                    StairsQuotationCalculator::OPEN_ONE,
-                    StairsQuotationCalculator::OPEN_TWO,
-                ])],
                 'material_type_id' => ['nullable', 'integer', 'exists:stairs_material_types,id'],
                 'nosing_choice' => ['nullable', 'string', 'max:64'],
                 'segments' => ['nullable', 'array'],
                 'segments.*.stair_type' => ['nullable', 'string', 'max:32'],
                 'segments.*.qty' => ['nullable', 'integer', 'min:0', 'max:500'],
+                'segments.*.open_sides' => ['nullable', 'string', $openSideRule],
             ]);
         } else {
             $data = $request->validate([
                 'total_steps' => ['required', 'integer', 'min:1', 'max:500'],
-                'open_sides' => ['required', Rule::in([
-                    StairsQuotationCalculator::OPEN_NONE,
-                    StairsQuotationCalculator::OPEN_ONE,
-                    StairsQuotationCalculator::OPEN_TWO,
-                ])],
                 'material_type_id' => ['required', 'integer', 'exists:stairs_material_types,id'],
                 'nosing_choice' => ['nullable', 'string', 'max:64'],
                 'segments' => ['nullable', 'array'],
                 'segments.*.stair_type' => ['nullable', 'string', 'max:32'],
                 'segments.*.qty' => ['nullable', 'integer', 'min:0', 'max:500'],
+                'segments.*.open_sides' => ['nullable', 'string', $openSideRule],
             ]);
         }
 
@@ -419,20 +416,28 @@ class StairsQuotationController extends Controller
             if (! is_array($seg)) {
                 continue;
             }
+            $os = (string) ($seg['open_sides'] ?? '');
+            if (! in_array($os, [
+                StairsQuotationCalculator::OPEN_NONE,
+                StairsQuotationCalculator::OPEN_ONE,
+                StairsQuotationCalculator::OPEN_TWO,
+            ], true)) {
+                $os = StairsQuotationCalculator::OPEN_NONE;
+            }
             $segments[] = [
                 'stair_type' => (string) ($seg['stair_type'] ?? 'standard'),
                 'qty' => max(0, (int) ($seg['qty'] ?? 0)),
+                'open_sides' => $os,
             ];
         }
 
         $fallbackSegments = $draft
             ? $segments
-            : ($segments === [] ? [['stair_type' => 'standard', 'qty' => max(1, (int) ($data['total_steps'] ?? 1))]] : $segments);
+            : ($segments === [] ? [['stair_type' => 'standard', 'qty' => max(1, (int) ($data['total_steps'] ?? 1)), 'open_sides' => StairsQuotationCalculator::OPEN_NONE]] : $segments);
 
         return [
             'total_steps' => max(0, (int) ($data['total_steps'] ?? 0)),
             'carpet_removal' => $request->boolean('carpet_removal'),
-            'open_sides' => $data['open_sides'] ?? StairsQuotationCalculator::OPEN_NONE,
             'segments' => $fallbackSegments,
             'material_type_id' => isset($data['material_type_id']) ? (int) $data['material_type_id'] : null,
             'nosing_choice' => trim((string) ($data['nosing_choice'] ?? '')),

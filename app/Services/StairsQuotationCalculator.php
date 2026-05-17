@@ -38,6 +38,33 @@ class StairsQuotationCalculator
         };
     }
 
+    /**
+     * Per-segment open layout; missing segment value falls back to legacy top-level inputs (old quotes).
+     *
+     * @param  array<string, mixed>  $segment
+     */
+    public static function normalizeSegmentOpenSides(array $segment, ?string $legacyTopLevelOpenSides = null): string
+    {
+        $raw = $segment['open_sides'] ?? null;
+        if (is_string($raw) && in_array($raw, [self::OPEN_NONE, self::OPEN_ONE, self::OPEN_TWO], true)) {
+            return $raw;
+        }
+        if (is_string($legacyTopLevelOpenSides) && in_array($legacyTopLevelOpenSides, [self::OPEN_NONE, self::OPEN_ONE, self::OPEN_TWO], true)) {
+            return $legacyTopLevelOpenSides;
+        }
+
+        return self::OPEN_NONE;
+    }
+
+    public static function openSidesLabel(string $openSides): string
+    {
+        return match ($openSides) {
+            self::OPEN_ONE => 'One open side',
+            self::OPEN_TWO => 'Two open sides',
+            default => 'No open sides',
+        };
+    }
+
     public static function stairTypeLabel(string $type): string
     {
         return match ($type) {
@@ -59,10 +86,10 @@ class StairsQuotationCalculator
 
         $totalSteps = max(0, (int) ($inputs['total_steps'] ?? 0));
         $carpetRemoval = filter_var($inputs['carpet_removal'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $openSides = $inputs['open_sides'] ?? self::OPEN_NONE;
-        if (! in_array($openSides, [self::OPEN_NONE, self::OPEN_ONE, self::OPEN_TWO], true)) {
-            $openSides = self::OPEN_NONE;
-        }
+        $legacyOpenSides = $inputs['open_sides'] ?? null;
+        $legacyOpenSides = is_string($legacyOpenSides) && in_array($legacyOpenSides, [self::OPEN_NONE, self::OPEN_ONE, self::OPEN_TWO], true)
+            ? $legacyOpenSides
+            : null;
         $materialId = (int) ($inputs['material_type_id'] ?? 0);
         /** @var StairsMaterialType|null $material */
         $material = $materialId > 0 ? $materials->firstWhere('id', $materialId) : null;
@@ -75,10 +102,7 @@ class StairsQuotationCalculator
             $segments = [];
         }
 
-        $allowed = self::allowedStairTypes($openSides);
-        $pricingKey = self::openSidesPricingKey($openSides);
         $pgrid = $material ? $material->mergedPricing() : StairsMaterialType::defaultPricingArray();
-        $sidePrices = $pgrid[$pricingKey] ?? [];
 
         $breakdown = [];
         $subtotalPreHst = 0.0;
@@ -100,6 +124,8 @@ class StairsQuotationCalculator
             if (! is_array($seg)) {
                 continue;
             }
+            $segOpen = self::normalizeSegmentOpenSides($seg, $legacyOpenSides);
+            $allowed = self::allowedStairTypes($segOpen);
             $stype = (string) ($seg['stair_type'] ?? 'standard');
             if (! in_array($stype, $allowed, true)) {
                 continue;
@@ -111,15 +137,13 @@ class StairsQuotationCalculator
             if (! $material) {
                 continue;
             }
+            $pricingKey = self::openSidesPricingKey($segOpen);
+            $sidePrices = $pgrid[$pricingKey] ?? [];
             $unit = (float) ($sidePrices[$stype] ?? 0);
             $amt = round($unit * $qty, 2);
             $subtotalPreHst += $amt;
             $configuredSteps += $qty;
-            $openLabel = match ($openSides) {
-                self::OPEN_ONE => 'One open side',
-                self::OPEN_TWO => 'Two open sides',
-                default => 'No open sides',
-            };
+            $openLabel = self::openSidesLabel($segOpen);
             $breakdown[] = [
                 'key' => 'stairs_'.$idx,
                 'label' => self::stairTypeLabel($stype),
@@ -201,8 +225,10 @@ class StairsQuotationCalculator
         if (! $draft && $totalSteps < 1) {
             $errors[] = 'Enter at least one total step.';
         }
-        $openSides = $inputs['open_sides'] ?? self::OPEN_NONE;
-        $allowed = self::allowedStairTypes($openSides);
+        $legacyOpenSides = $inputs['open_sides'] ?? null;
+        $legacyOpenSides = is_string($legacyOpenSides) && in_array($legacyOpenSides, [self::OPEN_NONE, self::OPEN_ONE, self::OPEN_TWO], true)
+            ? $legacyOpenSides
+            : null;
 
         $materialId = (int) ($inputs['material_type_id'] ?? 0);
         $material = $materialId > 0 ? $materials->firstWhere('id', $materialId) : null;
@@ -227,6 +253,8 @@ class StairsQuotationCalculator
             if (! is_array($seg)) {
                 continue;
             }
+            $segOpen = self::normalizeSegmentOpenSides($seg, $legacyOpenSides);
+            $allowed = self::allowedStairTypes($segOpen);
             $stype = (string) ($seg['stair_type'] ?? 'standard');
             $qty = max(0, (int) ($seg['qty'] ?? 0));
             if ($qty < 1) {
@@ -234,7 +262,7 @@ class StairsQuotationCalculator
             }
             $hasRow = true;
             if (! in_array($stype, $allowed, true)) {
-                $errors[] = 'One or more stair types are not valid for the selected open sides.';
+                $errors[] = 'One or more stair types are not valid for their open sides on that section.';
 
                 break;
             }
@@ -256,9 +284,8 @@ class StairsQuotationCalculator
         return [
             'total_steps' => 1,
             'carpet_removal' => false,
-            'open_sides' => self::OPEN_NONE,
             'segments' => [
-                ['stair_type' => 'standard', 'qty' => 1],
+                ['stair_type' => 'standard', 'qty' => 1, 'open_sides' => self::OPEN_NONE],
             ],
             'material_type_id' => null,
             'nosing_choice' => '',

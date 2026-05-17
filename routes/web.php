@@ -296,6 +296,9 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.stairs.price-configuration');
     Route::get('quotations/stairs/material-types/{stairs_material_type}/photo', [StairsDatabaseController::class, 'materialPhoto'])
         ->name('quotations.stairs.material-photo');
+    Route::get('quotations/stairs/nosing-options/{key}/photo', [StairsDatabaseController::class, 'nosingOptionPhoto'])
+        ->where('key', '[a-z0-9_]+')
+        ->name('quotations.stairs.nosing-option-photo');
     Route::post('quotations/stairs', [StairsQuotationController::class, 'store'])
         ->name('quotations.stairs.store');
     Route::post('quotations/stairs/preview', [StairsQuotationController::class, 'preview'])

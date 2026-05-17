@@ -36,13 +36,35 @@
   }
   if (! is_array($segRows) || count($segRows) === 0) {
       $ts = max(1, (int) old('total_steps', $inputs['total_steps'] ?? 1));
-      $segRows = [['stair_type' => 'standard', 'qty' => $ts]];
+      $segRows = [['stair_type' => 'standard', 'qty' => $ts, 'open_sides' => StairsQuotationCalculator::OPEN_NONE]];
+  }
+  $legacyOpenForSeg = $inputs['open_sides'] ?? StairsQuotationCalculator::OPEN_NONE;
+  if (! in_array($legacyOpenForSeg, [
+      StairsQuotationCalculator::OPEN_NONE,
+      StairsQuotationCalculator::OPEN_ONE,
+      StairsQuotationCalculator::OPEN_TWO,
+  ], true)) {
+      $legacyOpenForSeg = StairsQuotationCalculator::OPEN_NONE;
+  }
+  if (is_array($segRows)) {
+      foreach ($segRows as $i => $row) {
+          if (! is_array($row)) {
+              continue;
+          }
+          $os = $row['open_sides'] ?? null;
+          if (! is_string($os) || ! in_array($os, [
+              StairsQuotationCalculator::OPEN_NONE,
+              StairsQuotationCalculator::OPEN_ONE,
+              StairsQuotationCalculator::OPEN_TWO,
+          ], true)) {
+              $segRows[$i]['open_sides'] = $legacyOpenForSeg;
+          }
+      }
   }
   $selMaterial = (int) old('material_type_id', $inputs['material_type_id'] ?? 0);
   if (! $isEdit && $selMaterial === 0 && $materialTypes->isNotEmpty()) {
       $selMaterial = (int) $materialTypes->first()->id;
   }
-  $openSidesVal = old('open_sides', $inputs['open_sides'] ?? StairsQuotationCalculator::OPEN_NONE);
 @endphp
 
 @section('heading', $title)
@@ -113,10 +135,36 @@
       border-color: var(--admin-primary);
       box-shadow: 0 0 0 2px var(--admin-primary-ring);
     }
-    .sq-material-card img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 8px; background: #f1f5f9; }
+    .sq-material-card img {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: #f1f5f9;
+    }
+    .sq-material-card:has(.sq-picker-badge) { position: relative; padding-top: 28px; }
+    .sq-picker-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 1;
+      min-width: 1.6em;
+      height: 1.6em;
+      padding: 0 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: #024768;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+    }
     .sq-material-card__name { font-weight: 600; font-size: 13px; line-height: 1.3; display: flex; flex-direction: column; gap: 2px; }
     .sq-material-card__name-line { display: block; }
-    .sq-seg-row { display: grid; grid-template-columns: 1fr 110px auto; gap: 10px; align-items: end; margin-bottom: 10px; }
+    .sq-seg-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1.35fr) 100px auto; gap: 10px; align-items: end; margin-bottom: 10px; }
     @media (max-width: 600px) { .sq-seg-row { grid-template-columns: 1fr; } }
   </style>
 @endpush
@@ -196,23 +244,7 @@
 
           <div class="admin-card" style="margin-bottom:16px;">
             <h3 style="margin:0 0 14px;">Step 3 — Stair configuration</h3>
-            <div class="admin-form-group">
-              <span class="admin-label">Open sides</span>
-              <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;">
-                @foreach ([
-                  StairsQuotationCalculator::OPEN_NONE => 'No open sides',
-                  StairsQuotationCalculator::OPEN_ONE => 'One open side',
-                  StairsQuotationCalculator::OPEN_TWO => 'Two open sides',
-                ] as $ov => $olbl)
-                  <label style="display:flex;align-items:center;gap:6px;font-weight:500;">
-                    <input type="radio" name="open_sides" value="{{ $ov }}" class="sq-open-sides sq-calc-in" @checked($openSidesVal === $ov)>
-                    {{ $olbl }}
-                  </label>
-                @endforeach
-              </div>
-            </div>
-
-            <p class="pq-hint" style="margin-top:12px;">Add one row per stair section. The sum of quantities must match total steps for published quotes.</p>
+            <p class="pq-hint" style="margin-top:0;">Add one row per stair section. Choose open sides and stair type for each section. The sum of quantities must match total steps for published quotes.</p>
             <div id="sq-segments"></div>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sq-add-seg" style="margin-top:6px;">
               <i class="fa fa-plus"></i> Add section
@@ -242,14 +274,26 @@
               @endforeach
             </div>
 
-            <div id="sq-nosing-wrap" class="admin-form-group" style="margin-top:16px;display:none;">
-              <label for="sq-nosing">Nosing option <span class="cp-required">*</span></label>
-              <select id="sq-nosing" name="nosing_choice" class="admin-input sq-calc-in">
-                <option value="">— Select —</option>
+            <div id="sq-nosing-wrap" style="margin-top:16px;display:none;">
+              <span class="admin-label">Nosing option <span class="cp-required">*</span></span>
+              <div class="sq-material-grid">
                 @foreach (StairsMaterialType::nosingChoiceLabels() as $nk => $nLabel)
-                  <option value="{{ $nk }}" @selected(old('nosing_choice', $inputs['nosing_choice'] ?? '') === $nk)>{{ $nLabel }}</option>
+                  <label class="sq-material-card">
+                    <span class="sq-picker-badge">#{{ $loop->iteration }}</span>
+                    <input type="radio" name="nosing_choice" value="{{ $nk }}" class="sq-nosing-radio sq-calc-in" style="position:absolute;opacity:0;width:0;height:0;"
+                      @checked(old('nosing_choice', $inputs['nosing_choice'] ?? '') === $nk)>
+                    @if ($settings->nosingOptionPhotoUrl($nk))
+                      <img src="{{ $settings->nosingOptionPhotoUrl($nk) }}" alt="">
+                    @else
+                      <div style="height:100px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;">No photo</div>
+                    @endif
+                    <div class="sq-material-card__name">
+                      <span class="sq-material-card__name-line">{{ $nLabel }}</span>
+                    </div>
+                  </label>
                 @endforeach
-              </select>
+              </div>
+              <p class="pq-hint" style="margin-top:8px;">Configure photos under <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>.</p>
             </div>
             <p id="sq-nosing-included" class="pq-hint" style="margin-top:10px;display:none;">Nosing is included in the material rate for this option.</p>
           </div>
@@ -348,6 +392,7 @@
         '{{ StairsQuotationCalculator::OPEN_ONE }}': ['standard', 'winder', 'double_landing', 'single_landing'],
         '{{ StairsQuotationCalculator::OPEN_TWO }}': ['standard']
       };
+      var OPEN_NONE = '{{ StairsQuotationCalculator::OPEN_NONE }}';
       var TYPE_LABEL = {
         standard: 'Standard stairs',
         winder: 'Winder step',
@@ -368,38 +413,59 @@
         if (clientInput) clientInput.setAttribute('required', 'required');
       });
 
-      function currentOpenSides() {
-        var r = form.querySelector('.sq-open-sides:checked');
-        return r ? r.value : '{{ StairsQuotationCalculator::OPEN_NONE }}';
-      }
-
-      function allowedTypes() {
-        return OPEN_OPTS[currentOpenSides()] || OPEN_OPTS['{{ StairsQuotationCalculator::OPEN_NONE }}'];
-      }
-
       var segHost = document.getElementById('sq-segments');
       var segIdx = 0;
 
-      function buildStairTypeSelect(selected) {
-        var sel = document.createElement('select');
-        sel.name = 'segments[' + segIdx + '][stair_type]';
-        sel.className = 'admin-input sq-seg-type sq-calc-in';
-        var allowed = allowedTypes();
-        allowed.forEach(function (t) {
+      function allowedTypesForOpen(openVal) {
+        return OPEN_OPTS[openVal] || OPEN_OPTS[OPEN_NONE];
+      }
+
+      function rebuildStairTypeOptions(typeSel, openVal, preferredType) {
+        var al = allowedTypesForOpen(openVal);
+        var v = preferredType != null ? preferredType : typeSel.value;
+        typeSel.innerHTML = '';
+        al.forEach(function (t) {
           var o = document.createElement('option');
           o.value = t;
           o.textContent = TYPE_LABEL[t] || t;
-          if (t === selected) o.selected = true;
+          typeSel.appendChild(o);
+        });
+        typeSel.value = al.indexOf(v) >= 0 ? v : al[0];
+      }
+
+      function buildOpenSidesSelect(selected) {
+        var sel = document.createElement('select');
+        sel.name = 'segments[' + segIdx + '][open_sides]';
+        sel.className = 'admin-input sq-seg-open sq-calc-in';
+        [['{{ StairsQuotationCalculator::OPEN_NONE }}', 'No open sides'],
+          ['{{ StairsQuotationCalculator::OPEN_ONE }}', 'One open side'],
+          ['{{ StairsQuotationCalculator::OPEN_TWO }}', 'Two open sides']].forEach(function (opt) {
+          var o = document.createElement('option');
+          o.value = opt[0];
+          o.textContent = opt[1];
+          if (opt[0] === selected) o.selected = true;
           sel.appendChild(o);
         });
         return sel;
       }
 
-      function addSegmentRow(stairType, qty) {
+      function buildStairTypeSelect(selectedType, openVal) {
+        var sel = document.createElement('select');
+        sel.name = 'segments[' + segIdx + '][stair_type]';
+        sel.className = 'admin-input sq-seg-type sq-calc-in';
+        rebuildStairTypeOptions(sel, openVal, selectedType);
+        return sel;
+      }
+
+      function addSegmentRow(stairType, qty, openSides) {
+        var openVal = openSides || OPEN_NONE;
+        if (!OPEN_OPTS[openVal]) openVal = OPEN_NONE;
         var row = document.createElement('div');
         row.className = 'sq-seg-row';
-        var st = stairType && allowedTypes().indexOf(stairType) >= 0 ? stairType : allowedTypes()[0];
-        var typeSel = buildStairTypeSelect(st);
+        var openSel = buildOpenSidesSelect(openVal);
+        var al = allowedTypesForOpen(openVal);
+        var st = stairType && al.indexOf(stairType) >= 0 ? stairType : al[0];
+        var typeSel = buildStairTypeSelect(st, openVal);
         var qtyIn = document.createElement('input');
         qtyIn.type = 'number';
         qtyIn.name = 'segments[' + segIdx + '][qty]';
@@ -417,8 +483,14 @@
           schedule();
           syncStepHint();
         });
+        openSel.addEventListener('change', function () {
+          rebuildStairTypeOptions(typeSel, openSel.value, typeSel.value);
+          schedule();
+          syncStepHint();
+        });
         typeSel.addEventListener('change', schedule);
         qtyIn.addEventListener('input', function () { schedule(); syncStepHint(); });
+        row.appendChild(openSel);
         row.appendChild(typeSel);
         row.appendChild(qtyIn);
         row.appendChild(rm);
@@ -429,35 +501,16 @@
       var initialSegs = @json($segRows);
       if (Array.isArray(initialSegs) && initialSegs.length) {
         initialSegs.forEach(function (s) {
-          addSegmentRow(s.stair_type || 'standard', s.qty);
+          addSegmentRow(s.stair_type || 'standard', s.qty, s.open_sides || OPEN_NONE);
         });
       } else {
-        addSegmentRow('standard', 1);
+        addSegmentRow('standard', 1, OPEN_NONE);
       }
 
       document.getElementById('sq-add-seg').addEventListener('click', function () {
-        addSegmentRow(allowedTypes()[0], 0);
+        addSegmentRow(allowedTypesForOpen(OPEN_NONE)[0], 0, OPEN_NONE);
         schedule();
         syncStepHint();
-      });
-
-      form.querySelectorAll('.sq-open-sides').forEach(function (r) {
-        r.addEventListener('change', function () {
-          segHost.querySelectorAll('.sq-seg-type').forEach(function (sel) {
-            var v = sel.value;
-            var al = allowedTypes();
-            sel.innerHTML = '';
-            al.forEach(function (t) {
-              var o = document.createElement('option');
-              o.value = t;
-              o.textContent = TYPE_LABEL[t] || t;
-              sel.appendChild(o);
-            });
-            sel.value = al.indexOf(v) >= 0 ? v : al[0];
-          });
-          schedule();
-          syncStepHint();
-        });
       });
 
       function syncStepHint() {
@@ -480,7 +533,6 @@
       syncStepHint();
 
       var nosingWrap = document.getElementById('sq-nosing-wrap');
-      var nosingSelect = document.getElementById('sq-nosing');
       var nosingIncluded = document.getElementById('sq-nosing-included');
       function syncNosingUi() {
         var r = form.querySelector('.sq-material-radio:checked');
@@ -488,11 +540,9 @@
         if (mode === '{{ StairsMaterialType::NOSING_CHOICE }}') {
           nosingWrap.style.display = '';
           nosingIncluded.style.display = 'none';
-          nosingSelect.setAttribute('required', 'required');
         } else {
           nosingWrap.style.display = 'none';
           nosingIncluded.style.display = r ? 'block' : 'none';
-          nosingSelect.removeAttribute('required');
         }
       }
       form.querySelectorAll('.sq-material-radio').forEach(function (radio) {

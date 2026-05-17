@@ -54,12 +54,48 @@ class StairsDatabaseController extends Controller
         return response()->file($real);
     }
 
+    public function nosingOptionPhoto(string $key)
+    {
+        if (! array_key_exists($key, StairsMaterialType::nosingChoiceLabels())) {
+            abort(404);
+        }
+
+        $settings = StairsSettings::query()->find(1);
+        $relative = $settings?->nosingOptionPhotoRelativePath($key);
+        if ($relative === null || str_contains($relative, '..')) {
+            abort(404);
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($relative)) {
+            abort(404);
+        }
+
+        $full = $disk->path($relative);
+        $root = realpath(storage_path('app/public'));
+        $real = realpath($full);
+        if ($root === false || $real === false || ! str_starts_with($real, $root)) {
+            abort(404);
+        }
+
+        return response()->file($real);
+    }
+
     public function update(Request $request)
     {
         $fileRules = [];
         foreach (StairsMaterialType::query()->pluck('id') as $mid) {
             // max: size in KB; permissive mimes so screenshots still pass (stricter `image` can reject some PNGs)
             $fileRules['material_photo_'.$mid] = [
+                'nullable',
+                'file',
+                'mimes:jpg,jpeg,png,webp,gif',
+                'max:20480',
+            ];
+        }
+
+        foreach (array_keys(StairsMaterialType::nosingChoiceLabels()) as $nKey) {
+            $fileRules['nosing_option_photo_'.$nKey] = [
                 'nullable',
                 'file',
                 'mimes:jpg,jpeg,png,webp,gif',
@@ -75,10 +111,41 @@ class StairsDatabaseController extends Controller
 
         $settings = StairsSettings::query()->find(1);
         if ($settings) {
+            $photos = is_array($settings->nosing_option_photos) ? $settings->nosing_option_photos : [];
+
+            foreach (array_keys(StairsMaterialType::nosingChoiceLabels()) as $nKey) {
+                $prefix = 'nosing_option_photo_'.$nKey;
+                $upload = $request->file($prefix);
+                if (! $upload instanceof UploadedFile) {
+                    continue;
+                }
+                if (! $upload->isValid()) {
+                    $msg = $upload->getErrorMessage() ?: 'Upload was rejected (check PHP upload_max_filesize / post_max_size on the server).';
+
+                    throw ValidationException::withMessages([
+                        $prefix => $msg,
+                    ]);
+                }
+
+                $path = $upload->store('stairs-nosing-options', 'public');
+                if ($path === false) {
+                    throw ValidationException::withMessages([
+                        $prefix => 'Could not store the image on disk. Check storage permissions.',
+                    ]);
+                }
+
+                $prev = $photos[$nKey] ?? null;
+                if (is_string($prev) && $prev !== '' && Storage::disk('public')->exists($prev)) {
+                    Storage::disk('public')->delete($prev);
+                }
+                $photos[$nKey] = $path;
+            }
+
             $settings->update([
                 'stain_per_step' => round((float) $request->input('stain_per_step'), 2),
                 'clear_coat_per_step' => round((float) $request->input('clear_coat_per_step'), 2),
                 'carpet_removal_per_step' => round((float) $request->input('carpet_removal_per_step'), 2),
+                'nosing_option_photos' => $photos,
             ]);
         }
 
