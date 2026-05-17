@@ -76,33 +76,39 @@
           <input type="file" name="material_photo_{{ $mat->id }}" class="admin-input" accept="image/*">
         </div>
 
-        <p style="margin:14px 0 8px;font-weight:600;font-size:13px;">No open sides ($/step)</p>
-        <div class="pq-form-grid">
-          @foreach (['standard' => 'Standard stairs', 'winder' => 'Winder', 'double_landing' => 'Double landing', 'single_landing' => 'Single landing'] as $st => $lbl)
-            <div class="admin-form-group">
-              <label>{{ $lbl }}</label>
-              <input type="text" name="materials[{{ $mat->id }}][no_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
-                     value="{{ old('materials.'.$mat->id.'.no_open_'.$st, number_format((float) ($p['no_open'][$st] ?? 0), 2, '.', '')) }}">
-            </div>
-          @endforeach
+        <div class="sq-db-open-block">
+          <p class="sq-db-open-block__title">No open sides ($/step)</p>
+          <div class="pq-form-grid">
+            @foreach (['standard' => 'Standard stairs', 'winder' => 'Winder', 'double_landing' => 'Double landing', 'single_landing' => 'Single landing'] as $st => $lbl)
+              <div class="admin-form-group">
+                <label>{{ $lbl }}</label>
+                <input type="text" name="materials[{{ $mat->id }}][no_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
+                       value="{{ old('materials.'.$mat->id.'.no_open_'.$st, number_format((float) ($p['no_open'][$st] ?? 0), 2, '.', '')) }}">
+              </div>
+            @endforeach
+          </div>
         </div>
 
-        <p style="margin:14px 0 8px;font-weight:600;font-size:13px;">One open side ($/step)</p>
-        <div class="pq-form-grid">
-          @foreach (['standard' => 'Standard stairs', 'winder' => 'Winder', 'double_landing' => 'Double landing', 'single_landing' => 'Single landing'] as $st => $lbl)
-            <div class="admin-form-group">
-              <label>{{ $lbl }}</label>
-              <input type="text" name="materials[{{ $mat->id }}][one_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
-                     value="{{ old('materials.'.$mat->id.'.one_open_'.$st, number_format((float) ($p['one_open'][$st] ?? 0), 2, '.', '')) }}">
-            </div>
-          @endforeach
+        <div class="sq-db-open-block">
+          <p class="sq-db-open-block__title">One open side ($/step)</p>
+          <div class="pq-form-grid">
+            @foreach (['standard' => 'Standard stairs', 'winder' => 'Winder', 'double_landing' => 'Double landing', 'single_landing' => 'Single landing'] as $st => $lbl)
+              <div class="admin-form-group">
+                <label>{{ $lbl }}</label>
+                <input type="text" name="materials[{{ $mat->id }}][one_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
+                       value="{{ old('materials.'.$mat->id.'.one_open_'.$st, number_format((float) ($p['one_open'][$st] ?? 0), 2, '.', '')) }}">
+              </div>
+            @endforeach
+          </div>
         </div>
 
-        <p style="margin:14px 0 8px;font-weight:600;font-size:13px;">Two open sides ($/step)</p>
-        <div class="admin-form-group" style="max-width:240px;">
-          <label>Standard stairs only</label>
-          <input type="text" name="materials[{{ $mat->id }}][two_open_standard]" class="admin-input cp-money-input" inputmode="decimal"
-                 value="{{ old('materials.'.$mat->id.'.two_open_standard', number_format((float) ($p['two_open']['standard'] ?? 0), 2, '.', '')) }}">
+        <div class="sq-db-open-block">
+          <p class="sq-db-open-block__title">Two open sides ($/step)</p>
+          <div class="admin-form-group" style="max-width:240px;margin-bottom:0;">
+            <label>Standard stairs only</label>
+            <input type="text" name="materials[{{ $mat->id }}][two_open_standard]" class="admin-input cp-money-input" inputmode="decimal"
+                   value="{{ old('materials.'.$mat->id.'.two_open_standard', number_format((float) ($p['two_open']['standard'] ?? 0), 2, '.', '')) }}">
+          </div>
         </div>
 
         @if ($mat->nosing_mode === \App\Models\StairsMaterialType::NOSING_CHOICE)

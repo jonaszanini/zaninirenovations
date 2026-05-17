@@ -162,6 +162,19 @@
     .sq-material-card__name { font-weight: 600; font-size: 13px; line-height: 1.3; }
     .sq-seg-row { display: grid; grid-template-columns: 1fr 110px auto; gap: 10px; align-items: end; margin-bottom: 10px; }
     @media (max-width: 600px) { .sq-seg-row { grid-template-columns: 1fr; } }
+    /* Price database — bordered groups per open-sides type */
+    .sq-db-open-block {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .sq-db-open-block__title {
+      margin: 0 0 10px;
+      font-weight: 600;
+      font-size: 13px;
+    }
   </style>
 @endpush
 
