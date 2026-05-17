@@ -2909,7 +2909,10 @@ body.cp-modal-open {
   /* CSS counter so each card auto-numbers itself (#1, #2, #3…). */
   counter-reset: sq-material;
 }
-.sq-material-card {
+/* Scoped to standard quotation materials list only — stairs renovation uses
+   `.sq-material-card` inside `.sq-material-grid` for photo tiles; those must
+   not get the numbered ::before badge or row grid layout from here. */
+.sq-materials-list > .sq-material-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -2927,7 +2930,7 @@ body.cp-modal-open {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
-.sq-material-card:hover {
+.sq-materials-list > .sq-material-card:hover {
   border-color: #cbd5e1;
   border-left-color: #94a3b8;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
@@ -2935,17 +2938,17 @@ body.cp-modal-open {
 /* Zebra striping: odd rows get a soft slate tint. The even rows stay
    pure white. Inputs/readouts already have their own backgrounds so
    the tint only paints the card chrome around them. */
-.sq-material-card:nth-child(odd) {
+.sq-materials-list > .sq-material-card:nth-child(odd) {
   background: #f8fafc;
   border-left-color: #94a3b8;
 }
-.sq-material-card:nth-child(even) {
+.sq-materials-list > .sq-material-card:nth-child(even) {
   background: #ffffff;
   border-left-color: #cbd5e1;
 }
 /* "#N" pill badge anchored at the top-left of every card, bumping
    slightly out of the card so it reads as a label for that block. */
-.sq-material-card::before {
+.sq-materials-list > .sq-material-card::before {
   content: "#" counter(sq-material);
   position: absolute;
   top: -10px;
@@ -3066,7 +3069,7 @@ body.cp-modal-open {
 
 /* Phone: stack all fields one per line. */
 @media (max-width: 560px) {
-  .sq-material-card {
+  .sq-materials-list > .sq-material-card {
     grid-template-columns: 1fr;
   }
   .sq-mat-row--inputs,
