@@ -296,6 +296,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.stairs.store');
     Route::post('quotations/stairs/preview', [StairsQuotationController::class, 'preview'])
         ->name('quotations.stairs.preview');
+    Route::put('quotations/stairs/database', [StairsDatabaseController::class, 'update'])
+        ->name('quotations.stairs.database.update');
     Route::get('quotations/stairs/{stairs_quotation}/edit', [StairsQuotationController::class, 'edit'])
         ->name('quotations.stairs.edit');
     Route::put('quotations/stairs/{stairs_quotation}', [StairsQuotationController::class, 'update'])
@@ -306,8 +308,6 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.stairs.create-project');
     Route::delete('quotations/stairs/{stairs_quotation}', [StairsQuotationController::class, 'destroy'])
         ->name('quotations.stairs.destroy');
-    Route::put('quotations/stairs/database', [StairsDatabaseController::class, 'update'])
-        ->name('quotations.stairs.database.update');
 
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
