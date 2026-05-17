@@ -204,11 +204,9 @@
     .items tbody tr:nth-child(even) td {
       background: #f9fafb;
     }
-    /* Labour credit lines — clear visual emphasis (pre-tax deduction). */
+    /* Labour credit lines — mint background + tag (same cell borders as other rows). */
     .items tbody tr.item-row-credit td {
       background: #ecfdf5;
-      border-left: 3pt solid #16a34a;
-      padding-left: 8pt;
     }
     .items tbody tr.item-row-credit:nth-child(even) td {
       background: #ecfdf5;
