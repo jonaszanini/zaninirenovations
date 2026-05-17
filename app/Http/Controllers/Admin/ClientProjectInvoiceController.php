@@ -161,7 +161,7 @@ class ClientProjectInvoiceController extends Controller
             'items' => ['nullable', 'array'],
             'items.*.description' => ['nullable', 'string', 'max:2000'],
             'items.*.amount' => ['nullable', 'numeric'],
-            'items.*.line_kind' => ['nullable', Rule::in(['labour', 'materials'])],
+            'items.*.line_kind' => ['nullable', Rule::in(['labour', 'materials', 'labour_credit'])],
             'items.*.expense_id' => ['nullable', 'integer'],
             'manual_description' => ['nullable', 'string', 'max:255'],
             'manual_total' => ['nullable', 'numeric', 'min:0'],
@@ -202,6 +202,13 @@ class ClientProjectInvoiceController extends Controller
                 ? 0.0
                 : round($labour * ClientProjectInvoice::HST_RATE, 2);
             $invoice->total = round($labour + $invoice->hst + $materials, 2);
+            if ($invoice->total < 0.01) {
+                return back()
+                    ->withErrors([
+                        'items' => 'Invoice total must be at least CA$0.01. Reduce the labour credit or add more billable lines.',
+                    ])
+                    ->withInput();
+            }
             $this->syncHourlyExpenseLinks($client_project, $invoice, $items);
         } else {
             $invoice->items = $items;
@@ -1283,8 +1290,11 @@ class ClientProjectInvoiceController extends Controller
         $materials = 0.0;
         foreach ($items as $row) {
             $amt = round((float) ($row['amount'] ?? 0), 2);
-            if (($row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR) === ClientProjectInvoice::LINE_KIND_MATERIALS) {
+            $kind = $row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR;
+            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS) {
                 $materials += $amt;
+            } elseif ($kind === ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
+                $labour -= abs($amt);
             } else {
                 $labour += $amt;
             }
@@ -1306,10 +1316,24 @@ class ClientProjectInvoiceController extends Controller
             $description = trim((string) ($row['description'] ?? ''));
             $amount = (float) ($row['amount'] ?? 0);
             $kind = strtolower(trim((string) ($row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR)));
-            if ($kind !== ClientProjectInvoice::LINE_KIND_MATERIALS) {
+            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS) {
+                // keep
+            } elseif ($kind === ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
+                $kind = ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT;
+            } else {
                 $kind = ClientProjectInvoice::LINE_KIND_LABOUR;
             }
             if ($description === '' && $amount == 0.0) {
+                continue;
+            }
+
+            if ($kind === ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
+                $amount = abs($amount);
+                if ($amount < 0.0001) {
+                    continue;
+                }
+            }
+            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS && $amount < 0) {
                 continue;
             }
 

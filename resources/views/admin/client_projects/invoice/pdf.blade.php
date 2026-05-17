@@ -332,9 +332,16 @@
         </thead>
         <tbody>
           @foreach ($labourRows as $row)
+            @php
+              $pdfLineKind = strtolower((string) ($row['line_kind'] ?? 'labour'));
+              $pdfAmt = (float) ($row['amount'] ?? 0);
+              if ($pdfLineKind === \App\Models\ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
+                  $pdfAmt = -abs($pdfAmt);
+              }
+            @endphp
             <tr>
               <td>{{ $row['description'] }}</td>
-              <td class="amount">{{ $fmt($row['amount']) }}</td>
+              <td class="amount">{{ $fmt($pdfAmt) }}</td>
             </tr>
           @endforeach
         </tbody>
