@@ -968,6 +968,32 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-calendar-card {
   padding: 16px;
 }
+.cp-calendar-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.cp-personal-event-modal {
+  max-width: 520px;
+}
+.cp-personal-event-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.cp-personal-event-dates .admin-form-group {
+  margin-bottom: 0;
+}
+.cp-personal-event-footer {
+  justify-content: flex-end;
+}
+@media (max-width: 480px) {
+  .cp-personal-event-dates {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ---- Mobile (≤ 700px): stack the FullCalendar header into 3 rows ----
    Default desktop layout puts everything on a single row with prev/next

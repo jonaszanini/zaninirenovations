@@ -7,6 +7,7 @@ use App\Mail\ClientProjectScheduleDatesClient;
 use App\Mail\ClientProjectServiceConfirmationClient;
 use App\Mail\ClientProjectTimeTrackingSummaryClient;
 use App\Models\ClientCommunicationLog;
+use App\Models\AdminCalendarEvent;
 use App\Models\ClientProject;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
@@ -845,10 +846,18 @@ class ClientProjectController extends Controller
             }
         }
 
+        foreach (AdminCalendarEvent::query()->orderBy('start_date')->orderBy('id')->get() as $personal) {
+            $events->push($personal->toFullCalendarEvent());
+        }
+
         return view('admin.client_projects.calendar', [
             'events' => $events->values(),
             'statusLabels' => ClientProject::statusLabels(),
             'statusColors' => ClientProject::statusColors(),
+            'personalEventColor' => AdminCalendarEvent::CALENDAR_COLOR,
+            'personalEventStoreUrl' => route('admin.calendar.personal-events.store'),
+            'personalEventUpdateUrlTemplate' => route('admin.calendar.personal-events.update', ['admin_calendar_event' => '__ID__']),
+            'personalEventDestroyUrlTemplate' => route('admin.calendar.personal-events.destroy', ['admin_calendar_event' => '__ID__']),
         ]);
     }
 }

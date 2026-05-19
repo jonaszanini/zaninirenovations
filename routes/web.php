@@ -110,6 +110,12 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // Client Projects management (quote → completion lifecycle).
     Route::get('client-projects/calendar', [\App\Http\Controllers\Admin\ClientProjectController::class, 'calendar'])
         ->name('client-projects.calendar');
+    Route::post('calendar/personal-events', [\App\Http\Controllers\Admin\AdminCalendarEventController::class, 'store'])
+        ->name('calendar.personal-events.store');
+    Route::put('calendar/personal-events/{admin_calendar_event}', [\App\Http\Controllers\Admin\AdminCalendarEventController::class, 'update'])
+        ->name('calendar.personal-events.update');
+    Route::delete('calendar/personal-events/{admin_calendar_event}', [\App\Http\Controllers\Admin\AdminCalendarEventController::class, 'destroy'])
+        ->name('calendar.personal-events.destroy');
     Route::post('client-projects/{client_project}/status', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'update'])
         ->name('client-projects.status.update');
     Route::post('client-projects/{client_project}/installments', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'saveInstallments'])

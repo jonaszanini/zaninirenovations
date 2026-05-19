@@ -773,8 +773,8 @@
         var conflict = rangeOverlapsBusy(selection.start, selection.end);
         if (conflict) {
           conflictBox.style.display = 'block';
-          conflictBox.innerHTML = 'Heads up: this range overlaps <strong>' +
-            (conflict.title || 'another project') + '</strong>. You can still confirm, but check the calendar first.';
+          conflictBox.innerHTML = 'This range overlaps <strong>' +
+            (conflict.title || 'another project') + '</strong>';
         } else {
           conflictBox.style.display = 'none';
           conflictBox.textContent = '';
