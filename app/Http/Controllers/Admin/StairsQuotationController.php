@@ -431,6 +431,12 @@ class StairsQuotationController extends Controller
             ];
         }
 
+        $materialId = isset($data['material_type_id']) ? (int) $data['material_type_id'] : null;
+        $material = $materialId ? StairsMaterialType::query()->find($materialId) : null;
+        foreach ($segments as $i => $seg) {
+            $segments[$i]['open_sides'] = StairsQuotationCalculator::normalizeSegmentOpenSidesForMaterial($seg, $material);
+        }
+
         $fallbackSegments = $draft
             ? $segments
             : ($segments === [] ? [['stair_type' => 'standard', 'qty' => max(1, (int) ($data['total_steps'] ?? 1)), 'open_sides' => StairsQuotationCalculator::OPEN_NONE]] : $segments);

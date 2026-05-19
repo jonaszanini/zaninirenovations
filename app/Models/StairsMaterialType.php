@@ -19,6 +19,8 @@ class StairsMaterialType extends Model
 
     public const NOSING_RUBBER = 'rubber_nosing';
 
+    public const KEY_VINYL_WITHOUT_NOSING = 'vinyl_without_nosing';
+
     protected $fillable = [
         'key',
         'name',
@@ -73,6 +75,12 @@ class StairsMaterialType extends Model
     public function mergedPricing(): array
     {
         return array_replace_recursive(self::defaultPricingArray(), is_array($this->pricing) ? $this->pricing : []);
+    }
+
+    /** Vinyl without nosing is quoted with no-open-side rates only (no one/two open variants). */
+    public function supportsOpenSidePricing(): bool
+    {
+        return $this->key !== self::KEY_VINYL_WITHOUT_NOSING;
     }
 
     /**

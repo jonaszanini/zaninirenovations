@@ -61,7 +61,7 @@ class StairsQuotation extends Model
             if ($qty < 1) {
                 continue;
             }
-            $openKeys[] = StairsQuotationCalculator::normalizeSegmentOpenSides($seg, $legacy);
+            $openKeys[] = StairsQuotationCalculator::normalizeSegmentOpenSidesForMaterial($seg, $material, $legacy);
         }
         $openKeys = array_values(array_unique($openKeys));
         if (count($openKeys) === 0) {

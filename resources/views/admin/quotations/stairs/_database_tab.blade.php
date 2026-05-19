@@ -114,6 +114,7 @@
           </div>
         </div>
 
+        @if ($mat->supportsOpenSidePricing())
         <div class="sq-db-open-block">
           <p class="sq-db-open-block__title">One open side ($/step)</p>
           <div class="sq-db-rate-grid">
@@ -137,6 +138,8 @@
             </div>
           </div>
         </div>
+
+        @endif
 
         @if ($mat->nosing_mode === \App\Models\StairsMaterialType::NOSING_CHOICE)
           <p style="margin:14px 0 8px;font-weight:600;font-size:13px;">Nosing options ($/step)</p>

@@ -153,18 +153,27 @@ class StairsDatabaseController extends Controller
             $id = (int) $mat->id;
             $pricing = $mat->mergedPricing();
 
-            foreach (['no_open', 'one_open'] as $side) {
-                foreach (['standard', 'winder', 'double_landing', 'single_landing'] as $st) {
-                    $key = $side.'_'.$st;
-                    $val = $request->input('materials.'.$id.'.'.$key);
-                    if ($val !== null && $val !== '') {
-                        $pricing[$side][$st] = round((float) str_replace(',', '', (string) $val), 2);
-                    }
+            foreach (['standard', 'winder', 'double_landing', 'single_landing'] as $st) {
+                $key = 'no_open_'.$st;
+                $val = $request->input('materials.'.$id.'.'.$key);
+                if ($val !== null && $val !== '') {
+                    $pricing['no_open'][$st] = round((float) str_replace(',', '', (string) $val), 2);
                 }
             }
-            $val2 = $request->input('materials.'.$id.'.two_open_standard');
-            if ($val2 !== null && $val2 !== '') {
-                $pricing['two_open']['standard'] = round((float) str_replace(',', '', (string) $val2), 2);
+            if ($mat->supportsOpenSidePricing()) {
+                foreach (['one_open'] as $side) {
+                    foreach (['standard', 'winder', 'double_landing', 'single_landing'] as $st) {
+                        $key = $side.'_'.$st;
+                        $val = $request->input('materials.'.$id.'.'.$key);
+                        if ($val !== null && $val !== '') {
+                            $pricing[$side][$st] = round((float) str_replace(',', '', (string) $val), 2);
+                        }
+                    }
+                }
+                $val2 = $request->input('materials.'.$id.'.two_open_standard');
+                if ($val2 !== null && $val2 !== '') {
+                    $pricing['two_open']['standard'] = round((float) str_replace(',', '', (string) $val2), 2);
+                }
             }
             if ($mat->nosing_mode === StairsMaterialType::NOSING_CHOICE) {
                 foreach (array_keys(StairsMaterialType::nosingChoiceLabels()) as $nk) {

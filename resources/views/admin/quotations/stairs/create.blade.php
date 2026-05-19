@@ -65,6 +65,14 @@
   if (! $isEdit && $selMaterial === 0 && $materialTypes->isNotEmpty()) {
       $selMaterial = (int) $materialTypes->first()->id;
   }
+  $vinylWithoutNosingId = (int) ($materialTypes->firstWhere('key', StairsMaterialType::KEY_VINYL_WITHOUT_NOSING)?->id ?? 0);
+  if ($vinylWithoutNosingId > 0 && $selMaterial === $vinylWithoutNosingId && is_array($segRows)) {
+      foreach ($segRows as $i => $row) {
+          if (is_array($segRows[$i])) {
+              $segRows[$i]['open_sides'] = StairsQuotationCalculator::OPEN_NONE;
+          }
+      }
+  }
 @endphp
 
 @section('heading', $title)
@@ -165,6 +173,8 @@
     .sq-material-card__name { font-weight: 600; font-size: 13px; line-height: 1.3; display: flex; flex-direction: column; gap: 2px; }
     .sq-material-card__name-line { display: block; }
     .sq-seg-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1.35fr) 100px auto; gap: 10px; align-items: end; margin-bottom: 10px; }
+    .sq-seg-row.sq-seg-row--no-open-variants { grid-template-columns: minmax(150px, 1.35fr) 100px auto; }
+    .sq-seg-row.sq-seg-row--no-open-variants .sq-seg-open-wrap { display: none; }
     @media (max-width: 600px) { .sq-seg-row { grid-template-columns: 1fr; } }
   </style>
 @endpush
@@ -244,7 +254,7 @@
 
           <div class="admin-card" style="margin-bottom:16px;">
             <h3 style="margin:0 0 14px;">Step 3 — Stair configuration</h3>
-            <p class="pq-hint" style="margin-top:0;">Add one row per stair section. Choose open sides and stair type for each section. The sum of quantities must match total steps for published quotes.</p>
+            <p class="pq-hint" style="margin-top:0;" id="sq-seg-hint">Add one row per stair section. Choose open sides and stair type for each section. The sum of quantities must match total steps for published quotes.</p>
             <div id="sq-segments"></div>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sq-add-seg" style="margin-top:6px;">
               <i class="fa fa-plus"></i> Add section
@@ -259,6 +269,7 @@
                 <label class="sq-material-card">
                   <input type="radio" name="material_type_id" value="{{ $mat->id }}" class="sq-material-radio sq-calc-in" style="position:absolute;opacity:0;width:0;height:0;"
                     data-nosing-mode="{{ $mat->nosing_mode }}"
+                    data-material-key="{{ $mat->key }}"
                     @checked($selMaterial === (int) $mat->id)>
                   @if ($mat->photoUrl())
                     <img src="{{ $mat->photoUrl() }}" alt="">
@@ -393,6 +404,7 @@
         '{{ StairsQuotationCalculator::OPEN_TWO }}': ['standard']
       };
       var OPEN_NONE = '{{ StairsQuotationCalculator::OPEN_NONE }}';
+      var KEY_VINYL_WITHOUT_NOSING = '{{ StairsMaterialType::KEY_VINYL_WITHOUT_NOSING }}';
       var TYPE_LABEL = {
         standard: 'Standard stairs',
         winder: 'Winder step',
@@ -414,7 +426,26 @@
       });
 
       var segHost = document.getElementById('sq-segments');
+      var segHint = document.getElementById('sq-seg-hint');
       var segIdx = 0;
+
+      function selectedMaterialKey() {
+        var r = form.querySelector('.sq-material-radio:checked');
+        return r ? r.getAttribute('data-material-key') : '';
+      }
+
+      function materialAllowsOpenSideVariants() {
+        return selectedMaterialKey() !== KEY_VINYL_WITHOUT_NOSING;
+      }
+
+      function openSideSelectOptions() {
+        var opts = [[OPEN_NONE, 'No open sides']];
+        if (materialAllowsOpenSideVariants()) {
+          opts.push(['{{ StairsQuotationCalculator::OPEN_ONE }}', 'One open side']);
+          opts.push(['{{ StairsQuotationCalculator::OPEN_TWO }}', 'Two open sides']);
+        }
+        return opts;
+      }
 
       function allowedTypesForOpen(openVal) {
         return OPEN_OPTS[openVal] || OPEN_OPTS[OPEN_NONE];
@@ -433,19 +464,25 @@
         typeSel.value = al.indexOf(v) >= 0 ? v : al[0];
       }
 
+      function fillOpenSidesSelect(sel, selected) {
+        var allowed = openSideSelectOptions().map(function (o) { return o[0]; });
+        var val = allowed.indexOf(selected) >= 0 ? selected : OPEN_NONE;
+        sel.innerHTML = '';
+        openSideSelectOptions().forEach(function (opt) {
+          var o = document.createElement('option');
+          o.value = opt[0];
+          o.textContent = opt[1];
+          if (opt[0] === val) o.selected = true;
+          sel.appendChild(o);
+        });
+        return val;
+      }
+
       function buildOpenSidesSelect(selected) {
         var sel = document.createElement('select');
         sel.name = 'segments[' + segIdx + '][open_sides]';
         sel.className = 'admin-input sq-seg-open sq-calc-in';
-        [['{{ StairsQuotationCalculator::OPEN_NONE }}', 'No open sides'],
-          ['{{ StairsQuotationCalculator::OPEN_ONE }}', 'One open side'],
-          ['{{ StairsQuotationCalculator::OPEN_TWO }}', 'Two open sides']].forEach(function (opt) {
-          var o = document.createElement('option');
-          o.value = opt[0];
-          o.textContent = opt[1];
-          if (opt[0] === selected) o.selected = true;
-          sel.appendChild(o);
-        });
+        fillOpenSidesSelect(sel, selected || OPEN_NONE);
         return sel;
       }
 
@@ -457,12 +494,35 @@
         return sel;
       }
 
+      function syncSegmentRowsForMaterial() {
+        var allowOpen = materialAllowsOpenSideVariants();
+        if (segHint) {
+          segHint.textContent = allowOpen
+            ? 'Add one row per stair section. Choose open sides and stair type for each section. The sum of quantities must match total steps for published quotes.'
+            : 'Add one row per stair section. Choose stair type for each section (Vinyl without nosing uses no-open-side rates only). The sum of quantities must match total steps for published quotes.';
+        }
+        segHost.querySelectorAll('.sq-seg-row').forEach(function (row) {
+          row.classList.toggle('sq-seg-row--no-open-variants', !allowOpen);
+          var openSel = row.querySelector('.sq-seg-open');
+          var typeSel = row.querySelector('.sq-seg-type');
+          if (!openSel || !typeSel) return;
+          var openVal = fillOpenSidesSelect(openSel, allowOpen ? openSel.value : OPEN_NONE);
+          rebuildStairTypeOptions(typeSel, openVal, typeSel.value);
+        });
+        schedule();
+        syncStepHint();
+      }
+
       function addSegmentRow(stairType, qty, openSides) {
         var openVal = openSides || OPEN_NONE;
         if (!OPEN_OPTS[openVal]) openVal = OPEN_NONE;
+        if (!materialAllowsOpenSideVariants()) openVal = OPEN_NONE;
         var row = document.createElement('div');
-        row.className = 'sq-seg-row';
+        row.className = 'sq-seg-row' + (materialAllowsOpenSideVariants() ? '' : ' sq-seg-row--no-open-variants');
+        var openWrap = document.createElement('div');
+        openWrap.className = 'sq-seg-open-wrap';
         var openSel = buildOpenSidesSelect(openVal);
+        openWrap.appendChild(openSel);
         var al = allowedTypesForOpen(openVal);
         var st = stairType && al.indexOf(stairType) >= 0 ? stairType : al[0];
         var typeSel = buildStairTypeSelect(st, openVal);
@@ -490,7 +550,7 @@
         });
         typeSel.addEventListener('change', schedule);
         qtyIn.addEventListener('input', function () { schedule(); syncStepHint(); });
-        row.appendChild(openSel);
+        row.appendChild(openWrap);
         row.appendChild(typeSel);
         row.appendChild(qtyIn);
         row.appendChild(rm);
@@ -546,9 +606,14 @@
         }
       }
       form.querySelectorAll('.sq-material-radio').forEach(function (radio) {
-        radio.addEventListener('change', function () { syncNosingUi(); schedule(); });
+        radio.addEventListener('change', function () {
+          syncNosingUi();
+          syncSegmentRowsForMaterial();
+          schedule();
+        });
       });
       syncNosingUi();
+      syncSegmentRowsForMaterial();
 
       var root = document.getElementById('sq-live-root');
       var t = null;
