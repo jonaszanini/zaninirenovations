@@ -248,24 +248,15 @@
           });
       });
 
-      var DESKTOP_TOOLBAR = {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,listMonth'
-      };
-      var MOBILE_TOOLBAR = {
+      var calendarToolbar = {
         left: 'prev today next',
         center: 'title',
-        right: 'dayGridMonth,timeGridWeek,listMonth'
+        right: 'dayGridMonth,timeGridWeek,listMonth',
       };
-      var MOBILE_BREAKPOINT = 700;
-      function pickToolbar() {
-        return window.innerWidth <= MOBILE_BREAKPOINT ? MOBILE_TOOLBAR : DESKTOP_TOOLBAR;
-      }
 
       calendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
-        headerToolbar: pickToolbar(),
+        headerToolbar: calendarToolbar,
         firstDay: 0,
         height: 'auto',
         events: projectEvents,
@@ -305,13 +296,6 @@
             info.el.style.cursor = 'pointer';
           }
         },
-        windowResize: function () {
-          var next = pickToolbar();
-          var current = calendar.getOption('headerToolbar');
-          if (!current || current.left !== next.left) {
-            calendar.setOption('headerToolbar', next);
-          }
-        }
       });
       calendar.render();
     });

@@ -1035,6 +1035,121 @@ a:hover .cp-expense-receipt-pdf {
 .cp-calendar-card {
   padding: 16px;
 }
+
+/* FullCalendar toolbar — match admin-btn--primary (arrows, active view) and admin-btn--ghost (today, inactive views). */
+.cp-calendar-card .fc .fc-toolbar.fc-header-toolbar {
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cp-calendar-card .fc .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cp-calendar-card .fc .fc-button {
+  font-family: var(--admin-font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 8px;
+  min-height: 38px;
+  padding: 0.35rem 0.85rem;
+  box-shadow: none;
+  text-transform: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+/* Navigation arrows — same as Add personal event (primary). */
+.cp-calendar-card .fc .fc-prev-button,
+.cp-calendar-card .fc .fc-next-button {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}
+.cp-calendar-card .fc .fc-prev-button:hover,
+.cp-calendar-card .fc .fc-next-button:hover,
+.cp-calendar-card .fc .fc-prev-button:focus,
+.cp-calendar-card .fc .fc-next-button:focus {
+  background: var(--admin-primary-hover);
+  border-color: var(--admin-primary-hover);
+  color: #fff;
+}
+/* Today — same as Back to list (ghost). */
+.cp-calendar-card .fc .fc-today-button {
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  color: var(--admin-muted);
+}
+.cp-calendar-card .fc .fc-today-button:hover,
+.cp-calendar-card .fc .fc-today-button:focus {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+/* Month / week / list — ghost when inactive, primary when active. */
+.cp-calendar-card .fc .fc-button-group {
+  gap: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cp-calendar-card .fc .fc-button-group .fc-button {
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  color: var(--admin-muted);
+  border-radius: 0;
+  margin: 0;
+}
+.cp-calendar-card .fc .fc-button-group .fc-button + .fc-button {
+  border-left-width: 0;
+}
+.cp-calendar-card .fc .fc-button-group .fc-button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.cp-calendar-card .fc .fc-button-group .fc-button:last-child {
+  border-radius: 0 8px 8px 0;
+}
+.cp-calendar-card .fc .fc-button-group .fc-button:only-child {
+  border-radius: 8px;
+}
+.cp-calendar-card .fc .fc-button-group .fc-button:hover,
+.cp-calendar-card .fc .fc-button-group .fc-button:focus {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  z-index: 1;
+}
+.cp-calendar-card .fc .fc-button-group .fc-button.fc-button-active {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+  z-index: 2;
+}
+.cp-calendar-card .fc .fc-button-group .fc-button.fc-button-active:hover,
+.cp-calendar-card .fc .fc-button-group .fc-button.fc-button-active:focus {
+  background: var(--admin-primary-hover);
+  border-color: var(--admin-primary-hover);
+  color: #fff;
+}
+.cp-calendar-card .fc .fc-button:disabled {
+  opacity: 0.45;
+}
+/* Override FullCalendar theme “primary” defaults inside the project calendar. */
+.cp-calendar-card .fc .fc-prev-button.fc-button-primary,
+.cp-calendar-card .fc .fc-next-button.fc-button-primary {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}
+.cp-calendar-card .fc .fc-today-button.fc-button-primary {
+  background: transparent;
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+.cp-calendar-card .fc .fc-button-group .fc-button.fc-button-primary:not(.fc-button-active) {
+  background: transparent;
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+
 .cp-calendar-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1063,15 +1178,8 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 /* ---- Mobile (≤ 700px): stack the FullCalendar header into 3 rows ----
-   Default desktop layout puts everything on a single row with prev/next
-   on the left, title in the middle, view buttons on the right. On phones
-   that overflows. We re-arrange the three .fc-toolbar-chunk children:
-     row 1 (top)    = view buttons (month / week / list)
-     row 2 (middle) = title (Month + Year)
-     row 3 (bottom) = prev | today | next, spread across the full width
-   The JS in calendar.blade.php switches the `left` toolbar config from
-   "prev,next today" (button group + today) to "prev today next" (three
-   independent slots) so the bottom row can space-between them. */
+   Desktop: one row — prev | today | next (left), title (center), views (right).
+   Mobile re-orders chunks: views on top, title middle, prev | today | next bottom. */
 @media (max-width: 700px) {
   .cp-calendar-card .fc .fc-header-toolbar.fc-toolbar {
     display: flex;
