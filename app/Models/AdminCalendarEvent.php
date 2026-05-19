@@ -7,8 +7,8 @@ use Illuminate\Support\Carbon;
 
 class AdminCalendarEvent extends Model
 {
-    /** Distinct from project status colours on the calendar. */
-    public const CALENDAR_COLOR = '#64748b';
+    /** Standalone (personal / holiday) events — always red on the calendar. */
+    public const CALENDAR_COLOR = '#dc2626';
 
     protected $fillable = [
         'title',

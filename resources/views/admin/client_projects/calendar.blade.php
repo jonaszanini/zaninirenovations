@@ -8,7 +8,7 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Job timelines and visit days from projects. <strong>Personal</strong> events (slate) are only on this calendar — click to edit. Project events open the project.</p>
+    <p class="admin-toolbar-lede">Job timelines and visit days from projects. <strong>Personal</strong> events (red) are only on this calendar — click to edit. Project events open the project.</p>
     <div class="cp-calendar-toolbar-actions">
       <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-personal-event-add">
         <i class="fa fa-plus"></i> Add personal event
