@@ -500,7 +500,7 @@ class StairsQuotationController extends Controller
     protected function syncStairsLineToProjectQuotation(ClientProject $project, StairsQuotation $stairsQuotation): void
     {
         $items = [[
-            'description' => $stairsQuotation->summaryDescription().' (see '.$stairsQuotation->quote_number.')',
+            'description' => $stairsQuotation->summaryDescription(),
             'amount' => round((float) $stairsQuotation->final_quote_total, 2),
             'apply_hst' => false,
         ]];

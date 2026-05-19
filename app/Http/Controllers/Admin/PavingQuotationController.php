@@ -451,10 +451,8 @@ class PavingQuotationController extends Controller
         PavingQuotation $pavingQuotation,
         string $lineDescription
     ): void {
-        $ref = '(see '.$pavingQuotation->quote_number.')';
-
         $items = [[
-            'description' => $lineDescription.' '.$ref,
+            'description' => $lineDescription,
             'amount' => round((float) $pavingQuotation->final_quote_total, 2),
             'apply_hst' => false,
         ]];

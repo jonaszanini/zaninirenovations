@@ -532,35 +532,33 @@ class StandardQuotationController extends Controller
             $lineDescription = 'Standard quotation';
         }
 
-        $quoteRef = '(see '.$standardQuotation->quote_number.')';
         $taxablePreHst = $this->preHstTaxableForLink($standardQuotation);
         $exemptPreHst = $this->preHstExemptForLink($standardQuotation);
-        $refSuffix = ' '.$quoteRef;
 
         $sqLines = [];
         if ($exemptPreHst > 0 && $taxablePreHst > 0) {
             $sqLines[] = [
-                'description' => $lineDescription.' — HST applicable'.$refSuffix,
+                'description' => $lineDescription.' — HST applicable',
                 'amount' => $taxablePreHst,
                 'apply_hst' => true,
                 'source_standard_quotation_id' => $standardQuotation->id,
             ];
             $sqLines[] = [
-                'description' => $lineDescription.' — HST exempt'.$refSuffix,
+                'description' => $lineDescription.' — HST exempt',
                 'amount' => $exemptPreHst,
                 'apply_hst' => false,
                 'source_standard_quotation_id' => $standardQuotation->id,
             ];
         } elseif ($exemptPreHst > 0) {
             $sqLines[] = [
-                'description' => $lineDescription.$refSuffix,
+                'description' => $lineDescription,
                 'amount' => $exemptPreHst,
                 'apply_hst' => false,
                 'source_standard_quotation_id' => $standardQuotation->id,
             ];
         } else {
             $sqLines[] = [
-                'description' => $lineDescription.$refSuffix,
+                'description' => $lineDescription,
                 'amount' => $taxablePreHst,
                 'apply_hst' => true,
                 'source_standard_quotation_id' => $standardQuotation->id,

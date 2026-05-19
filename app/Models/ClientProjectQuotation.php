@@ -190,6 +190,12 @@ class ClientProjectQuotation extends Model
         return $this->isEstimate() ? 'EST' : 'QUO';
     }
 
+    /** Remove internal calculator cross-reference suffixes from client-facing text. */
+    public static function stripCalculatorReferenceSuffix(string $description): string
+    {
+        return trim((string) preg_replace('/\s*\(see\s+[A-Z]{2,}-\d{4}-\d+\)\s*$/iu', '', $description));
+    }
+
     /** Sanitised line items: drops blank rows and coerces amounts to float. */
     public function cleanItems(): array
     {
@@ -197,7 +203,7 @@ class ClientProjectQuotation extends Model
 
         $clean = [];
         foreach ($items as $row) {
-            $description = trim((string) ($row['description'] ?? ''));
+            $description = self::stripCalculatorReferenceSuffix(trim((string) ($row['description'] ?? '')));
             $amount = (float) ($row['amount'] ?? 0);
             // Skip rows that are completely empty (no text AND zero amount).
             if ($description === '' && $amount == 0.0) {
