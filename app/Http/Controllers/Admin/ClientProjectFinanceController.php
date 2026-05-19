@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use RuntimeException;
@@ -25,7 +27,7 @@ use RuntimeException;
  * Handles CRUD for the financial + time sections of a ClientProject:
  *   - Total amount + payment plan + installment percentages
  *   - Mark an installment as paid / unpaid
- *   - Expenses (add / delete)
+ *   - Expenses (add / update / delete)
  *   - Returns / credits (add / delete)
  *   - Time entries (add / delete)
  */
@@ -208,7 +210,7 @@ class ClientProjectFinanceController extends Controller
             'occurred_on' => ['required', 'date'],
             'description' => ['required', 'string', 'max:500'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'receipt' => ['nullable', 'file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
+            'receipt' => $this->expenseReceiptFileRules(false),
         ]);
 
         try {
@@ -226,10 +228,9 @@ class ClientProjectFinanceController extends Controller
                 ]);
 
                 if ($request->hasFile('receipt')) {
-                    $receiptPath = app(ProjectPhotoWebpStorage::class)->store(
+                    $receiptPath = app(ProjectPhotoWebpStorage::class)->storeExpenseReceipt(
                         $request->file('receipt'),
                         $client_project->id,
-                        'expense-receipts',
                         'Receipt-'.$nextRef
                     );
                     $expense->update(['receipt_path' => $receiptPath]);
@@ -245,7 +246,7 @@ class ClientProjectFinanceController extends Controller
     }
 
     /**
-     * Email the client an expenses table and attach receipt WebP files when present.
+     * Email the client an expenses table and attach receipt files (WebP or PDF) when present.
      */
     public function sendExpensesToClient(ClientProject $client_project, ClientProjectStatusService $statusService)
     {
@@ -283,7 +284,7 @@ class ClientProjectFinanceController extends Controller
         }
         $description .= ', net (materials) '.ClientProject::formatMoney($netMaterials);
         if ($receiptCount > 0) {
-            $description .= ', '.$receiptCount.' receipt '.Str::plural('photo', $receiptCount).' attached';
+            $description .= ', '.$receiptCount.' receipt '.Str::plural('file', $receiptCount).' attached';
         }
 
         try {
@@ -353,6 +354,117 @@ class ClientProjectFinanceController extends Controller
         $expense->delete();
 
         return back()->with('success', 'Expense removed.');
+    }
+
+    public function updateExpense(Request $request, ClientProject $client_project, ClientProjectExpense $expense)
+    {
+        if (! $client_project->isAccepted()) {
+            return back()
+                ->withFragment('financials')
+                ->with('error', 'Expenses are available once the proposal is accepted.');
+        }
+
+        abort_unless($expense->client_project_id === $client_project->id, 404);
+
+        $billed = $expense->client_project_invoice_id !== null;
+
+        if ($billed) {
+            $validator = Validator::make($request->all(), [
+                'receipt' => $this->expenseReceiptFileRules(true),
+            ]);
+        } else {
+            $validator = Validator::make($request->all(), [
+                'occurred_on' => ['required', 'date'],
+                'description' => ['required', 'string', 'max:500'],
+                'amount' => ['required', 'numeric', 'min:0.01'],
+                'receipt' => $this->expenseReceiptFileRules(false),
+            ]);
+        }
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput()
+                ->with('open_expense_edit', $expense->id)
+                ->withFragment('financials');
+        }
+
+        $data = $validator->validated();
+
+        try {
+            DB::transaction(function () use ($request, $client_project, $expense, $data, $billed) {
+                ClientProject::whereKey($client_project->id)->lockForUpdate()->first();
+
+                $ref = (int) $expense->expense_ref;
+                $basename = 'Receipt-'.$ref;
+
+                if ($billed) {
+                    $oldPath = $expense->receipt_path;
+                    $newPath = app(ProjectPhotoWebpStorage::class)->storeExpenseReceipt(
+                        $request->file('receipt'),
+                        $client_project->id,
+                        $basename
+                    );
+                    if (filled($oldPath) && $oldPath !== $newPath) {
+                        $this->deleteExpenseReceiptFromStorage($oldPath);
+                    }
+                    $expense->update(['receipt_path' => $newPath]);
+                } else {
+                    $update = [
+                        'occurred_on' => $data['occurred_on'],
+                        'description' => $data['description'],
+                        'amount' => $data['amount'],
+                    ];
+                    if ($request->hasFile('receipt')) {
+                        $oldPath = $expense->receipt_path;
+                        $newPath = app(ProjectPhotoWebpStorage::class)->storeExpenseReceipt(
+                            $request->file('receipt'),
+                            $client_project->id,
+                            $basename
+                        );
+                        if (filled($oldPath) && $oldPath !== $newPath) {
+                            $this->deleteExpenseReceiptFromStorage($oldPath);
+                        }
+                        $update['receipt_path'] = $newPath;
+                    }
+                    $expense->update($update);
+                }
+            });
+        } catch (RuntimeException $e) {
+            return back()
+                ->withErrors(['receipt' => $e->getMessage()])
+                ->withInput()
+                ->with('open_expense_edit', $expense->id)
+                ->withFragment('financials');
+        }
+
+        return back()
+            ->withFragment('financials')
+            ->with('success', 'Expense updated.');
+    }
+
+    private function deleteExpenseReceiptFromStorage(?string $relativePath): void
+    {
+        if (! filled($relativePath)) {
+            return;
+        }
+
+        $rel = ltrim(str_replace('\\', '/', (string) $relativePath), '/');
+        Storage::disk('public')->delete($rel);
+        $mirror = public_path('storage/'.$rel);
+        if (is_file($mirror)) {
+            @unlink($mirror);
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function expenseReceiptFileRules(bool $required): array
+    {
+        $inner = ['file', 'mimes:pdf,webp,jpeg,jpg,png', 'max:10240'];
+
+        return $required ? array_merge(['required'], $inner) : array_merge(['nullable'], $inner);
     }
 
     public function storeReturn(Request $request, ClientProject $client_project)
@@ -433,7 +545,8 @@ class ClientProjectFinanceController extends Controller
     /**
      * Shared validation for create/update of a time entry.
      * Either hours OR start_time must be provided. End time is optional;
-     * if provided, it must be after start_time.
+     * if provided with start_time, duration is same-day when end > start,
+     * or overnight when end < start (next calendar morning).
      */
     private function validateTimeEntry(Request $request): array
     {
@@ -476,9 +589,8 @@ class ClientProjectFinanceController extends Controller
         if ($start && $end) {
             $computed = ClientProjectTimeEntry::computeHoursFromRange($start, $end);
             if ($computed === null) {
-                // Range was invalid (end <= start). Surface as a validation error.
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'end_time' => 'End time must be after start time.',
+                    'end_time' => 'Start and end must differ. For overnight work, set end to the next morning on the clock (e.g. 20:00 → 8:00).',
                 ]);
             }
             $hours = $computed;

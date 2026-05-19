@@ -351,15 +351,19 @@
       var endMin = parseHhMm(endSel.value);
 
       if (startMin !== null && endMin !== null) {
-        if (endMin <= startMin) {
+        if (endMin === startMin) {
           hoursInput.readOnly = false;
           hoursInput.classList.remove('is-locked');
           hoursInput.value = '';
-          hoursInput.setCustomValidity('End time must be after start time.');
-          hoursInput.title = 'End time must be after start time.';
+          hoursInput.setCustomValidity('Start and end must differ.');
+          hoursInput.title = 'Start and end must differ.';
           return;
         }
-        var hours = (endMin - startMin) / 60;
+        var endForCalc = endMin;
+        if (endForCalc < startMin) {
+          endForCalc += 24 * 60;
+        }
+        var hours = (endForCalc - startMin) / 60;
         hoursInput.value = (Math.round(hours * 100) / 100).toString();
         hoursInput.readOnly = true;
         hoursInput.classList.add('is-locked');
@@ -703,11 +707,42 @@
     }
   };
 
+  function initExpenseEditToggles() {
+    document.querySelectorAll('[data-cp-expense-edit-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var id = btn.getAttribute('data-cp-expense-edit-toggle');
+        var row = document.querySelector('[data-cp-expense-edit-row="' + id + '"]');
+        if (!row) return;
+        var opening = row.hidden;
+        document.querySelectorAll('[data-cp-expense-edit-row]').forEach(function (r) {
+          r.hidden = true;
+        });
+        if (opening) {
+          row.hidden = false;
+          var mi = row.querySelector('.cp-money-input');
+          if (mi && window.cpMoneyMask) {
+            window.cpMoneyMask.wire(mi);
+          }
+        }
+      });
+    });
+    document.querySelectorAll('[data-cp-expense-edit-cancel]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var id = btn.getAttribute('data-cp-expense-edit-cancel');
+        var row = document.querySelector('[data-cp-expense-edit-row="' + id + '"]');
+        if (row) row.hidden = true;
+      });
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initMoneyMask();
     initPhoneMask();
     initTimeForms();
     initTimeEditToggles();
+    initExpenseEditToggles();
     initBillingTypeToggle();
 
     var planSelect = document.getElementById('cp-plan');

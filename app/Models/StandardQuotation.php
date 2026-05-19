@@ -21,6 +21,7 @@ class StandardQuotation extends Model
         'document_type',
         'quote_number',
         'client_name',
+        'display_title',
         'work_description',
         'includes_material',
         'includes_labour',

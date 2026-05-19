@@ -99,10 +99,11 @@
           <span class="cp-quotation-accordion__chevron" aria-hidden="true"><i class="fa fa-chevron-right"></i></span>
           <div class="cp-quotation-accordion__core">
             <div class="cp-quotation-accordion__title-row">
-              <h3 class="cp-quotation-accordion__title">
-                {{ $title }}
-                <span class="cp-quotation-number">{{ $quotation->quotation_number }}</span>
-              </h3>
+              @include('admin.client_projects._quotation_heading_primary', [
+                  'quotation' => $quotation,
+                  'title' => $title,
+                  'headingClass' => 'cp-quotation-accordion__title',
+              ])
               <div class="cp-quotation-accordion__total-block">
                 @if ($hasContent)
                   <span class="cp-quotation-accordion__total-hint">Total w/ HST</span>
@@ -224,7 +225,10 @@
             <div class="cp-contract-preview cp-quotation-preview">
               <div class="cp-quotation-doc-meta">
                 <div>
-                  <div class="cp-quotation-doc-title">{{ $typeLabel }} #{{ $quotation->quotation_number }}</div>
+                  @include('admin.client_projects._quotation_preview_doc_heading', [
+                      'quotation' => $quotation,
+                      'typeLabel' => $typeLabel,
+                  ])
                   <div class="cp-quotation-doc-date">Date: {{ \App\Support\EasternStandardTimeDisplay::todayLongDate() }}</div>
                 </div>
                 <div class="cp-quotation-doc-client">
@@ -307,10 +311,11 @@
       <div class="admin-card cp-contract-card" style="margin-bottom:1.25rem;">
         <div class="cp-contract-header">
           <div class="cp-contract-meta">
-            <h3>
-              {{ $title }}
-              <span class="cp-quotation-number">{{ $quotation->quotation_number }}</span>
-            </h3>
+            @include('admin.client_projects._quotation_heading_primary', [
+                'quotation' => $quotation,
+                'title' => $title,
+                'headingClass' => '',
+            ])
             <div class="cp-contract-meta-row">
               @if ($legacy)
                 <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy (read-only)</span>
@@ -421,7 +426,10 @@
         <div class="cp-contract-preview cp-quotation-preview">
           <div class="cp-quotation-doc-meta">
             <div>
-              <div class="cp-quotation-doc-title">{{ $typeLabel }} #{{ $quotation->quotation_number }}</div>
+              @include('admin.client_projects._quotation_preview_doc_heading', [
+                  'quotation' => $quotation,
+                  'typeLabel' => $typeLabel,
+              ])
               <div class="cp-quotation-doc-date">Date: {{ \App\Support\EasternStandardTimeDisplay::todayLongDate() }}</div>
             </div>
             <div class="cp-quotation-doc-client">

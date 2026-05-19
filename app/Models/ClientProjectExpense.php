@@ -39,13 +39,43 @@ class ClientProjectExpense extends Model
         });
     }
 
-    /** Filename used for email attachments and on-disk WebP (matches the # column). */
+    /** Filename for email attachments (matches on-disk name: Receipt-#.webp or .pdf). */
     public function receiptAttachmentBasename(): string
     {
+        if (filled($this->receipt_path)) {
+            $base = basename(str_replace('\\', '/', (string) $this->receipt_path));
+            if ($base !== '' && $base !== '.' && $base !== '..') {
+                return $base;
+            }
+        }
+
         return 'Receipt-'.(int) $this->expense_ref.'.webp';
     }
 
-    /** Public URL for the receipt WebP, or null when none. */
+    /** MIME type for mail attachments. */
+    public function receiptAttachmentMime(): string
+    {
+        $base = strtolower(basename(str_replace('\\', '/', (string) ($this->receipt_path ?? ''))));
+
+        if (str_ends_with($base, '.pdf')) {
+            return 'application/pdf';
+        }
+
+        return 'image/webp';
+    }
+
+    /** True when the stored file is WebP (thumbnail preview in admin). */
+    public function receiptIsImagePreview(): bool
+    {
+        if (! filled($this->receipt_path)) {
+            return false;
+        }
+        $base = strtolower(basename(str_replace('\\', '/', $this->receipt_path)));
+
+        return str_ends_with($base, '.webp');
+    }
+
+    /** Public URL for the receipt file, or null when none. */
     public function receiptUrl(): ?string
     {
         if (! filled($this->receipt_path)) {

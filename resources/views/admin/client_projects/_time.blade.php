@@ -5,16 +5,18 @@
   $hourlyRate = $project->effectiveHourlyRate();
   $configuredRate = $isHourly ? (float) ($project->hourly_rate ?? 0) : null;
 
-  // 15-minute slots 08:00–20:00. Values stay zero-padded HH:MM for DB
-  // consistency; labels use 24h without a leading zero on the hour
-  // (9:00, 13:00) for easier reading on phones.
+  // 15-minute slots (00:00–23:45) plus 23:59 as end-of-day. Values stay
+  // zero-padded HH:MM for DB consistency; labels use 24h without a leading
+  // zero on the hour (9:00, 13:00) for easier reading on phones. When end <
+  // start, duration spans midnight (e.g. 20:00 → 8:00).
   $timeOptions = [];
-  for ($minutes = 8 * 60; $minutes <= 20 * 60; $minutes += 15) {
+  for ($minutes = 0; $minutes < 24 * 60; $minutes += 15) {
     $h = intdiv($minutes, 60);
     $m = $minutes % 60;
     $value = sprintf('%02d:%02d', $h, $m);
     $timeOptions[$value] = sprintf('%d:%02d', $h, $m);
   }
+  $timeOptions['23:59'] = '23:59';
 @endphp
 
 <div class="admin-card">
@@ -61,7 +63,7 @@
       </div>
     </div>
     <p class="admin-form-help cp-time-help">
-      Tip: pick <strong>Start</strong> + <strong>End</strong> and Hours fills in automatically. Pick only <strong>Start</strong> to log an in-progress entry — you can come back later and add the End time.
+      Tip: pick <strong>Start</strong> + <strong>End</strong> and Hours fills in automatically. For a shift past midnight, use a clock time on the next morning for <strong>End</strong> (e.g. start 20:00, end 8:00). Pick only <strong>Start</strong> to log an in-progress entry — you can come back later and add the End time.
     </p>
     @error('hours') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('end_time') <p class="admin-form-error">{{ $message }}</p> @enderror

@@ -49,6 +49,9 @@ class ClientProjectInvoice extends Model
     /** Invoice line maps to materials; amount is stored tax-included; no extra HST. */
     public const LINE_KIND_MATERIALS = 'materials';
 
+    /** Pre-tax labour deduction (e.g. prepaid toward estimate). Amount stored positive; subtracts from labour for HST. */
+    public const LINE_KIND_LABOUR_CREDIT = 'labour_credit';
+
     protected $fillable = [
         'client_project_id',
         'installment_number',
@@ -223,7 +226,11 @@ class ClientProjectInvoice extends Model
             }
 
             $lineKind = strtolower((string) ($row['line_kind'] ?? self::LINE_KIND_LABOUR));
-            if ($lineKind !== self::LINE_KIND_MATERIALS) {
+            if ($lineKind === self::LINE_KIND_LABOUR_CREDIT) {
+                $lineKind = self::LINE_KIND_LABOUR_CREDIT;
+            } elseif ($lineKind === self::LINE_KIND_MATERIALS) {
+                $lineKind = self::LINE_KIND_MATERIALS;
+            } else {
                 $lineKind = self::LINE_KIND_LABOUR;
             }
 
@@ -232,7 +239,7 @@ class ClientProjectInvoice extends Model
                 'amount' => round($amount, 2),
                 'line_kind' => $lineKind,
             ];
-            if (! empty($row['expense_id'])) {
+            if ($lineKind === self::LINE_KIND_MATERIALS && ! empty($row['expense_id'])) {
                 $out['expense_id'] = (int) $row['expense_id'];
             }
             $clean[] = $out;
@@ -251,10 +258,16 @@ class ClientProjectInvoice extends Model
     {
         $sum = 0.0;
         foreach ($this->cleanItems() as $row) {
-            if (($row['line_kind'] ?? self::LINE_KIND_LABOUR) === self::LINE_KIND_MATERIALS) {
+            $kind = $row['line_kind'] ?? self::LINE_KIND_LABOUR;
+            if ($kind === self::LINE_KIND_MATERIALS) {
                 continue;
             }
-            $sum += (float) ($row['amount'] ?? 0);
+            $amt = (float) ($row['amount'] ?? 0);
+            if ($kind === self::LINE_KIND_LABOUR_CREDIT) {
+                $sum -= abs($amt);
+            } else {
+                $sum += $amt;
+            }
         }
 
         return round($sum, 2);

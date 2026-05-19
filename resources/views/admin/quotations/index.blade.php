@@ -73,7 +73,7 @@
       </div>
     </a>
 
-    <a href="#" class="fq-hub-card fq-hub-card--placeholder" onclick="event.preventDefault();" aria-label="Stairs quotation (coming soon)">
+    <a href="{{ route('admin.quotations.stairs.index', $pq) }}" class="fq-hub-card">
       <div class="fq-hub-card-image-wrap" aria-hidden="true">
         <img src="{{ asset('images/quotations/stairs.webp') }}" alt="" class="fq-hub-card-image">
       </div>

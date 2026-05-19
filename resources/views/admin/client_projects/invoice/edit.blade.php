@@ -94,6 +94,7 @@
           Hourly invoice — prefilled from {{ $invoice->timeEntries->count() }} unbilled time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}.
           You can edit the descriptions and amounts freely before sending. Deleting this draft will release the entries back to "unbilled".
           Material lines are tax-included (no extra HST on materials); HST applies to labour only.
+          Use <strong>Labour credit</strong> for a pre-tax deduction (e.g. deposit already paid toward an estimate). Enter the credit as a <strong>positive</strong> amount; it reduces labour before HST is calculated.
         @elseif ($isManual)
           Manual invoice — no installment link. Enter the pre-HST total and optionally itemise the work below.
         @else
@@ -108,6 +109,10 @@
           id="cp-invoice-form">
       @csrf
       @method('PUT')
+
+      @error('items')
+        <p class="admin-form-error" style="margin:0 0 12px;">{{ $message }}</p>
+      @enderror
 
       <input type="hidden" name="intent" value="draft" id="cp-invoice-intent">
 
@@ -181,9 +186,9 @@
             </div>
           @else
             <div class="admin-form-group">
-              <span class="admin-form-help" style="display:block;margin-top:22px;line-height:1.5;color:#374151;">
-                Mark each line as Labour (pre-tax) or Materials (<strong>amount includes HST</strong>). Invoice HST applies to labour lines only — materials pass through tax-included.
-              </span>
+                <span class="admin-form-help" style="display:block;margin-top:22px;line-height:1.5;color:#374151;">
+                  Mark each line as Labour (pre-tax), <strong>Labour credit</strong> (pre-tax deduction — enter a positive amount), or Materials (<strong>amount includes HST</strong>). Invoice HST applies to net labour only — materials pass through tax-included.
+                </span>
             </div>
           @endunless
         </div>
@@ -232,7 +237,13 @@
             @foreach ($existing as $i => $row)
               @php
                 $lk = strtolower((string) ($row['line_kind'] ?? 'labour'));
-                $lk = $lk === 'materials' ? 'materials' : 'labour';
+                if ($lk === 'materials') {
+                    $lk = 'materials';
+                } elseif ($lk === 'labour_credit') {
+                    $lk = 'labour_credit';
+                } else {
+                    $lk = 'labour';
+                }
                 $expenseId = $row['expense_id'] ?? null;
               @endphp
               <tr class="cp-quotation-row">
@@ -260,6 +271,7 @@
                     @else
                       <select name="items[{{ $i }}][line_kind]" class="admin-input cp-invoice-line-kind" aria-label="Line type">
                         <option value="labour" @selected($lk === 'labour')>Labour</option>
+                        <option value="labour_credit" @selected($lk === 'labour_credit')>Labour credit</option>
                         <option value="materials" @selected($lk === 'materials')>Materials</option>
                       </select>
                     @endif
@@ -286,12 +298,20 @@
           </tbody>
         </table>
 
-        <div class="cp-quotation-add-row-slot">
+        <div class="cp-quotation-add-row-slot cp-invoice-add-rows">
           <button type="button"
                   id="cp-invoice-add-row"
                   class="cp-quotation-add-row-btn">
             <i class="fa fa-plus"></i> Add row
           </button>
+          @if ($isHourlyManual)
+            <button type="button"
+                    id="cp-invoice-add-labour-credit"
+                    class="cp-quotation-add-row-btn"
+                    title="Pre-tax deduction (e.g. prepaid toward estimate)">
+              <i class="fa fa-minus-circle"></i> Add labour credit
+            </button>
+          @endif
         </div>
 
         @if ($isHourlyManual)
@@ -441,6 +461,7 @@
         <td class="col-line-kind">
           <select name="items[__INDEX__][line_kind]" class="admin-input cp-invoice-line-kind" aria-label="Line type">
             <option value="labour" selected>Labour</option>
+            <option value="labour_credit">Labour credit</option>
             <option value="materials">Materials</option>
           </select>
         </td>
@@ -510,6 +531,7 @@
 
       var tbody = document.querySelector('#cp-invoice-items tbody');
       var addBtn = document.getElementById('cp-invoice-add-row');
+      var addLabourCreditBtn = document.getElementById('cp-invoice-add-labour-credit');
       var template = document.getElementById(HOURLY_MANUAL ? 'cp-invoice-row-template-hourly' : 'cp-invoice-row-template');
       var subtotalEl = document.getElementById('cp-invoice-subtotal');
       var lineSubtotalEl = document.getElementById('cp-invoice-line-subtotal');
@@ -602,8 +624,13 @@
           tbody.querySelectorAll('tr.cp-quotation-row').forEach(function (tr) {
             var amt = parseAmount(tr.querySelector('.cp-quotation-row-amount'));
             var kind = rowLineKind(tr);
-            if (kind === 'materials') materials += amt;
-            else labour += amt;
+            if (kind === 'materials') {
+              materials += amt;
+            } else if (kind === 'labour_credit') {
+              labour -= Math.abs(amt);
+            } else {
+              labour += amt;
+            }
           });
           labour = Math.round(labour * 100) / 100;
           materials = Math.round(materials * 100) / 100;
@@ -692,8 +719,9 @@
         });
       }
 
-      addBtn.addEventListener('click', function () {
-        var html = template.innerHTML.replace(/__INDEX__/g, tbody.querySelectorAll('tr').length);
+      function addInvoiceRow(lineKindPreset) {
+        var idx = tbody.querySelectorAll('tr.cp-quotation-row').length;
+        var html = template.innerHTML.replace(/__INDEX__/g, String(idx));
         var wrapper = document.createElement('tbody');
         wrapper.innerHTML = html.trim();
         var newRow = wrapper.firstChild;
@@ -702,9 +730,28 @@
         if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
           window.cpMoneyMask.wire(newRow.querySelectorAll('.cp-money-input'));
         }
+        var sel = newRow.querySelector('select.cp-invoice-line-kind');
+        if (sel && lineKindPreset) {
+          sel.value = lineKindPreset;
+        }
         var desc = newRow.querySelector('.cp-quotation-row-desc');
-        if (desc) desc.focus();
+        if (desc) {
+          if (lineKindPreset === 'labour_credit') {
+            desc.placeholder = 'e.g. Deposit / prepaid toward estimate (30% of labour)';
+          }
+          desc.focus();
+        }
+        recalc();
+      }
+
+      addBtn.addEventListener('click', function () {
+        addInvoiceRow(null);
       });
+      if (addLabourCreditBtn) {
+        addLabourCreditBtn.addEventListener('click', function () {
+          addInvoiceRow('labour_credit');
+        });
+      }
 
       tbody.addEventListener('click', function (e) {
         var btn = e.target.closest('.cp-quotation-remove-row');

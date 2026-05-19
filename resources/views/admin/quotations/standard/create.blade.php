@@ -4,7 +4,6 @@
   use App\Models\ClientProjectQuotation;
 
   $isEdit = filled($quotation);
-  $title = $isEdit ? 'Edit standard quotation '.$quotation->quote_number : 'New standard quotation';
 
   // Project-context mode: this editor was opened from a project's
   // "Edit quotation" entry point. The form posts with ?return=project
@@ -82,7 +81,15 @@
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
 
-@section('heading', $title)
+@section('heading')
+  @php
+    $headDisplay = old('display_title', $isEdit ? ($quotation->display_title ?? '') : '');
+  @endphp
+  @if (filled($headDisplay))
+    <span class="admin-sq-heading-display" style="display:block;font-weight:700;margin-bottom:8px;">{{ $headDisplay }}</span>
+  @endif
+  <span @if (filled($headDisplay)) style="font-weight:400;" @endif>{{ $isEdit ? 'Edit standard quotation '.$quotation->quote_number : 'New standard quotation' }}</span>
+@endsection
 
 @section('content')
   <div class="admin-toolbar fq-list-toolbar">
@@ -168,6 +175,15 @@
                value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
                placeholder="e.g. Jane Smith">
         @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
+      <div class="admin-form-group" style="max-width:480px;">
+        <label for="sq-display-title">Title <span class="cp-required">*</span></label>
+        <input type="text" id="sq-display-title" name="display_title" class="admin-input @error('display_title') is-invalid @enderror"
+               maxlength="255" required
+               value="{{ old('display_title', $isEdit ? $quotation->display_title : '') }}"
+               placeholder="Shown at the top of the client quotation PDF">
+        @error('display_title') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
       <div class="admin-form-group" style="margin-top:18px;">

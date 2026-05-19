@@ -52,6 +52,7 @@ class ClientProject extends Model
         'client_id',
         'name',
         'contacted_via',
+        'conversation_on',
         'client_name',
         'client_email',
         'client_email_secondary',
@@ -392,6 +393,30 @@ class ClientProject extends Model
 
         return array_key_exists($this->contacted_via, self::contactedViaOptions())
             ? $this->contacted_via
+            : null;
+    }
+
+    /** Label for ongoing / follow-up channel; em dash when unset. */
+    public function conversationOnDisplay(): string
+    {
+        if ($this->conversation_on === null || $this->conversation_on === '') {
+            return '—';
+        }
+
+        return self::contactedViaOptions()[$this->conversation_on] ?? '—';
+    }
+
+    /**
+     * Stored `conversation_on` key when it maps to a known option (for CSS styling).
+     */
+    public function conversationOnStyleKey(): ?string
+    {
+        if ($this->conversation_on === null || $this->conversation_on === '') {
+            return null;
+        }
+
+        return array_key_exists($this->conversation_on, self::contactedViaOptions())
+            ? $this->conversation_on
             : null;
     }
 
@@ -945,6 +970,7 @@ class ClientProject extends Model
             ClientProjectQuotation::SOURCE_FENCE => 'Fence calculator',
             ClientProjectQuotation::SOURCE_STANDARD => 'Standard calculator',
             ClientProjectQuotation::SOURCE_PAVING => 'Paving calculator',
+            ClientProjectQuotation::SOURCE_STAIRS => 'Stairs calculator',
             ClientProjectQuotation::SOURCE_MANUAL => 'Manual / legacy',
             null, '' => 'Manual / legacy',
             default => (string) $q->source_type,

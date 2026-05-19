@@ -194,6 +194,24 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-contacted-via-line {
   margin: -2px 0 10px 0;
 }
+.cp-header-contact-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 16px;
+  margin: -2px 0 10px 0;
+}
+.cp-header-contact-block .cp-notes-popover-wrap {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.cp-header-contact-via-block {
+  flex: 1;
+  min-width: min(100%, 200px);
+}
+.cp-header-contact-via-block .cp-contacted-via-line {
+  margin: 0;
+}
 .cp-contacted-via-value {
   font-weight: 700;
 }
@@ -788,6 +806,55 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
+}
+.cp-expense-receipt-pdf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 56px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  text-decoration: none;
+}
+a:hover .cp-expense-receipt-pdf {
+  background: #fee2e2;
+}
+.cp-expense-actions-cell {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.cp-expense-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cp-expense-edit-row td {
+  padding: 0;
+  border-top: none;
+  background: #f9fafb;
+}
+.cp-expense-edit-panel {
+  padding: 16px 20px 20px;
+  border-top: 1px dashed #e5e7eb;
+}
+.cp-expense-edit-heading {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.cp-expense-edit-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
 }
 .cp-expenses-send-email {
   margin-top: 20px;
@@ -1699,6 +1766,16 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-quotation-add-row-slot {
   margin: 0 0 12px;
 }
+.cp-invoice-add-rows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+.cp-invoice-add-rows .cp-quotation-add-row-btn {
+  flex: 1 1 200px;
+  width: auto;
+}
 .cp-quotation-add-row-btn {
   display: flex;
   width: 100%;
@@ -1946,6 +2023,45 @@ textarea.admin-input {
   color: #111827;
   line-height: 1.3;
 }
+.cp-quotation-accordion__title.cp-quotation-primary-heading--standard {
+  font-weight: 400;
+}
+
+/* Calculator heading: optional StandardQuotation display title + kind + number */
+.cp-quotation-primary-heading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+.cp-quotation-primary-heading--standard {
+  font-weight: 400;
+}
+.cp-quotation-primary-heading__display-title {
+  display: block;
+  font-weight: 700;
+  font-size: 16px;
+  color: #111827;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.cp-quotation-primary-heading__kind-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 2px;
+  font-weight: 400;
+}
+.cp-quotation-primary-heading__kind {
+  font-weight: 400;
+}
+.cp-contract-meta .cp-quotation-primary-heading {
+  font-size: 18px;
+}
+.cp-contract-meta .cp-quotation-primary-heading__display-title {
+  font-size: 18px;
+}
 .cp-quotation-accordion__total-block {
   text-align: right;
 }
@@ -2050,6 +2166,13 @@ textarea.admin-input {
   margin-bottom: 18px;
   padding-bottom: 14px;
   border-bottom: 1px solid #e5e7eb;
+}
+.cp-quotation-doc-display-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #024768;
+  line-height: 1.15;
+  margin: 0 0 4px;
 }
 .cp-quotation-doc-title {
   font-size: 22px;
@@ -2812,7 +2935,10 @@ body.cp-modal-open {
   /* CSS counter so each card auto-numbers itself (#1, #2, #3…). */
   counter-reset: sq-material;
 }
-.sq-material-card {
+/* Scoped to standard quotation materials list only — stairs renovation uses
+   `.sq-material-card` inside `.sq-material-grid` for photo tiles; those must
+   not get the numbered ::before badge or row grid layout from here. */
+.sq-materials-list > .sq-material-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -2830,7 +2956,7 @@ body.cp-modal-open {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
-.sq-material-card:hover {
+.sq-materials-list > .sq-material-card:hover {
   border-color: #cbd5e1;
   border-left-color: #94a3b8;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
@@ -2838,17 +2964,17 @@ body.cp-modal-open {
 /* Zebra striping: odd rows get a soft slate tint. The even rows stay
    pure white. Inputs/readouts already have their own backgrounds so
    the tint only paints the card chrome around them. */
-.sq-material-card:nth-child(odd) {
+.sq-materials-list > .sq-material-card:nth-child(odd) {
   background: #f8fafc;
   border-left-color: #94a3b8;
 }
-.sq-material-card:nth-child(even) {
+.sq-materials-list > .sq-material-card:nth-child(even) {
   background: #ffffff;
   border-left-color: #cbd5e1;
 }
 /* "#N" pill badge anchored at the top-left of every card, bumping
    slightly out of the card so it reads as a label for that block. */
-.sq-material-card::before {
+.sq-materials-list > .sq-material-card::before {
   content: "#" counter(sq-material);
   position: absolute;
   top: -10px;
@@ -2969,7 +3095,7 @@ body.cp-modal-open {
 
 /* Phone: stack all fields one per line. */
 @media (max-width: 560px) {
-  .sq-material-card {
+  .sq-materials-list > .sq-material-card {
     grid-template-columns: 1fr;
   }
   .sq-mat-row--inputs,

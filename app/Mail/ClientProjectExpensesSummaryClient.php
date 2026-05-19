@@ -9,7 +9,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Sends the client a table of project expenses and attaches receipt WebP files when present.
+ * Sends the client a table of project expenses and attaches receipt files (WebP or PDF) when present.
  */
 class ClientProjectExpensesSummaryClient extends Mailable
 {
@@ -42,7 +42,7 @@ class ClientProjectExpensesSummaryClient extends Mailable
             }
             $as = $expense->receiptAttachmentBasename();
             // Third arg is the attachment display name; fourth is options (not a single options array as arg 3).
-            $this->attachFromStorageDisk('public', $path, $as, ['mime' => 'image/webp']);
+            $this->attachFromStorageDisk('public', $path, $as, ['mime' => $expense->receiptAttachmentMime()]);
         }
 
         return $this;

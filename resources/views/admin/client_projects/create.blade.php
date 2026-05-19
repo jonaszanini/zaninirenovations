@@ -25,7 +25,17 @@
         @error('contacted_via') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
-      <div class="admin-form-section">
+      <div class="admin-form-group">
+        <label for="cp-conversation-on">Conversation on</label>
+        <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
+          <option value="" @selected(old('conversation_on') === null || old('conversation_on') === '')>— Not set —</option>
+          @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
+            <option value="{{ $value }}" @selected(old('conversation_on') === $value)>{{ $label }}</option>
+          @endforeach
+        </select>
+        <p class="admin-form-help">If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.</p>
+        @error('conversation_on') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
         <h3>Client information</h3>
 
         @include('admin.client_projects._client_directory_picker', [

@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GooglePhotosController;
 use App\Http\Controllers\Admin\PavingDatabaseController;
 use App\Http\Controllers\Admin\PavingQuotationController;
+use App\Http\Controllers\Admin\StairsDatabaseController;
+use App\Http\Controllers\Admin\StairsQuotationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\ContactFormController;
 use App\Models\Project;
@@ -128,6 +130,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.expenses.send');
     Route::delete('client-projects/{client_project}/expenses/{expense}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyExpense'])
         ->name('client-projects.expenses.destroy');
+    Route::put('client-projects/{client_project}/expenses/{expense}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'updateExpense'])
+        ->name('client-projects.expenses.update');
     Route::post('client-projects/{client_project}/returns', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeReturn'])
         ->name('client-projects.returns.store');
     Route::delete('client-projects/{client_project}/returns/{project_return}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyReturn'])
@@ -288,6 +292,35 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.paving.database.rates.update');
     Route::post('quotations/paving/database/tiers/sync', [PavingDatabaseController::class, 'syncTiers'])
         ->name('quotations.paving.database.tiers.sync');
+
+    // Stairs renovation quotations (configurable materials + per-step pricing).
+    Route::get('quotations/stairs', [StairsQuotationController::class, 'index'])
+        ->name('quotations.stairs.index');
+    Route::get('quotations/stairs/create', [StairsQuotationController::class, 'create'])
+        ->name('quotations.stairs.create');
+    Route::get('quotations/stairs/price-configuration', [StairsDatabaseController::class, 'edit'])
+        ->name('quotations.stairs.price-configuration');
+    Route::get('quotations/stairs/material-types/{stairs_material_type}/photo', [StairsDatabaseController::class, 'materialPhoto'])
+        ->name('quotations.stairs.material-photo');
+    Route::get('quotations/stairs/nosing-options/{key}/photo', [StairsDatabaseController::class, 'nosingOptionPhoto'])
+        ->where('key', '[a-z0-9_]+')
+        ->name('quotations.stairs.nosing-option-photo');
+    Route::post('quotations/stairs', [StairsQuotationController::class, 'store'])
+        ->name('quotations.stairs.store');
+    Route::post('quotations/stairs/preview', [StairsQuotationController::class, 'preview'])
+        ->name('quotations.stairs.preview');
+    Route::post('quotations/stairs/database', [StairsDatabaseController::class, 'update'])
+        ->name('quotations.stairs.database.update');
+    Route::get('quotations/stairs/{stairs_quotation}/edit', [StairsQuotationController::class, 'edit'])
+        ->name('quotations.stairs.edit');
+    Route::put('quotations/stairs/{stairs_quotation}', [StairsQuotationController::class, 'update'])
+        ->name('quotations.stairs.update');
+    Route::post('quotations/stairs/{stairs_quotation}/link', [StairsQuotationController::class, 'linkToProject'])
+        ->name('quotations.stairs.link');
+    Route::post('quotations/stairs/{stairs_quotation}/create-project', [StairsQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.stairs.create-project');
+    Route::delete('quotations/stairs/{stairs_quotation}', [StairsQuotationController::class, 'destroy'])
+        ->name('quotations.stairs.destroy');
 
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
