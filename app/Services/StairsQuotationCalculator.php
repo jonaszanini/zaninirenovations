@@ -228,6 +228,18 @@ class StairsQuotationCalculator
             ];
         }
 
+        $labourSubtotalPreHst = round($subtotalPreHst, 2);
+        $materialPrice = max(0, round((float) ($inputs['material_price'] ?? 0), 2));
+        if ($materialPrice > 0) {
+            $subtotalPreHst += $materialPrice;
+            $breakdown[] = [
+                'key' => 'materials',
+                'label' => 'Materials',
+                'detail' => 'Materials supplied',
+                'amount' => $materialPrice,
+            ];
+        }
+
         $subtotalPreHst = round($subtotalPreHst, 2);
         $hst = round($subtotalPreHst * StairsQuotation::HST_RATE, 2);
         $grand = round($subtotalPreHst + $hst, 2);
@@ -235,6 +247,8 @@ class StairsQuotationCalculator
         return [
             'summary' => [
                 'subtotal_pre_hst' => $subtotalPreHst,
+                'labour_subtotal_pre_hst' => $labourSubtotalPreHst,
+                'material_price' => $materialPrice,
                 'hst' => $hst,
                 'hst_rate' => StairsQuotation::HST_RATE,
                 'grand_total' => $grand,
@@ -326,6 +340,7 @@ class StairsQuotationCalculator
             'nosing_choice' => '',
             'requires_stain' => false,
             'requires_clear_coat' => false,
+            'material_price' => 0.0,
         ];
     }
 }

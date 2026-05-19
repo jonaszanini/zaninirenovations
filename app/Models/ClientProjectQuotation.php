@@ -438,17 +438,26 @@ class ClientProjectQuotation extends Model
      * Intro phrase printed before the items table, derived from the
      * labour/material checkboxes:
      *   - both   → "To supply material and labour of the following:"
-     *   - labour → "To labour of the following:"
+     *   - labour → "For the labour of the following:"
      *   - mat.   → "To supply material of the following:"
      *   - none   → fallback (UI also warns when neither is checked)
      */
     public function introPhrase(): string
     {
+        if ($this->source_type === self::SOURCE_STAIRS && $this->source_id) {
+            $stairs = StairsQuotation::query()->find($this->source_id);
+            if ($stairs) {
+                return $stairs->includesMaterialCharge()
+                    ? 'To supply material and labour of the following:'
+                    : 'For the labour of the following:';
+            }
+        }
+
         if ($this->labour && $this->material) {
             return 'To supply material and labour of the following:';
         }
         if ($this->labour) {
-            return 'To labour of the following:';
+            return 'For the labour of the following:';
         }
         if ($this->material) {
             return 'To supply material of the following:';

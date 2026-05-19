@@ -58,6 +58,24 @@ class StairsQuotation extends Model
         return $label.' — '.$this->quote_number;
     }
 
+    public function materialPriceAmount(): float
+    {
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+
+        return max(0, round((float) ($inputs['material_price'] ?? 0), 2));
+    }
+
+    public function includesMaterialCharge(): bool
+    {
+        return $this->materialPriceAmount() > 0;
+    }
+
+    /** Pre-HST labour-only total (excludes optional materials line). */
+    public function labourPreTaxAmountForProjectQuotation(): float
+    {
+        return max(0, round($this->preTaxAmountForProjectQuotation() - $this->materialPriceAmount(), 2));
+    }
+
     /** Pre-HST total for syncing to {@see ClientProjectQuotation} line items (PDF adds 13% HST). */
     public function preTaxAmountForProjectQuotation(): float
     {

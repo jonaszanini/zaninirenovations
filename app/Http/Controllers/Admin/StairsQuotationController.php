@@ -352,8 +352,11 @@ class StairsQuotationController extends Controller
                 $defaults[$boolKey] = filter_var($inputs[$boolKey], FILTER_VALIDATE_BOOLEAN);
             }
         }
+        if (array_key_exists('material_price', $inputs)) {
+            $defaults['material_price'] = round(max(0, (float) $inputs['material_price']), 2);
+        }
         foreach ($inputs as $key => $value) {
-            if (in_array($key, ['carpet_removal', 'requires_stain', 'requires_clear_coat'], true)) {
+            if (in_array($key, ['carpet_removal', 'requires_stain', 'requires_clear_coat', 'material_price'], true)) {
                 continue;
             }
             if ($value === null || $value === '') {
@@ -390,8 +393,26 @@ class StairsQuotationController extends Controller
     /**
      * @return array<string, mixed>
      */
+    protected function normalizeMoneyOnRequest(Request $request): void
+    {
+        if (! $request->exists('material_price')) {
+            return;
+        }
+        $v = $request->input('material_price');
+        if ($v === '' || $v === null) {
+            $request->merge(['material_price' => '0']);
+
+            return;
+        }
+        if (is_string($v)) {
+            $request->merge(['material_price' => str_replace(',', '', $v)]);
+        }
+    }
+
     protected function gatherInputsFromRequest(Request $request, bool $draft = false): array
     {
+        $this->normalizeMoneyOnRequest($request);
+
         $openSideRule = Rule::in([
             StairsQuotationCalculator::OPEN_NONE,
             StairsQuotationCalculator::OPEN_ONE,
@@ -406,6 +427,7 @@ class StairsQuotationController extends Controller
                 'segments.*.stair_type' => ['nullable', 'string', 'max:32'],
                 'segments.*.qty' => ['nullable', 'integer', 'min:0', 'max:500'],
                 'segments.*.open_sides' => ['nullable', 'string', $openSideRule],
+                'material_price' => ['nullable', 'numeric', 'min:0'],
             ]);
         } else {
             $data = $request->validate([
@@ -416,6 +438,7 @@ class StairsQuotationController extends Controller
                 'segments.*.stair_type' => ['nullable', 'string', 'max:32'],
                 'segments.*.qty' => ['nullable', 'integer', 'min:0', 'max:500'],
                 'segments.*.open_sides' => ['nullable', 'string', $openSideRule],
+                'material_price' => ['nullable', 'numeric', 'min:0'],
             ]);
         }
 
@@ -457,6 +480,7 @@ class StairsQuotationController extends Controller
             'nosing_choice' => trim((string) ($data['nosing_choice'] ?? '')),
             'requires_stain' => $request->boolean('requires_stain'),
             'requires_clear_coat' => $request->boolean('requires_clear_coat'),
+            'material_price' => round(max(0, (float) ($data['material_price'] ?? 0)), 2),
         ];
     }
 
@@ -501,9 +525,17 @@ class StairsQuotationController extends Controller
     {
         $items = [[
             'description' => $stairsQuotation->summaryDescription(),
-            'amount' => $stairsQuotation->preTaxAmountForProjectQuotation(),
+            'amount' => $stairsQuotation->labourPreTaxAmountForProjectQuotation(),
             'apply_hst' => true,
         ]];
+        $materialAmt = $stairsQuotation->materialPriceAmount();
+        if ($materialAmt > 0) {
+            $items[] = [
+                'description' => 'Materials',
+                'amount' => $materialAmt,
+                'apply_hst' => true,
+            ];
+        }
 
         $snapshot = $stairsQuotation->only([
             'quote_number',
@@ -524,8 +556,6 @@ class StairsQuotationController extends Controller
             $row->fill([
                 'status' => ClientProjectQuotation::STATUS_DRAFT,
                 'type' => ClientProjectQuotation::TYPE_QUOTATION,
-                'labour' => true,
-                'material' => true,
                 'quotation_number' => ClientProjectQuotation::generateNumber(
                     ClientProjectQuotation::TYPE_QUOTATION
                 ),
@@ -533,6 +563,8 @@ class StairsQuotationController extends Controller
             ]);
         }
 
+        $row->labour = true;
+        $row->material = $stairsQuotation->includesMaterialCharge();
         $row->title = $stairsQuotation->displayTitle();
         $row->items = $items;
         $row->source_snapshot = $snapshot;
