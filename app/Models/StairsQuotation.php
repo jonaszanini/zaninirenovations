@@ -58,6 +58,24 @@ class StairsQuotation extends Model
         return $label.' — '.$this->quote_number;
     }
 
+    /** Pre-HST total for syncing to {@see ClientProjectQuotation} line items (PDF adds 13% HST). */
+    public function preTaxAmountForProjectQuotation(): float
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+        $pre = round((float) ($summary['subtotal_pre_hst'] ?? 0), 2);
+        if ($pre > 0) {
+            return $pre;
+        }
+
+        $final = round((float) $this->final_quote_total, 2);
+        if ($final > 0) {
+            return round($final / (1 + self::HST_RATE), 2);
+        }
+
+        return 0.0;
+    }
+
     public function summaryDescription(): string
     {
         $inputs = is_array($this->inputs) ? $this->inputs : [];

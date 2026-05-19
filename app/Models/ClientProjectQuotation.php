@@ -219,7 +219,46 @@ class ClientProjectQuotation extends Model
             ];
         }
 
-        return $clean;
+        return $this->normalizeStairsLinkedLineItems($clean);
+    }
+
+    /**
+     * Legacy stairs rows stored the tax-inclusive grand total with apply_hst=false,
+     * which made PDFs show $0 HST. Rebuild from the calculation snapshot when needed.
+     *
+     * @param  list<array{description: string, amount: float, apply_hst: bool}>  $items
+     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     */
+    protected function normalizeStairsLinkedLineItems(array $items): array
+    {
+        if ($this->source_type !== self::SOURCE_STAIRS || count($items) !== 1) {
+            return $items;
+        }
+
+        $row = $items[0];
+        if (! empty($row['apply_hst'])) {
+            return $items;
+        }
+
+        $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
+        $calc = is_array($snap['calculation'] ?? null) ? $snap['calculation'] : [];
+        $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+        $preTax = round((float) ($summary['subtotal_pre_hst'] ?? 0), 2);
+        $grand = round((float) ($summary['grand_total'] ?? $summary['final_quote_total'] ?? 0), 2);
+        if ($preTax <= 0 || $grand <= 0) {
+            return $items;
+        }
+
+        $lineAmount = (float) $row['amount'];
+        if (abs($lineAmount - $grand) > 0.02 && abs($lineAmount - $preTax) > 0.02) {
+            return $items;
+        }
+
+        return [[
+            'description' => $row['description'],
+            'amount' => $preTax,
+            'apply_hst' => true,
+        ]];
     }
 
     /** True iff the quotation has at least one usable line item. */

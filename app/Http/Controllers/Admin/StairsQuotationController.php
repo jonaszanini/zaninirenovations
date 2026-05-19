@@ -501,8 +501,8 @@ class StairsQuotationController extends Controller
     {
         $items = [[
             'description' => $stairsQuotation->summaryDescription(),
-            'amount' => round((float) $stairsQuotation->final_quote_total, 2),
-            'apply_hst' => false,
+            'amount' => $stairsQuotation->preTaxAmountForProjectQuotation(),
+            'apply_hst' => true,
         ]];
 
         $snapshot = $stairsQuotation->only([
