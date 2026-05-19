@@ -184,6 +184,22 @@ class ClientProjectQuotation extends Model
         return $stored !== '' ? $stored : $this->typeLabel();
     }
 
+    /**
+     * Free-form scope text for the quotation PDF "Description of the work" block.
+     * Only standard quotations have this field; other calculators describe scope in line items.
+     */
+    public function workDescriptionForPdf(): string
+    {
+        if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
+            $sq = StandardQuotation::query()->find($this->source_id);
+            if ($sq) {
+                return trim((string) ($sq->work_description ?? ''));
+            }
+        }
+
+        return trim((string) ($this->work_description ?? ''));
+    }
+
     /** Document number prefix matching the current type. */
     public function numberPrefix(): string
     {

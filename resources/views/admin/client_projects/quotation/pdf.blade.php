@@ -378,18 +378,7 @@
        service. Rendered as its own block above the line items table so
        the client sees the scope before the priced lines. --}}
   @php
-    // Prefer the linked specialised quotations' work_description (single
-    // source of truth). Falls back to the project quotation's own field
-    // for projects with no specialised quotation linked. Multiple SQs
-    // concatenate with a blank line between them.
-    $linkedWorkDescParts = $project->standardQuotations
-        ->map(fn ($sq) => trim((string) ($sq->work_description ?? '')))
-        ->filter(fn ($s) => $s !== '')
-        ->values()
-        ->all();
-    $quoteWorkDesc = !empty($linkedWorkDescParts)
-        ? implode("\n\n", $linkedWorkDescParts)
-        : trim((string) ($quotation->work_description ?? ''));
+    $quoteWorkDesc = $quotation->workDescriptionForPdf();
   @endphp
   @if ($quoteWorkDesc !== '')
     <div class="quote-work-description">
