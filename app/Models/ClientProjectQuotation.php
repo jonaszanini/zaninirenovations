@@ -166,6 +166,24 @@ class ClientProjectQuotation extends Model
         return $t !== '' ? $t : null;
     }
 
+    /**
+     * Card heading for linked calculator rows. Stairs titles follow the selected material
+     * (e.g. "Vinyl Stairs — ST-2026-0163"); other sources use the stored title column.
+     */
+    public function resolvedTitle(): string
+    {
+        if ($this->source_type === self::SOURCE_STAIRS && $this->source_id) {
+            $stairs = StairsQuotation::query()->find($this->source_id);
+            if ($stairs) {
+                return $stairs->displayTitle();
+            }
+        }
+
+        $stored = trim((string) ($this->title ?? ''));
+
+        return $stored !== '' ? $stored : $this->typeLabel();
+    }
+
     /** Document number prefix matching the current type. */
     public function numberPrefix(): string
     {

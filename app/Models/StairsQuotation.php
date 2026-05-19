@@ -41,12 +41,28 @@ class StairsQuotation extends Model
         return $this->client_project_id !== null;
     }
 
+    public function materialType(): ?StairsMaterialType
+    {
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+        $mid = (int) ($inputs['material_type_id'] ?? 0);
+
+        return $mid > 0 ? StairsMaterialType::query()->find($mid) : null;
+    }
+
+    /** Project quotation card title, e.g. "Vinyl Stairs — ST-2026-0163". */
+    public function displayTitle(): string
+    {
+        $material = $this->materialType();
+        $label = $material ? $material->quotationDisplayName() : 'Stairs';
+
+        return $label.' — '.$this->quote_number;
+    }
+
     public function summaryDescription(): string
     {
         $inputs = is_array($this->inputs) ? $this->inputs : [];
         $steps = (int) ($inputs['total_steps'] ?? 0);
-        $mid = $inputs['material_type_id'] ?? null;
-        $material = $mid ? StairsMaterialType::query()->find($mid) : null;
+        $material = $this->materialType();
         $matName = $material ? $material->name : 'Stairs';
 
         $legacy = $inputs['open_sides'] ?? null;

@@ -347,7 +347,15 @@ class StairsQuotationController extends Controller
     protected function mergePartialStairsInputs(array $inputs): array
     {
         $defaults = StairsQuotationCalculator::defaultInputs();
+        foreach (['carpet_removal', 'requires_stain', 'requires_clear_coat'] as $boolKey) {
+            if (array_key_exists($boolKey, $inputs)) {
+                $defaults[$boolKey] = filter_var($inputs[$boolKey], FILTER_VALIDATE_BOOLEAN);
+            }
+        }
         foreach ($inputs as $key => $value) {
+            if (in_array($key, ['carpet_removal', 'requires_stain', 'requires_clear_coat'], true)) {
+                continue;
+            }
             if ($value === null || $value === '') {
                 continue;
             }
@@ -514,7 +522,6 @@ class StairsQuotationController extends Controller
 
         if (! $row->exists) {
             $row->fill([
-                'title' => 'Stairs — '.$stairsQuotation->quote_number,
                 'status' => ClientProjectQuotation::STATUS_DRAFT,
                 'type' => ClientProjectQuotation::TYPE_QUOTATION,
                 'labour' => true,
@@ -526,6 +533,7 @@ class StairsQuotationController extends Controller
             ]);
         }
 
+        $row->title = $stairsQuotation->displayTitle();
         $row->items = $items;
         $row->source_snapshot = $snapshot;
         $row->save();

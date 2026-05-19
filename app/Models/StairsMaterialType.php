@@ -97,6 +97,16 @@ class StairsMaterialType extends Model
         };
     }
 
+    /** Short label for project quotation headings (e.g. "Vinyl Stairs", "Oak Stairs"). */
+    public function quotationDisplayName(): string
+    {
+        return match ($this->key) {
+            'vinyl_with_nosing', self::KEY_VINYL_WITHOUT_NOSING => 'Vinyl Stairs',
+            'presswood_oak_veneer', 'unfinished_solid_oak_tread', 'unfinished_oak_tread_cape' => 'Oak Stairs',
+            default => 'Stairs',
+        };
+    }
+
     /**
      * URL for the material photo in admin (price config + quotation calculator).
      * Uses an authenticated route so images load even if public/storage is not linked to storage/app/public.

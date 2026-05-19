@@ -531,6 +531,7 @@
       }
       function runPreview() {
         var fd = new FormData(form);
+        fd.delete('_method');
         fetch(previewUrl, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
           .then(function (r) { return r.json(); })
           .then(render)

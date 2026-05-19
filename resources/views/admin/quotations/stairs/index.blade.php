@@ -31,6 +31,7 @@
           <thead>
             <tr>
               <th>Number</th>
+              <th>Material</th>
               <th>Client</th>
               <th>Draft</th>
               <th>Final quote</th>
@@ -43,6 +44,7 @@
             @foreach ($quotations as $q)
               <tr>
                 <td><strong>{{ $q->quote_number }}</strong></td>
+                <td>{{ $q->materialType()?->quotationDisplayName() ?? '—' }}</td>
                 <td>{{ $q->client_name ?: '—' }}</td>
                 <td>{{ $q->is_draft ? 'Yes' : '—' }}</td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($q->final_quote_total) }}</td>

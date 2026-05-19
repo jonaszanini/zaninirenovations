@@ -66,7 +66,7 @@
           ? 'Email this document to '.$project->clientEmailRecipientsLabel().'?'
           : 'Send an SMS with a secure PDF link to '.\App\Models\ClientProject::formatPhone($project->client_phone).'?';
       $typeLabel = $quotation->typeLabel();
-      $title = $quotation->title ?: $typeLabel;
+      $title = $quotation->resolvedTitle();
       $legacy = $quotation->isLegacyManualSource();
       $deleteConfirm = 'Delete '.$title.' ('.$quotation->quotation_number.') from this project? This also removes the calculator quotation from the Quotations hub.';
       $items = $hasContent ? $quotation->cleanItems() : [];

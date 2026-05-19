@@ -634,8 +634,13 @@
       }
       function runPreview() {
         var fd = new FormData(form);
+        // Edit forms include @method('PUT'); must not spoof preview POST as PUT.
+        fd.delete('_method');
         fetch(previewUrl, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            if (!r.ok) throw new Error('preview ' + r.status);
+            return r.json();
+          })
           .then(render)
           .catch(function () { root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>'; });
       }
@@ -645,6 +650,8 @@
       }
       form.addEventListener('input', schedule);
       form.addEventListener('change', schedule);
+      var sqCarpet = document.getElementById('sq-carpet');
+      if (sqCarpet) sqCarpet.addEventListener('change', schedule);
 
       var initial = @json($initialCalc);
       if (initial) { render(initial); } else { runPreview(); }
