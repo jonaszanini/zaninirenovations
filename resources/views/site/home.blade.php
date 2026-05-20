@@ -8,6 +8,20 @@
 <script type="application/ld+json">{!! \App\Support\SeoStructuredData::toJsonLd(\App\Support\SeoStructuredData::homeGraph()) !!}</script>
 @endpush
 
+@push('styles')
+<style>
+  .home-geo-intro { padding-top: 28px; padding-bottom: 8px; }
+  .home-geo-intro__lead { max-width: 52rem; margin: 0 auto; font-size: 1.05rem; line-height: 1.65; color: #334155; text-align: center; }
+  .home-faq-section__intro { max-width: 40rem; margin: 12px auto 0; color: #64748b; font-size: 15px; }
+  .home-faq-list { margin-top: 24px; }
+  .home-faq-item { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; padding: 0 16px; background: #fff; }
+  .home-faq-item__q { display: inline; font-size: 1.05rem; font-weight: 600; margin: 0; color: #0f172a; }
+  .home-faq-item summary { cursor: pointer; padding: 14px 0; list-style: none; }
+  .home-faq-item summary::-webkit-details-marker { display: none; }
+  .home-faq-item__a { margin: 0 0 14px; line-height: 1.6; color: #475569; }
+</style>
+@endpush
+
 @section('content')
 
     @php
@@ -118,6 +132,12 @@
       <!-- end .slider_1  -->
     </div>
     <!-- end .slider-wrap.  -->
+
+    <section class="section-content-block home-geo-intro" aria-label="Zanini Renovations overview">
+      <div class="container">
+        <p class="home-geo-intro__lead">{{ config('seo.home_summary') }}</p>
+      </div>
+    </section>
 
     <!--  CORE SERVICES  -->
 
@@ -628,6 +648,44 @@
       </div>
 
     </section>
+
+    @php $homeFaq = config('seo.home_faq', []); @endphp
+    @if (is_array($homeFaq) && count($homeFaq) > 0)
+    <section id="faq" class="section-content-block home-faq-section" aria-labelledby="home-faq-heading">
+      <div class="container">
+        <div class="row section-heading-wrapper">
+          <div class="col-md-12 text-center">
+            <h4 class="heading-alt-style text-uppercase text-dark-color">Questions</h4>
+            <span class="heading-separator heading-separator-horizontal"></span>
+            <h2 id="home-faq-heading" class="subheading-alt-style">Renovation &amp; carpentry — common questions</h2>
+            <p class="home-faq-section__intro">Direct answers for homeowners searching for a licensed carpenter or renovation contractor in Ottawa and Carleton Place.</p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-10 col-md-offset-1">
+            <div class="home-faq-list">
+              @foreach ($homeFaq as $faqRow)
+                @if (! is_array($faqRow))
+                  @continue
+                @endif
+                @php
+                  $faqQ = trim((string) ($faqRow['question'] ?? ''));
+                  $faqA = trim((string) ($faqRow['answer'] ?? ''));
+                @endphp
+                @if ($faqQ === '' || $faqA === '')
+                  @continue
+                @endif
+                <details class="home-faq-item">
+                  <summary><h3 class="home-faq-item__q">{{ $faqQ }}</h3></summary>
+                  <p class="home-faq-item__a">{{ $faqA }}</p>
+                </details>
+              @endforeach
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    @endif
 
     <!--  SECTION CONTACT (replaces newsletter)  -->
 

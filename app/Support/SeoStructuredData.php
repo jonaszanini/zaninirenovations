@@ -24,7 +24,12 @@ class SeoStructuredData
         $areas = config('seo.area_served', []);
         $fb = (string) config('social.facebook_url', '');
         $ig = (string) config('social.instagram_url', '');
-        $sameAs = array_values(array_filter([$fb, $ig], static fn ($u) => is_string($u) && str_starts_with($u, 'http')));
+        $googleBiz = (string) config('seo.google_business_url', '');
+        $sameAs = array_values(array_filter([$fb, $ig, $googleBiz], static fn ($u) => is_string($u) && str_starts_with($u, 'http')));
+        $homeSummary = trim((string) config('seo.home_summary', ''));
+        if ($homeSummary === '') {
+            $homeSummary = 'Licensed carpenter and renovation contractor in Carleton Place and Ottawa, Ontario.';
+        }
         $ogRel = ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
         $ogAbs = $url.'/'.$ogRel;
 
@@ -57,7 +62,8 @@ class SeoStructuredData
             'url' => $url.'/',
             'logo' => $url.'/images/logo.png',
             'image' => [$url.'/'.ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/')],
-            'description' => $lsi,
+            'description' => $homeSummary,
+            'slogan' => 'Quality craftsmanship for Ottawa-area homes',
             'keywords' => $lsi,
             'knowsAbout' => $lsi,
             'telephone' => '+1-647-834-7570',
@@ -154,31 +160,80 @@ class SeoStructuredData
             $n++;
         }
 
+        $graph = [
+            [
+                '@type' => 'WebSite',
+                '@id' => $url.'/#website',
+                'url' => $url.'/',
+                'name' => 'Zanini Renovations',
+                'description' => $homeSummary,
+                'publisher' => ['@id' => $url.'/#business'],
+            ],
+            [
+                '@type' => 'WebPage',
+                '@id' => $url.'/#webpage',
+                'url' => $url.'/',
+                'name' => 'Licensed Carpenter Ottawa | Renovation & Carpentry | Zanini Renovations',
+                'description' => $homeSummary,
+                'isPartOf' => ['@id' => $url.'/#website'],
+                'about' => ['@id' => $url.'/#business'],
+                'primaryImageOfPage' => ['@id' => $url.'/#primary-image'],
+            ],
+            $personJonas,
+            $personMayara,
+            $primaryImage,
+            $business,
+            $itemList,
+        ];
+
+        $faq = self::homeFaqPage($url);
+        if ($faq !== null) {
+            $graph[] = $faq;
+        }
+
         return [
             '@context' => 'https://schema.org',
-            '@graph' => [
-                [
-                    '@type' => 'WebSite',
-                    '@id' => $url.'/#website',
-                    'url' => $url.'/',
-                    'name' => 'Zanini Renovations',
-                    'publisher' => ['@id' => $url.'/#business'],
+            '@graph' => $graph,
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    public static function homeFaqPage(string $baseUrl): ?array
+    {
+        $faqItems = config('seo.home_faq', []);
+        if (! is_array($faqItems) || $faqItems === []) {
+            return null;
+        }
+
+        $entities = [];
+        foreach ($faqItems as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $q = trim((string) ($row['question'] ?? ''));
+            $a = trim((string) ($row['answer'] ?? ''));
+            if ($q === '' || $a === '') {
+                continue;
+            }
+            $entities[] = [
+                '@type' => 'Question',
+                'name' => $q,
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => $a,
                 ],
-                [
-                    '@type' => 'WebPage',
-                    '@id' => $url.'/#webpage',
-                    'url' => $url.'/',
-                    'name' => 'Licensed Carpenter Ottawa | O.Reg. 332/12 | Zanini Renovations',
-                    'isPartOf' => ['@id' => $url.'/#website'],
-                    'about' => ['@id' => $url.'/#business'],
-                    'primaryImageOfPage' => ['@id' => $url.'/#primary-image'],
-                ],
-                $personJonas,
-                $personMayara,
-                $primaryImage,
-                $business,
-                $itemList,
-            ],
+            ];
+        }
+
+        if ($entities === []) {
+            return null;
+        }
+
+        return [
+            '@type' => 'FAQPage',
+            '@id' => rtrim($baseUrl, '/').'/#faq',
+            'mainEntity' => $entities,
+            'isPartOf' => ['@id' => rtrim($baseUrl, '/').'/#webpage'],
         ];
     }
 

@@ -33,18 +33,7 @@ Route::get('/sitemap.xml', function () {
 })->name('sitemap');
 
 Route::get('/robots.txt', function () {
-    $base = rtrim((string) config('app.url'), '/');
-    $lines = [
-        'User-agent: *',
-        'Disallow: /admin',
-        'Disallow: /admin/',
-        'Allow: /',
-        '',
-        'Sitemap: '.$base.'/sitemap.xml',
-        '',
-    ];
-
-    return response(implode("\n", $lines), 200)
+    return response(\App\Support\RobotsTxtGenerator::generate(), 200)
         ->header('Content-Type', 'text/plain; charset=UTF-8');
 })->name('robots');
 
