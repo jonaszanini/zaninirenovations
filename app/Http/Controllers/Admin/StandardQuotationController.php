@@ -366,6 +366,10 @@ class StandardQuotationController extends Controller
                 ClientProjectQuotation::TYPE_QUOTATION,
                 ClientProjectQuotation::TYPE_ESTIMATE,
             ])],
+            'pdf_detail_mode' => ['required', Rule::in([
+                StandardQuotation::PDF_DETAIL_SUMMARY,
+                StandardQuotation::PDF_DETAIL_DETAILED,
+            ])],
             'work_description' => ['nullable', 'string', 'max:5000'],
             'materials' => ['nullable', 'array'],
             'materials.*.short_name' => ['nullable', 'string', 'max:60'],
@@ -472,6 +476,7 @@ class StandardQuotationController extends Controller
                 'document_type' => $data['document_type'],
                 'includes_material' => $includesMaterial,
                 'includes_labour' => $includesLabour,
+                'pdf_detail_mode' => $data['pdf_detail_mode'],
                 'work_description' => $workDescription === '' ? null : $workDescription,
                 'materials' => $materialsForStorage,
                 'labour_mode' => $data['labour_mode'] ?? 'hours',

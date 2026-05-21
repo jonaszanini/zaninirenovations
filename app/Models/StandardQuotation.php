@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\StandardQuotationCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,6 +17,10 @@ class StandardQuotation extends Model
 {
     public const HST_RATE = 0.13;
 
+    public const PDF_DETAIL_SUMMARY = 'summary';
+
+    public const PDF_DETAIL_DETAILED = 'detailed';
+
     protected $fillable = [
         'client_project_id',
         'document_type',
@@ -25,6 +30,7 @@ class StandardQuotation extends Model
         'work_description',
         'includes_material',
         'includes_labour',
+        'pdf_detail_mode',
         'materials',
         'labour_mode',
         'labour_quantity',
@@ -98,5 +104,113 @@ class StandardQuotation extends Model
         }
 
         return sprintf('SQ-%d-%04d', $year, $next);
+    }
+
+    public function usesDetailedPdf(): bool
+    {
+        return ($this->pdf_detail_mode ?? self::PDF_DETAIL_SUMMARY) === self::PDF_DETAIL_DETAILED;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function computedTotals(): array
+    {
+        return (new StandardQuotationCalculator)->compute(
+            is_array($this->materials) ? $this->materials : [],
+            (float) $this->labour_hourly_rate,
+            (string) ($this->labour_mode ?? 'hours'),
+            (float) $this->labour_quantity,
+            (bool) $this->contingency_enabled,
+            (float) ($this->contingency_percent ?? 0),
+            (bool) $this->labour_use_fixed,
+            (float) ($this->labour_fixed_amount ?? 0),
+            (bool) ($this->labour_fixed_hst_included ?? false),
+        );
+    }
+
+    /**
+     * Itemized rows for the client PDF (materials, contingency, labour).
+     *
+     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     */
+    public function detailedPdfLineItems(): array
+    {
+        $computed = $this->computedTotals();
+        $lines = [];
+
+        foreach ($computed['materials'] as $material) {
+            $parts = array_values(array_filter([
+                trim((string) ($material['short_name'] ?? '')),
+                trim((string) ($material['description'] ?? '')),
+            ]));
+            $label = $parts !== [] ? implode(' — ', $parts) : 'Material';
+            $qty = (float) ($material['quantity'] ?? 0);
+            $unit = (float) ($material['unit_price'] ?? 0);
+            if ($qty > 0 && $unit >= 0) {
+                $label .= sprintf(
+                    ' (%s × $%s)',
+                    self::formatPdfQty($qty),
+                    number_format($unit, 2, '.', ',')
+                );
+            }
+            $lines[] = [
+                'description' => $label,
+                'amount' => round((float) $material['line_subtotal'], 2),
+                'apply_hst' => (bool) $material['apply_hst'],
+            ];
+        }
+
+        if ($computed['contingency_enabled'] && (float) $computed['contingency_amount'] > 0) {
+            $pct = self::formatPdfQty((float) $computed['contingency_percent']);
+            if ((float) $computed['contingency_amount_taxable'] > 0) {
+                $lines[] = [
+                    'description' => 'Contingency allowance ('.$pct.'%)',
+                    'amount' => round((float) $computed['contingency_amount_taxable'], 2),
+                    'apply_hst' => true,
+                ];
+            }
+            if ((float) $computed['contingency_amount_exempt'] > 0) {
+                $lines[] = [
+                    'description' => 'Contingency allowance ('.$pct.'%) — HST exempt',
+                    'amount' => round((float) $computed['contingency_amount_exempt'], 2),
+                    'apply_hst' => false,
+                ];
+            }
+        }
+
+        if ((float) $computed['labour_total'] > 0) {
+            $lines[] = [
+                'description' => self::labourPdfDescription($this, $computed),
+                'amount' => round((float) $computed['labour_total'], 2),
+                'apply_hst' => true,
+            ];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @param  array<string, mixed>  $computed
+     */
+    protected static function labourPdfDescription(self $sq, array $computed): string
+    {
+        if ($sq->labour_use_fixed) {
+            return 'Labour (flat fee)';
+        }
+
+        $mode = ($sq->labour_mode ?? 'hours') === 'days' ? 'days' : 'hours';
+        $qtyLabel = self::formatPdfQty((float) $sq->labour_quantity).' '.$mode;
+        $rate = number_format((float) $sq->labour_hourly_rate, 2, '.', ',');
+
+        return 'Labour ('.$qtyLabel.' @ $'.$rate.'/hr)';
+    }
+
+    protected static function formatPdfQty(float $qty): string
+    {
+        $formatted = number_format($qty, 2, '.', ',');
+        $formatted = rtrim(rtrim($formatted, '0'), '.');
+
+        return $formatted === '' ? '0' : $formatted;
     }
 }

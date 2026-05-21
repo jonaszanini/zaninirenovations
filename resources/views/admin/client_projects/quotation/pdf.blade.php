@@ -12,10 +12,10 @@
      * are valid on every OS and dompdf accepts them as filesystem paths.
      */
     $fontDir = str_replace('\\', '/', public_path('fonts/roboto'));
-    $items = $quotation->cleanItems();
-    $subtotal = $quotation->subtotal();
-    $hst = $quotation->hst();
-    $grand = $quotation->grandTotal();
+    $items = $quotation->pdfLineItems();
+    $subtotal = $quotation->pdfSubtotal();
+    $hst = $quotation->pdfHst();
+    $grand = $quotation->pdfGrandTotal();
 
     $fmt = fn ($n) => 'CA$'.number_format((float) $n, 2, '.', ',');
     $pdfStandardDisplayTitle = trim((string) ($quotation->standardDisplayTitle() ?? ''));

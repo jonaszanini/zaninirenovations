@@ -78,6 +78,13 @@
       ? (($quotation->document_type ?? null) ?: ClientProjectQuotation::TYPE_QUOTATION)
       : ClientProjectQuotation::TYPE_QUOTATION;
 
+  $pdfDetailMode = old(
+      'pdf_detail_mode',
+      $isEdit
+          ? ($quotation->pdf_detail_mode ?? \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)
+          : \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY
+  );
+
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
 
@@ -209,6 +216,24 @@
           <p class="admin-form-help">Choose before sending; you can change it later only until the client email goes out.</p>
         @endif
         @error('document_type') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
+      <div class="admin-form-group" style="margin-top:18px;">
+        <span class="admin-form-label" style="display:block;margin-bottom:8px;">Client PDF line items</span>
+        <div style="display:flex;flex-direction:column;gap:10px;max-width:560px;">
+          <label class="cp-checkbox-row">
+            <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
+              @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
+            <span><strong>Summary</strong> — one line with subtotal, HST, and total (default)</span>
+          </label>
+          <label class="cp-checkbox-row">
+            <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
+              @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
+            <span><strong>Detailed</strong> — list each material, price, and labour with HST columns</span>
+          </label>
+        </div>
+        <p class="admin-form-help">Controls what the client sees on the quotation PDF when you download or email it from the project.</p>
+        @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
       <div class="admin-form-group" style="margin-top:18px;">

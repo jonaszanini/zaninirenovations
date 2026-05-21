@@ -239,9 +239,57 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Legacy stairs rows stored the tax-inclusive grand total with apply_hst=false,
-     * which made PDFs show $0 HST. Rebuild from the calculation snapshot when needed.
+     * Line items rendered on the client PDF. Standard quotations can show
+     * either the linked summary lines or a full material/labour breakdown.
      *
+     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     */
+    public function pdfLineItems(): array
+    {
+        if ($this->source_type !== self::SOURCE_STANDARD || ! $this->source_id) {
+            return $this->cleanItems();
+        }
+
+        $sq = StandardQuotation::query()->find($this->source_id);
+        if (! $sq) {
+            return $this->cleanItems();
+        }
+
+        if ($sq->usesDetailedPdf()) {
+            $detailed = $sq->detailedPdfLineItems();
+
+            return $detailed !== [] ? $detailed : $this->cleanItems();
+        }
+
+        return $this->cleanItems();
+    }
+
+    /** Pre-tax subtotal for {@see pdfLineItems()}. */
+    public function pdfSubtotal(): float
+    {
+        return round(array_sum(array_column($this->pdfLineItems(), 'amount')), 2);
+    }
+
+    /** HST for {@see pdfLineItems()}. */
+    public function pdfHst(): float
+    {
+        $sum = 0.0;
+        foreach ($this->pdfLineItems() as $row) {
+            if (empty($row['apply_hst'])) {
+                continue;
+            }
+            $sum += (float) ($row['amount'] ?? 0) * self::HST_RATE;
+        }
+
+        return round($sum, 2);
+    }
+
+    public function pdfGrandTotal(): float
+    {
+        return round($this->pdfSubtotal() + $this->pdfHst(), 2);
+    }
+
+    /**
      * @param  list<array{description: string, amount: float, apply_hst: bool}>  $items
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
