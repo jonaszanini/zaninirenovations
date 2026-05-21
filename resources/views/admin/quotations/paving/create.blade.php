@@ -130,6 +130,63 @@
     .pq-profit-neg { color: #b91c1c; }
     .pq-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 700px) { .pq-form-grid { grid-template-columns: 1fr; } }
+    .pq-form-sections { display: flex; flex-direction: column; gap: 18px; }
+    .pq-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; align-items: start; }
+    @media (max-width: 700px) { .pq-form-row { grid-template-columns: 1fr; } }
+    .pq-field-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: #fafbfc;
+    }
+    .pq-field-box .admin-form-group { margin-bottom: 0; }
+    .pq-field-box .admin-form-group + .admin-form-group { margin-top: 0; }
+    .pq-field-box-title {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin: 0 0 12px;
+    }
+    .pq-field-box .pq-hint { margin-top: 8px; margin-bottom: 0; }
+    .pq-labour-rates-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 16px;
+    }
+    @media (max-width: 520px) { .pq-labour-rates-row { grid-template-columns: 1fr; } }
+    .pq-stone-meta {
+      font-size: 11px;
+      color: #64748b;
+      margin: 5px 0 0;
+      line-height: 1.35;
+    }
+    .pq-options-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 20px;
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .pq-options-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .pq-override-block {
+      padding-top: 4px;
+      border-top: 1px solid #e8edf2;
+    }
+    .pq-marble-price-field { max-width: 280px; }
+    @media (max-width: 700px) { .pq-marble-price-field { max-width: none; } }
     .pq-db-wrap { margin-top: 0; }
     .pq-db-subpanel[hidden] { display: none !important; }
     .pq-hint { color: #64748b; font-size: 11px; margin-top: 2px; }
@@ -284,7 +341,7 @@
               $pqAreaWidth = old('area_width_ft', $inputs['area_width_ft'] ?? '');
               $pqAreaDimensions = $pqAreaMode === 'dimensions';
             @endphp
-            <div class="pq-form-grid">
+            <div class="pq-form-sections">
               <div class="admin-form-group pq-area-block">
                 <span class="admin-form-group-label">Total project area (sq ft) <span class="cp-required">*</span></span>
                 <div class="pq-area-mode" role="radiogroup" aria-label="How to enter project area">
@@ -328,107 +385,126 @@
                          value="{{ old('total_area_sq_ft', $inputs['total_area_sq_ft']) }}">
                 </div>
               </div>
-              <div class="admin-form-group">
-                <label for="pq-stone">Stone type</label>
-                <select id="pq-stone" name="paving_stone_type_id" class="admin-input">
-                  <option value="">— Custom —</option>
-                  @foreach ($stoneTypes as $st)
-                    <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}"
-                      @selected((int) old('paving_stone_type_id', $inputs['paving_stone_type_id'] ?? 0) === (int) $st->id)>
-                      {{ $st->name }}
-                    </option>
-                  @endforeach
-                </select>
+
+              <div class="pq-form-row">
+                <div class="admin-form-group">
+                  <label for="pq-stone">Stone type</label>
+                  <select id="pq-stone" name="paving_stone_type_id" class="admin-input pq-calc-in">
+                    <option value="">— Custom —</option>
+                    @foreach ($stoneTypes as $st)
+                      <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}"
+                        @selected((int) old('paving_stone_type_id', $inputs['paving_stone_type_id'] ?? 0) === (int) $st->id)>
+                        {{ $st->name }}
+                      </option>
+                    @endforeach
+                  </select>
+                  <p class="pq-stone-meta" id="pq-stone-meta" aria-live="polite"></p>
+                  <input type="hidden" id="pq-sqft" name="stone_sq_ft_per_stone" class="pq-calc-in" required
+                         value="{{ old('stone_sq_ft_per_stone', $inputs['stone_sq_ft_per_stone']) }}">
+                </div>
+                <div class="admin-form-group">
+                  <label for="pq-stprice">Stone unit price ($/stone, before tax) <span class="cp-required">*</span></label>
+                  <input type="text" id="pq-stprice" name="stone_price_per_stone" class="admin-input pq-calc-in cp-money-input" required
+                         inputmode="decimal" autocomplete="off" placeholder="0.00"
+                         value="{{ old('stone_price_per_stone', number_format((float) ($inputs['stone_price_per_stone'] ?? 0), 2, '.', '')) }}">
+                  <p class="pq-hint">From price database when a stone type is selected; editable here.</p>
+                </div>
               </div>
-              <div class="admin-form-group">
-                <label for="pq-sqft">Sq ft per stone <span class="cp-required">*</span></label>
-                <input type="number" id="pq-sqft" name="stone_sq_ft_per_stone" class="admin-input pq-calc-in" required step="0.0001" min="0.0001"
-                       value="{{ old('stone_sq_ft_per_stone', $inputs['stone_sq_ft_per_stone']) }}">
-                <p class="pq-hint">Auto from database; editable override (Excel B7).</p>
+
+              <div class="pq-field-box">
+                <span class="pq-field-box-title">Labour rates</span>
+                <div class="pq-labour-rates-row">
+                  <div class="admin-form-group">
+                    <label for="pq-helper">Helper hourly rate ($/hr)</label>
+                    <input type="text" id="pq-helper" name="helper_hourly_rate" class="admin-input pq-calc-in cp-money-input"
+                           inputmode="decimal" autocomplete="off" placeholder="0.00"
+                           value="{{ old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? 0), 2, '.', '')) }}">
+                  </div>
+                  <div class="admin-form-group">
+                    <label for="pq-owner">Owner hourly rate ($/hr)</label>
+                    <input type="text" id="pq-owner" name="owner_hourly_rate" class="admin-input pq-calc-in cp-money-input"
+                           inputmode="decimal" autocomplete="off" placeholder="0.00"
+                           value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
+                  </div>
+                </div>
+                <p class="pq-hint">Set helper to 0 to disable helper hours on labour tasks.</p>
               </div>
-              <div class="admin-form-group">
-                <label for="pq-stprice">Stone unit price ($/stone, before tax) <span class="cp-required">*</span></label>
-                <input type="text" id="pq-stprice" name="stone_price_per_stone" class="admin-input pq-calc-in cp-money-input" required
-                       inputmode="decimal" autocomplete="off" placeholder="0.00"
-                       value="{{ old('stone_price_per_stone', number_format((float) ($inputs['stone_price_per_stone'] ?? 0), 2, '.', '')) }}">
+
+              <div class="pq-field-box">
+                <span class="pq-field-box-title">Equipment rental (days)</span>
+                <div class="pq-form-row">
+                  <div class="admin-form-group">
+                    <label for="pq-mini">Mini skid steer</label>
+                    <input type="number" id="pq-mini" name="mini_skid_days" class="admin-input pq-calc-in" step="0.1" min="0"
+                           value="{{ old('mini_skid_days', $inputs['mini_skid_days']) }}">
+                  </div>
+                  <div class="admin-form-group">
+                    <label for="pq-plate">Plate compactor</label>
+                    <input type="number" id="pq-plate" name="plate_compactor_days" class="admin-input pq-calc-in" step="0.1" min="0"
+                           value="{{ old('plate_compactor_days', $inputs['plate_compactor_days']) }}">
+                  </div>
+                </div>
               </div>
-              <div class="admin-form-group">
-                <label for="pq-helper">Helper hourly rate ($/hr)</label>
-                <input type="text" id="pq-helper" name="helper_hourly_rate" class="admin-input pq-calc-in cp-money-input"
-                       inputmode="decimal" autocomplete="off" placeholder="0.00"
-                       value="{{ old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? 0), 2, '.', '')) }}">
-                <p class="pq-hint">Set to 0 to disable helper hours (Excel IF(B9&gt;0,…)).</p>
-              </div>
-              <div class="admin-form-group">
-                <label for="pq-owner">Owner hourly rate ($/hr)</label>
-                <input type="text" id="pq-owner" name="owner_hourly_rate" class="admin-input pq-calc-in cp-money-input"
-                       inputmode="decimal" autocomplete="off" placeholder="0.00"
-                       value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
-              </div>
-              <div class="admin-form-group">
-                <label for="pq-mini">Mini skid steer (days)</label>
-                <input type="number" id="pq-mini" name="mini_skid_days" class="admin-input pq-calc-in" step="0.1" min="0"
-                       value="{{ old('mini_skid_days', $inputs['mini_skid_days']) }}">
-              </div>
-              <div class="admin-form-group">
-                <label for="pq-plate">Plate compactor (days)</label>
-                <input type="number" id="pq-plate" name="plate_compactor_days" class="admin-input pq-calc-in" step="0.1" min="0"
-                       value="{{ old('plate_compactor_days', $inputs['plate_compactor_days']) }}">
-              </div>
-              <div class="admin-form-group">
-                <label for="pq-profit">Profit margin (%)</label>
-                <input type="number" id="pq-profit" name="profit_margin" class="admin-input pq-calc-in" step="0.01" min="0" max="100"
-                       value="{{ old('profit_margin', (($inputs['profit_margin'] ?? 0.05) <= 1 ? ($inputs['profit_margin'] ?? 0.05) * 100 : ($inputs['profit_margin'] ?? 5))) }}">
-                <p class="pq-hint">5 = 5% (applied to the tax-inclusive subtotal before profit, matching Excel D69×B12).</p>
-              </div>
-              <div class="admin-form-group">
-                <label for="pq-waste">Waste factor (%)</label>
-                <input type="number" id="pq-waste" name="waste_factor" class="admin-input pq-calc-in" step="0.1" min="0" max="100"
-                       value="{{ old('waste_factor', (($inputs['waste_factor'] ?? 0.05) <= 1 ? ($inputs['waste_factor'] ?? 0.05) * 100 : ($inputs['waste_factor'] ?? 5))) }}">
-                <p class="pq-hint">5 = 5% waste on stone count (CEILING(area/sqft×(1+waste))).</p>
-              </div>
-              <div class="admin-form-group">
-                <label for="pq-depth">Excavation depth (in)</label>
-                <input type="number" id="pq-depth" name="excavation_depth_in" class="admin-input pq-calc-in" step="0.5" min="1" max="48"
-                       value="{{ old('excavation_depth_in', $inputs['excavation_depth_in']) }}">
-              </div>
-              <div class="admin-form-group">
-                <label for="pq-hst">HST rate</label>
-                <input type="number" id="pq-hst" name="hst_rate" class="admin-input pq-calc-in" step="0.01" min="0" max="30"
-                       value="{{ old('hst_rate', (($inputs['hst_rate'] ?? 0.13) <= 0.5 ? ($inputs['hst_rate'] ?? 0.13) * 100 : ($inputs['hst_rate'] ?? 13))) }}">
-                <p class="pq-hint">13 = 13% Ontario HST on materials &amp; equipment.</p>
+
+              <div class="pq-field-box">
+                <span class="pq-field-box-title">Estimate parameters</span>
+                <div class="pq-form-grid">
+                  <div class="admin-form-group">
+                    <label for="pq-waste">Waste factor (%)</label>
+                    <input type="number" id="pq-waste" name="waste_factor" class="admin-input pq-calc-in" step="0.1" min="0" max="100"
+                           value="{{ old('waste_factor', (($inputs['waste_factor'] ?? 0.05) <= 1 ? ($inputs['waste_factor'] ?? 0.05) * 100 : ($inputs['waste_factor'] ?? 5))) }}">
+                    <p class="pq-hint">Extra stone quantity (e.g. 5 = 5%).</p>
+                  </div>
+                  <div class="admin-form-group">
+                    <label for="pq-depth">Excavation depth (in)</label>
+                    <input type="number" id="pq-depth" name="excavation_depth_in" class="admin-input pq-calc-in" step="0.5" min="1" max="48"
+                           value="{{ old('excavation_depth_in', $inputs['excavation_depth_in']) }}">
+                  </div>
+                  <div class="admin-form-group">
+                    <label for="pq-profit">Profit margin (%)</label>
+                    <input type="number" id="pq-profit" name="profit_margin" class="admin-input pq-calc-in" step="0.01" min="0" max="100"
+                           value="{{ old('profit_margin', (($inputs['profit_margin'] ?? 0.05) <= 1 ? ($inputs['profit_margin'] ?? 0.05) * 100 : ($inputs['profit_margin'] ?? 5))) }}">
+                    <p class="pq-hint">Applied to tax-inclusive subtotal before profit.</p>
+                  </div>
+                  <div class="admin-form-group">
+                    <label for="pq-hst">HST rate (%)</label>
+                    <input type="number" id="pq-hst" name="hst_rate" class="admin-input pq-calc-in" step="0.01" min="0" max="30"
+                           value="{{ old('hst_rate', (($inputs['hst_rate'] ?? 0.13) <= 0.5 ? ($inputs['hst_rate'] ?? 0.13) * 100 : ($inputs['hst_rate'] ?? 13))) }}">
+                    <p class="pq-hint">Ontario HST on materials &amp; equipment.</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div class="pq-marble-box">
-              <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;">
+              <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:0;">
                 <input type="checkbox" name="marble_enabled" value="1" class="pq-calc-in" id="pq-marble-on"
                   @checked(old('marble_enabled', $inputs['marble_enabled'] ?? false))>
                 <span>Part of this area will use marble / accent stones?</span>
               </label>
-              <div class="pq-form-grid" id="pq-marble-fields" style="margin-top:10px;{{ old('marble_enabled', $inputs['marble_enabled'] ?? false) ? '' : 'display:none;' }}">
-                <div class="admin-form-group">
-                  <label for="pq-marble-stone">Marble stone type</label>
-                  <select id="pq-marble-stone" name="marble_stone_type_id" class="admin-input">
-                    <option value="">—</option>
-                    @foreach ($stoneTypes as $st)
-                      <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}"
-                        @selected((int) old('marble_stone_type_id', $inputs['marble_stone_type_id'] ?? 0) === (int) $st->id)>{{ $st->name }}</option>
-                    @endforeach
-                  </select>
+              <div id="pq-marble-fields" style="margin-top:12px;{{ old('marble_enabled', $inputs['marble_enabled'] ?? false) ? '' : 'display:none;' }}">
+                <div class="pq-form-row">
+                  <div class="admin-form-group">
+                    <label for="pq-marble-stone">Marble stone type</label>
+                    <select id="pq-marble-stone" name="marble_stone_type_id" class="admin-input pq-calc-in">
+                      <option value="">—</option>
+                      @foreach ($stoneTypes as $st)
+                        <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}"
+                          @selected((int) old('marble_stone_type_id', $inputs['marble_stone_type_id'] ?? 0) === (int) $st->id)>{{ $st->name }}</option>
+                      @endforeach
+                    </select>
+                    <p class="pq-stone-meta" id="pq-marble-stone-meta" aria-live="polite"></p>
+                    <input type="hidden" id="pq-marble-sqft" name="marble_sq_ft_per_stone" class="pq-calc-in"
+                           value="{{ old('marble_sq_ft_per_stone', $inputs['marble_sq_ft_per_stone'] ?? '') }}">
+                  </div>
+                  <div class="admin-form-group">
+                    <label for="pq-marble-area">Marble area (sq ft)</label>
+                    <input type="number" id="pq-marble-area" name="marble_area_sq_ft" class="admin-input pq-calc-in" min="0" step="0.01"
+                           value="{{ old('marble_area_sq_ft', $inputs['marble_area_sq_ft'] ?? 0) }}">
+                  </div>
                 </div>
-                <div class="admin-form-group">
-                  <label for="pq-marble-area">Marble area (sq ft)</label>
-                  <input type="number" id="pq-marble-area" name="marble_area_sq_ft" class="admin-input pq-calc-in" min="0" step="0.01"
-                         value="{{ old('marble_area_sq_ft', $inputs['marble_area_sq_ft'] ?? 0) }}">
-                </div>
-                <div class="admin-form-group">
-                  <label for="pq-marble-sqft">Marble sq ft / stone</label>
-                  <input type="number" id="pq-marble-sqft" name="marble_sq_ft_per_stone" class="admin-input pq-calc-in" step="0.0001" min="0.0001"
-                         value="{{ old('marble_sq_ft_per_stone', $inputs['marble_sq_ft_per_stone'] ?? '') }}" placeholder="Auto from type">
-                </div>
-                <div class="admin-form-group">
-                  <label for="pq-marble-price">Marble $/stone</label>
+                <div class="admin-form-group pq-marble-price-field" style="margin-top:12px;">
+                  <label for="pq-marble-price">Marble $/stone (before tax)</label>
                   <input type="text" id="pq-marble-price" name="marble_price_per_stone" class="admin-input pq-calc-in cp-money-input"
                          inputmode="decimal" autocomplete="off" placeholder="Auto from type"
                          value="{{ old('marble_price_per_stone', isset($inputs['marble_price_per_stone']) && $inputs['marble_price_per_stone'] !== null && $inputs['marble_price_per_stone'] !== '' ? number_format((float) $inputs['marble_price_per_stone'], 2, '.', '') : '') }}">
@@ -436,22 +512,18 @@
               </div>
             </div>
 
-            <div class="admin-form-group" style="margin-top:16px;">
-              <label><input type="checkbox" name="add_polymeric_sand" value="1" class="pq-calc-in" @checked(old('add_polymeric_sand', $inputs['add_polymeric_sand'] ?? true))> Add polymeric sand</label>
-            </div>
-            <div class="admin-form-group">
-              <label><input type="checkbox" name="include_old_surface_removal" value="1" class="pq-calc-in" @checked(old('include_old_surface_removal', $inputs['include_old_surface_removal'] ?? false))> Include old surface removal</label>
-            </div>
-            <div class="admin-form-group">
-              <label><input type="checkbox" name="include_geotextile" value="1" class="pq-calc-in" @checked(old('include_geotextile', $inputs['include_geotextile'] ?? true))> Include geotextile fabric</label>
+            <div class="pq-options-row" style="margin-top:16px;">
+              <label><input type="checkbox" name="add_polymeric_sand" value="1" class="pq-calc-in" @checked(old('add_polymeric_sand', $inputs['add_polymeric_sand'] ?? true))> Polymeric sand</label>
+              <label><input type="checkbox" name="include_geotextile" value="1" class="pq-calc-in" @checked(old('include_geotextile', $inputs['include_geotextile'] ?? true))> Geotextile fabric</label>
+              <label><input type="checkbox" name="include_old_surface_removal" value="1" class="pq-calc-in" @checked(old('include_old_surface_removal', $inputs['include_old_surface_removal'] ?? false))> Old surface removal</label>
             </div>
 
-            <div class="admin-form-group" style="margin-top:16px;">
+            <div class="admin-form-group pq-override-block" style="margin-top:16px;">
               <label for="pq-manual">Manual price override (CAD)</label>
               <input type="text" id="pq-manual" name="manual_price_override" class="admin-input pq-calc-in cp-money-input"
                      inputmode="decimal" autocomplete="off" placeholder="Blank = use built-up suggested total"
                      value="{{ old('manual_price_override', isset($inputs['manual_price_override']) && $inputs['manual_price_override'] !== null && $inputs['manual_price_override'] !== '' ? number_format((float) $inputs['manual_price_override'], 2, '.', '') : '') }}">
-              <p class="pq-hint">Leave blank to use the formula suggested total (Excel B75 = built-up project cost D71). Enter a dollar amount to override.</p>
+              <p class="pq-hint">Leave blank to use the formula suggested total. Enter a dollar amount to override the final quote.</p>
             </div>
           </div>
         </form>
@@ -558,22 +630,62 @@
         form.querySelector('#pq-client').setAttribute('required', 'required');
       });
 
-      function wireStoneSelect(sel, sqEl, prEl) {
+      function formatSqFtMeta(sq, fromDb) {
+        var n = parseFloat(sq);
+        if (!isFinite(n) || n <= 0) return fromDb ? '' : 'Sq ft per stone not set — select a stone type.';
+        var label = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' sq ft per stone';
+        return fromDb ? label + ' · from price database' : label + ' · custom';
+      }
+
+      function syncStoneMeta(sel, metaEl, sqEl) {
+        if (!metaEl) return;
+        if (!sel || !sqEl) {
+          metaEl.textContent = '';
+          return;
+        }
+        var opt = sel.options[sel.selectedIndex];
+        if (opt && opt.value) {
+          metaEl.textContent = formatSqFtMeta(opt.getAttribute('data-sq'), true);
+        } else {
+          metaEl.textContent = formatSqFtMeta(sqEl.value, false);
+        }
+      }
+
+      function wireStoneSelect(sel, sqEl, prEl, metaEl) {
         if (!sel || !sqEl || !prEl) return;
-        sel.addEventListener('change', function () {
+        function applyFromOption() {
           var opt = sel.options[sel.selectedIndex];
-          if (!opt || !opt.value) return;
+          if (!opt || !opt.value) {
+            syncStoneMeta(sel, metaEl, sqEl);
+            return;
+          }
           var sq = opt.getAttribute('data-sq');
           var pr = opt.getAttribute('data-pr');
-          if (sq) sqEl.value = sq;
+          if (sq) {
+            sqEl.value = sq;
+            sqEl.dispatchEvent(new Event('input', { bubbles: true }));
+          }
           if (pr) {
             prEl.value = pr;
             prEl.dispatchEvent(new Event('input', { bubbles: true }));
           }
-        });
+          syncStoneMeta(sel, metaEl, sqEl);
+        }
+        sel.addEventListener('change', applyFromOption);
+        syncStoneMeta(sel, metaEl, sqEl);
       }
-      wireStoneSelect(document.getElementById('pq-stone'), document.getElementById('pq-sqft'), document.getElementById('pq-stprice'));
-      wireStoneSelect(document.getElementById('pq-marble-stone'), document.getElementById('pq-marble-sqft'), document.getElementById('pq-marble-price'));
+      wireStoneSelect(
+        document.getElementById('pq-stone'),
+        document.getElementById('pq-sqft'),
+        document.getElementById('pq-stprice'),
+        document.getElementById('pq-stone-meta')
+      );
+      wireStoneSelect(
+        document.getElementById('pq-marble-stone'),
+        document.getElementById('pq-marble-sqft'),
+        document.getElementById('pq-marble-price'),
+        document.getElementById('pq-marble-stone-meta')
+      );
 
       var marbleChk = document.getElementById('pq-marble-on');
       var marbleFields = document.getElementById('pq-marble-fields');
