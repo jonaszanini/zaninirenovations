@@ -310,9 +310,9 @@ class PavingQuotationController extends Controller
             'area_length_ft' => ['nullable', 'numeric', 'min:0.01', 'max:10000'],
             'area_width_ft' => ['nullable', 'numeric', 'min:0.01', 'max:10000'],
             'total_area_sq_ft' => ['nullable', 'numeric', 'min:1', 'max:1000000'],
-            'paving_stone_type_id' => ['nullable', 'integer', 'exists:paving_stone_types,id'],
-            'stone_sq_ft_per_stone' => ['required', 'numeric', 'min:0.0001', 'max:100'],
-            'stone_price_per_stone' => ['required', 'numeric', 'min:0', 'max:99999'],
+            'paving_stone_type_id' => ['required', 'integer', 'exists:paving_stone_types,id'],
+            'stone_sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
+            'stone_price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'helper_hourly_rate' => ['required', 'numeric', 'min:0', 'max:500'],
             'owner_hourly_rate' => ['required', 'numeric', 'min:0', 'max:500'],
             'mini_skid_days' => ['required', 'numeric', 'min:0', 'max:365'],
@@ -378,6 +378,8 @@ class PavingQuotationController extends Controller
             ]);
         }
 
+        $mainStone = PavingStoneType::query()->findOrFail($data['paving_stone_type_id']);
+
         $marbleStone = ! empty($data['marble_stone_type_id'])
             ? PavingStoneType::query()->find($data['marble_stone_type_id'])
             : null;
@@ -387,9 +389,9 @@ class PavingQuotationController extends Controller
             'area_length_ft' => $areaMode === 'dimensions' ? $length : null,
             'area_width_ft' => $areaMode === 'dimensions' ? $width : null,
             'total_area_sq_ft' => $totalAreaSqFt,
-            'paving_stone_type_id' => $data['paving_stone_type_id'] ?? null,
-            'stone_sq_ft_per_stone' => (float) $data['stone_sq_ft_per_stone'],
-            'stone_price_per_stone' => (float) $data['stone_price_per_stone'],
+            'paving_stone_type_id' => (int) $mainStone->id,
+            'stone_sq_ft_per_stone' => (float) $mainStone->sq_ft_per_stone,
+            'stone_price_per_stone' => (float) $mainStone->price_per_stone,
             'helper_hourly_rate' => (float) $data['helper_hourly_rate'],
             'owner_hourly_rate' => (float) $data['owner_hourly_rate'],
             'mini_skid_days' => (float) $data['mini_skid_days'],

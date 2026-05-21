@@ -163,6 +163,7 @@
       margin: 5px 0 0;
       line-height: 1.35;
     }
+    .pq-stone-group .admin-input { max-width: none; }
     .pq-options-row {
       display: flex;
       flex-wrap: wrap;
@@ -386,29 +387,21 @@
                 </div>
               </div>
 
-              <div class="pq-form-row">
-                <div class="admin-form-group">
-                  <label for="pq-stone">Stone type</label>
-                  <select id="pq-stone" name="paving_stone_type_id" class="admin-input pq-calc-in">
-                    <option value="">— Custom —</option>
-                    @foreach ($stoneTypes as $st)
-                      <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}"
-                        @selected((int) old('paving_stone_type_id', $inputs['paving_stone_type_id'] ?? 0) === (int) $st->id)>
-                        {{ $st->name }}
-                      </option>
-                    @endforeach
-                  </select>
-                  <p class="pq-stone-meta" id="pq-stone-meta" aria-live="polite"></p>
-                  <input type="hidden" id="pq-sqft" name="stone_sq_ft_per_stone" class="pq-calc-in" required
-                         value="{{ old('stone_sq_ft_per_stone', $inputs['stone_sq_ft_per_stone']) }}">
-                </div>
-                <div class="admin-form-group">
-                  <label for="pq-stprice">Stone unit price ($/stone, before tax) <span class="cp-required">*</span></label>
-                  <input type="text" id="pq-stprice" name="stone_price_per_stone" class="admin-input pq-calc-in cp-money-input" required
-                         inputmode="decimal" autocomplete="off" placeholder="0.00"
-                         value="{{ old('stone_price_per_stone', number_format((float) ($inputs['stone_price_per_stone'] ?? 0), 2, '.', '')) }}">
-                  <p class="pq-hint">From price database when a stone type is selected; editable here.</p>
-                </div>
+              <div class="admin-form-group pq-stone-group">
+                <label for="pq-stone">Stone type <span class="cp-required">*</span></label>
+                <select id="pq-stone" name="paving_stone_type_id" class="admin-input pq-calc-in" required>
+                  @foreach ($stoneTypes as $st)
+                    <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}"
+                      @selected((int) old('paving_stone_type_id', $inputs['paving_stone_type_id'] ?? 0) === (int) $st->id)>
+                      {{ $st->name }}
+                    </option>
+                  @endforeach
+                </select>
+                <p class="pq-stone-meta" id="pq-stone-meta" aria-live="polite"></p>
+                <input type="hidden" id="pq-sqft" name="stone_sq_ft_per_stone" class="pq-calc-in" required
+                       value="{{ old('stone_sq_ft_per_stone', $inputs['stone_sq_ft_per_stone']) }}">
+                <input type="hidden" id="pq-stprice" name="stone_price_per_stone" class="pq-calc-in" required
+                       value="{{ old('stone_price_per_stone', number_format((float) ($inputs['stone_price_per_stone'] ?? 0), 2, '.', '')) }}">
               </div>
 
               <div class="pq-field-box">
@@ -630,6 +623,24 @@
         form.querySelector('#pq-client').setAttribute('required', 'required');
       });
 
+      function formatMoney(n) {
+        return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function formatStoneDbMeta(sq, pr) {
+        var parts = [];
+        var sqN = parseFloat(sq);
+        var prN = parseFloat(pr);
+        if (isFinite(sqN) && sqN > 0) {
+          parts.push(sqN.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' sq ft per stone');
+        }
+        if (isFinite(prN) && prN >= 0) {
+          parts.push(formatMoney(prN) + ' per stone (before tax)');
+        }
+        if (!parts.length) return '';
+        return parts.join(' · ') + ' · from price database';
+      }
+
       function formatSqFtMeta(sq, fromDb) {
         var n = parseFloat(sq);
         if (!isFinite(n) || n <= 0) return fromDb ? '' : 'Sq ft per stone not set — select a stone type.';
@@ -637,7 +648,7 @@
         return fromDb ? label + ' · from price database' : label + ' · custom';
       }
 
-      function syncStoneMeta(sel, metaEl, sqEl) {
+      function syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice) {
         if (!metaEl) return;
         if (!sel || !sqEl) {
           metaEl.textContent = '';
@@ -645,18 +656,22 @@
         }
         var opt = sel.options[sel.selectedIndex];
         if (opt && opt.value) {
-          metaEl.textContent = formatSqFtMeta(opt.getAttribute('data-sq'), true);
+          if (includePrice && prEl) {
+            metaEl.textContent = formatStoneDbMeta(opt.getAttribute('data-sq'), opt.getAttribute('data-pr'));
+          } else {
+            metaEl.textContent = formatSqFtMeta(opt.getAttribute('data-sq'), true);
+          }
         } else {
           metaEl.textContent = formatSqFtMeta(sqEl.value, false);
         }
       }
 
-      function wireStoneSelect(sel, sqEl, prEl, metaEl) {
+      function wireStoneSelect(sel, sqEl, prEl, metaEl, includePrice) {
         if (!sel || !sqEl || !prEl) return;
         function applyFromOption() {
           var opt = sel.options[sel.selectedIndex];
           if (!opt || !opt.value) {
-            syncStoneMeta(sel, metaEl, sqEl);
+            syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice);
             return;
           }
           var sq = opt.getAttribute('data-sq');
@@ -669,22 +684,24 @@
             prEl.value = pr;
             prEl.dispatchEvent(new Event('input', { bubbles: true }));
           }
-          syncStoneMeta(sel, metaEl, sqEl);
+          syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice);
         }
         sel.addEventListener('change', applyFromOption);
-        syncStoneMeta(sel, metaEl, sqEl);
+        syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice);
       }
       wireStoneSelect(
         document.getElementById('pq-stone'),
         document.getElementById('pq-sqft'),
         document.getElementById('pq-stprice'),
-        document.getElementById('pq-stone-meta')
+        document.getElementById('pq-stone-meta'),
+        true
       );
       wireStoneSelect(
         document.getElementById('pq-marble-stone'),
         document.getElementById('pq-marble-sqft'),
         document.getElementById('pq-marble-price'),
-        document.getElementById('pq-marble-stone-meta')
+        document.getElementById('pq-marble-stone-meta'),
+        false
       );
 
       var marbleChk = document.getElementById('pq-marble-on');
