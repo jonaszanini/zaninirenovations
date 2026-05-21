@@ -120,8 +120,12 @@
               </td>
               <td>
                 @if ($project->showsVisitLayoutInProjectList())
-                  <div>{{ \App\Models\ClientProject::formatDate($project->visit_date) }}</div>
-                  <div class="cp-subtle">Visit</div>
+                  @if ($project->showsVisitRequiredInProjectList())
+                    <div class="cp-subtle">Visit required</div>
+                  @else
+                    <div>{{ \App\Models\ClientProject::formatDate($project->visit_date) }}</div>
+                    <div class="cp-subtle">Visit</div>
+                  @endif
                 @else
                   <div>{{ \App\Models\ClientProject::formatDate($project->start_date) }}</div>
                   <div class="cp-subtle">→ {{ \App\Models\ClientProject::formatDate($project->end_date) }}</div>

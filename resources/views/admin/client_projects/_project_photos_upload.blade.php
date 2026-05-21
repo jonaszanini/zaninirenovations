@@ -5,6 +5,7 @@
   $previewId = $previewId ?? 'cp-project-photos-preview';
   $existingCount = (int) ($existingCount ?? 0);
   $canAdd = max(0, $maxPhotos - $existingCount);
+  $formId = $formId ?? null;
 @endphp
 
 <div class="admin-form-group cp-project-photos-upload">
@@ -13,6 +14,7 @@
     <input type="file"
            id="{{ $inputId }}"
            name="photos[]"
+           @if ($formId) form="{{ $formId }}" @endif
            accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png"
            multiple>
     <p class="admin-form-help">

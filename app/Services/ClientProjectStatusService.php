@@ -97,6 +97,27 @@ class ClientProjectStatusService
         $this->recordHistory($project, $project->status, $project->status, $note);
     }
 
+    /**
+     * Keep visit-related statuses aligned with visit_required / visit_date.
+     * Visit required (no date) ↔ Visit scheduled (date set).
+     */
+    public function syncVisitStatusFromFields(ClientProject $project): ClientProject
+    {
+        if (! $project->visit_required) {
+            return $project;
+        }
+
+        if ($project->status === ClientProject::STATUS_VISIT_REQUIRED && filled($project->visit_date)) {
+            return $this->transition($project, ClientProject::STATUS_VISIT_SCHEDULED, 'Visit date set.');
+        }
+
+        if ($project->status === ClientProject::STATUS_VISIT_SCHEDULED && ! filled($project->visit_date)) {
+            return $this->transition($project, ClientProject::STATUS_VISIT_REQUIRED, 'Visit date cleared.');
+        }
+
+        return $project;
+    }
+
     private function recordHistory(ClientProject $project, ?string $fromStatus, string $toStatus, ?string $note): void
     {
         ClientProjectStatusHistoryEntry::create([

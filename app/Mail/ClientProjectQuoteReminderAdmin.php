@@ -9,7 +9,7 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Daily reminder to the admin ("create and send the quote") for projects
- * in Visit scheduled or Quote Pending.
+ * in Visit required, Visit scheduled, or Quote Pending.
  */
 class ClientProjectQuoteReminderAdmin extends Mailable
 {
@@ -24,9 +24,11 @@ class ClientProjectQuoteReminderAdmin extends Mailable
 
     public function build(): self
     {
-        $suffix = $this->project->status === ClientProject::STATUS_VISIT_SCHEDULED
-            ? 'Visit / quote prep'
-            : 'Quote still pending';
+        $suffix = match ($this->project->status) {
+            ClientProject::STATUS_VISIT_REQUIRED => 'Visit required',
+            ClientProject::STATUS_VISIT_SCHEDULED => 'Visit / quote prep',
+            default => 'Quote still pending',
+        };
         $subject = "[Reminder] {$suffix} — ".$this->project->name;
 
         return $this->subject($subject)

@@ -1,6 +1,15 @@
-@component('emails.client_projects.layout', ['title' => $project->status === \App\Models\ClientProject::STATUS_VISIT_SCHEDULED ? 'Visit / quote prep' : 'Quote still pending'])
+@php
+  $isVisitRequired = $project->status === \App\Models\ClientProject::STATUS_VISIT_REQUIRED;
+  $isVisitScheduled = $project->status === \App\Models\ClientProject::STATUS_VISIT_SCHEDULED;
+  $emailTitle = $isVisitRequired
+    ? 'Visit required'
+    : ($isVisitScheduled ? 'Visit / quote prep' : 'Quote still pending');
+@endphp
+@component('emails.client_projects.layout', ['title' => $emailTitle])
   <p><strong>Reminder:</strong>
-    @if ($project->status === \App\Models\ClientProject::STATUS_VISIT_SCHEDULED)
+    @if ($isVisitRequired)
+      this project is in <strong>Visit required</strong> — schedule the on-site visit, then prepare and send the quote when ready.
+    @elseif ($isVisitScheduled)
       this project is in <strong>Visit scheduled</strong> — follow up after the site visit and prepare/send the quote when ready.
     @else
       a quote still needs to be prepared and sent for this project.

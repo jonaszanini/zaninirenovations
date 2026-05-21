@@ -153,6 +153,8 @@ class ClientProjectController extends Controller
             'send_client_email' => ['nullable', 'boolean'],
             'visit_required' => ['nullable', 'boolean'],
             'visit_date' => ['nullable', 'date'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ], ClientProjectPhotoStorage::uploadValidationRules()), $this->clientProjectValidationMessages());
 
         // Normalise hourly_rate so fixed projects don't carry a stray rate.
@@ -186,12 +188,12 @@ class ClientProjectController extends Controller
         // Hourly projects imply the price has already been agreed verbally,
         // so we skip the pre-quote stages (visit / quote pending) and land
         // directly at Proposal Accepted. Fixed-price projects start at
-        // Visit scheduled when a site visit is needed, otherwise Quote pending.
-        $initialStatus = $isHourly
-            ? ClientProject::STATUS_PROPOSAL_ACCEPTED
-            : ($visitRequired
-                ? ClientProject::STATUS_VISIT_SCHEDULED
-                : ClientProject::STATUS_QUOTE_PENDING);
+        // Visit required, Visit scheduled, or Quote pending.
+        $initialStatus = ClientProject::initialStatusForCreate(
+            $data['billing_type'],
+            $visitRequired,
+            $data['visit_date'] ?? null
+        );
 
         $project = DB::transaction(function () use ($data, $initialStatus, $request, $photoStorage) {
             $project = ClientProject::create(array_merge($data, [
@@ -210,6 +212,12 @@ class ClientProjectController extends Controller
 
         if ($isHourly) {
             $successMessage = 'Project created. Status set to Proposal Accepted — no email sent to the client yet.';
+        } elseif ($initialStatus === ClientProject::STATUS_VISIT_REQUIRED) {
+            if ($sendClientEmail && filled($project->client_email)) {
+                $successMessage = 'Project created. Status set to Visit required. Acknowledgement emailed to the client.';
+            } else {
+                $successMessage = 'Project created. Status set to Visit required. No client email sent.';
+            }
         } elseif ($initialStatus === ClientProject::STATUS_VISIT_SCHEDULED) {
             if ($sendClientEmail && filled($project->client_email)) {
                 $successMessage = 'Project created. Status set to Visit scheduled. Acknowledgement emailed to the client.';
@@ -452,6 +460,7 @@ class ClientProjectController extends Controller
         $previousEnd = $client_project->end_date ? $client_project->end_date->toDateString() : null;
 
         $client_project->fill($data)->save();
+        $client_project = $service->syncVisitStatusFromFields($client_project->fresh());
 
         $newStartAfterSave = $client_project->start_date ? $client_project->start_date->toDateString() : null;
         $newEndAfterSave = $client_project->end_date ? $client_project->end_date->toDateString() : null;

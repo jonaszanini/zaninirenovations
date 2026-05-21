@@ -21,6 +21,7 @@ class ClientProject extends Model
 {
     // Canonical status keys (snake_case for DB, human labels in statusLabels()).
     /** Lead / intake: on-site visit agreed, quote not sent yet. */
+    public const STATUS_VISIT_REQUIRED = 'visit_required';
     public const STATUS_VISIT_SCHEDULED = 'visit_scheduled';
     public const STATUS_QUOTE_PENDING = 'quote_pending';
     public const STATUS_QUOTE_SENT = 'quote_sent';
@@ -338,6 +339,7 @@ class ClientProject extends Model
     public static function preQuoteSentStatuses(): array
     {
         return [
+            self::STATUS_VISIT_REQUIRED,
             self::STATUS_VISIT_SCHEDULED,
             self::STATUS_QUOTE_PENDING,
         ];
@@ -353,6 +355,7 @@ class ClientProject extends Model
     public static function statuses(): array
     {
         return [
+            self::STATUS_VISIT_REQUIRED,
             self::STATUS_VISIT_SCHEDULED,
             self::STATUS_QUOTE_PENDING,
             self::STATUS_QUOTE_SENT,
@@ -431,6 +434,7 @@ class ClientProject extends Model
     public static function statusLabels(): array
     {
         return [
+            self::STATUS_VISIT_REQUIRED => 'Visit required',
             self::STATUS_VISIT_SCHEDULED => 'Visit scheduled',
             self::STATUS_QUOTE_PENDING => 'Quote Pending',
             self::STATUS_QUOTE_SENT => 'Quote Sent',
@@ -447,7 +451,8 @@ class ClientProject extends Model
     public static function statusColors(): array
     {
         return [
-            self::STATUS_VISIT_SCHEDULED => '#0891b2',       // cyan — pre-quote / visit
+            self::STATUS_VISIT_REQUIRED => '#0284c7',       // sky — visit needed, no date yet
+            self::STATUS_VISIT_SCHEDULED => '#0891b2',       // cyan — pre-quote / visit dated
             self::STATUS_QUOTE_PENDING => '#f59e0b',         // amber
             self::STATUS_QUOTE_SENT => '#3b82f6',            // blue
             self::STATUS_PROPOSAL_ACCEPTED => '#10b981',     // green
@@ -632,12 +637,37 @@ class ClientProject extends Model
     }
 
     /**
-     * Project list "Dates" column: show visit date + "Visit" while status is
-     * Visit scheduled and the on-site visit is not marked done yet.
+     * Initial workflow status when a project is created from the admin form.
+     */
+    public static function initialStatusForCreate(string $billingType, bool $visitRequired, mixed $visitDate): string
+    {
+        if ($billingType === self::BILLING_HOURLY) {
+            return self::STATUS_PROPOSAL_ACCEPTED;
+        }
+
+        if ($visitRequired) {
+            return filled($visitDate)
+                ? self::STATUS_VISIT_SCHEDULED
+                : self::STATUS_VISIT_REQUIRED;
+        }
+
+        return self::STATUS_QUOTE_PENDING;
+    }
+
+    /**
+     * Project list "Dates" column: show visit info while the project is in a
+     * pre-visit intake status and the on-site visit is not marked done yet.
      */
     public function showsVisitLayoutInProjectList(): bool
     {
-        return $this->status === self::STATUS_VISIT_SCHEDULED && !$this->visit_done;
+        return in_array($this->status, [self::STATUS_VISIT_REQUIRED, self::STATUS_VISIT_SCHEDULED], true)
+            && ! $this->visit_done;
+    }
+
+    /** True when the project list should show "Visit required" instead of a date. */
+    public function showsVisitRequiredInProjectList(): bool
+    {
+        return $this->status === self::STATUS_VISIT_REQUIRED;
     }
 
     // --- Money & profit calculations --------------------------------------

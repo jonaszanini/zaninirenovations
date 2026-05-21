@@ -436,11 +436,15 @@
 
     function syncCreateVisitFooters(isHourly) {
       var visitCb = document.getElementById('cp-create-visit-required');
+      var visitDate = document.getElementById('cp-create-visit-date');
       var visitRequired = visitCb && visitCb.checked;
+      var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
       var quoteEl = document.querySelector('[data-cp-fixed-quote-pending]');
-      var visitEl = document.querySelector('[data-cp-fixed-visit-scheduled]');
+      var visitRequiredEl = document.querySelector('[data-cp-fixed-visit-required]');
+      var visitScheduledEl = document.querySelector('[data-cp-fixed-visit-scheduled]');
       if (quoteEl) quoteEl.style.display = (isHourly || visitRequired) ? 'none' : '';
-      if (visitEl) visitEl.style.display = (isHourly || !visitRequired) ? 'none' : '';
+      if (visitRequiredEl) visitRequiredEl.style.display = (isHourly || !visitRequired || hasDate) ? 'none' : '';
+      if (visitScheduledEl) visitScheduledEl.style.display = (isHourly || !visitRequired || !hasDate) ? 'none' : '';
     }
 
     function sync() {
@@ -487,14 +491,16 @@
       syncCreateVisitExpandable();
       var checked = document.querySelector('[data-cp-billing]:checked');
       var isHourly = checked && checked.value === 'hourly';
-      var quoteEl = document.querySelector('[data-cp-fixed-quote-pending]');
-      var visitEl = document.querySelector('[data-cp-fixed-visit-scheduled]');
-      if (quoteEl) quoteEl.style.display = (isHourly || visitCb.checked) ? 'none' : '';
-      if (visitEl) visitEl.style.display = (isHourly || !visitCb.checked) ? 'none' : '';
+      syncCreateVisitFooters(isHourly);
     }
 
     visitCb.addEventListener('change', syncCreateVisitFields);
-    if (visitDate) visitDate.addEventListener('change', syncCreateVisitExpandable);
+    if (visitDate) visitDate.addEventListener('change', function () {
+      syncCreateVisitExpandable();
+      var checked = document.querySelector('[data-cp-billing]:checked');
+      var isHourly = checked && checked.value === 'hourly';
+      syncCreateVisitFooters(isHourly);
+    });
     syncCreateVisitFields();
   }
 
