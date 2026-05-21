@@ -65,15 +65,6 @@
 
   $linkProject = $linkProject ?? null;
 
-  $cqSentLock = false;
-  if ($isEdit) {
-      $linkedCpq = ClientProjectQuotation::query()
-          ->where('source_type', ClientProjectQuotation::SOURCE_STANDARD)
-          ->where('source_id', $quotation->id)
-          ->first();
-      $cqSentLock = $linkedCpq && $linkedCpq->isSent();
-  }
-
   $defaultDocType = $isEdit
       ? (($quotation->document_type ?? null) ?: ClientProjectQuotation::TYPE_QUOTATION)
       : ClientProjectQuotation::TYPE_QUOTATION;
@@ -203,25 +194,17 @@
             <div class="sq-intro-option-block">
               <span class="admin-form-label">Document type</span>
               @php $docSel = old('document_type', $defaultDocType); @endphp
-              @if ($cqSentLock)
-                <input type="hidden" name="document_type" value="{{ $docSel }}">
-                <p class="admin-form-help sq-intro-option-help">
-                  <strong>{{ $docSel === ClientProjectQuotation::TYPE_ESTIMATE ? 'Estimate' : 'Quotation (firm price)' }}</strong>
-                  — locked after this document was emailed to the client.
-                </p>
-              @else
-                <div class="sq-intro-choice-row">
-                  <label class="cp-checkbox-row">
-                    <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_QUOTATION }}" @checked($docSel === ClientProjectQuotation::TYPE_QUOTATION)>
-                    <span>Quotation (firm price)</span>
-                  </label>
-                  <label class="cp-checkbox-row">
-                    <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_ESTIMATE }}" @checked($docSel === ClientProjectQuotation::TYPE_ESTIMATE)>
-                    <span>Estimate</span>
-                  </label>
-                </div>
-                <p class="admin-form-help sq-intro-option-help">Choose before sending; you can change it later only until the client email goes out.</p>
-              @endif
+              <div class="sq-intro-choice-row">
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_QUOTATION }}" @checked($docSel === ClientProjectQuotation::TYPE_QUOTATION)>
+                  <span>Quotation (firm price)</span>
+                </label>
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_ESTIMATE }}" @checked($docSel === ClientProjectQuotation::TYPE_ESTIMATE)>
+                  <span>Estimate</span>
+                </label>
+              </div>
+              <p class="admin-form-help sq-intro-option-help">You can switch between quotation and estimate at any time; the document number prefix updates when you save.</p>
               @error('document_type') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
 

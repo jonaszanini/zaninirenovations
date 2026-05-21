@@ -227,16 +227,6 @@
       text-align: left;
       letter-spacing: 0.04em;
     }
-    .items th.hst, .items td.hst {
-      text-align: center;
-      width: 72pt;
-      white-space: nowrap;
-    }
-    /* DomPDF: keep header text white (joint rule above also matches body cells). */
-    .items thead th.hst {
-      background: #024768;
-      color: #ffffff;
-    }
     .items th.amount, .items td.amount {
       text-align: right;
       width: 110pt;
@@ -392,7 +382,6 @@
     <thead>
       <tr>
         <th>Description</th>
-        <th class="hst">HST</th>
         <th class="amount">Amount</th>
       </tr>
     </thead>
@@ -400,22 +389,21 @@
       @foreach ($items as $row)
         <tr>
           <td>{!! nl2br(e($row['description'])) !!}</td>
-          <td class="hst">{{ !empty($row['apply_hst']) ? '13%' : '—' }}</td>
           <td class="amount">{{ $fmt($row['amount']) }}</td>
         </tr>
       @endforeach
     </tbody>
     <tfoot>
       <tr>
-        <td class="totals-label" colspan="2">Subtotal</td>
+        <td class="totals-label">Subtotal</td>
         <td class="amount">{{ $fmt($subtotal) }}</td>
       </tr>
       <tr>
-        <td class="totals-label" colspan="2">HST (13%)</td>
+        <td class="totals-label">HST (13%)</td>
         <td class="amount">{{ $fmt($hst) }}</td>
       </tr>
       <tr class="grand">
-        <td class="totals-label" colspan="2">Total with HST</td>
+        <td class="totals-label">Total with HST</td>
         <td class="amount">{{ $fmt($grand) }}</td>
       </tr>
     </tfoot>

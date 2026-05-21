@@ -120,10 +120,7 @@ class ClientProjectQuotation extends Model
         return $this->source_type === null || $this->source_type === self::SOURCE_MANUAL;
     }
 
-    /**
-     * Swap QUO ↔ EST prefix before the first send; same rule as the old
-     * project editor.
-     */
+    /** Swap QUO ↔ EST prefix when the document type changes. */
     public static function swapNumberPrefixForType(?string $number, string $newType): string
     {
         if (! $number) {

@@ -340,21 +340,6 @@ class StandardQuotationController extends Controller
         StandardQuotationCalculator $calculator,
         ?StandardQuotation $existing = null
     ): array {
-        if ($existing) {
-            $cpq = ClientProjectQuotation::query()
-                ->where('source_type', ClientProjectQuotation::SOURCE_STANDARD)
-                ->where('source_id', $existing->id)
-                ->first();
-            if ($cpq && $cpq->isSent()) {
-                $lockedType = $existing->getAttribute('document_type');
-                if ($lockedType !== ClientProjectQuotation::TYPE_QUOTATION
-                    && $lockedType !== ClientProjectQuotation::TYPE_ESTIMATE) {
-                    $lockedType = $cpq->type;
-                }
-                $request->merge(['document_type' => $lockedType]);
-            }
-        }
-
         $request->merge([
             'display_title' => trim((string) $request->input('display_title', '')),
         ]);
@@ -600,7 +585,7 @@ class StandardQuotationController extends Controller
             $row->labour = $includeLabour;
             $row->material = $includeMaterial;
 
-            if (! $row->isSent() && $row->type !== $docType) {
+            if ($row->type !== $docType) {
                 $row->quotation_number = ClientProjectQuotation::swapNumberPrefixForType(
                     $row->quotation_number,
                     $docType
