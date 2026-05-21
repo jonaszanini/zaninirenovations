@@ -408,6 +408,7 @@
           <p class="party-line">53 Antonakos Dr, Carleton Place, ON K7C 0L1</p>
           <p class="party-line">Phone: (647) 834-7570</p>
           <p class="party-line">Email: zaninirenovations@gmail.com</p>
+          <p class="party-line">Instagram: instagram.com/zaninirenovations</p>
         </td>
         <td>
           <p class="party-label">Client</p>

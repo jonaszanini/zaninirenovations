@@ -10,6 +10,9 @@ use Illuminate\Support\Collection;
 /**
  * Replicates logic from Zanini_Paving_Calculator_v2.xlsx — "ESTIMATE CALCULATOR" sheet.
  *
+ * Final quote (B79) defaults to the built-up suggested total (B75 = D71), not the
+ * separate market tier table on "PRICE REFERENCE & DATABASE".
+ *
  * Note: the workbook's polymeric row mistakenly pulled the staples unit price (E17);
  * this engine always uses {@see PavingMaterialRate} key `polymeric_sand_bag` (E15 / $40).
  */
@@ -202,12 +205,18 @@ class PavingQuotationCalculator
         $profitAmount = round($totalWithTaxMaterialsFixedPlusLabour * $profitMargin, 2);
         $builtUpGrandTotal = round($totalWithTaxMaterialsFixedPlusLabour + $profitAmount, 2);
 
-        $refPps = $this->interpolatePricePerSqFt($area);
-        $referenceSuggestedTotal = round($refPps * $area, 2);
+        // Excel B74 = D71/B5, B75 = ROUND(B74*B5,2) — suggested quote equals built-up total (D71).
+        $formulaPricePerSqFt = $area > 0 ? round($builtUpGrandTotal / $area, 4) : 0.0;
+        $referenceSuggestedTotal = $builtUpGrandTotal;
+
+        // Optional market reference from the pricing-tier table (not used for final quote in Excel).
+        $marketRefPps = $this->interpolatePricePerSqFt($area);
+        $marketReferenceTotal = round($marketRefPps * $area, 2);
 
         $manual = $inputs['manual_price_override'] ?? null;
         $manualNum = is_numeric($manual) && (float) $manual > 0 ? round((float) $manual, 2) : null;
 
+        // Excel B79 = IF(ISNUMBER(B78), B78, B75)
         $finalQuote = $manualNum ?? $referenceSuggestedTotal;
 
         $grossProfit = round($finalQuote - $withTaxMatFix - $helperCostSum, 2);
@@ -255,8 +264,10 @@ class PavingQuotationCalculator
                 'profit_margin_rate' => $profitMargin,
                 'profit_margin_amount' => $profitAmount,
                 'built_up_grand_total' => $builtUpGrandTotal,
-                'reference_price_per_sq_ft' => round($refPps, 4),
+                'reference_price_per_sq_ft' => $formulaPricePerSqFt,
                 'reference_suggested_total' => $referenceSuggestedTotal,
+                'market_reference_price_per_sq_ft' => round($marketRefPps, 4),
+                'market_reference_total' => $marketReferenceTotal,
                 'manual_price_override' => $manualNum,
                 'final_quote_total' => $finalQuote,
                 'gross_profit' => $grossProfit,

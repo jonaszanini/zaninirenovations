@@ -369,9 +369,9 @@
             <div class="admin-form-group" style="margin-top:16px;">
               <label for="pq-manual">Manual price override (CAD)</label>
               <input type="text" id="pq-manual" name="manual_price_override" class="admin-input pq-calc-in cp-money-input"
-                     inputmode="decimal" autocomplete="off" placeholder="Blank = use interpolated suggested total"
+                     inputmode="decimal" autocomplete="off" placeholder="Blank = use built-up suggested total"
                      value="{{ old('manual_price_override', isset($inputs['manual_price_override']) && $inputs['manual_price_override'] !== null && $inputs['manual_price_override'] !== '' ? number_format((float) $inputs['manual_price_override'], 2, '.', '') : '') }}">
-              <p class="pq-hint">Leave blank to use the pricing-engine suggested total (area × interpolated $/sq ft).</p>
+              <p class="pq-hint">Leave blank to use the formula suggested total (Excel B75 = built-up project cost D71). Enter a dollar amount to override.</p>
             </div>
           </div>
         </form>
@@ -519,9 +519,12 @@
         html += '<div class="pq-row"><span>Fixed costs (w/ HST)</span><strong>' + fmt(f.with_tax) + '</strong></div>';
         html += '<div class="pq-row"><span>Labour (no HST)</span><strong>' + fmt(l.total) + '</strong></div>';
         html += '<div class="pq-row"><span>Built-up total (Excel D71)</span><strong>' + fmt(s.built_up_grand_total) + '</strong></div>';
-        html += '<div class="pq-row"><span>Interpolated $/sq ft</span><strong>' + s.reference_price_per_sq_ft.toFixed(2) + '</strong></div>';
-        html += '<div class="pq-row pq-row--hl"><span>Suggested total</span><strong>' + fmt(s.reference_suggested_total) + '</strong></div>';
-        html += '<div class="pq-row pq-row--hl"><span>Final quote</span><strong>' + fmt(s.final_quote_total) + '</strong></div>';
+        html += '<div class="pq-row"><span>Formula $/sq ft (Excel B74)</span><strong>' + s.reference_price_per_sq_ft.toFixed(2) + '</strong></div>';
+        html += '<div class="pq-row pq-row--hl"><span>Suggested total (Excel B75)</span><strong>' + fmt(s.reference_suggested_total) + '</strong></div>';
+        html += '<div class="pq-row pq-row--hl"><span>Final quote (Excel B79)</span><strong>' + fmt(s.final_quote_total) + '</strong></div>';
+        if (s.market_reference_total && Math.abs(s.market_reference_total - s.reference_suggested_total) > 0.01) {
+          html += '<div class="pq-row"><span>Market tier reference</span><strong>' + fmt(s.market_reference_total) + '</strong></div>';
+        }
         var gp = s.gross_profit;
         html += '<div class="pq-row"><span>Gross profit</span><strong class="' + (gp >= 0 ? 'pq-profit-pos' : 'pq-profit-neg') + '">' + fmt(gp) + '</strong></div>';
         html += '<div class="pq-row"><span>Margin %</span><strong>' + (100 * s.margin_percent).toFixed(1) + '%</strong></div>';
