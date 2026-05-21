@@ -393,6 +393,9 @@ class PavingQuotationCalculator
 
         return [
             'total_area_sq_ft' => 168,
+            'area_input_mode' => 'total',
+            'area_length_ft' => null,
+            'area_width_ft' => null,
             'paving_stone_type_id' => $stone?->id,
             'stone_sq_ft_per_stone' => $stone ? (float) $stone->sq_ft_per_stone : 0.77,
             'stone_price_per_stone' => $stone ? (float) $stone->price_per_stone : 1.69,

@@ -17,18 +17,20 @@ class PavingDatabaseController extends Controller
     public function storeStone(Request $request)
     {
         $this->mergeStrippedMoney($request, ['price_per_stone']);
+        $this->normalizeStoneUrlOnRequest($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'product_url' => ['nullable', 'string', 'max:500', 'url'],
+            'length_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
+            'width_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
+            'height_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'sq_ft_per_stone' => ['required', 'numeric', 'min:0.0001', 'max:100'],
             'price_per_stone' => ['required', 'numeric', 'min:0', 'max:99999'],
         ]);
 
         $max = (int) PavingStoneType::query()->max('sort_order');
-        PavingStoneType::create([
-            'name' => trim($data['name']),
-            'sq_ft_per_stone' => $data['sq_ft_per_stone'],
-            'price_per_stone' => $data['price_per_stone'],
+        PavingStoneType::create($this->stonePayloadFromValidated($data) + [
             'sort_order' => $max + 1,
         ]);
 
@@ -38,18 +40,19 @@ class PavingDatabaseController extends Controller
     public function updateStone(Request $request, PavingStoneType $paving_stone_type)
     {
         $this->mergeStrippedMoney($request, ['price_per_stone']);
+        $this->normalizeStoneUrlOnRequest($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'product_url' => ['nullable', 'string', 'max:500', 'url'],
+            'length_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
+            'width_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
+            'height_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'sq_ft_per_stone' => ['required', 'numeric', 'min:0.0001', 'max:100'],
             'price_per_stone' => ['required', 'numeric', 'min:0', 'max:99999'],
         ]);
 
-        $paving_stone_type->update([
-            'name' => trim($data['name']),
-            'sq_ft_per_stone' => $data['sq_ft_per_stone'],
-            'price_per_stone' => $data['price_per_stone'],
-        ]);
+        $paving_stone_type->update($this->stonePayloadFromValidated($data));
 
         return back()->with('success', 'Stone type updated.');
     }
@@ -125,6 +128,45 @@ class PavingDatabaseController extends Controller
         });
 
         return back()->with('success', 'Pricing tiers saved.');
+    }
+
+    protected function normalizeStoneUrlOnRequest(Request $request): void
+    {
+        if (! $request->has('product_url')) {
+            return;
+        }
+        $url = trim((string) $request->input('product_url'));
+        if ($url === '') {
+            $request->merge(['product_url' => null]);
+
+            return;
+        }
+        if (! preg_match('#^https?://#i', $url)) {
+            $url = 'https://'.$url;
+        }
+        $request->merge(['product_url' => $url]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function stonePayloadFromValidated(array $data): array
+    {
+        $url = trim((string) ($data['product_url'] ?? ''));
+        $length = isset($data['length_in']) && $data['length_in'] !== '' ? (float) $data['length_in'] : null;
+        $width = isset($data['width_in']) && $data['width_in'] !== '' ? (float) $data['width_in'] : null;
+        $height = isset($data['height_in']) && $data['height_in'] !== '' ? (float) $data['height_in'] : null;
+
+        return [
+            'name' => trim($data['name']),
+            'product_url' => $url !== '' ? $url : null,
+            'length_in' => $length,
+            'width_in' => $width,
+            'height_in' => $height,
+            'sq_ft_per_stone' => $data['sq_ft_per_stone'],
+            'price_per_stone' => $data['price_per_stone'],
+        ];
     }
 
     /**

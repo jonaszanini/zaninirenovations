@@ -15,6 +15,7 @@ use App\Services\PavingQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class PavingQuotationController extends Controller
@@ -305,7 +306,10 @@ class PavingQuotationController extends Controller
         $this->normalizeCadMoneyStringsOnRequest($request);
 
         $data = $request->validate([
-            'total_area_sq_ft' => ['required', 'numeric', 'min:1', 'max:1000000'],
+            'area_input_mode' => ['nullable', Rule::in(['total', 'dimensions'])],
+            'area_length_ft' => ['nullable', 'numeric', 'min:0.01', 'max:10000'],
+            'area_width_ft' => ['nullable', 'numeric', 'min:0.01', 'max:10000'],
+            'total_area_sq_ft' => ['nullable', 'numeric', 'min:1', 'max:1000000'],
             'paving_stone_type_id' => ['nullable', 'integer', 'exists:paving_stone_types,id'],
             'stone_sq_ft_per_stone' => ['required', 'numeric', 'min:0.0001', 'max:100'],
             'stone_price_per_stone' => ['required', 'numeric', 'min:0', 'max:99999'],
@@ -344,12 +348,45 @@ class PavingQuotationController extends Controller
             ]);
         }
 
+        $areaMode = in_array($data['area_input_mode'] ?? 'total', ['total', 'dimensions'], true)
+            ? ($data['area_input_mode'] ?? 'total')
+            : 'total';
+
+        if ($areaMode === 'dimensions') {
+            $length = isset($data['area_length_ft']) ? (float) $data['area_length_ft'] : 0.0;
+            $width = isset($data['area_width_ft']) ? (float) $data['area_width_ft'] : 0.0;
+            if ($length <= 0 || $width <= 0) {
+                throw ValidationException::withMessages([
+                    'area_length_ft' => 'Enter length and width when using length × width mode.',
+                ]);
+            }
+            $totalAreaSqFt = round($length * $width, 2);
+        } else {
+            if (! isset($data['total_area_sq_ft']) || (float) $data['total_area_sq_ft'] < 1) {
+                throw ValidationException::withMessages([
+                    'total_area_sq_ft' => 'Enter the total project area in square feet.',
+                ]);
+            }
+            $totalAreaSqFt = (float) $data['total_area_sq_ft'];
+            $length = null;
+            $width = null;
+        }
+
+        if ($totalAreaSqFt < 1) {
+            throw ValidationException::withMessages([
+                'total_area_sq_ft' => 'Project area must be at least 1 sq ft.',
+            ]);
+        }
+
         $marbleStone = ! empty($data['marble_stone_type_id'])
             ? PavingStoneType::query()->find($data['marble_stone_type_id'])
             : null;
 
         return [
-            'total_area_sq_ft' => (float) $data['total_area_sq_ft'],
+            'area_input_mode' => $areaMode,
+            'area_length_ft' => $areaMode === 'dimensions' ? $length : null,
+            'area_width_ft' => $areaMode === 'dimensions' ? $width : null,
+            'total_area_sq_ft' => $totalAreaSqFt,
             'paving_stone_type_id' => $data['paving_stone_type_id'] ?? null,
             'stone_sq_ft_per_stone' => (float) $data['stone_sq_ft_per_stone'],
             'stone_price_per_stone' => (float) $data['stone_price_per_stone'],

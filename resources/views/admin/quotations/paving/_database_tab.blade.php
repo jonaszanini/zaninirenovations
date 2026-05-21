@@ -14,55 +14,91 @@
   <div id="pq-db-panel-stones" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-stones">
     <div class="admin-card">
       <h4 style="margin:0 0 12px;">Stone types</h4>
-      <p class="admin-form-help">Used by the main and marble stone dropdowns.</p>
-      <table class="admin-table pq-db-stone-table" style="margin-top:12px;">
-        <thead>
-          <tr>
-            <th class="pq-db-stone-th-name">Name</th>
-            <th class="pq-db-stone-th-sq">Sq ft / stone</th>
-            <th class="pq-db-stone-th-pr">$/stone (CAD)</th>
-            <th class="pq-db-stone-th-actions"></th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach ($stoneTypes as $st)
-            <tr class="pq-db-stone-tr">
-              <td colspan="4" class="pq-db-stone-cell">
-                <form method="post" action="{{ route('admin.quotations.paving.database.stones.update', $st) }}" class="pq-db-stone-form">
-                  @csrf
-                  @method('PUT')
-                  <div class="pq-db-stone-grid">
-                    <input type="text" name="name" value="{{ $st->name }}" class="admin-input" required maxlength="120" aria-label="Stone name">
-                    <input type="number" name="sq_ft_per_stone" value="{{ $st->sq_ft_per_stone }}" step="0.0001" min="0.0001" class="admin-input" required aria-label="Sq ft per stone">
-                    <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
-                           value="{{ number_format((float) $st->price_per_stone, 2, '.', '') }}"
-                           class="admin-input cp-money-input" required aria-label="Price per stone CAD">
-                    <div class="pq-db-stone-actions">
-                      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save</button>
-                      @if ($stoneTypes->count() > 1)
-                        <button type="submit" form="pq-del-stone-{{ $st->id }}" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
-                      @endif
-                    </div>
-                  </div>
-                </form>
-                @if ($stoneTypes->count() > 1)
-                  <form id="pq-del-stone-{{ $st->id }}" method="post" action="{{ route('admin.quotations.paving.database.stones.destroy', $st) }}"
-                        class="pq-db-hidden-form" onsubmit="return confirm('Delete this stone type?');">
-                    @csrf
-                    @method('DELETE')
-                  </form>
-                @endif
-              </td>
+      <p class="admin-form-help">Used by the main and marble stone dropdowns. Length × width (in) ÷ 144 = sq ft per stone — use the fill button or enter sq ft manually.</p>
+      <div class="admin-table-scroll">
+        <table class="admin-table pq-db-stone-table" style="margin-top:12px;">
+          <thead>
+            <tr>
+              <th class="pq-db-stone-th-name">Name</th>
+              <th class="pq-db-stone-th-link">Product link</th>
+              <th class="pq-db-stone-th-dim">Length (in)</th>
+              <th class="pq-db-stone-th-dim">Width (in)</th>
+              <th class="pq-db-stone-th-dim">Height (in)</th>
+              <th class="pq-db-stone-th-sq">Sq ft / stone</th>
+              <th class="pq-db-stone-th-pr">$/stone (CAD)</th>
+              <th class="pq-db-stone-th-actions"></th>
             </tr>
-          @endforeach
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @foreach ($stoneTypes as $st)
+              <tr class="pq-db-stone-tr">
+                <td colspan="8" class="pq-db-stone-cell">
+                  <form method="post" action="{{ route('admin.quotations.paving.database.stones.update', $st) }}" class="pq-db-stone-form">
+                    @csrf
+                    @method('PUT')
+                    <div class="pq-db-stone-grid">
+                      <input type="text" name="name" value="{{ $st->name }}" class="admin-input" required maxlength="120" aria-label="Stone name">
+                      <div class="pq-db-stone-link-wrap">
+                        <input type="url" name="product_url" value="{{ $st->product_url }}" class="admin-input" maxlength="500"
+                               placeholder="https://…" aria-label="Product link">
+                        @if (filled($st->product_url))
+                          <a href="{{ $st->product_url }}" class="pq-db-stone-open-link" target="_blank" rel="noopener noreferrer" title="Open product page">
+                            <i class="fa fa-external-link" aria-hidden="true"></i>
+                          </a>
+                        @endif
+                      </div>
+                      <input type="number" name="length_in" value="{{ $st->length_in }}" step="0.01" min="0.01" max="999"
+                             class="admin-input pq-db-stone-len" placeholder="—" aria-label="Length in inches">
+                      <input type="number" name="width_in" value="{{ $st->width_in }}" step="0.01" min="0.01" max="999"
+                             class="admin-input pq-db-stone-wid" placeholder="—" aria-label="Width in inches">
+                      <input type="number" name="height_in" value="{{ $st->height_in }}" step="0.01" min="0.01" max="999"
+                             class="admin-input pq-db-stone-hgt" placeholder="—" aria-label="Height in inches">
+                      <div class="pq-db-stone-sq-wrap">
+                        <input type="number" name="sq_ft_per_stone" value="{{ $st->sq_ft_per_stone }}" step="0.0001" min="0.0001"
+                               class="admin-input pq-db-stone-sq" required aria-label="Sq ft per stone">
+                        <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
+                      </div>
+                      <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
+                             value="{{ number_format((float) $st->price_per_stone, 2, '.', '') }}"
+                             class="admin-input cp-money-input" required aria-label="Price per stone CAD">
+                      <div class="pq-db-stone-actions">
+                        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save</button>
+                        @if ($stoneTypes->count() > 1)
+                          <button type="submit" form="pq-del-stone-{{ $st->id }}" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
+                        @endif
+                      </div>
+                    </div>
+                  </form>
+                  @if ($stoneTypes->count() > 1)
+                    <form id="pq-del-stone-{{ $st->id }}" method="post" action="{{ route('admin.quotations.paving.database.stones.destroy', $st) }}"
+                          class="pq-db-hidden-form" onsubmit="return confirm('Delete this stone type?');">
+                      @csrf
+                      @method('DELETE')
+                    </form>
+                  @endif
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
       <form method="post" action="{{ route('admin.quotations.paving.database.stones.store') }}" class="admin-card pq-db-add-stone" style="margin-top:16px;padding:16px;border:1px dashed #cbd5e1;">
         @csrf
         <h5 style="margin:0 0 10px;">Add stone type</h5>
         <div class="pq-db-stone-grid pq-db-stone-grid--add">
           <input type="text" name="name" placeholder="Name" class="admin-input" required maxlength="120" aria-label="New stone name">
-          <input type="number" name="sq_ft_per_stone" placeholder="Sq ft/stone" step="0.0001" min="0.0001" class="admin-input" required aria-label="Sq ft per stone">
+          <input type="url" name="product_url" placeholder="Product link (https://…)" class="admin-input" maxlength="500" aria-label="Product link">
+          <input type="number" name="length_in" placeholder="Length (in)" step="0.01" min="0.01" max="999"
+                 class="admin-input pq-db-stone-len" aria-label="Length in inches">
+          <input type="number" name="width_in" placeholder="Width (in)" step="0.01" min="0.01" max="999"
+                 class="admin-input pq-db-stone-wid" aria-label="Width in inches">
+          <input type="number" name="height_in" placeholder="Height (in)" step="0.01" min="0.01" max="999"
+                 class="admin-input pq-db-stone-hgt" aria-label="Height in inches">
+          <div class="pq-db-stone-sq-wrap">
+            <input type="number" name="sq_ft_per_stone" placeholder="Sq ft/stone" step="0.0001" min="0.0001"
+                   class="admin-input pq-db-stone-sq" required aria-label="Sq ft per stone">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
+          </div>
           <input type="text" name="price_per_stone" placeholder="0.00" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" required aria-label="Price per stone CAD">
           <div class="pq-db-stone-actions">
@@ -170,6 +206,32 @@
     document.querySelectorAll('[data-pq-db]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         showDbSubtab(btn.getAttribute('data-pq-db'));
+      });
+    });
+
+    function sqFtFromStoneDimensions(lenInput, widInput) {
+      if (!lenInput || !widInput) return null;
+      var len = parseFloat(lenInput.value);
+      var wid = parseFloat(widInput.value);
+      if (!isFinite(len) || !isFinite(wid) || len <= 0 || wid <= 0) return null;
+      return Math.round((len * wid / 144) * 10000) / 10000;
+    }
+
+    function fillSqFtFromRow(row) {
+      if (!row) return;
+      var lenInput = row.querySelector('.pq-db-stone-len');
+      var widInput = row.querySelector('.pq-db-stone-wid');
+      var sqInput = row.querySelector('.pq-db-stone-sq');
+      var sq = sqFtFromStoneDimensions(lenInput, widInput);
+      if (sq !== null && sqInput) {
+        sqInput.value = String(sq);
+        sqInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+
+    document.querySelectorAll('.pq-db-stone-fill-sq').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        fillSqFtFromRow(btn.closest('.pq-db-stone-grid'));
       });
     });
 

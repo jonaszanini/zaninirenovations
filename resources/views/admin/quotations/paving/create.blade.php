@@ -133,14 +133,23 @@
     .pq-db-wrap { margin-top: 0; }
     .pq-db-subpanel[hidden] { display: none !important; }
     .pq-hint { color: #64748b; font-size: 11px; margin-top: 2px; }
+    .pq-area-block { grid-column: 1 / -1; }
+    .pq-area-mode { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 10px; }
+    .pq-area-mode label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer; }
+    .pq-area-dimensions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+    .pq-area-dimensions .admin-form-group { flex: 1 1 120px; min-width: 100px; margin: 0; }
+    .pq-area-dimensions-sep { padding-bottom: 10px; font-weight: 600; color: #64748b; }
+    .pq-area-computed { margin-top: 8px; font-size: 13px; color: #024768; }
     .pq-marble-box { border: 1px dashed #94a3b8; border-radius: 8px; padding: 14px; margin-top: 12px; background: #f8fafc; }
 
     /* Price database — stone rows align under table headers */
-    .pq-db-stone-table { table-layout: fixed; width: 100%; }
-    .pq-db-stone-th-name { width: 38%; }
-    .pq-db-stone-th-sq { width: 18%; }
-    .pq-db-stone-th-pr { width: 18%; }
-    .pq-db-stone-th-actions { width: 26%; }
+    .pq-db-stone-table { table-layout: fixed; width: 100%; min-width: 1000px; }
+    .pq-db-stone-th-name { width: 14%; }
+    .pq-db-stone-th-link { width: 20%; }
+    .pq-db-stone-th-dim { width: 8%; }
+    .pq-db-stone-th-sq { width: 13%; }
+    .pq-db-stone-th-pr { width: 10%; }
+    .pq-db-stone-th-actions { width: 13%; }
     /* Headers sit on the column guide; body cells top-align so fields line up with titles */
     .pq-db-stone-table thead th {
       vertical-align: bottom;
@@ -154,10 +163,37 @@
     }
     .pq-db-stone-grid {
       display: grid;
-      grid-template-columns: minmax(120px, 1.6fr) minmax(88px, 0.75fr) minmax(100px, 0.85fr) auto;
-      gap: 10px 14px;
+      grid-template-columns: minmax(100px, 1.1fr) minmax(110px, 1.3fr) minmax(68px, 0.6fr) minmax(68px, 0.6fr) minmax(68px, 0.6fr) minmax(96px, 0.85fr) minmax(84px, 0.7fr) auto;
+      gap: 10px 10px;
       align-items: start;
     }
+    .pq-db-stone-link-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .pq-db-stone-link-wrap .admin-input { flex: 1 1 auto; min-width: 0; }
+    .pq-db-stone-open-link {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      color: #024768;
+      background: #e8f4f8;
+      text-decoration: none;
+    }
+    .pq-db-stone-open-link:hover { background: #d1e9f0; color: #013a52; }
+    .pq-db-stone-sq-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .pq-db-stone-sq-wrap .pq-db-stone-sq { flex: 1 1 auto; min-width: 0; }
     .pq-db-stone-grid--add { margin-top: 4px; }
     .pq-db-stone-actions {
       display: flex;
@@ -242,11 +278,55 @@
                      maxlength="160" @if(!old('client_name', $isEdit ? ($quotation->client_name ?? '') : '') && (!$isEdit || !($quotation->is_draft ?? false))) required @endif>
               <p class="pq-hint">Required for a published quotation; optional for drafts.</p>
             </div>
+            @php
+              $pqAreaMode = old('area_input_mode', $inputs['area_input_mode'] ?? 'total');
+              $pqAreaLength = old('area_length_ft', $inputs['area_length_ft'] ?? '');
+              $pqAreaWidth = old('area_width_ft', $inputs['area_width_ft'] ?? '');
+              $pqAreaDimensions = $pqAreaMode === 'dimensions';
+            @endphp
             <div class="pq-form-grid">
-              <div class="admin-form-group">
-                <label for="pq-area">Total project area (sq ft) <span class="cp-required">*</span></label>
-                <input type="number" id="pq-area" name="total_area_sq_ft" class="admin-input pq-calc-in" required min="1" step="0.01"
-                       value="{{ old('total_area_sq_ft', $inputs['total_area_sq_ft']) }}">
+              <div class="admin-form-group pq-area-block">
+                <span class="admin-form-group-label">Total project area (sq ft) <span class="cp-required">*</span></span>
+                <div class="pq-area-mode" role="radiogroup" aria-label="How to enter project area">
+                  <label>
+                    <input type="radio" name="area_input_mode" value="total" data-pq-area-mode
+                      @checked(! $pqAreaDimensions)>
+                    Enter total sq ft
+                  </label>
+                  <label>
+                    <input type="radio" name="area_input_mode" value="dimensions" data-pq-area-mode
+                      @checked($pqAreaDimensions)>
+                    Length × width (ft)
+                  </label>
+                </div>
+                <div id="pq-area-total-wrap" @if ($pqAreaDimensions) hidden @endif>
+                  <input type="number" id="pq-area" name="total_area_sq_ft" class="admin-input pq-calc-in pq-area-total-in"
+                         min="1" step="0.01" @unless($pqAreaDimensions) required @endunless
+                         value="{{ old('total_area_sq_ft', $inputs['total_area_sq_ft']) }}">
+                </div>
+                <div id="pq-area-dimensions-wrap" @unless($pqAreaDimensions) hidden @endunless>
+                  <div class="pq-area-dimensions">
+                    <div class="admin-form-group">
+                      <label for="pq-area-length">Length (ft)</label>
+                      <input type="number" id="pq-area-length" name="area_length_ft" class="admin-input pq-area-dim-in"
+                             min="0.01" step="0.01" @if($pqAreaDimensions) required @endif
+                             value="{{ $pqAreaLength !== '' && $pqAreaLength !== null ? $pqAreaLength : '' }}"
+                             placeholder="e.g. 10">
+                    </div>
+                    <span class="pq-area-dimensions-sep" aria-hidden="true">×</span>
+                    <div class="admin-form-group">
+                      <label for="pq-area-width">Width (ft)</label>
+                      <input type="number" id="pq-area-width" name="area_width_ft" class="admin-input pq-area-dim-in"
+                             min="0.01" step="0.01" @if($pqAreaDimensions) required @endif
+                             value="{{ $pqAreaWidth !== '' && $pqAreaWidth !== null ? $pqAreaWidth : '' }}"
+                             placeholder="e.g. 10">
+                    </div>
+                  </div>
+                  <p class="pq-area-computed" id="pq-area-computed" aria-live="polite"></p>
+                  <input type="hidden" id="pq-area-from-dimensions" class="pq-calc-in"
+                         @unless($pqAreaDimensions) disabled @endunless
+                         value="{{ old('total_area_sq_ft', $inputs['total_area_sq_ft']) }}">
+                </div>
               </div>
               <div class="admin-form-group">
                 <label for="pq-stone">Stone type</label>
@@ -505,6 +585,10 @@
 
       var root = document.getElementById('pq-live-root');
       var t = null;
+      function schedule() {
+        clearTimeout(t);
+        t = setTimeout(runPreview, 220);
+      }
       function fmt(n) {
         return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
@@ -540,12 +624,79 @@
           .then(render)
           .catch(function () { root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>'; });
       }
-      function schedule() {
-        clearTimeout(t);
-        t = setTimeout(runPreview, 220);
-      }
       form.addEventListener('input', schedule);
       form.addEventListener('change', schedule);
+
+      (function initPavingAreaInput() {
+        var modeRadios = document.querySelectorAll('[data-pq-area-mode]');
+        var totalWrap = document.getElementById('pq-area-total-wrap');
+        var dimWrap = document.getElementById('pq-area-dimensions-wrap');
+        var totalInput = document.getElementById('pq-area');
+        var lenInput = document.getElementById('pq-area-length');
+        var widInput = document.getElementById('pq-area-width');
+        var hiddenArea = document.getElementById('pq-area-from-dimensions');
+        var computedEl = document.getElementById('pq-area-computed');
+        if (!modeRadios.length || !totalWrap || !dimWrap || !totalInput) return;
+
+        function isDimensionsMode() {
+          var checked = document.querySelector('[data-pq-area-mode]:checked');
+          return checked && checked.value === 'dimensions';
+        }
+
+        function syncComputedArea() {
+          if (!isDimensionsMode() || !lenInput || !widInput || !hiddenArea) return;
+          var len = parseFloat(lenInput.value);
+          var wid = parseFloat(widInput.value);
+          if (!isFinite(len) || !isFinite(wid) || len <= 0 || wid <= 0) {
+            hiddenArea.value = '';
+            if (computedEl) computedEl.textContent = '';
+            return;
+          }
+          var area = Math.round(len * wid * 100) / 100;
+          hiddenArea.value = String(area);
+          if (computedEl) {
+            computedEl.textContent = '= ' + area.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' sq ft';
+          }
+        }
+
+        function syncAreaMode() {
+          var dimMode = isDimensionsMode();
+          totalWrap.hidden = dimMode;
+          dimWrap.hidden = !dimMode;
+          totalInput.required = !dimMode;
+          totalInput.disabled = dimMode;
+          if (lenInput) lenInput.required = dimMode;
+          if (widInput) widInput.required = dimMode;
+          if (hiddenArea) {
+            hiddenArea.disabled = !dimMode;
+            if (dimMode) {
+              hiddenArea.setAttribute('name', 'total_area_sq_ft');
+              totalInput.removeAttribute('name');
+            } else {
+              totalInput.setAttribute('name', 'total_area_sq_ft');
+              hiddenArea.removeAttribute('name');
+            }
+          }
+          if (dimMode) {
+            syncComputedArea();
+          } else {
+            if (hiddenArea && hiddenArea.value) {
+              totalInput.value = hiddenArea.value;
+            }
+            if (computedEl) computedEl.textContent = '';
+          }
+        }
+
+        modeRadios.forEach(function (r) {
+          r.addEventListener('change', function () {
+            syncAreaMode();
+            schedule();
+          });
+        });
+        if (lenInput) lenInput.addEventListener('input', function () { syncComputedArea(); schedule(); });
+        if (widInput) widInput.addEventListener('input', function () { syncComputedArea(); schedule(); });
+        syncAreaMode();
+      })();
 
       var initial = @json($initialCalc);
       if (initial) { render(initial); } else { runPreview(); }
