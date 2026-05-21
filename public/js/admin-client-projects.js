@@ -434,6 +434,15 @@
     var fixedOnly = document.querySelectorAll('[data-cp-fixed-only]');
     var hourlyOnly = document.querySelectorAll('[data-cp-hourly-only]');
 
+    function syncCreateVisitFooters(isHourly) {
+      var visitCb = document.getElementById('cp-create-visit-required');
+      var visitRequired = visitCb && visitCb.checked;
+      var quoteEl = document.querySelector('[data-cp-fixed-quote-pending]');
+      var visitEl = document.querySelector('[data-cp-fixed-visit-scheduled]');
+      if (quoteEl) quoteEl.style.display = (isHourly || visitRequired) ? 'none' : '';
+      if (visitEl) visitEl.style.display = (isHourly || !visitRequired) ? 'none' : '';
+    }
+
     function sync() {
       var checked = document.querySelector('[data-cp-billing]:checked');
       var isHourly = checked && checked.value === 'hourly';
@@ -449,9 +458,44 @@
       }
       fixedOnly.forEach(function (el) { el.style.display = isHourly ? 'none' : ''; });
       hourlyOnly.forEach(function (el) { el.style.display = isHourly ? '' : 'none'; });
+      syncCreateVisitFooters(isHourly);
     }
     radios.forEach(function (r) { r.addEventListener('change', sync); });
     sync();
+  }
+
+  function initCreateVisitFields() {
+    var visitCb = document.getElementById('cp-create-visit-required');
+    if (!visitCb) return;
+    var visitDate = document.getElementById('cp-create-visit-date');
+    var visitExpand = document.getElementById('cp-create-visit-expandable');
+
+    function syncCreateVisitExpandable() {
+      if (!visitExpand) return;
+      var required = visitCb.checked;
+      var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
+      var open = required || hasDate;
+      visitExpand.classList.toggle('is-open', open);
+      visitExpand.setAttribute('aria-hidden', open ? 'false' : 'true');
+    }
+
+    function syncCreateVisitFields() {
+      if (visitDate) {
+        visitDate.disabled = !visitCb.checked;
+        visitDate.classList.toggle('cp-visit-date-input--locked', !visitCb.checked);
+      }
+      syncCreateVisitExpandable();
+      var checked = document.querySelector('[data-cp-billing]:checked');
+      var isHourly = checked && checked.value === 'hourly';
+      var quoteEl = document.querySelector('[data-cp-fixed-quote-pending]');
+      var visitEl = document.querySelector('[data-cp-fixed-visit-scheduled]');
+      if (quoteEl) quoteEl.style.display = (isHourly || visitCb.checked) ? 'none' : '';
+      if (visitEl) visitEl.style.display = (isHourly || !visitCb.checked) ? 'none' : '';
+    }
+
+    visitCb.addEventListener('change', syncCreateVisitFields);
+    if (visitDate) visitDate.addEventListener('change', syncCreateVisitExpandable);
+    syncCreateVisitFields();
   }
 
   // --- Dynamic installment editor --------------------------------------
@@ -744,6 +788,7 @@
     initTimeEditToggles();
     initExpenseEditToggles();
     initBillingTypeToggle();
+    initCreateVisitFields();
 
     var planSelect = document.getElementById('cp-plan');
     if (!planSelect) return;

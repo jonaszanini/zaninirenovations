@@ -4,7 +4,7 @@
 
 @section('content')
   <div class="admin-card admin-card--narrow">
-    <form action="{{ route('admin.client-projects.store') }}" method="post">
+    <form action="{{ route('admin.client-projects.store') }}" method="post" enctype="multipart/form-data">
       @csrf
 
       <div class="admin-form-group">
@@ -163,10 +163,51 @@
         </div>
       </div>
 
+      @php
+        $cpCreateVisitDateVal = old('visit_date');
+        $cpCreateVisitExpandOpen = (bool) old('visit_required')
+          || filled($cpCreateVisitDateVal)
+          || $errors->has('visit_date');
+      @endphp
+      <div class="admin-form-section" data-cp-fixed-only
+           style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY ? 'display:none;' : '' }}">
+        <h3>Visit date</h3>
+        <p class="admin-form-help">On-site visit before quoting. Enable only when the client has asked for a visit.</p>
+        <input type="hidden" name="visit_required" value="0">
+        <div class="admin-form-group">
+          <label class="cp-checkbox-label">
+            <input type="checkbox" name="visit_required" value="1" id="cp-create-visit-required"
+              @checked(old('visit_required'))>
+            <span>Visit required</span>
+          </label>
+        </div>
+        <div id="cp-create-visit-expandable" class="cp-visit-expandable @if ($cpCreateVisitExpandOpen) is-open @endif"
+             aria-hidden="{{ $cpCreateVisitExpandOpen ? 'false' : 'true' }}">
+          <div class="cp-visit-expandable__inner">
+            <div class="admin-form-group cp-visit-date">
+              <label for="cp-create-visit-date">Visit date</label>
+              <input type="date" id="cp-create-visit-date" name="visit_date"
+                value="{{ $cpCreateVisitDateVal }}">
+              @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
+              <p class="admin-form-help">Optional now — you can set or change it later from the project page.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="admin-form-group">
         <label for="cp-notes">Notes</label>
         <textarea id="cp-notes" name="notes" rows="4" maxlength="5000">{{ old('notes') }}</textarea>
         @error('notes') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
+      <div class="admin-form-section">
+        <h3>Photos</h3>
+        @include('admin.client_projects._project_photos_upload', [
+          'inputId' => 'cp-create-project-photos',
+          'previewId' => 'cp-create-project-photos-preview',
+          'existingCount' => 0,
+        ])
       </div>
 
       <div class="admin-form-actions">
@@ -176,9 +217,13 @@
         <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
 
-      <p class="admin-form-help cp-form-footer" data-cp-fixed-only
-         style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY ? 'display:none;' : '' }}">
+      <p class="admin-form-help cp-form-footer" data-cp-fixed-quote-pending
+         style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY || old('visit_required') ? 'display:none;' : '' }}">
         Status will be set to <strong>Quote Pending</strong>. You'll receive a daily email reminder until the quote is sent.
+      </p>
+      <p class="admin-form-help cp-form-footer" data-cp-fixed-visit-scheduled
+         style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY || ! old('visit_required') ? 'display:none;' : '' }}">
+        Status will be set to <strong>Visit scheduled</strong>. You'll receive a daily email reminder until the visit is done and the quote is sent.
       </p>
       <p class="admin-form-help cp-form-footer" data-cp-hourly-only
          style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY ? '' : 'display:none;' }}">

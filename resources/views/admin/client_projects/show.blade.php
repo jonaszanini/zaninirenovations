@@ -79,6 +79,14 @@
       </div>
     </div>
 
+    @if ($project->photos->isNotEmpty())
+      @include('admin.client_projects._project_photos_gallery', [
+        'project' => $project,
+        'galleryId' => 'cp-show-project-photos',
+        'editable' => false,
+      ])
+    @endif
+
     @unless ($isRejected)
       {{-- Status form: label + help icon on one line, then a row of
            controls (select | save). The Save button remains in markup

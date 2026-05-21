@@ -233,6 +233,33 @@
     </aside>
   </div>
 
+  <div class="admin-card admin-card--narrow cp-edit-project-photos-card">
+    <h3>Photos</h3>
+    @include('admin.client_projects._project_photos_gallery', [
+      'project' => $project,
+      'galleryId' => 'cp-edit-project-photos',
+      'editable' => true,
+      'showHeading' => false,
+    ])
+
+    @php $photoCount = $project->photos->count(); @endphp
+    @if ($photoCount < \App\Services\ClientProjectPhotoStorage::MAX_PHOTOS_PER_PROJECT)
+      <form action="{{ route('admin.client-projects.photos.store', $project) }}" method="post" enctype="multipart/form-data" class="cp-edit-project-photos-form">
+        @csrf
+        @include('admin.client_projects._project_photos_upload', [
+          'inputId' => 'cp-edit-project-photos-input',
+          'previewId' => 'cp-edit-project-photos-preview',
+          'existingCount' => $photoCount,
+        ])
+        <div class="admin-form-actions">
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
+            <i class="fa fa-upload"></i> Upload photos
+          </button>
+        </div>
+      </form>
+    @endif
+  </div>
+
   <div class="admin-card cp-danger-card">
     <h3 class="cp-danger-title">Danger zone</h3>
     <p class="admin-form-help">Deleting a project permanently removes its history, financials, and time entries.</p>

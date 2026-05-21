@@ -190,6 +190,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.schedule-dates.send');
     Route::post('client-projects/{client_project}/time-tracking-summary/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendTimeTrackingSummary'])
         ->name('client-projects.time-tracking-summary.send');
+    Route::post('client-projects/{client_project}/photos', [\App\Http\Controllers\Admin\ClientProjectController::class, 'storePhotos'])
+        ->name('client-projects.photos.store');
+    Route::delete('client-projects/{client_project}/photos/{photo}', [\App\Http\Controllers\Admin\ClientProjectController::class, 'destroyPhoto'])
+        ->name('client-projects.photos.destroy');
 
     // -----------------------------------------------------------------
     // Standalone Quotation module (separate from per-project quotations).

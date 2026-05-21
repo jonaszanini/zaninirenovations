@@ -2724,6 +2724,186 @@ body.cp-modal-open {
   }
 }
 
+/* Project photos — upload preview, grid, lightbox -------------------- */
+.cp-project-photos-heading {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #024768;
+}
+.cp-project-photos {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eef1f4;
+}
+.cp-header-card .cp-project-photos {
+  margin-top: 0;
+  padding-top: 16px;
+}
+.cp-project-photos-preview-grid,
+.cp-project-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.cp-project-photos-preview-grid img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+}
+.cp-project-photos-item {
+  position: relative;
+  margin: 0;
+}
+.cp-project-photos-thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cp-project-photos-thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.cp-project-photos-thumb:hover img,
+.cp-project-photos-thumb:focus-visible img {
+  transform: scale(1.02);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+.cp-project-photos-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+.cp-edit-project-photos-card {
+  margin-top: 16px;
+}
+.cp-edit-project-photos-form {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.cp-photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cp-photo-lightbox[hidden] {
+  display: none;
+}
+.cp-photo-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.88);
+  cursor: pointer;
+}
+.cp-photo-lightbox-inner {
+  position: relative;
+  z-index: 1;
+  width: min(96vw, 1200px);
+  max-height: 92vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 56px;
+  pointer-events: none;
+}
+.cp-photo-lightbox-figure {
+  margin: 0;
+  max-width: 100%;
+  max-height: calc(92vh - 96px);
+  pointer-events: auto;
+}
+.cp-photo-lightbox-img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(92vh - 120px);
+  width: auto;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.cp-photo-lightbox-caption {
+  margin-top: 10px;
+  text-align: center;
+  color: #e5e7eb;
+  font-size: 14px;
+}
+.cp-photo-lightbox-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.cp-photo-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.cp-photo-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.cp-photo-lightbox-nav:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+.cp-photo-lightbox-nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.cp-photo-lightbox-nav--prev {
+  left: 8px;
+}
+.cp-photo-lightbox-nav--next {
+  right: 8px;
+}
+
+@media (max-width: 700px) {
+  .cp-photo-lightbox-inner {
+    padding: 44px 12px;
+  }
+  .cp-photo-lightbox-nav {
+    width: 38px;
+    height: 38px;
+  }
+}
+
 /* =====================================================================
    Fence Quotation module — hub cards, list, config, breakdown panel.
    Scoped with an `fq-` prefix so they never clash with the existing

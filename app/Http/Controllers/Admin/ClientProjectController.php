@@ -9,7 +9,9 @@ use App\Mail\ClientProjectTimeTrackingSummaryClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\AdminCalendarEvent;
 use App\Models\ClientProject;
+use App\Models\ClientProjectPhoto;
 use App\Services\ClientCommunicationLogger;
+use App\Services\ClientProjectPhotoStorage;
 use App\Services\ClientProjectStatusService;
 use App\Support\EasternStandardTimeDisplay;
 use App\Services\GoogleCalendarLink;
@@ -122,7 +124,7 @@ class ClientProjectController extends Controller
         ]);
     }
 
-    public function store(Request $request, ClientProjectStatusService $service)
+    public function store(Request $request, ClientProjectStatusService $service, ClientProjectPhotoStorage $photoStorage)
     {
         $this->normalisePhoneOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
@@ -130,7 +132,7 @@ class ClientProjectController extends Controller
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'contacted_via' => ['required', Rule::in($contactedViaKeys)],
             'conversation_on' => ['nullable', Rule::in($contactedViaKeys)],
@@ -149,7 +151,9 @@ class ClientProjectController extends Controller
             ])],
             'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
             'send_client_email' => ['nullable', 'boolean'],
-        ], $this->clientProjectValidationMessages());
+            'visit_required' => ['nullable', 'boolean'],
+            'visit_date' => ['nullable', 'date'],
+        ], ClientProjectPhotoStorage::uploadValidationRules()), $this->clientProjectValidationMessages());
 
         // Normalise hourly_rate so fixed projects don't carry a stray rate.
         if ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
@@ -159,7 +163,7 @@ class ClientProjectController extends Controller
         // Pulled out before array_merge below because it isn't a column
         // on the projects table — it controls the onCreated side-effect.
         $sendClientEmail = (bool) ($data['send_client_email'] ?? true);
-        unset($data['send_client_email']);
+        unset($data['send_client_email'], $data['photos']);
 
         foreach (['invoice_billing_name', 'invoice_billing_address', 'conversation_on'] as $k) {
             if (array_key_exists($k, $data) && $data[$k] === '') {
@@ -167,20 +171,37 @@ class ClientProjectController extends Controller
             }
         }
 
+        $isHourly = $data['billing_type'] === ClientProject::BILLING_HOURLY;
+        $visitRequired = ! $isHourly && (bool) ($data['visit_required'] ?? false);
+
+        if ($visitRequired) {
+            $data['visit_required'] = true;
+            $data['visit_done'] = false;
+        } else {
+            $data['visit_required'] = false;
+            $data['visit_date'] = null;
+            $data['visit_done'] = false;
+        }
+
         // Hourly projects imply the price has already been agreed verbally,
         // so we skip the pre-quote stages (visit / quote pending) and land
         // directly at Proposal Accepted. Fixed-price projects start at
-        // Quote pending (quote preparation before send).
-        $isHourly = $data['billing_type'] === ClientProject::BILLING_HOURLY;
+        // Visit scheduled when a site visit is needed, otherwise Quote pending.
         $initialStatus = $isHourly
             ? ClientProject::STATUS_PROPOSAL_ACCEPTED
-            : ClientProject::STATUS_QUOTE_PENDING;
+            : ($visitRequired
+                ? ClientProject::STATUS_VISIT_SCHEDULED
+                : ClientProject::STATUS_QUOTE_PENDING);
 
-        $project = DB::transaction(function () use ($data, $initialStatus) {
+        $project = DB::transaction(function () use ($data, $initialStatus, $request, $photoStorage) {
             $project = ClientProject::create(array_merge($data, [
                 'status' => $initialStatus,
                 'status_changed_at' => now(),
             ]));
+
+            if ($request->hasFile('photos')) {
+                $photoStorage->storeUploads($project, (array) $request->file('photos'));
+            }
 
             return $project;
         });
@@ -189,6 +210,12 @@ class ClientProjectController extends Controller
 
         if ($isHourly) {
             $successMessage = 'Project created. Status set to Proposal Accepted — no email sent to the client yet.';
+        } elseif ($initialStatus === ClientProject::STATUS_VISIT_SCHEDULED) {
+            if ($sendClientEmail && filled($project->client_email)) {
+                $successMessage = 'Project created. Status set to Visit scheduled. Acknowledgement emailed to the client.';
+            } else {
+                $successMessage = 'Project created. Status set to Visit scheduled. No client email sent.';
+            }
         } elseif ($sendClientEmail && filled($project->client_email)) {
             $successMessage = 'Project created. Status set to Quote pending. Acknowledgement emailed to the client.';
         } else {
@@ -210,6 +237,7 @@ class ClientProjectController extends Controller
             'statusHistory.user',
             'contract',
             'quotations',
+            'photos',
             // invoices.timeEntries is used by the hourly invoice tab to
             // show "N time entries snapshotted" under each invoice row.
             'invoices.timeEntries',
@@ -289,9 +317,44 @@ class ClientProjectController extends Controller
         return $events;
     }
 
+    public function storePhotos(Request $request, ClientProject $client_project, ClientProjectPhotoStorage $photoStorage)
+    {
+        $existingCount = (int) $client_project->photos()->count();
+        $rules = ClientProjectPhotoStorage::uploadValidationRules($existingCount);
+        $rules['photos'] = ['required', 'array', 'min:1', 'max:'.max(1, ClientProjectPhotoStorage::MAX_PHOTOS_PER_PROJECT - $existingCount)];
+
+        $request->validate($rules, [
+            'photos.required' => 'Choose at least one photo to upload.',
+        ]);
+
+        try {
+            $added = $photoStorage->storeUploads($client_project, (array) $request->file('photos'));
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['photos' => $e->getMessage()])->withInput();
+        }
+
+        $count = count($added);
+        $message = $count === 1 ? '1 photo added.' : "{$count} photos added.";
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->with('success', $message);
+    }
+
+    public function destroyPhoto(ClientProject $client_project, ClientProjectPhoto $photo, ClientProjectPhotoStorage $photoStorage)
+    {
+        if ((int) $photo->client_project_id !== (int) $client_project->id) {
+            abort(404);
+        }
+
+        $photoStorage->deletePhoto($photo);
+
+        return back()->with('success', 'Photo removed.');
+    }
+
     public function edit(ClientProject $client_project)
     {
-        $client_project->load('client');
+        $client_project->load(['client', 'photos']);
 
         $initialClientForPicker = null;
         if ($client_project->client) {

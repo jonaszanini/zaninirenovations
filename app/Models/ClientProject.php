@@ -117,6 +117,8 @@ class ClientProject extends Model
             $project->purgeGeneratedPdfs('quotations');
             $project->purgeGeneratedPdfs('invoices');
             $project->purgeGeneratedPdfs('receipts');
+
+            app(\App\Services\ClientProjectPhotoStorage::class)->purgeProjectPhotos($project);
         });
     }
 
@@ -211,6 +213,11 @@ class ClientProject extends Model
             ->orderByRaw('installment_number IS NULL') // installment-linked first, then manual
             ->orderBy('installment_number')
             ->orderBy('id');
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(ClientProjectPhoto::class)->orderBy('sort_order')->orderBy('id');
     }
 
     /**
