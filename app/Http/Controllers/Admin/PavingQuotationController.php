@@ -247,7 +247,7 @@ class PavingQuotationController extends Controller
         $request = $request ?? request();
 
         $stoneTypes = PavingStoneType::query()->orderBy('sort_order')->get();
-        $materialRates = PavingMaterialRate::query()->orderBy('sort_order')->get();
+        $materialRateGroups = PavingMaterialRate::groupedForAdmin();
         $pricingTiers = PavingPricingTier::query()->orderBy('area_sq_ft')->get();
 
         $linkableProjects = ClientProject::query()
@@ -263,7 +263,7 @@ class PavingQuotationController extends Controller
         return view('admin.quotations.paving.create', [
             'quotation' => $quotation,
             'stoneTypes' => $stoneTypes,
-            'materialRates' => $materialRates,
+            'materialRateGroups' => $materialRateGroups,
             'pricingTiers' => $pricingTiers,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
@@ -315,8 +315,8 @@ class PavingQuotationController extends Controller
             'stone_price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'helper_hourly_rate' => ['required', 'numeric', 'min:0', 'max:500'],
             'owner_hourly_rate' => ['required', 'numeric', 'min:0', 'max:500'],
-            'mini_skid_days' => ['required', 'numeric', 'min:0', 'max:365'],
-            'plate_compactor_days' => ['required', 'numeric', 'min:0', 'max:365'],
+            'mini_skid_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'plate_compactor_days' => ['required', 'integer', 'min:0', 'max:365'],
             'profit_margin' => ['required', 'numeric', 'min:0', 'max:100'],
             'waste_factor' => ['required', 'numeric', 'min:0', 'max:100'],
             'excavation_depth_in' => ['required', 'numeric', 'min:1', 'max:48'],
@@ -394,8 +394,8 @@ class PavingQuotationController extends Controller
             'stone_price_per_stone' => (float) $mainStone->price_per_stone,
             'helper_hourly_rate' => (float) $data['helper_hourly_rate'],
             'owner_hourly_rate' => (float) $data['owner_hourly_rate'],
-            'mini_skid_days' => (float) $data['mini_skid_days'],
-            'plate_compactor_days' => (float) $data['plate_compactor_days'],
+            'mini_skid_days' => (int) $data['mini_skid_days'],
+            'plate_compactor_days' => (int) $data['plate_compactor_days'],
             'profit_margin' => $profitMargin,
             'waste_factor' => $waste,
             'excavation_depth_in' => (float) $data['excavation_depth_in'],

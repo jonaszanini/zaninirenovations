@@ -105,33 +105,40 @@
 
   <div id="pq-db-panel-rates" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-rates" hidden>
     <div class="admin-card">
-      <h4 style="margin:0 0 12px;">Fixed costs &amp; equipment</h4>
-      <table class="admin-table pq-db-rates-table">
-        <thead>
-          <tr><th>Item</th><th>Unit</th><th>Price before tax (CAD)</th><th></th></tr>
-        </thead>
-        <tbody>
-          @foreach ($materialRates as $rate)
-            <tr>
-              <td>{{ $rate->label }}<br><span class="admin-form-help">{{ $rate->rate_key }}</span></td>
-              <td>{{ $rate->unit ?: '—' }}</td>
-              <td class="pq-db-rate-price-cell">
-                <form method="post" action="{{ route('admin.quotations.paving.database.rates.update', $rate) }}" class="pq-db-rate-form">
-                  @csrf
-                  @method('PUT')
-                  <div class="pq-db-rate-inline">
-                    <input type="text" name="price_before_tax" inputmode="decimal" autocomplete="off"
-                           value="{{ number_format((float) $rate->price_before_tax, 2, '.', '') }}"
-                           class="admin-input cp-money-input pq-db-rate-input" required aria-label="Price {{ $rate->label }}">
-                    <button type="submit" class="admin-btn admin-btn--sm admin-btn--ghost">Update</button>
+      <h4 style="margin:0 0 8px;">Fixed costs &amp; equipment</h4>
+      <p class="admin-form-help" style="margin:0 0 16px;">Unit prices used by the calculator. Equipment day rates pair with rental days on the Calculator tab.</p>
+      <div class="pq-db-rates-groups">
+        @foreach ($materialRateGroups as $category => $rates)
+          <section class="pq-db-rates-group">
+            <h5 class="pq-db-rates-group-title">{{ $category }}</h5>
+            <div class="pq-db-rates-list">
+              @foreach ($rates as $rate)
+                <div class="pq-db-rate-row">
+                  <div class="pq-db-rate-info">
+                    <span class="pq-db-rate-name">{{ $rate->label }}</span>
+                    @if ($rate->unit)
+                      <span class="pq-db-rate-unit">per {{ $rate->unit }}</span>
+                    @endif
                   </div>
-                </form>
-              </td>
-              <td></td>
-            </tr>
-          @endforeach
-        </tbody>
-      </table>
+                  <form method="post" action="{{ route('admin.quotations.paving.database.rates.update', $rate) }}" class="pq-db-rate-form">
+                    @csrf
+                    @method('PUT')
+                    <div class="pq-db-rate-inline">
+                      <label class="pq-db-rate-price-label">
+                        <span class="pq-db-rate-price-label-text">CAD</span>
+                        <input type="text" name="price_before_tax" inputmode="decimal" autocomplete="off"
+                               value="{{ number_format((float) $rate->price_before_tax, 2, '.', '') }}"
+                               class="admin-input cp-money-input pq-db-rate-input" required aria-label="Price {{ $rate->label }} before tax">
+                      </label>
+                      <button type="submit" class="admin-btn admin-btn--sm admin-btn--primary">Save</button>
+                    </div>
+                  </form>
+                </div>
+              @endforeach
+            </div>
+          </section>
+        @endforeach
+      </div>
     </div>
   </div>
 

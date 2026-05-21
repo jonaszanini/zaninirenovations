@@ -301,14 +301,69 @@
         justify-content: flex-start;
       }
     }
+    .pq-db-rates-groups { display: flex; flex-direction: column; gap: 20px; }
+    .pq-db-rates-group-title {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .pq-db-rates-list {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .pq-db-rate-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px 20px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e8edf2;
+      background: #fafbfc;
+    }
+    .pq-db-rate-row:last-child { border-bottom: none; }
+    .pq-db-rate-name {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+      line-height: 1.3;
+    }
+    .pq-db-rate-unit {
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+      color: #64748b;
+    }
     .pq-db-rate-inline {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
+      justify-content: flex-end;
     }
-    .pq-db-rate-input { max-width: 140px; min-width: 100px; }
-    .pq-db-rate-price-cell { vertical-align: middle; }
+    .pq-db-rate-price-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+    }
+    .pq-db-rate-price-label-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .pq-db-rate-input { width: 108px; min-width: 88px; }
+    @media (max-width: 640px) {
+      .pq-db-rate-row { grid-template-columns: 1fr; }
+      .pq-db-rate-inline { justify-content: flex-start; }
+    }
   </style>
 @endpush
 
@@ -465,15 +520,16 @@
                 <div class="pq-form-row">
                   <div class="admin-form-group">
                     <label for="pq-mini">Mini skid steer</label>
-                    <input type="number" id="pq-mini" name="mini_skid_days" class="admin-input pq-calc-in" step="0.1" min="0"
-                           value="{{ old('mini_skid_days', $inputs['mini_skid_days']) }}">
+                    <input type="number" id="pq-mini" name="mini_skid_days" class="admin-input pq-calc-in pq-equip-days-in" step="1" min="0" inputmode="numeric"
+                           value="{{ old('mini_skid_days', (int) ($inputs['mini_skid_days'] ?? 0)) }}">
                   </div>
                   <div class="admin-form-group">
                     <label for="pq-plate">Plate compactor</label>
-                    <input type="number" id="pq-plate" name="plate_compactor_days" class="admin-input pq-calc-in" step="0.1" min="0"
-                           value="{{ old('plate_compactor_days', $inputs['plate_compactor_days']) }}">
+                    <input type="number" id="pq-plate" name="plate_compactor_days" class="admin-input pq-calc-in pq-equip-days-in" step="1" min="0" inputmode="numeric"
+                           value="{{ old('plate_compactor_days', (int) ($inputs['plate_compactor_days'] ?? 0)) }}">
                   </div>
                 </div>
+                <p class="pq-hint">Whole days only (0, 1, 2, …).</p>
               </div>
 
               <div class="pq-field-box">
@@ -833,6 +889,19 @@
       }
       form.addEventListener('input', schedule);
       form.addEventListener('change', schedule);
+
+      document.querySelectorAll('.pq-equip-days-in').forEach(function (el) {
+        function snapWholeDays() {
+          if (el.value === '' || el.value === null) return;
+          var n = Math.max(0, Math.round(parseFloat(el.value) || 0));
+          if (String(n) !== el.value) {
+            el.value = String(n);
+            schedule();
+          }
+        }
+        el.addEventListener('change', snapWholeDays);
+        el.addEventListener('blur', snapWholeDays);
+      });
 
       (function initPavingAreaInput() {
         var modeRadios = document.querySelectorAll('[data-pq-area-mode]');
