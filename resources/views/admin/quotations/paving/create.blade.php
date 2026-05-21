@@ -158,11 +158,29 @@
     }
     @media (max-width: 520px) { .pq-labour-rates-row { grid-template-columns: 1fr; } }
     .pq-stone-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0 6px;
       font-size: 11px;
       color: #64748b;
       margin: 5px 0 0;
       line-height: 1.35;
     }
+    .pq-stone-meta-sep { color: #94a3b8; user-select: none; }
+    .pq-stone-meta-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      color: #024768;
+      background: #e8f4f8;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .pq-stone-meta-link:hover { background: #d1e9f0; color: #013a52; }
     .pq-stone-group .admin-input { max-width: none; }
     .pq-options-row {
       display: flex;
@@ -200,31 +218,44 @@
     .pq-area-computed { margin-top: 8px; font-size: 13px; color: #024768; }
     .pq-marble-box { border: 1px dashed #94a3b8; border-radius: 8px; padding: 14px; margin-top: 12px; background: #f8fafc; }
 
-    /* Price database — stone rows align under table headers */
-    .pq-db-stone-table { table-layout: fixed; width: 100%; min-width: 1000px; }
-    .pq-db-stone-th-name { width: 14%; }
-    .pq-db-stone-th-link { width: 20%; }
-    .pq-db-stone-th-dim { width: 8%; }
-    .pq-db-stone-th-sq { width: 13%; }
-    .pq-db-stone-th-pr { width: 10%; }
-    .pq-db-stone-th-actions { width: 13%; }
-    /* Headers sit on the column guide; body cells top-align so fields line up with titles */
-    .pq-db-stone-table thead th {
-      vertical-align: bottom;
-      padding: 0.5rem 1.1rem 0.45rem;
-      line-height: 1.2;
-    }
-    .pq-db-stone-cell {
-      padding: 0.5rem 1.1rem 0.75rem !important;
-      vertical-align: top;
-      background: #f8fafc;
-    }
+    /* Price database — stone rows share one grid with the header row */
+    .pq-db-stone-list { min-width: 1000px; border: 1px solid var(--admin-border); border-radius: 8px; overflow: hidden; }
     .pq-db-stone-grid {
       display: grid;
-      grid-template-columns: minmax(100px, 1.1fr) minmax(110px, 1.3fr) minmax(68px, 0.6fr) minmax(68px, 0.6fr) minmax(68px, 0.6fr) minmax(96px, 0.85fr) minmax(84px, 0.7fr) auto;
-      gap: 10px 10px;
-      align-items: start;
+      grid-template-columns:
+        minmax(120px, 1.15fr)
+        minmax(140px, 1.35fr)
+        minmax(70px, 0.52fr)
+        minmax(70px, 0.52fr)
+        minmax(70px, 0.52fr)
+        minmax(108px, 0.92fr)
+        minmax(78px, 0.62fr)
+        auto;
+      gap: 8px 10px;
+      align-items: center;
+      padding: 0.65rem 1.1rem;
     }
+    .pq-db-stone-head {
+      background: var(--admin-surface-hover);
+      border-bottom: 1px solid var(--admin-border);
+      align-items: end;
+      padding-top: 0.55rem;
+      padding-bottom: 0.5rem;
+    }
+    .pq-db-stone-head-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--admin-muted);
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .pq-db-stone-row {
+      border-bottom: 1px solid var(--admin-border);
+      background: #f8fafc;
+    }
+    .pq-db-stone-row:last-child { border-bottom: none; }
+    .pq-db-stone-row .pq-db-stone-grid { padding-top: 0.55rem; padding-bottom: 0.7rem; }
     .pq-db-stone-link-wrap {
       display: flex;
       align-items: center;
@@ -391,13 +422,19 @@
                 <label for="pq-stone">Stone type <span class="cp-required">*</span></label>
                 <select id="pq-stone" name="paving_stone_type_id" class="admin-input pq-calc-in" required>
                   @foreach ($stoneTypes as $st)
-                    <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}"
+                    <option value="{{ $st->id }}"
+                      data-sq="{{ $st->sq_ft_per_stone }}"
+                      data-pr="{{ $st->price_per_stone }}"
+                      data-len="{{ $st->length_in }}"
+                      data-wid="{{ $st->width_in }}"
+                      data-hgt="{{ $st->height_in }}"
+                      data-url="{{ $st->product_url }}"
                       @selected((int) old('paving_stone_type_id', $inputs['paving_stone_type_id'] ?? 0) === (int) $st->id)>
                       {{ $st->name }}
                     </option>
                   @endforeach
                 </select>
-                <p class="pq-stone-meta" id="pq-stone-meta" aria-live="polite"></p>
+                <div class="pq-stone-meta" id="pq-stone-meta" aria-live="polite"></div>
                 <input type="hidden" id="pq-sqft" name="stone_sq_ft_per_stone" class="pq-calc-in" required
                        value="{{ old('stone_sq_ft_per_stone', $inputs['stone_sq_ft_per_stone']) }}">
                 <input type="hidden" id="pq-stprice" name="stone_price_per_stone" class="pq-calc-in" required
@@ -627,42 +664,83 @@
         return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
-      function formatStoneDbMeta(sq, pr) {
+      function formatDimInches(val) {
+        var n = parseFloat(val);
+        if (!isFinite(n) || n <= 0) return null;
+        if (Math.abs(n - Math.round(n)) < 0.001) return String(Math.round(n));
+        return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      }
+
+      function formatStoneDims(len, wid, hgt) {
+        var L = formatDimInches(len);
+        var W = formatDimInches(wid);
+        var H = formatDimInches(hgt);
+        if (!L || !W || !H) return null;
+        return L + ' x ' + W + ' x ' + H;
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function renderMainStoneMeta(metaEl, opt) {
+        if (!metaEl) return;
+        if (!opt || !opt.value) {
+          metaEl.innerHTML = '';
+          return;
+        }
         var parts = [];
-        var sqN = parseFloat(sq);
-        var prN = parseFloat(pr);
+        var sqN = parseFloat(opt.getAttribute('data-sq'));
+        var prN = parseFloat(opt.getAttribute('data-pr'));
         if (isFinite(sqN) && sqN > 0) {
-          parts.push(sqN.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' sq ft per stone');
+          parts.push(sqN.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' sq ft per stone');
         }
         if (isFinite(prN) && prN >= 0) {
           parts.push(formatMoney(prN) + ' per stone (before tax)');
         }
-        if (!parts.length) return '';
-        return parts.join(' · ') + ' · from price database';
+        var dims = formatStoneDims(
+          opt.getAttribute('data-len'),
+          opt.getAttribute('data-wid'),
+          opt.getAttribute('data-hgt')
+        );
+        if (dims) parts.push(dims);
+
+        var url = (opt.getAttribute('data-url') || '').trim();
+        var html = '';
+        if (parts.length) {
+          html += '<span>' + escapeHtml(parts.join(' / ')) + '</span>';
+        }
+        if (url) {
+          if (html) html += '<span class="pq-stone-meta-sep" aria-hidden="true">/</span>';
+          html += '<a href="' + escapeHtml(url) + '" class="pq-stone-meta-link" target="_blank" rel="noopener noreferrer" title="Open product page">';
+          html += '<i class="fa fa-external-link" aria-hidden="true"></i></a>';
+        }
+        metaEl.innerHTML = html;
       }
 
-      function formatSqFtMeta(sq, fromDb) {
+      function formatSqFtMeta(sq) {
         var n = parseFloat(sq);
-        if (!isFinite(n) || n <= 0) return fromDb ? '' : 'Sq ft per stone not set — select a stone type.';
-        var label = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' sq ft per stone';
-        return fromDb ? label + ' · from price database' : label + ' · custom';
+        if (!isFinite(n) || n <= 0) return '';
+        return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' sq ft per stone';
       }
 
       function syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice) {
         if (!metaEl) return;
         if (!sel || !sqEl) {
-          metaEl.textContent = '';
+          metaEl.innerHTML = '';
           return;
         }
         var opt = sel.options[sel.selectedIndex];
-        if (opt && opt.value) {
-          if (includePrice && prEl) {
-            metaEl.textContent = formatStoneDbMeta(opt.getAttribute('data-sq'), opt.getAttribute('data-pr'));
-          } else {
-            metaEl.textContent = formatSqFtMeta(opt.getAttribute('data-sq'), true);
-          }
+        if (includePrice && prEl) {
+          renderMainStoneMeta(metaEl, opt);
+        } else if (opt && opt.value) {
+          metaEl.textContent = formatSqFtMeta(opt.getAttribute('data-sq'));
         } else {
-          metaEl.textContent = formatSqFtMeta(sqEl.value, false);
+          metaEl.textContent = formatSqFtMeta(sqEl.value);
         }
       }
 
