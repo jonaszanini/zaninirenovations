@@ -174,98 +174,110 @@
     @endif
 
     <div class="admin-card sq-intro-card">
-      <h3 style="margin:0 0 8px;">Client</h3>
-      <div class="admin-form-group" style="max-width:480px;">
-        <label for="sq-client-name">Client name <span class="cp-required">*</span></label>
-        <input type="text" id="sq-client-name" name="client_name" class="admin-input @error('client_name') is-invalid @enderror"
-               maxlength="160" required
-               value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
-               placeholder="e.g. Jane Smith">
-        @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
-
-      <div class="admin-form-group" style="max-width:480px;">
-        <label for="sq-display-title">Title <span class="cp-required">*</span></label>
-        <input type="text" id="sq-display-title" name="display_title" class="admin-input @error('display_title') is-invalid @enderror"
-               maxlength="255" required
-               value="{{ old('display_title', $isEdit ? $quotation->display_title : '') }}"
-               placeholder="Shown at the top of the client quotation PDF">
-        @error('display_title') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
-
-      <div class="admin-form-group" style="margin-top:18px;">
-        <span class="admin-form-label" style="display:block;margin-bottom:8px;">Document type</span>
-        @php $docSel = old('document_type', $defaultDocType); @endphp
-        @if ($cqSentLock)
-          <input type="hidden" name="document_type" value="{{ $docSel }}">
-          <p class="admin-form-help" style="margin:0 0 6px;">
-            <strong>{{ $docSel === ClientProjectQuotation::TYPE_ESTIMATE ? 'Estimate' : 'Quotation (firm price)' }}</strong>
-            — locked after this document was emailed to the client.
-          </p>
-        @else
-          <div style="display:flex;flex-wrap:wrap;gap:16px;">
-            <label class="cp-checkbox-row">
-              <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_QUOTATION }}" @checked($docSel === ClientProjectQuotation::TYPE_QUOTATION)>
-              <span>Quotation (firm price)</span>
-            </label>
-            <label class="cp-checkbox-row">
-              <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_ESTIMATE }}" @checked($docSel === ClientProjectQuotation::TYPE_ESTIMATE)>
-              <span>Estimate</span>
-            </label>
+      <div class="sq-intro-sections">
+        <section class="sq-field-box">
+          <h4 class="sq-field-box-title">Client</h4>
+          <div class="sq-intro-grid sq-intro-grid--2">
+            <div class="admin-form-group">
+              <label for="sq-client-name">Client name <span class="cp-required">*</span></label>
+              <input type="text" id="sq-client-name" name="client_name" class="admin-input @error('client_name') is-invalid @enderror"
+                     maxlength="160" required
+                     value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
+                     placeholder="e.g. Jane Smith">
+              @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+            <div class="admin-form-group">
+              <label for="sq-display-title">Title <span class="cp-required">*</span></label>
+              <input type="text" id="sq-display-title" name="display_title" class="admin-input @error('display_title') is-invalid @enderror"
+                     maxlength="255" required
+                     value="{{ old('display_title', $isEdit ? $quotation->display_title : '') }}"
+                     placeholder="Shown at the top of the client quotation PDF">
+              @error('display_title') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
           </div>
-          <p class="admin-form-help">Choose before sending; you can change it later only until the client email goes out.</p>
-        @endif
-        @error('document_type') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
+        </section>
 
-      <div class="admin-form-group" style="margin-top:18px;">
-        <span class="admin-form-label" style="display:block;margin-bottom:8px;">Client PDF line items</span>
-        <div style="display:flex;flex-direction:column;gap:10px;max-width:560px;">
-          <label class="cp-checkbox-row">
-            <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
-              @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
-            <span><strong>Summary</strong> — one line with subtotal, HST, and total (default)</span>
-          </label>
-          <label class="cp-checkbox-row">
-            <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
-              @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
-            <span><strong>Detailed</strong> — list each material, price, and labour with HST columns</span>
-          </label>
-        </div>
-        <p class="admin-form-help">Controls what the client sees on the quotation PDF when you download or email it from the project.</p>
-        @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
+        <section class="sq-field-box">
+          <h4 class="sq-field-box-title">PDF &amp; document</h4>
+          <div class="sq-intro-pdf-options">
+            <div class="sq-intro-option-block">
+              <span class="admin-form-label">Document type</span>
+              @php $docSel = old('document_type', $defaultDocType); @endphp
+              @if ($cqSentLock)
+                <input type="hidden" name="document_type" value="{{ $docSel }}">
+                <p class="admin-form-help sq-intro-option-help">
+                  <strong>{{ $docSel === ClientProjectQuotation::TYPE_ESTIMATE ? 'Estimate' : 'Quotation (firm price)' }}</strong>
+                  — locked after this document was emailed to the client.
+                </p>
+              @else
+                <div class="sq-intro-choice-row">
+                  <label class="cp-checkbox-row">
+                    <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_QUOTATION }}" @checked($docSel === ClientProjectQuotation::TYPE_QUOTATION)>
+                    <span>Quotation (firm price)</span>
+                  </label>
+                  <label class="cp-checkbox-row">
+                    <input type="radio" name="document_type" value="{{ ClientProjectQuotation::TYPE_ESTIMATE }}" @checked($docSel === ClientProjectQuotation::TYPE_ESTIMATE)>
+                    <span>Estimate</span>
+                  </label>
+                </div>
+                <p class="admin-form-help sq-intro-option-help">Choose before sending; you can change it later only until the client email goes out.</p>
+              @endif
+              @error('document_type') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
 
-      <div class="admin-form-group" style="margin-top:18px;">
-        <span class="admin-form-label" style="display:block;margin-bottom:8px;">Includes (PDF wording)</span>
-        @php
-          $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '1';
-          $labDef = $isEdit ? (($quotation->includes_labour ?? true) ? '1' : '0') : '1';
-        @endphp
-        <label class="cp-checkbox-row">
-          <input type="hidden" name="includes_material" value="0">
-          <input type="checkbox" name="includes_material" value="1" @checked((string) old('includes_material', $matDef) === '1')>
-          <span>Material</span>
-        </label>
-        <label class="cp-checkbox-row" style="margin-top:6px;">
-          <input type="hidden" name="includes_labour" value="0">
-          <input type="checkbox" name="includes_labour" value="1" @checked((string) old('includes_labour', $labDef) === '1')>
-          <span>Labour</span>
-        </label>
-        <p class="admin-form-help">Controls the introductory line on the project quotation PDF (same as the old line-item editor).</p>
-        @error('includes_material') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
+            <div class="sq-intro-option-block">
+              <span class="admin-form-label">Client PDF line items</span>
+              <div class="sq-intro-choice-col">
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
+                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
+                  <span><strong>Summary</strong> — one line with subtotal, HST, and total</span>
+                </label>
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
+                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
+                  <span><strong>Detailed</strong> — list each material, price, and labour with HST columns</span>
+                </label>
+              </div>
+              <p class="admin-form-help sq-intro-option-help">Controls what the client sees when you download or email the PDF from the project.</p>
+              @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
 
-      {{-- Free-form description of the work/service. Surfaced on the
-           project quotation PDF (folded into the priced line item) so
-           the client sees what's covered by this standard quotation. --}}
-      <div class="admin-form-group" style="margin-top:18px;">
-        <label for="sq-work-description">Description of the work</label>
-        <textarea id="sq-work-description" name="work_description" rows="5" maxlength="5000"
-                  class="admin-input @error('work_description') is-invalid @enderror"
-                  placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? $quotation->work_description : '') }}</textarea>
-        <p class="admin-form-help">Shown on the client's quotation PDF, beneath the priced line item for this standard quotation. Plain text — line breaks are preserved.</p>
-        @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
+            <div class="sq-intro-option-block">
+              <span class="admin-form-label">Includes (PDF wording)</span>
+              @php
+                $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '1';
+                $labDef = $isEdit ? (($quotation->includes_labour ?? true) ? '1' : '0') : '1';
+              @endphp
+              <div class="sq-intro-choice-row">
+                <label class="cp-checkbox-row">
+                  <input type="hidden" name="includes_material" value="0">
+                  <input type="checkbox" name="includes_material" value="1" @checked((string) old('includes_material', $matDef) === '1')>
+                  <span>Material</span>
+                </label>
+                <label class="cp-checkbox-row">
+                  <input type="hidden" name="includes_labour" value="0">
+                  <input type="checkbox" name="includes_labour" value="1" @checked((string) old('includes_labour', $labDef) === '1')>
+                  <span>Labour</span>
+                </label>
+              </div>
+              <p class="admin-form-help sq-intro-option-help">Controls the introductory line on the client PDF.</p>
+              @error('includes_material') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+          </div>
+        </section>
+
+        <section class="sq-field-box">
+          <h4 class="sq-field-box-title">Description of the work</h4>
+          <div class="admin-form-group sq-intro-work-desc">
+            <label for="sq-work-description" class="visually-hidden">Description of the work</label>
+            <textarea id="sq-work-description" name="work_description" rows="5" maxlength="5000"
+                      class="admin-input @error('work_description') is-invalid @enderror"
+                      placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? $quotation->work_description : '') }}</textarea>
+            <p class="admin-form-help sq-intro-option-help">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
+            @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+        </section>
       </div>
     </div>
 
