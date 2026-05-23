@@ -4352,6 +4352,17 @@ body.cp-modal-open {
 .cp-helper-active-toggle {
   margin: 0;
 }
+.cp-helper-summary {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+.cp-helper-summary__grid {
+  margin-top: 10px;
+}
+.cp-helper-summary__note {
+  margin: 10px 0 0;
+}
 @media (max-width: 640px) {
   .cp-helper-config-btn__label {
     display: none;

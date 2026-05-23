@@ -17,6 +17,27 @@
   $unpaidClosed = $project->helperTimeEntries
       ->filter(fn ($e) => ! $e->isPaid() && $e->hours !== null && ! $e->isOpen())
       ->values();
+
+  $closedHelperEntries = $project->helperTimeEntries
+      ->filter(fn ($e) => $e->hours !== null && ! $e->isOpen());
+
+  $helperTotalHours = round((float) $closedHelperEntries->sum(fn ($e) => (float) $e->hours), 2);
+
+  $helperLineAmount = function ($entry) {
+      if ($entry->isPaid() && $entry->payment) {
+          return $entry->lineAmount((float) $entry->payment->hourly_rate);
+      }
+
+      return $entry->lineAmount();
+  };
+
+  $helperTotalLabour = round((float) $closedHelperEntries->sum(fn ($e) => $helperLineAmount($e)), 2);
+  $helperAmountPaid = round((float) $project->helperPayments->sum('total_amount'), 2);
+  $helperAmountToBePaid = round((float) $closedHelperEntries
+      ->filter(fn ($e) => ! $e->isPaid())
+      ->sum(fn ($e) => $helperLineAmount($e)), 2);
+
+  $helperOpenCount = $project->helperTimeEntries->filter(fn ($e) => $e->isOpen())->count();
 @endphp
 
 <div class="admin-card cp-helper-card" id="cp-helper-time">
@@ -127,6 +148,33 @@
   @endif
 
   @if ($project->helperTimeEntries->isNotEmpty())
+    <div class="cp-helper-summary">
+      <h4 class="cp-time-saved-heading">Helper labour summary</h4>
+      <div class="cp-profit-grid cp-helper-summary__grid">
+        <div class="cp-profit-tile">
+          <div class="cp-profit-label">Total hours worked</div>
+          <div class="cp-profit-value">{{ number_format($helperTotalHours, 2) }}</div>
+        </div>
+        <div class="cp-profit-tile">
+          <div class="cp-profit-label">Labour total (rate × hours)</div>
+          <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($helperTotalLabour) }}</div>
+        </div>
+        <div class="cp-profit-tile">
+          <div class="cp-profit-label">Amount paid</div>
+          <div class="cp-profit-value is-positive">{{ \App\Models\ClientProject::formatMoney($helperAmountPaid) }}</div>
+        </div>
+        <div class="cp-profit-tile cp-profit-tile--highlight">
+          <div class="cp-profit-label">Amount to be paid</div>
+          <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($helperAmountToBePaid) }}</div>
+        </div>
+      </div>
+      @if ($helperOpenCount > 0)
+        <p class="admin-form-help cp-helper-summary__note">
+          {{ $helperOpenCount }} in-progress {{ \Illuminate\Support\Str::plural('entry', $helperOpenCount) }} not included — close them with an end time to count toward totals.
+        </p>
+      @endif
+    </div>
+
     <h4 class="cp-time-saved-heading" style="margin-top:24px;">Helper entries</h4>
     <p class="admin-form-help cp-time-saved-help">Select unpaid closed days below, then mark as paid. Paid days are locked and recorded as project expenses.</p>
 
