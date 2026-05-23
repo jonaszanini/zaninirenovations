@@ -96,7 +96,7 @@
       {{-- Compact accordion when several quotations exist on one project --}}
       <details class="cp-quotation-accordion admin-card cp-contract-card">
         <summary class="cp-quotation-accordion__summary">
-          <span class="cp-quotation-accordion__chevron" aria-hidden="true"><i class="fa fa-chevron-right"></i></span>
+          <span class="cp-quotation-accordion__chevron admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
           <div class="cp-quotation-accordion__core">
             <div class="cp-quotation-accordion__title-row">
               @include('admin.client_projects._quotation_heading_primary', [

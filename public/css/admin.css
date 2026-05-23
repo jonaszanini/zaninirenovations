@@ -13,6 +13,9 @@
   --admin-text: #373435;
   --admin-muted: #5a6570;
   --admin-danger: #c62828;
+  --admin-chevron-color: #024768;
+  --admin-chevron-size: 8px;
+  --admin-chevron-width: 6px;
   --admin-danger-soft: rgba(198, 40, 40, 0.08);
   --admin-success: #2e7d4a;
   --admin-success-soft: rgba(46, 125, 74, 0.12);
@@ -656,6 +659,61 @@ input[type="checkbox"].admin-checkbox__input--standalone:checked::after {
 input[type="checkbox"].admin-checkbox__input--standalone:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--admin-primary-ring, rgba(2, 71, 104, 0.22));
+}
+
+/* -------------------------------------------------------------------------
+   Chevron down — accordions, selects, and inline expanders (brand blue).
+   Accordion: use .admin-chevron-down on a span, or summary.admin-chevron-summary::after
+   Selects: .admin-body select (automatic custom arrow).
+   ------------------------------------------------------------------------- */
+.admin-chevron-down {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--admin-chevron-color, var(--admin-primary));
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+details[open] > summary .admin-chevron-down {
+  transform: rotate(180deg);
+}
+summary.admin-chevron-summary {
+  list-style: none;
+}
+summary.admin-chevron-summary::-webkit-details-marker {
+  display: none;
+}
+summary.admin-chevron-summary::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: var(--admin-chevron-width, 6px) solid transparent;
+  border-right: var(--admin-chevron-width, 6px) solid transparent;
+  border-top: var(--admin-chevron-size, 8px) solid var(--admin-chevron-color, var(--admin-primary));
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: center;
+  transition: transform 0.15s ease;
+}
+details[open] > summary.admin-chevron-summary::after {
+  transform: rotate(180deg);
+}
+.admin-body select:not([multiple]):not([size]),
+.admin-body select:not([multiple])[size="1"],
+.admin-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23024768' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 12px 8px;
 }
 
 .admin-category-checkboxes {

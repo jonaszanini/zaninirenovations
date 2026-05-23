@@ -62,29 +62,31 @@
       @csrf
       <h4 class="cp-time-saved-heading">Helpers on this project</h4>
       <p class="admin-form-help cp-time-saved-help">Select who may log time here. Rates are set under Manage helpers.</p>
-      <div class="cp-helper-assign-grid">
-        @foreach ($activeHelpers as $helper)
-          <label class="admin-checkbox admin-checkbox--block admin-checkbox-tile cp-helper-assign-option">
-            <input type="checkbox"
-                   class="admin-checkbox__input"
-                   name="helper_ids[]"
-                   value="{{ $helper->id }}"
-                   @checked(in_array($helper->id, $assignedHelperIds, true))>
-            <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text cp-helper-assign-option__body">
-              <strong>{{ $helper->name }}</strong>
-              <span class="cp-helper-assign-option__meta">
-                {{ \App\Models\ClientProject::formatMoney((float) $helper->hourly_rate) }}/h
-                @if (filled($helper->email))
-                  · {{ $helper->email }}
-                @endif
+      <div class="cp-helper-assign-row">
+        <div class="cp-helper-assign-grid">
+          @foreach ($activeHelpers as $helper)
+            <label class="admin-checkbox admin-checkbox--block admin-checkbox-tile cp-helper-assign-option">
+              <input type="checkbox"
+                     class="admin-checkbox__input"
+                     name="helper_ids[]"
+                     value="{{ $helper->id }}"
+                     @checked(in_array($helper->id, $assignedHelperIds, true))>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text cp-helper-assign-option__body">
+                <strong>{{ $helper->name }}</strong>
+                <span class="cp-helper-assign-option__meta">
+                  {{ \App\Models\ClientProject::formatMoney((float) $helper->hourly_rate) }}/h
+                  @if (filled($helper->email))
+                    · {{ $helper->email }}
+                  @endif
+                </span>
               </span>
-            </span>
-          </label>
-        @endforeach
-      </div>
-      <div class="cp-time-submit">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save project helpers</button>
+            </label>
+          @endforeach
+        </div>
+        <div class="cp-helper-assign-row__action">
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save Helpers</button>
+        </div>
       </div>
     </form>
 
@@ -94,7 +96,7 @@
       <h4 class="cp-time-saved-heading" style="margin-top:24px;">Log helper time</h4>
       <form action="{{ route('admin.client-projects.helper-time.store', $project) }}"
             method="post"
-            class="cp-finance-form"
+            class="cp-finance-form cp-helper-panel cp-helper-log-form"
             data-cp-time-form>
         @csrf
         <div class="cp-helper-time-form-grid">
@@ -140,7 +142,7 @@
         </div>
         @error('hours') <p class="admin-form-error">{{ $message }}</p> @enderror
         @error('end_time') <p class="admin-form-error">{{ $message }}</p> @enderror
-        <div class="cp-time-submit">
+        <div class="cp-helper-log-form__submit">
           <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add helper time entry</button>
         </div>
       </form>
@@ -186,7 +188,7 @@
             data-cp-helper-pay-form
             onsubmit="return confirm('Mark selected days as paid, add a project expense, and email the helper?');">
         @csrf
-        <div class="cp-helper-pay-toolbar">
+        <div class="cp-helper-pay-toolbar cp-helper-panel">
           <div class="admin-form-group">
             <label>Payment method</label>
             <select name="payment_method" required>

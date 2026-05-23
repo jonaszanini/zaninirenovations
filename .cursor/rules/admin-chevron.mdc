@@ -1,0 +1,41 @@
+# Admin chevron down (accordions & selects)
+
+Use the shared **brand blue** chevron (`#024768`) for every dropdown indicator in the admin UI.
+
+## `<select>` fields
+
+All single-value selects under `.admin-body` get a custom chevron automatically via `admin.css`. No extra markup needed.
+
+Do not rely on the browser default arrow. If a select is outside `.admin-body`, add class `admin-select` and mirror the same rules.
+
+## Accordions (`<details>` / `<summary>`)
+
+**Option A — CSS triangle on summary** (time entries pattern):
+
+```html
+<details class="cp-time-entry">
+  <summary class="cp-time-entry__summary">...</summary>
+</details>
+```
+
+Uses `::after` on `.cp-time-entry__summary` (already styled).
+
+**Option B — Font Awesome chevron** (quotation accordion pattern):
+
+```html
+<summary>
+  <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+  ...
+</summary>
+```
+
+**Option C — Generic summary class:**
+
+Add `admin-chevron-summary` to `<summary>` for the triangle `::after` chevron (centered, rotates when open).
+
+## Rules
+
+- Chevron points **down** when closed, **rotates 180°** when open.
+- Always **vertically centered** (`align-self: center` on the chevron / `::after`).
+- Color: `var(--admin-chevron-color)` / `--admin-primary`.
+- Size tokens: `--admin-chevron-size`, `--admin-chevron-width` in `admin.css`.
