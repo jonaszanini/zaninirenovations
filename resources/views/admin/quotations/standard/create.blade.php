@@ -233,15 +233,17 @@
                 $labDef = $isEdit ? (($quotation->includes_labour ?? true) ? '1' : '0') : '1';
               @endphp
               <div class="sq-intro-choice-row">
-                <label class="cp-checkbox-row">
+                <label class="admin-checkbox cp-checkbox-row">
                   <input type="hidden" name="includes_material" value="0">
-                  <input type="checkbox" name="includes_material" value="1" @checked((string) old('includes_material', $matDef) === '1')>
-                  <span>Material</span>
+                  <input type="checkbox" class="admin-checkbox__input" name="includes_material" value="1" @checked((string) old('includes_material', $matDef) === '1')>
+                  <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                  <span class="admin-checkbox__text">Material</span>
                 </label>
-                <label class="cp-checkbox-row">
+                <label class="admin-checkbox cp-checkbox-row">
                   <input type="hidden" name="includes_labour" value="0">
-                  <input type="checkbox" name="includes_labour" value="1" @checked((string) old('includes_labour', $labDef) === '1')>
-                  <span>Labour</span>
+                  <input type="checkbox" class="admin-checkbox__input" name="includes_labour" value="1" @checked((string) old('includes_labour', $labDef) === '1')>
+                  <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                  <span class="admin-checkbox__text">Labour</span>
                 </label>
               </div>
               <p class="admin-form-help sq-intro-option-help">Controls the summary line on the client PDF (e.g. Labour and material or Labour).</p>
@@ -338,14 +340,16 @@
                     <label class="sq-mat-hst-toggles-label">HST</label>
                     <div class="sq-mat-hst-toggles">
                       <input type="hidden" name="materials[{{ $i }}][hst_includes_unit]" value="0">
-                      <label class="sq-checkbox-label sq-mat-apply-label">
-                        <input type="checkbox" name="materials[{{ $i }}][hst_includes_unit]" value="1" class="sq-mat-hst-inclusive-cb" @checked($hstInc)>
-                        <span>HST-incl. price</span>
+                      <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
+                        <input type="checkbox" name="materials[{{ $i }}][hst_includes_unit]" value="1" class="admin-checkbox__input sq-mat-hst-inclusive-cb" @checked($hstInc)>
+                        <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                        <span class="admin-checkbox__text">HST-incl. price</span>
                       </label>
                       <input type="hidden" name="materials[{{ $i }}][apply_hst]" value="0">
-                      <label class="sq-checkbox-label sq-mat-apply-label">
-                        <input type="checkbox" name="materials[{{ $i }}][apply_hst]" value="1" class="sq-mat-hst-cb" @checked($apply)>
-                        <span>Pre-tax + HST</span>
+                      <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
+                        <input type="checkbox" name="materials[{{ $i }}][apply_hst]" value="1" class="admin-checkbox__input sq-mat-hst-cb" @checked($apply)>
+                        <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                        <span class="admin-checkbox__text">Pre-tax + HST</span>
                       </label>
                     </div>
                   </div>
@@ -376,9 +380,10 @@
         <div class="sq-contingency-block" id="sq-contingency-block">
           <div class="sq-contingency-row">
             <input type="hidden" name="contingency_enabled" value="0">
-            <label class="sq-checkbox-label sq-contingency-toggle">
-              <input type="checkbox" id="sq-contingency-enabled" name="contingency_enabled" value="1" @checked($contingencyEnabled)>
-              <span>Contingency allowance</span>
+            <label class="admin-checkbox sq-checkbox-label sq-contingency-toggle">
+              <input type="checkbox" id="sq-contingency-enabled" name="contingency_enabled" value="1" class="admin-checkbox__input" @checked($contingencyEnabled)>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">Contingency allowance</span>
             </label>
             <div class="sq-contingency-pct-field">
               <input type="text" inputmode="decimal" autocomplete="off" id="sq-contingency-percent"
@@ -426,9 +431,10 @@
 
         <div class="admin-form-group sq-labour-fixed-block">
           <input type="hidden" name="labour_use_fixed" value="0">
-          <label class="sq-checkbox-label" style="margin-bottom:10px;">
-            <input type="checkbox" name="labour_use_fixed" value="1" id="sq-labour-use-fixed" class="sq-labour-use-fixed-cb" @checked($labourUseFixed)>
-            <span><strong>Flat labour fee</strong> (skip rate &amp; hours)</span>
+          <label class="admin-checkbox sq-checkbox-label" style="margin-bottom:10px;">
+            <input type="checkbox" name="labour_use_fixed" value="1" id="sq-labour-use-fixed" class="admin-checkbox__input sq-labour-use-fixed-cb" @checked($labourUseFixed)>
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text"><strong>Flat labour fee</strong> (skip rate &amp; hours)</span>
           </label>
           <div class="sq-labour-fixed-fields" id="sq-labour-fixed-fields">
             <label for="sq-labour-fixed-amount">Amount (CAD)</label>
@@ -436,9 +442,10 @@
                    class="admin-input cp-money-input" placeholder="0.00" value="{{ $labourFixedAmount }}">
             <div style="margin-top:10px;">
               <input type="hidden" name="labour_fixed_hst_included" value="0">
-              <label class="sq-checkbox-label sq-mat-apply-label" style="display:inline-flex;">
-                <input type="checkbox" name="labour_fixed_hst_included" value="1" id="sq-labour-fixed-hst-inc" class="sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
-                <span>HST included</span>
+              <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label" style="display:inline-flex;">
+                <input type="checkbox" name="labour_fixed_hst_included" value="1" id="sq-labour-fixed-hst-inc" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">HST included</span>
               </label>
             </div>
             <p class="admin-form-help" style="margin-top:8px;">When <strong>HST included</strong> is checked, the amount is the total with tax; before-tax labour is calculated the same way as materials with <strong>HST-incl. price</strong>.</p>
@@ -656,14 +663,16 @@
             <label class="sq-mat-hst-toggles-label">HST</label>
             <div class="sq-mat-hst-toggles">
               <input type="hidden" name="materials[__I__][hst_includes_unit]" value="0">
-              <label class="sq-checkbox-label sq-mat-apply-label">
-                <input type="checkbox" name="materials[__I__][hst_includes_unit]" value="1" class="sq-mat-hst-inclusive-cb">
-                <span>HST-incl. price</span>
+              <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
+                <input type="checkbox" name="materials[__I__][hst_includes_unit]" value="1" class="admin-checkbox__input sq-mat-hst-inclusive-cb">
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">HST-incl. price</span>
               </label>
               <input type="hidden" name="materials[__I__][apply_hst]" value="0">
-              <label class="sq-checkbox-label sq-mat-apply-label">
-                <input type="checkbox" name="materials[__I__][apply_hst]" value="1" class="sq-mat-hst-cb" checked>
-                <span>Pre-tax + HST</span>
+              <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
+                <input type="checkbox" name="materials[__I__][apply_hst]" value="1" class="admin-checkbox__input sq-mat-hst-cb" checked>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Pre-tax + HST</span>
               </label>
             </div>
           </div>

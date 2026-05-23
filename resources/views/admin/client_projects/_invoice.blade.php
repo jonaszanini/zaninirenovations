@@ -542,10 +542,11 @@
             </div>
           </fieldset>
 
-          <label class="cp-checkbox-row" style="margin-top:10px;">
+          <label class="admin-checkbox cp-checkbox-row" style="margin-top:10px;">
             <input type="hidden" name="also_email_receipt" value="0">
-            <input type="checkbox" name="also_email_receipt" value="1" checked>
-            <span>Email receipt to client now</span>
+            <input type="checkbox" class="admin-checkbox__input" name="also_email_receipt" value="1" checked>
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text">Email receipt to client now</span>
           </label>
         </div>
         <div class="cp-modal-footer">

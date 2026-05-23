@@ -39,8 +39,9 @@
             </div>
             <div class="admin-form-group">
               <label class="admin-login-remember">
-                <input type="checkbox" name="remember" value="1" {{ old('remember') ? 'checked' : '' }}>
-                Remember me
+                <input type="checkbox" class="admin-checkbox__input" name="remember" value="1" {{ old('remember') ? 'checked' : '' }}>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Remember me</span>
               </label>
             </div>
             <button type="submit" class="admin-btn admin-btn--primary">Sign in</button>

@@ -29,9 +29,10 @@
         <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
         <div class="admin-category-checkboxes">
           @foreach ($categories as $cat)
-            <label class="admin-checkbox-tile">
-              <input type="checkbox" name="project_category_ids[]" value="{{ $cat->id }}" @checked(in_array((string) $cat->id, array_map('strval', (array) $selectedCategoryIds), true))>
-              <span>{{ $cat->name }}</span>
+            <label class="admin-checkbox admin-checkbox-tile admin-checkbox--block">
+              <input type="checkbox" class="admin-checkbox__input" name="project_category_ids[]" value="{{ $cat->id }}" @checked(in_array((string) $cat->id, array_map('strval', (array) $selectedCategoryIds), true))>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">{{ $cat->name }}</span>
             </label>
           @endforeach
         </div>
@@ -82,8 +83,10 @@
                     <i class="fa fa-repeat" aria-hidden="true"></i><span class="admin-sr-only"> Rotate right</span>
                   </button>
                 </div>
-                <label class="admin-photo-remove-label">
-                  <input type="checkbox" name="delete_photos[]" value="{{ $photo->id }}"> Remove
+                <label class="admin-photo-remove-label admin-checkbox admin-checkbox--sm">
+                  <input type="checkbox" class="admin-checkbox__input" name="delete_photos[]" value="{{ $photo->id }}">
+                  <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                  <span class="admin-checkbox__text">Remove</span>
                 </label>
               </li>
             @endforeach
@@ -547,7 +550,7 @@
 
           var cb = document.createElement('input');
           cb.type = 'checkbox';
-          cb.className = 'admin-google-photo-tile-check';
+          cb.className = 'admin-checkbox__input admin-checkbox__input--standalone admin-google-photo-tile-check';
           cb.setAttribute('data-picker-checkbox', '1');
           cb.addEventListener('change', function () { enforceMax(cb); refreshStatus(); });
           thumb.appendChild(cb);

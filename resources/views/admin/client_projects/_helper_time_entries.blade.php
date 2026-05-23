@@ -29,17 +29,21 @@
       <summary class="cp-time-entry__summary cp-helper-entry__summary">
         <div class="cp-helper-entry__summary-main">
           <div class="cp-helper-entry__summary-top">
-            <span class="cp-helper-entry__name">{{ $helperName }}</span>
             @if ($canSelectForPay)
-              <label class="cp-helper-entry__check" onclick="event.stopPropagation();">
+              <label class="admin-checkbox admin-checkbox--block cp-helper-entry__select" onclick="event.stopPropagation();">
                 <input type="checkbox"
                        name="entry_ids[]"
                        value="{{ $entry->id }}"
+                       class="admin-checkbox__input"
                        @if ($payFormId) form="{{ $payFormId }}" @endif
                        data-cp-helper-entry-check
                        data-helper-id="{{ $entry->helper_id }}"
                        aria-label="Select {{ $helperName }} on {{ $dm }} for payment">
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text cp-helper-entry__name">{{ $helperName }}</span>
               </label>
+            @else
+              <span class="cp-helper-entry__name">{{ $helperName }}</span>
             @endif
           </div>
           <div class="cp-helper-entry__summary-detail">{{ $detailLine }}</div>

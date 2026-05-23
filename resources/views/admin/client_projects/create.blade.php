@@ -68,14 +68,16 @@
               <input type="email" id="cp-client-email" name="client_email" value="{{ old('client_email') }}" maxlength="255"
                      @class(['is-invalid' => $errors->has('client_email')])>
               @error('client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
-              <label class="cp-checkbox-inline" for="cp-send-client-email" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-weight:400;">
+              <label class="admin-checkbox" for="cp-send-client-email" style="margin-top:8px;font-weight:400;">
                 <input type="hidden" name="send_client_email" value="0">
                 <input type="checkbox"
+                       class="admin-checkbox__input"
                        id="cp-send-client-email"
                        name="send_client_email"
                        value="1"
                        @checked($sendClientEmail)>
-                <span>Send automated &ldquo;quote request received&rdquo; email to the client</span>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Send automated &ldquo;quote request received&rdquo; email to the client</span>
               </label>
             </div>
             <div class="admin-form-group">

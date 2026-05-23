@@ -1,0 +1,38 @@
+# Admin checkboxes
+
+Use the shared **admin checkbox** pattern for every new checkbox in the admin UI (not toggle switches like `cp-visit-toggle`).
+
+## Markup
+
+Prefer the partial:
+
+```blade
+@include('admin.partials.checkbox', [
+    'name' => 'field_name',
+    'id' => 'optional-id',
+    'label' => 'Label text',
+    'checked' => true,
+    'hiddenFallback' => true, // when paired with hidden 0
+    'class' => 'optional-extra-classes',
+    'inputClass' => 'optional-hook-classes',
+])
+```
+
+Or copy this structure:
+
+```blade
+<label class="admin-checkbox">
+  <input type="checkbox" name="..." value="1" class="admin-checkbox__input">
+  <span class="admin-checkbox__mark" aria-hidden="true"></span>
+  <span class="admin-checkbox__text">Label</span>
+</label>
+```
+
+## CSS (`public/css/admin.css`)
+
+- `.admin-checkbox` — default (24px mark, brand blue `#024768` when checked)
+- `.admin-checkbox--sm` — compact (invoice totals, table rows)
+- `.admin-checkbox--block` — full-width label + text wrap
+- `.admin-checkbox__input--standalone` — overlay checkboxes (photo tiles) without a label wrapper
+
+Checkbox always **left**, label text **right**.

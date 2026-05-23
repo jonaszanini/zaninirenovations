@@ -245,10 +245,11 @@
 
           <div class="admin-card" style="margin-bottom:16px;">
             <h3 style="margin:0 0 14px;">Step 2 — Carpet removal</h3>
-            <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;">
-              <input type="checkbox" name="carpet_removal" value="1" class="sq-calc-in" id="sq-carpet"
+            <label class="admin-checkbox admin-checkbox--block">
+              <input type="checkbox" name="carpet_removal" value="1" class="admin-checkbox__input sq-calc-in" id="sq-carpet"
                 @checked(old('carpet_removal', $inputs['carpet_removal'] ?? false))>
-              <span>Carpet removal required (priced per step from <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">Carpet removal required (priced per step from <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
             </label>
           </div>
 
@@ -321,13 +322,15 @@
 
           <div class="admin-card" style="margin-bottom:16px;">
             <h3 style="margin:0 0 14px;">Step 6 — Additional options</h3>
-            <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;">
-              <input type="checkbox" name="requires_stain" value="1" class="sq-calc-in" @checked(old('requires_stain', $inputs['requires_stain'] ?? false))>
-              <span>Requires stain ($/step — <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
+            <label class="admin-checkbox admin-checkbox--block">
+              <input type="checkbox" name="requires_stain" value="1" class="admin-checkbox__input sq-calc-in" @checked(old('requires_stain', $inputs['requires_stain'] ?? false))>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">Requires stain ($/step — <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
             </label>
-            <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;">
-              <input type="checkbox" name="requires_clear_coat" value="1" class="sq-calc-in" @checked(old('requires_clear_coat', $inputs['requires_clear_coat'] ?? false))>
-              <span>Requires clear coat protection ($/step — <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
+            <label class="admin-checkbox admin-checkbox--block">
+              <input type="checkbox" name="requires_clear_coat" value="1" class="admin-checkbox__input sq-calc-in" @checked(old('requires_clear_coat', $inputs['requires_clear_coat'] ?? false))>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">Requires clear coat protection ($/step — <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>)</span>
             </label>
           </div>
         </form>

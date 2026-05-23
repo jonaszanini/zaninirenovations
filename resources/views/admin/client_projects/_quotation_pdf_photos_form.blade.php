@@ -46,15 +46,16 @@
         <div class="cp-quotation-pdf-photos__grid">
           @foreach ($projectImagePhotos as $photo)
             @php $checked = isset($selectedSet[$photo->id]); @endphp
-            <label class="cp-quotation-pdf-photos__item @if ($checked) is-selected @endif">
+            <label class="cp-quotation-pdf-photos__item admin-checkbox admin-checkbox--photo-tile @if ($checked) is-selected @endif">
               <input type="checkbox"
+                     class="admin-checkbox__input"
                      name="pdf_photo_ids[]"
                      value="{{ $photo->id }}"
                      @checked($checked)>
+              <span class="admin-checkbox__mark cp-quotation-pdf-photos__mark" aria-hidden="true"></span>
               <span class="cp-quotation-pdf-photos__thumb">
                 <img src="{{ $photo->url() }}" alt="" loading="lazy" width="120" height="90">
               </span>
-              <span class="cp-quotation-pdf-photos__check" aria-hidden="true"><i class="fa fa-check"></i></span>
             </label>
           @endforeach
         </div>

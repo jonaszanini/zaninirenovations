@@ -1812,11 +1812,17 @@ a:hover .cp-expense-receipt-pdf {
   margin-bottom: 0;
 }
 .cp-checkbox-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 4px 0;
   cursor: pointer;
+}
+.cp-checkbox-row:not(.admin-checkbox) input[type="radio"] {
+  width: auto;
+  min-height: auto;
+  margin: 0;
+  accent-color: var(--admin-primary, #024768);
 }
 .cp-quotation-warning-inline {
   display: flex;
@@ -2070,22 +2076,11 @@ textarea.admin-input {
 .cp-invoice-hst-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-.cp-invoice-hst-toggle input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
+  gap: 8px;
   margin: 0;
   cursor: pointer;
-  accent-color: #024768;
 }
-.cp-invoice-hst-toggle label {
-  margin: 0;
-  cursor: pointer;
-  user-select: none;
-}
-/* Excluded state — strike + grey out so it's obvious HST isn't billed. */
-.cp-invoice-hst-row--excluded .cp-invoice-hst-toggle label,
+.cp-invoice-hst-row--excluded .cp-invoice-hst-toggle .admin-checkbox__text,
 .cp-invoice-hst-row--excluded #cp-invoice-hst {
   text-decoration: line-through;
   color: #9ca3af;
@@ -3054,7 +3049,7 @@ body.cp-modal-open {
   background: #fff;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.cp-quotation-pdf-photos__item input {
+.cp-quotation-pdf-photos__item input.admin-checkbox__input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -3065,7 +3060,23 @@ body.cp-modal-open {
   white-space: nowrap;
   border: 0;
 }
-.cp-quotation-pdf-photos__item.is-selected {
+.cp-quotation-pdf-photos__mark {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92);
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.cp-quotation-pdf-photos__item.is-selected .cp-quotation-pdf-photos__mark,
+.cp-quotation-pdf-photos__item:has(.admin-checkbox__input:checked) .cp-quotation-pdf-photos__mark {
+  opacity: 1;
+  transform: scale(1);
+}
+.cp-quotation-pdf-photos__item.is-selected,
+.cp-quotation-pdf-photos__item:has(.admin-checkbox__input:checked) {
   border-color: #024768;
   box-shadow: 0 0 0 1px #024768;
 }
@@ -3074,27 +3085,6 @@ body.cp-modal-open {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
-}
-.cp-quotation-pdf-photos__check {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: #024768;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  opacity: 0;
-  transform: scale(0.85);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.cp-quotation-pdf-photos__item.is-selected .cp-quotation-pdf-photos__check {
-  opacity: 1;
-  transform: scale(1);
 }
 
 .cp-photo-lightbox {
@@ -3725,13 +3715,16 @@ body.cp-modal-open {
 .sq-checkbox-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   user-select: none;
+  margin: 0;
 }
-.sq-checkbox-label input { width: auto; margin: 0; }
+.sq-checkbox-label.admin-checkbox--block {
+  display: flex;
+}
 
 /* "Connect to a project" — existing project row.
    Project select on the left, Link-to-project button on the right
@@ -3917,14 +3910,10 @@ body.cp-modal-open {
 .cp-checkbox-label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 600;
   cursor: pointer;
   user-select: none;
-}
-.cp-checkbox-label input {
-  width: auto;
-  margin: 0;
 }
 
 .cp-visit-section {
@@ -4277,6 +4266,11 @@ body.cp-modal-open {
   border: 1px solid var(--admin-border, #d8dee4);
   border-radius: 8px;
   cursor: pointer;
+  margin: 0;
+}
+.cp-helper-assign-option:focus-within {
+  border-color: var(--admin-primary, #024768);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring, rgba(2, 71, 104, 0.22));
 }
 .cp-helper-assign-option__body {
   display: flex;
@@ -4304,20 +4298,9 @@ body.cp-modal-open {
   margin-bottom: 0;
   min-width: 140px;
 }
-.cp-helper-entry__check {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
-  cursor: pointer;
-}
-.cp-helper-entry__check input[type="checkbox"] {
-  width: 24px;
-  height: 24px;
-  margin: 0;
-  cursor: pointer;
-  accent-color: var(--admin-primary, #024768);
-  flex-shrink: 0;
+.cp-helper-entry__select {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .cp-helper-entry__summary {
   align-items: flex-start;
@@ -4328,10 +4311,14 @@ body.cp-modal-open {
   min-width: 0;
 }
 .cp-helper-entry__summary-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  width: 100%;
+}
+.cp-helper-entry__summary-top .cp-helper-entry__name,
+.cp-helper-entry__select .admin-checkbox__text.cp-helper-entry__name {
+  font-weight: 700;
+  font-size: 16px;
+  color: #111827;
+  line-height: 1.3;
 }
 .cp-helper-entry__name {
   font-weight: 700;
@@ -4363,10 +4350,7 @@ body.cp-modal-open {
   font-weight: 500;
 }
 .cp-helper-active-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
+  margin: 0;
 }
 @media (max-width: 640px) {
   .cp-helper-config-btn__label {

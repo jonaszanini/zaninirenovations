@@ -43,12 +43,14 @@
       <p class="admin-form-help cp-time-saved-help">Select who may log time here. Rates are set under Manage helpers.</p>
       <div class="cp-helper-assign-grid">
         @foreach ($activeHelpers as $helper)
-          <label class="cp-helper-assign-option">
+          <label class="admin-checkbox admin-checkbox--block admin-checkbox-tile cp-helper-assign-option">
             <input type="checkbox"
+                   class="admin-checkbox__input"
                    name="helper_ids[]"
                    value="{{ $helper->id }}"
                    @checked(in_array($helper->id, $assignedHelperIds, true))>
-            <span class="cp-helper-assign-option__body">
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text cp-helper-assign-option__body">
               <strong>{{ $helper->name }}</strong>
               <span class="cp-helper-assign-option__meta">
                 {{ \App\Models\ClientProject::formatMoney((float) $helper->hourly_rate) }}/h

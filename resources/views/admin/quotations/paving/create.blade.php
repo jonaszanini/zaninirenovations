@@ -191,14 +191,9 @@
       border-radius: 8px;
       background: #fff;
     }
-    .pq-options-row label {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      margin: 0;
+    .pq-options-row label.admin-checkbox {
       font-size: 13px;
       font-weight: 500;
-      cursor: pointer;
     }
     .pq-override-block {
       padding-top: 4px;
@@ -563,10 +558,11 @@
             </div>
 
             <div class="pq-marble-box">
-              <label class="admin-form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:0;">
-                <input type="checkbox" name="marble_enabled" value="1" class="pq-calc-in" id="pq-marble-on"
+              <label class="admin-checkbox admin-checkbox--block">
+                <input type="checkbox" name="marble_enabled" value="1" class="admin-checkbox__input pq-calc-in" id="pq-marble-on"
                   @checked(old('marble_enabled', $inputs['marble_enabled'] ?? false))>
-                <span>Part of this area will use marble / accent stones?</span>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Part of this area will use marble / accent stones?</span>
               </label>
               <div id="pq-marble-fields" style="margin-top:12px;{{ old('marble_enabled', $inputs['marble_enabled'] ?? false) ? '' : 'display:none;' }}">
                 <div class="pq-form-row">
@@ -599,9 +595,21 @@
             </div>
 
             <div class="pq-options-row" style="margin-top:16px;">
-              <label><input type="checkbox" name="add_polymeric_sand" value="1" class="pq-calc-in" @checked(old('add_polymeric_sand', $inputs['add_polymeric_sand'] ?? true))> Polymeric sand</label>
-              <label><input type="checkbox" name="include_geotextile" value="1" class="pq-calc-in" @checked(old('include_geotextile', $inputs['include_geotextile'] ?? true))> Geotextile fabric</label>
-              <label><input type="checkbox" name="include_old_surface_removal" value="1" class="pq-calc-in" @checked(old('include_old_surface_removal', $inputs['include_old_surface_removal'] ?? false))> Old surface removal</label>
+              <label class="admin-checkbox">
+                <input type="checkbox" name="add_polymeric_sand" value="1" class="admin-checkbox__input pq-calc-in" @checked(old('add_polymeric_sand', $inputs['add_polymeric_sand'] ?? true))>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Polymeric sand</span>
+              </label>
+              <label class="admin-checkbox">
+                <input type="checkbox" name="include_geotextile" value="1" class="admin-checkbox__input pq-calc-in" @checked(old('include_geotextile', $inputs['include_geotextile'] ?? true))>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Geotextile fabric</span>
+              </label>
+              <label class="admin-checkbox">
+                <input type="checkbox" name="include_old_surface_removal" value="1" class="admin-checkbox__input pq-calc-in" @checked(old('include_old_surface_removal', $inputs['include_old_surface_removal'] ?? false))>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Old surface removal</span>
+              </label>
             </div>
 
             <div class="admin-form-group pq-override-block" style="margin-top:16px;">

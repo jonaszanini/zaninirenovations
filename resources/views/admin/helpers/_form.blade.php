@@ -31,9 +31,10 @@
   @error('hourly_rate') <div class="admin-error">{{ $message }}</div> @enderror
 </div>
 <div class="admin-form-group">
-  <label class="cp-helper-active-toggle">
+  <label class="admin-checkbox admin-checkbox--block cp-helper-active-toggle">
     <input type="hidden" name="is_active" value="0">
-    <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $helper?->is_active ?? true))>
-    Active (can be assigned to projects)
+    <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input" @checked(old('is_active', $helper?->is_active ?? true))>
+    <span class="admin-checkbox__mark" aria-hidden="true"></span>
+    <span class="admin-checkbox__text">Active (can be assigned to projects)</span>
   </label>
 </div>

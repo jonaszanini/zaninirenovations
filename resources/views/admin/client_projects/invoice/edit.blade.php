@@ -325,14 +325,15 @@
               <span id="cp-invoice-materials-sub">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row cp-invoice-hst-row">
-              <span class="cp-invoice-hst-toggle">
+              <label class="admin-checkbox admin-checkbox--sm cp-invoice-hst-toggle" for="cp-invoice-include-hst">
                 <input type="checkbox"
                        id="cp-invoice-include-hst"
-                       class="cp-invoice-include-hst"
+                       class="admin-checkbox__input cp-invoice-include-hst"
                        title="Uncheck to exclude HST (e.g. cash payment)."
                        @checked(!$hstExempt)>
-                <label for="cp-invoice-include-hst" id="cp-invoice-hst-label">HST (13% on labour)</label>
-              </span>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text" id="cp-invoice-hst-label">HST (13% on labour)</span>
+              </label>
               <span id="cp-invoice-hst">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row cp-quotation-totals-grand">
@@ -402,14 +403,15 @@
               </div>
             @endunless
             <div class="cp-quotation-totals-row cp-invoice-hst-row">
-              <span class="cp-invoice-hst-toggle">
+              <label class="admin-checkbox admin-checkbox--sm cp-invoice-hst-toggle" for="cp-invoice-include-hst">
                 <input type="checkbox"
                        id="cp-invoice-include-hst"
-                       class="cp-invoice-include-hst"
+                       class="admin-checkbox__input cp-invoice-include-hst"
                        title="Uncheck to exclude HST (e.g. cash payment)."
                        @checked(!$hstExempt)>
-                <label for="cp-invoice-include-hst" id="cp-invoice-hst-label">{{ $isManual ? 'HST (13%)' : 'HST (from quotation share)' }}</label>
-              </span>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text" id="cp-invoice-hst-label">{{ $isManual ? 'HST (13%)' : 'HST (from quotation share)' }}</span>
+              </label>
               <span id="cp-invoice-hst">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row cp-quotation-totals-grand">
