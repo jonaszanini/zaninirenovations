@@ -15,28 +15,35 @@
       }
       $helperName = $entry->helper?->name ?? 'Helper';
       $lineAmount = $entry->lineAmount();
-      $summaryLine = $helperName.' · '.$dm.': '.$st.' - '.$et.' = '.$hoursPart;
+      $detailLine = $dm.': '.$st.' - '.$et.' = '.$hoursPart;
       if (! $isOpen && $entry->hours !== null) {
-        $summaryLine .= ' ('.\App\Models\ClientProject::formatMoney($lineAmount).')';
+        $detailLine .= ' ('.\App\Models\ClientProject::formatMoney($lineAmount).')';
       }
+      $canSelectForPay = $showPayCheckboxes && ! $isPaid && ! $isOpen && $entry->hours !== null;
       $editHelpers = $assignedHelpers;
       if ($entry->helper && ! $editHelpers->contains('id', $entry->helper_id)) {
         $editHelpers = $editHelpers->push($entry->helper)->sortBy('name')->values();
       }
     @endphp
     <details class="cp-time-entry cp-helper-entry {{ $isOpen ? 'cp-time-entry--open' : '' }} {{ $isPaid ? 'cp-helper-entry--paid' : '' }}" data-cp-entry-row="{{ $entry->id }}">
-      <summary class="cp-time-entry__summary">
-        @if ($showPayCheckboxes && ! $isPaid && ! $isOpen && $entry->hours !== null)
-          <label class="cp-helper-entry__check" onclick="event.stopPropagation();">
-            <input type="checkbox"
-                   name="entry_ids[]"
-                   value="{{ $entry->id }}"
-                   @if ($payFormId) form="{{ $payFormId }}" @endif
-                   data-cp-helper-entry-check
-                   data-helper-id="{{ $entry->helper_id }}">
-          </label>
-        @endif
-        <span class="cp-time-entry__summary-text">{{ $summaryLine }}</span>
+      <summary class="cp-time-entry__summary cp-helper-entry__summary">
+        <div class="cp-helper-entry__summary-main">
+          <div class="cp-helper-entry__summary-top">
+            <span class="cp-helper-entry__name">{{ $helperName }}</span>
+            @if ($canSelectForPay)
+              <label class="cp-helper-entry__check" onclick="event.stopPropagation();">
+                <input type="checkbox"
+                       name="entry_ids[]"
+                       value="{{ $entry->id }}"
+                       @if ($payFormId) form="{{ $payFormId }}" @endif
+                       data-cp-helper-entry-check
+                       data-helper-id="{{ $entry->helper_id }}"
+                       aria-label="Select {{ $helperName }} on {{ $dm }} for payment">
+              </label>
+            @endif
+          </div>
+          <div class="cp-helper-entry__summary-detail">{{ $detailLine }}</div>
+        </div>
         @if ($isOpen)
           <span class="cp-time-entry__badge cp-time-entry__badge--progress">In progress</span>
         @elseif ($isPaid)
