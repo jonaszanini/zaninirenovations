@@ -22,7 +22,15 @@
   </div>
   <div class="admin-form-group">
     <label for="vehicle-year">Year</label>
-    <input type="number" id="vehicle-year" name="year" value="{{ old('year', $vehicle?->year) }}" min="1980" max="2100" placeholder="2020">
+    <input type="text"
+           id="vehicle-year"
+           name="year"
+           value="{{ old('year', $vehicle?->year) }}"
+           inputmode="numeric"
+           autocomplete="off"
+           data-zr-numeric="integer"
+           maxlength="4"
+           placeholder="2020">
     @error('year') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
