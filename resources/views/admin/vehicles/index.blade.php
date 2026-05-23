@@ -43,18 +43,6 @@
           'lngValue' => old('home_address_longitude', $settings->home_address_longitude),
           'help' => 'Pick a Google suggestion so distance to projects can be calculated automatically.',
         ])
-        <div class="admin-form-group">
-          <label for="average-km-month">Average km per month</label>
-          <input type="number"
-                 id="average-km-month"
-                 name="average_km_per_month"
-                 min="0"
-                 max="100000"
-                 step="1"
-                 value="{{ old('average_km_per_month', $settings->average_km_per_month) }}"
-                 class="admin-input">
-          <p class="admin-form-help">Used for the estimated monthly fuel cost below.</p>
-        </div>
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save home address</button>
       </form>
     </div>
@@ -63,12 +51,10 @@
          id="vehicles-fuel-calc"
          data-cp-vehicle-calc
          @if ($activeVehicle && $activeVehicle->canCalculateFuel())
-           data-cost-per-km="{{ $activeVehicle->costPerKm() }}"
-           data-gas-price="{{ $activeVehicle->gas_price_per_liter }}"
            data-consumption="{{ $activeVehicle->fuel_consumption_l100km }}"
+           data-gas-price="{{ $activeVehicle->gas_price_per_liter }}"
            data-vehicle-name="{{ $activeVehicle->name }}"
-         @endif
-         data-avg-km="{{ old('average_km_per_month', $settings->average_km_per_month) }}">
+         @endif>
       <h3>Fuel calculator</h3>
       @if ($activeVehicle && $activeVehicle->canCalculateFuel())
         <p class="admin-form-help">Based on active vehicle: <strong>{{ $activeVehicle->name }}</strong></p>
@@ -77,9 +63,9 @@
             <div class="cp-profit-label">Cost per km</div>
             <div class="cp-profit-value" data-cp-calc-cost-per-km>—</div>
           </div>
-          <div class="cp-profit-tile cp-profit-tile--highlight">
-            <div class="cp-profit-label">Est. monthly fuel</div>
-            <div class="cp-profit-value" data-cp-calc-monthly>—</div>
+          <div class="cp-profit-tile">
+            <div class="cp-profit-label">Fuel use</div>
+            <div class="cp-profit-value" data-cp-calc-consumption>—</div>
           </div>
         </div>
         <div class="admin-form-group admin-vehicles-trip-estimator">
@@ -97,7 +83,7 @@
         </div>
       @else
         <div class="admin-empty admin-vehicles-calc-empty">
-          <p>Add an active vehicle with fuel consumption and gas price to see live calculations.</p>
+          <p>Add an active vehicle with L/100 km and gas price to see fuel calculations and project travel estimates.</p>
         </div>
       @endif
     </div>

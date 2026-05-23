@@ -110,7 +110,6 @@ class VehicleController extends Controller
             'home_address_place_id' => ['nullable', 'string', 'max:255'],
             'home_address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'home_address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'average_km_per_month' => ['required', 'integer', 'min:0', 'max:100000'],
         ]);
 
         foreach (['home_address_place_id', 'home_address_latitude', 'home_address_longitude'] as $key) {
@@ -130,7 +129,7 @@ class VehicleController extends Controller
 
         return redirect()
             ->route('admin.vehicles.index')
-            ->with('success', 'Home address and monthly average updated.');
+            ->with('success', 'Home address updated.');
     }
 
     /** @return array<string, mixed> */

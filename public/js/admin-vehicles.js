@@ -7,25 +7,35 @@
     return 'CA$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
+  function costPerKm(consumption, gasPrice) {
+    var litersPer100 = parseFloat(consumption);
+    var price = parseFloat(gasPrice);
+    if (isNaN(litersPer100) || litersPer100 <= 0 || isNaN(price) || price < 0) {
+      return null;
+    }
+    return Math.round(((litersPer100 / 100) * price) * 10000) / 10000;
+  }
+
   function initVehicleCalc() {
     var root = document.querySelector('[data-cp-vehicle-calc]');
     if (!root || root._cpVehicleCalcWired) return;
     root._cpVehicleCalcWired = true;
 
-    var costPerKm = parseFloat(root.getAttribute('data-cost-per-km'));
-    var avgKm = parseInt(root.getAttribute('data-avg-km'), 10) || 0;
+    var consumption = root.getAttribute('data-consumption');
+    var gasPrice = root.getAttribute('data-gas-price');
+    var perKm = costPerKm(consumption, gasPrice);
+    if (perKm === null) return;
+
     var costPerKmEl = root.querySelector('[data-cp-calc-cost-per-km]');
-    var monthlyEl = root.querySelector('[data-cp-calc-monthly]');
+    var consumptionEl = root.querySelector('[data-cp-calc-consumption]');
     var tripKmInput = root.querySelector('[data-cp-calc-trip-km]');
     var tripResult = root.querySelector('[data-cp-calc-trip-result]');
 
-    if (isNaN(costPerKm)) return;
-
     if (costPerKmEl) {
-      costPerKmEl.textContent = formatMoney(costPerKm) + '/km';
+      costPerKmEl.textContent = formatMoney(perKm) + '/km';
     }
-    if (monthlyEl) {
-      monthlyEl.textContent = formatMoney(costPerKm * avgKm);
+    if (consumptionEl) {
+      consumptionEl.textContent = parseFloat(consumption).toFixed(1) + ' L/100km @ ' + formatMoney(gasPrice) + '/L';
     }
 
     function updateTrip() {
@@ -35,24 +45,12 @@
         tripResult.textContent = 'Enter a distance to estimate fuel cost.';
         return;
       }
-      tripResult.textContent = 'Estimated fuel cost: ' + formatMoney(costPerKm * km);
+      tripResult.textContent = 'Estimated fuel cost: ' + formatMoney(perKm * km);
     }
 
     if (tripKmInput) {
       tripKmInput.addEventListener('input', updateTrip);
       updateTrip();
-    }
-
-    var avgInput = document.getElementById('average-km-month');
-    if (avgInput && monthlyEl) {
-      avgInput.addEventListener('input', function () {
-        var km = parseInt(avgInput.value, 10);
-        if (isNaN(km) || km < 0) {
-          monthlyEl.textContent = '—';
-          return;
-        }
-        monthlyEl.textContent = formatMoney(costPerKm * km);
-      });
     }
   }
 
@@ -65,7 +63,7 @@
     var loadingEl = card.querySelector('[data-cp-travel-loading]');
     var resultEl = card.querySelector('[data-cp-travel-result]');
     var errorEl = card.querySelector('[data-cp-travel-error]');
-    var refreshBtn = card.querySelector('[data-cp-travel-refresh');
+    var refreshBtn = card.querySelector('[data-cp-travel-refresh]');
 
     function setLoading(on) {
       if (loadingEl) loadingEl.hidden = !on;
