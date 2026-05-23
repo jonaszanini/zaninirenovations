@@ -68,7 +68,7 @@
       var script = document.createElement('script');
       script.src = 'https://maps.googleapis.com/maps/api/js?key='
         + encodeURIComponent(cfg.apiKey)
-        + '&libraries=places&callback=__zrGoogleMapsReady&region=CA';
+        + '&libraries=places&loading=async&callback=__zrGoogleMapsReady&region=CA';
       script.async = true;
       script.defer = true;
       script.onerror = function () {
@@ -78,6 +78,49 @@
     });
 
     return loadPromise;
+  }
+
+  function verifyPlacesApi(maps) {
+    return new Promise(function (resolve, reject) {
+      if (!maps.places || !maps.places.AutocompleteService) {
+        reject(new Error('Places library is missing. Enable Places API in Google Cloud Console.'));
+        return;
+      }
+
+      var settled = false;
+      var timer = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        reject(new Error('Places API did not respond. Check that Maps JavaScript API and Places API are enabled.'));
+      }, 10000);
+
+      var service = new maps.places.AutocompleteService();
+      service.getPlacePredictions(
+        { input: 'Toronto', componentRestrictions: { country: 'ca' } },
+        function (predictions, status) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+
+          if (
+            status === maps.places.PlacesServiceStatus.OK
+            || status === maps.places.PlacesServiceStatus.ZERO_RESULTS
+          ) {
+            resolve();
+            return;
+          }
+
+          if (status === maps.places.PlacesServiceStatus.REQUEST_DENIED) {
+            reject(new Error(
+              'Google rejected Places requests (ApiNotActivatedMapError). In Google Cloud Console enable Maps JavaScript API and Places API for this key, turn on billing, and allow your site URL under HTTP referrer restrictions.'
+            ));
+            return;
+          }
+
+          reject(new Error('Places API check failed (' + status + '). Verify Maps JavaScript API and Places API are enabled.'));
+        }
+      );
+    });
   }
 
   function fillFromPlace(input, place) {
@@ -138,17 +181,21 @@
       return;
     }
 
-    loadMapsApi().then(function () {
-      input.placeholder = 'Start typing an address…';
-      var autocomplete = new google.maps.places.Autocomplete(input, {
-        fields: ['formatted_address', 'geometry', 'place_id'],
-        componentRestrictions: { country: ['ca'] }
-      });
-      autocomplete.addListener('place_changed', function () {
-        fillFromPlace(input, autocomplete.getPlace());
-      });
-      setFieldStatus(input, 'Address suggestions enabled — pick one from the list.', 'ok');
-    }).catch(function (err) {
+    setFieldStatus(input, 'Checking Google Places…', '');
+
+    loadMapsApi()
+      .then(verifyPlacesApi)
+      .then(function () {
+        input.placeholder = 'Start typing an address…';
+        var autocomplete = new google.maps.places.Autocomplete(input, {
+          fields: ['formatted_address', 'geometry', 'place_id'],
+          componentRestrictions: { country: ['ca'] }
+        });
+        autocomplete.addListener('place_changed', function () {
+          fillFromPlace(input, autocomplete.getPlace());
+        });
+        setFieldStatus(input, 'Address suggestions enabled — pick one from the list.', 'ok');
+      }).catch(function (err) {
       input.placeholder = 'Enter address manually (Google Places unavailable)';
       var msg = (err && err.message) ? err.message : 'Google Places could not be loaded.';
       setFieldStatus(input, msg, 'error');

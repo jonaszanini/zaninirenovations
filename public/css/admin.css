@@ -729,8 +729,32 @@ details[open] > summary.admin-chevron-summary::after {
 }
 
 /* Google Places autocomplete dropdown + field status */
+.admin-form-group:has([data-places-autocomplete]) {
+  position: relative;
+  overflow: visible;
+}
+
+.admin-card:has([data-places-autocomplete]) {
+  overflow: visible;
+}
+
 .pac-container {
   z-index: 10050;
+  margin-top: 2px;
+  border-radius: var(--admin-radius-sm, 8px);
+  border: 1px solid var(--admin-border, #d8dee4);
+  box-shadow: var(--admin-shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.08));
+  font-family: inherit;
+}
+
+.pac-item {
+  padding: 0.5rem 0.75rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.pac-item-query {
+  font-size: inherit;
 }
 .admin-places-status--error {
   color: var(--admin-danger, #c62828);

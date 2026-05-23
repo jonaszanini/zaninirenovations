@@ -19,7 +19,7 @@
   @unless ($mapsConfigured)
     <div class="admin-flash admin-flash--warning admin-vehicles-maps-warning" role="alert">
       <strong>Google Maps not configured.</strong>
-      Add <code>GOOGLE_MAPS_API_KEY</code> to your environment and enable Places + Distance Matrix APIs for address autocomplete and travel estimates.
+      Add <code>GOOGLE_MAPS_API_KEY</code> to your environment and enable <strong>Maps JavaScript API</strong>, <strong>Places API</strong>, and <strong>Distance Matrix API</strong> in Google Cloud Console (with billing on).
     </div>
   @endunless
 

@@ -211,8 +211,9 @@
   margin-top: 12px;
 }
 
-.pac-container {
-  z-index: 10050;
+.admin-vehicles-grid,
+.admin-vehicles-home-card {
+  overflow: visible;
 }
 
 .admin-places-status--error {
