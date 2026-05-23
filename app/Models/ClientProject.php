@@ -60,6 +60,9 @@ class ClientProject extends Model
         'client_email_secondary',
         'client_phone',
         'client_address',
+        'client_address_place_id',
+        'client_address_latitude',
+        'client_address_longitude',
         'invoice_billing_name',
         'invoice_billing_address',
         'notes',
@@ -101,6 +104,8 @@ class ClientProject extends Model
         'total_amount' => 'decimal:2',
         'payment_plan' => 'integer',
         'hourly_rate' => 'decimal:2',
+        'client_address_latitude' => 'decimal:7',
+        'client_address_longitude' => 'decimal:7',
     ];
 
     // --- Lifecycle hooks --------------------------------------------------
@@ -769,6 +774,12 @@ class ClientProject extends Model
         }
 
         return (string) ($this->client_address ?? '');
+    }
+
+    public function hasServiceCoordinates(): bool
+    {
+        return $this->client_address_latitude !== null
+            && $this->client_address_longitude !== null;
     }
 
     public function usesInvoiceBillingOverride(): bool

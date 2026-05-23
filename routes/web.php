@@ -152,6 +152,15 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
 
     Route::resource('helpers', \App\Http\Controllers\Admin\HelperController::class)->except(['show']);
 
+    Route::resource('vehicles', \App\Http\Controllers\Admin\VehicleController::class)->except(['show']);
+    Route::post('vehicles/{vehicle}/activate', [\App\Http\Controllers\Admin\VehicleController::class, 'activate'])
+        ->name('vehicles.activate');
+    Route::put('vehicles/settings/home-address', [\App\Http\Controllers\Admin\VehicleController::class, 'updateHomeAddress'])
+        ->name('vehicles.settings.home-address');
+
+    Route::get('client-projects/{client_project}/travel-estimate', [\App\Http\Controllers\Admin\ClientProjectTravelController::class, 'estimate'])
+        ->name('client-projects.travel-estimate');
+
     // Contract (rich-text body, PDF generation, email-to-client).
     Route::get('client-projects/{client_project}/contract/edit', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'edit'])
         ->name('client-projects.contract.edit');

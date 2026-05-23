@@ -69,6 +69,12 @@
             Categories
           </a>
         </li>
+        <li>
+          <a href="{{ route('admin.vehicles.index') }}" class="{{ request()->routeIs('admin.vehicles.*') ? 'is-active' : '' }}">
+            <i class="fa fa-car"></i>
+            Vehicles
+          </a>
+        </li>
       </ul>
       <div class="admin-sidebar-footer">
         <div class="admin-sidebar-user">{{ auth()->user()->email }}</div>

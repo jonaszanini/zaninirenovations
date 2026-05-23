@@ -127,6 +127,7 @@ class ClientProjectController extends Controller
     public function store(Request $request, ClientProjectStatusService $service, ClientProjectPhotoStorage $photoStorage)
     {
         $this->normalisePhoneOnRequest($request);
+        $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
         $this->normaliseConversationOnOnRequest($request);
 
@@ -142,6 +143,9 @@ class ClientProjectController extends Controller
             'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
             'client_phone' => ['nullable', 'digits:10'],
             'client_address' => ['nullable', 'string', 'max:500'],
+            'client_address_place_id' => ['nullable', 'string', 'max:255'],
+            'client_address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'client_address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'invoice_billing_name' => ['nullable', 'string', 'max:255'],
             'invoice_billing_address' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -389,6 +393,7 @@ class ClientProjectController extends Controller
     public function update(Request $request, ClientProject $client_project, ClientProjectStatusService $service)
     {
         $this->normalisePhoneOnRequest($request);
+        $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
         $this->normaliseConversationOnOnRequest($request);
 
@@ -404,6 +409,9 @@ class ClientProjectController extends Controller
             'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
             'client_phone' => ['nullable', 'digits:10'],
             'client_address' => ['nullable', 'string', 'max:500'],
+            'client_address_place_id' => ['nullable', 'string', 'max:255'],
+            'client_address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'client_address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'invoice_billing_name' => ['nullable', 'string', 'max:255'],
             'invoice_billing_address' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -558,6 +566,25 @@ class ClientProjectController extends Controller
 
         $request->merge([
             'client_phone' => $digits === '' ? null : $digits,
+        ]);
+    }
+
+    /** Clear geocoding fields when the service address is blank. */
+    protected function normaliseClientAddressGeoOnRequest(Request $request): void
+    {
+        if (! $request->has('client_address')) {
+            return;
+        }
+
+        if (filled(trim((string) $request->input('client_address')))) {
+            return;
+        }
+
+        $request->merge([
+            'client_address' => null,
+            'client_address_place_id' => null,
+            'client_address_latitude' => null,
+            'client_address_longitude' => null,
         ]);
     }
 

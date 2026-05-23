@@ -87,12 +87,18 @@
           @error('client_email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
-        <div class="admin-form-group">
-          <label for="cp-client-address">Address</label>
-          <input type="text" id="cp-client-address" name="client_address" value="{{ old('client_address', $project->client_address) }}" maxlength="500"
-                 @class(['is-invalid' => $errors->has('client_address')])>
-          @error('client_address') <p class="admin-form-error">{{ $message }}</p> @enderror
-        </div>
+        @include('admin.partials.places_address_field', [
+          'inputId' => 'cp-client-address',
+          'addressName' => 'client_address',
+          'label' => 'Service address',
+          'value' => old('client_address', $project->client_address),
+          'placeIdName' => 'client_address_place_id',
+          'placeIdValue' => old('client_address_place_id', $project->client_address_place_id),
+          'latName' => 'client_address_latitude',
+          'latValue' => old('client_address_latitude', $project->client_address_latitude),
+          'lngName' => 'client_address_longitude',
+          'lngValue' => old('client_address_longitude', $project->client_address_longitude),
+        ])
 
         <div class="admin-form-section" style="margin-top:1rem;padding-top:1rem;border-top:1px dashed #e5e7eb;">
           <h3 style="font-size:1rem;">Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span></h3>
@@ -327,3 +333,7 @@
     })();
   </script>
 @endsection
+
+@push('scripts')
+  @include('admin.partials.google_maps_scripts')
+@endpush

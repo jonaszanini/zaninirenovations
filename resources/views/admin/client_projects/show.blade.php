@@ -4,6 +4,7 @@
 
 @push('head')
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+  <link rel="stylesheet" href="{{ asset('css/admin-vehicles.css') }}?v={{ @filemtime(public_path('css/admin-vehicles.css')) ?: time() }}">
 @endpush
 
 @section('content')
@@ -211,6 +212,8 @@
     @if ($isCompleted)
       @include('admin.client_projects._final_summary', ['project' => $project])
     @endif
+
+    @include('admin.client_projects._travel_cost', ['project' => $project])
 
     <div class="admin-card">
       <h3>Details</h3>
@@ -901,4 +904,5 @@
       });
     })();
   </script>
+  <script src="{{ asset('js/admin-vehicles.js') }}?v={{ @filemtime(public_path('js/admin-vehicles.js')) ?: time() }}" defer></script>
 @endsection
