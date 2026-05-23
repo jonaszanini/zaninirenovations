@@ -13,6 +13,11 @@ class GoogleMapsService
         return filled(config('google_maps.api_key'));
     }
 
+    public function isDistanceMatrixConfigured(): bool
+    {
+        return filled($this->distanceMatrixApiKey());
+    }
+
     /**
      * One-way driving distance in km and duration text from Distance Matrix API.
      *
@@ -24,13 +29,13 @@ class GoogleMapsService
         float $destLat,
         float $destLng
     ): array {
-        if (! $this->isConfigured()) {
+        if (! $this->isDistanceMatrixConfigured()) {
             return [
                 'ok' => false,
                 'distance_km' => null,
                 'duration_text' => null,
                 'duration_seconds' => null,
-                'message' => 'Google Maps API key is not configured.',
+                'message' => 'Google Maps server API key is not configured.',
             ];
         }
 
@@ -43,10 +48,17 @@ class GoogleMapsService
         );
 
         $ttl = (int) config('google_maps.distance_cache_ttl', 86400);
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
 
-        return Cache::remember($cacheKey, $ttl, function () use ($originLat, $originLng, $destLat, $destLng) {
-            return $this->fetchDrivingDistance($originLat, $originLng, $destLat, $destLng);
-        });
+        $result = $this->fetchDrivingDistance($originLat, $originLng, $destLat, $destLng);
+        if ($result['ok']) {
+            Cache::put($cacheKey, $result, $ttl);
+        }
+
+        return $result;
     }
 
     /**
@@ -99,7 +111,7 @@ class GoogleMapsService
                 'destinations' => $destination,
                 'mode' => 'driving',
                 'units' => 'metric',
-                'key' => config('google_maps.api_key'),
+                'key' => $this->distanceMatrixApiKey(),
             ]);
         } catch (\Throwable $e) {
             Log::warning('Google Distance Matrix request failed', ['message' => $e->getMessage()]);
@@ -134,7 +146,7 @@ class GoogleMapsService
                 'distance_km' => null,
                 'duration_text' => null,
                 'duration_seconds' => null,
-                'message' => 'Distance could not be calculated ('.$status.').',
+                'message' => $this->distanceMatrixErrorMessage($status, $payload),
             ];
         }
 
@@ -162,5 +174,47 @@ class GoogleMapsService
             'duration_seconds' => $durationSeconds,
             'message' => null,
         ];
+    }
+
+    /** @param  array<string, mixed>  $payload */
+    private function distanceMatrixErrorMessage(string $status, array $payload): string
+    {
+        $googleMessage = trim((string) ($payload['error_message'] ?? ''));
+        $usingSeparateServerKey = filled(config('google_maps.server_api_key'));
+
+        if ($status === 'REQUEST_DENIED') {
+            $hint = $usingSeparateServerKey
+                ? 'Check GOOGLE_MAPS_SERVER_API_KEY: enable Distance Matrix API and add your Hostinger outbound IP under IP restrictions.'
+                : 'Use two keys in .env: GOOGLE_MAPS_API_KEY (HTTP referrers for Places) and GOOGLE_MAPS_SERVER_API_KEY (IP restriction for Distance Matrix).';
+
+            if ($googleMessage !== '') {
+                return 'Google Distance Matrix: '.$googleMessage.' '.$hint;
+            }
+
+            return 'Google Distance Matrix rejected this request (REQUEST_DENIED). '.$hint;
+        }
+
+        if ($status === 'OVER_QUERY_LIMIT') {
+            return 'Google Distance Matrix quota exceeded. Check billing and usage limits in Google Cloud Console.';
+        }
+
+        if ($googleMessage !== '') {
+            return 'Distance could not be calculated: '.$googleMessage;
+        }
+
+        return 'Distance could not be calculated ('.$status.').';
+    }
+
+    private function distanceMatrixApiKey(): ?string
+    {
+        $serverKey = config('google_maps.server_api_key');
+
+        if (filled($serverKey)) {
+            return $serverKey;
+        }
+
+        $browserKey = config('google_maps.api_key');
+
+        return filled($browserKey) ? $browserKey : null;
     }
 }

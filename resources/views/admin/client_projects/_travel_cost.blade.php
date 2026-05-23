@@ -5,7 +5,7 @@
       <i class="fa fa-refresh"></i> Refresh
     </button>
   </div>
-  <p class="admin-form-help">Round trip from your home / office to this project, using the active vehicle’s fuel consumption and gas price.</p>
+  <p class="admin-form-help">Round trip from your home / office to this project, using the active vehicle’s L/100 km and your company gas price.</p>
   <div class="cp-travel-cost-card__body" data-cp-travel-body aria-live="polite">
     <p class="cp-travel-cost-card__loading" data-cp-travel-loading>Calculating travel estimate…</p>
     <div class="cp-travel-cost-card__result" data-cp-travel-result hidden></div>
