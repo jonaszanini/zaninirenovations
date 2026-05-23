@@ -3831,6 +3831,16 @@ body.cp-modal-open {
   display: block;
   margin-bottom: 8px;
 }
+.sq-intro-option-title {
+  margin: 0 0 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #dbe3ea;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #024768;
+  letter-spacing: 0.01em;
+}
 .sq-intro-choice-row {
   display: flex;
   flex-wrap: wrap;

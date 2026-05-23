@@ -192,7 +192,7 @@
           <h4 class="sq-field-box-title">PDF &amp; document</h4>
           <div class="sq-intro-pdf-options">
             <div class="sq-intro-option-block">
-              <span class="admin-form-label">Document type</span>
+              <h5 class="sq-intro-option-title">Document type</h5>
               @php $docSel = old('document_type', $defaultDocType); @endphp
               <div class="sq-intro-choice-row">
                 <label class="cp-checkbox-row">
@@ -209,7 +209,7 @@
             </div>
 
             <div class="sq-intro-option-block">
-              <span class="admin-form-label">Client PDF line items</span>
+              <h5 class="sq-intro-option-title">Client PDF line items</h5>
               <div class="sq-intro-choice-col">
                 <label class="cp-checkbox-row">
                   <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
@@ -227,7 +227,7 @@
             </div>
 
             <div class="sq-intro-option-block">
-              <span class="admin-form-label">Includes (PDF wording)</span>
+              <h5 class="sq-intro-option-title">Includes (PDF wording)</h5>
               @php
                 $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '1';
                 $labDef = $isEdit ? (($quotation->includes_labour ?? true) ? '1' : '0') : '1';
