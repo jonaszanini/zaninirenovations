@@ -18,8 +18,16 @@
   @error('phone') <div class="admin-error">{{ $message }}</div> @enderror
 </div>
 <div class="admin-form-group">
-  <label for="hourly_rate">Hourly rate ($)</label>
-  <input type="number" id="hourly_rate" name="hourly_rate" value="{{ old('hourly_rate', $helper?->hourly_rate ?? '0.00') }}" required min="0" step="0.01">
+  <label for="hourly_rate">Hourly rate (CAD / hour)</label>
+  <input type="text"
+         id="hourly_rate"
+         name="hourly_rate"
+         class="cp-money-input"
+         inputmode="decimal"
+         autocomplete="off"
+         placeholder="0.00"
+         required
+         value="{{ old('hourly_rate', $helper && $helper->hourly_rate !== null ? number_format((float) $helper->hourly_rate, 2, '.', '') : '') }}">
   @error('hourly_rate') <div class="admin-error">{{ $message }}</div> @enderror
 </div>
 <div class="admin-form-group">

@@ -84,8 +84,8 @@
             <form action="{{ route('admin.client-projects.helper-time.update', [$project, $entry]) }}" method="post" class="cp-time-edit-form" data-cp-time-form>
               @csrf
               @method('PUT')
-              <div class="cp-time-form-grid">
-                <div class="admin-form-group">
+              <div class="cp-helper-time-form-grid">
+                <div class="admin-form-group col-3">
                   <label>Helper</label>
                   <select name="helper_id" required>
                     @foreach ($editHelpers as $helper)
@@ -93,11 +93,11 @@
                     @endforeach
                   </select>
                 </div>
-                <div class="admin-form-group">
+                <div class="admin-form-group col-2">
                   <label>Date</label>
                   <input type="date" name="occurred_on" required value="{{ optional($entry->occurred_on)->toDateString() }}">
                 </div>
-                <div class="admin-form-group">
+                <div class="admin-form-group col-2">
                   <label>Start time</label>
                   <select name="start_time" class="cp-time-select" data-cp-time-start>
                     <option value="">—</option>
@@ -106,7 +106,7 @@
                     @endforeach
                   </select>
                 </div>
-                <div class="admin-form-group">
+                <div class="admin-form-group col-2">
                   <label>End time</label>
                   <select name="end_time" class="cp-time-select" data-cp-time-end>
                     <option value="">—</option>
@@ -115,15 +115,15 @@
                     @endforeach
                   </select>
                 </div>
-                <div class="admin-form-group">
+                <div class="admin-form-group col-2">
+                  <label>Note</label>
+                  <input type="text" name="note" maxlength="500" value="{{ $entry->note }}">
+                </div>
+                <div class="admin-form-group col-1">
                   <label>Hours</label>
                   <input type="text" name="hours" class="cp-hours-input" inputmode="decimal" autocomplete="off" placeholder="auto"
                          value="{{ $entry->hours !== null ? rtrim(rtrim(number_format((float) $entry->hours, 2, '.', ''), '0'), '.') : '' }}"
                          data-cp-time-hours>
-                </div>
-                <div class="admin-form-group">
-                  <label>Note</label>
-                  <input type="text" name="note" maxlength="500" value="{{ $entry->note }}">
                 </div>
               </div>
               <div class="cp-time-submit cp-time-edit-actions">

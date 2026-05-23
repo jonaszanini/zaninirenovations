@@ -74,8 +74,8 @@
             class="cp-finance-form"
             data-cp-time-form>
         @csrf
-        <div class="cp-time-form-grid">
-          <div class="admin-form-group">
+        <div class="cp-helper-time-form-grid">
+          <div class="admin-form-group col-3">
             <label>Helper</label>
             <select name="helper_id" required>
               @foreach ($assignedHelpers as $helper)
@@ -84,11 +84,11 @@
             </select>
             @error('helper_id') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
-          <div class="admin-form-group">
+          <div class="admin-form-group col-2">
             <label>Date</label>
             <input type="date" name="occurred_on" required value="{{ old('occurred_on', now()->toDateString()) }}">
           </div>
-          <div class="admin-form-group">
+          <div class="admin-form-group col-2">
             <label>Start time</label>
             <select name="start_time" class="cp-time-select" data-cp-time-start>
               <option value="">—</option>
@@ -97,7 +97,7 @@
               @endforeach
             </select>
           </div>
-          <div class="admin-form-group">
+          <div class="admin-form-group col-2">
             <label>End time</label>
             <select name="end_time" class="cp-time-select" data-cp-time-end>
               <option value="">—</option>
@@ -106,13 +106,13 @@
               @endforeach
             </select>
           </div>
-          <div class="admin-form-group">
+          <div class="admin-form-group col-2">
+            <label>Note (optional)</label>
+            <input type="text" name="note" maxlength="500" value="{{ old('note') }}">
+          </div>
+          <div class="admin-form-group col-1">
             <label>Hours</label>
             <input type="text" name="hours" class="cp-hours-input" inputmode="decimal" autocomplete="off" placeholder="auto" data-cp-time-hours>
-          </div>
-          <div class="admin-form-group">
-            <label>Note (optional)</label>
-            <input type="text" name="note" maxlength="500">
           </div>
         </div>
         @error('hours') <p class="admin-form-error">{{ $message }}</p> @enderror
