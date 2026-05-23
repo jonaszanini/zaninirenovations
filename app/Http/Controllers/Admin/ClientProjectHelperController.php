@@ -333,6 +333,43 @@ class ClientProjectHelperController extends Controller
         return back()->withFragment('time')->with('success', 'Payment marked as acknowledged by helper.');
     }
 
+    public function bulkMarkHelperPaymentsAcknowledged(Request $request, ClientProject $client_project)
+    {
+        $data = $request->validate([
+            'payment_ids' => ['required', 'array', 'min:1'],
+            'payment_ids.*' => ['integer', 'distinct'],
+        ], [
+            'payment_ids.required' => 'Select at least one payment to acknowledge.',
+        ]);
+
+        $paymentIds = array_values(array_unique(array_map('intval', $data['payment_ids'])));
+
+        $payments = ClientProjectHelperPayment::query()
+            ->where('client_project_id', $client_project->id)
+            ->whereIn('id', $paymentIds)
+            ->get();
+
+        if ($payments->count() !== count($paymentIds)) {
+            throw ValidationException::withMessages([
+                'payment_ids' => 'One or more selected payments could not be found on this project.',
+            ]);
+        }
+
+        $updated = 0;
+        foreach ($payments as $payment) {
+            if (! $payment->isAcknowledged()) {
+                $payment->update(['acknowledged_at' => now()]);
+                $updated++;
+            }
+        }
+
+        $message = $updated === 1
+            ? '1 payment marked as acknowledged by helper.'
+            : $updated.' payments marked as acknowledged by helper.';
+
+        return back()->withFragment('time')->with('success', $message);
+    }
+
     private function assertHelperAssigned(ClientProject $project, int $helperId): void
     {
         if (! $project->helpers()->where('helpers.id', $helperId)->exists()) {

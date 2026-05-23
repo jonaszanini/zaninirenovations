@@ -147,6 +147,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.helper-time.mark-paid');
     Route::post('client-projects/{client_project}/helper-payments/{helper_payment}/acknowledge', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'markHelperPaymentAcknowledged'])
         ->name('client-projects.helper-payments.acknowledge');
+    Route::post('client-projects/{client_project}/helper-payments/acknowledge-bulk', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'bulkMarkHelperPaymentsAcknowledged'])
+        ->name('client-projects.helper-payments.acknowledge-bulk');
 
     Route::resource('helpers', \App\Http\Controllers\Admin\HelperController::class)->except(['show']);
 

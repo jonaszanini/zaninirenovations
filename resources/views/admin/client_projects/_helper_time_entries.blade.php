@@ -19,7 +19,11 @@
       if (! $isOpen && $entry->hours !== null) {
         $detailLine .= ' ('.\App\Models\ClientProject::formatMoney($lineAmount).')';
       }
-      $canSelectForPay = $showPayCheckboxes && ! $isPaid && ! $isOpen && $entry->hours !== null;
+      $canSelectForPay = ($showPayCheckboxes ?? false) && ! $isPaid && ! $isOpen && $entry->hours !== null;
+      $canSelectForAck = ($showAckCheckboxes ?? false)
+        && $isPaid
+        && $entry->payment
+        && ! $entry->payment->isAcknowledged();
       $editHelpers = $assignedHelpers;
       if ($entry->helper && ! $editHelpers->contains('id', $entry->helper_id)) {
         $editHelpers = $editHelpers->push($entry->helper)->sortBy('name')->values();
@@ -29,13 +33,26 @@
       <summary class="cp-time-entry__summary cp-helper-entry__summary">
         <div class="cp-helper-entry__summary-main">
           <div class="cp-helper-entry__summary-top">
-            @if ($canSelectForPay)
+            @if ($canSelectForAck)
+              <label class="admin-checkbox admin-checkbox--block cp-helper-entry__select" onclick="event.stopPropagation();">
+                <input type="checkbox"
+                       name="payment_ids[]"
+                       value="{{ $entry->payment->id }}"
+                       class="admin-checkbox__input"
+                       @if ($ackFormId ?? null) form="{{ $ackFormId }}" @endif
+                       data-cp-helper-ack-check
+                       data-payment-id="{{ $entry->payment->id }}"
+                       aria-label="Select {{ $helperName }} on {{ $dm }} for acknowledgement">
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text cp-helper-entry__name">{{ $helperName }}</span>
+              </label>
+            @elseif ($canSelectForPay)
               <label class="admin-checkbox admin-checkbox--block cp-helper-entry__select" onclick="event.stopPropagation();">
                 <input type="checkbox"
                        name="entry_ids[]"
                        value="{{ $entry->id }}"
                        class="admin-checkbox__input"
-                       @if ($payFormId) form="{{ $payFormId }}" @endif
+                       @if ($payFormId ?? null) form="{{ $payFormId }}" @endif
                        data-cp-helper-entry-check
                        data-helper-id="{{ $entry->helper_id }}"
                        aria-label="Select {{ $helperName }} on {{ $dm }} for payment">

@@ -4330,6 +4330,9 @@ body.cp-modal-open {
 .cp-helper-pay-toolbar.cp-helper-panel {
   margin: 12px 0 16px;
 }
+.cp-helper-ack-form + .cp-helper-pay-form {
+  margin-top: 12px;
+}
 .cp-helper-pay-toolbar .admin-form-group {
   margin-bottom: 0;
   min-width: 140px;

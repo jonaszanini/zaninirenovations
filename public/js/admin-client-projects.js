@@ -823,6 +823,42 @@
     syncPayState();
   }
 
+  function initHelperAckForm() {
+    var form = document.querySelector('[data-cp-helper-ack-form]');
+    if (!form || form._cpHelperAckWired) return;
+    form._cpHelperAckWired = true;
+
+    var submitBtn = form.querySelector('[data-cp-helper-ack-submit]');
+    var formId = form.id;
+    var checks = formId
+      ? document.querySelectorAll('[data-cp-helper-ack-check][form="' + formId + '"]')
+      : form.querySelectorAll('[data-cp-helper-ack-check]');
+
+    function syncAckState() {
+      if (!submitBtn) return;
+      var selected = Array.prototype.filter.call(checks, function (c) { return c.checked; });
+      var uniquePayments = {};
+      selected.forEach(function (c) {
+        var pid = c.getAttribute('data-payment-id');
+        if (pid) uniquePayments[pid] = true;
+      });
+      submitBtn.disabled = Object.keys(uniquePayments).length === 0;
+    }
+
+    checks.forEach(function (check) {
+      check.addEventListener('change', function () {
+        var paymentId = check.getAttribute('data-payment-id');
+        if (paymentId) {
+          document.querySelectorAll('[data-cp-helper-ack-check][data-payment-id="' + paymentId + '"]').forEach(function (c) {
+            c.checked = check.checked;
+          });
+        }
+        syncAckState();
+      });
+    });
+    syncAckState();
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initMoneyMask();
     initPhoneMask();
@@ -830,6 +866,7 @@
     initTimeEditToggles();
     initExpenseEditToggles();
     initHelperPayForm();
+    initHelperAckForm();
     initBillingTypeToggle();
     initCreateVisitFields();
 

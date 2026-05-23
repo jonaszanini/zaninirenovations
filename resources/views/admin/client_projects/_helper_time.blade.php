@@ -38,6 +38,10 @@
       ->sum(fn ($e) => $helperLineAmount($e)), 2);
 
   $helperOpenCount = $project->helperTimeEntries->filter(fn ($e) => $e->isOpen())->count();
+
+  $pendingAckPayments = $project->helperPayments
+      ->filter(fn ($p) => ! $p->isAcknowledged())
+      ->values();
 @endphp
 
 <div class="admin-card cp-helper-card" id="cp-helper-time">
@@ -178,7 +182,29 @@
     </div>
 
     <h4 class="cp-time-saved-heading" style="margin-top:24px;">Helper entries</h4>
-    <p class="admin-form-help cp-time-saved-help">Select unpaid closed days below, then mark as paid. Paid days are locked and recorded as project expenses.</p>
+    <p class="admin-form-help cp-time-saved-help">
+      Select unpaid closed days below, then mark as paid. Paid days are locked and recorded as project expenses.
+      @if ($pendingAckPayments->isNotEmpty())
+        Use the checkboxes on days awaiting helper confirmation to mark acknowledged in bulk.
+      @endif
+    </p>
+
+    @if ($pendingAckPayments->isNotEmpty())
+      <form action="{{ route('admin.client-projects.helper-payments.acknowledge-bulk', $project) }}"
+            method="post"
+            class="cp-helper-ack-form"
+            id="cp-helper-ack-form"
+            data-cp-helper-ack-form
+            onsubmit="return confirm('Mark selected payments as acknowledged by the helper?');">
+        @csrf
+        <div class="cp-helper-pay-toolbar cp-helper-panel cp-helper-ack-toolbar">
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" data-cp-helper-ack-submit disabled>
+            Mark selected as acknowledged
+          </button>
+        </div>
+        @error('payment_ids') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </form>
+    @endif
 
     @if ($unpaidClosed->isNotEmpty())
       <form action="{{ route('admin.client-projects.helper-time.mark-paid', $project) }}"
@@ -215,6 +241,8 @@
           'timeOptions' => $timeOptions,
           'showPayCheckboxes' => $unpaidClosed->isNotEmpty(),
           'payFormId' => $unpaidClosed->isNotEmpty() ? 'cp-helper-pay-form' : null,
+          'showAckCheckboxes' => $pendingAckPayments->isNotEmpty(),
+          'ackFormId' => $pendingAckPayments->isNotEmpty() ? 'cp-helper-ack-form' : null,
         ])
   @elseif ($activeHelpers->isNotEmpty() && $assignedHelpers->isNotEmpty())
     <p class="admin-form-help" style="margin-top:16px;">No helper time entries recorded yet.</p>
