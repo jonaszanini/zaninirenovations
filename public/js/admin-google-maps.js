@@ -3,32 +3,77 @@
 
   var cfg = window.ZR_GOOGLE_MAPS || {};
   var loadPromise = null;
+  var loadFailedMessage = null;
+
+  function rejectLoadPromise(message) {
+    loadFailedMessage = message;
+    if (loadPromise && loadPromise._reject) {
+      loadPromise._reject(new Error(message));
+      loadPromise = null;
+    }
+  }
+
+  window.gm_authFailure = function () {
+    rejectLoadPromise(
+      'Google Maps rejected this API key. Check key restrictions and that Maps JavaScript API + Places API are enabled.'
+    );
+  };
 
   function loadMapsApi() {
     if (!cfg.configured || !cfg.apiKey) {
-      return Promise.reject(new Error('Google Maps is not configured.'));
+      return Promise.reject(new Error('GOOGLE_MAPS_API_KEY is not set on the server.'));
     }
     if (window.google && window.google.maps && window.google.maps.places) {
       return Promise.resolve(window.google.maps);
     }
+    if (loadFailedMessage) {
+      return Promise.reject(new Error(loadFailedMessage));
+    }
     if (loadPromise) {
       return loadPromise;
     }
+
     loadPromise = new Promise(function (resolve, reject) {
+      loadPromise._reject = reject;
+
+      var settled = false;
+      function finish(err, maps) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        loadPromise = null;
+        loadPromise._reject = null;
+        if (err) {
+          reject(err);
+        } else {
+          resolve(maps);
+        }
+      }
+
+      var timer = setTimeout(function () {
+        finish(new Error('Google Maps timed out loading. Check your network or API key restrictions.'));
+      }, 15000);
+
+      window.__zrGoogleMapsReady = function () {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          finish(null, window.google.maps);
+        } else {
+          finish(new Error('Google Maps loaded but Places library is missing. Enable Places API in Google Cloud.'));
+        }
+      };
+
       var script = document.createElement('script');
       script.src = 'https://maps.googleapis.com/maps/api/js?key='
         + encodeURIComponent(cfg.apiKey)
-        + '&libraries=places&callback=__zrGoogleMapsReady';
+        + '&libraries=places&callback=__zrGoogleMapsReady&region=CA';
       script.async = true;
       script.defer = true;
       script.onerror = function () {
-        reject(new Error('Failed to load Google Maps.'));
-      };
-      window.__zrGoogleMapsReady = function () {
-        resolve(window.google.maps);
+        finish(new Error('Could not download Google Maps (blocked network, CSP, or invalid key).'));
       };
       document.head.appendChild(script);
     });
+
     return loadPromise;
   }
 
@@ -52,6 +97,7 @@
     if (lngInput) {
       lngInput.value = place.geometry.location.lng();
     }
+    setFieldStatus(input, '', '');
   }
 
   function clearGeoFields(input) {
@@ -63,11 +109,34 @@
     if (lngInput) lngInput.value = '';
   }
 
+  function setFieldStatus(input, message, type) {
+    var wrap = input.closest('.admin-form-group');
+    if (!wrap) return;
+    var el = wrap.querySelector('[data-places-status]');
+    if (!el) return;
+    el.textContent = message || '';
+    el.className = 'admin-form-help admin-places-status'
+      + (type === 'error' ? ' admin-places-status--error' : '')
+      + (type === 'ok' ? ' admin-places-status--ok' : '');
+    el.hidden = !message;
+  }
+
   function initAutocompleteInput(input) {
     if (input._zrPlacesWired) return;
     input._zrPlacesWired = true;
 
+    if (!cfg.configured || !cfg.apiKey) {
+      input.placeholder = 'Enter address manually (Maps API key not configured)';
+      setFieldStatus(
+        input,
+        'Add GOOGLE_MAPS_API_KEY to .env on this server, then run php artisan config:clear.',
+        'error'
+      );
+      return;
+    }
+
     loadMapsApi().then(function () {
+      input.placeholder = 'Start typing an address…';
       var autocomplete = new google.maps.places.Autocomplete(input, {
         fields: ['formatted_address', 'geometry', 'place_id'],
         componentRestrictions: { country: ['ca'] }
@@ -75,8 +144,14 @@
       autocomplete.addListener('place_changed', function () {
         fillFromPlace(input, autocomplete.getPlace());
       });
-    }).catch(function () {
-      input.placeholder = 'Google Places unavailable — enter address manually';
+      setFieldStatus(input, 'Address suggestions enabled — pick one from the list.', 'ok');
+    }).catch(function (err) {
+      input.placeholder = 'Enter address manually (Google Places unavailable)';
+      var msg = (err && err.message) ? err.message : 'Google Places could not be loaded.';
+      setFieldStatus(input, msg, 'error');
+      if (window.console && console.warn) {
+        console.warn('[admin-google-maps]', msg);
+      }
     });
 
     input.addEventListener('input', function () {

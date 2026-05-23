@@ -214,3 +214,12 @@
 .pac-container {
   z-index: 10050;
 }
+
+.admin-places-status--error {
+  color: var(--admin-danger, #c62828);
+  font-weight: 500;
+}
+
+.admin-places-status--ok {
+  color: #166534;
+}

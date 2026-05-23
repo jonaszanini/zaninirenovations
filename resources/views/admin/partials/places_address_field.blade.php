@@ -39,5 +39,6 @@
   @else
     <p class="admin-form-help">Pick a suggestion from Google to save map coordinates for travel estimates.</p>
   @endif
+  <p class="admin-form-help admin-places-status" data-places-status hidden aria-live="polite"></p>
   @error($addressName) <p class="admin-form-error">{{ $message }}</p> @enderror
 </div>
