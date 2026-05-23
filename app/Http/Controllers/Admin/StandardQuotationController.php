@@ -196,7 +196,7 @@ class StandardQuotationController extends Controller
 
         $lineDesc = trim((string) ($data['link_line_description'] ?? ''));
         if ($lineDesc === '') {
-            $lineDesc = 'Standard quotation';
+            $lineDesc = $standard_quotation->pdfSummaryLineDescription();
         }
 
         DB::transaction(function () use ($project, $standard_quotation, $lineDesc) {
@@ -239,7 +239,7 @@ class StandardQuotationController extends Controller
 
         $lineDesc = trim((string) ($data['link_line_description'] ?? ''));
         if ($lineDesc === '') {
-            $lineDesc = 'Standard quotation';
+            $lineDesc = $standard_quotation->pdfSummaryLineDescription();
         }
 
         $clientName = trim($data['fp_client_name']);
@@ -321,7 +321,7 @@ class StandardQuotationController extends Controller
 
         try {
             DB::transaction(function () use ($project, $sq) {
-                $this->appendStandardLineToProjectQuotation($project, $sq, 'Standard quotation');
+                $this->appendStandardLineToProjectQuotation($project, $sq, $sq->pdfSummaryLineDescription());
             });
 
             return true;
@@ -519,7 +519,7 @@ class StandardQuotationController extends Controller
             ? trim($lineDescription)
             : '';
         if ($lineDescription === '') {
-            $lineDescription = 'Standard quotation';
+            $lineDescription = $standardQuotation->pdfSummaryLineDescription();
         }
 
         $taxablePreHst = $this->preHstTaxableForLink($standardQuotation);

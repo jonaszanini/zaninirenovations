@@ -69,7 +69,7 @@
       $title = $quotation->resolvedTitle();
       $legacy = $quotation->isLegacyManualSource();
       $deleteConfirm = 'Delete '.$title.' ('.$quotation->quotation_number.') from this project? This also removes the calculator quotation from the Quotations hub.';
-      $items = $hasContent ? $quotation->cleanItems() : [];
+      $items = $hasContent ? $quotation->pdfLineItems() : [];
       $subtotal = $hasContent ? $quotation->subtotal() : 0.0;
       $hst = $hasContent ? $quotation->hst() : 0.0;
       $grand = $hasContent ? $quotation->grandTotal() : 0.0;

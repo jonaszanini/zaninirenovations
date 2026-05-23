@@ -305,7 +305,35 @@ class ClientProjectQuotation extends Model
             return $detailed !== [] ? $detailed : $this->cleanItems();
         }
 
-        return $this->cleanItems();
+        return $this->applyStandardSummaryLineWording($this->cleanItems(), $sq);
+    }
+
+    /**
+     * @param  list<array{description: string, amount: float, apply_hst: bool}>  $items
+     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     */
+    protected function applyStandardSummaryLineWording(array $items, StandardQuotation $sq): array
+    {
+        $wording = $sq->pdfSummaryLineDescription();
+        $bases = ['Standard quotation', 'Labour and material', 'Labour', 'Material'];
+
+        foreach ($items as &$row) {
+            $desc = (string) ($row['description'] ?? '');
+            foreach ($bases as $base) {
+                if ($desc === $base) {
+                    $row['description'] = $wording;
+                    break;
+                }
+                $suffix = ' — ';
+                if (str_starts_with($desc, $base.$suffix)) {
+                    $row['description'] = $wording.substr($desc, strlen($base));
+                    break;
+                }
+            }
+        }
+        unset($row);
+
+        return $items;
     }
 
     /** Pre-tax subtotal for {@see pdfLineItems()}. */

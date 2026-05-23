@@ -112,6 +112,27 @@ class StandardQuotation extends Model
     }
 
     /**
+     * Summary-mode PDF line label from Includes (PDF wording) checkboxes.
+     */
+    public function pdfSummaryLineDescription(): string
+    {
+        $material = (bool) $this->includes_material;
+        $labour = (bool) $this->includes_labour;
+
+        if ($material && $labour) {
+            return 'Labour and material';
+        }
+        if ($labour) {
+            return 'Labour';
+        }
+        if ($material) {
+            return 'Material';
+        }
+
+        return 'Labour and material';
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function computedTotals(): array

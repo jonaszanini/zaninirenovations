@@ -244,7 +244,7 @@
                   <span>Labour</span>
                 </label>
               </div>
-              <p class="admin-form-help sq-intro-option-help">Controls the introductory line on the client PDF.</p>
+              <p class="admin-form-help sq-intro-option-help">Controls the summary line on the client PDF (e.g. Labour and material or Labour).</p>
               @error('includes_material') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
           </div>
