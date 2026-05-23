@@ -2213,16 +2213,11 @@ textarea.admin-input {
 }
 .cp-quotation-accordion__actions {
   flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  justify-content: flex-end;
   margin-left: auto;
   max-width: 100%;
 }
-.cp-quotation-accordion__actions .cp-inline-form {
-  margin: 0;
+.cp-quotation-accordion__actions .cp-quotation-toolbar {
+  justify-content: flex-end;
 }
 .cp-quotation-accordion__panel {
   padding: 0 16px 16px;
@@ -2233,9 +2228,8 @@ textarea.admin-input {
   margin: 0;
   padding-top: 12px;
 }
-.cp-quotation-accordion__status-row {
-  margin-top: 10px;
-  padding-bottom: 4px;
+.cp-quotation-accordion__panel .cp-quotation-controls {
+  margin-top: 12px;
 }
 .cp-quotation-accordion__panel .cp-contract-warning {
   margin-top: 12px;
@@ -2258,7 +2252,116 @@ textarea.admin-input {
   .cp-quotation-accordion__actions {
     margin-left: 0;
     width: 100%;
-    justify-content: flex-start;
+  }
+  .cp-quotation-accordion__actions .cp-quotation-toolbar {
+    justify-content: stretch;
+  }
+}
+
+/* Quotation card — toolbar, workflow controls */
+.cp-quotation-card__top {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+@media (min-width: 768px) {
+  .cp-quotation-card__top {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .cp-quotation-card__top .cp-contract-meta {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .cp-quotation-card__top .cp-quotation-toolbar {
+    flex: 0 0 auto;
+    max-width: min(100%, 420px);
+    justify-content: flex-end;
+  }
+}
+.cp-quotation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cp-quotation-toolbar .cp-inline-form,
+.cp-quotation-toolbar form {
+  margin: 0;
+}
+.cp-quotation-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.cp-quotation-control {
+  min-width: 0;
+}
+.cp-quotation-control__form {
+  margin: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.cp-quotation-control__label {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #374151;
+}
+.cp-quotation-control__select,
+.cp-quotation-control__input {
+  width: 100%;
+  min-width: 0;
+}
+.cp-quotation-control__field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: auto;
+}
+.cp-quotation-control__field-row .cp-quotation-control__input {
+  flex: 1 1 7rem;
+  min-width: 0;
+}
+.cp-quotation-control__submit {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .cp-quotation-controls {
+    grid-template-columns: 1fr;
+  }
+  .cp-quotation-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .cp-quotation-toolbar .admin-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .cp-quotation-toolbar__send-form {
+    grid-column: 1 / -1;
+  }
+  .cp-quotation-control__field-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cp-quotation-control__submit {
+    width: 100%;
   }
 }
 

@@ -130,54 +130,18 @@
             </div>
           </div>
           <div class="cp-quotation-accordion__actions" onclick="event.stopPropagation();">
-            @unless ($legacy)
-              <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
-                 class="admin-btn admin-btn--ghost admin-btn--sm">
-                <i class="fa fa-pencil"></i> Edit
-              </a>
-            @endunless
-            @if ($legacy)
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" disabled title="Read-only legacy document.">
-                <i class="fa fa-ban"></i>
-              </button>
-            @endif
-            @if ($hasContent)
-              <a href="{{ route('admin.client-projects.quotation.pdf', [$project, $quotation]) }}"
-                 target="_blank" rel="noopener"
-                 class="admin-btn admin-btn--ghost admin-btn--sm">
-                <i class="fa fa-download"></i> PDF
-              </a>
-            @else
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" disabled title="Add line items before PDF is available.">
-                <i class="fa fa-download"></i> PDF
-              </button>
-            @endif
-            @if ($canSend && ! $legacy)
-              <form action="{{ route('admin.client-projects.quotation.send', [$project, $quotation]) }}"
-                    method="post" class="cp-inline-form"
-                    onsubmit='return confirm(@json($sendConfirmMessage));'>
-                @csrf
-                <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
-                  <i class="fa fa-paper-plane"></i> {{ $quotation->isSent() ? 'Resend' : 'Send' }}
-                </button>
-              </form>
-            @else
-              <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" disabled
-                      title="{{ $legacy ? 'Not sendable.' : (($canDeliverByEmail || $canDeliverBySms) ? 'Add line items first.' : 'Add a delivery channel.') }}">
-                <i class="fa fa-paper-plane"></i>
-              </button>
-            @endif
-            @unless ($legacy)
-              <form action="{{ route('admin.client-projects.quotation.destroy', [$project, $quotation]) }}"
-                    method="post" class="cp-inline-form"
-                    onsubmit='return confirm(@json($deleteConfirm));'>
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" title="Delete quotation">
-                  <i class="fa fa-trash"></i>
-                </button>
-              </form>
-            @endunless
+            @include('admin.client_projects._quotation_toolbar', [
+              'project' => $project,
+              'quotation' => $quotation,
+              'legacy' => $legacy,
+              'hasContent' => $hasContent,
+              'canSend' => $canSend,
+              'sendConfirmMessage' => $sendConfirmMessage,
+              'deleteConfirm' => $deleteConfirm,
+              'canDeliverByEmail' => $canDeliverByEmail,
+              'canDeliverBySms' => $canDeliverBySms,
+              'missingDelivery' => $missingDelivery,
+            ])
           </div>
         </summary>
 
@@ -189,23 +153,7 @@
             <span class="cp-contract-version">Last saved {{ \App\Models\ClientProject::formatDateTime($quotation->updated_at) }}</span>
           </div>
 
-          <div class="cp-quotation-accordion__status-row">
-            <form method="post"
-                  action="{{ route('admin.client-projects.quotation.status', [$project, $quotation]) }}"
-                  class="cp-inline-form"
-                  style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-              @csrf
-              <label for="cp-q-status-{{ $quotation->id }}" class="admin-form-help" style="margin:0;">Workflow status</label>
-              <select id="cp-q-status-{{ $quotation->id }}" name="status" class="admin-input" style="width:auto;min-width:160px;" onchange="this.form.submit()">
-                <option value="{{ ClientProjectQuotation::STATUS_DRAFT }}" @selected($quotation->status === ClientProjectQuotation::STATUS_DRAFT)>Draft</option>
-                <option value="{{ ClientProjectQuotation::STATUS_SENT }}" @selected($quotation->status === ClientProjectQuotation::STATUS_SENT)>Sent</option>
-                <option value="{{ ClientProjectQuotation::STATUS_ACCEPTED }}" @selected($quotation->status === ClientProjectQuotation::STATUS_ACCEPTED)>Accepted</option>
-                <option value="{{ ClientProjectQuotation::STATUS_REJECTED }}" @selected($quotation->status === ClientProjectQuotation::STATUS_REJECTED)>Rejected</option>
-              </select>
-            </form>
-          </div>
-
-          @include('admin.client_projects._quotation_subtotal_override_form', [
+          @include('admin.client_projects._quotation_controls', [
               'project' => $project,
               'quotation' => $quotation,
               'legacy' => $legacy,
@@ -314,8 +262,8 @@
         </div>
       </details>
     @elseif ($hasContent)
-      <div class="admin-card cp-contract-card" style="margin-bottom:1.25rem;">
-        <div class="cp-contract-header">
+      <div class="admin-card cp-contract-card cp-quotation-card" style="margin-bottom:1.25rem;">
+        <div class="cp-quotation-card__top">
           <div class="cp-contract-meta">
             @include('admin.client_projects._quotation_heading_primary', [
                 'quotation' => $quotation,
@@ -341,99 +289,41 @@
             </div>
           </div>
 
-          <div class="cp-contract-actions">
-            @unless ($legacy)
-              <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
-                 class="admin-btn admin-btn--ghost admin-btn--sm">
-                <i class="fa fa-pencil"></i> Edit
-              </a>
-            @endunless
-
-            @if ($legacy)
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" disabled title="Archived — open a new quotation from Quotations instead.">
-                <i class="fa fa-ban"></i> Read-only
-              </button>
-            @endif
-
-            <a href="{{ route('admin.client-projects.quotation.pdf', [$project, $quotation]) }}"
-               target="_blank"
-               rel="noopener"
-               class="admin-btn admin-btn--ghost admin-btn--sm">
-              <i class="fa fa-download"></i> PDF
-            </a>
-
-            @if ($canSend && ! $legacy)
-              <form action="{{ route('admin.client-projects.quotation.send', [$project, $quotation]) }}"
-                    method="post"
-                    class="cp-inline-form"
-                    onsubmit='return confirm(@json($sendConfirmMessage));'>
-                @csrf
-                <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
-                  <i class="fa fa-paper-plane"></i>
-                  {{ $quotation->isSent() ? 'Resend' : 'Send' }}
-                </button>
-              </form>
-            @else
-              <button type="button"
-                      class="admin-btn admin-btn--primary admin-btn--sm"
-                      disabled
-                      title="{{ $legacy ? 'Legacy document — not sendable from this flow.' : (($canDeliverByEmail || $canDeliverBySms) ? 'Add at least one line item first.' : 'Add at least one delivery channel: '.implode(', ', $missingDelivery)) }}">
-                <i class="fa fa-paper-plane"></i> Send
-              </button>
-            @endif
-
-            @unless ($legacy)
-              <form action="{{ route('admin.client-projects.quotation.destroy', [$project, $quotation]) }}"
-                    method="post"
-                    class="cp-inline-form"
-                    onsubmit='return confirm(@json($deleteConfirm));'>
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" title="Remove this document from the project and delete the linked calculator quote.">
-                  <i class="fa fa-trash"></i> Delete
-                </button>
-              </form>
-            @endunless
-          </div>
-
-          <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">
-            <form method="post"
-                  action="{{ route('admin.client-projects.quotation.status', [$project, $quotation]) }}"
-                  class="cp-inline-form"
-                  style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-              @csrf
-              <label for="cp-q-status-{{ $quotation->id }}" class="admin-form-help" style="margin:0;">Workflow status</label>
-              <select id="cp-q-status-{{ $quotation->id }}" name="status" class="admin-input" style="width:auto;min-width:160px;" onchange="this.form.submit()">
-                <option value="{{ ClientProjectQuotation::STATUS_DRAFT }}" @selected($quotation->status === ClientProjectQuotation::STATUS_DRAFT)>Draft</option>
-                <option value="{{ ClientProjectQuotation::STATUS_SENT }}" @selected($quotation->status === ClientProjectQuotation::STATUS_SENT)>Sent</option>
-                <option value="{{ ClientProjectQuotation::STATUS_ACCEPTED }}" @selected($quotation->status === ClientProjectQuotation::STATUS_ACCEPTED)>Accepted</option>
-                <option value="{{ ClientProjectQuotation::STATUS_REJECTED }}" @selected($quotation->status === ClientProjectQuotation::STATUS_REJECTED)>Rejected</option>
-              </select>
-            </form>
-          </div>
-
-          @include('admin.client_projects._quotation_subtotal_override_form', [
-              'project' => $project,
-              'quotation' => $quotation,
-              'legacy' => $legacy,
+          @include('admin.client_projects._quotation_toolbar', [
+            'project' => $project,
+            'quotation' => $quotation,
+            'legacy' => $legacy,
+            'hasContent' => $hasContent,
+            'canSend' => $canSend,
+            'sendConfirmMessage' => $sendConfirmMessage,
+            'deleteConfirm' => $deleteConfirm,
+            'canDeliverByEmail' => $canDeliverByEmail,
+            'canDeliverBySms' => $canDeliverBySms,
+            'missingDelivery' => $missingDelivery,
           ])
-
-          @include('admin.client_projects._quotation_pdf_photos_form', [
-              'project' => $project,
-              'quotation' => $quotation,
-              'legacy' => $legacy,
-          ])
-
-          @if (!$canDeliverByEmail && !$canDeliverBySms && ! $legacy)
-            <div class="cp-contract-warning">
-              <i class="fa fa-exclamation-triangle"></i>
-              <div>
-                <strong>Cannot send until at least one delivery channel exists (email or SMS-capable phone).</strong>
-                <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project</a>
-              </div>
-            </div>
-          @endif
         </div>
+
+        @include('admin.client_projects._quotation_controls', [
+            'project' => $project,
+            'quotation' => $quotation,
+            'legacy' => $legacy,
+        ])
+
+        @include('admin.client_projects._quotation_pdf_photos_form', [
+            'project' => $project,
+            'quotation' => $quotation,
+            'legacy' => $legacy,
+        ])
+
+        @if (!$canDeliverByEmail && !$canDeliverBySms && ! $legacy)
+          <div class="cp-contract-warning">
+            <i class="fa fa-exclamation-triangle"></i>
+            <div>
+              <strong>Cannot send until at least one delivery channel exists (email or SMS-capable phone).</strong>
+              <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project</a>
+            </div>
+          </div>
+        @endif
 
         <div class="cp-contract-preview cp-quotation-preview">
           <div class="cp-quotation-doc-meta">
