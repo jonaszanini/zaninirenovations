@@ -44,6 +44,9 @@ Route::get('/client/invoice/{client_project}/{invoice}', [ClientProjectInvoiceCo
 Route::get('/client/quotation/{client_project}/{quotation}', [ClientProjectQuotationController::class, 'guestDownloadQuotationPdf'])
     ->middleware('signed')
     ->name('public.client-project.quotation-pdf');
+Route::get('/helper/payment/{helper_payment}/acknowledge', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'acknowledgeHelperPayment'])
+    ->middleware('signed')
+    ->name('public.helper-payment.acknowledge');
 
 Route::get('/', function () {
     $projects = Project::query()
@@ -131,6 +134,21 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.time.update');
     Route::delete('client-projects/{client_project}/time/{time_entry}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyTime'])
         ->name('client-projects.time.destroy');
+
+    Route::post('client-projects/{client_project}/helpers/sync', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'syncProjectHelpers'])
+        ->name('client-projects.helpers.sync');
+    Route::post('client-projects/{client_project}/helper-time', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'storeHelperTime'])
+        ->name('client-projects.helper-time.store');
+    Route::put('client-projects/{client_project}/helper-time/{helper_time_entry}', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'updateHelperTime'])
+        ->name('client-projects.helper-time.update');
+    Route::delete('client-projects/{client_project}/helper-time/{helper_time_entry}', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'destroyHelperTime'])
+        ->name('client-projects.helper-time.destroy');
+    Route::post('client-projects/{client_project}/helper-time/mark-paid', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'markHelperTimePaid'])
+        ->name('client-projects.helper-time.mark-paid');
+    Route::post('client-projects/{client_project}/helper-payments/{helper_payment}/acknowledge', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'markHelperPaymentAcknowledged'])
+        ->name('client-projects.helper-payments.acknowledge');
+
+    Route::resource('helpers', \App\Http\Controllers\Admin\HelperController::class)->except(['show']);
 
     // Contract (rich-text body, PDF generation, email-to-client).
     Route::get('client-projects/{client_project}/contract/edit', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'edit'])

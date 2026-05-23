@@ -788,12 +788,48 @@
     });
   }
 
+  function initHelperPayForm() {
+    var form = document.querySelector('[data-cp-helper-pay-form]');
+    if (!form || form._cpHelperPayWired) return;
+    form._cpHelperPayWired = true;
+
+    var submitBtn = form.querySelector('[data-cp-helper-pay-submit]');
+    var formId = form.id;
+    var checks = formId
+      ? document.querySelectorAll('[data-cp-helper-entry-check][form="' + formId + '"]')
+      : form.querySelectorAll('[data-cp-helper-entry-check]');
+
+    function syncPayState() {
+      var selected = Array.prototype.filter.call(checks, function (c) { return c.checked; });
+      if (!submitBtn) return;
+
+      if (selected.length === 0) {
+        submitBtn.disabled = true;
+        return;
+      }
+
+      var helperId = selected[0].getAttribute('data-helper-id');
+      var sameHelper = selected.every(function (c) {
+        return c.getAttribute('data-helper-id') === helperId;
+      });
+
+      submitBtn.disabled = !sameHelper;
+      submitBtn.title = sameHelper ? '' : 'Select days for one helper at a time.';
+    }
+
+    checks.forEach(function (check) {
+      check.addEventListener('change', syncPayState);
+    });
+    syncPayState();
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initMoneyMask();
     initPhoneMask();
     initTimeForms();
     initTimeEditToggles();
     initExpenseEditToggles();
+    initHelperPayForm();
     initBillingTypeToggle();
     initCreateVisitFields();
 

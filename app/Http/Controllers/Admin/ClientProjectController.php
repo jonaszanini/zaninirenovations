@@ -242,6 +242,11 @@ class ClientProjectController extends Controller
             'expenses',
             'returns',
             'timeEntries',
+            'helpers',
+            'helperTimeEntries.helper',
+            'helperTimeEntries.payment',
+            'helperPayments.helper',
+            'helperPayments.timeEntries',
             'statusHistory.user',
             'contract',
             'quotations',
@@ -263,6 +268,7 @@ class ClientProjectController extends Controller
             'project' => $client_project,
             'calendarLink' => $calendarLink,
             'scheduleEvents' => $scheduleEvents,
+            'activeHelpers' => \App\Models\Helper::query()->active()->orderBy('name')->get(),
         ]);
     }
 

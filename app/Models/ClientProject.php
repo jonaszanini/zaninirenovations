@@ -6,6 +6,7 @@ use App\Support\EasternStandardTimeDisplay;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
@@ -187,6 +188,25 @@ class ClientProject extends Model
         return $this->hasMany(ClientProjectTimeEntry::class)
             ->orderByDesc('occurred_on')
             ->orderByDesc('id');
+    }
+
+    public function helpers(): BelongsToMany
+    {
+        return $this->belongsToMany(Helper::class, 'client_project_helper')
+            ->withTimestamps()
+            ->orderBy('helpers.name');
+    }
+
+    public function helperTimeEntries(): HasMany
+    {
+        return $this->hasMany(ClientProjectHelperTimeEntry::class)
+            ->orderByDesc('occurred_on')
+            ->orderByDesc('id');
+    }
+
+    public function helperPayments(): HasMany
+    {
+        return $this->hasMany(ClientProjectHelperPayment::class)->orderByDesc('paid_at');
     }
 
     public function statusHistory(): HasMany
