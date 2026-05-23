@@ -78,6 +78,7 @@ class ClientProjectTravelController extends Controller
         return response()->json([
             'ok' => true,
             'one_way_km' => $distance['one_way_km'],
+            'return_km' => $distance['return_km'] ?? null,
             'round_trip_km' => $distance['round_trip_km'],
             'duration_text' => $distance['duration_text'],
             'fuel_cost' => $fuelCost,

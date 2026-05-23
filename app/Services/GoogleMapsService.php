@@ -72,27 +72,62 @@ class GoogleMapsService
         float $destLat,
         float $destLng
     ): array {
-        $oneWay = $this->drivingDistance($originLat, $originLng, $destLat, $destLng);
+        $outbound = $this->drivingDistance($originLat, $originLng, $destLat, $destLng);
 
-        if (! $oneWay['ok'] || $oneWay['distance_km'] === null) {
+        if (! $outbound['ok'] || $outbound['distance_km'] === null) {
             return [
                 'ok' => false,
                 'one_way_km' => null,
                 'round_trip_km' => null,
                 'duration_text' => null,
-                'message' => $oneWay['message'] ?? 'Could not calculate driving distance.',
+                'message' => $outbound['message'] ?? 'Could not calculate driving distance.',
             ];
         }
 
-        $oneWayKm = (float) $oneWay['distance_km'];
+        $return = $this->drivingDistance($destLat, $destLng, $originLat, $originLng);
+
+        if (! $return['ok'] || $return['distance_km'] === null) {
+            return [
+                'ok' => false,
+                'one_way_km' => null,
+                'round_trip_km' => null,
+                'duration_text' => null,
+                'message' => $return['message'] ?? 'Could not calculate return driving distance.',
+            ];
+        }
+
+        $outboundKm = (float) $outbound['distance_km'];
+        $returnKm = (float) $return['distance_km'];
+        $totalDurationSeconds = (int) ($outbound['duration_seconds'] ?? 0) + (int) ($return['duration_seconds'] ?? 0);
 
         return [
             'ok' => true,
-            'one_way_km' => round($oneWayKm, 1),
-            'round_trip_km' => round($oneWayKm * 2, 1),
-            'duration_text' => $oneWay['duration_text'],
+            'one_way_km' => round($outboundKm, 1),
+            'return_km' => round($returnKm, 1),
+            'round_trip_km' => round($outboundKm + $returnKm, 1),
+            'duration_text' => $this->formatTotalDuration($totalDurationSeconds),
             'message' => null,
         ];
+    }
+
+    private function formatTotalDuration(int $totalSeconds): ?string
+    {
+        if ($totalSeconds <= 0) {
+            return null;
+        }
+
+        $hours = intdiv($totalSeconds, 3600);
+        $minutes = intdiv($totalSeconds % 3600, 60);
+
+        if ($hours > 0 && $minutes > 0) {
+            return sprintf('%d hr %d min round trip', $hours, $minutes);
+        }
+
+        if ($hours > 0) {
+            return sprintf('%d hr round trip', $hours);
+        }
+
+        return sprintf('%d min round trip', max(1, $minutes));
     }
 
     /** @return array{ok: bool, distance_km: ?float, duration_text: ?string, duration_seconds: ?int, message: ?string} */

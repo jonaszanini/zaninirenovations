@@ -161,7 +161,11 @@
       if (errorEl) errorEl.hidden = true;
       if (!resultEl) return;
       resultEl.hidden = false;
-      var duration = data.duration_text ? ' · ~' + data.duration_text + ' one way' : '';
+      var duration = data.duration_text ? ' · ~' + data.duration_text : '';
+      var legs = 'Outbound: ' + data.one_way_km + ' km';
+      if (data.return_km) {
+        legs += ' · Return: ' + data.return_km + ' km';
+      }
       resultEl.innerHTML =
         '<div class="cp-travel-cost-card__metrics">' +
           '<div class="cp-travel-cost-metric">' +
@@ -173,7 +177,7 @@
             '<strong class="cp-travel-cost-metric__value">' + (data.fuel_cost_formatted || '—') + '</strong>' +
           '</div>' +
         '</div>' +
-        '<p class="admin-form-help">One way: ' + data.one_way_km + ' km' + duration +
+        '<p class="admin-form-help">' + legs + duration +
         ' · Vehicle: ' + (data.vehicle_name || 'Active vehicle') +
         ' · ' + data.fuel_consumption + ' L/100km @ ' + formatMoney(data.gas_price) + '/L</p>';
     }
