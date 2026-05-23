@@ -53,6 +53,7 @@ class ClientProjectPhotoStorage
 
         $startOrder = (int) $project->photos()->max('sort_order');
         $created = [];
+        $imageBatchIndex = 0;
 
         foreach ($files as $i => $file) {
             $error = self::validateSingleUpload($file);
@@ -61,16 +62,22 @@ class ClientProjectPhotoStorage
             }
 
             $mediaType = self::classifyUpload($file);
+            $storedFilename = $file->getClientOriginalName();
+
             $path = match ($mediaType) {
-                ClientProjectPhoto::TYPE_IMAGE => $this->converter->store($file, (int) $project->id, self::STORAGE_FOLDER),
+                ClientProjectPhoto::TYPE_IMAGE => $this->storeProjectImage($project, $file, $imageBatchIndex, $storedFilename),
                 ClientProjectPhoto::TYPE_VIDEO, ClientProjectPhoto::TYPE_PDF => $this->storeRawFile($file, (int) $project->id, $mediaType),
                 default => throw new \RuntimeException('Unsupported file type.'),
             };
 
+            if ($mediaType === ClientProjectPhoto::TYPE_IMAGE) {
+                $imageBatchIndex++;
+            }
+
             $created[] = $project->photos()->create([
                 'path' => $path,
                 'media_type' => $mediaType,
-                'original_filename' => $file->getClientOriginalName(),
+                'original_filename' => $storedFilename,
                 'sort_order' => $startOrder + $i + 1,
             ]);
         }
@@ -204,6 +211,47 @@ class ClientProjectPhotoStorage
             'application/pdf',
             '.pdf',
         ];
+    }
+
+    private function storeProjectImage(
+        ClientProject $project,
+        UploadedFile $file,
+        int $batchOffset,
+        string &$storedFilename
+    ): string {
+        $basename = $this->nextProjectImageBasename($project, $batchOffset);
+        $storedFilename = $basename.'.webp';
+
+        return $this->converter->store(
+            $file,
+            (int) $project->id,
+            self::STORAGE_FOLDER,
+            $basename
+        );
+    }
+
+    private function nextProjectImageBasename(ClientProject $project, int $batchOffset = 0): string
+    {
+        $max = 0;
+
+        foreach ($project->photos()->get() as $photo) {
+            if (! $photo->isImage()) {
+                continue;
+            }
+
+            foreach ([
+                pathinfo($photo->displayName(), PATHINFO_FILENAME),
+                pathinfo((string) $photo->path, PATHINFO_FILENAME),
+            ] as $base) {
+                if (preg_match('/^Project-image(\d+)$/i', (string) $base, $matches)) {
+                    $max = max($max, (int) $matches[1]);
+                }
+            }
+        }
+
+        $next = $max + 1 + $batchOffset;
+
+        return 'Project-image'.str_pad((string) $next, 2, '0', STR_PAD_LEFT);
     }
 
     private function storeRawFile(UploadedFile $file, int $projectId, string $mediaType): string

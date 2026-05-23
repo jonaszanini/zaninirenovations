@@ -283,8 +283,8 @@
     }
 
     .pdf-photos-section {
-      page-break-before: always;
-      margin-top: 0;
+      margin: 16pt 0 18pt;
+      page-break-inside: avoid;
     }
     .pdf-photos-title {
       font-size: 14pt;
@@ -466,32 +466,6 @@
     </p>
   @endif
 
-  {{-- Closing block --}}
-  <div class="closing">
-    <ul>
-      <li>Prices are firm for 10 days.</li>
-      <li>Work schedule is based on weather permitting days (if outside work).</li>
-      <li>Zanini Renovations carries a liability insurance.</li>
-      <li>Warrantee on workmanship: 1 year.</li>
-      <li>Warrantee on workmanship: damages caused by external forces (&ldquo;Act of God&rdquo;) such as weather are not covered under warrantee.</li>
-      <li>If you have any questions, please do not hesitate to call.</li>
-    </ul>
-
-    <p>We trust this quote meets with your approval and we are favoured with your order.</p>
-
-    <div class="signoff">
-      <p>Best regards,</p>
-      <p>
-        <strong>Jonas Zanini</strong><br>
-        Tel: (647) 834-7570<br>
-        Zanini Renovations<br>
-        E-mail: zaninirenovations@gmail.com<br>
-        Website: www.zaninirenovations.ca<br>
-        Instagram: instagram.com/zaninirenovations
-      </p>
-    </div>
-  </div>
-
   @if ($pdfPhotos->isNotEmpty())
     <div class="pdf-photos-section">
       <p class="pdf-photos-title">Reference photos</p>
@@ -520,6 +494,32 @@
       </table>
     </div>
   @endif
+
+  {{-- Closing block --}}
+  <div class="closing">
+    <ul>
+      <li>Prices are firm for 10 days.</li>
+      <li>Work schedule is based on weather permitting days (if outside work).</li>
+      <li>Zanini Renovations carries a liability insurance.</li>
+      <li>Warrantee on workmanship: 1 year.</li>
+      <li>Warrantee on workmanship: damages caused by external forces (&ldquo;Act of God&rdquo;) such as weather are not covered under warrantee.</li>
+      <li>If you have any questions, please do not hesitate to call.</li>
+    </ul>
+
+    <p>We trust this quote meets with your approval and we are favoured with your order.</p>
+
+    <div class="signoff">
+      <p>Best regards,</p>
+      <p>
+        <strong>Jonas Zanini</strong><br>
+        Tel: (647) 834-7570<br>
+        Zanini Renovations<br>
+        E-mail: zaninirenovations@gmail.com<br>
+        Website: www.zaninirenovations.ca<br>
+        Instagram: instagram.com/zaninirenovations
+      </p>
+    </div>
+  </div>
 
 </body>
 </html>
