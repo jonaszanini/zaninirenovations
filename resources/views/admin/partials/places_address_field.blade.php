@@ -1,5 +1,5 @@
 {{--
-  Google Places Autocomplete address field.
+  Google Places Autocomplete address field (Places API New).
   Requires @include('admin.partials.google_maps_scripts') on the page.
 --}}
 @php
@@ -16,21 +16,20 @@
   $help = $help ?? null;
   $required = $required ?? false;
 @endphp
-<div class="admin-form-group">
-  <label for="{{ $inputId }}">{{ $label }}@if ($required) <span class="cp-required">*</span>@endif</label>
-  <input type="text"
-         id="{{ $inputId }}"
+<div class="admin-form-group admin-places-field">
+  <label for="{{ $inputId }}-widget">{{ $label }}@if ($required) <span class="cp-required">*</span>@endif</label>
+  <div class="admin-places-autocomplete-wrap"
+       data-places-mount
+       data-address-input="{{ $inputId }}"
+       data-place-id-input="{{ $inputId }}-place-id"
+       data-lat-input="{{ $inputId }}-lat"
+       data-lng-input="{{ $inputId }}-lng"></div>
+  <input type="hidden"
          name="{{ $addressName }}"
+         id="{{ $inputId }}"
          value="{{ $value }}"
-         maxlength="500"
-         @if ($required) required @endif
-         class="admin-places-address-input @if ($errors->has($addressName)) is-invalid @endif"
-         data-places-autocomplete
-         data-place-id-input="{{ $inputId }}-place-id"
-         data-lat-input="{{ $inputId }}-lat"
-         data-lng-input="{{ $inputId }}-lng"
-         autocomplete="off"
-         placeholder="Start typing an address…">
+         data-places-address-value
+         @if ($required) required @endif>
   <input type="hidden" name="{{ $placeIdName }}" id="{{ $inputId }}-place-id" value="{{ $placeIdValue }}">
   <input type="hidden" name="{{ $latName }}" id="{{ $inputId }}-lat" value="{{ $latValue }}">
   <input type="hidden" name="{{ $lngName }}" id="{{ $inputId }}-lng" value="{{ $lngValue }}">
