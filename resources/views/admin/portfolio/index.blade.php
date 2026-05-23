@@ -5,9 +5,14 @@
 @section('content')
   <div class="admin-toolbar">
     <p class="admin-toolbar-lede">Manage portfolio photos shown on the public home page (WebP, JPEG, or PNG — stored as WebP, max edge {{ (int) config('webp.max_edge_px', 1920) }}px; up to 15 per project).</p>
-    <a href="{{ route('admin.portfolio.create') }}" class="admin-btn admin-btn--primary">
-      <i class="fa fa-plus"></i> New portfolio project
-    </a>
+    <div class="admin-toolbar-actions">
+      <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
+        <i class="fa fa-cog"></i> Categories
+      </a>
+      <a href="{{ route('admin.portfolio.create') }}" class="admin-btn admin-btn--primary">
+        <i class="fa fa-plus"></i> New portfolio project
+      </a>
+    </div>
   </div>
 
   @if ($projects->isEmpty())

@@ -58,15 +58,9 @@
           </a>
         </li>
         <li>
-          <a href="{{ route('admin.portfolio.index') }}" class="{{ request()->routeIs('admin.portfolio.*') ? 'is-active' : '' }}">
+          <a href="{{ route('admin.portfolio.index') }}" class="{{ request()->routeIs('admin.portfolio.*') || request()->routeIs('admin.categories.*') ? 'is-active' : '' }}">
             <i class="fa fa-folder-open"></i>
             Latest Projects Photos
-          </a>
-        </li>
-        <li>
-          <a href="{{ route('admin.categories.index') }}" class="{{ request()->routeIs('admin.categories.*') ? 'is-active' : '' }}">
-            <i class="fa fa-tags"></i>
-            Categories
           </a>
         </li>
         <li>

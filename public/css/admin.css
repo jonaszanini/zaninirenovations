@@ -347,6 +347,20 @@ body.admin-body {
   line-height: 1.45;
 }
 
+.admin-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* Table */
 .admin-table-wrap {
   overflow-x: auto;

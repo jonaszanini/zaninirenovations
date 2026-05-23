@@ -1,13 +1,18 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Categories')
+@section('heading', 'Portfolio categories')
 
 @section('content')
   <div class="admin-toolbar">
     <p class="admin-toolbar-lede">These labels appear on the Latest projects section of the public site. Slugs are for internal use and stable links.</p>
-    <a href="{{ route('admin.categories.create') }}" class="admin-btn admin-btn--primary">
-      <i class="fa fa-plus"></i> New category
-    </a>
+    <div class="admin-toolbar-actions">
+      <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-arrow-left"></i> Latest Projects Photos
+      </a>
+      <a href="{{ route('admin.categories.create') }}" class="admin-btn admin-btn--primary">
+        <i class="fa fa-plus"></i> New category
+      </a>
+    </div>
   </div>
 
   @if ($categories->isEmpty())
