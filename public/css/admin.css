@@ -716,6 +716,18 @@ details[open] > summary.admin-chevron-summary::after {
   background-size: 12px 8px;
 }
 
+.admin-form-group label.admin-checkbox,
+.admin-form-group label.admin-checkbox--block {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .admin-category-checkboxes {
   display: flex;
   flex-wrap: wrap;

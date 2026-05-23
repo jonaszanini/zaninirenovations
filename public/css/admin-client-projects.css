@@ -4392,6 +4392,12 @@ body.cp-modal-open {
 .cp-helper-active-toggle {
   margin: 0;
 }
+.cp-helper-active-toggle .cp-visit-toggle__label {
+  text-transform: none;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
 .cp-helper-summary {
   margin-top: 24px;
   padding-top: 20px;
