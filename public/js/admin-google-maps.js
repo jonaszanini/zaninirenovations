@@ -13,10 +13,18 @@
     return window.location.origin + '/*';
   }
 
+  function apiKeyHint() {
+    if (!cfg.apiKey || cfg.apiKey.length < 8) {
+      return '';
+    }
+    return ' Server key starts with ' + cfg.apiKey.slice(0, 8) + '… — edit that exact key in Google Cloud.';
+  }
+
   function referrerRestrictionMessage() {
     return 'Google blocked this page (RefererNotAllowedMapError). In Google Cloud Console → Credentials → your API key → Application restrictions → HTTP referrers, add: '
       + currentReferrerPattern()
-      + (window.location.hostname === 'localhost' ? '' : ' and http://localhost/* for local dev.');
+      + (window.location.hostname === 'localhost' ? '' : ' and http://localhost/* for local dev.')
+      + apiKeyHint();
   }
 
   function rejectPendingLoad(message) {
