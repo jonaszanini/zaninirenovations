@@ -6,6 +6,19 @@
   var loadReject = null;
   var loadFailedMessage = null;
 
+  function currentReferrerPattern() {
+    if (!window.location || !window.location.origin) {
+      return 'https://your-domain.com/*';
+    }
+    return window.location.origin + '/*';
+  }
+
+  function referrerRestrictionMessage() {
+    return 'Google blocked this page (RefererNotAllowedMapError). In Google Cloud Console → Credentials → your API key → Application restrictions → HTTP referrers, add: '
+      + currentReferrerPattern()
+      + (window.location.hostname === 'localhost' ? '' : ' and http://localhost/* for local dev.');
+  }
+
   function rejectPendingLoad(message) {
     loadFailedMessage = message;
     if (typeof loadReject === 'function') {
@@ -17,10 +30,35 @@
   }
 
   window.gm_authFailure = function () {
-    rejectPendingLoad(
-      'Google Maps rejected this API key. Check key restrictions and that Maps JavaScript API + Places API are enabled.'
-    );
+    rejectPendingLoad(referrerRestrictionMessage());
   };
+
+  function watchMapsConsoleErrors(durationMs, onMatch) {
+    if (!window.console || typeof console.error !== 'function') {
+      return function () {};
+    }
+    var original = console.error.bind(console);
+    var timer = setTimeout(restore, durationMs);
+
+    function restore() {
+      console.error = original;
+      clearTimeout(timer);
+    }
+
+    console.error = function () {
+      var text = Array.prototype.slice.call(arguments).join(' ');
+      if (
+        text.indexOf('RefererNotAllowedMapError') !== -1
+        || text.indexOf('ApiNotActivatedMapError') !== -1
+      ) {
+        onMatch(text);
+        restore();
+      }
+      original.apply(console, arguments);
+    };
+
+    return restore;
+  }
 
   function loadMapsApi() {
     if (!cfg.configured || !cfg.apiKey) {
@@ -38,11 +76,21 @@
 
     loadPromise = new Promise(function (resolve, reject) {
       loadReject = reject;
+      var stopWatching = watchMapsConsoleErrors(15000, function (text) {
+        if (text.indexOf('RefererNotAllowedMapError') !== -1) {
+          finish(new Error(referrerRestrictionMessage()));
+        } else if (text.indexOf('ApiNotActivatedMapError') !== -1) {
+          finish(new Error(
+            'Maps JavaScript API or Places API is not enabled for this key. Enable both in Google Cloud Console and ensure billing is on.'
+          ));
+        }
+      });
 
       var settled = false;
       function finish(err, maps) {
         if (settled) return;
         settled = true;
+        stopWatching();
         clearTimeout(timer);
         loadReject = null;
         loadPromise = null;
@@ -54,7 +102,11 @@
       }
 
       var timer = setTimeout(function () {
-        finish(new Error('Google Maps timed out loading. Check your network or API key restrictions.'));
+        finish(new Error(
+          'Google Maps timed out. If the browser console shows RefererNotAllowedMapError, add '
+          + currentReferrerPattern()
+          + ' to your API key HTTP referrer allowlist.'
+        ));
       }, 15000);
 
       window.__zrGoogleMapsReady = function () {
@@ -88,10 +140,24 @@
       }
 
       var settled = false;
+      var stopWatching = watchMapsConsoleErrors(10000, function (text) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (text.indexOf('RefererNotAllowedMapError') !== -1) {
+          reject(new Error(referrerRestrictionMessage()));
+        } else {
+          reject(new Error(
+            'Maps JavaScript API or Places API is not enabled for this key. Enable both in Google Cloud Console.'
+          ));
+        }
+      });
+
       var timer = setTimeout(function () {
         if (settled) return;
         settled = true;
-        reject(new Error('Places API did not respond. Check that Maps JavaScript API and Places API are enabled.'));
+        stopWatching();
+        reject(new Error(referrerRestrictionMessage()));
       }, 10000);
 
       var service = new maps.places.AutocompleteService();
@@ -101,6 +167,7 @@
           if (settled) return;
           settled = true;
           clearTimeout(timer);
+          stopWatching();
 
           if (
             status === maps.places.PlacesServiceStatus.OK
