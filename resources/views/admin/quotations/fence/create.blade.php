@@ -19,6 +19,17 @@
   $initialOverlap = $isEdit ? (float) $quotation->overlap_in : 0;
   $initialGates = $isEdit ? (int) $quotation->gate_count : 1;
 
+  $defaultLabour6 = (float) $settings->labour_rate_per_ft;
+  $defaultLabour8 = (float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft);
+  $initialLabour6 = old(
+      'labour_rate_per_ft',
+      $isEdit ? (float) ($quotation->labour_rate_per_ft ?? $defaultLabour6) : $defaultLabour6
+  );
+  $initialLabour8 = old(
+      'labour_rate_8ft_per_ft',
+      $isEdit ? (float) ($quotation->labour_rate_8ft_per_ft ?? $defaultLabour8) : $defaultLabour8
+  );
+
   // Initial breakdown (if editing, use the stored snapshot so the page
   // renders with real data before the first preview XHR returns).
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
@@ -239,6 +250,17 @@
       margin-bottom: 16px;
     }
     .fq-linked-banner a { color: #0f5132; font-weight: 600; }
+    .fq-quote-labour-section {
+      margin-top: 4px;
+      padding-top: 16px;
+      border-top: 1px dashed #e0e4ea;
+    }
+    .fq-quote-labour-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 640px) {
+      .fq-quote-labour-grid { grid-template-columns: 1fr; }
+    }
   </style>
 @endpush
 
@@ -315,6 +337,33 @@
                  class="admin-input @class(['is-invalid' => $errors->has('client_name')])"
                  value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
                  maxlength="160" required>
+        </div>
+
+        {{-- Labour rates (saved per quotation) ----------------------- --}}
+        <div class="admin-form-section fq-quote-labour-section">
+          <h4 style="margin:0 0 4px;font-size:1rem;">Labour rates for this quotation</h4>
+          <p class="admin-form-help" style="margin:0 0 12px;">
+            Stored with this quote{{ $isEdit ? '' : ' (prefilled from your last global defaults)' }}.
+            Change them here to adjust labour for this project only. HST is not applied to labour.
+          </p>
+          <div class="fq-formula-grid fq-quote-labour-grid">
+            <div class="admin-form-group">
+              <label for="fq-labour-rate-6">Labour rate 6&prime; fence (CAD$ / linear ft)</label>
+              <input id="fq-labour-rate-6" type="text" name="labour_rate_per_ft"
+                     class="admin-input cp-money-input @class(['is-invalid' => $errors->has('labour_rate_per_ft')])"
+                     inputmode="decimal" autocomplete="off" required
+                     value="{{ number_format((float) $initialLabour6, 2, '.', '') }}">
+              @error('labour_rate_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+            <div class="admin-form-group">
+              <label for="fq-labour-rate-8">Labour rate 8&prime; fence (CAD$ / linear ft)</label>
+              <input id="fq-labour-rate-8" type="text" name="labour_rate_8ft_per_ft"
+                     class="admin-input cp-money-input @class(['is-invalid' => $errors->has('labour_rate_8ft_per_ft')])"
+                     inputmode="decimal" autocomplete="off" required
+                     value="{{ number_format((float) $initialLabour8, 2, '.', '') }}">
+              @error('labour_rate_8ft_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+          </div>
         </div>
 
         {{-- Fence height + gates + style --------------------------- --}}
@@ -536,6 +585,8 @@
   var heightSelect = document.getElementById('fq-height');
   var gatesInput = document.getElementById('fq-gates');
   var overlapInput = document.getElementById('fq-overlap');
+  var labourRate6Input = document.getElementById('fq-labour-rate-6');
+  var labourRate8Input = document.getElementById('fq-labour-rate-8');
 
   var statusBadge = document.getElementById('fq-status-badge');
   var geometryEl = document.getElementById('fq-geometry');
@@ -630,8 +681,16 @@
       fence_height_ft: parseInt(heightSelect.value, 10) || 6,
       board_style: styleSelect.value,
       overlap_in: parseFloat(overlapInput.value) || 0,
-      gate_count: parseInt(gatesInput.value, 10) || 0
+      gate_count: parseInt(gatesInput.value, 10) || 0,
+      labour_rate_per_ft: parseLabourRate(labourRate6Input),
+      labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input)
     };
+  }
+
+  function parseLabourRate(input) {
+    if (!input) return 0;
+    var v = parseFloat(String(input.value || '').replace(/,/g, ''));
+    return isFinite(v) ? v : 0;
   }
 
   function runPreview() {

@@ -439,7 +439,9 @@ class FenceQuotationCalculator
         $hst = round($materialsSubtotal * FenceQuotation::HST_RATE, 2);
 
         $heightFt = (float) ($in['fence_height_ft'] ?? 6);
-        $labourRatePerFt = $this->settings->labourRatePerFtForHeight($heightFt);
+        $rate6 = (float) ($in['labour_rate_per_ft'] ?? $this->settings->labour_rate_per_ft);
+        $rate8 = (float) ($in['labour_rate_8ft_per_ft'] ?? $this->settings->labour_rate_8ft_per_ft ?? $rate6);
+        $labourRatePerFt = ((int) round($heightFt)) === 8 ? $rate8 : $rate6;
         $labourPerAdditionalGate = (float) ($this->settings->labour_per_additional_gate ?? 0);
         $additionalGates = max(0, ((int) ($in['gate_count'] ?? 0)) - 1);
 
@@ -456,6 +458,8 @@ class FenceQuotationCalculator
             'grand_total' => round($materialsSubtotal + $hst + $labour, 2),
             'hst_rate' => FenceQuotation::HST_RATE,
             'labour_rate_per_ft' => $labourRatePerFt,
+            'labour_rate_6ft_per_ft' => round($rate6, 2),
+            'labour_rate_8ft_per_ft' => round($rate8, 2),
             'labour_per_additional_gate' => round($labourPerAdditionalGate, 2),
             'additional_gates_count' => $additionalGates,
         ];

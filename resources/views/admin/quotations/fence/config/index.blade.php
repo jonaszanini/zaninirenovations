@@ -133,7 +133,7 @@
       <div>
         <h3 style="margin:0;">Formula parameters</h3>
         <p class="admin-form-help" style="margin:4px 0 0;">
-          Structural assumptions and per-height labour rates used by the calculator.
+          Structural assumptions used by the calculator. Per-height labour rates are set on each fence quotation.
         </p>
       </div>
       <button type="submit" class="admin-btn admin-btn--primary">
@@ -142,22 +142,6 @@
     </div>
 
     <div class="fq-formula-grid">
-      <div class="admin-form-group">
-        <label for="fq-labour-rate-6">Labour rate 6&prime; fence (CAD$ / linear ft)</label>
-        <input id="fq-labour-rate-6" type="text" name="labour_rate_per_ft"
-               class="admin-input cp-money-input" inputmode="decimal"
-               value="{{ old('labour_rate_per_ft', number_format((float) $settings->labour_rate_per_ft, 2, '.', '')) }}">
-        <p class="admin-form-help">Used when fence height is 6&prime;. HST is not applied to labour.</p>
-      </div>
-
-      <div class="admin-form-group">
-        <label for="fq-labour-rate-8">Labour rate 8&prime; fence (CAD$ / linear ft)</label>
-        <input id="fq-labour-rate-8" type="text" name="labour_rate_8ft_per_ft"
-               class="admin-input cp-money-input" inputmode="decimal"
-               value="{{ old('labour_rate_8ft_per_ft', number_format((float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft), 2, '.', '')) }}">
-        <p class="admin-form-help">Used when fence height is 8&prime;. HST is not applied to labour.</p>
-      </div>
-
       <div class="admin-form-group">
         <label for="fq-labour-additional-gate">Labour per additional gate (CAD$)</label>
         <input id="fq-labour-additional-gate" type="text" name="labour_per_additional_gate"

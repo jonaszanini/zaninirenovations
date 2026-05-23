@@ -88,6 +88,8 @@ class FenceQuotationController extends Controller
             'board_style' => $calc['inputs']['board_style'],
             'overlap_in' => $calc['inputs']['overlap_in'],
             'gate_count' => $calc['inputs']['gate_count'],
+            'labour_rate_per_ft' => $data['labour_rate_per_ft'],
+            'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],
             'sides' => $calc['inputs']['sides'],
             'calculation' => $calc,
             'materials_subtotal' => $calc['totals']['materials_subtotal'],
@@ -169,6 +171,8 @@ class FenceQuotationController extends Controller
             'board_style' => $calc['inputs']['board_style'],
             'overlap_in' => $calc['inputs']['overlap_in'],
             'gate_count' => $calc['inputs']['gate_count'],
+            'labour_rate_per_ft' => $data['labour_rate_per_ft'],
+            'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],
             'sides' => $calc['inputs']['sides'],
             'calculation' => $calc,
             'materials_subtotal' => $calc['totals']['materials_subtotal'],
@@ -222,7 +226,13 @@ class FenceQuotationController extends Controller
             'board_style' => ['required', Rule::in([FenceQuotation::BOARD_STYLE_STANDARD, FenceQuotation::BOARD_STYLE_OVERLAPPING])],
             'overlap_in' => ['nullable', 'numeric', 'min:0', 'max:6'],
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
+            'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
         ]);
+
+        if ($data['board_style'] !== FenceQuotation::BOARD_STYLE_OVERLAPPING) {
+            $data['overlap_in'] = 0;
+        }
 
         $calc = (new FenceQuotationCalculator())->calculate($data);
 
@@ -385,6 +395,8 @@ class FenceQuotationController extends Controller
             'fence_height_ft',
             'board_style',
             'gate_count',
+            'labour_rate_per_ft',
+            'labour_rate_8ft_per_ft',
             'sides',
             'calculation',
             'materials_subtotal',
@@ -611,6 +623,8 @@ class FenceQuotationController extends Controller
             ])],
             'overlap_in' => ['nullable', 'numeric', 'min:0', 'max:6'],
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
+            'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
         ];
 
         $data = $request->validate($rules);
