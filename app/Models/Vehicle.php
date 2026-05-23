@@ -13,7 +13,6 @@ class Vehicle extends Model
         'year',
         'license_plate',
         'fuel_consumption_l100km',
-        'gas_price_per_liter',
         'odometer_reading',
         'notes',
         'is_active',
@@ -22,7 +21,6 @@ class Vehicle extends Model
     protected $casts = [
         'year' => 'integer',
         'fuel_consumption_l100km' => 'decimal:2',
-        'gas_price_per_liter' => 'decimal:3',
         'odometer_reading' => 'integer',
         'is_active' => 'boolean',
     ];
@@ -49,33 +47,26 @@ class Vehicle extends Model
         return $parts !== [] ? implode(' · ', $parts) : '—';
     }
 
-    public function canCalculateFuel(): bool
+    public function hasFuelConsumption(): bool
     {
         return $this->fuel_consumption_l100km !== null
-            && (float) $this->fuel_consumption_l100km > 0
-            && $this->gas_price_per_liter !== null
-            && (float) $this->gas_price_per_liter >= 0;
+            && (float) $this->fuel_consumption_l100km > 0;
     }
 
-    /** Liters per kilometer × gas price. */
-    public function costPerKm(): ?float
+    /** Liters per kilometer × company gas price. */
+    public function costPerKm(?float $gasPricePerLiter): ?float
     {
-        if (! $this->canCalculateFuel()) {
+        if (! $this->hasFuelConsumption() || $gasPricePerLiter === null || $gasPricePerLiter < 0) {
             return null;
         }
 
-        return round(((float) $this->fuel_consumption_l100km / 100) * (float) $this->gas_price_per_liter, 4);
+        return round(((float) $this->fuel_consumption_l100km / 100) * $gasPricePerLiter, 4);
     }
 
-    public function estimateFuelCost(float $distanceKm): ?float
+    public function estimateFuelCost(float $distanceKm, ?float $gasPricePerLiter): ?float
     {
-        $perKm = $this->costPerKm();
+        $perKm = $this->costPerKm($gasPricePerLiter);
 
         return $perKm !== null ? round($perKm * max(0, $distanceKm), 2) : null;
-    }
-
-    public function estimatedMonthlyFuelCost(int $averageKmPerMonth): ?float
-    {
-        return $this->estimateFuelCost((float) $averageKmPerMonth);
     }
 }

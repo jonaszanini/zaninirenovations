@@ -16,33 +16,108 @@
     return Math.round(((litersPer100 / 100) * price) * 10000) / 10000;
   }
 
+  function initVehicleFormNumeric() {
+    document.querySelectorAll('[data-zr-numeric="integer"]').forEach(function (input) {
+      if (input._zrNumericWired) return;
+      input._zrNumericWired = true;
+
+      input.addEventListener('keydown', function (ev) {
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+        if (ev.key && ev.key.length > 1) return;
+        if (!/^\d$/.test(ev.key)) ev.preventDefault();
+      });
+
+      input.addEventListener('input', function () {
+        var cleaned = input.value.replace(/\D/g, '');
+        if (cleaned !== input.value) input.value = cleaned;
+      });
+    });
+
+    document.querySelectorAll('[data-zr-numeric="decimal"]').forEach(function (input) {
+      if (input._zrNumericWired) return;
+      input._zrNumericWired = true;
+
+      var maxDecimals = parseInt(input.getAttribute('data-zr-decimals'), 10);
+      if (isNaN(maxDecimals) || maxDecimals < 0) maxDecimals = 2;
+
+      input.addEventListener('keydown', function (ev) {
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+        if (ev.key && ev.key.length > 1) return;
+        if (ev.key === '.' || ev.key === ',') {
+          if (input.value.indexOf('.') !== -1) ev.preventDefault();
+          return;
+        }
+        if (!/^\d$/.test(ev.key)) ev.preventDefault();
+      });
+
+      input.addEventListener('input', function () {
+        var v = input.value.replace(/,/g, '.').replace(/[^\d.]/g, '');
+        var firstDot = v.indexOf('.');
+        if (firstDot !== -1) {
+          v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
+        }
+        if (firstDot !== -1 && maxDecimals >= 0) {
+          var parts = v.split('.');
+          if (parts[1] && parts[1].length > maxDecimals) {
+            v = parts[0] + '.' + parts[1].slice(0, maxDecimals);
+          }
+        }
+        if (v !== input.value) input.value = v;
+      });
+    });
+  }
+
   function initVehicleCalc() {
     var root = document.querySelector('[data-cp-vehicle-calc]');
     if (!root || root._cpVehicleCalcWired) return;
     root._cpVehicleCalcWired = true;
 
     var consumption = root.getAttribute('data-consumption');
-    var gasPrice = root.getAttribute('data-gas-price');
-    var perKm = costPerKm(consumption, gasPrice);
-    if (perKm === null) return;
-
+    var gasPriceInput = document.querySelector('[data-cp-gas-price]');
     var costPerKmEl = root.querySelector('[data-cp-calc-cost-per-km]');
     var consumptionEl = root.querySelector('[data-cp-calc-consumption]');
     var tripKmInput = root.querySelector('[data-cp-calc-trip-km]');
     var tripResult = root.querySelector('[data-cp-calc-trip-result]');
 
-    if (costPerKmEl) {
-      costPerKmEl.textContent = formatMoney(perKm) + '/km';
+    function currentGasPrice() {
+      if (gasPriceInput && gasPriceInput.value.trim() !== '') {
+        return gasPriceInput.value.trim();
+      }
+      return root.getAttribute('data-gas-price') || '';
     }
-    if (consumptionEl) {
-      consumptionEl.textContent = parseFloat(consumption).toFixed(1) + ' L/100km @ ' + formatMoney(gasPrice) + '/L';
+
+    function currentRates() {
+      var gasPrice = currentGasPrice();
+      return {
+        consumption: consumption,
+        gasPrice: gasPrice,
+        perKm: costPerKm(consumption, gasPrice)
+      };
+    }
+
+    function renderRates() {
+      var rates = currentRates();
+      if (costPerKmEl) {
+        costPerKmEl.textContent = rates.perKm !== null ? formatMoney(rates.perKm) + '/km' : '—';
+      }
+      if (consumptionEl) {
+        if (rates.perKm !== null) {
+          consumptionEl.textContent = parseFloat(rates.consumption).toFixed(1) + ' L/100km @ ' + formatMoney(rates.gasPrice) + '/L';
+        } else {
+          consumptionEl.textContent = '—';
+        }
+      }
+      updateTrip();
     }
 
     function updateTrip() {
       if (!tripKmInput || !tripResult) return;
       var km = parseFloat(tripKmInput.value);
-      if (isNaN(km) || km <= 0) {
-        tripResult.textContent = 'Enter a distance to estimate fuel cost.';
+      var perKm = currentRates().perKm;
+      if (isNaN(km) || km <= 0 || perKm === null) {
+        tripResult.textContent = perKm === null
+          ? 'Set L/100 km on the active vehicle and a company gas price to estimate fuel cost.'
+          : 'Enter a distance to estimate fuel cost.';
         return;
       }
       tripResult.textContent = 'Estimated fuel cost: ' + formatMoney(perKm * km);
@@ -50,8 +125,12 @@
 
     if (tripKmInput) {
       tripKmInput.addEventListener('input', updateTrip);
-      updateTrip();
     }
+    if (gasPriceInput) {
+      gasPriceInput.addEventListener('input', renderRates);
+    }
+
+    renderRates();
   }
 
   function initTravelCost() {
@@ -128,6 +207,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    initVehicleFormNumeric();
     initVehicleCalc();
     initTravelCost();
   });

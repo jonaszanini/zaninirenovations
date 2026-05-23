@@ -132,6 +132,21 @@ class VehicleController extends Controller
             ->with('success', 'Home address updated.');
     }
 
+    public function updateGasPrice(Request $request)
+    {
+        $settings = CompanySetting::current();
+
+        $data = $request->validate([
+            'gas_price_per_liter' => ['required', 'numeric', 'min:0', 'max:10'],
+        ]);
+
+        $settings->update($data);
+
+        return redirect()
+            ->route('admin.vehicles.index')
+            ->with('success', 'Gas price updated.');
+    }
+
     /** @return array<string, mixed> */
     private function validateVehicle(Request $request): array
     {
@@ -142,7 +157,6 @@ class VehicleController extends Controller
             'year' => ['nullable', 'integer', 'min:1980', 'max:2100'],
             'license_plate' => ['nullable', 'string', 'max:32'],
             'fuel_consumption_l100km' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
-            'gas_price_per_liter' => ['nullable', 'numeric', 'min:0', 'max:10'],
             'odometer_reading' => ['nullable', 'integer', 'min:0'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'is_active' => ['sometimes', 'boolean'],

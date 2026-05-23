@@ -50,13 +50,41 @@
     <div class="admin-card admin-vehicles-calc-card"
          id="vehicles-fuel-calc"
          data-cp-vehicle-calc
-         @if ($activeVehicle && $activeVehicle->canCalculateFuel())
+         @if ($activeVehicle && $activeVehicle->hasFuelConsumption() && $settings->hasGasPrice())
            data-consumption="{{ $activeVehicle->fuel_consumption_l100km }}"
-           data-gas-price="{{ $activeVehicle->gas_price_per_liter }}"
+           data-gas-price="{{ $settings->gas_price_per_liter }}"
+           data-vehicle-name="{{ $activeVehicle->name }}"
+         @elseif ($activeVehicle && $activeVehicle->hasFuelConsumption())
+           data-consumption="{{ $activeVehicle->fuel_consumption_l100km }}"
            data-vehicle-name="{{ $activeVehicle->name }}"
          @endif>
       <h3>Fuel calculator</h3>
-      @if ($activeVehicle && $activeVehicle->canCalculateFuel())
+
+      <form action="{{ route('admin.vehicles.settings.gas-price') }}" method="post" class="admin-vehicles-gas-form">
+        @csrf
+        @method('PUT')
+        <div class="admin-form-group admin-vehicles-gas-field">
+          <label for="company-gas-price">Current gas price (CAD / L)</label>
+          <div class="admin-vehicles-gas-row">
+            <input type="text"
+                   id="company-gas-price"
+                   name="gas_price_per_liter"
+                   value="{{ old('gas_price_per_liter', $settings->gas_price_per_liter) }}"
+                   inputmode="decimal"
+                   autocomplete="off"
+                   data-zr-numeric="decimal"
+                   data-zr-decimals="3"
+                   data-cp-gas-price
+                   placeholder="1.450"
+                   required>
+            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save gas price</button>
+          </div>
+          <p class="admin-form-help">Company-wide — used with each vehicle’s L/100 km for fuel estimates.</p>
+          @error('gas_price_per_liter') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+      </form>
+
+      @if ($activeVehicle && $activeVehicle->hasFuelConsumption() && $settings->hasGasPrice())
         <p class="admin-form-help">Based on active vehicle: <strong>{{ $activeVehicle->name }}</strong></p>
         <div class="cp-profit-grid admin-vehicles-calc-tiles">
           <div class="cp-profit-tile">
@@ -83,7 +111,7 @@
         </div>
       @else
         <div class="admin-empty admin-vehicles-calc-empty">
-          <p>Add an active vehicle with L/100 km and gas price to see fuel calculations and project travel estimates.</p>
+          <p>Add an active vehicle with L/100 km and save a company gas price above to see fuel calculations and project travel estimates.</p>
         </div>
       @endif
     </div>
@@ -102,7 +130,9 @@
     <div class="admin-vehicles-cards">
       @foreach ($vehicles as $vehicle)
         @php
-          $costPerKm = $vehicle->costPerKm();
+          $costPerKm = $settings->hasGasPrice()
+            ? $vehicle->costPerKm((float) $settings->gas_price_per_liter)
+            : null;
         @endphp
         <article class="admin-card admin-vehicle-card {{ $vehicle->is_active ? 'admin-vehicle-card--active' : '' }}">
           <div class="admin-vehicle-card__head">
@@ -126,10 +156,6 @@
             <div>
               <dt>Fuel use</dt>
               <dd>{{ $vehicle->fuel_consumption_l100km !== null ? number_format((float) $vehicle->fuel_consumption_l100km, 1).' L/100km' : '—' }}</dd>
-            </div>
-            <div>
-              <dt>Gas price</dt>
-              <dd>{{ $vehicle->gas_price_per_liter !== null ? \App\Models\ClientProject::formatMoney((float) $vehicle->gas_price_per_liter).'/L' : '—' }}</dd>
             </div>
             <div>
               <dt>Cost / km</dt>

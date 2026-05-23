@@ -37,10 +37,17 @@ class ClientProjectTravelController extends Controller
             ]);
         }
 
-        if (! $vehicle || ! $vehicle->canCalculateFuel()) {
+        if (! $vehicle || ! $vehicle->hasFuelConsumption()) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Add an active vehicle with L/100 km and gas price on the Vehicles page.',
+                'message' => 'Add an active vehicle with L/100 km on the Vehicles page.',
+            ]);
+        }
+
+        if (! $settings->hasGasPrice()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Set the company gas price on the Vehicles page.',
             ]);
         }
 
@@ -58,7 +65,8 @@ class ClientProjectTravelController extends Controller
             ]);
         }
 
-        $fuelCost = $vehicle->estimateFuelCost((float) $distance['round_trip_km']);
+        $gasPrice = (float) $settings->gas_price_per_liter;
+        $fuelCost = $vehicle->estimateFuelCost((float) $distance['round_trip_km'], $gasPrice);
 
         return response()->json([
             'ok' => true,
@@ -70,7 +78,7 @@ class ClientProjectTravelController extends Controller
                 ? ClientProject::formatMoney($fuelCost)
                 : null,
             'vehicle_name' => $vehicle->name,
-            'gas_price' => (float) $vehicle->gas_price_per_liter,
+            'gas_price' => $gasPrice,
             'fuel_consumption' => (float) $vehicle->fuel_consumption_l100km,
             'cached' => true,
         ]);

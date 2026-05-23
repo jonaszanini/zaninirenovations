@@ -18,3 +18,7 @@
     </form>
   </div>
 @endsection
+
+@push('scripts')
+  <script src="{{ asset('js/admin-vehicles.js') }}?v={{ @filemtime(public_path('js/admin-vehicles.js')) ?: time() }}" defer></script>
+@endpush

@@ -126,6 +126,32 @@
   padding: 12px 0;
 }
 
+.admin-vehicles-gas-form {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--admin-border, #e5e7eb);
+}
+
+.admin-vehicles-gas-field {
+  margin-bottom: 0;
+}
+
+.admin-vehicles-gas-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.admin-vehicles-gas-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-vehicles-gas-row .admin-btn {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
 .admin-form-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

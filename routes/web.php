@@ -157,6 +157,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('vehicles.activate');
     Route::put('vehicles/settings/home-address', [\App\Http\Controllers\Admin\VehicleController::class, 'updateHomeAddress'])
         ->name('vehicles.settings.home-address');
+    Route::put('vehicles/settings/gas-price', [\App\Http\Controllers\Admin\VehicleController::class, 'updateGasPrice'])
+        ->name('vehicles.settings.gas-price');
 
     Route::get('client-projects/{client_project}/travel-estimate', [\App\Http\Controllers\Admin\ClientProjectTravelController::class, 'estimate'])
         ->name('client-projects.travel-estimate');

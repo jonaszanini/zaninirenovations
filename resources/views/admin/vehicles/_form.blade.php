@@ -35,22 +35,30 @@
   </div>
   <div class="admin-form-group">
     <label for="vehicle-odometer">Odometer (km)</label>
-    <input type="number" id="vehicle-odometer" name="odometer_reading" value="{{ old('odometer_reading', $vehicle?->odometer_reading) }}" min="0" step="1">
+    <input type="text"
+           id="vehicle-odometer"
+           name="odometer_reading"
+           value="{{ old('odometer_reading', $vehicle?->odometer_reading) }}"
+           inputmode="numeric"
+           autocomplete="off"
+           data-zr-numeric="integer"
+           placeholder="e.g. 85000">
     @error('odometer_reading') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
 
-<div class="admin-form-grid-2">
-  <div class="admin-form-group">
-    <label for="vehicle-consumption">Fuel consumption (L/100 km)</label>
-    <input type="number" id="vehicle-consumption" name="fuel_consumption_l100km" value="{{ old('fuel_consumption_l100km', $vehicle?->fuel_consumption_l100km) }}" min="0.01" max="100" step="0.01" placeholder="12.5">
-    @error('fuel_consumption_l100km') <p class="admin-form-error">{{ $message }}</p> @enderror
-  </div>
-  <div class="admin-form-group">
-    <label for="vehicle-gas-price">Current gas price (CAD / L)</label>
-    <input type="number" id="vehicle-gas-price" name="gas_price_per_liter" value="{{ old('gas_price_per_liter', $vehicle?->gas_price_per_liter) }}" min="0" max="10" step="0.001" placeholder="1.450">
-    @error('gas_price_per_liter') <p class="admin-form-error">{{ $message }}</p> @enderror
-  </div>
+<div class="admin-form-group">
+  <label for="vehicle-consumption">Fuel consumption (L/100 km)</label>
+  <input type="text"
+         id="vehicle-consumption"
+         name="fuel_consumption_l100km"
+         value="{{ old('fuel_consumption_l100km', $vehicle?->fuel_consumption_l100km) }}"
+         inputmode="decimal"
+         autocomplete="off"
+         data-zr-numeric="decimal"
+         data-zr-decimals="2"
+         placeholder="12.5">
+  @error('fuel_consumption_l100km') <p class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 
 <div class="admin-form-group">
