@@ -3,18 +3,21 @@
 
   var cfg = window.ZR_GOOGLE_MAPS || {};
   var loadPromise = null;
+  var loadReject = null;
   var loadFailedMessage = null;
 
-  function rejectLoadPromise(message) {
+  function rejectPendingLoad(message) {
     loadFailedMessage = message;
-    if (loadPromise && loadPromise._reject) {
-      loadPromise._reject(new Error(message));
+    if (typeof loadReject === 'function') {
+      var reject = loadReject;
+      loadReject = null;
       loadPromise = null;
+      reject(new Error(message));
     }
   }
 
   window.gm_authFailure = function () {
-    rejectLoadPromise(
+    rejectPendingLoad(
       'Google Maps rejected this API key. Check key restrictions and that Maps JavaScript API + Places API are enabled.'
     );
   };
@@ -34,15 +37,15 @@
     }
 
     loadPromise = new Promise(function (resolve, reject) {
-      loadPromise._reject = reject;
+      loadReject = reject;
 
       var settled = false;
       function finish(err, maps) {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
+        loadReject = null;
         loadPromise = null;
-        loadPromise._reject = null;
         if (err) {
           reject(err);
         } else {
