@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectQuotationClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
+use App\Models\ClientProjectPhoto;
 use App\Models\ClientProjectQuotation;
 use App\Models\FenceQuotation;
 use App\Models\PavingQuotation;
@@ -408,6 +409,57 @@ class ClientProjectQuotationController extends Controller
             ->with('success', 'Subtotal override updated.');
     }
 
+    /** Choose which project images are appended to the client PDF. */
+    public function updatePdfPhotos(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectQuotation $quotation,
+    ) {
+        $this->authorizeQuotation($client_project, $quotation);
+
+        if ($quotation->isLegacyManualSource()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('quotation')
+                ->with('error', 'Legacy documents cannot be edited here.');
+        }
+
+        $data = $request->validate([
+            'pdf_photo_ids' => ['nullable', 'array', 'max:15'],
+            'pdf_photo_ids.*' => ['integer'],
+        ]);
+
+        $submitted = array_values(array_unique(array_map('intval', $data['pdf_photo_ids'] ?? [])));
+        $validIdSet = ClientProjectPhoto::query()
+            ->where('client_project_id', $client_project->id)
+            ->whereIn('id', $submitted)
+            ->get()
+            ->filter(fn (ClientProjectPhoto $photo) => $photo->isImage())
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $ordered = array_values(array_filter(
+            $submitted,
+            fn (int $id) => in_array($id, $validIdSet, true)
+        ));
+
+        $quotation->pdf_photo_ids = $ordered === [] ? null : $ordered;
+        $quotation->save();
+
+        $count = count($ordered);
+        $message = $count === 0
+            ? 'No photos will be attached to the client PDF.'
+            : ($count === 1
+                ? '1 photo will be attached to the client PDF.'
+                : "{$count} photos will be attached to the client PDF.");
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('quotation')
+            ->with('success', $message);
+    }
+
     /**
      * Remove a calculator-linked quotation from the project and delete the
      * underlying Fence / Standard / Paving / Stairs record (same net effect as the hub).
@@ -451,6 +503,7 @@ class ClientProjectQuotationController extends Controller
         $pdf = Pdf::loadView('admin.client_projects.quotation.pdf', [
             'project' => $project,
             'quotation' => $quotation,
+            'pdfPhotos' => $quotation->pdfPhotosForRendering($project),
         ])
             ->setPaper('a4')
             ->setOption('isRemoteEnabled', true)

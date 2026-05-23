@@ -211,6 +211,12 @@
               'legacy' => $legacy,
           ])
 
+          @include('admin.client_projects._quotation_pdf_photos_form', [
+              'project' => $project,
+              'quotation' => $quotation,
+              'legacy' => $legacy,
+          ])
+
           @if (!$canDeliverByEmail && !$canDeliverBySms && ! $legacy)
             <div class="cp-contract-warning">
               <i class="fa fa-exclamation-triangle"></i>
@@ -407,6 +413,12 @@
           </div>
 
           @include('admin.client_projects._quotation_subtotal_override_form', [
+              'project' => $project,
+              'quotation' => $quotation,
+              'legacy' => $legacy,
+          ])
+
+          @include('admin.client_projects._quotation_pdf_photos_form', [
               'project' => $project,
               'quotation' => $quotation,
               'legacy' => $legacy,

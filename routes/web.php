@@ -153,6 +153,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.quotation.status');
     Route::post('client-projects/{client_project}/quotations/{quotation}/subtotal-override', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'updateSubtotalOverride'])
         ->name('client-projects.quotation.subtotal-override');
+    Route::post('client-projects/{client_project}/quotations/{quotation}/pdf-photos', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'updatePdfPhotos'])
+        ->name('client-projects.quotation.pdf-photos');
     Route::delete('client-projects/{client_project}/quotations/{quotation}', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'destroy'])
         ->name('client-projects.quotation.destroy');
 

@@ -2865,6 +2865,106 @@ body.cp-modal-open {
   border-top: 1px dashed #e5e7eb;
 }
 
+/* Quotation tab — PDF photo picker */
+.cp-quotation-pdf-photos {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+.cp-quotation-pdf-photos__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.cp-quotation-pdf-photos__title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #024768;
+}
+.cp-quotation-pdf-photos__help {
+  margin: 0;
+  max-width: 42rem;
+}
+.cp-quotation-pdf-photos__empty {
+  margin: 0;
+}
+.cp-quotation-pdf-photos__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cp-quotation-pdf-photos__count {
+  font-size: 12px;
+  color: #475569;
+  margin-left: 4px;
+}
+.cp-quotation-pdf-photos__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 10px;
+}
+.cp-quotation-pdf-photos__item {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cp-quotation-pdf-photos__item input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.cp-quotation-pdf-photos__item.is-selected {
+  border-color: #024768;
+  box-shadow: 0 0 0 1px #024768;
+}
+.cp-quotation-pdf-photos__thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.cp-quotation-pdf-photos__check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #024768;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.cp-quotation-pdf-photos__item.is-selected .cp-quotation-pdf-photos__check {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .cp-photo-lightbox {
   position: fixed;
   inset: 0;

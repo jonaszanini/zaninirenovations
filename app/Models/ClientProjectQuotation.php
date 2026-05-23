@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -54,6 +55,7 @@ class ClientProjectQuotation extends Model
         'material',
         'items',
         'work_description',
+        'pdf_photo_ids',
         'quotation_number',
         'pdf_path',
         'sent_at',
@@ -65,6 +67,7 @@ class ClientProjectQuotation extends Model
         'material' => 'boolean',
         'items' => 'array',
         'source_snapshot' => 'array',
+        'pdf_photo_ids' => 'array',
         'sent_at' => 'datetime',
         'version' => 'integer',
         'total_amount' => 'decimal:2',
@@ -129,6 +132,50 @@ class ClientProjectQuotation extends Model
         $newPrefix = $newType === self::TYPE_ESTIMATE ? 'EST' : 'QUO';
 
         return preg_replace('/^[A-Z]+/', $newPrefix, $number);
+    }
+
+    /** @return list<int> Photo IDs selected for the client PDF, in display order. */
+    public function selectedPdfPhotoIds(): array
+    {
+        $raw = $this->pdf_photo_ids;
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('intval', $raw), fn (int $id) => $id > 0));
+    }
+
+    /**
+     * Project images to append to the quotation PDF, in saved order.
+     *
+     * @return Collection<int, ClientProjectPhoto>
+     */
+    public function pdfPhotosForRendering(?ClientProject $project = null): Collection
+    {
+        $ids = $this->selectedPdfPhotoIds();
+        if ($ids === []) {
+            return collect();
+        }
+
+        $project ??= $this->relationLoaded('project') ? $this->project : $this->project()->with('photos')->first();
+        if (! $project) {
+            return collect();
+        }
+
+        if (! $project->relationLoaded('photos')) {
+            $project->load('photos');
+        }
+
+        $byId = $project->photos->keyBy('id');
+        $ordered = collect();
+        foreach ($ids as $id) {
+            $photo = $byId->get($id);
+            if ($photo && $photo->isImage()) {
+                $ordered->push($photo);
+            }
+        }
+
+        return $ordered;
     }
 
     /** Human-friendly type label ("Quotation" or "Estimate"). */

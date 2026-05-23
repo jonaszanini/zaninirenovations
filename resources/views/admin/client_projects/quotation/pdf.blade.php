@@ -20,6 +20,7 @@
     $fmt = fn ($n) => 'CA$'.number_format((float) $n, 2, '.', ',');
     $pdfStandardDisplayTitle = trim((string) ($quotation->standardDisplayTitle() ?? ''));
     $pdfIsStandard = $quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_STANDARD;
+    $pdfPhotos = $pdfPhotos ?? $quotation->pdfPhotosForRendering($project);
   @endphp
   <style>
     /* ============================================================
@@ -280,6 +281,56 @@
     .closing .signoff {
       margin-top: 14pt;
     }
+
+    .pdf-photos-section {
+      page-break-before: always;
+      margin-top: 0;
+    }
+    .pdf-photos-title {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #024768;
+      margin: 0 0 6pt;
+    }
+    .pdf-photos-intro {
+      font-size: 10pt;
+      color: #4b5563;
+      margin: 0 0 14pt;
+      line-height: 1.45;
+    }
+    .pdf-photos-grid {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .pdf-photos-grid td {
+      width: 50%;
+      vertical-align: top;
+      padding: 0 6pt 12pt;
+    }
+    .pdf-photos-grid td:only-child {
+      width: 100%;
+    }
+    .pdf-photo-frame {
+      border: 1pt solid #d8dee4;
+      border-radius: 4pt;
+      padding: 6pt;
+      background: #f9fafb;
+      text-align: center;
+    }
+    .pdf-photo-frame img {
+      display: block;
+      max-width: 100%;
+      max-height: 280pt;
+      width: auto;
+      height: auto;
+      margin: 0 auto;
+    }
+    .pdf-photo-caption {
+      margin: 6pt 0 0;
+      font-size: 8.5pt;
+      color: #6b7280;
+      word-break: break-word;
+    }
   </style>
 </head>
 <body>
@@ -440,6 +491,35 @@
       </p>
     </div>
   </div>
+
+  @if ($pdfPhotos->isNotEmpty())
+    <div class="pdf-photos-section">
+      <p class="pdf-photos-title">Reference photos</p>
+      <p class="pdf-photos-intro">Site and scope reference images attached to this {{ strtolower($quotation->typeLabel()) }}.</p>
+      <table class="pdf-photos-grid">
+        @foreach ($pdfPhotos->chunk(2) as $row)
+          <tr>
+            @foreach ($row as $photo)
+              @php $absPath = $photo->absolutePathForPdf(); @endphp
+              @if ($absPath)
+                <td>
+                  <div class="pdf-photo-frame">
+                    <img src="{{ $absPath }}" alt="">
+                    @if (filled($photo->displayName()))
+                      <p class="pdf-photo-caption">{{ $photo->displayName() }}</p>
+                    @endif
+                  </div>
+                </td>
+              @endif
+            @endforeach
+            @if ($row->count() === 1)
+              <td></td>
+            @endif
+          </tr>
+        @endforeach
+      </table>
+    </div>
+  @endif
 
 </body>
 </html>

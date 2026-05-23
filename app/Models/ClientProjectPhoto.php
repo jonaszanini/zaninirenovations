@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class ClientProjectPhoto extends Model
 {
@@ -63,6 +64,27 @@ class ClientProjectPhoto extends Model
         }
 
         return basename((string) $this->path);
+    }
+
+    /** Absolute filesystem path for DomPDF embedding (images only). */
+    public function absolutePathForPdf(): ?string
+    {
+        if (! $this->isImage() || ! filled($this->path)) {
+            return null;
+        }
+
+        $relative = ltrim(str_replace('\\', '/', $this->path), '/');
+        $diskPath = Storage::disk('public')->path($relative);
+        if (is_file($diskPath)) {
+            return str_replace('\\', '/', $diskPath);
+        }
+
+        $mirror = public_path('storage/'.$relative);
+        if (is_file($mirror)) {
+            return str_replace('\\', '/', $mirror);
+        }
+
+        return null;
     }
 
     /** Root-relative public URL (works when APP_URL differs from browser host). */
