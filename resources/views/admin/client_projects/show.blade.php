@@ -285,36 +285,18 @@
           || filled($cpShowVisitDateVal)
           || $errors->has('visit_date');
       @endphp
-      <div class="admin-card cp-visit-card">
-        <h3>Visit date</h3>
-        <p class="admin-form-help">Use this when the client wants an on-site visit before work is scheduled. Turn on <strong>Visit required</strong> to set a date. Check <strong>Visit done</strong> after the visit — the project list will then show job start/end dates again.</p>
-        <input type="hidden" name="visit_required" value="0">
-        <div class="admin-form-group cp-visit-toggle">
-          <label class="cp-checkbox-label">
-            <input type="checkbox" name="visit_required" value="1" id="cp-visit-required"
-              @checked(old('visit_required', $project->visit_required))>
-            <span>Visit required</span>
-          </label>
-        </div>
-        <div id="cp-schedule-visit-expandable" class="cp-visit-expandable @if ($cpShowVisitExpandOpen) is-open @endif"
-             aria-hidden="{{ $cpShowVisitExpandOpen ? 'false' : 'true' }}">
-          <div class="cp-visit-expandable__inner">
-            <div class="admin-form-group cp-visit-date">
-              <label for="cp-visit-date">Visit date</label>
-              <input type="date" id="cp-visit-date" name="visit_date"
-                value="{{ $cpShowVisitDateVal }}">
-              @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
-            </div>
-            <input type="hidden" name="visit_done" value="0">
-            <div class="admin-form-group cp-visit-toggle">
-              <label class="cp-checkbox-label">
-                <input type="checkbox" name="visit_done" value="1" id="cp-visit-done"
-                  @checked(old('visit_done', $project->visit_done))>
-                <span>Visit done</span>
-              </label>
-            </div>
-          </div>
-        </div>
+      <div class="admin-card cp-visit-card cp-visit-section">
+        @include('admin.client_projects._visit_required_toggle', [
+          'visitRequiredId' => 'cp-visit-required',
+          'visitRequiredChecked' => old('visit_required', $project->visit_required),
+          'expandableId' => 'cp-schedule-visit-expandable',
+          'visitDateId' => 'cp-visit-date',
+          'visitDateValue' => $cpShowVisitDateVal,
+          'expandOpen' => $cpShowVisitExpandOpen,
+          'showVisitDone' => true,
+          'visitDoneId' => 'cp-visit-done',
+          'visitDoneChecked' => old('visit_done', $project->visit_done),
+        ])
       </div>
 
       <div class="admin-card">
@@ -641,8 +623,7 @@
         if (!visitExpand) return;
         var required = visitCb ? visitCb.checked : false;
         var done = visitDoneCb ? visitDoneCb.checked : false;
-        var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
-        var open = required || done || hasDate;
+        var open = required || done;
         visitExpand.classList.toggle('is-open', open);
         visitExpand.setAttribute('aria-hidden', open ? 'false' : 'true');
       }
@@ -651,6 +632,9 @@
         if (!visitDate) return;
         var required = visitCb ? visitCb.checked : false;
         var done = visitDoneCb ? visitDoneCb.checked : false;
+        if (!required && !done) {
+          visitDate.value = '';
+        }
         visitDate.readOnly = !!done;
         visitDate.disabled = !done && !required;
         visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);

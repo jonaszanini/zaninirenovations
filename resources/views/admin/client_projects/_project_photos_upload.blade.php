@@ -1,33 +1,38 @@
 @php
+  use App\Services\ClientProjectPhotoStorage;
+
   $maxEdge = (int) config('webp.max_edge_px', 1920);
-  $maxPhotos = \App\Services\ClientProjectPhotoStorage::MAX_PHOTOS_PER_PROJECT;
+  $maxFiles = ClientProjectPhotoStorage::MAX_PHOTOS_PER_PROJECT;
   $inputId = $inputId ?? 'cp-project-photos';
   $previewId = $previewId ?? 'cp-project-photos-preview';
   $existingCount = (int) ($existingCount ?? 0);
-  $canAdd = max(0, $maxPhotos - $existingCount);
+  $canAdd = max(0, $maxFiles - $existingCount);
   $formId = $formId ?? null;
+  $acceptList = implode(',', ClientProjectPhotoStorage::acceptAttributeList());
 @endphp
 
 <div class="admin-form-group cp-project-photos-upload">
-  <label for="{{ $inputId }}">Photos <span class="admin-form-help cp-inline-help">(optional)</span></label>
+  <label for="{{ $inputId }}">Photos &amp; files <span class="admin-form-help cp-inline-help">(optional)</span></label>
   @if ($canAdd > 0)
     <input type="file"
            id="{{ $inputId }}"
            name="photos[]"
            @if ($formId) form="{{ $formId }}" @endif
-           accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png"
+           accept="{{ $acceptList }}"
            multiple>
     <p class="admin-form-help">
-      JPEG, PNG, or WebP (10 MB max each). Images are converted to WebP and resized so the longest side is at most {{ $maxEdge }}px.
+      <strong>Images</strong> — JPEG, PNG, or WebP ({{ ClientProjectPhotoStorage::MAX_IMAGE_KB / 1024 }} MB max each). Converted to WebP and resized so the longest side is at most {{ $maxEdge }}px.
+      <strong>Videos</strong> — MP4, WebM, or MOV ({{ ClientProjectPhotoStorage::MAX_VIDEO_KB / 1024 }} MB max each).
+      <strong>PDFs</strong> — {{ ClientProjectPhotoStorage::MAX_PDF_KB / 1024 }} MB max each.
       @if ($existingCount > 0)
-        You can add up to {{ $canAdd }} more ({{ $existingCount }} / {{ $maxPhotos }} already saved).
+        You can add up to {{ $canAdd }} more ({{ $existingCount }} / {{ $maxFiles }} already saved).
       @else
-        Up to {{ $maxPhotos }} photos per project.
+        Up to {{ $maxFiles }} files per project.
       @endif
     </p>
     <div class="cp-project-photos-preview" id="{{ $previewId }}" hidden aria-live="polite"></div>
   @else
-    <p class="admin-form-help">Maximum of {{ $maxPhotos }} photos reached. Remove one on the project page to add more.</p>
+    <p class="admin-form-help">Maximum of {{ $maxFiles }} files reached. Remove one on the project page to add more.</p>
   @endif
   @error('photos')
     <p class="admin-form-error">{{ $message }}</p>
@@ -54,6 +59,27 @@
           preview.hidden = true;
         }
 
+        function appendPdfTile(grid, file) {
+          var tile = document.createElement('div');
+          tile.className = 'cp-project-photos-preview-tile cp-project-photos-preview-tile--pdf';
+          tile.innerHTML = '<i class="fa fa-file-pdf-o" aria-hidden="true"></i><span>' + (file.name || 'PDF') + '</span>';
+          grid.appendChild(tile);
+        }
+
+        function appendVideoTile(grid, file) {
+          var url = URL.createObjectURL(file);
+          objectUrls.push(url);
+          var tile = document.createElement('div');
+          tile.className = 'cp-project-photos-preview-tile cp-project-photos-preview-tile--video';
+          var video = document.createElement('video');
+          video.src = url;
+          video.muted = true;
+          video.playsInline = true;
+          video.preload = 'metadata';
+          tile.appendChild(video);
+          grid.appendChild(tile);
+        }
+
         input.addEventListener('change', function () {
           clearPreview();
           var files = Array.prototype.slice.call(input.files || []);
@@ -64,17 +90,27 @@
           grid.className = 'cp-project-photos-preview-grid';
 
           files.forEach(function (file) {
-            if (!file.type || file.type.indexOf('image/') !== 0) return;
-            var url = URL.createObjectURL(file);
-            objectUrls.push(url);
-            var img = document.createElement('img');
-            img.src = url;
-            img.alt = file.name || 'Selected photo';
-            img.loading = 'lazy';
-            grid.appendChild(img);
+            var type = file.type || '';
+            if (type.indexOf('image/') === 0) {
+              var imgUrl = URL.createObjectURL(file);
+              objectUrls.push(imgUrl);
+              var img = document.createElement('img');
+              img.src = imgUrl;
+              img.alt = file.name || 'Selected image';
+              img.loading = 'lazy';
+              grid.appendChild(img);
+            } else if (type.indexOf('video/') === 0) {
+              appendVideoTile(grid, file);
+            } else if (type === 'application/pdf' || (file.name && /\.pdf$/i.test(file.name))) {
+              appendPdfTile(grid, file);
+            }
           });
 
-          preview.appendChild(grid);
+          if (grid.childNodes.length) {
+            preview.appendChild(grid);
+          } else {
+            preview.hidden = true;
+          }
         });
       })();
     </script>

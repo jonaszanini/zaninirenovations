@@ -424,6 +424,19 @@
     });
   }
 
+  function syncCreateVisitFooters(isHourly) {
+    var visitCb = document.getElementById('cp-create-visit-required');
+    var visitDate = document.getElementById('cp-create-visit-date');
+    var visitRequired = visitCb && visitCb.checked;
+    var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
+    var quoteEl = document.querySelector('[data-cp-fixed-quote-pending]');
+    var visitRequiredEl = document.querySelector('[data-cp-fixed-visit-required]');
+    var visitScheduledEl = document.querySelector('[data-cp-fixed-visit-scheduled]');
+    if (quoteEl) quoteEl.style.display = (isHourly || visitRequired) ? 'none' : '';
+    if (visitRequiredEl) visitRequiredEl.style.display = (isHourly || !visitRequired || hasDate) ? 'none' : '';
+    if (visitScheduledEl) visitScheduledEl.style.display = (isHourly || !visitRequired || !hasDate) ? 'none' : '';
+  }
+
   // --- Billing-type radios (create/edit project): toggle hourly_rate field ---
   function initBillingTypeToggle() {
     var radios = document.querySelectorAll('[data-cp-billing]');
@@ -433,19 +446,6 @@
 
     var fixedOnly = document.querySelectorAll('[data-cp-fixed-only]');
     var hourlyOnly = document.querySelectorAll('[data-cp-hourly-only]');
-
-    function syncCreateVisitFooters(isHourly) {
-      var visitCb = document.getElementById('cp-create-visit-required');
-      var visitDate = document.getElementById('cp-create-visit-date');
-      var visitRequired = visitCb && visitCb.checked;
-      var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
-      var quoteEl = document.querySelector('[data-cp-fixed-quote-pending]');
-      var visitRequiredEl = document.querySelector('[data-cp-fixed-visit-required]');
-      var visitScheduledEl = document.querySelector('[data-cp-fixed-visit-scheduled]');
-      if (quoteEl) quoteEl.style.display = (isHourly || visitRequired) ? 'none' : '';
-      if (visitRequiredEl) visitRequiredEl.style.display = (isHourly || !visitRequired || hasDate) ? 'none' : '';
-      if (visitScheduledEl) visitScheduledEl.style.display = (isHourly || !visitRequired || !hasDate) ? 'none' : '';
-    }
 
     function sync() {
       var checked = document.querySelector('[data-cp-billing]:checked');
@@ -476,14 +476,15 @@
 
     function syncCreateVisitExpandable() {
       if (!visitExpand) return;
-      var required = visitCb.checked;
-      var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
-      var open = required || hasDate;
+      var open = visitCb.checked;
       visitExpand.classList.toggle('is-open', open);
       visitExpand.setAttribute('aria-hidden', open ? 'false' : 'true');
     }
 
     function syncCreateVisitFields() {
+      if (!visitCb.checked && visitDate) {
+        visitDate.value = '';
+      }
       if (visitDate) {
         visitDate.disabled = !visitCb.checked;
         visitDate.classList.toggle('cp-visit-date-input--locked', !visitCb.checked);

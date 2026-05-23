@@ -9,9 +9,7 @@
     $cpCreateVisitRequired = (bool) old('visit_required');
     $cpCreateVisitDateVal = old('visit_date');
     $cpCreateHasVisitDate = filled($cpCreateVisitDateVal);
-    $cpCreateVisitExpandOpen = $cpCreateVisitRequired
-      || $cpCreateHasVisitDate
-      || $errors->has('visit_date');
+    $cpCreateVisitExpandOpen = $cpCreateVisitRequired || $errors->has('visit_date');
   @endphp
 
   <div class="cp-edit-project-layout">
@@ -132,28 +130,16 @@
           </div>
         </div>
 
-        <div class="admin-form-section">
-          <h3>Visit date</h3>
-          <p class="admin-form-help">On-site visit before quoting. Enable only when the client has asked for a visit.</p>
-          <input type="hidden" name="visit_required" value="0">
-          <div class="admin-form-group">
-            <label class="cp-checkbox-label">
-              <input type="checkbox" name="visit_required" value="1" id="cp-create-visit-required"
-                @checked(old('visit_required'))>
-              <span>Visit required</span>
-            </label>
-          </div>
-          <div id="cp-create-visit-expandable" class="cp-visit-expandable @if ($cpCreateVisitExpandOpen) is-open @endif"
-               aria-hidden="{{ $cpCreateVisitExpandOpen ? 'false' : 'true' }}">
-            <div class="cp-visit-expandable__inner">
-              <div class="admin-form-group cp-visit-date">
-                <label for="cp-create-visit-date">Visit date</label>
-                <input type="date" id="cp-create-visit-date" name="visit_date"
-                  value="{{ $cpCreateVisitDateVal }}">
-                @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
-              </div>
-            </div>
-          </div>
+        <div class="admin-form-section cp-visit-section">
+          @include('admin.client_projects._visit_required_toggle', [
+            'visitRequiredId' => 'cp-create-visit-required',
+            'visitRequiredChecked' => old('visit_required'),
+            'expandableId' => 'cp-create-visit-expandable',
+            'visitDateId' => 'cp-create-visit-date',
+            'visitDateValue' => $cpCreateVisitDateVal,
+            'expandOpen' => $cpCreateVisitExpandOpen,
+            'slowExpand' => true,
+          ])
         </div>
 
         <div class="admin-form-section">
@@ -253,7 +239,7 @@
   </div>
 
   <div class="admin-card admin-card--narrow cp-edit-project-photos-card">
-    <h3>Photos</h3>
+    <h3>Photos &amp; files</h3>
     @include('admin.client_projects._project_photos_upload', [
       'inputId' => 'cp-create-project-photos',
       'previewId' => 'cp-create-project-photos-preview',

@@ -7,12 +7,22 @@ use App\Models\ClientProjectPhoto;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ClientProjectPhotoStorage
 {
     public const MAX_PHOTOS_PER_PROJECT = 15;
 
     public const STORAGE_FOLDER = 'client-project-photos';
+
+    /** @var int Kilobytes */
+    public const MAX_IMAGE_KB = 10240;
+
+    /** @var int Kilobytes */
+    public const MAX_VIDEO_KB = 51200;
+
+    /** @var int Kilobytes */
+    public const MAX_PDF_KB = 20480;
 
     private ProjectPhotoWebpStorage $converter;
 
@@ -34,20 +44,33 @@ class ClientProjectPhotoStorage
         $existing = (int) $project->photos()->count();
         $allowed = max(0, self::MAX_PHOTOS_PER_PROJECT - $existing);
         if ($allowed < 1) {
-            throw new \RuntimeException('This project already has the maximum of '.self::MAX_PHOTOS_PER_PROJECT.' photos.');
+            throw new \RuntimeException('This project already has the maximum of '.self::MAX_PHOTOS_PER_PROJECT.' files.');
         }
 
         if (count($files) > $allowed) {
-            throw new \RuntimeException('Too many photos selected (max '.$allowed.' more for this project).');
+            throw new \RuntimeException('Too many files selected (max '.$allowed.' more for this project).');
         }
 
         $startOrder = (int) $project->photos()->max('sort_order');
         $created = [];
 
         foreach ($files as $i => $file) {
-            $path = $this->converter->store($file, (int) $project->id, self::STORAGE_FOLDER);
+            $error = self::validateSingleUpload($file);
+            if ($error !== null) {
+                throw new \RuntimeException($error);
+            }
+
+            $mediaType = self::classifyUpload($file);
+            $path = match ($mediaType) {
+                ClientProjectPhoto::TYPE_IMAGE => $this->converter->store($file, (int) $project->id, self::STORAGE_FOLDER),
+                ClientProjectPhoto::TYPE_VIDEO, ClientProjectPhoto::TYPE_PDF => $this->storeRawFile($file, (int) $project->id, $mediaType),
+                default => throw new \RuntimeException('Unsupported file type.'),
+            };
+
             $created[] = $project->photos()->create([
                 'path' => $path,
+                'media_type' => $mediaType,
+                'original_filename' => $file->getClientOriginalName(),
                 'sort_order' => $startOrder + $i + 1,
             ]);
         }
@@ -81,7 +104,18 @@ class ClientProjectPhotoStorage
 
         return [
             'photos' => ['nullable', 'array', 'max:'.$maxNew],
-            'photos.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'photos.*' => [
+                'file',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $value instanceof UploadedFile) {
+                        return;
+                    }
+                    $message = self::validateSingleUpload($value);
+                    if ($message !== null) {
+                        $fail($message);
+                    }
+                },
+            ],
         ];
     }
 
@@ -93,9 +127,187 @@ class ClientProjectPhotoStorage
         }
         $allowed = max(0, self::MAX_PHOTOS_PER_PROJECT - $existingCount);
         if ($fileCount > $allowed) {
-            return 'Too many photos (max '.$allowed.' more; '.self::MAX_PHOTOS_PER_PROJECT.' per project).';
+            return 'Too many files (max '.$allowed.' more; '.self::MAX_PHOTOS_PER_PROJECT.' per project).';
         }
 
         return null;
+    }
+
+    public static function validateSingleUpload(UploadedFile $file): ?string
+    {
+        $mime = strtolower((string) $file->getMimeType());
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        $sizeKb = (int) ceil(((int) $file->getSize()) / 1024);
+
+        if (self::isPdf($mime, $ext)) {
+            if ($sizeKb > self::MAX_PDF_KB) {
+                return 'Each PDF must be '.self::formatMaxMb(self::MAX_PDF_KB).' or smaller.';
+            }
+
+            return null;
+        }
+
+        if (self::isVideo($mime, $ext)) {
+            if (! self::isAllowedVideo($mime, $ext)) {
+                return 'Videos must be MP4, WebM, or MOV.';
+            }
+            if ($sizeKb > self::MAX_VIDEO_KB) {
+                return 'Each video must be '.self::formatMaxMb(self::MAX_VIDEO_KB).' or smaller.';
+            }
+
+            return null;
+        }
+
+        if (self::isImage($mime, $ext)) {
+            if ($sizeKb > self::MAX_IMAGE_KB) {
+                return 'Each image must be '.self::formatMaxMb(self::MAX_IMAGE_KB).' or smaller.';
+            }
+
+            return null;
+        }
+
+        return 'Each file must be a JPEG, PNG, or WebP image, an MP4/WebM/MOV video, or a PDF.';
+    }
+
+    public static function classifyUpload(UploadedFile $file): string
+    {
+        $mime = strtolower((string) $file->getMimeType());
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+
+        if (self::isPdf($mime, $ext)) {
+            return ClientProjectPhoto::TYPE_PDF;
+        }
+        if (self::isVideo($mime, $ext)) {
+            return ClientProjectPhoto::TYPE_VIDEO;
+        }
+
+        return ClientProjectPhoto::TYPE_IMAGE;
+    }
+
+    /** @return list<string> MIME types for the file input accept attribute */
+    public static function acceptAttributeList(): array
+    {
+        return [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.webp',
+            'video/mp4',
+            'video/webm',
+            'video/quicktime',
+            '.mp4',
+            '.webm',
+            '.mov',
+            'application/pdf',
+            '.pdf',
+        ];
+    }
+
+    private function storeRawFile(UploadedFile $file, int $projectId, string $mediaType): string
+    {
+        $ext = $mediaType === ClientProjectPhoto::TYPE_PDF
+            ? 'pdf'
+            : $this->videoExtension($file);
+
+        $leaf = Str::uuid()->toString().'.'.$ext;
+        $directory = self::STORAGE_FOLDER.'/'.$projectId;
+        $relativePath = $directory.'/'.$leaf;
+
+        $realPath = $file->getRealPath();
+        if ($realPath === false) {
+            throw new \RuntimeException('Could not read the uploaded file.');
+        }
+
+        $bytes = file_get_contents($realPath);
+        if ($bytes === false || $bytes === '') {
+            throw new \RuntimeException('Could not read the uploaded file.');
+        }
+
+        Storage::disk('public')->put($relativePath, $bytes);
+        $this->syncPublicStorageMirror($relativePath);
+
+        return $relativePath;
+    }
+
+    private function videoExtension(UploadedFile $file): string
+    {
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        if (in_array($ext, ['mp4', 'webm', 'mov'], true)) {
+            return $ext;
+        }
+
+        $mime = strtolower((string) $file->getMimeType());
+
+        return match ($mime) {
+            'video/webm' => 'webm',
+            'video/quicktime' => 'mov',
+            default => 'mp4',
+        };
+    }
+
+    private function syncPublicStorageMirror(string $relativePath): void
+    {
+        $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
+        $publicStorageRoot = public_path('storage');
+
+        if (! is_dir($publicStorageRoot)) {
+            return;
+        }
+
+        $source = Storage::disk('public')->path($relativePath);
+        if (! is_file($source)) {
+            return;
+        }
+
+        $destination = public_path('storage/'.$relativePath);
+        $destinationDir = dirname($destination);
+        if (! is_dir($destinationDir) && ! @mkdir($destinationDir, 0775, true) && ! is_dir($destinationDir)) {
+            return;
+        }
+
+        $sourceReal = realpath($source);
+        $destinationReal = is_file($destination) ? realpath($destination) : false;
+        if ($sourceReal !== false && $destinationReal !== false && $sourceReal === $destinationReal) {
+            return;
+        }
+
+        @copy($source, $destination);
+    }
+
+    private static function isPdf(string $mime, string $ext): bool
+    {
+        return $mime === 'application/pdf' || $ext === 'pdf';
+    }
+
+    private static function isVideo(string $mime, string $ext): bool
+    {
+        return str_starts_with($mime, 'video/') || in_array($ext, ['mp4', 'webm', 'mov'], true);
+    }
+
+    private static function isAllowedVideo(string $mime, string $ext): bool
+    {
+        if (in_array($ext, ['mp4', 'webm', 'mov'], true)) {
+            return true;
+        }
+
+        return in_array($mime, ['video/mp4', 'video/webm', 'video/quicktime'], true);
+    }
+
+    private static function isImage(string $mime, string $ext): bool
+    {
+        return in_array($mime, ['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp'], true)
+            || in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true);
+    }
+
+    private static function formatMaxMb(int $kb): string
+    {
+        if ($kb % 1024 === 0) {
+            return (string) ($kb / 1024).' MB';
+        }
+
+        return $kb.' KB';
     }
 }

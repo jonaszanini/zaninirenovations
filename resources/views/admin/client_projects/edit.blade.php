@@ -122,36 +122,18 @@
           || filled($cpEditVisitDateVal)
           || $errors->has('visit_date');
       @endphp
-      <div class="admin-form-section">
-        <h3>Visit date</h3>
-        <p class="admin-form-help">On-site visit before quoting. Enable only when the client has asked for a visit.</p>
-        <input type="hidden" name="visit_required" value="0">
-        <div class="admin-form-group">
-          <label class="cp-checkbox-label">
-            <input type="checkbox" name="visit_required" value="1" id="cp-edit-visit-required"
-              @checked(old('visit_required', $project->visit_required))>
-            <span>Visit required</span>
-          </label>
-        </div>
-        <div id="cp-edit-visit-expandable" class="cp-visit-expandable @if ($cpEditVisitExpandOpen) is-open @endif"
-             aria-hidden="{{ $cpEditVisitExpandOpen ? 'false' : 'true' }}">
-          <div class="cp-visit-expandable__inner">
-            <div class="admin-form-group cp-visit-date">
-              <label for="cp-edit-visit-date">Visit date</label>
-              <input type="date" id="cp-edit-visit-date" name="visit_date"
-                value="{{ $cpEditVisitDateVal }}">
-              @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
-            </div>
-            <input type="hidden" name="visit_done" value="0">
-            <div class="admin-form-group">
-              <label class="cp-checkbox-label">
-                <input type="checkbox" name="visit_done" value="1" id="cp-edit-visit-done"
-                  @checked(old('visit_done', $project->visit_done))>
-                <span>Visit done</span>
-              </label>
-            </div>
-          </div>
-        </div>
+      <div class="admin-form-section cp-visit-section">
+        @include('admin.client_projects._visit_required_toggle', [
+          'visitRequiredId' => 'cp-edit-visit-required',
+          'visitRequiredChecked' => old('visit_required', $project->visit_required),
+          'expandableId' => 'cp-edit-visit-expandable',
+          'visitDateId' => 'cp-edit-visit-date',
+          'visitDateValue' => $cpEditVisitDateVal,
+          'expandOpen' => $cpEditVisitExpandOpen,
+          'showVisitDone' => true,
+          'visitDoneId' => 'cp-edit-visit-done',
+          'visitDoneChecked' => old('visit_done', $project->visit_done),
+        ])
       </div>
 
       <div class="admin-form-section">
@@ -234,7 +216,7 @@
   </div>
 
   <div class="admin-card admin-card--narrow cp-edit-project-photos-card">
-    <h3>Photos</h3>
+    <h3>Photos &amp; files</h3>
     @include('admin.client_projects._project_photos_gallery', [
       'project' => $project,
       'galleryId' => 'cp-edit-project-photos',
@@ -253,7 +235,7 @@
         ])
         <div class="admin-form-actions">
           <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
-            <i class="fa fa-upload"></i> Upload photos
+            <i class="fa fa-upload"></i> Upload files
           </button>
         </div>
       </form>
@@ -286,8 +268,7 @@
         if (!visitExpand) return;
         var required = visitCb ? visitCb.checked : false;
         var done = visitDoneCb ? visitDoneCb.checked : false;
-        var hasDate = visitDate && visitDate.value && String(visitDate.value).trim() !== '';
-        var open = required || done || hasDate;
+        var open = required || done;
         visitExpand.classList.toggle('is-open', open);
         visitExpand.setAttribute('aria-hidden', open ? 'false' : 'true');
       }
@@ -296,6 +277,9 @@
         if (!visitDate) return;
         var required = visitCb ? visitCb.checked : false;
         var done = visitDoneCb ? visitDoneCb.checked : false;
+        if (!required && !done) {
+          visitDate.value = '';
+        }
         visitDate.readOnly = !!done;
         visitDate.disabled = !done && !required;
         visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);

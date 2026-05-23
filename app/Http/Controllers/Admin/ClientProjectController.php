@@ -332,7 +332,7 @@ class ClientProjectController extends Controller
         $rules['photos'] = ['required', 'array', 'min:1', 'max:'.max(1, ClientProjectPhotoStorage::MAX_PHOTOS_PER_PROJECT - $existingCount)];
 
         $request->validate($rules, [
-            'photos.required' => 'Choose at least one photo to upload.',
+            'photos.required' => 'Choose at least one file to upload.',
         ]);
 
         try {
@@ -342,7 +342,7 @@ class ClientProjectController extends Controller
         }
 
         $count = count($added);
-        $message = $count === 1 ? '1 photo added.' : "{$count} photos added.";
+        $message = $count === 1 ? '1 file added.' : "{$count} files added.";
 
         return redirect()
             ->route('admin.client-projects.show', $client_project)
@@ -357,7 +357,7 @@ class ClientProjectController extends Controller
 
         $photoStorage->deletePhoto($photo);
 
-        return back()->with('success', 'Photo removed.');
+        return back()->with('success', 'File removed.');
     }
 
     public function edit(ClientProject $client_project)

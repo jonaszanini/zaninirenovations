@@ -2745,13 +2745,82 @@ body.cp-modal-open {
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   gap: 10px;
 }
-.cp-project-photos-preview-grid img {
+.cp-project-photos-preview-grid img,
+.cp-project-photos-preview-tile video {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
   background: #f3f4f6;
+}
+.cp-project-photos-preview-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  padding: 8px;
+  text-align: center;
+  overflow: hidden;
+}
+.cp-project-photos-preview-tile--pdf {
+  color: #b91c1c;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.cp-project-photos-preview-tile--pdf .fa {
+  font-size: 28px;
+}
+.cp-project-photos-preview-tile--pdf span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #475569;
+}
+.cp-project-photos-preview-tile--video {
+  padding: 0;
+}
+.cp-project-photos-preview-tile--video video {
+  border: 0;
+  border-radius: 8px;
+}
+.cp-project-photos-thumb-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+  color: #024768;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.cp-project-photos-thumb-media .fa {
+  font-size: 32px;
+}
+.cp-project-photos-thumb-media--pdf {
+  color: #b91c1c;
+}
+.cp-project-photos-thumb-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.cp-project-photos-thumb:hover .cp-project-photos-thumb-media,
+.cp-project-photos-thumb:focus-visible .cp-project-photos-thumb-media {
+  transform: scale(1.02);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
 }
 .cp-project-photos-item {
   position: relative;
@@ -2840,6 +2909,33 @@ body.cp-modal-open {
   margin: 0 auto;
   border-radius: 8px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.cp-photo-lightbox-img[hidden],
+.cp-photo-lightbox-video[hidden],
+.cp-photo-lightbox-pdf[hidden] {
+  display: none !important;
+}
+.cp-photo-lightbox-video {
+  display: block;
+  max-width: 100%;
+  max-height: calc(92vh - 120px);
+  width: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  background: #000;
+}
+.cp-photo-lightbox-pdf {
+  text-align: center;
+  padding: 24px 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+.cp-photo-lightbox-pdf-name {
+  margin: 0 0 16px;
+  font-size: 15px;
+  word-break: break-word;
 }
 .cp-photo-lightbox-caption {
   margin-top: 10px;
@@ -3575,7 +3671,7 @@ body.cp-modal-open {
   }
 }
 
-/* Visit date (Calendar tab + edit project) */
+/* Visit date (create / edit / calendar tab) */
 .cp-checkbox-label {
   display: inline-flex;
   align-items: center;
@@ -3588,11 +3684,100 @@ body.cp-modal-open {
   width: auto;
   margin: 0;
 }
-/* Visit section — date + "Visit done" reveal under "Visit required" */
+
+.cp-visit-section {
+  padding-top: 0.25rem;
+}
+
+/* Styled toggle — "Visit required" / "Visit done" */
+.cp-visit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+}
+.cp-visit-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.cp-visit-toggle__control {
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  position: relative;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+.cp-visit-toggle__control::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
+  transition: transform 0.25s ease;
+}
+.cp-visit-toggle input:checked + .cp-visit-toggle__control {
+  background: #1e3a5f;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.15);
+}
+.cp-visit-toggle input:checked + .cp-visit-toggle__control::after {
+  transform: translateX(18px);
+}
+.cp-visit-toggle input:focus-visible + .cp-visit-toggle__control {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+.cp-visit-toggle__label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #334155;
+}
+.cp-visit-toggle--compact {
+  margin-top: 4px;
+}
+.cp-visit-toggle--compact .cp-visit-toggle__control {
+  width: 40px;
+  height: 24px;
+}
+.cp-visit-toggle--compact .cp-visit-toggle__control::after {
+  width: 18px;
+  height: 18px;
+}
+.cp-visit-toggle--compact input:checked + .cp-visit-toggle__control::after {
+  transform: translateX(16px);
+}
+.cp-visit-toggle--compact .cp-visit-toggle__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 600;
+}
+
+/* Visit details — reveal under toggle */
 .cp-visit-expandable {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s ease;
+  transition: grid-template-rows 0.35s ease;
+}
+.cp-visit-expandable--slow {
+  transition: grid-template-rows 1s ease;
 }
 .cp-visit-expandable.is-open {
   grid-template-rows: 1fr;
@@ -3601,11 +3786,20 @@ body.cp-modal-open {
   overflow: hidden;
   min-height: 0;
 }
-.cp-visit-expandable.is-open .cp-visit-expandable__inner > .admin-form-group:first-child {
-  padding-top: 10px;
+.cp-visit-expandable__help {
+  margin: 12px 0 0;
+  max-width: 42rem;
+}
+.cp-visit-expandable.is-open .cp-visit-expandable__inner > .cp-visit-date {
+  padding-top: 4px;
+}
+.cp-visit-done-row {
+  margin-bottom: 0;
 }
 @media (prefers-reduced-motion: reduce) {
-  .cp-visit-expandable {
+  .cp-visit-expandable,
+  .cp-visit-toggle__control,
+  .cp-visit-toggle__control::after {
     transition: none;
   }
 }
