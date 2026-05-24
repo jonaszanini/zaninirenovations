@@ -509,11 +509,7 @@ class PavingQuotationController extends Controller
             $lineDescription = $pavingQuotation->summaryDescription();
         }
 
-        $items = [[
-            'description' => $lineDescription,
-            'amount' => round((float) $pavingQuotation->final_quote_total, 2),
-            'apply_hst' => false,
-        ]];
+        $items = $this->buildPavingProjectLineItems($pavingQuotation, $lineDescription);
 
         $snapshot = $pavingQuotation->only([
             'quote_number',
@@ -558,6 +554,48 @@ class PavingQuotationController extends Controller
             'client_project_id' => $project->id,
             'linked_at' => $pavingQuotation->linked_at ?? now(),
         ]);
+    }
+
+    /**
+     * Project quotation lines for a paving calculator quote.
+     *
+     * Final quote already includes HST on materials & fixed costs plus profit;
+     * labour is pre-tax only. Split so the project PDF shows 13% HST on labour
+     * without double-taxing the materials portion.
+     *
+     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     */
+    protected function buildPavingProjectLineItems(PavingQuotation $pavingQuotation, string $lineDescription): array
+    {
+        $final = round((float) $pavingQuotation->final_quote_total, 2);
+        $calc = is_array($pavingQuotation->calculation) ? $pavingQuotation->calculation : [];
+        $labour = round((float) ($calc['summary']['labour_total'] ?? $calc['labour']['total'] ?? 0), 2);
+        $labourHst = round($labour * ClientProjectQuotation::HST_RATE, 2);
+        $exempt = round($final - $labour - $labourHst, 2);
+
+        if ($labour <= 0 || $labourHst <= 0) {
+            return [[
+                'description' => $lineDescription,
+                'amount' => $final,
+                'apply_hst' => false,
+            ]];
+        }
+
+        $items = [];
+        if ($exempt > 0) {
+            $items[] = [
+                'description' => $lineDescription,
+                'amount' => $exempt,
+                'apply_hst' => false,
+            ];
+        }
+        $items[] = [
+            'description' => $lineDescription.' — labour',
+            'amount' => $labour,
+            'apply_hst' => true,
+        ];
+
+        return $items;
     }
 
     protected function normalisePhoneOnRequest(Request $request): void
