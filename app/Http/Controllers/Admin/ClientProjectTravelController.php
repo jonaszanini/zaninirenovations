@@ -73,6 +73,10 @@ class ClientProjectTravelController extends Controller
         }
 
         $gasPrice = (float) $settings->gas_price_per_liter;
+        $outboundKm = (float) $distance['one_way_km'];
+        $returnKm = (float) ($distance['return_km'] ?? 0);
+        $outboundFuel = $vehicle->estimateFuelCost($outboundKm, $gasPrice);
+        $returnFuel = $vehicle->estimateFuelCost($returnKm, $gasPrice);
         $fuelCost = $vehicle->estimateFuelCost((float) $distance['round_trip_km'], $gasPrice);
 
         return response()->json([
@@ -80,7 +84,17 @@ class ClientProjectTravelController extends Controller
             'one_way_km' => $distance['one_way_km'],
             'return_km' => $distance['return_km'] ?? null,
             'round_trip_km' => $distance['round_trip_km'],
+            'outbound_duration_text' => $distance['outbound_duration_text'] ?? null,
+            'return_duration_text' => $distance['return_duration_text'] ?? null,
             'duration_text' => $distance['duration_text'],
+            'outbound_fuel_cost' => $outboundFuel,
+            'outbound_fuel_cost_formatted' => $outboundFuel !== null
+                ? ClientProject::formatMoney($outboundFuel)
+                : null,
+            'return_fuel_cost' => $returnFuel,
+            'return_fuel_cost_formatted' => $returnFuel !== null
+                ? ClientProject::formatMoney($returnFuel)
+                : null,
             'fuel_cost' => $fuelCost,
             'fuel_cost_formatted' => $fuelCost !== null
                 ? ClientProject::formatMoney($fuelCost)

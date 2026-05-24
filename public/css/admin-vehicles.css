@@ -188,6 +188,93 @@
   color: var(--admin-muted, #5a6570);
 }
 
+.cp-travel-breakdown-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.cp-travel-breakdown {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.cp-travel-breakdown thead th {
+  text-align: right;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-muted, #5a6570);
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--admin-border, #d8dee4);
+}
+
+.cp-travel-breakdown thead th:first-child {
+  text-align: left;
+}
+
+.cp-travel-breakdown tbody td,
+.cp-travel-breakdown tbody th,
+.cp-travel-breakdown tfoot td,
+.cp-travel-breakdown tfoot th {
+  padding: 12px 10px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--admin-border, #e8ecef);
+}
+
+.cp-travel-breakdown tbody tr:last-child td,
+.cp-travel-breakdown tbody tr:last-child th {
+  border-bottom: none;
+}
+
+.cp-travel-breakdown tfoot th,
+.cp-travel-breakdown tfoot td {
+  border-top: 2px solid var(--admin-border, #d8dee4);
+  border-bottom: none;
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.06));
+  font-weight: 600;
+}
+
+.cp-travel-breakdown__leg {
+  text-align: left;
+  font-weight: 600;
+  color: var(--admin-text, #1e293b);
+}
+
+.cp-travel-breakdown__leg-name {
+  display: block;
+}
+
+.cp-travel-breakdown__leg-sub {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--admin-muted, #64748b);
+  margin-top: 2px;
+}
+
+.cp-travel-breakdown__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--admin-text, #334155);
+}
+
+.cp-travel-breakdown__fuel {
+  color: var(--admin-primary, #024768);
+  font-weight: 600;
+}
+
+.cp-travel-breakdown tfoot .cp-travel-breakdown__fuel {
+  font-size: 1rem;
+}
+
+.cp-travel-breakdown-meta {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
 .cp-travel-cost-card__metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -99,19 +99,23 @@ class GoogleMapsService
 
         $outboundKm = (float) $outbound['distance_km'];
         $returnKm = (float) $return['distance_km'];
-        $totalDurationSeconds = (int) ($outbound['duration_seconds'] ?? 0) + (int) ($return['duration_seconds'] ?? 0);
+        $outboundSeconds = (int) ($outbound['duration_seconds'] ?? 0);
+        $returnSeconds = (int) ($return['duration_seconds'] ?? 0);
+        $totalDurationSeconds = $outboundSeconds + $returnSeconds;
 
         return [
             'ok' => true,
             'one_way_km' => round($outboundKm, 1),
             'return_km' => round($returnKm, 1),
             'round_trip_km' => round($outboundKm + $returnKm, 1),
-            'duration_text' => $this->formatTotalDuration($totalDurationSeconds),
+            'outbound_duration_text' => $this->formatDurationSeconds($outboundSeconds),
+            'return_duration_text' => $this->formatDurationSeconds($returnSeconds),
+            'duration_text' => $this->formatDurationSeconds($totalDurationSeconds, true),
             'message' => null,
         ];
     }
 
-    private function formatTotalDuration(int $totalSeconds): ?string
+    private function formatDurationSeconds(int $totalSeconds, bool $roundTripLabel = false): ?string
     {
         if ($totalSeconds <= 0) {
             return null;
@@ -119,16 +123,17 @@ class GoogleMapsService
 
         $hours = intdiv($totalSeconds, 3600);
         $minutes = intdiv($totalSeconds % 3600, 60);
+        $suffix = $roundTripLabel ? ' round trip' : '';
 
         if ($hours > 0 && $minutes > 0) {
-            return sprintf('%d hr %d min round trip', $hours, $minutes);
+            return sprintf('~%d hr %d min%s', $hours, $minutes, $suffix);
         }
 
         if ($hours > 0) {
-            return sprintf('%d hr round trip', $hours);
+            return sprintf('~%d hr%s', $hours, $suffix);
         }
 
-        return sprintf('%d min round trip', max(1, $minutes));
+        return sprintf('~%d min%s', max(1, $minutes), $suffix);
     }
 
     /** @return array{ok: bool, distance_km: ?float, duration_text: ?string, duration_seconds: ?int, message: ?string} */

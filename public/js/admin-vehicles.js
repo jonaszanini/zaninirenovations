@@ -161,25 +161,47 @@
       if (errorEl) errorEl.hidden = true;
       if (!resultEl) return;
       resultEl.hidden = false;
-      var duration = data.duration_text ? ' · ~' + data.duration_text : '';
-      var legs = 'Outbound: ' + data.one_way_km + ' km';
-      if (data.return_km) {
-        legs += ' · Return: ' + data.return_km + ' km';
+
+      function cell(val) {
+        return val != null && val !== '' ? val : '—';
       }
+
+      function row(label, sublabel, km, duration, fuel) {
+        return '<tr>' +
+          '<th scope="row" class="cp-travel-breakdown__leg">' +
+            '<span class="cp-travel-breakdown__leg-name">' + label + '</span>' +
+            (sublabel ? '<span class="cp-travel-breakdown__leg-sub">' + sublabel + '</span>' : '') +
+          '</th>' +
+          '<td class="cp-travel-breakdown__num">' + cell(km != null ? km + ' km' : null) + '</td>' +
+          '<td class="cp-travel-breakdown__num">' + cell(duration) + '</td>' +
+          '<td class="cp-travel-breakdown__num cp-travel-breakdown__fuel">' + cell(fuel) + '</td>' +
+        '</tr>';
+      }
+
       resultEl.innerHTML =
-        '<div class="cp-travel-cost-card__metrics">' +
-          '<div class="cp-travel-cost-metric">' +
-            '<span class="cp-travel-cost-metric__label">Round trip distance</span>' +
-            '<strong class="cp-travel-cost-metric__value">' + data.round_trip_km + ' km</strong>' +
-          '</div>' +
-          '<div class="cp-travel-cost-metric cp-travel-cost-metric--highlight">' +
-            '<span class="cp-travel-cost-metric__label">Estimated fuel cost</span>' +
-            '<strong class="cp-travel-cost-metric__value">' + (data.fuel_cost_formatted || '—') + '</strong>' +
-          '</div>' +
+        '<div class="cp-travel-breakdown-wrap">' +
+          '<table class="cp-travel-breakdown">' +
+            '<thead>' +
+              '<tr>' +
+                '<th scope="col"></th>' +
+                '<th scope="col">Distance</th>' +
+                '<th scope="col">Drive time</th>' +
+                '<th scope="col">Fuel cost</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' +
+              row('Outbound', 'Home → project', data.one_way_km, data.outbound_duration_text, data.outbound_fuel_cost_formatted) +
+              row('Return', 'Project → home', data.return_km, data.return_duration_text, data.return_fuel_cost_formatted) +
+            '</tbody>' +
+            '<tfoot>' +
+              row('Total', null, data.round_trip_km, data.duration_text, data.fuel_cost_formatted) +
+            '</tfoot>' +
+          '</table>' +
         '</div>' +
-        '<p class="admin-form-help">' + legs + duration +
-        ' · Vehicle: ' + (data.vehicle_name || 'Active vehicle') +
-        ' · ' + data.fuel_consumption + ' L/100km @ ' + formatMoney(data.gas_price) + '/L</p>';
+        '<p class="admin-form-help cp-travel-breakdown-meta">' +
+          'Vehicle: ' + (data.vehicle_name || 'Active vehicle') +
+          ' · ' + data.fuel_consumption + ' L/100 km @ ' + formatMoney(data.gas_price) + '/L' +
+        '</p>';
     }
 
     function loadEstimate() {
