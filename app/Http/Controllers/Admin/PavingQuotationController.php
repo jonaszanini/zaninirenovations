@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -11,6 +12,7 @@ use App\Models\PavingPricingTier;
 use App\Models\PavingQuotation;
 use App\Models\PavingStoneType;
 use App\Services\ClientProjectStatusService;
+use App\Services\CommuteExpenseService;
 use App\Services\PavingQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,7 @@ use Illuminate\Validation\ValidationException;
 
 class PavingQuotationController extends Controller
 {
+    use HandlesQuotationCommuteExpense;
     use ResolvesQuotationProjectLink;
 
     public function index()
@@ -40,18 +43,12 @@ class PavingQuotationController extends Controller
     public function store(Request $request)
     {
         $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
-        $calc = $this->validatedCalculation($request, $intent);
+        $calc = $this->validatedCalculation($request, $intent, null);
 
-        $quote = PavingQuotation::create([
+        $quote = PavingQuotation::create(array_merge($calc, [
             'quote_number' => PavingQuotation::generateNumber(),
-            'client_name' => $calc['client_name'],
-            'work_description' => $calc['work_description'],
-            'is_draft' => $intent === 'draft',
-            'inputs' => $calc['inputs'],
-            'calculation' => $calc['calculation'],
-            'final_quote_total' => $calc['final_quote_total'],
             'version' => 1,
-        ]);
+        ]));
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -85,17 +82,11 @@ class PavingQuotationController extends Controller
     public function update(Request $request, PavingQuotation $paving_quotation)
     {
         $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
-        $calc = $this->validatedCalculation($request, $intent);
+        $calc = $this->validatedCalculation($request, $intent, $paving_quotation);
 
-        $paving_quotation->fill([
-            'client_name' => $calc['client_name'],
-            'work_description' => $calc['work_description'],
-            'is_draft' => $intent === 'draft',
-            'inputs' => $calc['inputs'],
-            'calculation' => $calc['calculation'],
-            'final_quote_total' => $calc['final_quote_total'],
+        $paving_quotation->fill(array_merge($calc, [
             'version' => $paving_quotation->version + 1,
-        ])->save();
+        ]))->save();
 
         if ($paving_quotation->isLinked()) {
             $project = ClientProject::query()->find($paving_quotation->client_project_id);
@@ -282,19 +273,19 @@ class PavingQuotationController extends Controller
     }
 
     /**
-     * @return array{inputs: array, calculation: array, final_quote_total: float, client_name: ?string, work_description: ?string}
+     * @return array{inputs: array, calculation: array, final_quote_total: float, client_name: ?string, work_description: ?string, include_commute: bool, commute_trip_percent: float, commute_estimated_trips: int, commute_round_trip_cost: ?float, commute_amount: float, is_draft?: bool}
      */
-    protected function validatedCalculation(Request $request, string $intent): array
+    protected function validatedCalculation(Request $request, string $intent, ?PavingQuotation $existing = null): array
     {
         $clientRules = $intent === 'draft'
             ? ['nullable', 'string', 'max:160']
             : ['required', 'string', 'max:160'];
 
-        $request->validate([
+        $request->validate(array_merge([
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], [
+        ], CommuteExpenseService::commuteValidationRules()), [
             'client_name.required' => 'Client name is required to save a published quotation.',
         ]);
 
@@ -303,13 +294,18 @@ class PavingQuotationController extends Controller
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
         $workDescription = trim((string) $request->input('work_description'));
 
-        return [
+        $base = [
             'client_name' => trim((string) $request->input('client_name')) ?: null,
             'work_description' => $workDescription === '' ? null : $workDescription,
+            'is_draft' => $intent === 'draft',
             'inputs' => $inputs,
             'calculation' => $calc,
             'final_quote_total' => round($final, 2),
         ];
+
+        $commute = $this->commutePersistenceFromRequest($request, $existing);
+
+        return $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
     }
 
     /**
@@ -563,7 +559,7 @@ class PavingQuotationController extends Controller
      * labour is pre-tax only. Split so the project PDF shows 13% HST on labour
      * without double-taxing the materials portion.
      *
-     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     * @return list<array{description: string, amount: float, apply_hst: bool, hst_included?: bool}>
      */
     protected function buildPavingProjectLineItems(PavingQuotation $pavingQuotation, string $lineDescription): array
     {
@@ -571,7 +567,10 @@ class PavingQuotationController extends Controller
         $calc = is_array($pavingQuotation->calculation) ? $pavingQuotation->calculation : [];
         $labour = round((float) ($calc['summary']['labour_total'] ?? $calc['labour']['total'] ?? 0), 2);
         $labourHst = round($labour * ClientProjectQuotation::HST_RATE, 2);
-        $exempt = round($final - $labour - $labourHst, 2);
+        $commute = ($pavingQuotation->include_commute ?? false)
+            ? round((float) ($pavingQuotation->commute_amount ?? 0), 2)
+            : 0.0;
+        $exempt = round($final - $labour - $labourHst - $commute, 2);
 
         if ($labour <= 0 || $labourHst <= 0) {
             return [[
@@ -584,16 +583,19 @@ class PavingQuotationController extends Controller
         $items = [];
         if ($exempt > 0) {
             $items[] = [
-                'description' => $lineDescription,
+                'description' => $lineDescription.' — Material',
                 'amount' => $exempt,
                 'apply_hst' => false,
+                'hst_included' => true,
             ];
         }
         $items[] = [
-            'description' => $lineDescription.' — labour',
+            'description' => $lineDescription.' — Labour',
             'amount' => $labour,
             'apply_hst' => true,
         ];
+
+        $this->appendCommuteProjectLine($items, $pavingQuotation);
 
         return $items;
     }

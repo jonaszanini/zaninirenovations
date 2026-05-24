@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -10,6 +11,7 @@ use App\Models\StairsMaterialType;
 use App\Models\StairsQuotation;
 use App\Models\StairsSettings;
 use App\Services\ClientProjectStatusService;
+use App\Services\CommuteExpenseService;
 use App\Services\StairsQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +21,7 @@ use Illuminate\Validation\ValidationException;
 
 class StairsQuotationController extends Controller
 {
+    use HandlesQuotationCommuteExpense;
     use ResolvesQuotationProjectLink;
 
     public function index()
@@ -39,17 +42,12 @@ class StairsQuotationController extends Controller
     public function store(Request $request)
     {
         $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
-        $calc = $this->validatedCalculation($request, $intent);
+        $calc = $this->validatedCalculation($request, $intent, null);
 
-        $quote = StairsQuotation::create([
+        $quote = StairsQuotation::create(array_merge($calc, [
             'quote_number' => StairsQuotation::generateNumber(),
-            'client_name' => $calc['client_name'],
-            'is_draft' => $intent === 'draft',
-            'inputs' => $calc['inputs'],
-            'calculation' => $calc['calculation'],
-            'final_quote_total' => $calc['final_quote_total'],
             'version' => 1,
-        ]);
+        ]));
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -83,16 +81,11 @@ class StairsQuotationController extends Controller
     public function update(Request $request, StairsQuotation $stairs_quotation)
     {
         $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
-        $calc = $this->validatedCalculation($request, $intent);
+        $calc = $this->validatedCalculation($request, $intent, $stairs_quotation);
 
-        $stairs_quotation->fill([
-            'client_name' => $calc['client_name'],
-            'is_draft' => $intent === 'draft',
-            'inputs' => $calc['inputs'],
-            'calculation' => $calc['calculation'],
-            'final_quote_total' => $calc['final_quote_total'],
+        $stairs_quotation->fill(array_merge($calc, [
             'version' => $stairs_quotation->version + 1,
-        ])->save();
+        ]))->save();
 
         $warnings = [];
         if ($stairs_quotation->isLinked() && $stairs_quotation->client_project_id) {
@@ -299,17 +292,17 @@ class StairsQuotationController extends Controller
     /**
      * @return array{inputs: array, calculation: array, final_quote_total: float, client_name: ?string}
      */
-    protected function validatedCalculation(Request $request, string $intent): array
+    protected function validatedCalculation(Request $request, string $intent, ?StairsQuotation $existing = null): array
     {
         $draft = $intent === 'draft';
         $clientRules = $draft
             ? ['nullable', 'string', 'max:160']
             : ['required', 'string', 'max:160'];
 
-        $request->validate([
+        $request->validate(array_merge([
             'client_name' => $clientRules,
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], [
+        ], CommuteExpenseService::commuteValidationRules()), [
             'client_name.required' => 'Client name is required to save a published quotation.',
         ]);
 
@@ -330,12 +323,17 @@ class StairsQuotationController extends Controller
         $calc = (new StairsQuotationCalculator)->calculate($inputsForCalc);
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
 
-        return [
+        $base = [
             'client_name' => trim((string) $request->input('client_name')) ?: null,
+            'is_draft' => $draft,
             'inputs' => $rawInputs,
             'calculation' => $calc,
             'final_quote_total' => round($final, 2),
         ];
+
+        $commute = $this->commutePersistenceFromRequest($request, $existing);
+
+        return $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
     }
 
     /**
@@ -536,6 +534,7 @@ class StairsQuotationController extends Controller
                 'apply_hst' => true,
             ];
         }
+        $this->appendCommuteProjectLine($items, $stairsQuotation);
 
         $snapshot = $stairsQuotation->only([
             'quote_number',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -10,6 +11,7 @@ use App\Models\FenceFormulaSetting;
 use App\Models\FenceMaterial;
 use App\Models\FenceQuotation;
 use App\Services\ClientProjectStatusService;
+use App\Services\CommuteExpenseService;
 use App\Services\FenceQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +31,7 @@ use Illuminate\Validation\Rule;
  */
 class FenceQuotationController extends Controller
 {
+    use HandlesQuotationCommuteExpense;
     use ResolvesQuotationProjectLink;
 
     /** The Fence hub: list of existing fence quotes + "New" button. */
@@ -80,26 +83,12 @@ class FenceQuotationController extends Controller
         $data = $this->validateFenceInputs($request);
 
         $calc = (new FenceQuotationCalculator())->calculate($data);
+        $persistence = $this->fencePersistenceFromCalc($request, $calc, $data);
 
-        $quote = FenceQuotation::create([
+        $quote = FenceQuotation::create(array_merge($persistence, [
             'quote_number' => FenceQuotation::generateNumber(),
-            'client_name' => $data['client_name'],
-            'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
-            'fence_height_ft' => $calc['inputs']['fence_height_ft'],
-            'board_style' => $calc['inputs']['board_style'],
-            'overlap_in' => $calc['inputs']['overlap_in'],
-            'gate_count' => $calc['inputs']['gate_count'],
-            'labour_rate_per_ft' => $data['labour_rate_per_ft'],
-            'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],
-            'sides' => $calc['inputs']['sides'],
-            'calculation' => $calc,
-            'materials_subtotal' => $calc['totals']['materials_subtotal'],
-            'hst' => $calc['totals']['hst'],
-            'labour_total' => $calc['totals']['labour_subtotal'],
-            'labour_hst' => $calc['totals']['labour_hst'],
-            'grand_total' => $calc['totals']['grand_total'],
             'version' => 1,
-        ]);
+        ]));
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -166,25 +155,11 @@ class FenceQuotationController extends Controller
         $data = $this->validateFenceInputs($request);
 
         $calc = (new FenceQuotationCalculator())->calculate($data);
+        $persistence = $this->fencePersistenceFromCalc($request, $calc, $data, $fence_quotation);
 
-        $fence_quotation->fill([
-            'client_name' => $data['client_name'],
-            'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
-            'fence_height_ft' => $calc['inputs']['fence_height_ft'],
-            'board_style' => $calc['inputs']['board_style'],
-            'overlap_in' => $calc['inputs']['overlap_in'],
-            'gate_count' => $calc['inputs']['gate_count'],
-            'labour_rate_per_ft' => $data['labour_rate_per_ft'],
-            'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],
-            'sides' => $calc['inputs']['sides'],
-            'calculation' => $calc,
-            'materials_subtotal' => $calc['totals']['materials_subtotal'],
-            'hst' => $calc['totals']['hst'],
-            'labour_total' => $calc['totals']['labour_subtotal'],
-            'labour_hst' => $calc['totals']['labour_hst'],
-            'grand_total' => $calc['totals']['grand_total'],
+        $fence_quotation->fill(array_merge($persistence, [
             'version' => $fence_quotation->version + 1,
-        ])->save();
+        ]))->save();
 
         if ($fence_quotation->isLinked()) {
             $project = ClientProject::query()->find($fence_quotation->client_project_id);
@@ -392,6 +367,7 @@ class FenceQuotationController extends Controller
             'amount' => $lineAmount,
             'apply_hst' => true,
         ]];
+        $this->appendCommuteProjectLine($items, $fence_quotation);
 
         $snapshot = $fence_quotation->only([
             'quote_number',
@@ -409,6 +385,11 @@ class FenceQuotationController extends Controller
             'labour_total',
             'labour_hst',
             'grand_total',
+            'include_commute',
+            'commute_trip_percent',
+            'commute_estimated_trips',
+            'commute_round_trip_cost',
+            'commute_amount',
         ]);
 
         /** @var ClientProjectQuotation $row */
@@ -633,6 +614,7 @@ class FenceQuotationController extends Controller
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            ...CommuteExpenseService::commuteValidationRules(),
         ];
 
         $data = $request->validate($rules);
@@ -644,5 +626,39 @@ class FenceQuotationController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $calc
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function fencePersistenceFromCalc(
+        Request $request,
+        array $calc,
+        array $data,
+        ?FenceQuotation $existing = null
+    ): array {
+        $base = [
+            'client_name' => $data['client_name'],
+            'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
+            'fence_height_ft' => $calc['inputs']['fence_height_ft'],
+            'board_style' => $calc['inputs']['board_style'],
+            'overlap_in' => $calc['inputs']['overlap_in'],
+            'gate_count' => $calc['inputs']['gate_count'],
+            'labour_rate_per_ft' => $data['labour_rate_per_ft'],
+            'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],
+            'sides' => $calc['inputs']['sides'],
+            'calculation' => $calc,
+            'materials_subtotal' => $calc['totals']['materials_subtotal'],
+            'hst' => $calc['totals']['hst'],
+            'labour_total' => $calc['totals']['labour_subtotal'],
+            'labour_hst' => $calc['totals']['labour_hst'],
+            'grand_total' => $calc['totals']['grand_total'],
+        ];
+
+        $commute = $this->commutePersistenceFromRequest($request, $existing);
+
+        return $this->mergeCommuteIntoPersistence($base, $commute, 'grand_total');
     }
 }

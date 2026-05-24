@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
 use App\Models\StandardQuotation;
 use App\Services\ClientProjectStatusService;
+use App\Services\CommuteExpenseService;
 use App\Services\StandardQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,7 @@ use Illuminate\Validation\ValidationException;
  */
 class StandardQuotationController extends Controller
 {
+    use HandlesQuotationCommuteExpense;
     use ResolvesQuotationProjectLink;
 
     public function index()
@@ -388,6 +391,7 @@ class StandardQuotationController extends Controller
             ],
             'contingency_enabled' => ['nullable'],
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            ...CommuteExpenseService::commuteValidationRules(),
         ], [
             'client_name.required' => 'Client name is required.',
             'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
@@ -454,7 +458,7 @@ class StandardQuotationController extends Controller
 
         $workDescription = trim((string) ($data['work_description'] ?? ''));
 
-        return [
+        $persistence = [
             'persistence' => [
                 'client_name' => trim($data['client_name']),
                 'display_title' => \Illuminate\Support\Str::limit($data['display_title'], 255, ''),
@@ -483,6 +487,15 @@ class StandardQuotationController extends Controller
                 'contingency_hst' => $computed['contingency_hst'],
             ],
         ];
+
+        $commute = $this->commutePersistenceFromRequest($request, $existing);
+        $persistence['persistence'] = $this->mergeCommuteIntoPersistence(
+            $persistence['persistence'],
+            $commute,
+            'grand_total'
+        );
+
+        return $persistence;
     }
 
     /**
@@ -554,6 +567,8 @@ class StandardQuotationController extends Controller
                 'source_standard_quotation_id' => $standardQuotation->id,
             ];
         }
+
+        $this->appendCommuteProjectLine($sqLines, $standardQuotation);
 
         /** @var ClientProjectQuotation $row */
         $row = ClientProjectQuotation::firstOrNew([

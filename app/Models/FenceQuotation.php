@@ -42,6 +42,11 @@ class FenceQuotation extends Model
         'labour_total',
         'labour_hst',
         'grand_total',
+        'include_commute',
+        'commute_trip_percent',
+        'commute_estimated_trips',
+        'commute_round_trip_cost',
+        'commute_amount',
         'version',
         'linked_at',
     ];
@@ -59,6 +64,11 @@ class FenceQuotation extends Model
         'labour_total' => 'decimal:2',
         'labour_hst' => 'decimal:2',
         'grand_total' => 'decimal:2',
+        'include_commute' => 'boolean',
+        'commute_trip_percent' => 'decimal:2',
+        'commute_estimated_trips' => 'integer',
+        'commute_round_trip_cost' => 'decimal:2',
+        'commute_amount' => 'decimal:2',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];

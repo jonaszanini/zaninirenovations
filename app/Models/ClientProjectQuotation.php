@@ -284,12 +284,17 @@ class ClientProjectQuotation extends Model
             }
             $applyHst = !array_key_exists('apply_hst', $row)
                 || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
+            $hstIncluded = filter_var($row['hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-            $clean[] = [
+            $cleanRow = [
                 'description' => $description,
                 'amount' => round($amount, 2),
                 'apply_hst' => $applyHst,
             ];
+            if ($hstIncluded) {
+                $cleanRow['hst_included'] = true;
+            }
+            $clean[] = $cleanRow;
         }
 
         return $this->normalizeStairsLinkedLineItems($clean);
@@ -565,6 +570,19 @@ class ClientProjectQuotation extends Model
         }
 
         return round((float) ($row['amount'] ?? 0) * self::HST_RATE, 2);
+    }
+
+    /** HST column label for a quotation line (admin preview / exports). */
+    public static function lineHstColumnLabel(array $row): string
+    {
+        if (! empty($row['apply_hst'])) {
+            return '13%';
+        }
+        if (! empty($row['hst_included'])) {
+            return '13% incl.';
+        }
+
+        return '—';
     }
 
     /**

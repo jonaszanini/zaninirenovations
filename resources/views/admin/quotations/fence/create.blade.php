@@ -354,6 +354,8 @@
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
+        @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+
         {{-- Labour rates (saved per quotation) ----------------------- --}}
         <div class="admin-form-section fq-quote-labour-section">
           <h4 style="margin:0 0 4px;font-size:1rem;">Labour rates for this quotation</h4>
@@ -579,6 +581,10 @@
           <span>HST on labour (13%)</span>
           <span id="fq-t-labour-hst">CA$0.00</span>
         </div>
+        <div class="fq-totals-row" id="fq-t-commute-row" style="display:none;">
+          <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
+          <span id="fq-t-commute">CA$0.00</span>
+        </div>
         <div class="fq-totals-row fq-totals-row--grand">
           <span>Grand total</span>
           <span id="fq-t-grand">CA$0.00</span>
@@ -621,6 +627,10 @@
   var tTotal = document.getElementById('fq-t-total');
   var tLabourHst = document.getElementById('fq-t-labour-hst');
   var tGrand = document.getElementById('fq-t-grand');
+  var tCommuteRow = document.getElementById('fq-t-commute-row');
+  var tCommute = document.getElementById('fq-t-commute');
+  var lastCommuteAmount = 0;
+  var lastCalc = null;
 
   var MAX_SIDES = 4;
 
@@ -774,6 +784,7 @@
   }
 
   function renderCalc(calc) {
+    lastCalc = calc;
     statusBadge.textContent = 'Up to date';
     statusBadge.style.background = '#e8f4ea';
     statusBadge.style.color = '#0f5132';
@@ -816,7 +827,9 @@
     tLabour.textContent = money(t.labour_subtotal);
     tTotal.textContent = money(t.total);
     tLabourHst.textContent = money(t.labour_hst);
-    tGrand.textContent = money(t.grand_total);
+    if (tCommuteRow) tCommuteRow.style.display = lastCommuteAmount > 0 ? '' : 'none';
+    if (tCommute) tCommute.textContent = money(lastCommuteAmount);
+    tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount);
     if (t.labour_rate_per_ft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_ft) + '/ft)';
     }
@@ -857,6 +870,14 @@
   } else {
     schedulePreview();
   }
+
+  document.addEventListener('commute-expense:change', function (e) {
+    var d = e.detail || {};
+    lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+    if (lastCalc) {
+      renderCalc(lastCalc);
+    }
+  });
 })();
 </script>
 @endpush

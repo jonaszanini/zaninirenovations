@@ -222,7 +222,7 @@
                   @foreach ($items as $row)
                     <tr>
                       <td>{!! nl2br(e($row['description'])) !!}</td>
-                      <td class="cp-quotation-hst-col">{{ !empty($row['apply_hst']) ? '13%' : '—' }}</td>
+                      <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
                       <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
                     </tr>
                   @endforeach
@@ -371,7 +371,7 @@
               @foreach ($items as $row)
                 <tr>
                   <td>{!! nl2br(e($row['description'])) !!}</td>
-                  <td class="cp-quotation-hst-col">{{ !empty($row['apply_hst']) ? '13%' : '—' }}</td>
+                  <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
                   <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
                 </tr>
               @endforeach

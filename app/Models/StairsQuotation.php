@@ -18,6 +18,11 @@ class StairsQuotation extends Model
         'inputs',
         'calculation',
         'final_quote_total',
+        'include_commute',
+        'commute_trip_percent',
+        'commute_estimated_trips',
+        'commute_round_trip_cost',
+        'commute_amount',
         'version',
         'linked_at',
     ];
@@ -27,6 +32,11 @@ class StairsQuotation extends Model
         'calculation' => 'array',
         'is_draft' => 'boolean',
         'final_quote_total' => 'decimal:2',
+        'include_commute' => 'boolean',
+        'commute_trip_percent' => 'decimal:2',
+        'commute_estimated_trips' => 'integer',
+        'commute_round_trip_cost' => 'decimal:2',
+        'commute_amount' => 'decimal:2',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];

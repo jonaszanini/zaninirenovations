@@ -1014,7 +1014,10 @@ class ClientProject extends Model
         } else {
             $lines[] = 'Line items (pre-tax; HST per line):';
             foreach ($items as $row) {
-                $hst = !empty($row['apply_hst']) ? 'HST 13%' : 'No HST';
+                $hst = ClientProjectQuotation::lineHstColumnLabel($row);
+                if ($hst === '—') {
+                    $hst = 'No HST';
+                }
                 $lines[] = '  - '.($row['description'] !== '' ? $row['description'] : '(no description)')
                     .' | '.self::formatMoney((float) $row['amount']).' | '.$hst;
             }

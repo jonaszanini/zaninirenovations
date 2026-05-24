@@ -628,6 +628,8 @@
               <p class="pq-hint">Leave blank to use the formula suggested total. Enter a dollar amount to override the final quote.</p>
             </div>
           </div>
+
+          @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
         </form>
 
         @if ($isEdit && !$quotation->isLinked())
@@ -864,6 +866,8 @@
 
       var root = document.getElementById('pq-live-root');
       var t = null;
+      var lastCommuteAmount = 0;
+      var lastPreviewCalc = null;
       function schedule() {
         clearTimeout(t);
         t = setTimeout(runPreview, 220);
@@ -873,10 +877,12 @@
       }
       function render(c) {
         if (!c || !c.summary) return;
+        lastPreviewCalc = c;
         var s = c.summary;
         var m = c.materials;
         var f = c.fixed_costs;
         var l = c.labour;
+        var finalTotal = Number(s.final_quote_total || 0) + lastCommuteAmount;
         var html = '';
         html += '<div class="pq-row"><span>Materials (w/ HST)</span><strong>' + fmt(m.with_tax) + '</strong></div>';
         html += '<div class="pq-row"><span>Fixed costs (w/ HST)</span><strong>' + fmt(f.with_tax) + '</strong></div>';
@@ -884,7 +890,10 @@
         html += '<div class="pq-row"><span>Built-up total (Excel D71)</span><strong>' + fmt(s.built_up_grand_total) + '</strong></div>';
         html += '<div class="pq-row"><span>Formula $/sq ft (Excel B74)</span><strong>' + s.reference_price_per_sq_ft.toFixed(2) + '</strong></div>';
         html += '<div class="pq-row pq-row--hl"><span>Suggested total (Excel B75)</span><strong>' + fmt(s.reference_suggested_total) + '</strong></div>';
-        html += '<div class="pq-row pq-row--hl"><span>Final quote (Excel B79)</span><strong>' + fmt(s.final_quote_total) + '</strong></div>';
+        if (lastCommuteAmount > 0) {
+          html += '<div class="pq-row"><span>Commute expense (incl. HST)</span><strong>' + fmt(lastCommuteAmount) + '</strong></div>';
+        }
+        html += '<div class="pq-row pq-row--hl"><span>Final quote (Excel B79)</span><strong>' + fmt(finalTotal) + '</strong></div>';
         if (s.market_reference_total && Math.abs(s.market_reference_total - s.reference_suggested_total) > 0.01) {
           html += '<div class="pq-row"><span>Market tier reference</span><strong>' + fmt(s.market_reference_total) + '</strong></div>';
         }
@@ -992,6 +1001,12 @@
 
       var initial = @json($initialCalc);
       if (initial) { render(initial); } else { runPreview(); }
+
+      document.addEventListener('commute-expense:change', function (e) {
+        var d = e.detail || {};
+        lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+        if (lastPreviewCalc) render(lastPreviewCalc);
+      });
     })();
   </script>
 @endsection

@@ -501,6 +501,8 @@
     </div>
 
     {{-- Grand summary -------------------------------------------- --}}
+    @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+
     <div class="admin-card sq-grand-card">
       <h3 style="margin:0 0 12px;">Totals</h3>
       <div class="sq-grand-rows">
@@ -514,6 +516,10 @@
         <div class="sq-grand-row"><span>Total labour (before HST)</span><span id="sq-g-labour">CA$0.00</span></div>
         <div class="sq-grand-row"><span>HST on labour (13%)</span><span id="sq-g-labour-hst">CA$0.00</span></div>
         <div class="sq-grand-row"><span>Total labour with HST</span><span id="sq-g-labour-total">CA$0.00</span></div>
+        <div class="sq-grand-row sq-grand-row--commute" id="sq-g-commute-row" style="display:none;">
+          <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
+          <span id="sq-g-commute">CA$0.00</span>
+        </div>
         <div class="sq-grand-row sq-grand-row--final"><span>Grand total</span><span id="sq-g-grand">CA$0.00</span></div>
       </div>
     </div>
@@ -761,6 +767,9 @@
   var gLabHst = document.getElementById('sq-g-labour-hst');
   var gLabTot = document.getElementById('sq-g-labour-total');
   var gGrand = document.getElementById('sq-g-grand');
+  var gCommuteRow = document.getElementById('sq-g-commute-row');
+  var gCommute = document.getElementById('sq-g-commute');
+  var lastCommuteAmount = 0;
 
   // Contingency controls + readouts
   var contEnabled = document.getElementById('sq-contingency-enabled');
@@ -908,7 +917,9 @@
     gLab.textContent = money(lab);
     if (gLabHst) gLabHst.textContent = money(labHst);
     if (gLabTot) gLabTot.textContent = money(labWithHst);
-    gGrand.textContent = money(withSumWithCont + labWithHst);
+    if (gCommuteRow) gCommuteRow.style.display = lastCommuteAmount > 0 ? '' : 'none';
+    if (gCommute) gCommute.textContent = money(lastCommuteAmount);
+    gGrand.textContent = money(withSumWithCont + labWithHst + lastCommuteAmount);
 
     if (useFixed) {
       if (equivEl) equivEl.textContent = '';
@@ -1026,6 +1037,12 @@
 
   syncFixedLabourUI();
   recalcMaterials();
+
+  document.addEventListener('commute-expense:change', function (e) {
+    var d = e.detail || {};
+    lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+    recalcMaterials();
+  });
 })();
 </script>
 @endpush

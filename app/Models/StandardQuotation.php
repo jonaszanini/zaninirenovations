@@ -49,6 +49,11 @@ class StandardQuotation extends Model
         'contingency_percent',
         'contingency_amount',
         'contingency_hst',
+        'include_commute',
+        'commute_trip_percent',
+        'commute_estimated_trips',
+        'commute_round_trip_cost',
+        'commute_amount',
         'version',
         'linked_at',
     ];
@@ -73,6 +78,11 @@ class StandardQuotation extends Model
         'contingency_percent' => 'decimal:2',
         'contingency_amount' => 'decimal:2',
         'contingency_hst' => 'decimal:2',
+        'include_commute' => 'boolean',
+        'commute_trip_percent' => 'decimal:2',
+        'commute_estimated_trips' => 'integer',
+        'commute_round_trip_cost' => 'decimal:2',
+        'commute_amount' => 'decimal:2',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];
@@ -206,6 +216,16 @@ class StandardQuotation extends Model
                 'amount' => round((float) $computed['labour_total'], 2),
                 'apply_hst' => true,
             ];
+        }
+
+        if ($this->include_commute && (float) $this->commute_amount > 0) {
+            $commuteLine = \App\Services\CommuteExpenseService::projectLineItem(
+                (float) $this->commute_amount,
+                (int) ($this->commute_estimated_trips ?? 1)
+            );
+            if ($commuteLine !== null) {
+                $lines[] = $commuteLine;
+            }
         }
 
         return $lines;
