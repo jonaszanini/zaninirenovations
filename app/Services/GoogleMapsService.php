@@ -15,7 +15,8 @@ class GoogleMapsService
 
     public function isDistanceMatrixConfigured(): bool
     {
-        return filled($this->distanceMatrixApiKey());
+        /** @see distanceMatrixApiKey — server key only; referrer-restricted browser keys cannot call Distance Matrix. */
+        return filled(config('google_maps.server_api_key'));
     }
 
     /**
@@ -215,12 +216,9 @@ class GoogleMapsService
     private function distanceMatrixErrorMessage(string $status, array $payload): string
     {
         $googleMessage = trim((string) ($payload['error_message'] ?? ''));
-        $usingSeparateServerKey = filled(config('google_maps.server_api_key'));
 
         if ($status === 'REQUEST_DENIED') {
-            $hint = $usingSeparateServerKey
-                ? 'Check GOOGLE_MAPS_SERVER_API_KEY: enable Distance Matrix API and add your Hostinger outbound IP under IP restrictions.'
-                : 'Use two keys in .env: GOOGLE_MAPS_API_KEY (HTTP referrers for Places) and GOOGLE_MAPS_SERVER_API_KEY (IP restriction for Distance Matrix).';
+            $hint = 'Verify GOOGLE_MAPS_SERVER_API_KEY in Google Cloud: enable Distance Matrix API; Application restrictions → IP addresses (your Hostinger server outbound IP); API restrictions → Distance Matrix. From SSH: `curl -s https://api.ipify.org` shows egress IP.';
 
             if ($googleMessage !== '') {
                 return 'Google Distance Matrix: '.$googleMessage.' '.$hint;
@@ -240,16 +238,14 @@ class GoogleMapsService
         return 'Distance could not be calculated ('.$status.').';
     }
 
+    /**
+     * Distance Matrix requests originate from Laravel (server IP). They must use a key
+     * restricted by IP — never the browser referrer key.
+     */
     private function distanceMatrixApiKey(): ?string
     {
         $serverKey = config('google_maps.server_api_key');
 
-        if (filled($serverKey)) {
-            return $serverKey;
-        }
-
-        $browserKey = config('google_maps.api_key');
-
-        return filled($browserKey) ? $browserKey : null;
+        return filled($serverKey) ? $serverKey : null;
     }
 }

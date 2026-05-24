@@ -11,11 +11,10 @@ return [
     | GOOGLE_MAPS_API_KEY — browser (HTTP referrer: your admin domain + localhost)
     |   Maps JavaScript API, Places API (New)
     |
-    | GOOGLE_MAPS_SERVER_API_KEY — server (IP: your Hostinger outbound IP)
-    |   Distance Matrix API only
-    |
-    | If GOOGLE_MAPS_SERVER_API_KEY is omitted, the browser key is used for both
-    | (only works when that key has no application restriction or allows server IP).
+    | GOOGLE_MAPS_SERVER_API_KEY — REQUIRED for admin travel estimates (Distance Matrix).
+    |   Application restriction: your server's outbound IP. API restriction: Distance Matrix API.
+    |   If your browser key has no referrer/IP restriction (dev only), you may set both env vars
+    |   to the same key value temporarily — production should use separate keys.
     |
     */
     'api_key' => env('GOOGLE_MAPS_API_KEY'),

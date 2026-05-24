@@ -26,7 +26,7 @@ class ClientProjectTravelController extends Controller
         if (! $maps->isDistanceMatrixConfigured()) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Google Maps server API key is not configured. Add GOOGLE_MAPS_SERVER_API_KEY (Distance Matrix, IP-restricted) to your environment.',
+                'message' => 'Travel estimates need GOOGLE_MAPS_SERVER_API_KEY in .env — a separate key restricted by your Hostinger outbound IP with Distance Matrix API enabled. GOOGLE_MAPS_API_KEY stays on HTTP referrers for address autocomplete only. Then run php artisan config:clear.',
             ]);
         }
 
