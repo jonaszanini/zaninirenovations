@@ -95,6 +95,7 @@ class FenceQuotationController extends Controller
             'materials_subtotal' => $calc['totals']['materials_subtotal'],
             'hst' => $calc['totals']['hst'],
             'labour_total' => $calc['totals']['labour_subtotal'],
+            'labour_hst' => $calc['totals']['labour_hst'],
             'grand_total' => $calc['totals']['grand_total'],
             'version' => 1,
         ]);
@@ -178,6 +179,7 @@ class FenceQuotationController extends Controller
             'materials_subtotal' => $calc['totals']['materials_subtotal'],
             'hst' => $calc['totals']['hst'],
             'labour_total' => $calc['totals']['labour_subtotal'],
+            'labour_hst' => $calc['totals']['labour_hst'],
             'grand_total' => $calc['totals']['grand_total'],
             'version' => $fence_quotation->version + 1,
         ])->save();
@@ -402,6 +404,7 @@ class FenceQuotationController extends Controller
             'materials_subtotal',
             'hst',
             'labour_total',
+            'labour_hst',
             'grand_total',
         ]);
 

@@ -99,6 +99,12 @@
       padding: 4px 0;
       font-size: 13px;
     }
+    .fq-totals-row--total {
+      border-top: 1px solid #d8dee4;
+      margin-top: 6px;
+      padding-top: 10px;
+      font-weight: 600;
+    }
     .fq-totals-row--grand {
       border-top: 1px solid #d8dee4;
       margin-top: 6px;
@@ -344,7 +350,7 @@
           <h4 style="margin:0 0 4px;font-size:1rem;">Labour rates for this quotation</h4>
           <p class="admin-form-help" style="margin:0 0 12px;">
             Stored with this quote{{ $isEdit ? '' : ' (prefilled from your last global defaults)' }}.
-            Change them here to adjust labour for this project only. HST is not applied to labour.
+            Change them here to adjust labour for this project only.
           </p>
           <div class="fq-formula-grid fq-quote-labour-grid">
             <div class="admin-form-group">
@@ -549,12 +555,20 @@
           <span id="fq-t-materials">CA$0.00</span>
         </div>
         <div class="fq-totals-row">
-          <span>HST (13%)</span>
+          <span>HST on materials (13%)</span>
           <span id="fq-t-hst">CA$0.00</span>
         </div>
         <div class="fq-totals-row">
           <span>Labour <span class="admin-form-help" id="fq-t-labour-rate"></span></span>
           <span id="fq-t-labour">CA$0.00</span>
+        </div>
+        <div class="fq-totals-row fq-totals-row--total">
+          <span>Total</span>
+          <span id="fq-t-total">CA$0.00</span>
+        </div>
+        <div class="fq-totals-row">
+          <span>HST on labour (13%)</span>
+          <span id="fq-t-labour-hst">CA$0.00</span>
         </div>
         <div class="fq-totals-row fq-totals-row--grand">
           <span>Grand total</span>
@@ -595,6 +609,8 @@
   var tHst = document.getElementById('fq-t-hst');
   var tLabour = document.getElementById('fq-t-labour');
   var tLabourRate = document.getElementById('fq-t-labour-rate');
+  var tTotal = document.getElementById('fq-t-total');
+  var tLabourHst = document.getElementById('fq-t-labour-hst');
   var tGrand = document.getElementById('fq-t-grand');
 
   var MAX_SIDES = 4;
@@ -789,9 +805,11 @@
     tMaterials.textContent = money(t.materials_subtotal);
     tHst.textContent = money(t.hst);
     tLabour.textContent = money(t.labour_subtotal);
+    tTotal.textContent = money(t.total);
+    tLabourHst.textContent = money(t.labour_hst);
     tGrand.textContent = money(t.grand_total);
     if (t.labour_rate_per_ft) {
-      tLabourRate.textContent = '(' + money(t.labour_rate_per_ft) + '/ft, no HST)';
+      tLabourRate.textContent = '(' + money(t.labour_rate_per_ft) + '/ft)';
     }
   }
 

@@ -22,7 +22,7 @@ use App\Models\FenceQuotation;
  *     inputs:      echo of the normalised inputs,
  *     geometry:    { total_linear_ft, sections_total, sides_breakdown },
  *     materials:   [ { key, name, long_name, model, store_sku, quantity, unit, unit_price, subtotal, notes, url } ],
- *     totals:      { materials_subtotal, hst, labour_subtotal, grand_total }
+     *     totals:      { materials_subtotal, hst, labour_subtotal, total, labour_hst, grand_total }
  *   }
  *
  * The output is deliberately JSON-serialisable so it can be stored on
@@ -445,17 +445,19 @@ class FenceQuotationCalculator
         $labourPerAdditionalGate = (float) ($this->settings->labour_per_additional_gate ?? 0);
         $additionalGates = max(0, ((int) ($in['gate_count'] ?? 0)) - 1);
 
-        // Labour is priced per linear foot on the total run. No HST on
-        // labour per the project spec. Rate depends on 6' vs 8' fence.
         $linearLabour = (float) $geom['total_linear_ft'] * $labourRatePerFt;
         $additionalGateLabour = $additionalGates * $labourPerAdditionalGate;
         $labour = round($linearLabour + $additionalGateLabour, 2);
+        $labourHst = round($labour * FenceQuotation::HST_RATE, 2);
+        $total = round($materialsSubtotal + $hst + $labour, 2);
 
         return [
             'materials_subtotal' => $materialsSubtotal,
             'hst' => $hst,
             'labour_subtotal' => $labour,
-            'grand_total' => round($materialsSubtotal + $hst + $labour, 2),
+            'total' => $total,
+            'labour_hst' => $labourHst,
+            'grand_total' => round($total + $labourHst, 2),
             'hst_rate' => FenceQuotation::HST_RATE,
             'labour_rate_per_ft' => $labourRatePerFt,
             'labour_rate_6ft_per_ft' => round($rate6, 2),
