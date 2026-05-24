@@ -11,7 +11,10 @@
     <div class="cp-travel-cost-card__result" data-cp-travel-result hidden></div>
     <p class="cp-travel-cost-card__error admin-form-error" data-cp-travel-error hidden></p>
   </div>
-  <p class="admin-form-help cp-travel-cost-card__foot">
-    <a href="{{ route('admin.vehicles.index') }}">Manage vehicles &amp; home address</a>
-  </p>
+  <div class="cp-travel-cost-card__foot">
+    <a href="{{ route('admin.vehicles.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-travel-cost-card__manage">
+      <i class="fa fa-cog" aria-hidden="true"></i>
+      Manage vehicles &amp; home address
+    </a>
+  </div>
 </div>

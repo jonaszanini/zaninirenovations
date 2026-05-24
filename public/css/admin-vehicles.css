@@ -316,8 +316,27 @@
 }
 
 .cp-travel-cost-card__foot {
-  margin-top: 14px;
-  margin-bottom: 0;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--admin-border, #e2e8f0);
+}
+
+.cp-travel-cost-card__manage {
+  color: var(--admin-primary, #024768);
+  border-color: rgba(2, 71, 104, 0.28);
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.06));
+  font-weight: 600;
+}
+
+.cp-travel-cost-card__manage:hover {
+  color: var(--admin-primary-hover, #013552);
+  border-color: var(--admin-primary, #024768);
+  background: rgba(2, 71, 104, 0.12);
+}
+
+.cp-travel-cost-card__manage .fa {
+  opacity: 0.85;
+  font-size: 0.95em;
 }
 
 .cp-travel-cost-card__error {
