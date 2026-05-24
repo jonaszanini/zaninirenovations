@@ -11,6 +11,7 @@ class PavingQuotation extends Model
         'client_project_id',
         'quote_number',
         'client_name',
+        'work_description',
         'is_draft',
         'inputs',
         'calculation',

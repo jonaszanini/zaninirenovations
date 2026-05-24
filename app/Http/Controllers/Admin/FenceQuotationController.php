@@ -84,6 +84,7 @@ class FenceQuotationController extends Controller
         $quote = FenceQuotation::create([
             'quote_number' => FenceQuotation::generateNumber(),
             'client_name' => $data['client_name'],
+            'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
             'board_style' => $calc['inputs']['board_style'],
             'overlap_in' => $calc['inputs']['overlap_in'],
@@ -168,6 +169,7 @@ class FenceQuotationController extends Controller
 
         $fence_quotation->fill([
             'client_name' => $data['client_name'],
+            'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
             'board_style' => $calc['inputs']['board_style'],
             'overlap_in' => $calc['inputs']['overlap_in'],
@@ -394,6 +396,7 @@ class FenceQuotationController extends Controller
         $snapshot = $fence_quotation->only([
             'quote_number',
             'client_name',
+            'work_description',
             'fence_height_ft',
             'board_style',
             'gate_count',
@@ -430,6 +433,7 @@ class FenceQuotationController extends Controller
         }
 
         $row->items = $items;
+        $row->work_description = $fence_quotation->work_description;
         $row->source_snapshot = $snapshot;
         $row->save();
 
@@ -617,6 +621,7 @@ class FenceQuotationController extends Controller
     {
         $rules = [
             'client_name' => ['required', 'string', 'max:160'],
+            'work_description' => ['nullable', 'string', 'max:5000'],
             'sides' => ['required', 'array', 'min:1', 'max:4'],
             'sides.*.length_ft' => ['required', 'numeric', 'min:0.5', 'max:5000'],
             'fence_height_ft' => ['required', 'numeric', Rule::in([6, 8])],

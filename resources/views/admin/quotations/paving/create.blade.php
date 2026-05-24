@@ -417,6 +417,14 @@
                      maxlength="160" @if(!old('client_name', $isEdit ? ($quotation->client_name ?? '') : '') && (!$isEdit || !($quotation->is_draft ?? false))) required @endif>
               <p class="pq-hint">Required for a published quotation; optional for drafts.</p>
             </div>
+            <div class="admin-form-group">
+              <label for="pq-work-description">Description of the work</label>
+              <textarea id="pq-work-description" name="work_description" rows="5" maxlength="5000"
+                        class="admin-input @error('work_description') is-invalid @enderror"
+                        placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+              <p class="pq-hint">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
+              @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
             @php
               $pqAreaMode = old('area_input_mode', $inputs['area_input_mode'] ?? 'total');
               $pqAreaLength = old('area_length_ft', $inputs['area_length_ft'] ?? '');

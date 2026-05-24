@@ -230,7 +230,6 @@ class ClientProjectQuotation extends Model
 
     /**
      * Free-form scope text for the quotation PDF "Description of the work" block.
-     * Only standard quotations have this field; other calculators describe scope in line items.
      */
     public function workDescriptionForPdf(): string
     {
@@ -238,6 +237,20 @@ class ClientProjectQuotation extends Model
             $sq = StandardQuotation::query()->find($this->source_id);
             if ($sq) {
                 return trim((string) ($sq->work_description ?? ''));
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_PAVING && $this->source_id) {
+            $pq = PavingQuotation::query()->find($this->source_id);
+            if ($pq) {
+                return trim((string) ($pq->work_description ?? ''));
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_FENCE && $this->source_id) {
+            $fq = FenceQuotation::query()->find($this->source_id);
+            if ($fq) {
+                return trim((string) ($fq->work_description ?? ''));
             }
         }
 

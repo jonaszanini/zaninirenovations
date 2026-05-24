@@ -345,6 +345,15 @@
                  maxlength="160" required>
         </div>
 
+        <div class="admin-form-group">
+          <label for="fq-work-description">Description of the work</label>
+          <textarea id="fq-work-description" name="work_description" rows="5" maxlength="5000"
+                    class="admin-input @class(['is-invalid' => $errors->has('work_description')])"
+                    placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+          <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
+          @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+
         {{-- Labour rates (saved per quotation) ----------------------- --}}
         <div class="admin-form-section fq-quote-labour-section">
           <h4 style="margin:0 0 4px;font-size:1rem;">Labour rates for this quotation</h4>

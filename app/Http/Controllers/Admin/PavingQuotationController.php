@@ -45,6 +45,7 @@ class PavingQuotationController extends Controller
         $quote = PavingQuotation::create([
             'quote_number' => PavingQuotation::generateNumber(),
             'client_name' => $calc['client_name'],
+            'work_description' => $calc['work_description'],
             'is_draft' => $intent === 'draft',
             'inputs' => $calc['inputs'],
             'calculation' => $calc['calculation'],
@@ -88,12 +89,22 @@ class PavingQuotationController extends Controller
 
         $paving_quotation->fill([
             'client_name' => $calc['client_name'],
+            'work_description' => $calc['work_description'],
             'is_draft' => $intent === 'draft',
             'inputs' => $calc['inputs'],
             'calculation' => $calc['calculation'],
             'final_quote_total' => $calc['final_quote_total'],
             'version' => $paving_quotation->version + 1,
         ])->save();
+
+        if ($paving_quotation->isLinked()) {
+            $project = ClientProject::query()->find($paving_quotation->client_project_id);
+            if ($project) {
+                DB::transaction(function () use ($project, $paving_quotation) {
+                    $this->syncPavingLineToProjectQuotation($project, $paving_quotation->fresh());
+                });
+            }
+        }
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -151,7 +162,7 @@ class PavingQuotationController extends Controller
         }
 
         DB::transaction(function () use ($project, $paving_quotation, $lineDesc) {
-            $this->appendPavingLineToProjectQuotation($project, $paving_quotation, $lineDesc);
+            $this->syncPavingLineToProjectQuotation($project, $paving_quotation, $lineDesc);
         });
 
         return redirect()
@@ -212,7 +223,7 @@ class PavingQuotationController extends Controller
                 'status_changed_at' => now(),
             ]);
 
-            $this->appendPavingLineToProjectQuotation($project, $paving_quotation, $lineDesc);
+            $this->syncPavingLineToProjectQuotation($project, $paving_quotation, $lineDesc);
 
             return $project;
         });
@@ -271,7 +282,7 @@ class PavingQuotationController extends Controller
     }
 
     /**
-     * @return array{inputs: array, calculation: array, final_quote_total: float, client_name: ?string}
+     * @return array{inputs: array, calculation: array, final_quote_total: float, client_name: ?string, work_description: ?string}
      */
     protected function validatedCalculation(Request $request, string $intent): array
     {
@@ -281,6 +292,7 @@ class PavingQuotationController extends Controller
 
         $request->validate([
             'client_name' => $clientRules,
+            'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
         ], [
             'client_name.required' => 'Client name is required to save a published quotation.',
@@ -289,9 +301,11 @@ class PavingQuotationController extends Controller
         $inputs = $this->gatherInputsFromRequest($request);
         $calc = (new PavingQuotationCalculator)->calculate($inputs);
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
+        $workDescription = trim((string) $request->input('work_description'));
 
         return [
             'client_name' => trim((string) $request->input('client_name')) ?: null,
+            'work_description' => $workDescription === '' ? null : $workDescription,
             'inputs' => $inputs,
             'calculation' => $calc,
             'final_quote_total' => round($final, 2),
@@ -474,7 +488,7 @@ class PavingQuotationController extends Controller
         try {
             $lineDesc = $pq->summaryDescription();
             DB::transaction(function () use ($project, $pq, $lineDesc) {
-                $this->appendPavingLineToProjectQuotation($project, $pq->fresh(), $lineDesc);
+                $this->syncPavingLineToProjectQuotation($project, $pq->fresh(), $lineDesc);
             });
 
             return true;
@@ -485,11 +499,16 @@ class PavingQuotationController extends Controller
         }
     }
 
-    protected function appendPavingLineToProjectQuotation(
+    protected function syncPavingLineToProjectQuotation(
         ClientProject $project,
         PavingQuotation $pavingQuotation,
-        string $lineDescription
+        ?string $lineDescription = null
     ): void {
+        $lineDescription = trim((string) ($lineDescription ?? ''));
+        if ($lineDescription === '') {
+            $lineDescription = $pavingQuotation->summaryDescription();
+        }
+
         $items = [[
             'description' => $lineDescription,
             'amount' => round((float) $pavingQuotation->final_quote_total, 2),
@@ -499,6 +518,7 @@ class PavingQuotationController extends Controller
         $snapshot = $pavingQuotation->only([
             'quote_number',
             'client_name',
+            'work_description',
             'inputs',
             'calculation',
             'final_quote_total',
@@ -527,6 +547,7 @@ class PavingQuotationController extends Controller
         }
 
         $row->items = $items;
+        $row->work_description = $pavingQuotation->work_description;
         $row->source_snapshot = $snapshot;
         $row->save();
 
@@ -535,7 +556,7 @@ class PavingQuotationController extends Controller
 
         $pavingQuotation->update([
             'client_project_id' => $project->id,
-            'linked_at' => now(),
+            'linked_at' => $pavingQuotation->linked_at ?? now(),
         ]);
     }
 

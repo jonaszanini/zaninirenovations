@@ -28,6 +28,7 @@ class FenceQuotation extends Model
         'client_project_id',
         'quote_number',
         'client_name',
+        'work_description',
         'fence_height_ft',
         'board_style',
         'overlap_in',
