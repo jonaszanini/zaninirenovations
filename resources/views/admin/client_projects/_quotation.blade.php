@@ -196,12 +196,7 @@
 
               <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
 
-              @if ($previewWorkDesc !== '')
-                <div class="cp-quotation-work-description">
-                  <div class="cp-quotation-work-description-title">Description of the work</div>
-                  <div class="cp-quotation-work-description-body">{!! nl2br(e($previewWorkDesc)) !!}</div>
-                </div>
-              @endif
+              @include('admin.client_projects._quotation_work_description', ['previewWorkDesc' => $previewWorkDesc])
 
               @if ($quotation->hasSubtotalOverrideActive())
                 <p class="admin-form-help" style="margin:0 0 10px;">
@@ -345,12 +340,7 @@
 
           <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
 
-          @if ($previewWorkDesc !== '')
-            <div class="cp-quotation-work-description">
-              <div class="cp-quotation-work-description-title">Description of the work</div>
-              <div class="cp-quotation-work-description-body">{!! nl2br(e($previewWorkDesc)) !!}</div>
-            </div>
-          @endif
+          @include('admin.client_projects._quotation_work_description', ['previewWorkDesc' => $previewWorkDesc])
 
           @if ($quotation->hasSubtotalOverrideActive())
             <p class="admin-form-help" style="margin:0 0 10px;">

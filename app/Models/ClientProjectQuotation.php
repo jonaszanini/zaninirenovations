@@ -314,7 +314,11 @@ class ClientProjectQuotation extends Model
     public function pdfLineItems(): array
     {
         if ($this->source_type !== self::SOURCE_STANDARD || ! $this->source_id) {
-            return $this->cleanItems();
+            $items = $this->cleanItems();
+
+            return $this->source_type === self::SOURCE_PAVING
+                ? $this->normalizePavingPdfPreTaxLines($items)
+                : $items;
         }
 
         $sq = StandardQuotation::query()->find($this->source_id);
@@ -423,6 +427,66 @@ class ClientProjectQuotation extends Model
         unset($items[$commuteIdx]);
 
         return array_values($items);
+    }
+
+    /**
+     * Paving PDF: show pre-tax line amounts and roll all HST into the footer row
+     * so clients see one consistent 13% tax line (materials were stored tax-in).
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     */
+    protected function normalizePavingPdfPreTaxLines(array $items): array
+    {
+        $normalized = [];
+
+        foreach ($items as $row) {
+            $description = (string) ($row['description'] ?? '');
+            $amount = (float) ($row['amount'] ?? 0);
+
+            if (! empty($row['hst_included'])) {
+                $normalized[] = [
+                    'description' => $description,
+                    'amount' => self::preTaxFromHstIncluded($amount),
+                    'apply_hst' => true,
+                ];
+
+                continue;
+            }
+
+            if (! empty($row['apply_hst'])) {
+                $taxableBase = array_key_exists('hst_taxable_amount', $row)
+                    ? (float) $row['hst_taxable_amount']
+                    : $amount;
+                $includedPortion = round($amount - $taxableBase, 2);
+                $preTaxAmount = $taxableBase;
+
+                if ($includedPortion > 0) {
+                    $preTaxAmount = round($taxableBase + self::preTaxFromHstIncluded($includedPortion), 2);
+                }
+
+                $normalized[] = [
+                    'description' => $description,
+                    'amount' => round($preTaxAmount, 2),
+                    'apply_hst' => true,
+                ];
+
+                continue;
+            }
+
+            $normalized[] = $row;
+        }
+
+        return $normalized;
+    }
+
+    public static function preTaxFromHstIncluded(float $gross): float
+    {
+        if ($gross <= 0) {
+            return 0.0;
+        }
+
+        return round($gross / (1 + self::HST_RATE), 2);
     }
 
     /**
