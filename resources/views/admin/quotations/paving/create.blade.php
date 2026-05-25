@@ -64,7 +64,10 @@
     .fq-linked-banner a { color: #0f5132; font-weight: 600; }
 
     .pq-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.95fr); gap: 20px; align-items: start; }
-    @media (max-width: 1100px) { .pq-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 1100px) {
+      .pq-layout { grid-template-columns: 1fr; }
+      .pq-layout > aside { order: -1; }
+    }
     .pq-nav-tabs {
       list-style: none;
       margin: 0 0 1.1rem;
@@ -123,6 +126,28 @@
     }
     .pq-panel[hidden] { display: none !important; }
     .pq-sticky { position: sticky; top: 88px; }
+    .pq-sidebar-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+    }
+    .pq-sidebar-actions .admin-btn {
+      width: 100%;
+      justify-content: center;
+    }
+    .pq-sidebar-actions-row {
+      display: flex;
+      gap: 8px;
+    }
+    .pq-sidebar-actions-row .admin-btn {
+      flex: 1 1 0;
+      min-width: 0;
+    }
     .pq-summary-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; background: #fafbfc; }
     .pq-summary-section { margin-bottom: 14px; }
     .pq-summary-section:last-child { margin-bottom: 0; }
@@ -399,13 +424,6 @@
     <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
       <i class="fa fa-arrow-left"></i> Back to list
     </a>
-    <div class="fq-form-toolbar-right">
-      <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
-      <button type="submit" form="pq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pq-btn-publish">
-        <i class="fa fa-save"></i> {{ $isEdit ? 'Save quotation' : 'Save quotation' }}
-      </button>
-    </div>
   </div>
 
   @if ($isEdit && $quotation->project)
@@ -721,6 +739,15 @@
       </div>
 
       <aside class="pq-sticky">
+        <div class="pq-sidebar-actions">
+          <button type="submit" form="pq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pq-btn-publish">
+            <i class="fa fa-save"></i> Save quotation
+          </button>
+          <div class="pq-sidebar-actions-row">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
+            <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+          </div>
+        </div>
         <div class="pq-summary-card">
           <h4 style="margin:0 0 12px;">Live summary</h4>
           <div id="pq-live-root">
