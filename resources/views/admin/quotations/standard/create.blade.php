@@ -504,23 +504,57 @@
     @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
 
     <div class="admin-card sq-grand-card">
-      <h3 style="margin:0 0 12px;">Totals</h3>
+      <h3 class="sq-grand-card__title">Totals</h3>
       <div class="sq-grand-rows">
-        <div class="sq-grand-row"><span>Subtotal materials (before HST)</span><span id="sq-g-mat-sub">CA$0.00</span></div>
-        <div class="sq-grand-row sq-grand-row--contingency" id="sq-g-contingency-row" style="{{ $contingencyEnabled ? '' : 'display:none;' }}">
-          <span>Contingency (<span id="sq-g-contingency-pct">{{ $contingencyPercent }}</span>%)</span>
-          <span id="sq-g-contingency">+CA$0.00</span>
-        </div>
-        <div class="sq-grand-row"><span>HST on materials (13%)</span><span id="sq-g-mat-hst">CA$0.00</span></div>
-        <div class="sq-grand-row"><span>Total materials with HST</span><span id="sq-g-mat-total">CA$0.00</span></div>
-        <div class="sq-grand-row"><span>Total labour (before HST)</span><span id="sq-g-labour">CA$0.00</span></div>
-        <div class="sq-grand-row"><span>HST on labour (13%)</span><span id="sq-g-labour-hst">CA$0.00</span></div>
-        <div class="sq-grand-row"><span>Total labour with HST</span><span id="sq-g-labour-total">CA$0.00</span></div>
+        <section class="sq-grand-section">
+          <h4 class="sq-grand-section__title">Materials</h4>
+          <div class="sq-grand-section__body">
+            <div class="sq-grand-row sq-grand-row--sub">
+              <span>Subtotal (before HST)</span>
+              <span id="sq-g-mat-sub">CA$0.00</span>
+            </div>
+            <div class="sq-grand-row sq-grand-row--sub sq-grand-row--contingency" id="sq-g-contingency-row" style="{{ $contingencyEnabled ? '' : 'display:none;' }}">
+              <span>Contingency (<span id="sq-g-contingency-pct">{{ $contingencyPercent }}</span>%)</span>
+              <span id="sq-g-contingency">+CA$0.00</span>
+            </div>
+            <div class="sq-grand-row sq-grand-row--sub">
+              <span>HST (13%)</span>
+              <span id="sq-g-mat-hst">CA$0.00</span>
+            </div>
+            <div class="sq-grand-row sq-grand-row--section-total">
+              <span>Total materials with HST</span>
+              <span id="sq-g-mat-total">CA$0.00</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="sq-grand-section">
+          <h4 class="sq-grand-section__title">Labour</h4>
+          <div class="sq-grand-section__body">
+            <div class="sq-grand-row sq-grand-row--sub">
+              <span>Subtotal (before HST)</span>
+              <span id="sq-g-labour">CA$0.00</span>
+            </div>
+            <div class="sq-grand-row sq-grand-row--sub">
+              <span>HST (13%)</span>
+              <span id="sq-g-labour-hst">CA$0.00</span>
+            </div>
+            <div class="sq-grand-row sq-grand-row--section-total">
+              <span>Total labour with HST</span>
+              <span id="sq-g-labour-total">CA$0.00</span>
+            </div>
+          </div>
+        </section>
+
         <div class="sq-grand-row sq-grand-row--commute" id="sq-g-commute-row" style="display:none;">
           <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
           <span id="sq-g-commute">CA$0.00</span>
         </div>
-        <div class="sq-grand-row sq-grand-row--final"><span>Grand total</span><span id="sq-g-grand">CA$0.00</span></div>
+
+        <div class="sq-grand-row sq-grand-row--final">
+          <span>Grand total</span>
+          <span id="sq-g-grand">CA$0.00</span>
+        </div>
       </div>
     </div>
 

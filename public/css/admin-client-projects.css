@@ -3800,21 +3800,97 @@ body.cp-modal-open {
 .sq-grand-card {
   margin-bottom: 20px;
 }
-.sq-grand-rows { max-width: 520px; }
+.sq-grand-card__title {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #111827;
+}
+.sq-grand-rows {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sq-grand-section {
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.sq-grand-section__title {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e8edf2;
+}
+.sq-grand-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .sq-grand-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 16px;
-  padding: 6px 0;
-  font-size: 14px;
+  padding: 4px 0;
+  font-size: 13px;
   color: #374151;
 }
-.sq-grand-row--final {
-  margin-top: 10px;
-  padding-top: 12px;
-  border-top: 2px solid #024768;
-  font-size: 18px;
+.sq-grand-row span:last-child {
+  flex-shrink: 0;
+  text-align: right;
+  font-weight: 600;
+  color: #111827;
+}
+.sq-grand-row--sub span:first-child {
+  padding-left: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+.sq-grand-row--sub span:last-child {
+  font-weight: 500;
+  color: #374151;
+}
+.sq-grand-row--section-total {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #d8dee4;
+  font-size: 14px;
+  font-weight: 600;
+}
+.sq-grand-row--section-total span:first-child {
+  color: #024768;
+  font-weight: 600;
+}
+.sq-grand-row--section-total span:last-child {
+  color: #024768;
   font-weight: 700;
+}
+.sq-grand-row--commute {
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.sq-grand-row--final {
+  margin-top: 2px;
+  padding: 12px 14px;
+  border: 2px solid #024768;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  color: #024768;
+}
+.sq-grand-row--final span:last-child {
+  font-size: 18px;
   color: #024768;
 }
 .sq-form-actions {
