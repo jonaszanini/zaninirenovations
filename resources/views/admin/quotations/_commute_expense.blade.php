@@ -46,9 +46,10 @@
     Add fuel cost for trips to the job site. Uses the same round-trip estimate as the project overview (home → site → home). The amount added includes 13% HST.
   </p>
 
-  <label class="cp-checkbox-row q-commute-card__toggle">
+  <label class="admin-checkbox admin-checkbox--block q-commute-card__toggle">
     <input type="hidden" name="include_commute" value="0">
     <input type="checkbox" name="include_commute" value="1" class="admin-checkbox__input" data-cp-commute-include @checked($includeCommute)>
+    <span class="admin-checkbox__mark" aria-hidden="true"></span>
     <span class="admin-checkbox__text">Include commute fuel in this quotation</span>
   </label>
 
