@@ -591,11 +591,10 @@ class PavingQuotationController extends Controller
         }
         $items[] = [
             'description' => $lineDescription.' — Labour',
-            'amount' => $labour,
+            'amount' => round($labour + $commute, 2),
             'apply_hst' => true,
+            'hst_taxable_amount' => $labour,
         ];
-
-        $this->appendCommuteProjectLine($items, $pavingQuotation);
 
         return $items;
     }

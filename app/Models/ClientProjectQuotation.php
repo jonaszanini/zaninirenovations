@@ -294,10 +294,15 @@ class ClientProjectQuotation extends Model
             if ($hstIncluded) {
                 $cleanRow['hst_included'] = true;
             }
+            if (array_key_exists('hst_taxable_amount', $row)) {
+                $cleanRow['hst_taxable_amount'] = round((float) $row['hst_taxable_amount'], 2);
+            }
             $clean[] = $cleanRow;
         }
 
-        return $this->normalizeStairsLinkedLineItems($clean);
+        return $this->normalizeStairsLinkedLineItems(
+            $this->normalizePavingCommuteIntoLabour($clean)
+        );
     }
 
     /**
@@ -365,10 +370,7 @@ class ClientProjectQuotation extends Model
     {
         $sum = 0.0;
         foreach ($this->pdfLineItems() as $row) {
-            if (empty($row['apply_hst'])) {
-                continue;
-            }
-            $sum += (float) ($row['amount'] ?? 0) * self::HST_RATE;
+            $sum += self::lineHstAmount($row);
         }
 
         return round($sum, 2);
@@ -377,6 +379,50 @@ class ClientProjectQuotation extends Model
     public function pdfGrandTotal(): float
     {
         return round($this->pdfSubtotal() + $this->pdfHst(), 2);
+    }
+
+    /**
+     * Paving quotes: roll commute into the labour line for client-facing documents.
+     * Commute is HST-inclusive; labour HST stays on the original labour base only.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    protected function normalizePavingCommuteIntoLabour(array $items): array
+    {
+        if ($this->source_type !== self::SOURCE_PAVING) {
+            return $items;
+        }
+
+        $commuteIdx = null;
+        $labourIdx = null;
+        $commuteAmount = 0.0;
+
+        foreach ($items as $i => $row) {
+            $desc = (string) ($row['description'] ?? '');
+            if (str_starts_with($desc, 'Commute expense')) {
+                $commuteIdx = $i;
+                $commuteAmount = (float) ($row['amount'] ?? 0);
+            } elseif (str_ends_with($desc, ' — Labour')) {
+                $labourIdx = $i;
+            }
+        }
+
+        if ($commuteIdx === null || $labourIdx === null || $commuteAmount <= 0) {
+            return $items;
+        }
+
+        $labourRow = $items[$labourIdx];
+        $labourAmount = (float) ($labourRow['amount'] ?? 0);
+        $taxableBase = array_key_exists('hst_taxable_amount', $labourRow)
+            ? (float) $labourRow['hst_taxable_amount']
+            : $labourAmount;
+
+        $items[$labourIdx]['amount'] = round($labourAmount + $commuteAmount, 2);
+        $items[$labourIdx]['hst_taxable_amount'] = round($taxableBase, 2);
+        unset($items[$commuteIdx]);
+
+        return array_values($items);
     }
 
     /**
@@ -460,10 +506,7 @@ class ClientProjectQuotation extends Model
         if (! $this->hasSubtotalOverrideActive()) {
             $sum = 0.0;
             foreach ($items as $row) {
-                if (empty($row['apply_hst'])) {
-                    continue;
-                }
-                $sum += (float) ($row['amount'] ?? 0) * self::HST_RATE;
+                $sum += self::lineHstAmount($row);
             }
 
             return round($sum, 2);
@@ -569,7 +612,11 @@ class ClientProjectQuotation extends Model
             return 0.0;
         }
 
-        return round((float) ($row['amount'] ?? 0) * self::HST_RATE, 2);
+        $base = array_key_exists('hst_taxable_amount', $row)
+            ? (float) $row['hst_taxable_amount']
+            : (float) ($row['amount'] ?? 0);
+
+        return round($base * self::HST_RATE, 2);
     }
 
     /** HST column label for a quotation line (admin preview / exports). */
