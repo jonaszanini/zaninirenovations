@@ -1010,7 +1010,6 @@
         html += section('Profitability', [
           row('Gross profit', fmt(gp), '', gp >= 0 ? 'pq-profit-pos' : 'pq-profit-neg'),
           row('Margin', fmtPct(s.margin_percent)),
-          row('Profit per labour hour', fmt(s.effective_hourly_profit) + '/hr'),
           row('Est. working days', String(s.working_days) + ' days'),
         ].join(''));
 
