@@ -66,7 +66,12 @@
     .pq-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.95fr); gap: 20px; align-items: start; }
     @media (max-width: 1100px) {
       .pq-layout { grid-template-columns: 1fr; }
+      /* Actions + summary first on narrow screens, but not sticky (avoids covering inputs). */
       .pq-layout > aside { order: -1; }
+      .pq-sticky {
+        position: static;
+        top: auto;
+      }
     }
     .pq-nav-tabs {
       list-style: none;
@@ -125,7 +130,8 @@
       padding: 0.42rem 0.9rem;
     }
     .pq-panel[hidden] { display: none !important; }
-    .pq-sticky { position: sticky; top: 88px; }
+    /* Admin topbar is not sticky on desktop — 88px left a large gap when scrolling. */
+    .pq-sticky { position: sticky; top: 12px; align-self: start; }
     .pq-sidebar-actions {
       display: flex;
       flex-direction: column;
