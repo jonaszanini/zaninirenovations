@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin\Concerns;
 
 use App\Models\ClientProject;
 use App\Services\CommuteExpenseService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 trait HandlesQuotationCommuteExpense
 {
@@ -39,8 +41,16 @@ trait HandlesQuotationCommuteExpense
      *   commute_amount: float
      * }
      */
-    protected function commutePersistenceFromRequest(Request $request, ?object $existingQuotation = null): array
-    {
+    protected function commutePersistenceFromRequest(
+        Request $request,
+        ?object $existingQuotation = null,
+        ?string $table = null
+    ): array {
+        $table = $table ?? ($existingQuotation instanceof Model ? $existingQuotation->getTable() : null);
+        if ($table === null || ! Schema::hasColumn($table, 'include_commute')) {
+            return [];
+        }
+
         $project = $this->resolveCommuteProject($request, $existingQuotation);
 
         return app(CommuteExpenseService::class)->persistenceFromRequest(
@@ -56,6 +66,10 @@ trait HandlesQuotationCommuteExpense
      */
     protected function mergeCommuteIntoPersistence(array $persistence, array $commute, string $totalKey): array
     {
+        if ($commute === []) {
+            return $persistence;
+        }
+
         $base = (float) ($persistence[$totalKey] ?? 0);
         $commuteAmount = (float) ($commute['commute_amount'] ?? 0);
 

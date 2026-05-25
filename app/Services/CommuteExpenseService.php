@@ -99,7 +99,16 @@ class CommuteExpenseService
             return null;
         }
 
-        $result = $this->estimateForProject($project);
+        try {
+            $result = $this->estimateForProject($project);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Commute round-trip estimate failed', [
+                'project_id' => $project->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
 
         return $result['ok'] ? $result['fuel_cost'] : null;
     }
@@ -134,9 +143,16 @@ class CommuteExpenseService
      */
     public function persistenceFromRequest(Request $request, ?ClientProject $project, bool $isNew): array
     {
-        $include = $request->has('include_commute')
-            ? $request->boolean('include_commute')
-            : $isNew;
+        $includeRaw = $request->input('include_commute');
+        if ($request->has('include_commute')) {
+            if (is_array($includeRaw)) {
+                $include = in_array('1', $includeRaw, true) || in_array(1, $includeRaw, true);
+            } else {
+                $include = filter_var($includeRaw, FILTER_VALIDATE_BOOLEAN);
+            }
+        } else {
+            $include = $isNew;
+        }
 
         $percentRaw = $request->input('commute_trip_percent', 100);
         $percent = is_numeric($percentRaw) ? (float) $percentRaw : 100.0;

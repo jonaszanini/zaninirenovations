@@ -657,7 +657,7 @@ class FenceQuotationController extends Controller
             'grand_total' => $calc['totals']['grand_total'],
         ];
 
-        $commute = $this->commutePersistenceFromRequest($request, $existing);
+        $commute = $this->commutePersistenceFromRequest($request, $existing, 'fence_quotations');
 
         return $this->mergeCommuteIntoPersistence($base, $commute, 'grand_total');
     }

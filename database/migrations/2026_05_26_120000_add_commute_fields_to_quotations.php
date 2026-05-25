@@ -9,11 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         $columns = function (Blueprint $table): void {
-            $table->boolean('include_commute')->default(true)->after('linked_at');
-            $table->decimal('commute_trip_percent', 5, 2)->default(100)->after('include_commute');
-            $table->unsignedSmallInteger('commute_estimated_trips')->default(1)->after('commute_trip_percent');
-            $table->decimal('commute_round_trip_cost', 10, 2)->nullable()->after('commute_estimated_trips');
-            $table->decimal('commute_amount', 12, 2)->default(0)->after('commute_round_trip_cost');
+            $table->boolean('include_commute')->default(true);
+            $table->decimal('commute_trip_percent', 5, 2)->default(100);
+            $table->unsignedSmallInteger('commute_estimated_trips')->default(1);
+            $table->decimal('commute_round_trip_cost', 10, 2)->nullable();
+            $table->decimal('commute_amount', 12, 2)->default(0);
         };
 
         Schema::table('standard_quotations', $columns);

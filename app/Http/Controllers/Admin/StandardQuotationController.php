@@ -488,7 +488,7 @@ class StandardQuotationController extends Controller
             ],
         ];
 
-        $commute = $this->commutePersistenceFromRequest($request, $existing);
+        $commute = $this->commutePersistenceFromRequest($request, $existing, 'standard_quotations');
         $persistence['persistence'] = $this->mergeCommuteIntoPersistence(
             $persistence['persistence'],
             $commute,

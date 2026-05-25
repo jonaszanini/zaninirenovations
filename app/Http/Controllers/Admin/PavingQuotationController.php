@@ -303,7 +303,7 @@ class PavingQuotationController extends Controller
             'final_quote_total' => round($final, 2),
         ];
 
-        $commute = $this->commutePersistenceFromRequest($request, $existing);
+        $commute = $this->commutePersistenceFromRequest($request, $existing, 'paving_quotations');
 
         return $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
     }
