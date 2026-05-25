@@ -124,10 +124,42 @@
     .pq-panel[hidden] { display: none !important; }
     .pq-sticky { position: sticky; top: 88px; }
     .pq-summary-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; background: #fafbfc; }
-    .pq-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 13px; }
-    .pq-row--hl { font-weight: 700; color: #024768; font-size: 16px; border-top: 1px solid #d8dee4; margin-top: 8px; padding-top: 10px; }
-    .pq-profit-pos { color: #15803d; }
-    .pq-profit-neg { color: #b91c1c; }
+    .pq-summary-section { margin-bottom: 14px; }
+    .pq-summary-section:last-child { margin-bottom: 0; }
+    .pq-summary-section__title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin: 0 0 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e8edf2;
+    }
+    .pq-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0; font-size: 13px; }
+    .pq-row span:first-child { color: #374151; flex: 1 1 auto; min-width: 0; }
+    .pq-row strong { flex-shrink: 0; text-align: right; font-weight: 600; color: #111827; }
+    .pq-row--sub { font-size: 12px; }
+    .pq-row--sub span:first-child { color: #6b7280; padding-left: 8px; }
+    .pq-row--divider { border-top: 1px solid #d8dee4; margin-top: 6px; padding-top: 8px; }
+    .pq-row--hl { font-weight: 700; color: #024768; font-size: 15px; }
+    .pq-row--hl span:first-child { color: #024768; font-weight: 700; }
+    .pq-row--hl strong { color: #024768; font-size: 16px; }
+    .pq-row--total {
+      border-top: 2px solid #024768;
+      margin-top: 8px;
+      padding-top: 10px;
+      font-size: 15px;
+    }
+    .pq-row--total span:first-child { color: #024768; font-weight: 700; }
+    .pq-row--total strong { color: #024768; font-size: 18px; font-weight: 700; }
+    .pq-row--muted { font-size: 12px; }
+    .pq-row--muted span:first-child { color: #9ca3af; }
+    .pq-row--muted strong { color: #6b7280; font-weight: 500; }
+    .pq-row--note { font-size: 11px; padding: 0; margin-top: -2px; }
+    .pq-row--note span { color: #9ca3af; font-style: italic; }
+    .pq-profit-pos strong { color: #15803d; }
+    .pq-profit-neg strong { color: #b91c1c; }
     .pq-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 700px) { .pq-form-grid { grid-template-columns: 1fr; } }
     .pq-form-sections { display: flex; flex-direction: column; gap: 18px; }
@@ -873,7 +905,20 @@
         t = setTimeout(runPreview, 220);
       }
       function fmt(n) {
-        return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return 'CA$' + Number(n).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      function fmtPct(rate) {
+        return (Number(rate || 0) * 100).toFixed(1) + '%';
+      }
+      function section(title, rows) {
+        return '<div class="pq-summary-section">' +
+          '<p class="pq-summary-section__title">' + title + '</p>' +
+          rows +
+          '</div>';
+      }
+      function row(label, value, cls, valueCls) {
+        var valueClass = valueCls ? ' class="' + valueCls + '"' : '';
+        return '<div class="pq-row' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><strong' + valueClass + '>' + value + '</strong></div>';
       }
       function render(c) {
         if (!c || !c.summary) return;
@@ -882,26 +927,53 @@
         var m = c.materials;
         var f = c.fixed_costs;
         var l = c.labour;
-        var finalTotal = Number(s.final_quote_total || 0) + lastCommuteAmount;
+        var quoteBeforeCommute = Number(s.final_quote_total || 0);
+        var clientTotal = quoteBeforeCommute + lastCommuteAmount;
+        var calculatedTotal = Number(s.built_up_grand_total || 0);
+        var hasManual = s.manual_price_override != null && Number(s.manual_price_override) > 0;
+        var subtotal = Number(s.total_with_tax_mats_fixed_plus_labour || 0);
+        var profitAmt = Number(s.profit_margin_amount || 0);
+        var profitRate = fmtPct(s.profit_margin_rate);
         var html = '';
-        html += '<div class="pq-row"><span>Materials (w/ HST)</span><strong>' + fmt(m.with_tax) + '</strong></div>';
-        html += '<div class="pq-row"><span>Fixed costs (w/ HST)</span><strong>' + fmt(f.with_tax) + '</strong></div>';
-        html += '<div class="pq-row"><span>Labour (no HST)</span><strong>' + fmt(l.total) + '</strong></div>';
-        html += '<div class="pq-row"><span>Built-up total (Excel D71)</span><strong>' + fmt(s.built_up_grand_total) + '</strong></div>';
-        html += '<div class="pq-row"><span>Formula $/sq ft (Excel B74)</span><strong>' + s.reference_price_per_sq_ft.toFixed(2) + '</strong></div>';
-        html += '<div class="pq-row pq-row--hl"><span>Suggested total (Excel B75)</span><strong>' + fmt(s.reference_suggested_total) + '</strong></div>';
+
+        html += section('Costs', [
+          row('Materials <span class="admin-form-help">(incl. HST)</span>', fmt(m.with_tax)),
+          row('Equipment &amp; rentals <span class="admin-form-help">(incl. HST)</span>', fmt(f.with_tax)),
+          row('Labour <span class="admin-form-help">(before HST)</span>', fmt(l.total)),
+        ].join(''));
+
+        var quoteRows = [
+          row('Subtotal', fmt(subtotal), 'pq-row--divider'),
+          row('Profit (' + profitRate + ')', fmt(profitAmt)),
+          row('Price per sq ft', fmt(s.reference_price_per_sq_ft) + ' / sq ft'),
+        ];
+        if (hasManual) {
+          quoteRows.push(row('Calculated total', fmt(calculatedTotal), 'pq-row--sub'));
+          quoteRows.push(row('Manual override', fmt(s.manual_price_override), 'pq-row--hl'));
+        } else {
+          quoteRows.push(row('Calculated total', fmt(calculatedTotal), 'pq-row--hl'));
+        }
         if (lastCommuteAmount > 0) {
-          html += '<div class="pq-row"><span>Commute expense (incl. HST)</span><strong>' + fmt(lastCommuteAmount) + '</strong></div>';
+          quoteRows.push(row('Commute expense <span class="admin-form-help">(incl. HST)</span>', fmt(lastCommuteAmount)));
         }
-        html += '<div class="pq-row pq-row--hl"><span>Final quote (Excel B79)</span><strong>' + fmt(finalTotal) + '</strong></div>';
-        if (s.market_reference_total && Math.abs(s.market_reference_total - s.reference_suggested_total) > 0.01) {
-          html += '<div class="pq-row"><span>Market tier reference</span><strong>' + fmt(s.market_reference_total) + '</strong></div>';
+        quoteRows.push(row('Total quote', fmt(clientTotal), 'pq-row--total'));
+        html += section('Quote', quoteRows.join(''));
+
+        if (s.market_reference_total && Math.abs(Number(s.market_reference_total) - calculatedTotal) > 0.01) {
+          html += section('Reference', [
+            row('Market tier estimate', fmt(s.market_reference_total), 'pq-row--muted'),
+            '<div class="pq-row pq-row--note"><span>From pricing table — not added to the quote.</span></div>',
+          ].join(''));
         }
-        var gp = s.gross_profit;
-        html += '<div class="pq-row"><span>Gross profit</span><strong class="' + (gp >= 0 ? 'pq-profit-pos' : 'pq-profit-neg') + '">' + fmt(gp) + '</strong></div>';
-        html += '<div class="pq-row"><span>Margin %</span><strong>' + (100 * s.margin_percent).toFixed(1) + '%</strong></div>';
-        html += '<div class="pq-row"><span>Effective $/hr (profit)</span><strong>' + s.effective_hourly_profit.toFixed(2) + '</strong></div>';
-        html += '<div class="pq-row"><span>Est. working days (2×8h)</span><strong>' + s.working_days + '</strong></div>';
+
+        var gp = Number(s.gross_profit || 0);
+        html += section('Profitability', [
+          row('Gross profit', fmt(gp), '', gp >= 0 ? 'pq-profit-pos' : 'pq-profit-neg'),
+          row('Margin', fmtPct(s.margin_percent)),
+          row('Profit per labour hour', fmt(s.effective_hourly_profit) + '/hr'),
+          row('Est. working days', String(s.working_days) + ' days'),
+        ].join(''));
+
         root.innerHTML = html;
       }
       function runPreview() {
