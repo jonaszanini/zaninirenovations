@@ -299,6 +299,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.paving.preview');
     Route::get('quotations/paving/{paving_quotation}/edit', [PavingQuotationController::class, 'edit'])
         ->name('quotations.paving.edit');
+    Route::get('quotations/paving/{paving_quotation}/purchase-list', [PavingQuotationController::class, 'purchaseList'])
+        ->name('quotations.paving.purchase-list');
     Route::put('quotations/paving/{paving_quotation}', [PavingQuotationController::class, 'update'])
         ->name('quotations.paving.update');
     Route::post('quotations/paving/{paving_quotation}/link', [PavingQuotationController::class, 'linkToProject'])

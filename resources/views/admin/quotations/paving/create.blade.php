@@ -437,6 +437,15 @@
     <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
       <i class="fa fa-arrow-left"></i> Back to list
     </a>
+    @if ($isEdit)
+      <div class="fq-form-toolbar-right">
+        <a href="{{ route('admin.quotations.paving.purchase-list', $quotation) }}"
+           target="_blank" rel="noopener noreferrer"
+           class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-print"></i> Print Material List
+        </a>
+      </div>
+    @endif
   </div>
 
   @if ($isEdit && $quotation->project)

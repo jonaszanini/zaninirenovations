@@ -125,6 +125,50 @@ class PavingQuotationController extends Controller
         return response()->json($calc);
     }
 
+    /**
+     * Printable purchasing list (materials + rentals) for a saved quote.
+     * Quantities come from the stored calculation breakdown.
+     */
+    public function purchaseList(PavingQuotation $paving_quotation)
+    {
+        $paving_quotation->loadMissing('project');
+
+        $calc = $paving_quotation->calculation;
+        $materialRows = [];
+        $rentalRows = [];
+        $stoneLinks = $this->purchaseListStoneLinks($paving_quotation);
+
+        if (is_array($calc)) {
+            foreach ($calc['materials']['rows'] ?? [] as $row) {
+                if ((float) ($row['qty'] ?? 0) <= 0) {
+                    continue;
+                }
+                $materialRows[] = $this->formatPurchaseListRow($row, $stoneLinks);
+            }
+
+            $rentalLabels = ['Bin rental (14 yd)', 'Mini skid steer', 'Plate compactor'];
+            $disposalLabel = 'Disposal (clean fill)';
+
+            foreach ($calc['fixed_costs']['rows'] ?? [] as $row) {
+                if ((float) ($row['qty'] ?? 0) <= 0) {
+                    continue;
+                }
+                $label = (string) ($row['label'] ?? '');
+                if (in_array($label, $rentalLabels, true)) {
+                    $rentalRows[] = $this->formatPurchaseListRow($row, $stoneLinks);
+                } elseif ($label === $disposalLabel) {
+                    $materialRows[] = $this->formatPurchaseListRow($row, $stoneLinks);
+                }
+            }
+        }
+
+        return view('admin.quotations.paving.purchase_list', [
+            'quotation' => $paving_quotation,
+            'materialRows' => $materialRows,
+            'rentalRows' => $rentalRows,
+        ]);
+    }
+
     public function linkToProject(Request $request, PavingQuotation $paving_quotation)
     {
         if ($paving_quotation->isLinked()) {
@@ -609,5 +653,63 @@ class PavingQuotationController extends Controller
         $request->merge([
             'fp_client_phone' => $digits === '' ? null : $digits,
         ]);
+    }
+
+    /** @return array<string, string> Calculator row label => product URL */
+    protected function purchaseListStoneLinks(PavingQuotation $quotation): array
+    {
+        $inputs = is_array($quotation->inputs) ? $quotation->inputs : [];
+        $links = [];
+
+        $mainId = $inputs['paving_stone_type_id'] ?? null;
+        if ($mainId) {
+            $stone = PavingStoneType::query()->find($mainId);
+            if ($stone && filled($stone->product_url)) {
+                $links['Main paving stones'] = $stone->product_url;
+            }
+        }
+
+        $marbleId = $inputs['marble_stone_type_id'] ?? null;
+        if ($marbleId) {
+            $stone = PavingStoneType::query()->find($marbleId);
+            if ($stone && filled($stone->product_url)) {
+                $links['Marble / accent paving stones'] = $stone->product_url;
+            }
+        }
+
+        return $links;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, string>  $stoneLinks
+     * @return array{quantity_label: string, label: string, unit: string, note: string, product_url: string|null}
+     */
+    protected function formatPurchaseListRow(array $row, array $stoneLinks): array
+    {
+        $label = (string) ($row['label'] ?? '');
+        $qty = (float) ($row['qty'] ?? 0);
+        $unit = (string) ($row['unit'] ?? '');
+        $note = (string) ($row['note'] ?? '');
+
+        return [
+            'quantity_label' => $this->formatPurchaseQuantityLabel($qty),
+            'label' => $label,
+            'unit' => $unit,
+            'note' => $note !== '' && $note !== '—' ? $note : '',
+            'product_url' => $stoneLinks[$label] ?? null,
+        ];
+    }
+
+    protected function formatPurchaseQuantityLabel(float $qty): string
+    {
+        if (abs($qty - round($qty)) < 0.00001) {
+            return (string) (int) round($qty);
+        }
+
+        $formatted = number_format($qty, 2, '.', '');
+        $formatted = rtrim(rtrim($formatted, '0'), '.');
+
+        return $formatted !== '' ? $formatted : '0';
     }
 }
