@@ -683,7 +683,7 @@ class PavingQuotationController extends Controller
     /**
      * @param  array<string, mixed>  $row
      * @param  array<string, string>  $stoneLinks
-     * @return array{quantity_label: string, label: string, unit: string, note: string, product_url: string|null}
+     * @return array{quantity_label: string, label: string, unit: string, note: string, product_url: string|null, with_tax_label: string}
      */
     protected function formatPurchaseListRow(array $row, array $stoneLinks): array
     {
@@ -692,12 +692,18 @@ class PavingQuotationController extends Controller
         $unit = (string) ($row['unit'] ?? '');
         $note = (string) ($row['note'] ?? '');
 
+        $withTax = (float) ($row['with_tax'] ?? 0);
+        if ($withTax <= 0 && isset($row['before_tax'])) {
+            $withTax = round((float) $row['before_tax'] + (float) ($row['hst'] ?? 0), 2);
+        }
+
         return [
             'quantity_label' => $this->formatPurchaseQuantityLabel($qty),
             'label' => $label,
             'unit' => $unit,
             'note' => $note !== '' && $note !== '—' ? $note : '',
             'product_url' => $stoneLinks[$label] ?? null,
+            'with_tax_label' => '$'.number_format($withTax, 2, '.', ','),
         ];
     }
 

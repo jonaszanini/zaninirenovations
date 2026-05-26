@@ -58,7 +58,9 @@
       color: #374151;
       font-weight: 600;
     }
-    .qty, .unit { white-space: nowrap; width: 1%; font-variant-numeric: tabular-nums; }
+    .qty, .unit, .money { white-space: nowrap; width: 1%; font-variant-numeric: tabular-nums; }
+    .money { text-align: right; }
+    th.money { text-align: right; }
     .note { color: var(--muted); font-size: 12px; }
     .empty {
       color: var(--muted);
@@ -120,6 +122,7 @@
             <th class="unit">Unit</th>
             <th>Item</th>
             <th>Notes</th>
+            <th class="money">Total (incl. HST)</th>
           </tr>
         </thead>
         <tbody>
@@ -135,6 +138,7 @@
                 @endif
               </td>
               <td class="note">{{ filled($row['note'] ?? '') ? e($row['note']) : '—' }}</td>
+              <td class="money">{{ e($row['with_tax_label']) }}</td>
             </tr>
           @endforeach
         </tbody>
@@ -150,6 +154,7 @@
             <th class="unit">Unit</th>
             <th>Item</th>
             <th>Notes</th>
+            <th class="money">Total (incl. HST)</th>
           </tr>
         </thead>
         <tbody>
@@ -159,6 +164,7 @@
               <td class="unit">{{ e($row['unit']) }}</td>
               <td>{{ e($row['label']) }}</td>
               <td class="note">{{ filled($row['note'] ?? '') ? e($row['note']) : '—' }}</td>
+              <td class="money">{{ e($row['with_tax_label']) }}</td>
             </tr>
           @endforeach
         </tbody>
