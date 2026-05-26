@@ -480,6 +480,7 @@ class PavingQuotationController extends Controller
     {
         $moneyKeys = ['stone_price_per_stone', 'helper_hourly_rate', 'owner_hourly_rate', 'marble_price_per_stone', 'manual_price_override'];
         $optionalEmptyToNull = ['marble_price_per_stone', 'manual_price_override'];
+        $emptyMeansZero = ['helper_hourly_rate', 'owner_hourly_rate'];
 
         foreach ($moneyKeys as $key) {
             if (! $request->exists($key)) {
@@ -488,6 +489,11 @@ class PavingQuotationController extends Controller
             $v = $request->input($key);
             if (($v === '' || $v === null) && in_array($key, $optionalEmptyToNull, true)) {
                 $request->merge([$key => null]);
+
+                continue;
+            }
+            if (($v === '' || $v === null) && in_array($key, $emptyMeansZero, true)) {
+                $request->merge([$key => '0']);
 
                 continue;
             }

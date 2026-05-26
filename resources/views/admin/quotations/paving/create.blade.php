@@ -577,13 +577,13 @@
                   <div class="admin-form-group">
                     <label for="pq-helper">Helper hourly rate ($/hr)</label>
                     <input type="text" id="pq-helper" name="helper_hourly_rate" class="admin-input pq-calc-in cp-money-input"
-                           inputmode="decimal" autocomplete="off" placeholder="0.00"
+                           data-cp-money-entry="direct" inputmode="decimal" autocomplete="off" placeholder="0.00"
                            value="{{ old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? 0), 2, '.', '')) }}">
                   </div>
                   <div class="admin-form-group">
                     <label for="pq-owner">Owner hourly rate ($/hr)</label>
                     <input type="text" id="pq-owner" name="owner_hourly_rate" class="admin-input pq-calc-in cp-money-input"
-                           inputmode="decimal" autocomplete="off" placeholder="0.00"
+                           data-cp-money-entry="direct" inputmode="decimal" autocomplete="off" placeholder="0.00"
                            value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
                   </div>
                 </div>
@@ -805,6 +805,22 @@
 
       var form = document.getElementById('pq-main-form');
       var intent = document.getElementById('pq-save-intent');
+
+      function normalizeLabourRateField(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var raw = (el.value || '').trim().replace(/,/g, '');
+        var n = raw === '' ? 0 : (window.cpMoneyMask ? window.cpMoneyMask.parse(raw) : parseFloat(raw));
+        if (!isFinite(n) || n < 0) n = 0;
+        el.value = n.toFixed(2);
+      }
+
+      function normalizeLabourRateFields() {
+        normalizeLabourRateField('pq-helper');
+        normalizeLabourRateField('pq-owner');
+      }
+
+      form.addEventListener('submit', normalizeLabourRateFields);
       document.getElementById('pq-btn-draft').addEventListener('click', function () {
         intent.value = 'draft';
         form.querySelector('#pq-client').removeAttribute('required');
@@ -1025,6 +1041,7 @@
         root.innerHTML = html;
       }
       function runPreview() {
+        normalizeLabourRateFields();
         var fd = new FormData(form);
         fd.delete('_method');
         fetch(previewUrl, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })

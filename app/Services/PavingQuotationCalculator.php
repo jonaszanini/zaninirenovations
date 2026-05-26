@@ -50,8 +50,12 @@ class PavingQuotationCalculator
         $waste = (float) ($inputs['waste_factor'] ?? 0.05);
         $depthIn = max(0.0, (float) ($inputs['excavation_depth_in'] ?? 12));
         $hst = (float) ($inputs['hst_rate'] ?? 0.13);
-        $helperRate = max(0.0, (float) ($inputs['helper_hourly_rate'] ?? 21));
-        $ownerRate = max(0.0, (float) ($inputs['owner_hourly_rate'] ?? 65));
+        $helperRate = array_key_exists('helper_hourly_rate', $inputs)
+            ? max(0.0, (float) $inputs['helper_hourly_rate'])
+            : 21.0;
+        $ownerRate = array_key_exists('owner_hourly_rate', $inputs)
+            ? max(0.0, (float) $inputs['owner_hourly_rate'])
+            : 65.0;
         $miniDays = max(0.0, (float) ($inputs['mini_skid_days'] ?? 0));
         $plateDays = max(0.0, (float) ($inputs['plate_compactor_days'] ?? 0));
         $profitMargin = max(0.0, (float) ($inputs['profit_margin'] ?? 0.05));

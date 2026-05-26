@@ -85,7 +85,7 @@
     }
     var minor = parseToMinorUnits(raw);
     if (minor === 0) {
-      input.value = '';
+      input.value = formatMinorUnits(0, places);
       return;
     }
     input.value = formatMinorUnits(minor, places);
