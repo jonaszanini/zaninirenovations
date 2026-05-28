@@ -54,7 +54,7 @@
       </table>
     </div>
     @if ($clients->hasPages())
-      <div style="margin-top:16px;">{{ $clients->links() }}</div>
+      <div style="margin-top:16px;">{{ $clients->links('pagination.admin') }}</div>
     @endif
   </div>
 @endsection

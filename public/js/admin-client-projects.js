@@ -505,6 +505,99 @@
     syncCreateVisitFields();
   }
 
+  function initScheduleToggle(opts) {
+    var toggle = document.getElementById(opts.toggleId);
+    if (!toggle) return;
+    var expandable = document.getElementById(opts.expandableId);
+    var start = document.getElementById(opts.startId);
+    var end = document.getElementById(opts.endId);
+    var warn = opts.warningId ? document.getElementById(opts.warningId) : null;
+    var form = opts.formId ? document.getElementById(opts.formId) : null;
+
+    function syncExpandable() {
+      if (!expandable) return;
+      var open = toggle.checked;
+      expandable.classList.toggle('is-open', open);
+      expandable.setAttribute('aria-hidden', open ? 'false' : 'true');
+    }
+
+    function checkDates() {
+      if (!start || !end || !warn) return true;
+      if (!toggle.checked || !start.value || !end.value) {
+        warn.style.display = 'none';
+        warn.textContent = '';
+        return true;
+      }
+      if (start.value > end.value) {
+        warn.textContent = 'The start date is after the end date. Choose an end date on or after the start date (same day is fine), then save.';
+        warn.style.display = 'block';
+        return false;
+      }
+      warn.style.display = 'none';
+      warn.textContent = '';
+      return true;
+    }
+
+    function syncFields() {
+      if (!toggle.checked) {
+        if (start) start.value = '';
+        if (end) end.value = '';
+        if (warn) {
+          warn.style.display = 'none';
+          warn.textContent = '';
+        }
+      }
+      if (start) start.disabled = !toggle.checked;
+      if (end) end.disabled = !toggle.checked;
+      syncExpandable();
+    }
+
+    toggle.addEventListener('change', syncFields);
+    if (start) start.addEventListener('change', checkDates);
+    if (end) end.addEventListener('change', checkDates);
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        if (!toggle.checked) {
+          if (start) {
+            start.disabled = false;
+            start.value = '';
+          }
+          if (end) {
+            end.disabled = false;
+            end.value = '';
+          }
+        }
+        if (!checkDates()) {
+          e.preventDefault();
+          if (warn) warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    }
+    syncFields();
+  }
+
+  function initCreateScheduleFields() {
+    initScheduleToggle({
+      toggleId: 'cp-create-schedule-enabled',
+      expandableId: 'cp-create-schedule-expandable',
+      startId: 'cp-start-date',
+      endId: 'cp-end-date',
+      warningId: 'cp-create-date-warning',
+      formId: 'cp-create-project-form',
+    });
+  }
+
+  function initEditScheduleFields() {
+    initScheduleToggle({
+      toggleId: 'cp-edit-schedule-enabled',
+      expandableId: 'cp-edit-schedule-expandable',
+      startId: 'cp-start-date',
+      endId: 'cp-end-date',
+      warningId: 'cp-edit-date-warning',
+      formId: 'cp-edit-project-form',
+    });
+  }
+
   // --- Dynamic installment editor --------------------------------------
 
   // Pre-populated percentages whenever a plan is (re)selected.
@@ -869,6 +962,8 @@
     initHelperAckForm();
     initBillingTypeToggle();
     initCreateVisitFields();
+    initCreateScheduleFields();
+    initEditScheduleFields();
 
     var planSelect = document.getElementById('cp-plan');
     if (!planSelect) return;

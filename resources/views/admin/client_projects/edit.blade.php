@@ -31,10 +31,10 @@
 
       <div class="admin-form-group">
         <label for="cp-conversation-on" class="cp-label-with-hint">
+          Conversation on
           @include('admin.client_projects._cp_field_hint', [
             'text' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
           ])
-          Conversation on
         </label>
         <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
           <option value="" @selected(old('conversation_on', $project->conversation_on) === null || old('conversation_on', $project->conversation_on) === '')>— Not set —</option>
@@ -113,8 +113,12 @@
         ])
 
         <div class="admin-form-section" style="margin-top:1rem;padding-top:1rem;border-top:1px dashed #e5e7eb;">
-          <h3 style="font-size:1rem;">Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span></h3>
-          <p class="admin-form-help">When the payer is a company or a different legal entity, enter the name and address that should appear in the <strong>Bill to</strong> block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.</p>
+          <h3 style="font-size:1rem;" class="cp-label-with-hint">
+            Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span>
+            @include('admin.client_projects._cp_field_hint', [
+              'text' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+            ])
+          </h3>
           <div class="admin-form-group">
             <label for="cp-invoice-billing-name">Legal billing name</label>
             <input type="text" id="cp-invoice-billing-name" name="invoice_billing_name"
@@ -155,22 +159,26 @@
         ])
       </div>
 
-      <div class="admin-form-section">
-        <h3>Schedule <span class="admin-form-help cp-inline-help" title="Optional. Used to show the project on the Project Calendar page and to send an 'Add to Google Calendar' email.">?</span></h3>
-        <div id="cp-edit-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
-        <div class="admin-form-grid-2">
-          <div class="admin-form-group">
-            <label for="cp-start-date">Start date</label>
-            <input type="date" id="cp-start-date" name="start_date" value="{{ old('start_date', optional($project->start_date)->toDateString()) }}">
-            @error('start_date') <p class="admin-form-error">{{ $message }}</p> @enderror
-          </div>
-          <div class="admin-form-group">
-            <label for="cp-end-date">End date</label>
-            <input type="date" id="cp-end-date" name="end_date" value="{{ old('end_date', optional($project->end_date)->toDateString()) }}">
-            @error('end_date') <p class="admin-form-error">{{ $message }}</p> @enderror
-            <p class="admin-form-help">Same-day start &amp; end is allowed for small projects.</p>
-          </div>
-        </div>
+      @php
+        $cpEditStartDateVal = old('start_date', optional($project->start_date)->toDateString());
+        $cpEditEndDateVal = old('end_date', optional($project->end_date)->toDateString());
+        $cpEditScheduleChecked = filled($cpEditStartDateVal) || filled($cpEditEndDateVal)
+          || $errors->has('start_date')
+          || $errors->has('end_date');
+        $cpEditScheduleExpandOpen = $cpEditScheduleChecked;
+      @endphp
+      <div class="admin-form-section cp-visit-section">
+        @include('admin.client_projects._schedule_toggle', [
+          'scheduleToggleId' => 'cp-edit-schedule-enabled',
+          'scheduleChecked' => $cpEditScheduleChecked,
+          'expandableId' => 'cp-edit-schedule-expandable',
+          'warningId' => 'cp-edit-date-warning',
+          'startDateId' => 'cp-start-date',
+          'endDateId' => 'cp-end-date',
+          'startDateValue' => $cpEditStartDateVal,
+          'endDateValue' => $cpEditEndDateVal,
+          'expandOpen' => $cpEditScheduleExpandOpen,
+        ])
       </div>
 
       <div class="admin-form-section">
@@ -275,9 +283,6 @@
     (function () {
       var form = document.getElementById('cp-edit-project-form');
       if (!form) return;
-      var start = document.getElementById('cp-start-date');
-      var end = document.getElementById('cp-end-date');
-      var warn = document.getElementById('cp-edit-date-warning');
       var visitCb = document.getElementById('cp-edit-visit-required');
       var visitDate = document.getElementById('cp-edit-visit-date');
       var visitDoneCb = document.getElementById('cp-edit-visit-done');
@@ -305,42 +310,17 @@
         syncEditVisitExpandable();
       }
 
-      function checkEditDates() {
-        if (!start || !end || !warn) return true;
-        if (!start.value || !end.value) {
-          warn.style.display = 'none';
-          warn.textContent = '';
-          return true;
-        }
-        if (start.value > end.value) {
-          warn.textContent = 'The start date is after the end date. Choose an end date on or after the start date (same day is fine), then save.';
-          warn.style.display = 'block';
-          return false;
-        }
-        warn.style.display = 'none';
-        warn.textContent = '';
-        return true;
-      }
-
-      if (start && end && warn) {
-        start.addEventListener('change', checkEditDates);
-        end.addEventListener('change', checkEditDates);
-      }
       if (visitCb) visitCb.addEventListener('change', syncEditVisitFields);
       if (visitDoneCb) visitDoneCb.addEventListener('change', syncEditVisitFields);
       if (visitDate) visitDate.addEventListener('change', syncEditVisitExpandable);
       if (visitDate) visitDate.addEventListener('input', syncEditVisitExpandable);
       syncEditVisitFields();
 
-      form.addEventListener('submit', function (e) {
+      form.addEventListener('submit', function () {
         if (visitDate && visitCb && !visitCb.checked && !(visitDoneCb && visitDoneCb.checked)) {
           visitDate.disabled = false;
           visitDate.readOnly = false;
           visitDate.value = '';
-        }
-        if (!checkEditDates()) {
-          e.preventDefault();
-          if (warn) warn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       });
     })();

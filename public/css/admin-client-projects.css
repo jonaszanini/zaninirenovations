@@ -441,8 +441,26 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   align-items: center;
   gap: 6px;
 }
-.cp-client-directory-picker__actions {
-  margin-top: 8px;
+.cp-client-directory-picker__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.cp-client-directory-picker__head .cp-label-with-hint {
+  margin: 0;
+}
+.cp-send-client-email-row {
+  margin-top: -4px;
+}
+.cp-send-client-email-row .admin-checkbox__text {
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .cp-send-client-email-row .admin-checkbox__text {
+    white-space: normal;
+  }
 }
 
 /* =================================================================
@@ -4129,6 +4147,9 @@ body.cp-modal-open {
 }
 .cp-visit-expandable.is-open .cp-visit-expandable__inner > .cp-visit-date {
   padding-top: 4px;
+}
+.cp-visit-expandable.is-open .cp-visit-expandable__inner > .cp-schedule-dates {
+  padding-top: 12px;
 }
 .cp-visit-done-row {
   margin-bottom: 0;
