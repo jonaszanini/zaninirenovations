@@ -209,6 +209,33 @@
       line-height: 1.45;
     }
 
+    .quote-payment-schedule {
+      margin: 14pt 0 16pt;
+      padding: 10pt 12pt;
+      background: #f8fafc;
+      border-left: 3pt solid #024768;
+      page-break-inside: avoid;
+    }
+    .quote-payment-schedule-title {
+      margin: 0 0 8pt;
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #024768;
+    }
+    .quote-payment-schedule ul {
+      margin: 0;
+      padding: 0 0 0 16pt;
+    }
+    .quote-payment-schedule li {
+      margin: 0 0 6pt;
+      font-size: 10.5pt;
+      color: #1f2937;
+      line-height: 1.45;
+    }
+    .quote-payment-schedule li:last-child {
+      margin-bottom: 0;
+    }
+
     /* Items table */
     .items {
       width: 100%;
@@ -465,6 +492,15 @@
       HST is scaled to keep the same taxable and exempt mix as those lines.
     </p>
   @endif
+
+  <div class="quote-payment-schedule">
+    <p class="quote-payment-schedule-title">Payment Schedule &amp; Terms</p>
+    <ul>
+      <li><strong>30% Secure Booking Deposit:</strong> Required to reserve your project dates in our schedule.</li>
+      <li><strong>30% Commencement Payment:</strong> Due one day prior to the project start date.</li>
+      <li><strong>40% Completion Payment:</strong> Due upon final completion of the work.</li>
+    </ul>
+  </div>
 
   @if ($pdfPhotos->isNotEmpty())
     <div class="pdf-photos-section">
