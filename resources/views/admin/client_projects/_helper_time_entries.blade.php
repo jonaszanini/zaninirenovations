@@ -156,21 +156,19 @@
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Start time</label>
-                    <select name="start_time" class="cp-time-select" data-cp-time-start>
-                      <option value="">—</option>
-                      @foreach ($timeOptions as $val => $label)
-                        <option value="{{ $val }}" @selected($entry->start_time === $val)>{{ $label }}</option>
-                      @endforeach
-                    </select>
+                    @include('admin.client_projects._cp_time_input', [
+                      'name' => 'start_time',
+                      'role' => 'start',
+                      'value' => $entry->start_time,
+                    ])
                   </div>
                   <div class="admin-form-group col-2">
                     <label>End time</label>
-                    <select name="end_time" class="cp-time-select" data-cp-time-end>
-                      <option value="">—</option>
-                      @foreach ($timeOptions as $val => $label)
-                        <option value="{{ $val }}" @selected($entry->end_time === $val)>{{ $label }}</option>
-                      @endforeach
-                    </select>
+                    @include('admin.client_projects._cp_time_input', [
+                      'name' => 'end_time',
+                      'role' => 'end',
+                      'value' => $entry->end_time,
+                    ])
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Note</label>

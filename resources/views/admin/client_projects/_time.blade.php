@@ -4,19 +4,6 @@
   $netAfterHst = $project->netProfitAfterHst();
   $hourlyRate = $project->effectiveHourlyRate();
   $configuredRate = $isHourly ? (float) ($project->hourly_rate ?? 0) : null;
-
-  // 15-minute slots (00:00–23:45) plus 23:59 as end-of-day. Values stay
-  // zero-padded HH:MM for DB consistency; labels use 24h without a leading
-  // zero on the hour (9:00, 13:00) for easier reading on phones. When end <
-  // start, duration spans midnight (e.g. 20:00 → 8:00).
-  $timeOptions = [];
-  for ($minutes = 0; $minutes < 24 * 60; $minutes += 15) {
-    $h = intdiv($minutes, 60);
-    $m = $minutes % 60;
-    $value = sprintf('%02d:%02d', $h, $m);
-    $timeOptions[$value] = sprintf('%d:%02d', $h, $m);
-  }
-  $timeOptions['23:59'] = '23:59';
 @endphp
 
 <div class="admin-card">
@@ -30,21 +17,11 @@
       </div>
       <div class="admin-form-group">
         <label>Start time</label>
-        <select name="start_time" class="cp-time-select" data-cp-time-start>
-          <option value="">—</option>
-          @foreach ($timeOptions as $val => $label)
-            <option value="{{ $val }}">{{ $label }}</option>
-          @endforeach
-        </select>
+        @include('admin.client_projects._cp_time_input', ['name' => 'start_time', 'role' => 'start'])
       </div>
       <div class="admin-form-group">
         <label>End time</label>
-        <select name="end_time" class="cp-time-select" data-cp-time-end>
-          <option value="">—</option>
-          @foreach ($timeOptions as $val => $label)
-            <option value="{{ $val }}">{{ $label }}</option>
-          @endforeach
-        </select>
+        @include('admin.client_projects._cp_time_input', ['name' => 'end_time', 'role' => 'end'])
       </div>
       <div class="admin-form-group">
         <label>Hours
@@ -123,21 +100,19 @@
                   </div>
                   <div class="admin-form-group">
                     <label>Start time</label>
-                    <select name="start_time" class="cp-time-select" data-cp-time-start>
-                      <option value="">—</option>
-                      @foreach ($timeOptions as $val => $label)
-                        <option value="{{ $val }}" @selected($entry->start_time === $val)>{{ $label }}</option>
-                      @endforeach
-                    </select>
+                    @include('admin.client_projects._cp_time_input', [
+                      'name' => 'start_time',
+                      'role' => 'start',
+                      'value' => $entry->start_time,
+                    ])
                   </div>
                   <div class="admin-form-group">
                     <label>End time</label>
-                    <select name="end_time" class="cp-time-select" data-cp-time-end>
-                      <option value="">—</option>
-                      @foreach ($timeOptions as $val => $label)
-                        <option value="{{ $val }}" @selected($entry->end_time === $val)>{{ $label }}</option>
-                      @endforeach
-                    </select>
+                    @include('admin.client_projects._cp_time_input', [
+                      'name' => 'end_time',
+                      'role' => 'end',
+                      'value' => $entry->end_time,
+                    ])
                   </div>
                   <div class="admin-form-group">
                     <label>Hours</label>

@@ -300,6 +300,73 @@
 
   // --- Time-entry form: start/end → hours -----------------------------
 
+  function stripTimeDigits(value) {
+    return (value || '').replace(/\D/g, '').slice(0, 4);
+  }
+
+  function formatTimeMaskFromDigits(digits) {
+    var len = digits.length;
+    if (len === 0) return '';
+    if (len <= 2) return digits;
+    if (len === 3) return digits.charAt(0) + ':' + digits.slice(1);
+    return digits.slice(0, 2) + ':' + digits.slice(2);
+  }
+
+  function normalizeTimeInputValue(value) {
+    var digits = stripTimeDigits(value);
+    if (digits.length === 0) return '';
+    var h;
+    var m;
+    if (digits.length <= 2) {
+      h = parseInt(digits, 10);
+      m = 0;
+    } else if (digits.length === 3) {
+      h = parseInt(digits.charAt(0), 10);
+      m = parseInt(digits.slice(1), 10);
+    } else {
+      h = parseInt(digits.slice(0, 2), 10);
+      m = parseInt(digits.slice(2), 10);
+    }
+    if (isNaN(h) || isNaN(m) || h > 23 || m > 59) return null;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  function wireTimeInputMask(input, onChange) {
+    if (!input || input._cpTimeMaskWired) return;
+    input._cpTimeMaskWired = true;
+
+    input.addEventListener('keydown', function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.key && ev.key.length > 1) return;
+      if (!/^\d$/.test(ev.key)) ev.preventDefault();
+    });
+
+    input.addEventListener('input', function () {
+      var digits = stripTimeDigits(input.value);
+      var formatted = formatTimeMaskFromDigits(digits);
+      if (formatted !== input.value) input.value = formatted;
+      input.setCustomValidity('');
+      if (typeof onChange === 'function') onChange();
+    });
+
+    input.addEventListener('blur', function () {
+      if (!stripTimeDigits(input.value).length) {
+        input.value = '';
+        input.setCustomValidity('');
+        if (typeof onChange === 'function') onChange();
+        return;
+      }
+      var normalized = normalizeTimeInputValue(input.value);
+      if (normalized === null) {
+        input.setCustomValidity('Enter a valid time like 09:30 (hours 0–23, minutes 0–59).');
+      } else {
+        input.setCustomValidity('');
+        input.value = normalized;
+      }
+      if (typeof onChange === 'function') onChange();
+    });
+  }
+
   // Parses "HH:MM" (24h) into integer minutes-since-midnight.
   function parseHhMm(value) {
     if (!value || typeof value !== 'string') return null;
@@ -322,33 +389,14 @@
     if (!form || form._cpTimeWired) return;
     form._cpTimeWired = true;
 
-    var startSel = form.querySelector('[data-cp-time-start]');
-    var endSel = form.querySelector('[data-cp-time-end]');
+    var startInput = form.querySelector('[data-cp-time-start]');
+    var endInput = form.querySelector('[data-cp-time-end]');
     var hoursInput = form.querySelector('[data-cp-time-hours]');
-    if (!startSel || !endSel || !hoursInput) return;
-
-    // --- 1) Only digits and (at most) one decimal separator in Hours -----
-    hoursInput.addEventListener('keydown', function (ev) {
-      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-      if (ev.key && ev.key.length > 1) return; // arrows, backspace, tab...
-      if (ev.key === '.' || ev.key === ',') {
-        if (hoursInput.value.indexOf('.') !== -1) ev.preventDefault();
-        return;
-      }
-      if (!/^\d$/.test(ev.key)) ev.preventDefault();
-    });
-    hoursInput.addEventListener('input', function () {
-      var v = hoursInput.value.replace(/,/g, '.').replace(/[^\d.]/g, '');
-      var firstDot = v.indexOf('.');
-      if (firstDot !== -1) {
-        v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
-      }
-      if (v !== hoursInput.value) hoursInput.value = v;
-    });
+    if (!startInput || !endInput || !hoursInput) return;
 
     function syncFromTimes() {
-      var startMin = parseHhMm(startSel.value);
-      var endMin = parseHhMm(endSel.value);
+      var startMin = parseHhMm(startInput.value);
+      var endMin = parseHhMm(endInput.value);
 
       if (startMin !== null && endMin !== null) {
         if (endMin === startMin) {
@@ -370,8 +418,6 @@
         hoursInput.setCustomValidity('');
         hoursInput.title = 'Calculated from start and end times. Clear End to edit manually or to save as in-progress.';
       } else if (startMin !== null && endMin === null) {
-        // "Start only" mode — server will save this as an in-progress entry,
-        // so leave hours empty + unlock for optional manual override.
         hoursInput.readOnly = false;
         hoursInput.classList.remove('is-locked');
         hoursInput.setCustomValidity('');
@@ -383,8 +429,43 @@
         hoursInput.title = '';
       }
     }
-    startSel.addEventListener('change', syncFromTimes);
-    endSel.addEventListener('change', syncFromTimes);
+
+    wireTimeInputMask(startInput, syncFromTimes);
+    wireTimeInputMask(endInput, syncFromTimes);
+
+    form.addEventListener('submit', function () {
+      [startInput, endInput].forEach(function (input) {
+        if (!stripTimeDigits(input.value).length) {
+          input.value = '';
+          input.setCustomValidity('');
+          return;
+        }
+        var normalized = normalizeTimeInputValue(input.value);
+        if (normalized !== null) {
+          input.value = normalized;
+          input.setCustomValidity('');
+        }
+      });
+    });
+    // --- Hours field: digits and (at most) one decimal separator ---------
+    hoursInput.addEventListener('keydown', function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.key && ev.key.length > 1) return; // arrows, backspace, tab...
+      if (ev.key === '.' || ev.key === ',') {
+        if (hoursInput.value.indexOf('.') !== -1) ev.preventDefault();
+        return;
+      }
+      if (!/^\d$/.test(ev.key)) ev.preventDefault();
+    });
+    hoursInput.addEventListener('input', function () {
+      var v = hoursInput.value.replace(/,/g, '.').replace(/[^\d.]/g, '');
+      var firstDot = v.indexOf('.');
+      if (firstDot !== -1) {
+        v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
+      }
+      if (v !== hoursInput.value) hoursInput.value = v;
+    });
+
     syncFromTimes();
   }
 

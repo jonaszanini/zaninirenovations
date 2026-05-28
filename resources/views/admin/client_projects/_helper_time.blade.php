@@ -5,15 +5,6 @@
   $assignedHelpers = $project->helpers->sortBy('name')->values();
   $paymentMethods = ClientProjectHelperPayment::paymentMethodOptions();
 
-  $timeOptions = [];
-  for ($minutes = 0; $minutes < 24 * 60; $minutes += 15) {
-    $h = intdiv($minutes, 60);
-    $m = $minutes % 60;
-    $value = sprintf('%02d:%02d', $h, $m);
-    $timeOptions[$value] = sprintf('%d:%02d', $h, $m);
-  }
-  $timeOptions['23:59'] = '23:59';
-
   $unpaidClosed = $project->helperTimeEntries
       ->filter(fn ($e) => $e->isPayable() && ! $e->isPaid())
       ->values();
@@ -112,21 +103,11 @@
           </div>
           <div class="admin-form-group col-2">
             <label>Start time</label>
-            <select name="start_time" class="cp-time-select" data-cp-time-start>
-              <option value="">—</option>
-              @foreach ($timeOptions as $val => $label)
-                <option value="{{ $val }}">{{ $label }}</option>
-              @endforeach
-            </select>
+            @include('admin.client_projects._cp_time_input', ['name' => 'start_time', 'role' => 'start', 'value' => old('start_time')])
           </div>
           <div class="admin-form-group col-2">
             <label>End time</label>
-            <select name="end_time" class="cp-time-select" data-cp-time-end>
-              <option value="">—</option>
-              @foreach ($timeOptions as $val => $label)
-                <option value="{{ $val }}">{{ $label }}</option>
-              @endforeach
-            </select>
+            @include('admin.client_projects._cp_time_input', ['name' => 'end_time', 'role' => 'end', 'value' => old('end_time')])
           </div>
           <div class="admin-form-group col-2">
             <label>Note (optional)</label>
@@ -275,7 +256,6 @@
         @include('admin.client_projects._helper_time_entries', [
           'project' => $project,
           'assignedHelpers' => $assignedHelpers,
-          'timeOptions' => $timeOptions,
           'showPayCheckboxes' => $unpaidClosed->isNotEmpty(),
           'payFormId' => $unpaidClosed->isNotEmpty() ? 'cp-helper-pay-form' : null,
           'showAckCheckboxes' => $pendingAckPayments->isNotEmpty(),

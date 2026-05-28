@@ -931,9 +931,15 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-time-form-grid .admin-form-group { margin-bottom: 0; }
 .cp-time-form-grid .admin-form-group input,
-.cp-time-form-grid .admin-form-group select {
+.cp-time-form-grid .admin-form-group select,
+.cp-helper-time-form-grid .admin-form-group input,
+.cp-helper-time-form-grid .admin-form-group select {
   width: 100%;
   box-sizing: border-box;
+}
+.cp-time-input {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
 }
 .cp-time-help {
   margin: 8px 0 0 0;
