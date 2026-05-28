@@ -441,15 +441,27 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   align-items: center;
   gap: 6px;
 }
-.cp-client-directory-picker__head {
+.cp-client-directory-picker__row {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
 }
-.cp-client-directory-picker__head .cp-label-with-hint {
-  margin: 0;
+.cp-client-directory-picker__field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cp-client-directory-picker__manage {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .cp-client-directory-picker__row {
+    flex-wrap: wrap;
+  }
+  .cp-client-directory-picker__manage {
+    width: 100%;
+    justify-content: center;
+  }
 }
 .cp-send-client-email-row {
   margin-top: -4px;
