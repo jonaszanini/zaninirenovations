@@ -15,10 +15,16 @@
     </a>
   </div>
 
+  @include('admin.quotations._index_project_context')
+
   @if ($quotations->isEmpty())
     <div class="admin-card" style="text-align:center;padding:36px 24px;">
       <p class="admin-form-help" style="margin:0;">
-        No paving quotations yet. Open the calculator to build an Ottawa-aligned estimate from the price database.
+        @if ($filterUnlinkedOnly ?? false)
+          No unlinked paving quotations available. Click <strong>New paving quotation</strong> to build one for this project.
+        @else
+          No paving quotations yet. Open the calculator to build an Ottawa-aligned estimate from the price database.
+        @endif
       </p>
     </div>
   @else

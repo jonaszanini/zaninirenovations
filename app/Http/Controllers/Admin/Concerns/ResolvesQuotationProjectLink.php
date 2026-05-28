@@ -34,4 +34,30 @@ trait ResolvesQuotationProjectLink
         return ! in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true);
     }
 
+    /** When opening a quotation list from a project (?project=), only show unlinked quotes. */
+    protected function quotationIndexLinkProject(Request $request): ?ClientProject
+    {
+        $project = $this->quotationLinkCandidateProject($request);
+        if (! $project || ! $this->quotationProjectAllowsNewLink($project)) {
+            return null;
+        }
+
+        return $project;
+    }
+
+    protected function quotationIndexFiltersUnlinkedOnly(Request $request): bool
+    {
+        return $this->quotationIndexLinkProject($request) !== null;
+    }
+
+    /** @param  \Illuminate\Database\Eloquent\Builder  $query */
+    protected function applyUnlinkedOnlyQuotationIndexFilter($query, Request $request)
+    {
+        if ($this->quotationIndexFiltersUnlinkedOnly($request)) {
+            $query->whereNull('client_project_id');
+        }
+
+        return $query;
+    }
+
 }

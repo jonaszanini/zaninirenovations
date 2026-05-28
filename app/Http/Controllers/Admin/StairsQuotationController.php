@@ -24,14 +24,18 @@ class StairsQuotationController extends Controller
     use HandlesQuotationCommuteExpense;
     use ResolvesQuotationProjectLink;
 
-    public function index()
+    public function index(Request $request)
     {
-        $quotations = StairsQuotation::query()
-            ->with('project')
-            ->orderByDesc('id')
-            ->paginate(30);
+        $quotations = $this->applyUnlinkedOnlyQuotationIndexFilter(
+            StairsQuotation::query()->with('project')->orderByDesc('id'),
+            $request
+        )->paginate(30)->withQueryString();
 
-        return view('admin.quotations.stairs.index', compact('quotations'));
+        return view('admin.quotations.stairs.index', [
+            'quotations' => $quotations,
+            'linkProject' => $this->quotationIndexLinkProject($request),
+            'filterUnlinkedOnly' => $this->quotationIndexFiltersUnlinkedOnly($request),
+        ]);
     }
 
     public function create(Request $request)

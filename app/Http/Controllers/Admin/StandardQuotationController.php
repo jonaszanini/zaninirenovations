@@ -25,15 +25,17 @@ class StandardQuotationController extends Controller
     use HandlesQuotationCommuteExpense;
     use ResolvesQuotationProjectLink;
 
-    public function index()
+    public function index(Request $request)
     {
-        $quotations = StandardQuotation::query()
-            ->with('project')
-            ->orderByDesc('id')
-            ->paginate(30);
+        $quotations = $this->applyUnlinkedOnlyQuotationIndexFilter(
+            StandardQuotation::query()->with('project')->orderByDesc('id'),
+            $request
+        )->paginate(30)->withQueryString();
 
         return view('admin.quotations.standard.index', [
             'quotations' => $quotations,
+            'linkProject' => $this->quotationIndexLinkProject($request),
+            'filterUnlinkedOnly' => $this->quotationIndexFiltersUnlinkedOnly($request),
         ]);
     }
 

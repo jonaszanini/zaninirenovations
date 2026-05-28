@@ -15,10 +15,16 @@
     </a>
   </div>
 
+  @include('admin.quotations._index_project_context')
+
   @if ($quotations->isEmpty())
     <div class="admin-card" style="text-align:center;padding:36px 24px;">
       <p class="admin-form-help" style="margin:0;">
-        No standard quotations yet. Click <strong>New standard quotation</strong> to build materials + labour.
+        @if ($filterUnlinkedOnly ?? false)
+          No unlinked standard quotations available. Click <strong>New standard quotation</strong> to build one for this project.
+        @else
+          No standard quotations yet. Click <strong>New standard quotation</strong> to build materials + labour.
+        @endif
       </p>
     </div>
   @else
