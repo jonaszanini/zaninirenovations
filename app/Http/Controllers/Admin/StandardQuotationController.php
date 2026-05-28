@@ -96,7 +96,7 @@ class StandardQuotationController extends Controller
     public function edit(Request $request, StandardQuotation $standard_quotation)
     {
         $linkableProjects = ClientProject::query()
-            ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED])
+            ->whereNotIn('status', ClientProject::statusesClosedToNewQuotations())
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
@@ -193,8 +193,8 @@ class StandardQuotationController extends Controller
         /** @var ClientProject $project */
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
 
-        if (in_array($project->status, [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED], true)) {
-            return back()->with('error', 'Cannot link to a rejected or completed project.');
+        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
+            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
         }
 
         $lineDesc = trim((string) ($data['link_line_description'] ?? ''));

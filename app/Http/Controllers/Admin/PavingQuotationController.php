@@ -187,8 +187,8 @@ class PavingQuotationController extends Controller
         ]);
 
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
-        if (in_array($project->status, [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED], true)) {
-            return back()->with('error', 'Cannot link to a rejected or completed project.');
+        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
+            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
         }
 
         $lineDesc = trim((string) ($data['link_line_description'] ?? ''));
@@ -297,7 +297,7 @@ class PavingQuotationController extends Controller
         $pricingTiers = PavingPricingTier::query()->orderBy('area_sq_ft')->get();
 
         $linkableProjects = ClientProject::query()
-            ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED])
+            ->whereNotIn('status', ClientProject::statusesClosedToNewQuotations())
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 

@@ -96,7 +96,7 @@
         @csrf
         <div class="cp-status-form-head">
           <label for="cp-status-select" class="cp-status-form-label">Change status</label>
-          <span class="cp-hint" title="Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Scheduled (contract signed + 1st installment paid, waiting for start date) → In Progress → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
+          <span class="cp-hint" title="Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
           <span class="cp-status-form-help">Pick a status to save it instantly.</span>
         </div>
         <div class="cp-status-controls">

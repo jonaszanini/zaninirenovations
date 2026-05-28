@@ -66,10 +66,7 @@ class ClientProjectController extends Controller
             $query->where('status', $filters['status']);
         } elseif ($filters['list'] === 'ongoing') {
             // Emphasise active pipeline: exclude terminal states unless viewing "All".
-            $query->whereNotIn('status', [
-                ClientProject::STATUS_COMPLETED,
-                ClientProject::STATUS_REJECTED,
-            ]);
+            $query->whereNotIn('status', ClientProject::statusesHiddenFromOngoingList());
         }
 
         if ($filters['q'] !== '') {

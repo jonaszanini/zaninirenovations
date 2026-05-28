@@ -22,8 +22,8 @@ class QuotationHubController extends Controller
             $project = ClientProject::query()->find($id);
             if (! $project) {
                 $hubProjectError = 'That project was not found.';
-            } elseif (in_array($project->status, [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED], true)) {
-                $hubProjectError = 'Cannot add quotations to a rejected or completed project.';
+            } elseif (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
+                $hubProjectError = 'This project no longer accepts new quotations.';
             } else {
                 $hubProject = $project;
             }

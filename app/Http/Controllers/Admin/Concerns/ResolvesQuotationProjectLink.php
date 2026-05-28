@@ -31,7 +31,7 @@ trait ResolvesQuotationProjectLink
     /** True when linking is blocked for this project's status (soft-fail returns false). */
     protected function quotationProjectAllowsNewLink(ClientProject $project): bool
     {
-        return ! in_array($project->status, [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED], true);
+        return ! in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true);
     }
 
 }
