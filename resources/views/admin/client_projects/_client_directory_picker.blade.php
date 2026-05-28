@@ -3,15 +3,20 @@
 @endpush
 
 <div class="admin-form-group cp-client-directory-picker">
-  <label for="cp-client-directory">Client from directory</label>
+  <label for="cp-client-directory" class="cp-label-with-hint">
+    @include('admin.client_projects._cp_field_hint', [
+      'text' => 'Type a name, email, or phone. Choosing a client fills the fields below; you can edit them before saving. If no client is selected, a new directory entry is created automatically.',
+    ])
+    Client from directory
+  </label>
   <select id="cp-client-directory" name="client_id">
     <option value="">— Search to select —</option>
   </select>
-  <p class="admin-form-help">
-    Type a name, email, or phone. Choosing a client fills the fields below; you can edit them before saving.
-    If no client is selected, a new directory entry is created automatically.
-    <a href="{{ route('admin.clients.index') }}">Manage clients</a>
-  </p>
+  <div class="cp-client-directory-picker__actions">
+    <a href="{{ route('admin.clients.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+      <i class="fa fa-users" aria-hidden="true"></i> Manage clients
+    </a>
+  </div>
 </div>
 
 @push('scripts')

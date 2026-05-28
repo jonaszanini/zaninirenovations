@@ -429,6 +429,20 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   font-size: 11px;
   font-weight: 700;
   cursor: help;
+  flex-shrink: 0;
+}
+.cp-label-with-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cp-checkbox-text-with-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cp-client-directory-picker__actions {
+  margin-top: 8px;
 }
 
 /* =================================================================

@@ -21,7 +21,7 @@ class ClientProjectContactService
             : null;
 
         if ($clientId === null) {
-            $clientId = $this->createClientFromProjectContact($data);
+            $clientId = $this->resolveOrCreateClientFromProjectContact($data);
         } elseif ($syncDirectory) {
             $this->syncDirectoryFromProjectContact($clientId, $data);
         }
@@ -45,7 +45,7 @@ class ClientProjectContactService
             : $project->client_id;
 
         if ($clientId === null) {
-            $clientId = $this->createClientFromProjectContact($this->mergeProjectContact($project, $data));
+            $clientId = $this->resolveOrCreateClientFromProjectContact($this->mergeProjectContact($project, $data));
         } elseif ($syncDirectory) {
             $this->syncDirectoryFromProjectContact($clientId, $this->mergeProjectContact($project, $data));
         }
@@ -56,21 +56,144 @@ class ClientProjectContactService
     /** Ensure quotation shortcuts and legacy rows gain a directory link. */
     public function ensureProjectLinkedToDirectory(ClientProject $project): void
     {
-        if ($project->client_id) {
+        if ($this->projectHasValidClientLink($project)) {
             return;
         }
 
-        $clientId = $this->createClientFromProjectContact([
-            'client_name' => $project->getRawOriginal('client_name') ?? $project->client_name,
-            'client_email' => $project->getRawOriginal('client_email') ?? $project->client_email,
-            'client_email_secondary' => $project->getRawOriginal('client_email_secondary') ?? $project->client_email_secondary,
-            'client_phone' => $project->getRawOriginal('client_phone') ?? $project->client_phone,
-            'client_address' => $project->getRawOriginal('client_address') ?? $project->client_address,
-        ]);
+        $clientId = $this->resolveOrCreateClientFromProjectContact(
+            $this->contactDataFromProjectRow($project)
+        );
 
         if ($clientId) {
             $project->forceFill(['client_id' => $clientId])->saveQuietly();
         }
+    }
+
+    /**
+     * Link a project to the clients directory using stored project contact fields.
+     *
+     * @return 'already_linked'|'linked_existing'|'created'|'skipped_no_name'
+     */
+    public function linkProjectToClientDirectory(ClientProject $project, bool $dryRun = false): string
+    {
+        if ($this->projectHasValidClientLink($project)) {
+            return 'already_linked';
+        }
+
+        $contact = $this->contactDataFromProjectRow($project);
+        $name = trim((string) ($contact['client_name'] ?? ''));
+        if ($name === '') {
+            return 'skipped_no_name';
+        }
+
+        $existing = $this->findMatchingClient(
+            $name,
+            $contact['client_email'] ?? null,
+            $contact['client_phone'] ?? null
+        );
+
+        if ($existing) {
+            if (! $dryRun) {
+                $project->forceFill(['client_id' => $existing->id])->saveQuietly();
+            }
+
+            return 'linked_existing';
+        }
+
+        if ($dryRun) {
+            return 'created';
+        }
+
+        $clientId = $this->createClientFromProjectContact($contact);
+        if ($clientId) {
+            $project->forceFill(['client_id' => $clientId])->saveQuietly();
+        }
+
+        return $clientId ? 'created' : 'skipped_no_name';
+    }
+
+    public function projectHasValidClientLink(ClientProject $project): bool
+    {
+        if (! $project->client_id) {
+            return false;
+        }
+
+        return Client::query()->whereKey($project->client_id)->exists();
+    }
+
+    /**
+     * Raw project-row contact fields (ignores completion snapshot accessors).
+     *
+     * @return array<string, mixed>
+     */
+    public function contactDataFromProjectRow(ClientProject $project): array
+    {
+        $attrs = $project->getAttributes();
+        $data = [];
+        foreach (ClientProject::clientContactFieldKeys() as $key) {
+            $data[$key] = $attrs[$key] ?? null;
+        }
+
+        return $data;
+    }
+
+    public function findMatchingClient(?string $name, ?string $email, ?string $phone): ?Client
+    {
+        $emailNorm = $this->normalizeEmail($email);
+        if ($emailNorm !== '') {
+            $match = Client::query()
+                ->whereRaw('LOWER(TRIM(email)) = ?', [$emailNorm])
+                ->orderBy('id')
+                ->first();
+            if ($match) {
+                return $match;
+            }
+        }
+
+        $nameNorm = strtolower(trim((string) $name));
+        $phoneNorm = $this->normalizePhoneDigits($phone);
+        if ($nameNorm !== '' && $phoneNorm !== '') {
+            return Client::query()
+                ->whereRaw('LOWER(TRIM(name)) = ?', [$nameNorm])
+                ->where('phone', $phoneNorm)
+                ->orderBy('id')
+                ->first();
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function resolveOrCreateClientFromProjectContact(array $data): ?int
+    {
+        $name = trim((string) ($data['client_name'] ?? ''));
+        if ($name === '') {
+            return null;
+        }
+
+        $existing = $this->findMatchingClient(
+            $name,
+            $data['client_email'] ?? null,
+            $data['client_phone'] ?? null
+        );
+
+        if ($existing) {
+            return $existing->id;
+        }
+
+        return $this->createClientFromProjectContact($data);
+    }
+
+    protected function normalizeEmail(?string $email): string
+    {
+        return strtolower(trim((string) $email));
+    }
+
+    protected function normalizePhoneDigits(?string $phone): string
+    {
+        return preg_replace('/\D/', '', (string) $phone);
     }
 
     public function captureClientSnapshot(ClientProject $project): void
