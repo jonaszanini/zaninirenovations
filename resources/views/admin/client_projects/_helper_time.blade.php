@@ -15,27 +15,20 @@
   $timeOptions['23:59'] = '23:59';
 
   $unpaidClosed = $project->helperTimeEntries
-      ->filter(fn ($e) => ! $e->isPaid() && $e->hours !== null && ! $e->isOpen())
+      ->filter(fn ($e) => $e->isPayable() && ! $e->isPaid())
       ->values();
 
-  $closedHelperEntries = $project->helperTimeEntries
-      ->filter(fn ($e) => $e->hours !== null && ! $e->isOpen());
+  $closedTimeEntries = $project->helperTimeEntries
+      ->filter(fn ($e) => ! $e->isExpense() && $e->hours !== null && ! $e->isOpen());
 
-  $helperTotalHours = round((float) $closedHelperEntries->sum(fn ($e) => (float) $e->hours), 2);
+  $expenseEntries = $project->helperTimeEntries
+      ->filter(fn ($e) => $e->isExpense() && (float) ($e->expense_amount ?? 0) >= 0.01);
 
-  $helperLineAmount = function ($entry) {
-      if ($entry->isPaid() && $entry->payment) {
-          return $entry->lineAmount((float) $entry->payment->hourly_rate);
-      }
-
-      return $entry->lineAmount();
-  };
-
-  $helperTotalLabour = round((float) $closedHelperEntries->sum(fn ($e) => $helperLineAmount($e)), 2);
+  $helperTotalHours = round((float) $closedTimeEntries->sum(fn ($e) => (float) $e->hours), 2);
+  $helperTotalLabour = round((float) $closedTimeEntries->sum(fn ($e) => $e->lineAmount()), 2);
+  $helperTotalReimbursements = round((float) $expenseEntries->sum(fn ($e) => $e->lineAmount()), 2);
   $helperAmountPaid = round((float) $project->helperPayments->sum('total_amount'), 2);
-  $helperAmountToBePaid = round((float) $closedHelperEntries
-      ->filter(fn ($e) => ! $e->isPaid())
-      ->sum(fn ($e) => $helperLineAmount($e)), 2);
+  $helperAmountToBePaid = round((float) $unpaidClosed->sum(fn ($e) => $e->lineAmount()), 2);
 
   $helperOpenCount = $project->helperTimeEntries->filter(fn ($e) => $e->isOpen())->count();
 
@@ -150,6 +143,46 @@
           <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add helper time entry</button>
         </div>
       </form>
+
+      <h4 class="cp-time-saved-heading" style="margin-top:20px;">Log other payment</h4>
+      <p class="admin-form-help cp-time-saved-help">Reimburse the helper for meals, materials they bought, Uber, etc.</p>
+      <form action="{{ route('admin.client-projects.helper-time.store', $project) }}"
+            method="post"
+            class="cp-finance-form cp-helper-panel cp-helper-expense-form">
+        @csrf
+        <input type="hidden" name="entry_type" value="expense">
+        <div class="cp-helper-time-form-grid">
+          <div class="admin-form-group col-3">
+            <label>Helper</label>
+            <select name="helper_id" required>
+              @foreach ($assignedHelpers as $helper)
+                <option value="{{ $helper->id }}" @selected(old('helper_id') == $helper->id)>{{ $helper->name }}</option>
+              @endforeach
+            </select>
+            @error('helper_id') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+          <div class="admin-form-group col-2">
+            <label>Date</label>
+            <input type="date" name="occurred_on" required value="{{ old('occurred_on', now()->toDateString()) }}">
+          </div>
+          <div class="admin-form-group col-3">
+            <label>Reason</label>
+            <input type="text" name="expense_description" maxlength="500" required
+                   value="{{ old('expense_description') }}"
+                   placeholder="e.g. Lunch, screws &amp; anchors, Uber to site">
+            @error('expense_description') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+          <div class="admin-form-group col-2">
+            <label>Amount</label>
+            <input type="text" name="expense_amount" class="cp-money-input" inputmode="decimal" autocomplete="off" required
+                   value="{{ old('expense_amount') }}" placeholder="0.00">
+            @error('expense_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+        </div>
+        <div class="cp-helper-log-form__submit">
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add reimbursement entry</button>
+        </div>
+      </form>
     @endif
   @endif
 
@@ -164,6 +197,10 @@
         <div class="cp-profit-tile">
           <div class="cp-profit-label">Labour total (rate × hours)</div>
           <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($helperTotalLabour) }}</div>
+        </div>
+        <div class="cp-profit-tile">
+          <div class="cp-profit-label">Other reimbursements</div>
+          <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($helperTotalReimbursements) }}</div>
         </div>
         <div class="cp-profit-tile">
           <div class="cp-profit-label">Amount paid</div>
@@ -183,7 +220,7 @@
 
     <h4 class="cp-time-saved-heading" style="margin-top:24px;">Helper entries</h4>
     <p class="admin-form-help cp-time-saved-help">
-      Select unpaid closed days below, then mark as paid. Paid days are locked and recorded as project expenses.
+      Select unpaid entries below, then mark as paid. Paid entries are locked and recorded as project expenses.
       @if ($pendingAckPayments->isNotEmpty())
         Use the checkboxes on days awaiting helper confirmation to mark acknowledged in bulk.
       @endif

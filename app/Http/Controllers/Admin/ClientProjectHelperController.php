@@ -50,6 +50,10 @@ class ClientProjectHelperController extends Controller
             return back()->with('error', 'Time tracking is available once the proposal is accepted.');
         }
 
+        if ($request->input('entry_type') === ClientProjectHelperTimeEntry::TYPE_EXPENSE) {
+            return $this->storeHelperExpense($request, $client_project);
+        }
+
         $data = $this->validateTimeEntry($request);
         $payload = $this->buildTimeEntryPayload($data);
 
@@ -66,13 +70,41 @@ class ClientProjectHelperController extends Controller
 
         $this->assertHelperAssigned($client_project, $helperId);
 
-        $client_project->helperTimeEntries()->create($payload + ['helper_id' => $helperId]);
+        $client_project->helperTimeEntries()->create($payload + [
+            'helper_id' => $helperId,
+            'entry_type' => ClientProjectHelperTimeEntry::TYPE_TIME,
+        ]);
 
         $message = $payload['hours'] === null
             ? 'Helper time entry started — add an end time later to close it.'
             : 'Helper time entry added.';
 
         return back()->withFragment('time')->with('success', $message);
+    }
+
+    private function storeHelperExpense(Request $request, ClientProject $client_project)
+    {
+        $data = $request->validate([
+            'helper_id' => ['required', 'integer', Rule::exists('helpers', 'id')],
+            'occurred_on' => ['required', 'date'],
+            'expense_description' => ['required', 'string', 'max:500'],
+            'expense_amount' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+        ], [
+            'expense_description.required' => 'Describe what this payment is for (e.g. meal, material, Uber).',
+        ]);
+
+        $helperId = (int) $data['helper_id'];
+        $this->assertHelperAssigned($client_project, $helperId);
+
+        $client_project->helperTimeEntries()->create([
+            'helper_id' => $helperId,
+            'entry_type' => ClientProjectHelperTimeEntry::TYPE_EXPENSE,
+            'occurred_on' => $data['occurred_on'],
+            'expense_description' => $data['expense_description'],
+            'expense_amount' => round((float) $data['expense_amount'], 2),
+        ]);
+
+        return back()->withFragment('time')->with('success', 'Helper reimbursement entry added.');
     }
 
     public function updateHelperTime(
@@ -83,10 +115,14 @@ class ClientProjectHelperController extends Controller
         abort_unless($helper_time_entry->client_project_id === $client_project->id, 404);
 
         if ($helper_time_entry->isPaid()) {
-            return back()->withFragment('time')->with('error', 'Paid helper time entries cannot be edited.');
+            return back()->withFragment('time')->with('error', 'Paid helper entries cannot be edited.');
         }
 
-        $data = $this->validateTimeEntry($request);
+        if ($helper_time_entry->isExpense()) {
+            return $this->updateHelperExpense($request, $client_project, $helper_time_entry);
+        }
+
+        $data = $this->validateTimeEntry($request, true);
         $payload = $this->buildTimeEntryPayload($data);
 
         if ($payload === null) {
@@ -102,9 +138,41 @@ class ClientProjectHelperController extends Controller
 
         $this->assertHelperAssigned($client_project, $helperId);
 
-        $helper_time_entry->fill($payload + ['helper_id' => $helperId])->save();
+        $hourlyRate = $this->resolveEntryHourlyRate($data['hourly_rate'] ?? null, $helperId);
+
+        $helper_time_entry->fill($payload + [
+            'helper_id' => $helperId,
+            'hourly_rate' => $hourlyRate,
+        ])->save();
 
         return back()->withFragment('time')->with('success', 'Helper time entry updated.');
+    }
+
+    private function updateHelperExpense(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectHelperTimeEntry $helper_time_entry
+    ) {
+        $data = $request->validate([
+            'helper_id' => ['required', 'integer', Rule::exists('helpers', 'id')],
+            'occurred_on' => ['required', 'date'],
+            'expense_description' => ['required', 'string', 'max:500'],
+            'expense_amount' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+        ], [
+            'expense_description.required' => 'Describe what this payment is for (e.g. meal, material, Uber).',
+        ]);
+
+        $helperId = (int) $data['helper_id'];
+        $this->assertHelperAssigned($client_project, $helperId);
+
+        $helper_time_entry->fill([
+            'helper_id' => $helperId,
+            'occurred_on' => $data['occurred_on'],
+            'expense_description' => $data['expense_description'],
+            'expense_amount' => round((float) $data['expense_amount'], 2),
+        ])->save();
+
+        return back()->withFragment('time')->with('success', 'Helper reimbursement entry updated.');
     }
 
     public function destroyHelperTime(
@@ -114,7 +182,7 @@ class ClientProjectHelperController extends Controller
         abort_unless($helper_time_entry->client_project_id === $client_project->id, 404);
 
         if ($helper_time_entry->isPaid()) {
-            return back()->withFragment('time')->with('error', 'Paid helper time entries cannot be deleted.');
+            return back()->withFragment('time')->with('error', 'Paid helper entries cannot be deleted.');
         }
 
         $helper_time_entry->delete();
@@ -161,12 +229,12 @@ class ClientProjectHelperController extends Controller
                 foreach ($entries as $entry) {
                     if ($entry->isPaid()) {
                         throw ValidationException::withMessages([
-                            'entry_ids' => 'One or more selected days are already marked paid.',
+                            'entry_ids' => 'One or more selected entries are already marked paid.',
                         ]);
                     }
-                    if ($entry->hours === null || $entry->isOpen()) {
+                    if (! $entry->isPayable()) {
                         throw ValidationException::withMessages([
-                            'entry_ids' => 'Only closed entries (with hours) can be marked paid.',
+                            'entry_ids' => 'Only closed time entries or reimbursement entries can be marked paid.',
                         ]);
                     }
                 }
@@ -194,13 +262,30 @@ class ClientProjectHelperController extends Controller
                     ]);
                 }
 
-                $rate = round((float) $helper->hourly_rate, 2);
-                $totalHours = round((float) $entries->sum(fn ($e) => (float) $e->hours), 2);
-                $totalAmount = round($totalHours * $rate, 2);
+                foreach ($entries as $entry) {
+                    if ($entry->isExpense() || $entry->hourly_rate !== null) {
+                        continue;
+                    }
+                    $entry->update([
+                        'hourly_rate' => $entry->effectiveHourlyRate((float) $helper->hourly_rate),
+                    ]);
+                }
+
+                $entries->each->refresh();
+
+                $totalHours = round((float) $entries
+                    ->filter(fn ($e) => ! $e->isExpense())
+                    ->sum(fn ($e) => (float) $e->hours), 2);
+                $totalAmount = round((float) $entries->sum(fn ($e) => $e->lineAmount()), 2);
+                $avgRate = $totalHours > 0
+                    ? round($entries
+                        ->filter(fn ($e) => ! $e->isExpense())
+                        ->sum(fn ($e) => $e->lineAmount()) / $totalHours, 2)
+                    : 0.0;
 
                 if ($totalAmount < 0.01) {
                     throw ValidationException::withMessages([
-                        'entry_ids' => 'The selected entries total zero — check hours and the helper rate.',
+                        'entry_ids' => 'The selected entries total zero — check hours, rates, and amounts.',
                     ]);
                 }
 
@@ -211,7 +296,22 @@ class ClientProjectHelperController extends Controller
 
                 $datesLabel = $sortedDates->count() === 1
                     ? $sortedDates->first()
-                    : $sortedDates->first().' – '.$sortedDates->last().' ('.$sortedDates->count().' days)';
+                    : $sortedDates->first().' – '.$sortedDates->last().' ('.$sortedDates->count().' entries)';
+
+                $expenseParts = [];
+                $timeAmount = round((float) $entries->filter(fn ($e) => ! $e->isExpense())->sum(fn ($e) => $e->lineAmount()), 2);
+                $expenseAmount = round((float) $entries->filter(fn ($e) => $e->isExpense())->sum(fn ($e) => $e->lineAmount()), 2);
+
+                if ($timeAmount >= 0.01) {
+                    $expenseParts[] = sprintf(
+                        '%.2f h labour (%s)',
+                        $totalHours,
+                        ClientProject::formatMoney($timeAmount)
+                    );
+                }
+                if ($expenseAmount >= 0.01) {
+                    $expenseParts[] = sprintf('reimbursements (%s)', ClientProject::formatMoney($expenseAmount));
+                }
 
                 $nextRef = (int) ClientProjectExpense::where('client_project_id', $client_project->id)->max('expense_ref') + 1;
 
@@ -219,11 +319,10 @@ class ClientProjectHelperController extends Controller
                     'expense_ref' => $nextRef,
                     'occurred_on' => $paidOn,
                     'description' => sprintf(
-                        'Helper labour: %s — %s (%.2f h × %s)',
+                        'Helper payment: %s — %s — %s',
                         $helper->name,
                         $datesLabel,
-                        $totalHours,
-                        ClientProject::formatMoney($rate)
+                        implode(' + ', $expenseParts)
                     ),
                     'amount' => $totalAmount,
                 ]);
@@ -234,7 +333,7 @@ class ClientProjectHelperController extends Controller
                     'payment_method' => $data['payment_method'],
                     'total_amount' => $totalAmount,
                     'total_hours' => $totalHours,
-                    'hourly_rate' => $rate,
+                    'hourly_rate' => $avgRate,
                     'client_project_expense_id' => $expense->id,
                     'paid_at' => $paidOn,
                 ]);
@@ -379,18 +478,48 @@ class ClientProjectHelperController extends Controller
         }
     }
 
-    private function validateTimeEntry(Request $request): array
+    private function validateTimeEntry(Request $request, bool $allowHourlyRate = false): array
     {
-        return $request->validate([
+        $rules = [
             'occurred_on' => ['required', 'date'],
             'start_time' => ['nullable', 'regex:/^\d{1,2}:\d{2}$/'],
             'end_time' => ['nullable', 'regex:/^\d{1,2}:\d{2}$/'],
             'hours' => ['nullable', 'numeric', 'min:0.01', 'max:24'],
             'note' => ['nullable', 'string', 'max:500'],
-        ], [
+        ];
+
+        if ($allowHourlyRate) {
+            $rules['hourly_rate'] = ['nullable', 'numeric', 'min:0', 'max:9999.99'];
+        }
+
+        return $request->validate($rules, [
             'start_time.regex' => 'Start time must look like HH:MM (24h).',
             'end_time.regex' => 'End time must look like HH:MM (24h).',
         ]);
+    }
+
+    private function normalizeOptionalHourlyRate(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return round((float) $value, 2);
+    }
+
+    private function resolveEntryHourlyRate(mixed $value, int $helperId): ?float
+    {
+        $rate = $this->normalizeOptionalHourlyRate($value);
+        if ($rate === null) {
+            return null;
+        }
+
+        $helperRate = round((float) (Helper::query()->whereKey($helperId)->value('hourly_rate') ?? 0), 2);
+        if (abs($rate - $helperRate) < 0.001) {
+            return null;
+        }
+
+        return $rate;
     }
 
     private function buildTimeEntryPayload(array $data): ?array

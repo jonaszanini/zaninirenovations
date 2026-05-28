@@ -4507,6 +4507,25 @@ body.cp-modal-open {
   background: #dcfce7;
   color: #166534;
 }
+.cp-helper-entry__type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+  background: #f3f4f6;
+  margin-left: 8px;
+}
+.cp-helper-entry--expense .cp-helper-entry__summary-detail {
+  font-style: normal;
+}
+.cp-helper-expense-form {
+  margin-top: 0;
+}
 .cp-helper-entry__pending-ack {
   color: #b45309;
   font-weight: 500;
