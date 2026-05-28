@@ -300,39 +300,39 @@ class ClientProjectQuotation extends Model
             $clean[] = $cleanRow;
         }
 
-        return $this->normalizeStairsLinkedLineItems(
-            $this->normalizePavingCommuteIntoLabour($clean)
-        );
+        return $this->normalizeStairsLinkedLineItems($clean);
     }
 
     /**
      * Line items rendered on the client PDF. Standard quotations can show
      * either the linked summary lines or a full material/labour breakdown.
+     * Commute fuel is rolled into the primary labour/material line (pre-tax)
+     * with its HST in the footer — never shown as its own row to clients.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
     public function pdfLineItems(): array
     {
-        if ($this->source_type !== self::SOURCE_STANDARD || ! $this->source_id) {
+        if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
+            $sq = StandardQuotation::query()->find($this->source_id);
+            if ($sq) {
+                if ($sq->usesDetailedPdf()) {
+                    $detailed = $sq->detailedPdfLineItems();
+                    $items = $detailed !== [] ? $detailed : $this->cleanItems();
+                } else {
+                    $items = $this->applyStandardSummaryLineWording($this->cleanItems(), $sq);
+                }
+            } else {
+                $items = $this->cleanItems();
+            }
+        } else {
             $items = $this->cleanItems();
-
-            return $this->source_type === self::SOURCE_PAVING
-                ? $this->normalizePavingPdfPreTaxLines($items)
-                : $items;
+            if ($this->source_type === self::SOURCE_PAVING) {
+                $items = $this->normalizePavingPdfPreTaxLines($items);
+            }
         }
 
-        $sq = StandardQuotation::query()->find($this->source_id);
-        if (! $sq) {
-            return $this->cleanItems();
-        }
-
-        if ($sq->usesDetailedPdf()) {
-            $detailed = $sq->detailedPdfLineItems();
-
-            return $detailed !== [] ? $detailed : $this->cleanItems();
-        }
-
-        return $this->applyStandardSummaryLineWording($this->cleanItems(), $sq);
+        return $this->normalizeCommuteForClientFacing($items);
     }
 
     /**
@@ -386,51 +386,104 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Paving quotes: roll commute into the labour line for client-facing documents.
-     * Commute is HST-inclusive; labour HST stays on the original labour base only.
+     * Client PDFs: merge commute (stored HST-inclusive) into the primary
+     * labour/material line as pre-tax, so HST (13%) includes commute tax.
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
      */
-    protected function normalizePavingCommuteIntoLabour(array $items): array
+    protected function normalizeCommuteForClientFacing(array $items): array
     {
-        if ($this->source_type !== self::SOURCE_PAVING) {
-            return $items;
-        }
+        $commuteGross = 0.0;
+        $filtered = [];
 
-        $commuteIdx = null;
-        $labourIdx = null;
-        $commuteAmount = 0.0;
+        foreach ($items as $row) {
+            if (self::isCommuteLineDescription((string) ($row['description'] ?? ''))) {
+                $commuteGross += (float) ($row['amount'] ?? 0);
 
-        foreach ($items as $i => $row) {
-            $desc = (string) ($row['description'] ?? '');
-            if (str_starts_with($desc, 'Commute expense')) {
-                $commuteIdx = $i;
-                $commuteAmount = (float) ($row['amount'] ?? 0);
-            } elseif (str_ends_with($desc, ' — Labour')) {
-                $labourIdx = $i;
+                continue;
             }
+            $filtered[] = $row;
         }
 
-        if ($commuteIdx === null || $labourIdx === null || $commuteAmount <= 0) {
+        if ($commuteGross <= 0 || $filtered === []) {
             return $items;
         }
 
-        $labourRow = $items[$labourIdx];
-        $labourAmount = (float) ($labourRow['amount'] ?? 0);
-        $taxableBase = array_key_exists('hst_taxable_amount', $labourRow)
-            ? (float) $labourRow['hst_taxable_amount']
-            : $labourAmount;
+        $commutePreTax = self::preTaxFromHstIncluded($commuteGross);
+        if ($commutePreTax <= 0) {
+            return $filtered;
+        }
 
-        $items[$labourIdx]['amount'] = round($labourAmount + $commuteAmount, 2);
-        $items[$labourIdx]['hst_taxable_amount'] = round($taxableBase, 2);
-        unset($items[$commuteIdx]);
+        $targetIdx = $this->commuteMergeTargetIndex($filtered);
+        if ($targetIdx === null) {
+            return $items;
+        }
 
-        return array_values($items);
+        $row = &$filtered[$targetIdx];
+        $row['amount'] = round((float) ($row['amount'] ?? 0) + $commutePreTax, 2);
+
+        if (! empty($row['apply_hst'])) {
+            $taxableBase = array_key_exists('hst_taxable_amount', $row)
+                ? (float) $row['hst_taxable_amount']
+                : (float) ($row['amount'] ?? 0) - $commutePreTax;
+            $row['hst_taxable_amount'] = round($taxableBase + $commutePreTax, 2);
+        }
+
+        unset($row);
+
+        return array_values($filtered);
+    }
+
+    protected static function isCommuteLineDescription(string $description): bool
+    {
+        return str_starts_with($description, 'Commute expense');
     }
 
     /**
-     * Paving PDF: show pre-tax line amounts and roll all HST into the footer row
+     * @param  list<array<string, mixed>>  $items
+     */
+    protected function commuteMergeTargetIndex(array $items): ?int
+    {
+        $candidates = [];
+
+        foreach ($items as $i => $row) {
+            if (empty($row['apply_hst'])) {
+                continue;
+            }
+
+            $desc = (string) ($row['description'] ?? '');
+            if (stripos($desc, 'HST exempt') !== false) {
+                continue;
+            }
+
+            $score = 0;
+            if (str_ends_with($desc, ' — Labour')) {
+                $score = 100;
+            } elseif (stripos($desc, 'HST applicable') !== false) {
+                $score = 90;
+            } elseif (preg_match('/\bLabour\b/i', $desc)) {
+                $score = 80;
+            } elseif (stripos($desc, 'Labour and material') !== false || stripos($desc, 'Material and labour') !== false) {
+                $score = 70;
+            } else {
+                $score = 10;
+            }
+
+            $candidates[] = ['index' => $i, 'score' => $score];
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, fn ($a, $b) => $b['score'] <=> $a['score']);
+
+        return $candidates[0]['index'];
+    }
+
+    /**
+     * Paving quotes: show pre-tax line amounts and roll embedded HST into the footer.
      * so clients see one consistent 13% tax line (materials were stored tax-in).
      *
      * @param  list<array<string, mixed>>  $items
