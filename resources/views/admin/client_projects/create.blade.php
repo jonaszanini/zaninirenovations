@@ -55,6 +55,8 @@
             'initialClientForPicker' => null,
           ])
 
+          @include('admin.client_projects._client_directory_sync')
+
           <div class="admin-form-group">
             <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
             <input type="text" id="cp-client-name" name="client_name" value="{{ old('client_name') }}" required maxlength="255"

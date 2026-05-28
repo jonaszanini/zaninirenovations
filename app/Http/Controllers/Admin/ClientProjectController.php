@@ -13,6 +13,7 @@ use App\Models\ClientProjectPhoto;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectPhotoStorage;
 use App\Services\ClientProjectStatusService;
+use App\Services\ClientProjectContactService;
 use App\Support\EasternStandardTimeDisplay;
 use App\Services\GoogleCalendarLink;
 use Illuminate\Http\Request;
@@ -121,7 +122,7 @@ class ClientProjectController extends Controller
         ]);
     }
 
-    public function store(Request $request, ClientProjectStatusService $service, ClientProjectPhotoStorage $photoStorage)
+    public function store(Request $request, ClientProjectStatusService $service, ClientProjectPhotoStorage $photoStorage, ClientProjectContactService $contactService)
     {
         $this->normalisePhoneOnRequest($request);
         $this->normaliseClientAddressGeoOnRequest($request);
@@ -152,6 +153,7 @@ class ClientProjectController extends Controller
             ])],
             'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
             'send_client_email' => ['nullable', 'boolean'],
+            'sync_client_directory' => ['nullable', 'boolean'],
             'visit_required' => ['nullable', 'boolean'],
             'visit_date' => ['nullable', 'date'],
             'start_date' => ['nullable', 'date'],
@@ -166,7 +168,10 @@ class ClientProjectController extends Controller
         // Pulled out before array_merge below because it isn't a column
         // on the projects table — it controls the onCreated side-effect.
         $sendClientEmail = (bool) ($data['send_client_email'] ?? true);
-        unset($data['send_client_email'], $data['photos']);
+        $syncDirectory = (bool) ($data['sync_client_directory'] ?? true);
+        unset($data['send_client_email'], $data['sync_client_directory'], $data['photos']);
+
+        $contactService->applyForCreate($data, $syncDirectory);
 
         foreach (['invoice_billing_name', 'invoice_billing_address', 'conversation_on'] as $k) {
             if (array_key_exists($k, $data) && $data[$k] === '') {
@@ -387,7 +392,7 @@ class ClientProjectController extends Controller
         ]);
     }
 
-    public function update(Request $request, ClientProject $client_project, ClientProjectStatusService $service)
+    public function update(Request $request, ClientProject $client_project, ClientProjectStatusService $service, ClientProjectContactService $contactService)
     {
         $this->normalisePhoneOnRequest($request);
         $this->normaliseClientAddressGeoOnRequest($request);
@@ -396,7 +401,7 @@ class ClientProjectController extends Controller
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'contacted_via' => ['sometimes', 'nullable', Rule::in($contactedViaKeys)],
             'conversation_on' => ['sometimes', 'nullable', Rule::in($contactedViaKeys)],
@@ -422,7 +427,24 @@ class ClientProjectController extends Controller
                 ClientProject::BILLING_HOURLY,
             ])],
             'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
-        ], $this->clientProjectValidationMessages());
+            'sync_client_directory' => ['sometimes', 'boolean'],
+        ];
+
+        if ($client_project->isCompleted()) {
+            $rules['client_id'] = ['sometimes', 'nullable', 'integer', 'exists:clients,id'];
+            foreach (ClientProject::clientContactFieldKeys() as $key) {
+                $rules[$key] = ['sometimes', 'nullable', 'string', 'max:2000'];
+            }
+            $rules['client_email'] = ['sometimes', 'nullable', 'email', 'max:255'];
+            $rules['client_email_secondary'] = ['sometimes', 'nullable', 'email', 'max:255'];
+            $rules['client_phone'] = ['sometimes', 'nullable', 'digits:10'];
+            $rules['client_address'] = ['sometimes', 'nullable', 'string', 'max:500'];
+            $rules['client_address_latitude'] = ['sometimes', 'nullable', 'numeric', 'between:-90,90'];
+            $rules['client_address_longitude'] = ['sometimes', 'nullable', 'numeric', 'between:-180,180'];
+            unset($rules['sync_client_directory']);
+        }
+
+        $validator = Validator::make($request->all(), $rules, $this->clientProjectValidationMessages());
 
         if ($validator->fails()) {
             if ($request->has('billing_type')) {
@@ -469,6 +491,10 @@ class ClientProjectController extends Controller
 
         $previousStart = $client_project->start_date ? $client_project->start_date->toDateString() : null;
         $previousEnd = $client_project->end_date ? $client_project->end_date->toDateString() : null;
+
+        $syncDirectory = $request->boolean('sync_client_directory', true);
+        unset($data['sync_client_directory']);
+        $contactService->applyForUpdate($client_project, $data, $syncDirectory);
 
         $client_project->fill($data)->save();
         $client_project = $service->syncVisitStatusFromFields($client_project->fresh());

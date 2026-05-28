@@ -21,6 +21,15 @@
     <div class="cp-header-row">
       <div class="cp-header-title">
         <div class="cp-client">{{ $project->client_name }}</div>
+        @if ($project->usesClientSnapshot())
+          <p class="admin-form-help" style="margin:4px 0 0;">
+            <i class="fa fa-lock" aria-hidden="true"></i>
+            Client information as of completion
+            @if ($project->clientSnapshotCapturedLabel())
+              ({{ $project->clientSnapshotCapturedLabel() }})
+            @endif
+          </p>
+        @endif
         <h2>{{ $project->name }}</h2>
         <div class="cp-header-contact-block">
           @if (filled($project->notes))

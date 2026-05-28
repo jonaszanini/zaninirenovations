@@ -271,6 +271,7 @@ class StandardQuotationController extends Controller
         });
 
         $statusService->onCreated($project, false);
+        app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
 
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')

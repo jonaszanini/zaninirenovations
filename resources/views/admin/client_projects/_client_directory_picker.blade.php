@@ -8,7 +8,8 @@
     <option value="">— Search to select —</option>
   </select>
   <p class="admin-form-help">
-    Type a name, email, or phone. Choosing a client fills the fields below (you can still edit them for this project only).
+    Type a name, email, or phone. Choosing a client fills the fields below; you can edit them before saving.
+    If no client is selected, a new directory entry is created automatically.
     <a href="{{ route('admin.clients.index') }}">Manage clients</a>
   </p>
 </div>

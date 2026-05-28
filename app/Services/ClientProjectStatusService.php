@@ -9,6 +9,7 @@ use App\Mail\ClientProjectThankYouClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectStatusHistoryEntry;
+use App\Services\ClientProjectContactService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -143,6 +144,7 @@ class ClientProjectStatusService
         // user advances through them explicitly.
 
         if ($toStatus === ClientProject::STATUS_COMPLETED) {
+            app(ClientProjectContactService::class)->captureClientSnapshot($project->fresh());
             $this->safeSendClientThankYou($project);
         }
     }

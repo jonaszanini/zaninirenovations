@@ -12,6 +12,7 @@ use App\Models\PavingPricingTier;
 use App\Models\PavingQuotation;
 use App\Models\PavingStoneType;
 use App\Services\ClientProjectStatusService;
+use App\Services\ClientProjectContactService;
 use App\Services\CommuteExpenseService;
 use App\Services\PavingQuotationCalculator;
 use Illuminate\Http\Request;
@@ -264,6 +265,7 @@ class PavingQuotationController extends Controller
         });
 
         $statusService->onCreated($project, false);
+        app(ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
 
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')

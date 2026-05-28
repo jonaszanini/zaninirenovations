@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\EasternStandardTimeDisplay;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -65,6 +66,8 @@ class ClientProject extends Model
         'client_address_place_id',
         'client_address_latitude',
         'client_address_longitude',
+        'client_snapshot',
+        'client_snapshot_captured_at',
         'invoice_billing_name',
         'invoice_billing_address',
         'notes',
@@ -108,6 +111,8 @@ class ClientProject extends Model
         'hourly_rate' => 'decimal:2',
         'client_address_latitude' => 'decimal:7',
         'client_address_longitude' => 'decimal:7',
+        'client_snapshot' => 'array',
+        'client_snapshot_captured_at' => 'datetime',
     ];
 
     // --- Lifecycle hooks --------------------------------------------------
@@ -168,6 +173,119 @@ class ClientProject extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'client_id');
+    }
+
+    /** Fields stored in the completion-time client snapshot. */
+    public static function clientSnapshotKeys(): array
+    {
+        return [
+            'client_id',
+            'client_name',
+            'client_email',
+            'client_email_secondary',
+            'client_phone',
+            'client_address',
+            'client_address_place_id',
+            'client_address_latitude',
+            'client_address_longitude',
+            'invoice_billing_name',
+            'invoice_billing_address',
+        ];
+    }
+
+    /** Project columns that mirror client contact (excluding directory FK). */
+    public static function clientContactFieldKeys(): array
+    {
+        return [
+            'client_name',
+            'client_email',
+            'client_email_secondary',
+            'client_phone',
+            'client_address',
+            'client_address_place_id',
+            'client_address_latitude',
+            'client_address_longitude',
+            'invoice_billing_name',
+            'invoice_billing_address',
+        ];
+    }
+
+    /** Completed projects with a captured snapshot read frozen contact data. */
+    public function usesClientSnapshot(): bool
+    {
+        return $this->isCompleted()
+            && is_array($this->client_snapshot)
+            && $this->client_snapshot !== [];
+    }
+
+    protected function effectiveClientField(string $key, mixed $raw): mixed
+    {
+        if (! $this->usesClientSnapshot()) {
+            return $raw;
+        }
+
+        $snapshot = $this->client_snapshot;
+
+        return array_key_exists($key, $snapshot) ? $snapshot[$key] : $raw;
+    }
+
+    protected function clientName(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $this->effectiveClientField('client_name', $value));
+    }
+
+    protected function clientEmail(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $this->effectiveClientField('client_email', $value));
+    }
+
+    protected function clientEmailSecondary(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $this->effectiveClientField('client_email_secondary', $value));
+    }
+
+    protected function clientPhone(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $this->effectiveClientField('client_phone', $value));
+    }
+
+    protected function clientAddress(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $this->effectiveClientField('client_address', $value));
+    }
+
+    protected function clientAddressPlaceId(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $this->effectiveClientField('client_address_place_id', $value));
+    }
+
+    protected function clientAddressLatitude(): Attribute
+    {
+        return Attribute::get(fn ($value) => $this->effectiveClientField('client_address_latitude', $value));
+    }
+
+    protected function clientAddressLongitude(): Attribute
+    {
+        return Attribute::get(fn ($value) => $this->effectiveClientField('client_address_longitude', $value));
+    }
+
+    protected function invoiceBillingName(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $this->effectiveClientField('invoice_billing_name', $value));
+    }
+
+    protected function invoiceBillingAddress(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $this->effectiveClientField('invoice_billing_address', $value));
+    }
+
+    public function clientSnapshotCapturedLabel(): ?string
+    {
+        if (! $this->usesClientSnapshot() || ! $this->client_snapshot_captured_at) {
+            return null;
+        }
+
+        return self::formatDateTime($this->client_snapshot_captured_at);
     }
 
     public function installments(): HasMany

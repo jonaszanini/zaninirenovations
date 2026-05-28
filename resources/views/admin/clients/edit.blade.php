@@ -53,7 +53,9 @@
       </div>
 
       <p class="admin-form-help">
-        Linked to <strong>{{ $client->projects()->count() }}</strong> project(s). Changing details here does not automatically change older project PDFs.
+        Linked to <strong>{{ $client->projects()->count() }}</strong> project(s).
+        Edits here update the central directory; active projects can sync these details when saved (see the &ldquo;Update central client record&rdquo; option on each project).
+        Completed projects keep a frozen snapshot from their completion date.
       </p>
 
       <div class="admin-form-actions">

@@ -44,15 +44,21 @@
       <div class="admin-form-section">
         <h3>Client information</h3>
 
-        @include('admin.client_projects._client_directory_picker', [
-          'clientsSearchUrl' => $clientsSearchUrl,
-          'initialClientForPicker' => $initialClientForPicker ?? null,
-        ])
+        @php $clientFieldsLocked = $project->isCompleted(); @endphp
+
+        @unless ($clientFieldsLocked)
+          @include('admin.client_projects._client_directory_picker', [
+            'clientsSearchUrl' => $clientsSearchUrl,
+            'initialClientForPicker' => $initialClientForPicker ?? null,
+          ])
+        @endunless
+
+        @include('admin.client_projects._client_directory_sync', ['project' => $project, 'clientFieldsLocked' => $clientFieldsLocked])
 
         <div class="admin-form-group">
           <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
           <input type="text" id="cp-client-name" name="client_name" value="{{ old('client_name', $project->client_name) }}" required maxlength="255"
-                 @class(['is-invalid' => $errors->has('client_name')])>
+                 @class(['is-invalid' => $errors->has('client_name')]) @disabled($clientFieldsLocked)>
           @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -60,7 +66,7 @@
           <div class="admin-form-group">
             <label for="cp-client-email">Email</label>
             <input type="email" id="cp-client-email" name="client_email" value="{{ old('client_email', $project->client_email) }}" maxlength="255"
-                   @class(['is-invalid' => $errors->has('client_email')])>
+                   @class(['is-invalid' => $errors->has('client_email')]) @disabled($clientFieldsLocked)>
             @error('client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
@@ -73,7 +79,8 @@
                    autocomplete="tel"
                    maxlength="14"
                    placeholder="(xxx) xxx-xxxx"
-                   value="{{ \App\Models\ClientProject::formatPhone(old('client_phone', $project->client_phone)) }}">
+                   value="{{ \App\Models\ClientProject::formatPhone(old('client_phone', $project->client_phone)) }}"
+                   @disabled($clientFieldsLocked)>
             @error('client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </div>
@@ -83,7 +90,7 @@
           <input type="email" id="cp-client-email-secondary" name="client_email_secondary"
                  value="{{ old('client_email_secondary', $project->client_email_secondary) }}" maxlength="255"
                  placeholder="spouse@example.com"
-                 @class(['is-invalid' => $errors->has('client_email_secondary')])>
+                 @class(['is-invalid' => $errors->has('client_email_secondary')]) @disabled($clientFieldsLocked)>
           @error('client_email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -98,6 +105,7 @@
           'latValue' => old('client_address_latitude', $project->client_address_latitude),
           'lngName' => 'client_address_longitude',
           'lngValue' => old('client_address_longitude', $project->client_address_longitude),
+          'disabled' => $clientFieldsLocked,
         ])
 
         <div class="admin-form-section" style="margin-top:1rem;padding-top:1rem;border-top:1px dashed #e5e7eb;">
@@ -107,14 +115,15 @@
             <label for="cp-invoice-billing-name">Legal billing name</label>
             <input type="text" id="cp-invoice-billing-name" name="invoice_billing_name"
                    value="{{ old('invoice_billing_name', $project->invoice_billing_name) }}" maxlength="255"
-                   placeholder="e.g. ABC Renovations Inc."
-                   @class(['is-invalid' => $errors->has('invoice_billing_name')])>
+                     placeholder="e.g. ABC Renovations Inc."
+                     @class(['is-invalid' => $errors->has('invoice_billing_name')]) @disabled($clientFieldsLocked)>
             @error('invoice_billing_name') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
             <label for="cp-invoice-billing-address">Billing address</label>
-            <textarea id="cp-invoice-billing-address" name="invoice_billing_address" rows="3" maxlength="2000"
-                      class="admin-input" placeholder="Registered office or mailing address for AP">{{ old('invoice_billing_address', $project->invoice_billing_address) }}</textarea>
+              <textarea id="cp-invoice-billing-address" name="invoice_billing_address" rows="3" maxlength="2000"
+                        class="admin-input" placeholder="Registered office or mailing address for AP"
+                        @disabled($clientFieldsLocked)>{{ old('invoice_billing_address', $project->invoice_billing_address) }}</textarea>
             @error('invoice_billing_address') <p class="admin-form-error">{{ $message }}</p> @enderror
             <p class="admin-form-help">Leave blank to use the client address above on PDFs.</p>
           </div>
