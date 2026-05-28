@@ -183,10 +183,14 @@
                            data-cp-time-hours>
                   </div>
                   <div class="admin-form-group col-2">
-                    <label>Hourly rate</label>
+                    <label class="cp-label-with-hint">
+                      Hourly rate
+                      @include('admin.client_projects._cp_field_hint', [
+                        'text' => 'Defaults from the helper profile; change here for this day only.',
+                      ])
+                    </label>
                     <input type="text" name="hourly_rate" class="cp-money-input" inputmode="decimal" autocomplete="off"
                            value="{{ $editHourlyRate }}" data-cp-money-entry="direct">
-                    <p class="admin-form-help">Defaults from the helper profile; change here for this day only.</p>
                   </div>
                 </div>
                 <div class="cp-time-submit cp-time-edit-actions">
