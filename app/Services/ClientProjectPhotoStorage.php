@@ -53,7 +53,6 @@ class ClientProjectPhotoStorage
 
         $startOrder = (int) $project->photos()->max('sort_order');
         $created = [];
-        $imageBatchIndex = 0;
 
         foreach ($files as $i => $file) {
             $error = self::validateSingleUpload($file);
@@ -65,14 +64,10 @@ class ClientProjectPhotoStorage
             $storedFilename = $file->getClientOriginalName();
 
             $path = match ($mediaType) {
-                ClientProjectPhoto::TYPE_IMAGE => $this->storeProjectImage($project, $file, $imageBatchIndex, $storedFilename),
+                ClientProjectPhoto::TYPE_IMAGE => $this->storeProjectImage($project, $file, $storedFilename),
                 ClientProjectPhoto::TYPE_VIDEO, ClientProjectPhoto::TYPE_PDF => $this->storeRawFile($file, (int) $project->id, $mediaType),
                 default => throw new \RuntimeException('Unsupported file type.'),
             };
-
-            if ($mediaType === ClientProjectPhoto::TYPE_IMAGE) {
-                $imageBatchIndex++;
-            }
 
             $created[] = $project->photos()->create([
                 'path' => $path,
@@ -216,10 +211,9 @@ class ClientProjectPhotoStorage
     private function storeProjectImage(
         ClientProject $project,
         UploadedFile $file,
-        int $batchOffset,
         string &$storedFilename
     ): string {
-        $basename = $this->nextProjectImageBasename($project, $batchOffset);
+        $basename = $this->nextProjectImageBasename($project);
         $storedFilename = $basename.'.webp';
 
         return $this->converter->store(
@@ -230,7 +224,7 @@ class ClientProjectPhotoStorage
         );
     }
 
-    private function nextProjectImageBasename(ClientProject $project, int $batchOffset = 0): string
+    private function nextProjectImageBasename(ClientProject $project): string
     {
         $max = 0;
 
@@ -249,7 +243,7 @@ class ClientProjectPhotoStorage
             }
         }
 
-        $next = $max + 1 + $batchOffset;
+        $next = $max + 1;
 
         return 'Project-image'.str_pad((string) $next, 2, '0', STR_PAD_LEFT);
     }
