@@ -125,16 +125,6 @@
     </div>
   @endif
 
-  @if (session('success'))
-    <div class="admin-flash admin-flash--success" style="margin-bottom:16px;">{{ session('success') }}</div>
-  @endif
-  @if (session('error'))
-    <div class="admin-flash admin-flash--danger" style="margin-bottom:16px;">{{ session('error') }}</div>
-  @endif
-  @if (session('warning'))
-    <div class="admin-flash admin-flash--warning" style="margin-bottom:16px;">{{ session('warning') }}</div>
-  @endif
-
   @if (session('standard_flash') === 'saved' || session('standard_flash') === 'linked')
     <div class="admin-card sq-success-card">
       <h4 style="margin:0 0 8px;">Next steps</h4>
