@@ -796,22 +796,25 @@ class ClientProjectQuotation extends Model
         $prefix = $type === self::TYPE_ESTIMATE ? 'EST' : 'QUO';
         $year = (int) date('Y');
 
-        // Find the highest numeric suffix used this year across both prefixes.
-        $latest = self::query()
+        // Highest numeric suffix this year (shared across QUO and EST prefixes).
+        // String sort on quotation_number is wrong here — e.g. QUO-2026-0485
+        // sorts above EST-2026-0486 and would re-issue an existing number.
+        $maxSuffix = (int) self::query()
             ->where(function ($q) use ($year) {
                 $q->where('quotation_number', 'like', "QUO-{$year}-%")
                     ->orWhere('quotation_number', 'like', "EST-{$year}-%");
             })
-            ->orderByDesc('quotation_number')
-            ->first();
+            ->selectRaw('MAX(CAST(SUBSTRING_INDEX(quotation_number, "-", -1) AS UNSIGNED)) as max_suffix')
+            ->value('max_suffix');
 
-        if ($latest) {
-            $parts = explode('-', $latest->quotation_number);
-            $next = (int) end($parts) + 1;
-        } else {
-            $next = random_int(150, 500);
-        }
+        $next = $maxSuffix > 0 ? $maxSuffix + 1 : random_int(150, 500);
 
-        return sprintf('%s-%d-%04d', $prefix, $year, $next);
+        do {
+            $candidate = sprintf('%s-%d-%04d', $prefix, $year, $next);
+            if (! self::query()->where('quotation_number', $candidate)->exists()) {
+                return $candidate;
+            }
+            $next++;
+        } while (true);
     }
 }
