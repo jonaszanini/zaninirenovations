@@ -545,8 +545,7 @@ class ClientProjectFinanceController extends Controller
     /**
      * Shared validation for create/update of a time entry.
      * Either hours OR start_time must be provided. End time is optional;
-     * if provided with start_time, duration is same-day when end > start,
-     * or overnight when end < start (next calendar morning).
+     * when both are set, end must be later than start on the same day.
      */
     private function validateTimeEntry(Request $request): array
     {
@@ -576,31 +575,27 @@ class ClientProjectFinanceController extends Controller
      */
     private function buildTimeEntryPayload(array $data): ?array
     {
-        $start = $data['start_time'] ?? null;
-        $end = $data['end_time'] ?? null;
+        [$start, $end] = ClientProjectTimeEntry::assertValidTimeEntryTimes(
+            $data['start_time'] ?? null,
+            $data['end_time'] ?? null
+        );
         $hours = $data['hours'] ?? null;
-
-        if ($end && !$start) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'start_time' => 'Pick a start time before setting an end time.',
-            ]);
-        }
 
         if ($start && $end) {
             $computed = ClientProjectTimeEntry::computeHoursFromRange($start, $end);
             if ($computed === null) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'end_time' => 'Start and end must differ. For overnight work, set end to the next morning on the clock (e.g. 20:00 → 8:00).',
+                    'end_time' => 'End time must be after start time.',
                 ]);
             }
             $hours = $computed;
-        } elseif ($start && !$end) {
+        } elseif ($start && ! $end) {
             // Open / in-progress entry — no hours yet.
             $hours = null;
         }
 
         // Refuse a completely blank entry.
-        if (!$start && !$end && $hours === null) {
+        if (! $start && ! $end && $hours === null) {
             return null;
         }
 

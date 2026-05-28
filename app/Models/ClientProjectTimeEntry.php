@@ -69,10 +69,8 @@ class ClientProjectTimeEntry extends Model
     }
 
     /**
-     * Compute decimal hours from "HH:MM" start_time → end_time.
-     * When end is earlier on the clock than start, the range is treated as
-     * crossing midnight (e.g. 20:00–08:00 → 12h). Returns null if either side
-     * is missing, unparsable, or start and end are identical.
+     * Compute decimal hours from "HH:MM" start_time → end_time (same calendar day).
+     * Returns null if either side is missing, unparsable, or end is not after start.
      */
     public static function computeHoursFromRange(?string $start, ?string $end): ?float
     {
@@ -81,14 +79,56 @@ class ClientProjectTimeEntry extends Model
         if ($startMin === null || $endMin === null) {
             return null;
         }
-        if ($endMin === $startMin) {
+        if ($endMin <= $startMin) {
             return null;
-        }
-        if ($endMin < $startMin) {
-            $endMin += 24 * 60;
         }
 
         return round(($endMin - $startMin) / 60, 2);
+    }
+
+    /**
+     * Validate and normalize start/end clock times for create/update forms.
+     *
+     * @return array{0: ?string, 1: ?string} normalized HH:MM values
+     */
+    public static function assertValidTimeEntryTimes(?string $start, ?string $end): array
+    {
+        $normalizedStart = self::normalizeClockTimeOrFail($start, 'start_time');
+        $normalizedEnd = self::normalizeClockTimeOrFail($end, 'end_time');
+
+        if ($normalizedEnd && ! $normalizedStart) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'start_time' => 'Pick a start time before setting an end time.',
+            ]);
+        }
+
+        if ($normalizedStart && $normalizedEnd) {
+            $startMin = self::parseHhMm($normalizedStart);
+            $endMin = self::parseHhMm($normalizedEnd);
+            if ($endMin === null || $startMin === null || $endMin <= $startMin) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'end_time' => 'End time must be after start time.',
+                ]);
+            }
+        }
+
+        return [$normalizedStart, $normalizedEnd];
+    }
+
+    private static function normalizeClockTimeOrFail(?string $value, string $field): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $minutes = self::parseHhMm($value);
+        if ($minutes === null) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                $field => 'Enter a valid time (hours 0–23, minutes 0–59).',
+            ]);
+        }
+
+        return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
     }
 
     /**

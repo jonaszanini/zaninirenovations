@@ -367,15 +367,47 @@
     });
   }
 
-  // Parses "HH:MM" (24h) into integer minutes-since-midnight.
+  // Parses "HH:MM" (24h) into integer minutes-since-midnight, or null if invalid.
   function parseHhMm(value) {
     if (!value || typeof value !== 'string') return null;
     var m = value.match(/^(\d{1,2}):(\d{2})$/);
     if (!m) return null;
     var h = parseInt(m[1], 10);
     var mm = parseInt(m[2], 10);
-    if (isNaN(h) || isNaN(mm)) return null;
+    if (isNaN(h) || isNaN(mm) || h < 0 || h > 23 || mm < 0 || mm > 59) return null;
     return h * 60 + mm;
+  }
+
+  function validateTimeEntryInputs(startInput, endInput, hoursInput) {
+    var startMin = parseHhMm(startInput.value);
+    var endMin = parseHhMm(endInput.value);
+    var startDigits = stripTimeDigits(startInput.value);
+    var endDigits = stripTimeDigits(endInput.value);
+
+    startInput.setCustomValidity('');
+    endInput.setCustomValidity('');
+    if (hoursInput) hoursInput.setCustomValidity('');
+
+    if (startDigits.length > 0 && startMin === null) {
+      startInput.setCustomValidity('Enter a valid start time (hours 0–23, minutes 0–59).');
+      return false;
+    }
+    if (endDigits.length > 0 && endMin === null) {
+      endInput.setCustomValidity('Enter a valid end time (hours 0–23, minutes 0–59).');
+      return false;
+    }
+    if (endMin !== null && startMin === null) {
+      startInput.setCustomValidity('Pick a start time before setting an end time.');
+      return false;
+    }
+    if (startMin !== null && endMin !== null) {
+      if (endMin <= startMin) {
+        endInput.setCustomValidity('End time must be after start time.');
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // Wire one time-entry form (used by both the "Add time entry" form at the
@@ -395,23 +427,17 @@
     if (!startInput || !endInput || !hoursInput) return;
 
     function syncFromTimes() {
+      if (!validateTimeEntryInputs(startInput, endInput, hoursInput)) {
+        hoursInput.readOnly = false;
+        hoursInput.classList.remove('is-locked');
+        return;
+      }
+
       var startMin = parseHhMm(startInput.value);
       var endMin = parseHhMm(endInput.value);
 
       if (startMin !== null && endMin !== null) {
-        if (endMin === startMin) {
-          hoursInput.readOnly = false;
-          hoursInput.classList.remove('is-locked');
-          hoursInput.value = '';
-          hoursInput.setCustomValidity('Start and end must differ.');
-          hoursInput.title = 'Start and end must differ.';
-          return;
-        }
-        var endForCalc = endMin;
-        if (endForCalc < startMin) {
-          endForCalc += 24 * 60;
-        }
-        var hours = (endForCalc - startMin) / 60;
+        var hours = (endMin - startMin) / 60;
         hoursInput.value = (Math.round(hours * 100) / 100).toString();
         hoursInput.readOnly = true;
         hoursInput.classList.add('is-locked');
@@ -433,7 +459,7 @@
     wireTimeInputMask(startInput, syncFromTimes);
     wireTimeInputMask(endInput, syncFromTimes);
 
-    form.addEventListener('submit', function () {
+    form.addEventListener('submit', function (ev) {
       [startInput, endInput].forEach(function (input) {
         if (!stripTimeDigits(input.value).length) {
           input.value = '';
@@ -443,9 +469,14 @@
         var normalized = normalizeTimeInputValue(input.value);
         if (normalized !== null) {
           input.value = normalized;
-          input.setCustomValidity('');
         }
       });
+      if (!validateTimeEntryInputs(startInput, endInput, hoursInput)) {
+        ev.preventDefault();
+        var invalid = !startInput.checkValidity() ? startInput : endInput;
+        invalid.reportValidity();
+        invalid.focus();
+      }
     });
     // --- Hours field: digits and (at most) one decimal separator ---------
     hoursInput.addEventListener('keydown', function (ev) {

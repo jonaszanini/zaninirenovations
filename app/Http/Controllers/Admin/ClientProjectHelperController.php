@@ -524,21 +524,17 @@ class ClientProjectHelperController extends Controller
 
     private function buildTimeEntryPayload(array $data): ?array
     {
-        $start = $data['start_time'] ?? null;
-        $end = $data['end_time'] ?? null;
+        [$start, $end] = ClientProjectTimeEntry::assertValidTimeEntryTimes(
+            $data['start_time'] ?? null,
+            $data['end_time'] ?? null
+        );
         $hours = $data['hours'] ?? null;
-
-        if ($end && ! $start) {
-            throw ValidationException::withMessages([
-                'start_time' => 'Pick a start time before setting an end time.',
-            ]);
-        }
 
         if ($start && $end) {
             $computed = ClientProjectTimeEntry::computeHoursFromRange($start, $end);
             if ($computed === null) {
                 throw ValidationException::withMessages([
-                    'end_time' => 'Start and end must differ. For overnight work, set end to the next morning on the clock (e.g. 20:00 → 8:00).',
+                    'end_time' => 'End time must be after start time.',
                 ]);
             }
             $hours = $computed;

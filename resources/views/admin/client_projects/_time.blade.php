@@ -40,7 +40,7 @@
       </div>
     </div>
     <p class="admin-form-help cp-time-help">
-      Tip: pick <strong>Start</strong> + <strong>End</strong> and Hours fills in automatically. For a shift past midnight, use a clock time on the next morning for <strong>End</strong> (e.g. start 20:00, end 8:00). Pick only <strong>Start</strong> to log an in-progress entry — you can come back later and add the End time.
+      Tip: pick <strong>Start</strong> + <strong>End</strong> and Hours fills in automatically. End must be later than start on the same day (e.g. 09:00 → 17:30). Pick only <strong>Start</strong> to log an in-progress entry — you can come back later and add the End time.
     </p>
     @error('hours') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('end_time') <p class="admin-form-error">{{ $message }}</p> @enderror
