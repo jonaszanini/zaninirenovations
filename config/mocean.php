@@ -17,4 +17,20 @@ return [
 
     'from' => env('MOCEAN_FROM', 'MOCEAN'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Scheduler / cron smoke test (temporary diagnostic)
+    |--------------------------------------------------------------------------
+    | `test_to` is the default recipient for the `sms:test` command.
+    | When `cron_test` is true, the scheduler fires `sms:test` every minute
+    | so you can confirm cron is invoking `php artisan schedule:run`. Turn it
+    | OFF (SMS_CRON_TEST=false) once verified so you stop receiving texts.
+    | If config is cached on prod, re-run `php artisan config:cache` after
+    | toggling SMS_CRON_TEST so the change takes effect.
+    */
+
+    'test_to' => env('SMS_TEST_TO', '+1 647 834 7570'),
+
+    'cron_test' => (bool) env('SMS_CRON_TEST', false),
+
 ];

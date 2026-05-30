@@ -27,6 +27,15 @@ class Kernel extends ConsoleKernel
             ->dailyAt('09:00')
             ->timezone('America/Toronto')
             ->withoutOverlapping();
+
+        // TEMPORARY cron smoke test: when SMS_CRON_TEST=true the scheduler texts
+        // the owner every minute, proving cron is invoking `schedule:run`. Set
+        // SMS_CRON_TEST=false once confirmed so the texts stop. (See config/mocean.php.)
+        if (config('mocean.cron_test')) {
+            $schedule->command('sms:test')
+                ->everyMinute()
+                ->withoutOverlapping();
+        }
     }
 
     /**
