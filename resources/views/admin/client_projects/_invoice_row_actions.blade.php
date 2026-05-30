@@ -56,7 +56,7 @@
       $smsBlockers[] = 'SMS gateway is not configured on the server (MOCEAN_API_TOKEN).';
   }
   if ($invoice && \App\Models\ClientProject::phoneDigitsForSms($project->client_phone) === null) {
-      $smsBlockers[] = 'Add a mobile phone number for the client (Edit project → phone).';
+      $smsBlockers[] = "Add the client's mobile phone number.";
   }
   $canSms = empty($smsBlockers);
   $smsTitle = $canSms
@@ -99,9 +99,9 @@
           @endforeach
         </ul>
         <p class="cp-invoice-send-warning-actions">
-          <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}"
+          <a href="{{ route('admin.client-projects.edit', $project) }}"
              class="admin-btn admin-btn--ghost admin-btn--sm cp-invoice-send-warning-link">
-            <i class="fa fa-pencil"></i> Open invoice editor
+            <i class="fa fa-pencil"></i> Edit project info
           </a>
         </p>
       </div>
