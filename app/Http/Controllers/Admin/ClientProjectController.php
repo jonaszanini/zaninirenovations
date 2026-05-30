@@ -334,6 +334,14 @@ class ClientProjectController extends Controller
             }
         }
 
+        // Personal / holiday events block the schedule too, so surface them in
+        // the date picker (and its conflict warning) the same as project jobs.
+        foreach (AdminCalendarEvent::query()->whereNotNull('start_date')->whereNotNull('end_date')->get() as $event) {
+            $payload = $event->toFullCalendarEvent();
+            $payload['extendedProps']['status'] = 'Personal event';
+            $events[] = $payload;
+        }
+
         return $events;
     }
 
