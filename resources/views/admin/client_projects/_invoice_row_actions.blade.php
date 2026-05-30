@@ -24,6 +24,7 @@
   $moceanReady = $moceanSms->isConfigured();
 
   // Content/readiness checks shared — email also needs full contact card.
+  $needsDueDate = false;
   $contentBlockers = [];
   if ($invoice) {
       $completeItems = array_filter(
@@ -33,8 +34,9 @@
       if (count($completeItems) === 0) {
           $contentBlockers[] = 'Add at least one line item with a description and amount.';
       }
-      if (empty($invoice->due_on)) {
-          $contentBlockers[] = 'Set a payment due date — open the invoice editor and fill in the Due date field.';
+      $needsDueDate = empty($invoice->due_on);
+      if ($needsDueDate) {
+          $contentBlockers[] = 'Set a payment due date.';
       }
   }
 
@@ -63,6 +65,10 @@
 
   /** @var list<string> */
   $actionBlockers = array_values(array_unique(array_merge($sendBlockers, $smsBlockers)));
+  $actionBlockersForDisplay = array_values(array_filter(
+      $actionBlockers,
+      fn (string $hint) => ! str_contains(strtolower($hint), 'payment due date')
+  ));
 @endphp
 @if (!$invoice)
   {{-- No invoice yet for this installment → offer to create one. --}}
@@ -80,17 +86,24 @@
   @if (!$invoice->isPaid() && (! $canSend || ! $canSms))
     <div class="cp-contract-warning cp-invoice-send-warning">
       <i class="fa fa-exclamation-triangle"></i>
-      <div>
-        <strong>Send email and/or SMS may be disabled.</strong>
-        Address the items below — then the buttons will activate:
+      <div class="cp-invoice-send-warning-body">
+        <p class="cp-invoice-send-warning-lead">
+          <strong>Email and/or SMS disabled.</strong> Address the items below:
+        </p>
         <ul class="cp-invoice-send-blockers">
-          @foreach ($actionBlockers as $hint)
+          @if ($needsDueDate)
+            <li>Set a <strong>payment due date</strong></li>
+          @endif
+          @foreach ($actionBlockersForDisplay as $hint)
             <li>{{ $hint }}</li>
           @endforeach
         </ul>
-        <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}" class="cp-invoice-send-warning-link">
-          Open invoice editor
-        </a>
+        <p class="cp-invoice-send-warning-actions">
+          <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}"
+             class="admin-btn admin-btn--ghost admin-btn--sm cp-invoice-send-warning-link">
+            <i class="fa fa-pencil"></i> Open invoice editor
+          </a>
+        </p>
       </div>
     </div>
   @endif
