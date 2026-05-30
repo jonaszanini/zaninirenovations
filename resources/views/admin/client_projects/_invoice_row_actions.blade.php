@@ -40,9 +40,12 @@
       }
   }
 
+  // Email only needs a recipient email address; SMS only needs a phone.
+  // The two delivery channels are independent — a missing phone must not
+  // disable email (and vice-versa).
   $contactBlockersForEmail = [];
-  if (!$hasContactInfo) {
-      $contactBlockersForEmail[] = 'Missing client info: '.implode(', ', $missing);
+  if (blank(trim((string) $project->client_email))) {
+      $contactBlockersForEmail[] = "Add the client's email address.";
   }
 
   $sendBlockers = array_merge($contactBlockersForEmail, $contentBlockers);
@@ -87,8 +90,13 @@
     <div class="cp-contract-warning cp-invoice-send-warning">
       <i class="fa fa-exclamation-triangle"></i>
       <div class="cp-invoice-send-warning-body">
+        @php
+          $disabledChannels = [];
+          if (! $canSend) { $disabledChannels[] = 'Email'; }
+          if (! $canSms) { $disabledChannels[] = 'SMS'; }
+        @endphp
         <p class="cp-invoice-send-warning-lead">
-          <strong>Email and/or SMS disabled.</strong> Address the items below:
+          <strong>{{ implode(' and ', $disabledChannels) }} disabled.</strong> Address the items below:
         </p>
         <ul class="cp-invoice-send-blockers">
           @if ($needsDueDate)

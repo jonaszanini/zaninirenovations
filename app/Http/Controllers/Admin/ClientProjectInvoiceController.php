@@ -354,10 +354,8 @@ class ClientProjectInvoiceController extends Controller
                 ->with('error', 'Please set a due date before sending the invoice.');
         }
 
-        if (!$client_project->hasClientContactInfo()) {
-            $missing = implode(', ', $client_project->missingClientContactFields());
-
-            return back()->with('error', "Cannot send the invoice — missing client info: {$missing}.");
+        if (blank(trim((string) $client_project->client_email))) {
+            return back()->with('error', "Cannot email the invoice — add the client's email address first.");
         }
 
         // Bump version on re-send so the PDF history is preserved on disk.
@@ -517,10 +515,8 @@ class ClientProjectInvoiceController extends Controller
             return back()->with('error', 'Reminders can only be sent after the invoice has been emailed at least once.');
         }
 
-        if (!$client_project->hasClientContactInfo()) {
-            $missing = implode(', ', $client_project->missingClientContactFields());
-
-            return back()->with('error', "Cannot send reminder — missing client info: {$missing}.");
+        if (blank(trim((string) $client_project->client_email))) {
+            return back()->with('error', "Cannot send reminder — add the client's email address first.");
         }
 
         $disk = Storage::disk('local');
@@ -707,7 +703,7 @@ class ClientProjectInvoiceController extends Controller
         $sendEmail = (bool) ($data['also_email_receipt'] ?? true);
         $emailSent = false;
 
-        if ($sendEmail && $client_project->hasClientContactInfo()) {
+        if ($sendEmail && filled(trim((string) $client_project->client_email))) {
             $cc = $client_project->secondaryClientEmail();
             $receiptSubject = "Receipt — invoice {$invoice->invoice_number} paid";
             $receiptDescription = "Receipt for invoice {$invoice->invoice_number} — paid "
