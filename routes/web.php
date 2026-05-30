@@ -20,6 +20,15 @@ Route::post('/contact-email', [ContactFormController::class, 'submit'])
     ->middleware('throttle:8,1')
     ->name('contact.submit');
 
+/**
+ * External HTTP cron trigger — fallback for unreliable host cron. Protected by
+ * CRON_HTTP_TOKEN (404s when the token is missing or wrong). Point a free
+ * external scheduler at /cron/run?token=THE_TOKEN every few minutes.
+ */
+Route::get('/cron/run', [\App\Http\Controllers\CronController::class, 'run'])
+    ->middleware('throttle:12,1')
+    ->name('cron.run');
+
 Route::view('/warranty', 'site.warranty')->name('warranty');
 Route::view('/privacy-policy', 'site.privacy-policy')->name('privacy-policy');
 Route::view('/terms-and-conditions', 'site.terms-and-conditions')->name('terms-and-conditions');
