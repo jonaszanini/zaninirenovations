@@ -43,6 +43,32 @@
     }
     table.pdf-rows td.label { color: #5a6570; width: 55%; }
     table.pdf-rows td.value { font-weight: 700; text-align: right; }
+
+    .pdf-section-title {
+      font-size: 14px;
+      color: #024768;
+      margin: 22px 0 8px;
+    }
+    .pdf-section-note { color: #5a6570; font-size: 10px; margin: 0 0 8px; }
+    table.pdf-marks {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.pdf-marks th,
+    table.pdf-marks td {
+      padding: 5px 8px;
+      border: 1px solid #d8dee4;
+      text-align: left;
+      font-size: 11px;
+    }
+    table.pdf-marks th {
+      background: #f4f6f8;
+      color: #5a6570;
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 0.04em;
+    }
+    table.pdf-marks td.num { width: 36px; text-align: center; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -69,5 +95,28 @@
       </tr>
     @endforeach
   </table>
+
+  @if (!empty($marks))
+    <h2 class="pdf-section-title">Tape-measure marks</h2>
+    <p class="pdf-section-note">Measured from the start of the run. Mark each pillar's near and far edge.</p>
+    <table class="pdf-marks">
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th>Near edge</th>
+          <th>Far edge</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach ($marks as $mark)
+          <tr>
+            <td class="num">{{ $mark['n'] }}</td>
+            <td>{{ $mark['start'] }}</td>
+            <td>{{ $mark['end'] }}</td>
+          </tr>
+        @endforeach
+      </tbody>
+    </table>
+  @endif
 </body>
 </html>

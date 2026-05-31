@@ -190,6 +190,31 @@
           </div>
         </div>
 
+        {{-- Tape-measure marking guide --}}
+        <div class="admin-card util-ps-marks-card" data-ps-marks-card hidden>
+          <div class="util-ps-marks-head">
+            <h3 class="util-ps-card-title">Tape-measure marks</h3>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ps-copy-marks>
+              <i class="fa fa-copy"></i> Copy marks
+            </button>
+          </div>
+          <p class="util-ps-marks-hint">
+            Measured from the <strong>start</strong> of the run. Mark each pillar's near and far edge before you begin.
+          </p>
+          <div class="util-ps-marks-scroll">
+            <table class="util-ps-marks-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Near edge</th>
+                  <th>Far edge</th>
+                </tr>
+              </thead>
+              <tbody data-ps-marks-body></tbody>
+            </table>
+          </div>
+        </div>
+
         {{-- Save calculation --}}
         <div class="admin-card util-ps-save-card" data-ps-save-card hidden>
           <h3 class="util-ps-card-title">Save this calculation</h3>

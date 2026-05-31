@@ -399,6 +399,72 @@ a.util-tool-card:hover .util-tool-card__cta {
   margin-top: 0.85rem;
 }
 
+/* ── Tape-measure marks ──────────────────────────────────────────────── */
+.util-ps-marks-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.util-ps-marks-head .util-ps-card-title {
+  margin: 0;
+}
+
+.util-ps-marks-hint {
+  margin: 0.5rem 0 0.85rem;
+  color: var(--admin-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.util-ps-marks-scroll {
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+}
+
+.util-ps-marks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.util-ps-marks-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.util-ps-marks-table tbody td {
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid var(--admin-border);
+  font-variant-numeric: tabular-nums;
+}
+
+.util-ps-marks-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.util-ps-marks-table tbody tr:nth-child(even) td {
+  background: var(--admin-surface-hover);
+}
+
+.util-ps-marks-n {
+  width: 2.5rem;
+  text-align: center;
+  font-weight: 700;
+  color: var(--admin-primary);
+}
+
 /* ── Save ────────────────────────────────────────────────────────────── */
 .util-ps-save-row {
   display: flex;

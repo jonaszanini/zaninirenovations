@@ -32,6 +32,9 @@
     statC2cFraction: root.querySelector('[data-ps-stat-c2c-fraction]'),
     diagramCard: root.querySelector('[data-ps-diagram-card]'),
     diagram: root.querySelector('[data-ps-diagram]'),
+    marksCard: root.querySelector('[data-ps-marks-card]'),
+    marksBody: root.querySelector('[data-ps-marks-body]'),
+    copyMarksBtn: root.querySelector('[data-ps-copy-marks]'),
     saveCard: root.querySelector('[data-ps-save-card]'),
     saveName: root.querySelector('#ps-save-name'),
     saveFeedback: root.querySelector('[data-ps-save-feedback]'),
@@ -107,6 +110,30 @@
     var text = inchApprox(meters);
     el.textContent = text;
     show(el, text !== '');
+  }
+
+  // Distance label for tape-measure marks (measured from the start of the
+  // run). Imperial → inch fractions; fully metric → metres.
+  function markLabel(meters) {
+    if (lengthUnit() === 'm' && thicknessUnit() === 'm') {
+      return fmt(meters) + ' m';
+    }
+    return inchFraction(fromM(meters, 'in')) + '"';
+  }
+
+  // One entry per pillar: where its near and far edges fall along the run.
+  function markRows(r) {
+    if (!r || !r.positions) return [];
+    var rows = [];
+    for (var i = 0; i < r.positions.length; i++) {
+      var near = r.positions[i];
+      rows.push({
+        n: i + 1,
+        start: markLabel(near),
+        end: markLabel(near + r.tm)
+      });
+    }
+    return rows;
   }
 
   function elementWord(plural, capital) {
@@ -195,6 +222,17 @@
     }
     if (clearM < 0) clearM = 0;
 
+    // Pillar left-edge positions (metres, from the start of the run). Shared
+    // by the diagram and the tape-measure marking guide.
+    var lead = (placement === 'end' || placement === 'none') ? clearM : 0;
+    var positions = [];
+    var p = lead;
+    for (var i = 0; i < N; i++) {
+      positions.push(p);
+      p += tm;
+      if (i < N - 1) p += clearM;
+    }
+
     return {
       status: 'ok',
       Lm: Lm,
@@ -203,7 +241,9 @@
       N: N,
       G: G,
       clearM: clearM,
-      c2cM: clearM + tm
+      c2cM: clearM + tm,
+      lead: lead,
+      positions: positions
     };
   }
 
@@ -234,6 +274,7 @@
     show(els.error, isError);
     show(els.live, ok);
     show(els.diagramCard, ok);
+    show(els.marksCard, ok);
     show(els.saveCard, ok);
     if (els.copyBtn) show(els.copyBtn, ok);
 
@@ -259,6 +300,18 @@
     setFraction(els.statC2cFraction, result.c2cM);
 
     els.diagram.innerHTML = buildSvg(result);
+    renderMarks(result);
+  }
+
+  function renderMarks(r) {
+    if (!els.marksBody) return;
+    var rows = markRows(r);
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+      html += '<tr><td class="util-ps-marks-n">' + rows[i].n + '</td><td>' +
+        esc(rows[i].start) + '</td><td>' + esc(rows[i].end) + '</td></tr>';
+    }
+    els.marksBody.innerHTML = html;
   }
 
   // ── SVG diagram ─────────────────────────────────────────────────────
@@ -273,18 +326,10 @@
     var lengthU = lengthUnit();
     var spacingU = spacingUnit();
 
-    var lead = (r.placement === 'end' || r.placement === 'none') ? r.clearM : 0;
+    var lead = r.lead;
+    var positions = r.positions;
 
     function px(pos) { return padX + pos * scale; }
-
-    // Pillar left-edge positions (in metres).
-    var positions = [];
-    var pos = lead;
-    for (var i = 0; i < r.N; i++) {
-      positions.push(pos);
-      pos += r.tm;
-      if (i < r.N - 1) pos += r.clearM;
-    }
 
     var svg = [];
     svg.push('<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Layout diagram">');
@@ -388,18 +433,30 @@
       ' of ' + fmtM(r.clearM, su) + ' each (clear gap). Center-to-center spacing is ' + fmtM(r.c2cM, su) + '.';
   }
 
-  function copyResults() {
-    if (!lastResult) return;
-    var lines = [elementWord(true, true) + ' layout', summaryText(), ''];
-    resultRows().forEach(function (row) { lines.push(row.label + ': ' + row.value); });
-    var text = lines.join('\n');
-
-    var done = function () { flashButton(els.copyBtn, '<i class="fa fa-check"></i> Copied'); };
+  function copyText(text, btn) {
+    var done = function () { flashButton(btn, '<i class="fa fa-check"></i> Copied'); };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
     } else {
       fallbackCopy(text, done);
     }
+  }
+
+  function copyResults() {
+    if (!lastResult) return;
+    var lines = [elementWord(true, true) + ' layout', summaryText(), ''];
+    resultRows().forEach(function (row) { lines.push(row.label + ': ' + row.value); });
+    copyText(lines.join('\n'), els.copyBtn);
+  }
+
+  function copyMarks() {
+    if (!lastResult) return;
+    var rows = markRows(lastResult);
+    var lines = ['Tape-measure marks (from the start of the run):'];
+    rows.forEach(function (row) {
+      lines.push('Pillar ' + row.n + ': ' + row.start + ' to ' + row.end);
+    });
+    copyText(lines.join('\n'), els.copyMarksBtn);
   }
 
   function fallbackCopy(text, done) {
@@ -488,6 +545,11 @@
     resultRows().forEach(function (row, i) {
       add('rows[' + i + '][label]', row.label);
       add('rows[' + i + '][value]', row.value);
+    });
+    markRows(lastResult).forEach(function (row, i) {
+      add('marks[' + i + '][n]', row.n);
+      add('marks[' + i + '][start]', row.start);
+      add('marks[' + i + '][end]', row.end);
     });
 
     document.body.appendChild(form);
@@ -671,6 +733,7 @@
   });
 
   if (els.copyBtn) els.copyBtn.addEventListener('click', copyResults);
+  if (els.copyMarksBtn) els.copyMarksBtn.addEventListener('click', copyMarks);
   root.querySelector('[data-ps-export-image]').addEventListener('click', exportImage);
   root.querySelector('[data-ps-export-pdf]').addEventListener('click', exportPdf);
   root.querySelector('[data-ps-save]').addEventListener('click', saveCalculation);

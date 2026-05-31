@@ -96,6 +96,10 @@ class UtilitiesController extends Controller
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.label' => ['required', 'string', 'max:120'],
             'rows.*.value' => ['required', 'string', 'max:120'],
+            'marks' => ['nullable', 'array'],
+            'marks.*.n' => ['required', 'string', 'max:10'],
+            'marks.*.start' => ['required', 'string', 'max:40'],
+            'marks.*.end' => ['required', 'string', 'max:40'],
             'diagram' => ['nullable', 'string'],
         ]);
 
@@ -108,6 +112,7 @@ class UtilitiesController extends Controller
             'title' => $data['title'] ?? 'Pillar & Spindle Layout',
             'summary' => $data['summary'] ?? '',
             'rows' => $data['rows'],
+            'marks' => $data['marks'] ?? [],
             'diagram' => $diagram,
             'generatedAt' => now()->format('M j, Y g:i A'),
         ])
