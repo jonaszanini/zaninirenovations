@@ -155,18 +155,20 @@
               </div>
               <div class="util-ps-stat">
                 <span class="util-ps-stat__value" data-ps-stat-clear>—</span>
+                <span class="util-ps-stat__fraction" data-ps-stat-clear-fraction hidden></span>
                 <span class="util-ps-stat__label">
                   Clear gap
-                  <span class="util-tip" tabindex="0" data-tip="Visible space between two adjacent elements (does not include thickness).">
+                  <span class="util-tip" tabindex="0" data-tip="Visible space between two adjacent pillars (does not include thickness). The ≈ value is the nearest 1/16 inch.">
                     <i class="fa fa-info-circle"></i>
                   </span>
                 </span>
               </div>
               <div class="util-ps-stat">
                 <span class="util-ps-stat__value" data-ps-stat-c2c>—</span>
+                <span class="util-ps-stat__fraction" data-ps-stat-c2c-fraction hidden></span>
                 <span class="util-ps-stat__label">
                   Center&#8209;to&#8209;center
-                  <span class="util-tip" tabindex="0" data-tip="Distance from the centre of one element to the centre of the next. Includes one thickness.">
+                  <span class="util-tip" tabindex="0" data-tip="Distance from the centre of one pillar to the centre of the next. Includes one thickness. The ≈ value is the nearest 1/16 inch.">
                     <i class="fa fa-info-circle"></i>
                   </span>
                 </span>

@@ -27,7 +27,9 @@
     statCountLabel: root.querySelector('[data-ps-stat-count-label]'),
     statGaps: root.querySelector('[data-ps-stat-gaps]'),
     statClear: root.querySelector('[data-ps-stat-clear]'),
+    statClearFraction: root.querySelector('[data-ps-stat-clear-fraction]'),
     statC2c: root.querySelector('[data-ps-stat-c2c]'),
+    statC2cFraction: root.querySelector('[data-ps-stat-c2c-fraction]'),
     diagramCard: root.querySelector('[data-ps-diagram-card]'),
     diagram: root.querySelector('[data-ps-diagram]'),
     saveCard: root.querySelector('[data-ps-save-card]'),
@@ -75,6 +77,37 @@
   function spacingUnit() { return thicknessUnit(); }
 
   function fmtM(meters, u) { return fmt(fromM(meters, u)) + ' ' + u; }
+
+  // Nearest 1/16" expressed as a reduced fraction (denominators 2/4/8/16),
+  // e.g. 2.893 → "2 7/8", 0.25 → "1/4", 0.5 → "1/2".
+  function inchFraction(inches) {
+    var sign = inches < 0 ? '-' : '';
+    var v = Math.abs(inches);
+    var whole = Math.floor(v);
+    var sixteenths = Math.round((v - whole) * 16);
+    if (sixteenths === 16) { whole += 1; sixteenths = 0; }
+    if (sixteenths === 0) {
+      return sign + String(whole);
+    }
+    var n = sixteenths;
+    var d = 16;
+    while (n % 2 === 0 && d % 2 === 0) { n /= 2; d /= 2; }
+    var frac = n + '/' + d;
+    return sign + (whole > 0 ? whole + ' ' + frac : frac);
+  }
+
+  // The fractional "≈" readout only makes sense for inch values.
+  function inchApprox(meters) {
+    if (spacingUnit() !== 'in') return '';
+    return '≈ ' + inchFraction(fromM(meters, 'in')) + ' in';
+  }
+
+  function setFraction(el, meters) {
+    if (!el) return;
+    var text = inchApprox(meters);
+    el.textContent = text;
+    show(el, text !== '');
+  }
 
   function elementWord(plural, capital) {
     var word = plural ? 'pillars' : 'pillar';
@@ -222,6 +255,8 @@
     els.statGaps.textContent = result.G;
     els.statClear.textContent = fmtM(result.clearM, su);
     els.statC2c.textContent = fmtM(result.c2cM, su);
+    setFraction(els.statClearFraction, result.clearM);
+    setFraction(els.statC2cFraction, result.c2cM);
 
     els.diagram.innerHTML = buildSvg(result);
   }
@@ -334,9 +369,14 @@
       { label: 'Calculation mode', value: modeLabel },
       { label: 'Number of ' + elementWord(true), value: String(r.N) },
       { label: 'Spaces / gaps', value: String(r.G) },
-      { label: 'Clear gap (each)', value: fmtM(r.clearM, su) },
-      { label: 'Center-to-center', value: fmtM(r.c2cM, su) }
+      { label: 'Clear gap (each)', value: withApprox(fmtM(r.clearM, su), r.clearM) },
+      { label: 'Center-to-center', value: withApprox(fmtM(r.c2cM, su), r.c2cM) }
     ];
+  }
+
+  function withApprox(text, meters) {
+    var approx = inchApprox(meters);
+    return approx ? text + ' (' + approx + ')' : text;
   }
 
   function summaryText() {

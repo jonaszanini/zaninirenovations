@@ -361,6 +361,14 @@ a.util-tool-card:hover .util-tool-card__cta {
   line-height: 1.2;
 }
 
+.util-ps-stat__fraction {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--admin-success);
+}
+
 .util-ps-stat__label {
   display: block;
   margin-top: 0.2rem;
