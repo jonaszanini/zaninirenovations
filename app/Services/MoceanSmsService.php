@@ -35,7 +35,14 @@ class MoceanSmsService
         $url = (string) config('mocean.send_url');
 
         try {
-            $response = Http::timeout(20)
+            // connectTimeout: cap the TCP/TLS handshake (cURL error 28 fires here
+            // when Mocean is briefly unreachable). timeout: overall request budget.
+            // retry: transient connection/timeout blips auto-recover with backoff
+            // instead of failing the SMS outright (throw:false so we keep our own
+            // error handling below on the final failed response).
+            $response = Http::connectTimeout(15)
+                ->timeout(30)
+                ->retry(3, 2000, throw: false)
                 ->withHeaders([
                     'Authorization' => 'Bearer '.$token,
                 ])

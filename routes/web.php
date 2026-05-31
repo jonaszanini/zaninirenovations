@@ -366,4 +366,16 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // to clients (and admin-bound notifications).
     Route::get('communications', [\App\Http\Controllers\Admin\CommunicationLogController::class, 'index'])
         ->name('communications.index');
+
+    // Utilities — collection of standalone calculation tools.
+    Route::get('utilities', [\App\Http\Controllers\Admin\UtilitiesController::class, 'index'])
+        ->name('utilities.index');
+    Route::get('utilities/pillar-spindle', [\App\Http\Controllers\Admin\UtilitiesController::class, 'pillarSpindle'])
+        ->name('utilities.pillar-spindle');
+    Route::post('utilities/pillar-spindle/pdf', [\App\Http\Controllers\Admin\UtilitiesController::class, 'pillarSpindlePdf'])
+        ->name('utilities.pillar-spindle.pdf');
+    Route::post('utilities/calculations', [\App\Http\Controllers\Admin\UtilitiesController::class, 'storeCalculation'])
+        ->name('utilities.calculations.store');
+    Route::delete('utilities/calculations/{utility_calculation}', [\App\Http\Controllers\Admin\UtilitiesController::class, 'destroyCalculation'])
+        ->name('utilities.calculations.destroy');
 });

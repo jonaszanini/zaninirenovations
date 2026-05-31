@@ -69,6 +69,12 @@
             Vehicles
           </a>
         </li>
+        <li>
+          <a href="{{ route('admin.utilities.index') }}" class="{{ request()->routeIs('admin.utilities.*') ? 'is-active' : '' }}">
+            <i class="fa fa-wrench"></i>
+            Utilities
+          </a>
+        </li>
       </ul>
       <div class="admin-sidebar-footer">
         <div class="admin-sidebar-user">{{ auth()->user()->email }}</div>
