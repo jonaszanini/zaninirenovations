@@ -729,7 +729,7 @@
     els.thickness.value = '';
     els.spacing.value = '';
     els.count.value = '';
-    els.placement.value = 'both';
+    els.placement.value = 'none';
     els.unit.value = 'ft';
     els.thicknessUnit.value = 'in';
     els.gapUnit.value = 'in';

@@ -107,7 +107,7 @@
             <option value="both">At both ends</option>
             <option value="start">Only at start</option>
             <option value="end">Only at end</option>
-            <option value="none">No pillars at ends</option>
+            <option value="none" selected>No pillars at ends</option>
           </select>
         </div>
 
