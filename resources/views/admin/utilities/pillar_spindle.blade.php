@@ -33,15 +33,6 @@
         <h3 class="util-ps-card-title">Inputs</h3>
 
         <div class="admin-form-group">
-          <span class="admin-form-group-label">Element type</span>
-          <div class="util-segmented" role="group" aria-label="Element type" data-ps-element-toggle>
-            <button type="button" class="util-segmented__btn is-active" data-element="pillar">Pillars</button>
-            <button type="button" class="util-segmented__btn" data-element="spindle">Spindles</button>
-          </div>
-          <p class="admin-form-help">Only changes the wording in results &mdash; the maths are identical.</p>
-        </div>
-
-        <div class="admin-form-group">
           <span class="admin-form-group-label">Calculation mode</span>
           <div class="util-segmented" role="group" aria-label="Calculation mode" data-ps-mode-toggle>
             <button type="button" class="util-segmented__btn is-active" data-mode="spacing">By spacing</button>
@@ -66,33 +57,41 @@
 
         <div class="admin-form-group">
           <label for="ps-thickness">
-            <span data-ps-thickness-label>Pillar</span> thickness
-            <span class="util-tip" tabindex="0" data-tip="Width of a single element measured along the run. Must be in the same unit as the length.">
+            Pillar thickness
+            <span class="util-tip" tabindex="0" data-tip="Width of a single pillar measured along the run. Choose its own unit below.">
               <i class="fa fa-info-circle"></i>
             </span>
           </label>
-          <div class="util-ps-suffix-input">
-            <input type="number" id="ps-thickness" min="0" step="any" inputmode="decimal" placeholder="e.g. 0.33">
-            <span class="util-ps-suffix" data-ps-unit-suffix>ft</span>
+          <div class="util-ps-input-unit">
+            <input type="number" id="ps-thickness" min="0" step="any" inputmode="decimal" placeholder="e.g. 1.5">
+            <select id="ps-thickness-unit" aria-label="Thickness unit">
+              <option value="ft">ft</option>
+              <option value="m">m</option>
+              <option value="in" selected>in</option>
+            </select>
           </div>
         </div>
 
         <div class="admin-form-group" data-ps-mode-field="spacing">
           <label for="ps-spacing">
-            Desired gap between <span data-ps-element-label-lower>pillars</span>
-            <span class="util-tip" tabindex="0" data-tip="The clear space between two adjacent elements. We use the fewest elements that keep every gap at or below this value.">
+            Desired gap between pillars
+            <span class="util-tip" tabindex="0" data-tip="The clear space between two adjacent pillars. We use the fewest pillars that keep every gap at or below this value.">
               <i class="fa fa-info-circle"></i>
             </span>
           </label>
-          <div class="util-ps-suffix-input">
-            <input type="number" id="ps-spacing" min="0" step="any" inputmode="decimal" placeholder="e.g. 0.1">
-            <span class="util-ps-suffix" data-ps-unit-suffix>ft</span>
+          <div class="util-ps-input-unit">
+            <input type="number" id="ps-spacing" min="0" step="any" inputmode="decimal" placeholder="e.g. 4">
+            <select id="ps-gap-unit" aria-label="Gap unit">
+              <option value="ft">ft</option>
+              <option value="m">m</option>
+              <option value="in" selected>in</option>
+            </select>
           </div>
         </div>
 
         <div class="admin-form-group" data-ps-mode-field="count" hidden>
           <label for="ps-count">
-            Number of <span data-ps-element-label-lower>pillars</span>
+            Number of pillars
           </label>
           <input type="number" id="ps-count" min="1" step="1" inputmode="numeric" placeholder="e.g. 9">
         </div>
@@ -100,7 +99,7 @@
         <div class="admin-form-group">
           <label for="ps-placement">
             End placement
-            <span class="util-tip" tabindex="0" data-tip="Whether an element sits flush at the start and/or end of the run. This changes how many gaps there are.">
+            <span class="util-tip" tabindex="0" data-tip="Whether a pillar sits flush at the start and/or end of the run. This changes how many gaps there are.">
               <i class="fa fa-info-circle"></i>
             </span>
           </label>
@@ -108,7 +107,7 @@
             <option value="both">At both ends</option>
             <option value="start">Only at start</option>
             <option value="end">Only at end</option>
-            <option value="none">No elements at ends</option>
+            <option value="none">No pillars at ends</option>
           </select>
         </div>
 
@@ -131,7 +130,7 @@
           <div class="util-ps-empty" data-ps-empty>
             <span class="util-ps-empty__icon"><i class="fa fa-arrows-h"></i></span>
             <p class="util-ps-empty__title">Enter your measurements</p>
-            <p class="util-ps-empty__hint">Add a <strong>total length</strong>, an element <strong>thickness</strong>,
+            <p class="util-ps-empty__hint">Add a <strong>total length</strong>, a pillar <strong>thickness</strong>,
               and a <strong>gap</strong> (or number) to see the layout.</p>
           </div>
 

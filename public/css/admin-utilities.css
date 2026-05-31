@@ -109,14 +109,52 @@ a.util-tool-card:hover .util-tool-card__cta {
   margin-bottom: 1rem;
 }
 
+/* The shared admin.css input styling doesn't cover type="number", so the
+   numeric fields here would fall back to the browser default (narrow, thin
+   border). Re-apply the design-system look to every control in the tool. */
+.util-ps .admin-form-group input[type="number"],
+.util-ps .admin-form-group input[type="text"],
+.util-ps .admin-form-group select {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  min-height: 44px;
+}
+
+.util-ps .admin-form-group input[type="number"]:focus,
+.util-ps .admin-form-group input[type="text"]:focus,
+.util-ps .admin-form-group select:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+
 .util-ps-field-row {
   display: grid;
-  grid-template-columns: 1fr 130px;
+  grid-template-columns: 1fr 9.5rem;
   gap: 0.75rem;
+  align-items: end;
 }
 
 .util-ps-field-row .admin-form-group {
   margin-bottom: 1rem;
+}
+
+/* Input paired with its own compact unit selector. */
+.util-ps-input-unit {
+  display: grid;
+  grid-template-columns: 1fr 5.5rem;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.util-ps-input-unit select {
+  text-align: center;
 }
 
 /* Segmented toggle */
@@ -148,27 +186,6 @@ a.util-tool-card:hover .util-tool-card__cta {
   background: var(--admin-surface);
   color: var(--admin-primary);
   box-shadow: var(--admin-shadow-sm);
-}
-
-/* Input with unit suffix */
-.util-ps-suffix-input {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.util-ps-suffix-input input {
-  width: 100%;
-  padding-right: 3rem !important;
-}
-
-.util-ps-suffix {
-  position: absolute;
-  right: 0.85rem;
-  color: var(--admin-muted);
-  font-size: 0.85rem;
-  font-weight: 600;
-  pointer-events: none;
 }
 
 .util-ps-reset {

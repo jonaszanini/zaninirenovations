@@ -12,10 +12,11 @@
     length: root.querySelector('#ps-length'),
     unit: root.querySelector('#ps-unit'),
     thickness: root.querySelector('#ps-thickness'),
+    thicknessUnit: root.querySelector('#ps-thickness-unit'),
     spacing: root.querySelector('#ps-spacing'),
+    gapUnit: root.querySelector('#ps-gap-unit'),
     count: root.querySelector('#ps-count'),
     placement: root.querySelector('#ps-placement'),
-    elementToggle: root.querySelector('[data-ps-element-toggle]'),
     modeToggle: root.querySelector('[data-ps-mode-toggle]'),
     empty: root.querySelector('[data-ps-empty]'),
     error: root.querySelector('[data-ps-error]'),
@@ -35,15 +36,11 @@
     copyBtn: root.querySelector('[data-ps-copy]'),
     savedList: root.querySelector('[data-ps-saved-list]'),
     savedEmpty: root.querySelector('[data-ps-saved-empty]'),
-    unitSuffixes: root.querySelectorAll('[data-ps-unit-suffix]'),
-    thicknessLabel: root.querySelector('[data-ps-thickness-label]'),
-    elementLabelsLower: root.querySelectorAll('[data-ps-element-label-lower]'),
     modeFields: root.querySelectorAll('[data-ps-mode-field]')
   };
 
   var state = {
-    element: 'pillar', // 'pillar' | 'spindle'
-    mode: 'spacing'    // 'spacing' | 'count'
+    mode: 'spacing' // 'spacing' | 'count'
   };
 
   var lastResult = null; // cached computed result for export/copy/save
@@ -62,17 +59,25 @@
     return String(parseFloat(rounded.toFixed(3)));
   }
 
-  function unit() {
-    return els.unit.value || 'ft';
-  }
+  // Each input carries its own unit; convert everything to metres for the
+  // maths, then format results back into the relevant display unit.
+  var UNIT_TO_M = { ft: 0.3048, m: 1, in: 0.0254 };
 
-  function withUnit(v) {
-    return fmt(v) + ' ' + unit();
-  }
+  function toM(v, u) { return v * (UNIT_TO_M[u] || 1); }
+  function fromM(v, u) { return v / (UNIT_TO_M[u] || 1); }
+
+  function lengthUnit() { return els.unit.value || 'ft'; }
+  function thicknessUnit() { return els.thicknessUnit.value || 'in'; }
+  function gapUnit() { return els.gapUnit.value || 'in'; }
+
+  // Display unit for spacing results (clear gap + centre-to-centre). The
+  // thickness unit is always present, so it keeps the results consistent.
+  function spacingUnit() { return thicknessUnit(); }
+
+  function fmtM(meters, u) { return fmt(fromM(meters, u)) + ' ' + u; }
 
   function elementWord(plural, capital) {
-    var single = state.element === 'spindle' ? 'spindle' : 'pillar';
-    var word = plural ? single + 's' : single;
+    var word = plural ? 'pillars' : 'pillar';
     if (capital) return word.charAt(0).toUpperCase() + word.slice(1);
     return word;
   }
@@ -95,38 +100,42 @@
 
   // ── Core calculation ────────────────────────────────────────────────
   function compute() {
-    var L = num(els.length);
-    var t = num(els.thickness);
+    var Lraw = num(els.length);
+    var traw = num(els.thickness);
     var placement = els.placement.value;
     var k = placementOffset(placement);
     var minN = minCount(placement);
 
     // Not enough input yet → empty state (not an error).
-    if (L === null || t === null || L <= 0 || t <= 0) {
+    if (Lraw === null || traw === null || Lraw <= 0 || traw <= 0) {
       return { status: 'empty' };
     }
 
-    if (t >= L) {
+    var Lm = toM(Lraw, lengthUnit());
+    var tm = toM(traw, thicknessUnit());
+
+    if (tm >= Lm) {
       return { status: 'error', message: 'The thickness is bigger than the total length. Lower the thickness or increase the length.' };
     }
 
     var N;
 
     if (state.mode === 'spacing') {
-      var d = num(els.spacing);
-      if (d === null || d <= 0) {
+      var draw = num(els.spacing);
+      if (draw === null || draw <= 0) {
         return { status: 'empty' };
       }
-      // Fewest elements that keep every clear gap <= d.
+      var dm = toM(draw, gapUnit());
+      // Fewest pillars that keep every clear gap <= the desired gap.
       // N = ceil((L - d*k) / (t + d)), then clamped to the minimum.
-      N = Math.ceil((L - d * k) / (t + d));
+      N = Math.ceil((Lm - dm * k) / (tm + dm));
       if (N < minN) N = minN;
     } else {
-      var c = num(els.count);
-      if (c === null || c <= 0) {
+      var craw = num(els.count);
+      if (craw === null || craw <= 0) {
         return { status: 'empty' };
       }
-      N = Math.round(c);
+      N = Math.round(craw);
       if (placement === 'both' && N < 2) {
         return { status: 'error', message: 'You need at least 2 ' + elementWord(true) + ' when placing one at each end.' };
       }
@@ -138,31 +147,30 @@
     var G = N + k; // number of gaps
 
     // Does the solid material fit at all?
-    if (N * t > L + 1e-9) {
+    if (N * tm > Lm + 1e-9) {
+      var su = spacingUnit();
       return {
         status: 'error',
-        message: N + ' ' + elementWord(true) + ' at ' + withUnit(t) + ' thick need ' +
-          withUnit(N * t) + ', which is more than the ' + withUnit(L) + ' available.'
+        message: N + ' ' + elementWord(true) + ' at ' + fmtM(tm, su) + ' thick need ' +
+          fmtM(N * tm, su) + ', which is more than the ' + fmtM(Lm, lengthUnit()) + ' available.'
       };
     }
 
-    var clear = G > 0 ? (L - N * t) / G : 0;
-    if (clear < -1e-9) {
+    var clearM = G > 0 ? (Lm - N * tm) / G : 0;
+    if (clearM < -1e-9) {
       return { status: 'error', message: 'These values leave no room between ' + elementWord(true) + '. Reduce the count or thickness.' };
     }
-    if (clear < 0) clear = 0;
-
-    var c2c = clear + t;
+    if (clearM < 0) clearM = 0;
 
     return {
       status: 'ok',
-      L: L,
-      t: t,
+      Lm: Lm,
+      tm: tm,
       placement: placement,
       N: N,
       G: G,
-      clear: clear,
-      c2c: c2c
+      clearM: clearM,
+      c2cM: clearM + tm
     };
   }
 
@@ -178,7 +186,7 @@
       both: 'At both ends',
       start: 'Only at start',
       end: 'Only at end',
-      none: 'No elements at ends'
+      none: 'No pillars at ends'
     }[p] || p;
   }
 
@@ -202,17 +210,18 @@
     }
     if (!ok) return;
 
+    var su = spacingUnit();
     var gapWord = result.G === 1 ? 'space' : 'spaces';
     els.breakdown.innerHTML =
       'You need <strong>' + result.N + ' ' + elementWord(true) + '</strong> with <strong>' +
-      result.G + ' ' + gapWord + '</strong> of <strong>' + withUnit(result.clear) + '</strong> each (clear gap). ' +
-      'Center&#8209;to&#8209;center spacing is <strong>' + withUnit(result.c2c) + '</strong>.';
+      result.G + ' ' + gapWord + '</strong> of <strong>' + fmtM(result.clearM, su) + '</strong> each (clear gap). ' +
+      'Center&#8209;to&#8209;center spacing is <strong>' + fmtM(result.c2cM, su) + '</strong>.';
 
     els.statCount.textContent = result.N;
     els.statCountLabel.textContent = elementWord(true, true);
     els.statGaps.textContent = result.G;
-    els.statClear.textContent = withUnit(result.clear);
-    els.statC2c.textContent = withUnit(result.c2c);
+    els.statClear.textContent = fmtM(result.clearM, su);
+    els.statC2c.textContent = fmtM(result.c2cM, su);
 
     els.diagram.innerHTML = buildSvg(result);
   }
@@ -225,21 +234,21 @@
     var baselineY = 190;
     var pillarH = 96;
     var drawW = W - padX * 2;
-    var scale = drawW / r.L;
-    var u = unit();
+    var scale = drawW / r.Lm;
+    var lengthU = lengthUnit();
+    var spacingU = spacingUnit();
 
-    var k = placementOffset(r.placement);
-    var lead = (r.placement === 'end' || r.placement === 'none') ? r.clear : 0;
+    var lead = (r.placement === 'end' || r.placement === 'none') ? r.clearM : 0;
 
     function px(pos) { return padX + pos * scale; }
 
-    // Pillar left-edge positions (in length units).
+    // Pillar left-edge positions (in metres).
     var positions = [];
     var pos = lead;
     for (var i = 0; i < r.N; i++) {
       positions.push(pos);
-      pos += r.t;
-      if (i < r.N - 1) pos += r.clear;
+      pos += r.tm;
+      if (i < r.N - 1) pos += r.clearM;
     }
 
     var svg = [];
@@ -253,8 +262,8 @@
     var minW = 4;
     for (var j = 0; j < positions.length; j++) {
       var leftUnits = positions[j];
-      var centerUnits = leftUnits + r.t / 2;
-      var pw = Math.max(r.t * scale, minW);
+      var centerUnits = leftUnits + r.tm / 2;
+      var pw = Math.max(r.tm * scale, minW);
       var x = px(centerUnits) - pw / 2;
       svg.push('<rect x="' + x.toFixed(1) + '" y="' + (baselineY - pillarH) + '" width="' + pw.toFixed(1) +
         '" height="' + pillarH + '" rx="2" fill="#024768"/>');
@@ -267,14 +276,14 @@
     // Clear-gap dimension (first interior gap when possible).
     var gapStart, gapEnd;
     if (positions.length >= 2) {
-      gapStart = positions[0] + r.t;
+      gapStart = positions[0] + r.tm;
       gapEnd = positions[1];
     } else if (lead > 0) {
       gapStart = 0; gapEnd = lead;
     } else {
-      gapStart = positions[0] + r.t; gapEnd = r.L;
+      gapStart = positions[0] + r.tm; gapEnd = r.Lm;
     }
-    if (r.clear > 0 && gapEnd > gapStart) {
+    if (r.clearM > 0 && gapEnd > gapStart) {
       var gy = baselineY - pillarH / 2;
       var gx1 = px(gapStart);
       var gx2 = px(gapEnd);
@@ -284,7 +293,7 @@
       svg.push(tick(gx2, gy, '#2e7d4a'));
       svg.push('<text x="' + ((gx1 + gx2) / 2).toFixed(1) + '" y="' + (gy - 8) +
         '" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#2e7d4a">' +
-        esc(fmt(r.clear) + ' ' + u) + '</text>');
+        esc(fmtM(r.clearM, spacingU)) + '</text>');
     }
 
     // Total-length dimension.
@@ -295,7 +304,7 @@
     svg.push(tick(W - padX, dimY, '#024768'));
     svg.push('<text x="' + (W / 2) + '" y="' + (dimY + 22) +
       '" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#024768">' +
-      esc('Total length: ' + fmt(r.L) + ' ' + u) + '</text>');
+      esc('Total length: ' + fmtM(r.Lm, lengthU)) + '</text>');
 
     svg.push('</svg>');
     return svg.join('');
@@ -314,28 +323,29 @@
   function resultRows() {
     if (!lastResult) return [];
     var r = lastResult;
+    var su = spacingUnit();
     var modeLabel = state.mode === 'spacing'
-      ? 'By spacing (target ' + withUnit(num(els.spacing) || 0) + ')'
+      ? 'By spacing (target ' + fmt(num(els.spacing) || 0) + ' ' + gapUnit() + ')'
       : 'By number';
     return [
-      { label: 'Element type', value: elementWord(true, true) },
-      { label: 'Total length', value: withUnit(r.L) },
-      { label: elementWord(false, true) + ' thickness', value: withUnit(r.t) },
+      { label: 'Total length', value: fmtM(r.Lm, lengthUnit()) },
+      { label: 'Pillar thickness', value: fmtM(r.tm, thicknessUnit()) },
       { label: 'End placement', value: placementLabel(r.placement) },
       { label: 'Calculation mode', value: modeLabel },
       { label: 'Number of ' + elementWord(true), value: String(r.N) },
       { label: 'Spaces / gaps', value: String(r.G) },
-      { label: 'Clear gap (each)', value: withUnit(r.clear) },
-      { label: 'Center-to-center', value: withUnit(r.c2c) }
+      { label: 'Clear gap (each)', value: fmtM(r.clearM, su) },
+      { label: 'Center-to-center', value: fmtM(r.c2cM, su) }
     ];
   }
 
   function summaryText() {
     if (!lastResult) return '';
     var r = lastResult;
+    var su = spacingUnit();
     var gapWord = r.G === 1 ? 'space' : 'spaces';
     return 'You need ' + r.N + ' ' + elementWord(true) + ' with ' + r.G + ' ' + gapWord +
-      ' of ' + withUnit(r.clear) + ' each (clear gap). Center-to-center spacing is ' + withUnit(r.c2c) + '.';
+      ' of ' + fmtM(r.clearM, su) + ' each (clear gap). Center-to-center spacing is ' + fmtM(r.c2cM, su) + '.';
   }
 
   function copyResults() {
@@ -448,9 +458,10 @@
   // ── Save / load / delete ────────────────────────────────────────────
   function currentPayload() {
     return {
-      element: state.element,
       mode: state.mode,
-      unit: unit(),
+      length_unit: lengthUnit(),
+      thickness_unit: thicknessUnit(),
+      gap_unit: gapUnit(),
       length: els.length.value,
       thickness: els.thickness.value,
       spacing: els.spacing.value,
@@ -561,15 +572,16 @@
 
   function loadPayload(p) {
     if (!p) return;
-    if (p.unit) els.unit.value = p.unit;
+    // `unit` is the legacy single-unit key from older saved calculations.
+    if (p.length_unit || p.unit) els.unit.value = p.length_unit || p.unit;
+    if (p.thickness_unit || p.unit) els.thicknessUnit.value = p.thickness_unit || p.unit;
+    if (p.gap_unit || p.unit) els.gapUnit.value = p.gap_unit || p.unit;
     els.length.value = p.length != null ? p.length : '';
     els.thickness.value = p.thickness != null ? p.thickness : '';
     els.spacing.value = p.spacing != null ? p.spacing : '';
     els.count.value = p.count != null ? p.count : '';
     if (p.placement) els.placement.value = p.placement;
-    setElement(p.element === 'spindle' ? 'spindle' : 'pillar');
     setMode(p.mode === 'count' ? 'count' : 'spacing');
-    syncUnitLabels();
     render();
     root.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -582,14 +594,6 @@
     });
   }
 
-  function setElement(value) {
-    state.element = value;
-    setActive(els.elementToggle, 'data-element', value);
-    var single = value === 'spindle' ? 'Spindle' : 'Pillar';
-    if (els.thicknessLabel) els.thicknessLabel.textContent = single;
-    els.elementLabelsLower.forEach(function (n) { n.textContent = elementWord(true); });
-  }
-
   function setMode(value) {
     state.mode = value;
     setActive(els.modeToggle, 'data-mode', value);
@@ -598,23 +602,12 @@
     });
   }
 
-  function syncUnitLabels() {
-    var u = unit();
-    els.unitSuffixes.forEach(function (n) { n.textContent = u; });
-  }
-
   // ── Wire up events ──────────────────────────────────────────────────
   [els.length, els.thickness, els.spacing, els.count].forEach(function (input) {
     input.addEventListener('input', render);
   });
-  els.placement.addEventListener('change', render);
-  els.unit.addEventListener('change', function () { syncUnitLabels(); render(); });
-
-  els.elementToggle.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-element]');
-    if (!btn) return;
-    setElement(btn.getAttribute('data-element'));
-    render();
+  [els.placement, els.unit, els.thicknessUnit, els.gapUnit].forEach(function (sel) {
+    sel.addEventListener('change', render);
   });
 
   els.modeToggle.addEventListener('click', function (e) {
@@ -631,9 +624,9 @@
     els.count.value = '';
     els.placement.value = 'both';
     els.unit.value = 'ft';
-    setElement('pillar');
+    els.thicknessUnit.value = 'in';
+    els.gapUnit.value = 'in';
     setMode('spacing');
-    syncUnitLabels();
     render();
   });
 
@@ -655,8 +648,6 @@
   })();
 
   // ── Init ────────────────────────────────────────────────────────────
-  setElement('pillar');
   setMode('spacing');
-  syncUnitLabels();
   render();
 })();
