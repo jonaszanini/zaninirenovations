@@ -487,7 +487,12 @@
       var vb = svgEl.viewBox.baseVal;
       var w = (vb && vb.width) ? vb.width : 1000;
       var h = (vb && vb.height) ? vb.height : 260;
-      var xml = new XMLSerializer().serializeToString(svgEl);
+      // Clone and stamp explicit pixel dimensions; an SVG with only a
+      // viewBox can rasterise to a zero-size (blank) image in some browsers.
+      var clone = svgEl.cloneNode(true);
+      clone.setAttribute('width', w);
+      clone.setAttribute('height', h);
+      var xml = new XMLSerializer().serializeToString(clone);
       var svg64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
       var img = new Image();
       img.onload = function () {

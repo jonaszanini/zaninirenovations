@@ -53,7 +53,10 @@
     table.pdf-marks {
       width: 100%;
       border-collapse: collapse;
+      page-break-inside: auto;
     }
+    table.pdf-marks thead { display: table-header-group; }
+    table.pdf-marks tr { page-break-inside: avoid; }
     table.pdf-marks th,
     table.pdf-marks td {
       padding: 5px 8px;
@@ -82,11 +85,13 @@
   @endif
 
   @if (!empty($diagram))
+    <h2 class="pdf-section-title">Layout diagram</h2>
     <div class="pdf-diagram">
       <img src="{{ $diagram }}" alt="Layout diagram">
     </div>
   @endif
 
+  <h2 class="pdf-section-title">Results</h2>
   <table class="pdf-rows">
     @foreach ($rows as $row)
       <tr>
