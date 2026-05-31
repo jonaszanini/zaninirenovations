@@ -86,6 +86,14 @@ a.util-tool-card:hover .util-tool-card__cta {
 }
 
 /* ── Calculator layout ──────────────────────────────────────────────── */
+
+/* The HTML `hidden` attribute must always win, even on elements this
+   stylesheet gives an explicit display (flex/grid/inline-flex) — otherwise
+   the error box, copy button, diagram and save cards leak into view. */
+.util-ps [hidden] {
+  display: none !important;
+}
+
 .util-ps-grid {
   display: grid;
   grid-template-columns: minmax(300px, 380px) 1fr;
