@@ -136,6 +136,80 @@ body.admin-body {
   opacity: 0.95;
 }
 
+/* Collapsible submenu groups (built on <details>/<summary>) */
+.admin-nav-group {
+  margin: 0;
+}
+
+.admin-nav-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.8rem 1.25rem;
+  color: var(--admin-muted);
+  font-weight: 500;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  list-style: none;
+  user-select: none;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+/* Hide the native disclosure triangle (all engines). */
+.admin-nav-details > summary::-webkit-details-marker {
+  display: none;
+}
+.admin-nav-details > summary::marker {
+  content: "";
+}
+
+.admin-nav-details > summary:hover {
+  color: var(--admin-primary);
+  background: var(--admin-surface-hover);
+}
+
+.admin-nav-details > summary .fa {
+  width: 1.25rem;
+  text-align: center;
+  opacity: 0.95;
+}
+
+.admin-nav-parent__label {
+  flex: 1;
+}
+
+.admin-nav-caret {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  transition: transform 0.2s ease;
+}
+
+.admin-nav-details[open] > summary .admin-nav-caret {
+  transform: rotate(180deg);
+}
+
+.admin-nav-parent.is-active {
+  color: var(--admin-primary);
+  font-weight: 600;
+  border-left-color: var(--admin-primary);
+}
+
+/* Submenu links */
+.admin-subnav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-nav .admin-subnav a {
+  padding-left: 2.9rem;
+  font-size: 0.92rem;
+}
+
+.admin-nav .admin-subnav a .fa {
+  font-size: 0.85rem;
+}
+
 .admin-sidebar-footer {
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--admin-border);

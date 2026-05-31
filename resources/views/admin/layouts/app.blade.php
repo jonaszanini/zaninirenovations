@@ -20,6 +20,17 @@
         <a href="{{ route('admin.dashboard') }}">Zanini Renovations</a>
         <span>Admin</span>
       </div>
+      @php
+        $isCalendar = request()->routeIs('admin.client-projects.calendar');
+        $isAllProjects = request()->routeIs('admin.client-projects.*') && ! $isCalendar;
+        $isPhotos = request()->routeIs('admin.portfolio.*') || request()->routeIs('admin.categories.*');
+        $projectsOpen = $isAllProjects || $isCalendar || $isPhotos;
+
+        $isQuotation = request()->routeIs('admin.quotations.*');
+        $isVehicles = request()->routeIs('admin.vehicles.*');
+        $isComms = request()->routeIs('admin.communications.*');
+        $isUtilities = request()->routeIs('admin.utilities.*');
+      @endphp
       <ul class="admin-nav">
         <li>
           <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}">
@@ -27,53 +38,114 @@
             Dashboard
           </a>
         </li>
-        <li>
-          <a href="{{ route('admin.client-projects.index') }}" class="{{ request()->routeIs('admin.client-projects.index') || request()->routeIs('admin.client-projects.create') || request()->routeIs('admin.client-projects.show') || request()->routeIs('admin.client-projects.edit') || request()->routeIs('admin.client-projects.store') || request()->routeIs('admin.client-projects.update') ? 'is-active' : '' }}">
-            <i class="fa fa-briefcase"></i>
-            Projects
-          </a>
+
+        <li class="admin-nav-group">
+          <details class="admin-nav-details" {{ $projectsOpen ? 'open' : '' }}>
+            <summary class="admin-nav-parent {{ $projectsOpen ? 'is-active' : '' }}">
+              <i class="fa fa-briefcase"></i>
+              <span class="admin-nav-parent__label">Projects</span>
+              <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
+            </summary>
+            <ul class="admin-subnav">
+              <li>
+                <a href="{{ route('admin.client-projects.index') }}" class="{{ $isAllProjects ? 'is-active' : '' }}">
+                  <i class="fa fa-briefcase"></i>
+                  All Projects
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.client-projects.calendar') }}" class="{{ $isCalendar ? 'is-active' : '' }}">
+                  <i class="fa fa-calendar"></i>
+                  Project Calendar
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.portfolio.index') }}" class="{{ $isPhotos ? 'is-active' : '' }}">
+                  <i class="fa fa-folder-open"></i>
+                  Latest Projects Photos
+                </a>
+              </li>
+            </ul>
+          </details>
         </li>
+
         <li>
           <a href="{{ route('admin.clients.index') }}" class="{{ request()->routeIs('admin.clients.*') ? 'is-active' : '' }}">
             <i class="fa fa-address-book"></i>
             Clients
           </a>
         </li>
-        <li>
-          <a href="{{ route('admin.client-projects.calendar') }}" class="{{ request()->routeIs('admin.client-projects.calendar') ? 'is-active' : '' }}">
-            <i class="fa fa-calendar"></i>
-            Project Calendar
-          </a>
+
+        <li class="admin-nav-group">
+          <details class="admin-nav-details" {{ $isQuotation ? 'open' : '' }}>
+            <summary class="admin-nav-parent {{ $isQuotation ? 'is-active' : '' }}">
+              <i class="fa fa-calculator"></i>
+              <span class="admin-nav-parent__label">Quotations</span>
+              <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
+            </summary>
+            <ul class="admin-subnav">
+              <li>
+                <a href="{{ route('admin.quotations.index') }}" class="{{ $isQuotation ? 'is-active' : '' }}">
+                  <i class="fa fa-file-text-o"></i>
+                  Quotation
+                </a>
+              </li>
+            </ul>
+          </details>
         </li>
-        <li>
-          <a href="{{ route('admin.quotations.index') }}" class="{{ request()->routeIs('admin.quotations.*') ? 'is-active' : '' }}">
-            <i class="fa fa-calculator"></i>
-            Quotation
-          </a>
+
+        <li class="admin-nav-group">
+          <details class="admin-nav-details" {{ $isVehicles ? 'open' : '' }}>
+            <summary class="admin-nav-parent {{ $isVehicles ? 'is-active' : '' }}">
+              <i class="fa fa-money"></i>
+              <span class="admin-nav-parent__label">Financials</span>
+              <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
+            </summary>
+            <ul class="admin-subnav">
+              <li>
+                <a href="{{ route('admin.vehicles.index') }}" class="{{ $isVehicles ? 'is-active' : '' }}">
+                  <i class="fa fa-car"></i>
+                  Vehicles
+                </a>
+              </li>
+            </ul>
+          </details>
         </li>
-        <li>
-          <a href="{{ route('admin.communications.index') }}" class="{{ request()->routeIs('admin.communications.*') ? 'is-active' : '' }}">
-            <i class="fa fa-paper-plane"></i>
-            Email/SMS log
-          </a>
+
+        <li class="admin-nav-group">
+          <details class="admin-nav-details" {{ $isComms ? 'open' : '' }}>
+            <summary class="admin-nav-parent {{ $isComms ? 'is-active' : '' }}">
+              <i class="fa fa-comments"></i>
+              <span class="admin-nav-parent__label">Communication</span>
+              <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
+            </summary>
+            <ul class="admin-subnav">
+              <li>
+                <a href="{{ route('admin.communications.index') }}" class="{{ $isComms ? 'is-active' : '' }}">
+                  <i class="fa fa-paper-plane"></i>
+                  Email/SMS Log
+                </a>
+              </li>
+            </ul>
+          </details>
         </li>
-        <li>
-          <a href="{{ route('admin.portfolio.index') }}" class="{{ request()->routeIs('admin.portfolio.*') || request()->routeIs('admin.categories.*') ? 'is-active' : '' }}">
-            <i class="fa fa-folder-open"></i>
-            Latest Projects Photos
-          </a>
-        </li>
-        <li>
-          <a href="{{ route('admin.vehicles.index') }}" class="{{ request()->routeIs('admin.vehicles.*') ? 'is-active' : '' }}">
-            <i class="fa fa-car"></i>
-            Vehicles
-          </a>
-        </li>
-        <li>
-          <a href="{{ route('admin.utilities.index') }}" class="{{ request()->routeIs('admin.utilities.*') ? 'is-active' : '' }}">
-            <i class="fa fa-wrench"></i>
-            Utilities
-          </a>
+
+        <li class="admin-nav-group">
+          <details class="admin-nav-details" {{ $isUtilities ? 'open' : '' }}>
+            <summary class="admin-nav-parent {{ $isUtilities ? 'is-active' : '' }}">
+              <i class="fa fa-cogs"></i>
+              <span class="admin-nav-parent__label">Tools</span>
+              <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
+            </summary>
+            <ul class="admin-subnav">
+              <li>
+                <a href="{{ route('admin.utilities.index') }}" class="{{ $isUtilities ? 'is-active' : '' }}">
+                  <i class="fa fa-wrench"></i>
+                  Utilities
+                </a>
+              </li>
+            </ul>
+          </details>
         </li>
       </ul>
       <div class="admin-sidebar-footer">
