@@ -3685,6 +3685,34 @@ body.cp-modal-open {
   /* Short name | Description (wider) | Unit price (narrower) | Qty (narrower) */
   grid-template-columns: minmax(120px, 1fr) minmax(260px, 4fr) minmax(90px, 0.6fr) minmax(70px, 0.45fr);
 }
+.sq-mat-row--url {
+  /* Full-width product URL on its own line so it never crowds the
+     short name / description / price inputs above it. */
+  grid-template-columns: 1fr;
+}
+.sq-mat-url-control {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+.sq-mat-url-control .sq-mat-url {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sq-mat-url-control .sq-mat-url-open {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+}
+.sq-mat-optional {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #94a3b8;
+}
 .sq-mat-row--computed {
   /* Subtotal | HST (13%) | Total w/ HST | HST checkbox */
   grid-template-columns: minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(90px, 0.7fr);

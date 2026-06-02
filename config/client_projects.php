@@ -10,18 +10,23 @@ return [
     | recipient without editing code.
     */
 
+    // Self-addressed admin reminder/notification emails are DISABLED by default
+    // (empty recipient = no email sent). To re-enable any of them, set the
+    // matching env var to an email address. Note: the day-before-commencement
+    // SMS to the *client* is unaffected by these — it's controlled by Mocean.
+
     // Email address that receives the daily Quote Pending reminders.
-    'quote_reminder_email_to' => env('CLIENT_PROJECTS_REMINDER_TO', 'zaninirenovations@gmail.com'),
+    'quote_reminder_email_to' => env('CLIENT_PROJECTS_REMINDER_TO', ''),
 
     // Email address that receives the 2-day Quote Sent follow-up reminder.
-    'quote_follow_up_email_to' => env('CLIENT_PROJECTS_FOLLOW_UP_TO', 'zaninirenovations@gmail.com'),
+    'quote_follow_up_email_to' => env('CLIENT_PROJECTS_FOLLOW_UP_TO', ''),
 
     // Email address that receives the "Add to Google Calendar" link when
     // start/end dates are saved on a project.
-    'calendar_email_to' => env('CLIENT_PROJECTS_CALENDAR_TO', 'zaninirenovations@gmail.com'),
+    'calendar_email_to' => env('CLIENT_PROJECTS_CALENDAR_TO', ''),
 
     // Admin email for the automated "day before work begins" notice (runs via scheduler).
-    'commencement_eve_email_to' => env('CLIENT_PROJECTS_COMMENCEMENT_EVE_TO', 'zaninirenovations@gmail.com'),
+    'commencement_eve_email_to' => env('CLIENT_PROJECTS_COMMENCEMENT_EVE_TO', ''),
 
     // Google review URL used in the thank-you email to the client.
     'review_url' => env(
