@@ -40,9 +40,12 @@
       }
   }
 
+  // Email only needs a recipient email address; SMS only needs a phone.
+  // The two delivery channels are independent — a missing phone must not
+  // disable email (and vice-versa).
   $contactBlockersForEmail = [];
-  if (!$hasContactInfo) {
-      $contactBlockersForEmail[] = 'Missing client info: '.implode(', ', $missing);
+  if (blank(trim((string) $project->client_email))) {
+      $contactBlockersForEmail[] = "Add the client's email address.";
   }
 
   $sendBlockers = array_merge($contactBlockersForEmail, $contentBlockers);
@@ -56,7 +59,7 @@
       $smsBlockers[] = 'SMS gateway is not configured on the server (MOCEAN_API_TOKEN).';
   }
   if ($invoice && \App\Models\ClientProject::phoneDigitsForSms($project->client_phone) === null) {
-      $smsBlockers[] = 'Add a mobile phone number for the client (Edit project → phone).';
+      $smsBlockers[] = "Add the client's mobile phone number.";
   }
   $canSms = empty($smsBlockers);
   $smsTitle = $canSms
@@ -87,8 +90,13 @@
     <div class="cp-contract-warning cp-invoice-send-warning">
       <i class="fa fa-exclamation-triangle"></i>
       <div class="cp-invoice-send-warning-body">
+        @php
+          $disabledChannels = [];
+          if (! $canSend) { $disabledChannels[] = 'Email'; }
+          if (! $canSms) { $disabledChannels[] = 'SMS'; }
+        @endphp
         <p class="cp-invoice-send-warning-lead">
-          <strong>Email and/or SMS disabled.</strong> Address the items below:
+          <strong>{{ implode(' and ', $disabledChannels) }} disabled.</strong> Address the items below:
         </p>
         <ul class="cp-invoice-send-blockers">
           @if ($needsDueDate)
@@ -99,9 +107,9 @@
           @endforeach
         </ul>
         <p class="cp-invoice-send-warning-actions">
-          <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}"
+          <a href="{{ route('admin.client-projects.edit', $project) }}"
              class="admin-btn admin-btn--ghost admin-btn--sm cp-invoice-send-warning-link">
-            <i class="fa fa-pencil"></i> Open invoice editor
+            <i class="fa fa-pencil"></i> Edit project info
           </a>
         </p>
       </div>

@@ -22,7 +22,7 @@
           </tr>
           <tr>
             <td align="center" style="background:#ffffff;padding:20px 28px 8px 28px;">
-              <img src="{{ asset('images/logo.png') }}"
+              <img src="{{ config('mail.logo_url') }}"
                    alt="{{ config('mail.from.name', 'Zanini Renovations') }}"
                    width="160"
                    style="display:block;max-width:160px;height:auto;border:0;outline:none;text-decoration:none;">

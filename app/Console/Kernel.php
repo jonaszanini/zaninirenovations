@@ -15,18 +15,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // Daily reminder emails for Quote Pending projects + follow-ups for
-        // projects whose Quote Sent 2-day follow-up is due.
-        $schedule->command('client-projects:send-reminders')
-            ->dailyAt('09:00')
-            ->timezone('America/Toronto')
-            ->withoutOverlapping();
-
-        // Admin email the calendar day before a project's scheduled start_date.
-        $schedule->command('client-projects:notify-commencement-eve')
-            ->dailyAt('09:00')
-            ->timezone('America/Toronto')
-            ->withoutOverlapping();
+        // NOTE: The daily project automations (reminders, commencement-eve,
+        // start-due-today, etc.) are NOT scheduled by time here. They run via
+        // App\Console\Commands\RunDailyAutomations (`automations:run-daily`),
+        // which the HTTP cron endpoint (GET /cron/run) invokes once a day at
+        // 9am EST so every automation fires unconditionally on each hit. Add new
+        // daily automations to that command's list, not here.
 
         // TEMPORARY cron smoke test: when SMS_CRON_TEST=true the scheduler texts
         // the owner every minute, proving cron is invoking `schedule:run`. Set

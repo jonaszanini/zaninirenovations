@@ -6,14 +6,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 
 /**
- * HTTP entry point for the Laravel scheduler, used as a fallback when the
- * host's system cron is unreliable (e.g. Hostinger shared plans where hPanel
- * cron jobs silently never execute).
+ * HTTP entry point for the daily automations, used because the host's system
+ * cron is unreliable (e.g. Hostinger shared plans where hPanel cron jobs
+ * silently never execute).
  *
- * An external scheduler (cron-job.org, UptimeRobot, etc.) hits
- * GET /cron/run?token=SECRET every few minutes. Each hit runs
- * `schedule:run`, which fires whatever scheduled commands are due. The actual
- * jobs are still defined once in App\Console\Kernel — this only triggers them.
+ * An external scheduler hits GET /cron/run?token=SECRET once a day at 9am EST.
+ * Each hit runs `automations:run-daily`, which fires EVERY daily automation
+ * unconditionally (see App\Console\Commands\RunDailyAutomations). `schedule:run`
+ * is also invoked afterwards so any time-based scheduler entries still work.
  */
 class CronController extends Controller
 {
@@ -32,11 +32,20 @@ class CronController extends Controller
             abort(404);
         }
 
-        $exitCode = Artisan::call('schedule:run');
+        // Run all daily automations unconditionally on every hit.
+        $automationsExit = Artisan::call('automations:run-daily');
+        $automationsOutput = trim(Artisan::output());
 
-        return response(
-            "schedule:run completed (exit {$exitCode}) at ".now()->toIso8601String()."\n",
-            200
-        )->header('Content-Type', 'text/plain; charset=UTF-8');
+        // Then let the scheduler fire any remaining time-based entries.
+        $scheduleExit = Artisan::call('schedule:run');
+
+        $body = "automations:run-daily completed (exit {$automationsExit}) at ".now()->toIso8601String()."\n";
+        if ($automationsOutput !== '') {
+            $body .= $automationsOutput."\n";
+        }
+        $body .= "schedule:run completed (exit {$scheduleExit})\n";
+
+        return response($body, 200)
+            ->header('Content-Type', 'text/plain; charset=UTF-8');
     }
 }

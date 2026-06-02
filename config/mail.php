@@ -84,6 +84,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Email logo URL
+    |--------------------------------------------------------------------------
+    |
+    | Absolute URL of the logo shown in the email footer. Emails are often
+    | rendered from CLI/cron (the daily automations) where asset()/url() fall
+    | back to APP_URL — which may be localhost in dev. Hardcoding an absolute,
+    | publicly reachable URL guarantees the logo renders in every mail client
+    | regardless of the send context. Override per-environment with MAIL_LOGO_URL.
+    |
+    */
+
+    'logo_url' => env('MAIL_LOGO_URL', 'https://zaninirenovations.ca/images/logo.png'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Markdown Mail Settings
     |--------------------------------------------------------------------------
     */
