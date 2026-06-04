@@ -130,6 +130,7 @@
             'latValue' => old('client_address_latitude'),
             'lngName' => 'client_address_longitude',
             'lngValue' => old('client_address_longitude'),
+            'directoryHintId' => 'cp-client-address-directory-hint',
           ])
 
           <div class="admin-form-section" style="margin-top:1rem;padding-top:1rem;border-top:1px dashed #e5e7eb;">

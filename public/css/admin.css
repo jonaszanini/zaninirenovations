@@ -848,6 +848,11 @@ details[open] > summary.admin-chevron-summary::after {
   color: var(--admin-danger, #c62828);
   font-weight: 500;
 }
+.cp-directory-address-hint {
+  color: #374151;
+  margin-top: 0.35rem;
+}
+
 .admin-places-status--ok {
   color: #166534;
 }

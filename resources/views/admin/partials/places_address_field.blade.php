@@ -14,6 +14,7 @@
   $lngName = $lngName ?? 'address_longitude';
   $lngValue = $lngValue ?? '';
   $help = $help ?? null;
+  $directoryHintId = $directoryHintId ?? null;
   $required = $required ?? false;
 @endphp
 <div class="admin-form-group admin-places-field">
@@ -35,6 +36,9 @@
   <input type="hidden" name="{{ $lngName }}" id="{{ $inputId }}-lng" value="{{ $lngValue }}">
   @if ($help)
     <p class="admin-form-help">{{ $help }}</p>
+  @endif
+  @if ($directoryHintId)
+    <p class="admin-form-help cp-directory-address-hint" id="{{ $directoryHintId }}" hidden></p>
   @endif
   <p class="admin-form-help admin-places-status" data-places-status hidden aria-live="polite"></p>
   @error($addressName) <p class="admin-form-error">{{ $message }}</p> @enderror

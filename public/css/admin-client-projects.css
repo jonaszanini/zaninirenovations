@@ -4369,9 +4369,28 @@ body.cp-modal-open {
 /* Client directory (admin) + Tom Select on project forms */
 .cp-clients-toolbar-search {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+}
+
+.cp-clients-toolbar-search__input {
+  width: min(320px, 100%);
+  max-width: 320px;
+  flex: 0 1 320px;
+}
+
+.cp-clients-toolbar-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.cp-clients-toolbar-total {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
 }
 .cp-client-directory-picker .ts-control {
   min-height: 44px;

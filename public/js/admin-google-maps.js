@@ -164,6 +164,27 @@
     element.style.setProperty('border-radius', '8px');
   }
 
+  function findMountByInputId(inputId) {
+    return document.querySelector('[data-places-mount][data-address-input="' + inputId + '"]');
+  }
+
+  function dispatchPlacesEvent(name, inputId) {
+    document.dispatchEvent(new CustomEvent(name, { detail: { inputId: inputId } }));
+  }
+
+  cfg.syncAddressFromHidden = function (inputId) {
+    var mount = findMountByInputId(inputId);
+    if (!mount) return false;
+    var refs = getFieldRefs(mount);
+    var val = refs.addressInput ? (refs.addressInput.value || '') : '';
+    var widgetEl = document.getElementById(inputId + '-widget');
+    mount._zrProgrammaticSync = true;
+    if (widgetEl) widgetEl.value = val;
+    if (mount._zrAutocomplete) mount._zrAutocomplete.value = val;
+    mount._zrProgrammaticSync = false;
+    return true;
+  };
+
   function getFieldRefs(mount) {
     return {
       wrap: mount.closest('.admin-form-group'),
@@ -216,6 +237,9 @@
       refs.lngInput.value = place.location.lng();
     }
     setFieldStatus(mount, 'Address selected — save the form to keep it.', 'ok');
+    if (!mount._zrProgrammaticSync) {
+      dispatchPlacesEvent('zr-places-address-changed', mount.getAttribute('data-address-input'));
+    }
   }
 
   function handlePlaceSelect(mount, refs, event) {
@@ -269,6 +293,7 @@
         autocomplete.value = refs.addressInput.value;
       }
 
+      mount._zrAutocomplete = autocomplete;
       mount.appendChild(autocomplete);
 
       autocomplete.addEventListener('gmp-select', function (event) {
@@ -284,13 +309,16 @@
       });
 
       autocomplete.addEventListener('input', function () {
+        if (mount._zrProgrammaticSync) return;
         if (!autocomplete.value || !String(autocomplete.value).trim()) {
           clearGeoFields(refs);
           setFieldStatus(mount, '', '');
         }
+        dispatchPlacesEvent('zr-places-address-changed', mount.getAttribute('data-address-input'));
       });
 
       setFieldStatus(mount, 'Address suggestions enabled — pick one from the list.', 'ok');
+      dispatchPlacesEvent('zr-places-ready', mount.getAttribute('data-address-input'));
     }).catch(function (err) {
       var msg = (err && err.message) ? err.message : 'Google Places could not be loaded.';
       setFieldStatus(mount, msg, 'error');

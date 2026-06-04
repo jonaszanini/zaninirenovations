@@ -28,7 +28,9 @@ class ClientController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.clients.index', compact('clients', 'q'));
+        $totalClients = Client::query()->count();
+
+        return view('admin.clients.index', compact('clients', 'q', 'totalClients'));
     }
 
     public function create(): View
@@ -111,6 +113,13 @@ class ClientController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
+        $id = $request->integer('id');
+        if ($id > 0) {
+            $client = Client::query()->find($id);
+
+            return response()->json($client ? [$this->pickerRow($client)] : []);
+        }
+
         $q = trim((string) $request->get('q', ''));
 
         $clients = Client::query()
@@ -126,15 +135,17 @@ class ClientController extends Controller
             ->limit(30)
             ->get();
 
-        $results = $clients->map(function (Client $c) {
-            $row = $c->toPickerArray();
-            $row['display'] = $c->searchLabel();
-            $row['phone_display'] = $c->phone ? \App\Models\ClientProject::formatPhone($c->phone) : '';
+        return response()->json($clients->map(fn (Client $c) => $this->pickerRow($c)));
+    }
 
-            return $row;
-        });
+    /** @return array<string, mixed> */
+    private function pickerRow(Client $c): array
+    {
+        $row = $c->toPickerArray();
+        $row['display'] = $c->searchLabel();
+        $row['phone_display'] = $c->phone ? \App\Models\ClientProject::formatPhone($c->phone) : '';
 
-        return response()->json($results);
+        return $row;
     }
 
     private function normalisePhone(Request $request): void
