@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ asset('css/font-awesome.min.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) ?: time() }}">
   <link rel="stylesheet" href="{{ asset('css/admin-client-projects.css') }}?v={{ @filemtime(public_path('css/admin-client-projects.css')) ?: time() }}">
+  <link rel="stylesheet" href="{{ asset('css/admin-blog.css') }}?v={{ @filemtime(public_path('css/admin-blog.css')) ?: time() }}">
   @stack('head')
 </head>
 <body class="admin-body">
@@ -30,6 +31,7 @@
         $isVehicles = request()->routeIs('admin.vehicles.*');
         $isComms = request()->routeIs('admin.communications.*');
         $isUtilities = request()->routeIs('admin.utilities.*');
+        $isBlog = request()->routeIs('admin.blog.*');
       @endphp
       <ul class="admin-nav">
         <li>
@@ -74,6 +76,42 @@
             <i class="fa fa-address-book"></i>
             Clients
           </a>
+        </li>
+
+        <li class="admin-nav-group">
+          <details class="admin-nav-details" {{ $isBlog ? 'open' : '' }}>
+            <summary class="admin-nav-parent {{ $isBlog ? 'is-active' : '' }}">
+              <i class="fa fa-rss"></i>
+              <span class="admin-nav-parent__label">Blog</span>
+              <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
+            </summary>
+            <ul class="admin-subnav">
+              <li>
+                <a href="{{ route('admin.blog.posts.index') }}" class="{{ request()->routeIs('admin.blog.posts.*') ? 'is-active' : '' }}">
+                  <i class="fa fa-file-text"></i>
+                  Posts
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.blog.categories.index') }}" class="{{ request()->routeIs('admin.blog.categories.*') ? 'is-active' : '' }}">
+                  <i class="fa fa-folder"></i>
+                  Categories
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.blog.tags.index') }}" class="{{ request()->routeIs('admin.blog.tags.*') ? 'is-active' : '' }}">
+                  <i class="fa fa-tags"></i>
+                  Tags
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.blog.comments.index') }}" class="{{ request()->routeIs('admin.blog.comments.*') ? 'is-active' : '' }}">
+                  <i class="fa fa-comments"></i>
+                  Comments
+                </a>
+              </li>
+            </ul>
+          </details>
         </li>
 
         <li class="admin-nav-group">

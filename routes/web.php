@@ -36,8 +36,13 @@ Route::view('/terms-and-conditions', 'site.terms-and-conditions')->name('terms-a
 Route::permanentRedirect('/services/custom-kitchen-remodel', '/');
 
 Route::get('/sitemap.xml', function () {
+    $blogPosts = \App\Models\BlogPost::query()
+        ->published()
+        ->orderByDesc('updated_at')
+        ->get(['slug', 'updated_at']);
+
     return response()
-        ->view('site.sitemap-xml', [], 200)
+        ->view('site.sitemap-xml', compact('blogPosts'), 200)
         ->header('Content-Type', 'application/xml; charset=UTF-8');
 })->name('sitemap');
 
@@ -78,6 +83,13 @@ Route::get('/', function () {
     return view('site.home', compact('projects', 'projectFilterCategories'));
 });
 
+Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/feed.xml', [\App\Http\Controllers\BlogRssController::class, 'index'])->name('blog.rss');
+Route::post('/blog/{post:slug}/comments', [\App\Http\Controllers\BlogCommentController::class, 'store'])
+    ->middleware('throttle:6,1')
+    ->name('blog.comments.store');
+Route::get('/blog/{post:slug}', [\App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
+
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/admin/login', [LoginController::class, 'login']);
@@ -112,6 +124,21 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // Client directory (shared contacts for new projects).
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class)->except(['show']);
+
+    Route::post('blog/posts/upload-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'uploadImage'])
+        ->name('blog.posts.upload-image');
+    Route::resource('blog/posts', \App\Http\Controllers\Admin\BlogPostController::class)
+        ->parameters(['posts' => 'post']);
+    Route::resource('blog/categories', \App\Http\Controllers\Admin\BlogCategoryController::class)
+        ->parameters(['categories' => 'category']);
+    Route::resource('blog/tags', \App\Http\Controllers\Admin\BlogTagController::class)
+        ->parameters(['tags' => 'tag']);
+    Route::get('blog/comments', [\App\Http\Controllers\Admin\BlogCommentController::class, 'index'])
+        ->name('blog.comments.index');
+    Route::post('blog/comments/{comment}/approve', [\App\Http\Controllers\Admin\BlogCommentController::class, 'approve'])
+        ->name('blog.comments.approve');
+    Route::delete('blog/comments/{comment}', [\App\Http\Controllers\Admin\BlogCommentController::class, 'destroy'])
+        ->name('blog.comments.destroy');
 
     // Client Projects management (quote → completion lifecycle).
     Route::get('client-projects/calendar', [\App\Http\Controllers\Admin\ClientProjectController::class, 'calendar'])

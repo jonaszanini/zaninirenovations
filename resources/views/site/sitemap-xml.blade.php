@@ -24,4 +24,18 @@
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
+  <url>
+    <loc>{{ url('/blog') }}</loc>
+    <lastmod>{{ now()->toAtomString() }}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  @foreach ($blogPosts ?? [] as $blogPost)
+    <url>
+      <loc>{{ route('blog.show', $blogPost->slug) }}</loc>
+      <lastmod>{{ ($blogPost->updated_at ?? now())->toAtomString() }}</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.7</priority>
+    </url>
+  @endforeach
 </urlset>

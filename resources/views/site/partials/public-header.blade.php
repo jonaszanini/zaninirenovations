@@ -109,6 +109,9 @@
               <a href="{{ $home }}#about" class="nav_menu" title="About us">About</a>
             </li>
             <li>
+              <a href="{{ route('blog.index') }}" class="nav_menu @if (request()->routeIs('blog.*')) link-active @endif" title="Blog">Blog</a>
+            </li>
+            <li>
               <a href="{{ $home }}#testimonials" class="nav_menu" title="Testimonials">Testimonials</a>
             </li>
             <li>

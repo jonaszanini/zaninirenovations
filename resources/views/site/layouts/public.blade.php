@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="contact-post-url" content="{{ url('/contact-email') }}">
-  <title>Zanini Renovations</title>
+  <title>@yield('page_title', 'Zanini Renovations')</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="@yield('meta_description', 'Zanini Renovations — carpentry and renovations in Carleton Place and the Ottawa region.')">
   @hasSection('meta_keywords')
@@ -16,11 +16,12 @@
   <link rel="shortcut icon" href="{{ url('images/favicon.png') }}">
 
   @php
-    $seoTitle = 'Zanini Renovations';
+    $seoTitle = trim($__env->yieldContent('page_title')) ?: 'Zanini Renovations';
     $seoDesc = trim($__env->yieldContent('meta_description')) ?: 'Zanini Renovations — licensed carpenter Ottawa, Carleton Place, finish & rough carpentry, O.Reg. 332/12 compliant work.';
     $seoDescOg = \Illuminate\Support\Str::limit($seoDesc, 300, '');
-    $ogImagePath = ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
-    $ogImageAbs = url($ogImagePath);
+    $ogImageOverride = trim($__env->yieldContent('og_image'));
+    $ogImagePath = $ogImageOverride !== '' ? $ogImageOverride : ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
+    $ogImageAbs = str_starts_with($ogImagePath, 'http') ? $ogImagePath : url($ogImagePath);
   @endphp
   <meta property="og:locale" content="en_CA">
   <meta property="og:type" content="@yield('og_type', 'website')">
