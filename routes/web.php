@@ -128,11 +128,14 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::post('blog/posts/upload-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'uploadImage'])
         ->name('blog.posts.upload-image');
     Route::resource('blog/posts', \App\Http\Controllers\Admin\BlogPostController::class)
-        ->parameters(['posts' => 'post']);
+        ->parameters(['posts' => 'post'])
+        ->names('blog.posts');
     Route::resource('blog/categories', \App\Http\Controllers\Admin\BlogCategoryController::class)
-        ->parameters(['categories' => 'category']);
+        ->parameters(['categories' => 'category'])
+        ->names('blog.categories');
     Route::resource('blog/tags', \App\Http\Controllers\Admin\BlogTagController::class)
-        ->parameters(['tags' => 'tag']);
+        ->parameters(['tags' => 'tag'])
+        ->names('blog.tags');
     Route::get('blog/comments', [\App\Http\Controllers\Admin\BlogCommentController::class, 'index'])
         ->name('blog.comments.index');
     Route::post('blog/comments/{comment}/approve', [\App\Http\Controllers\Admin\BlogCommentController::class, 'approve'])
