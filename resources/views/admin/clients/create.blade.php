@@ -37,12 +37,18 @@
         @error('email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
-      <div class="admin-form-group">
-        <label for="cl-address">Address</label>
-        <input type="text" id="cl-address" name="address" value="{{ old('address') }}" maxlength="500"
-               class="@error('address') is-invalid @enderror">
-        @error('address') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
+      @include('admin.partials.places_address_field', [
+        'inputId' => 'cl-address',
+        'addressName' => 'address',
+        'label' => 'Address',
+        'value' => old('address'),
+        'placeIdName' => 'address_place_id',
+        'placeIdValue' => old('address_place_id'),
+        'latName' => 'address_latitude',
+        'latValue' => old('address_latitude'),
+        'lngName' => 'address_longitude',
+        'lngValue' => old('address_longitude'),
+      ])
 
       <div class="admin-form-group">
         <label for="cl-notes">Notes</label>
@@ -59,3 +65,7 @@
     </form>
   </div>
 @endsection
+
+@push('scripts')
+  @include('admin.partials.google_maps_scripts')
+@endpush

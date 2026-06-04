@@ -36,6 +36,10 @@
       var email2El = document.getElementById('cp-client-email-secondary');
       var phoneEl = document.getElementById('cp-client-phone');
       var addrEl = document.getElementById('cp-client-address');
+      var placeIdEl = document.getElementById('cp-client-address-place-id');
+      var latEl = document.getElementById('cp-client-address-lat');
+      var lngEl = document.getElementById('cp-client-address-lng');
+      var addrWidgetEl = document.getElementById('cp-client-address-widget');
 
       function applyClient(o) {
         if (!o) return;
@@ -43,6 +47,10 @@
         if (emailEl) emailEl.value = o.email || '';
         if (email2El) email2El.value = o.email_secondary || '';
         if (addrEl) addrEl.value = o.address || '';
+        if (placeIdEl) placeIdEl.value = o.address_place_id || '';
+        if (latEl) latEl.value = o.address_latitude != null && o.address_latitude !== '' ? String(o.address_latitude) : '';
+        if (lngEl) lngEl.value = o.address_longitude != null && o.address_longitude !== '' ? String(o.address_longitude) : '';
+        if (addrWidgetEl) addrWidgetEl.value = o.address || '';
         if (phoneEl) {
           phoneEl.value = o.phone_display || o.phone || '';
           phoneEl.dispatchEvent(new Event('input', { bubbles: true }));

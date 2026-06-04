@@ -230,6 +230,9 @@ class ClientProjectContactService
             'email_secondary' => filled($data['client_email_secondary'] ?? null) ? $data['client_email_secondary'] : null,
             'phone' => filled($data['client_phone'] ?? null) ? $data['client_phone'] : null,
             'address' => filled($data['client_address'] ?? null) ? $data['client_address'] : null,
+            'address_place_id' => filled($data['client_address_place_id'] ?? null) ? $data['client_address_place_id'] : null,
+            'address_latitude' => $data['client_address_latitude'] ?? null,
+            'address_longitude' => $data['client_address_longitude'] ?? null,
         ]);
 
         return $client->id;
@@ -256,6 +259,9 @@ class ClientProjectContactService
             'email_secondary' => filled($data['client_email_secondary'] ?? null) ? $data['client_email_secondary'] : null,
             'phone' => filled($data['client_phone'] ?? null) ? $data['client_phone'] : null,
             'address' => filled($data['client_address'] ?? null) ? $data['client_address'] : null,
+            'address_place_id' => filled($data['client_address_place_id'] ?? null) ? $data['client_address_place_id'] : null,
+            'address_latitude' => $data['client_address_latitude'] ?? null,
+            'address_longitude' => $data['client_address_longitude'] ?? null,
         ]);
     }
 

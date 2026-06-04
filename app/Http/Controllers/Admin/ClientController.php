@@ -39,6 +39,7 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $this->normalisePhone($request);
+        $this->normaliseAddressGeo($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -46,6 +47,9 @@ class ClientController extends Controller
             'email_secondary' => ['nullable', 'email', 'max:255', 'different:email'],
             'phone' => ['nullable', 'digits:10'],
             'address' => ['nullable', 'string', 'max:500'],
+            'address_place_id' => ['nullable', 'string', 'max:255'],
+            'address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ], [
             'email_secondary.different' => 'The secondary email must differ from the primary email.',
@@ -66,6 +70,7 @@ class ClientController extends Controller
     public function update(Request $request, Client $client)
     {
         $this->normalisePhone($request);
+        $this->normaliseAddressGeo($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -73,6 +78,9 @@ class ClientController extends Controller
             'email_secondary' => ['nullable', 'email', 'max:255', 'different:email'],
             'phone' => ['nullable', 'digits:10'],
             'address' => ['nullable', 'string', 'max:500'],
+            'address_place_id' => ['nullable', 'string', 'max:255'],
+            'address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ], [
             'email_secondary.different' => 'The secondary email must differ from the primary email.',
@@ -137,5 +145,23 @@ class ClientController extends Controller
         }
         $digits = preg_replace('/\D/', '', (string) $raw);
         $request->merge(['phone' => strlen($digits) === 10 ? $digits : null]);
+    }
+
+    private function normaliseAddressGeo(Request $request): void
+    {
+        foreach (['address_place_id', 'address_latitude', 'address_longitude'] as $key) {
+            if (($request->input($key) ?? '') === '') {
+                $request->merge([$key => null]);
+            }
+        }
+
+        if (! filled(trim((string) $request->input('address', '')))) {
+            $request->merge([
+                'address' => null,
+                'address_place_id' => null,
+                'address_latitude' => null,
+                'address_longitude' => null,
+            ]);
+        }
     }
 }

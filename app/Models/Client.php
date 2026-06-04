@@ -19,11 +19,16 @@ class Client extends Model
         'phone',
         'sms_intro_sent_at',
         'address',
+        'address_place_id',
+        'address_latitude',
+        'address_longitude',
         'notes',
     ];
 
     protected $casts = [
         'sms_intro_sent_at' => 'datetime',
+        'address_latitude' => 'decimal:7',
+        'address_longitude' => 'decimal:7',
     ];
 
     public function projects(): HasMany
@@ -82,6 +87,9 @@ class Client extends Model
             'email_secondary' => $this->email_secondary,
             'phone' => $this->phone,
             'address' => $this->address,
+            'address_place_id' => $this->address_place_id,
+            'address_latitude' => $this->address_latitude,
+            'address_longitude' => $this->address_longitude,
         ];
     }
 }
