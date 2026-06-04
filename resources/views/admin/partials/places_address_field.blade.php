@@ -35,8 +35,6 @@
   <input type="hidden" name="{{ $lngName }}" id="{{ $inputId }}-lng" value="{{ $lngValue }}">
   @if ($help)
     <p class="admin-form-help">{{ $help }}</p>
-  @else
-    <p class="admin-form-help">Pick a suggestion from Google to save map coordinates for travel estimates.</p>
   @endif
   <p class="admin-form-help admin-places-status" data-places-status hidden aria-live="polite"></p>
   @error($addressName) <p class="admin-form-error">{{ $message }}</p> @enderror
