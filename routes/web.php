@@ -50,6 +50,9 @@ Route::get('/robots.txt', function () {
 Route::get('/client/invoice/{client_project}/{invoice}', [ClientProjectInvoiceController::class, 'guestDownloadInvoicePdf'])
     ->middleware('signed')
     ->name('public.client-project.invoice-pdf');
+Route::get('/client/receipt/{client_project}/{invoice}', [ClientProjectInvoiceController::class, 'guestDownloadReceiptPdf'])
+    ->middleware('signed')
+    ->name('public.client-project.receipt-pdf');
 Route::get('/client/quotation/{client_project}/{quotation}', [ClientProjectQuotationController::class, 'guestDownloadQuotationPdf'])
     ->middleware('signed')
     ->name('public.client-project.quotation-pdf');

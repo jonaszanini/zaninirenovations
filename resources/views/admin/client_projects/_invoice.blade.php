@@ -489,10 +489,29 @@
       <form method="post" id="cp-mark-paid-form">
         @csrf
         <div class="cp-modal-body">
-          <p class="admin-form-help" style="margin-top:0;">
+          @php
+            $markPaidCanEmail = filled(trim((string) $project->client_email));
+            $markPaidCanSms = \App\Models\ClientProject::phoneDigitsForSms($project->client_phone) !== null
+                && app(\App\Services\MoceanSmsService::class)->isConfigured();
+            $markPaidDefaultEmail = $markPaidCanEmail;
+            $markPaidDefaultSms = $markPaidCanSms && ! $markPaidCanEmail;
+          @endphp
+          <p class="admin-form-help" style="margin-top:0;" id="cp-mark-paid-intro">
             This will mark <strong id="cp-mark-paid-invoice-label">the invoice</strong>
-            as paid, generate a <strong>Receipt PDF</strong>, and — if the client's email is on file —
-            send the receipt to them automatically.
+            as paid and generate a <strong>Receipt PDF</strong>.
+            @if ($markPaidCanEmail || $markPaidCanSms)
+              You can optionally deliver the receipt to the client
+              @if ($markPaidCanEmail && $markPaidCanSms)
+                by email or SMS
+              @elseif ($markPaidCanEmail)
+                by email
+              @else
+                by SMS
+              @endif
+              using the options below.
+            @else
+              No client email or SMS-capable phone is on file — the receipt will be saved for you to send manually.
+            @endif
             @unless ($isHourly) The linked installment on the Financials tab will be marked paid for you. @endunless
           </p>
           <div class="admin-form-grid-2">
@@ -546,12 +565,39 @@
             </div>
           </fieldset>
 
-          <label class="admin-checkbox cp-checkbox-row" style="margin-top:10px;">
-            <input type="hidden" name="also_email_receipt" value="0">
-            <input type="checkbox" class="admin-checkbox__input" name="also_email_receipt" value="1" checked>
-            <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text">Email receipt to client now</span>
-          </label>
+          <div class="cp-mark-paid-receipt-options" id="cp-mark-paid-receipt-options">
+            @if ($markPaidCanEmail)
+              <label class="admin-checkbox cp-checkbox-row">
+                <input type="hidden" name="also_email_receipt" value="0">
+                <input type="checkbox"
+                       class="admin-checkbox__input"
+                       id="cp-mark-paid-email-receipt"
+                       name="also_email_receipt"
+                       value="1"
+                       @checked($markPaidDefaultEmail)>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Email receipt to client now</span>
+              </label>
+            @else
+              <input type="hidden" name="also_email_receipt" value="0">
+            @endif
+
+            @if ($markPaidCanSms)
+              <label class="admin-checkbox cp-checkbox-row">
+                <input type="hidden" name="also_sms_receipt" value="0">
+                <input type="checkbox"
+                       class="admin-checkbox__input"
+                       id="cp-mark-paid-sms-receipt"
+                       name="also_sms_receipt"
+                       value="1"
+                       @checked($markPaidDefaultSms)>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">SMS receipt to client</span>
+              </label>
+            @else
+              <input type="hidden" name="also_sms_receipt" value="0">
+            @endif
+          </div>
         </div>
         <div class="cp-modal-footer">
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-modal-close>Cancel</button>

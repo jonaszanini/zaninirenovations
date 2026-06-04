@@ -41,6 +41,8 @@ class ClientCommunicationLog extends Model
     /** SMS with signed link to open/download invoice PDF — no attachment. */
     public const REASON_INVOICE_SMS_LINK = 'invoice_sms_link';
     public const REASON_RECEIPT_SENT = 'receipt_sent';
+    /** SMS with signed link to open the receipt PDF after mark-as-paid. */
+    public const REASON_RECEIPT_SMS_LINK = 'receipt_sms_link';
     public const REASON_QUOTE_RECEIVED_AUTO = 'quote_received_auto';
     public const REASON_SERVICE_CONFIRMATION = 'service_confirmation';
     public const REASON_FIXED_SCHEDULE_CONFIRMATION = 'fixed_schedule_confirmation';
@@ -62,6 +64,7 @@ class ClientCommunicationLog extends Model
         self::REASON_INVOICE_REMINDER => 'Invoice reminder',
         self::REASON_INVOICE_SMS_LINK => 'Invoice (SMS link)',
         self::REASON_RECEIPT_SENT => 'Receipt',
+        self::REASON_RECEIPT_SMS_LINK => 'Receipt (SMS link)',
         self::REASON_QUOTE_RECEIVED_AUTO => 'Quote received (auto-reply)',
         self::REASON_SERVICE_CONFIRMATION => 'Service confirmation',
         self::REASON_FIXED_SCHEDULE_CONFIRMATION => 'Schedule confirmation',
@@ -158,7 +161,8 @@ class ClientCommunicationLog extends Model
             self::REASON_INVOICE_SENT,
             self::REASON_INVOICE_REMINDER => '#f59e0b',              // amber
             self::REASON_INVOICE_SMS_LINK => '#0d9488',             // teal
-            self::REASON_RECEIPT_SENT => '#22c55e',                  // green
+            self::REASON_RECEIPT_SENT,
+            self::REASON_RECEIPT_SMS_LINK => '#22c55e',              // green
             self::REASON_SERVICE_CONFIRMATION,
             self::REASON_FIXED_SCHEDULE_CONFIRMATION,
             self::REASON_SCHEDULE_DATES_MANUAL => '#10b981',         // emerald

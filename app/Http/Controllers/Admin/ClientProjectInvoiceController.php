@@ -303,6 +303,30 @@ class ClientProjectInvoiceController extends Controller
     }
 
     /**
+     * Public, signed URL (no login) so the client can open the receipt PDF from SMS.
+     */
+    public function guestDownloadReceiptPdf(ClientProject $client_project, ClientProjectInvoice $invoice)
+    {
+        abort_unless((int) $invoice->client_project_id === (int) $client_project->id, 404);
+
+        if (! $invoice->isPaid()) {
+            abort(404, 'Receipt not available.');
+        }
+
+        $disk = Storage::disk('local');
+        if (filled($invoice->receipt_pdf_path) && $disk->exists($invoice->receipt_pdf_path)) {
+            return response($disk->get($invoice->receipt_pdf_path), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$this->receiptPdfFilename($client_project, $invoice).'"',
+            ]);
+        }
+
+        $pdf = $this->renderReceiptPdf($client_project, $invoice);
+
+        return $pdf->stream($this->receiptPdfFilename($client_project, $invoice));
+    }
+
+    /**
      * Stream the stored receipt PDF (generated at mark-paid time). If the
      * stored file is missing for any reason we regenerate on demand.
      */
@@ -632,6 +656,7 @@ class ClientProjectInvoiceController extends Controller
             'paid_on' => ['required', 'date'],
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'also_email_receipt' => ['nullable', 'boolean'],
+            'also_sms_receipt' => ['nullable', 'boolean'],
             'payment_method' => ['required', Rule::in([
                 ClientProjectInvoice::PAYMENT_METHOD_CASH,
                 ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER,
@@ -700,8 +725,10 @@ class ClientProjectInvoiceController extends Controller
             ? $disk->get($invoice->receipt_pdf_path)
             : $this->renderReceiptPdf($client_project, $invoice)->output();
 
-        $sendEmail = (bool) ($data['also_email_receipt'] ?? true);
+        $sendEmail = $request->boolean('also_email_receipt');
+        $sendSms = $request->boolean('also_sms_receipt');
         $emailSent = false;
+        $smsSent = false;
 
         if ($sendEmail && filled(trim((string) $client_project->client_email))) {
             $cc = $client_project->secondaryClientEmail();
@@ -752,13 +779,24 @@ class ClientProjectInvoiceController extends Controller
             }
         }
 
-        $note = $emailSent
-            ? "Invoice {$invoice->invoice_number} marked paid ".
-                ClientProject::formatMoney($invoice->paid_amount).
-                ". Receipt emailed to {$client_project->clientEmailRecipientsLabel()}."
-            : "Invoice {$invoice->invoice_number} marked paid ".
-                ClientProject::formatMoney($invoice->paid_amount).
-                '.';
+        if ($sendSms) {
+            $smsSent = $this->sendReceiptSms($client_project, $invoice);
+        }
+
+        $deliveryParts = [];
+        if ($emailSent) {
+            $deliveryParts[] = 'receipt emailed to '.$client_project->clientEmailRecipientsLabel();
+        }
+        if ($smsSent) {
+            $deliveryParts[] = 'receipt SMS sent to client';
+        }
+        $deliveryNote = $deliveryParts !== []
+            ? '. '.ucfirst(implode('; ', $deliveryParts)).'.'
+            : '.';
+
+        $note = "Invoice {$invoice->invoice_number} marked paid "
+            .ClientProject::formatMoney($invoice->paid_amount)
+            .$deliveryNote;
 
         try {
             $statusService->recordEvent($client_project, $note);
@@ -770,9 +808,17 @@ class ClientProjectInvoiceController extends Controller
             ]);
         }
 
-        $flash = $emailSent
-            ? "Invoice marked paid. Receipt emailed to {$client_project->clientEmailRecipientsLabel()}."
-            : 'Invoice marked paid. (Email not sent.)';
+        if ($emailSent && $smsSent) {
+            $flash = 'Invoice marked paid. Receipt emailed and SMS sent to the client.';
+        } elseif ($emailSent) {
+            $flash = "Invoice marked paid. Receipt emailed to {$client_project->clientEmailRecipientsLabel()}.";
+        } elseif ($smsSent) {
+            $flash = 'Invoice marked paid. Receipt SMS sent to the client.';
+        } elseif ($sendEmail || $sendSms) {
+            $flash = 'Invoice marked paid. Receipt delivery was requested but could not be sent — check contact info and logs.';
+        } else {
+            $flash = 'Invoice marked paid.';
+        }
 
         $targetStatus = isset($data['project_status']) ? trim((string) $data['project_status']) : '';
         if ($isFirstPaidInvoice && ! $client_project->isRejected() && $targetStatus !== '') {
@@ -850,6 +896,55 @@ class ClientProjectInvoiceController extends Controller
     }
 
     // --- Helpers ----------------------------------------------------------
+
+    /**
+     * SMS the client a signed link to the receipt PDF after mark-as-paid.
+     */
+    protected function sendReceiptSms(ClientProject $project, ClientProjectInvoice $invoice): bool
+    {
+        $mocean = app(MoceanSmsService::class);
+        if (! $mocean->isConfigured()) {
+            return false;
+        }
+
+        $smsTo = ClientProject::phoneDigitsForSms($project->client_phone);
+        if ($smsTo === null) {
+            return false;
+        }
+
+        $signedUrl = URL::temporarySignedRoute(
+            'public.client-project.receipt-pdf',
+            now()->addYear(),
+            ['client_project' => $project, 'invoice' => $invoice],
+        );
+
+        $paidFmt = ClientProject::formatMoney((float) $invoice->paid_amount);
+        $smsBody = "Zanini Renovations — Receipt for invoice {$invoice->invoice_number}. Paid: {$paidFmt}. View receipt: {$signedUrl}";
+
+        $result = $mocean->send($smsTo, $smsBody);
+
+        $summary = "Receipt {$invoice->invoice_number} SMS link — {$paidFmt} — \"".Str::limit($smsBody, 120).'"';
+
+        app(ClientCommunicationLogger::class)->logSms(
+            $project,
+            ClientCommunicationLog::REASON_RECEIPT_SMS_LINK,
+            $smsTo,
+            $summary,
+            ClientCommunicationLog::DIRECTION_TO_CLIENT,
+            $result['ok'],
+            $result['ok'] ? null : $result['detail'],
+        );
+
+        if (! $result['ok']) {
+            Log::error('Failed to SMS receipt', [
+                'project_id' => $project->id,
+                'invoice_id' => $invoice->id,
+                'detail' => $result['detail'],
+            ]);
+        }
+
+        return $result['ok'];
+    }
 
     /**
      * Blockers for sending the invoice PDF link by SMS (content + Mocean + phone).
