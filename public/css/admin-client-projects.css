@@ -1781,6 +1781,32 @@ a:hover .cp-expense-receipt-pdf {
   vertical-align: top;
   padding: 0 14px;
 }
+.cp-sig-cell--contractor .signature-line {
+  border-top: 1px solid #1f2937;
+  margin-bottom: 6px;
+}
+
+.cp-sig-cell--contractor .signature-contractor .signature-line,
+.cp-sig-cell--contractor .signature-contractor .signature-name,
+.cp-sig-cell--contractor .signature-name {
+  font-size: 14px;
+  margin-bottom: 0 !important;
+}
+
+.cp-sig-cell--contractor .signature-date {
+  font-size: 14px;
+  color: #4b5563;
+  margin-top: 8px;
+}
+
+.cp-sig-cell--contractor .contractor-signature-img {
+  display: block;
+  max-height: 64px;
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 4px;
+}
+
 .cp-sig-line {
   border-top: 1px solid #1f2937;
   margin-bottom: 6px;
