@@ -17,13 +17,48 @@ class Client extends Model
         'email',
         'email_secondary',
         'phone',
+        'sms_intro_sent_at',
         'address',
         'notes',
+    ];
+
+    protected $casts = [
+        'sms_intro_sent_at' => 'datetime',
     ];
 
     public function projects(): HasMany
     {
         return $this->hasMany(ClientProject::class, 'client_id');
+    }
+
+    /**
+     * Directory client for a project (linked id, or phone match on denormalised
+     * project contact fields).
+     */
+    public static function resolveForProject(ClientProject $project): ?self
+    {
+        if ($project->client_id) {
+            return $project->client;
+        }
+
+        return static::findBySmsPhone($project->client_phone);
+    }
+
+    /**
+     * Find a directory client whose phone normalises to the same SMS digits.
+     */
+    public static function findBySmsPhone(?string $phone): ?self
+    {
+        $digits = ClientProject::phoneDigitsForSms($phone);
+        if ($digits === null) {
+            return null;
+        }
+
+        return static::query()
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->get()
+            ->first(fn (self $client) => ClientProject::phoneDigitsForSms($client->phone) === $digits);
     }
 
     /** Single-line label for search dropdowns (Tom Select, etc.). */

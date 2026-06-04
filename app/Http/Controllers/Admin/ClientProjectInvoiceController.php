@@ -14,6 +14,7 @@ use App\Models\ClientProjectQuotation;
 use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Services\ClientSmsService;
 use App\Services\MoceanSmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -475,6 +476,7 @@ class ClientProjectInvoiceController extends Controller
     public function sendInvoiceSms(
         ClientProject $client_project,
         ClientProjectInvoice $invoice,
+        ClientSmsService $clientSms,
         MoceanSmsService $moceanSms,
     ) {
         $this->authorizeInvoiceForProject($client_project, $invoice);
@@ -502,18 +504,13 @@ class ClientProjectInvoiceController extends Controller
         $totalFmt = ClientProject::formatMoney((float) $invoice->total);
         $smsBody = "Zanini Renovations — Invoice {$invoice->invoice_number}. Total: {$totalFmt}. For details & PDF: {$signedUrl}";
 
-        $result = $moceanSms->send($smsTo, $smsBody);
-
         $summary = "Invoice {$invoice->invoice_number} SMS link — ".$totalFmt.' — "'.Str::limit($smsBody, 120).'"';
-
-        app(ClientCommunicationLogger::class)->logSms(
+        $result = $clientSms->sendToClient(
             $client_project,
-            ClientCommunicationLog::REASON_INVOICE_SMS_LINK,
             $smsTo,
+            $smsBody,
+            ClientCommunicationLog::REASON_INVOICE_SMS_LINK,
             $summary,
-            ClientCommunicationLog::DIRECTION_TO_CLIENT,
-            $result['ok'],
-            $result['ok'] ? null : $result['detail'],
         );
 
         if (! $result['ok']) {
@@ -902,8 +899,8 @@ class ClientProjectInvoiceController extends Controller
      */
     protected function sendReceiptSms(ClientProject $project, ClientProjectInvoice $invoice): bool
     {
-        $mocean = app(MoceanSmsService::class);
-        if (! $mocean->isConfigured()) {
+        $clientSms = app(ClientSmsService::class);
+        if (! $clientSms->isConfigured()) {
             return false;
         }
 
@@ -921,18 +918,13 @@ class ClientProjectInvoiceController extends Controller
         $paidFmt = ClientProject::formatMoney((float) $invoice->paid_amount);
         $smsBody = "Zanini Renovations — Receipt for invoice {$invoice->invoice_number}. Paid: {$paidFmt}. View receipt: {$signedUrl}";
 
-        $result = $mocean->send($smsTo, $smsBody);
-
         $summary = "Receipt {$invoice->invoice_number} SMS link — {$paidFmt} — \"".Str::limit($smsBody, 120).'"';
-
-        app(ClientCommunicationLogger::class)->logSms(
+        $result = $clientSms->sendToClient(
             $project,
-            ClientCommunicationLog::REASON_RECEIPT_SMS_LINK,
             $smsTo,
+            $smsBody,
+            ClientCommunicationLog::REASON_RECEIPT_SMS_LINK,
             $summary,
-            ClientCommunicationLog::DIRECTION_TO_CLIENT,
-            $result['ok'],
-            $result['ok'] ? null : $result['detail'],
         );
 
         if (! $result['ok']) {
