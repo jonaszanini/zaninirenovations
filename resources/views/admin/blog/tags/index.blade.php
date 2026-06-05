@@ -3,11 +3,14 @@
 @section('heading', 'Blog tags')
 
 @section('content')
-  <div class="admin-toolbar">
-    <a href="{{ route('admin.blog.tags.create') }}" class="admin-btn admin-btn--primary admin-btn--sm">
-      <i class="fa fa-plus"></i> New tag
-    </a>
-  </div>
+  @include('admin.blog._taxonomy_list_toolbar', [
+    'indexRoute' => route('admin.blog.tags.index'),
+    'q' => $q,
+    'perPage' => $perPage,
+    'searchPlaceholder' => 'Search name or slug…',
+    'createRoute' => route('admin.blog.tags.create'),
+    'createLabel' => 'New tag',
+  ])
   <details class="admin-accordion admin-card admin-card--narrow" @if(old('names')) open @endif>
     <summary class="admin-accordion__summary">
       <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
@@ -27,7 +30,8 @@
     </div>
   </details>
   <div class="admin-card">
-    <table class="admin-table">
+    <div class="admin-table-scroll">
+      <table class="admin-table">
       <thead>
         <tr><th>Name</th><th>Slug</th><th>Posts</th><th></th></tr>
       </thead>
@@ -46,9 +50,19 @@
             </td>
           </tr>
         @empty
-          <tr><td colspan="4" class="admin-form-help">No tags yet.</td></tr>
+          <tr>
+            <td colspan="4" class="admin-form-help">
+              @if ($q !== '')
+                No tags match your search.
+              @else
+                No tags yet.
+              @endif
+            </td>
+          </tr>
         @endforelse
       </tbody>
     </table>
+    </div>
+    @include('admin.blog._taxonomy_list_footer', ['items' => $tags])
   </div>
 @endsection

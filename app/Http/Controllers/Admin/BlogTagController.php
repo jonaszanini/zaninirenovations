@@ -4,19 +4,30 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BlogTag;
+use App\Support\AdminPaginatedList;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class BlogTagController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $tags = BlogTag::query()
-            ->withCount('posts')
-            ->orderBy('name')
-            ->get();
+        $q = trim((string) $request->query('q', ''));
+        $perPage = AdminPaginatedList::perPage($request);
 
-        return view('admin.blog.tags.index', compact('tags'));
+        $query = BlogTag::query()
+            ->withCount('posts')
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', '%'.$q.'%')
+                        ->orWhere('slug', 'like', '%'.$q.'%');
+                });
+            })
+            ->orderBy('name');
+
+        $tags = AdminPaginatedList::paginateOrAll($query, $perPage);
+
+        return view('admin.blog.tags.index', compact('tags', 'q', 'perPage'));
     }
 
     public function create()

@@ -6484,62 +6484,34 @@ ul.pagination {
   }
 }
 
-/* Latest projects (home): square thumbnails, crop with object-fit: cover */
+/* Latest projects (home): uniform square thumbnails */
 .js-latest-project-item .portfolio-light-box {
   display: block;
   width: 100%;
 }
 
+.portfolio-img--square,
 .js-latest-project-item .portfolio-light-box .portfolio-img {
   display: block;
   position: relative;
   width: 100%;
-  max-width: 100%;
   margin: 0;
-  height: 0;
-  padding-bottom: 100%;
-  aspect-ratio: auto;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
 }
 
+.portfolio-img--square img,
 .js-latest-project-item .portfolio-light-box .portfolio-img img {
   position: absolute;
   top: 0;
+  right: 0;
+  bottom: 0;
   left: 0;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 100%;
-  object-fit: cover !important;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
   object-position: center center;
-}
-
-.latest-projects-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  margin-left: 0;
-  margin-right: 0;
-
-  &::before,
-  &::after {
-    display: none;
-  }
-
-  > .js-latest-project-item {
-    float: none;
-    width: 100%;
-    max-width: 100%;
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  @media (max-width: 991px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (max-width: 767px) {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-  }
 }
 
 .js-latest-project-item .portfolio-light-box .portfolio-info-box {

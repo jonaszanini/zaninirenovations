@@ -435,6 +435,41 @@ body.admin-body {
   gap: 0.5rem;
 }
 
+.admin-list-filters {
+  flex-wrap: wrap;
+}
+.admin-list-filters__per-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+.admin-list-filters__per-page-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.admin-list-filters__per-page-select {
+  width: auto;
+  min-width: 5.5rem;
+  min-height: 44px;
+  padding-right: 2rem;
+}
+.admin-list-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-top: 1rem;
+}
+.admin-list-footer__summary {
+  margin: 0;
+}
+
 /* Table */
 .admin-table-wrap {
   overflow-x: auto;

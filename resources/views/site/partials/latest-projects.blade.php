@@ -19,17 +19,13 @@
       data-gallery='@json($galleryUrls)'
     >
 
-      <figure
-        class="portfolio-img"
-        style="position:relative;display:block;width:100%;height:0;padding-bottom:100%;overflow:hidden;margin:0;"
-      >
+      <figure class="portfolio-img portfolio-img--square">
 
         <img
           src="{{ $coverSrc }}"
           alt="{{ e(\Illuminate\Support\Str::limit($project->title.' — Rough Carpentry Contractors; Finish Carpentry Services Ontario; O.Reg. 332/12 compliant portfolio', 200)) }}"
           loading="lazy"
           decoding="async"
-          style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;"
         >
 
       </figure>

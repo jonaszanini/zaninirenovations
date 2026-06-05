@@ -4,20 +4,32 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BlogCategory;
+use App\Support\AdminPaginatedList;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class BlogCategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $categories = BlogCategory::query()
-            ->withCount('posts')
-            ->orderBy('name')
-            ->get();
+        $q = trim((string) $request->query('q', ''));
+        $perPage = AdminPaginatedList::perPage($request);
 
-        return view('admin.blog.categories.index', compact('categories'));
+        $query = BlogCategory::query()
+            ->withCount('posts')
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', '%'.$q.'%')
+                        ->orWhere('slug', 'like', '%'.$q.'%')
+                        ->orWhere('description', 'like', '%'.$q.'%');
+                });
+            })
+            ->orderBy('name');
+
+        $categories = AdminPaginatedList::paginateOrAll($query, $perPage);
+
+        return view('admin.blog.categories.index', compact('categories', 'q', 'perPage'));
     }
 
     public function create()

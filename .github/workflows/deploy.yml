@@ -8,17 +8,18 @@ on:
 
 concurrency:
   group: production-deploy
-  cancel-in-progress: true
-
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: PROD
 
     env:
       DEPLOY_ROOT: /home/u372714627/domains/zaninirenovations.ca/public_html
-
+      MAX_DEPLOY_ATTEMPTS: 3
+      RETRY_WAIT_SECONDS: 15
 
     steps:
       - name: Checkout repository
@@ -36,97 +37,102 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Sync files to server
+      - name: Deploy to server
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          echo "Deploying files to: ${DEPLOY_ROOT}"
-          SSH_ARGS="-p ${SSH_PORT} -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3"
-          connected=0
-          for attempt in 1 2 3; do
-            echo "Checking SSH connectivity (attempt ${attempt}/3)..."
-            if ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "test -d '${DEPLOY_ROOT}'"; then
-              connected=1
-              break
-            fi
-            sleep 8
-          done
-
-          if [ "${connected}" -ne 1 ]; then
-            echo "ERROR: Could not connect to SSH host after 3 attempts (or deploy path check failed)."
-            echo "Hostinger can occasionally timeout under load; retrying the workflow usually resolves it."
-            exit 1
-          fi
-
-          rsynced=0
-          for attempt in 1 2 3; do
-            echo "Syncing files (attempt ${attempt}/3)..."
-            if rsync -az \
-              --exclude ".git/" \
-              --exclude ".github/" \
-              --exclude ".env" \
-              --exclude "node_modules/" \
-              --exclude "storage/framework/" \
-              --exclude "storage/logs/" \
-              -e "ssh ${SSH_ARGS}" \
-              ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/"; then
-              rsynced=1
-              break
-            fi
-            sleep 8
-          done
-
-          if [ "${rsynced}" -ne 1 ]; then
-            echo "ERROR: File sync failed after 3 attempts."
-            exit 1
-          fi
-
-      - name: Run Laravel deploy commands
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          DEPLOY_ROOT: /home/u372714627/domains/zaninirenovations.ca/public_html
-        run: |
-          ssh -p "${SSH_PORT}" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 "${SSH_USER}@${SSH_HOST}" "DEPLOY_ROOT='${DEPLOY_ROOT}' bash -s" << 'REMOTE_EOF'
           set -euo pipefail
-          APP_DIR="$DEPLOY_ROOT"
-          if [ ! -d "${APP_DIR}" ]; then
-            echo "ERROR: App directory does not exist: ${APP_DIR}"
+
+          SSH_ARGS="-p ${SSH_PORT} -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
+          RSYNC_EXCLUDES=(
+            --exclude ".git/"
+            --exclude ".github/"
+            --exclude ".env"
+            --exclude "node_modules/"
+            --exclude "storage/framework/"
+            --exclude "storage/logs/"
+          )
+
+          echo "Deploying to: ${DEPLOY_ROOT}"
+          deploy_succeeded=0
+
+          for deploy_attempt in $(seq 1 "${MAX_DEPLOY_ATTEMPTS}"); do
+            echo "=========================================="
+            echo "Full deploy attempt ${deploy_attempt}/${MAX_DEPLOY_ATTEMPTS}"
+            echo "=========================================="
+
+            connected=0
+            for attempt in 1 2 3; do
+              echo "[connect] Checking SSH connectivity (attempt ${attempt}/3)..."
+              if ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "test -d '${DEPLOY_ROOT}'"; then
+                connected=1
+                break
+              fi
+              echo "[connect] Failed, waiting 10s..."
+              sleep 10
+            done
+
+            if [ "${connected}" -ne 1 ]; then
+              echo "[connect] ERROR: Could not reach SSH host or deploy path on attempt ${deploy_attempt}/${MAX_DEPLOY_ATTEMPTS}."
+              if [ "${deploy_attempt}" -lt "${MAX_DEPLOY_ATTEMPTS}" ]; then
+                echo "[connect] Retrying full deploy in ${RETRY_WAIT_SECONDS}s..."
+                sleep "${RETRY_WAIT_SECONDS}"
+              fi
+              continue
+            fi
+
+            rsynced=0
+            for attempt in 1 2 3; do
+              echo "[rsync] Syncing files (attempt ${attempt}/3)..."
+              if rsync -az --timeout=120 \
+                "${RSYNC_EXCLUDES[@]}" \
+                -e "ssh ${SSH_ARGS}" \
+                ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/"; then
+                rsynced=1
+                break
+              fi
+              echo "[rsync] Failed, waiting 10s..."
+              sleep 10
+            done
+
+            if [ "${rsynced}" -ne 1 ]; then
+              echo "[rsync] ERROR: File sync failed on attempt ${deploy_attempt}/${MAX_DEPLOY_ATTEMPTS}."
+              if [ "${deploy_attempt}" -lt "${MAX_DEPLOY_ATTEMPTS}" ]; then
+                echo "[rsync] Retrying full deploy in ${RETRY_WAIT_SECONDS}s..."
+                sleep "${RETRY_WAIT_SECONDS}"
+              fi
+              continue
+            fi
+
+            remote_ok=0
+            for attempt in 1 2 3; do
+              echo "[remote] Running Laravel deploy commands (attempt ${attempt}/3)..."
+              if ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "export DEPLOY_ROOT='${DEPLOY_ROOT}'; bash -s" < .github/scripts/remote-laravel-deploy.sh; then
+                remote_ok=1
+                break
+              fi
+              echo "[remote] Failed, waiting ${RETRY_WAIT_SECONDS}s..."
+              sleep "${RETRY_WAIT_SECONDS}"
+            done
+
+            if [ "${remote_ok}" -eq 1 ]; then
+              deploy_succeeded=1
+              break
+            fi
+
+            echo "[remote] ERROR: Laravel deploy failed on attempt ${deploy_attempt}/${MAX_DEPLOY_ATTEMPTS}."
+            if [ "${deploy_attempt}" -lt "${MAX_DEPLOY_ATTEMPTS}" ]; then
+              echo "[remote] Retrying full deploy in ${RETRY_WAIT_SECONDS}s..."
+              sleep "${RETRY_WAIT_SECONDS}"
+            fi
+          done
+
+          if [ "${deploy_succeeded}" -ne 1 ]; then
+            echo "ERROR: Deploy failed after ${MAX_DEPLOY_ATTEMPTS} full attempts."
+            echo "Hostinger can occasionally timeout under load; re-run the workflow if needed."
             exit 1
           fi
 
-          echo "Running deploy commands in: ${APP_DIR}"
-          cd "${APP_DIR}"
-
-          if command -v composer >/dev/null 2>&1; then
-            composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
-          fi
-
-          if [ -f artisan ]; then
-            if [ ! -f .env ]; then
-              echo "ERROR: ${APP_DIR}/.env is missing."
-              exit 1
-            fi
-
-            # Ensure /storage/* image URLs resolve in production.
-            php artisan storage:link 2>/dev/null || true
-            if [ ! -d public/storage ]; then
-              mkdir -p public/storage
-            fi
-            if [ -d storage/app/public ]; then
-              rsync -a storage/app/public/ public/storage/ 2>/dev/null || cp -R storage/app/public/. public/storage/ 2>/dev/null || true
-            fi
-            # Keep writable directories healthy on shared hosting.
-            chmod -R 775 storage bootstrap/cache 2>/dev/null || true
-
-            php artisan optimize:clear
-            php artisan migrate --force
-            # Rebuilds bootstrap/cache/config.php from the server’s current .env. If you change .env without redeploying, run: php artisan config:clear && php artisan config:cache
-            php artisan config:cache
-            php artisan route:clear
-            php artisan view:cache
-          fi
-          REMOTE_EOF
+          echo "Deploy completed successfully."
