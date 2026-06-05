@@ -29,7 +29,7 @@
         <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
         <div class="admin-category-checkboxes">
           @foreach ($categories as $cat)
-            <label class="admin-checkbox admin-checkbox-tile admin-checkbox--block">
+            <label class="admin-checkbox admin-checkbox-tile">
               <input type="checkbox" class="admin-checkbox__input" name="project_category_ids[]" value="{{ $cat->id }}" @checked(in_array((string) $cat->id, array_map('strval', (array) $selectedCategoryIds), true))>
               <span class="admin-checkbox__mark" aria-hidden="true"></span>
               <span class="admin-checkbox__text">{{ $cat->name }}</span>

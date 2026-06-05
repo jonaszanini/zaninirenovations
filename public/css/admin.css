@@ -939,8 +939,15 @@ details[open] > summary.admin-chevron-summary::after {
 .admin-category-checkboxes {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1rem;
+  gap: 0.5rem 0.65rem;
   margin-top: 0.25rem;
+}
+
+.admin-category-checkboxes .admin-checkbox-tile {
+  width: auto;
+  max-width: 100%;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .admin-checkbox-tile {
@@ -972,6 +979,114 @@ details[open] > summary.admin-chevron-summary::after {
   font-size: 0.8rem;
   color: var(--admin-muted);
   margin-top: 0.35rem;
+}
+
+/* Portfolio index — card grid */
+.portfolio-admin-filters {
+  margin-bottom: 1.25rem;
+}
+
+.portfolio-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+}
+
+.portfolio-admin-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  overflow: hidden;
+  box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.portfolio-admin-card__media {
+  display: block;
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--admin-bg);
+  overflow: hidden;
+}
+
+.portfolio-admin-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.portfolio-admin-card__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 100%;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+}
+
+.portfolio-admin-card__placeholder .fa {
+  font-size: 1.75rem;
+  opacity: 0.55;
+}
+
+.portfolio-admin-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem 0.85rem;
+  flex: 1 1 auto;
+}
+
+.portfolio-admin-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.portfolio-admin-card__title a {
+  color: var(--admin-text);
+  text-decoration: none;
+}
+
+.portfolio-admin-card__title a:hover {
+  color: var(--admin-primary);
+}
+
+.portfolio-admin-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.portfolio-admin-card__tags .admin-badge {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.portfolio-admin-card__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+  line-height: 1.4;
+}
+
+.portfolio-admin-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
+.portfolio-admin-card__actions form {
+  display: inline;
 }
 
 .admin-form-actions {

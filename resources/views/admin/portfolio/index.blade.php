@@ -15,44 +15,84 @@
     </div>
   </div>
 
+  <form method="get" action="{{ route('admin.portfolio.index') }}" class="cp-filters portfolio-admin-filters">
+    <div class="cp-filter">
+      <label for="portfolio-filter-q">Search</label>
+      <input type="search" id="portfolio-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project title or description">
+    </div>
+    <div class="cp-filter">
+      <label for="portfolio-filter-category">Category</label>
+      <select id="portfolio-filter-category" name="category">
+        <option value="">All categories</option>
+        @foreach ($categories as $cat)
+          <option value="{{ $cat->slug }}" @selected($filters['category'] === $cat->slug)>{{ $cat->name }}</option>
+        @endforeach
+      </select>
+    </div>
+    <div class="cp-filter cp-filter--actions">
+      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
+      <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
+    </div>
+  </form>
+
   @if ($projects->isEmpty())
     <div class="admin-table-wrap">
       <div class="admin-empty">
-        <p>No portfolio projects yet.</p>
-        <a href="{{ route('admin.portfolio.create') }}" class="admin-btn admin-btn--primary">Add your first project</a>
+        <p>{{ ($filters['q'] !== '' || $filters['category'] !== '')
+          ? 'No portfolio projects match these filters.'
+          : 'No portfolio projects yet.' }}</p>
+        @if ($filters['q'] === '' && $filters['category'] === '')
+          <a href="{{ route('admin.portfolio.create') }}" class="admin-btn admin-btn--primary">Add your first project</a>
+        @else
+          <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost">Clear filters</a>
+        @endif
       </div>
     </div>
   @else
-    <div class="admin-table-wrap">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Category</th>
-            <th>Photos</th>
-            <th>Completed on</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach ($projects as $project)
-            <tr>
-              <td><strong>{{ $project->title }}</strong></td>
-              <td><span class="admin-badge">{{ $project->categoryLabel() }}</span></td>
-              <td>{{ $project->photos_count }} / 15</td>
-              <td>{{ $project->completed_on ? \App\Support\EasternStandardTimeDisplay::formatCalendarMediumDate($project->completed_on) : '—' }}</td>
-              <td style="white-space:nowrap;">
-                <a href="{{ route('admin.portfolio.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
-                <form action="{{ route('admin.portfolio.destroy', $project) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this project and all photos?');">
-                  @csrf
-                  @method('DELETE')
-                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
-                </form>
-              </td>
-            </tr>
-          @endforeach
-        </tbody>
-      </table>
+    <div class="portfolio-admin-grid">
+      @foreach ($projects as $project)
+        @php
+          $cover = $project->photos->first();
+        @endphp
+        <article class="portfolio-admin-card">
+          <a href="{{ route('admin.portfolio.edit', $project) }}" class="portfolio-admin-card__media" title="Edit {{ $project->title }}">
+            @if ($cover)
+              <img src="{{ $cover->url() }}" alt="" loading="lazy" decoding="async">
+            @else
+              <span class="portfolio-admin-card__placeholder" aria-hidden="true">
+                <i class="fa fa-image"></i>
+                <span>No photo</span>
+              </span>
+            @endif
+          </a>
+          <div class="portfolio-admin-card__body">
+            <h3 class="portfolio-admin-card__title">
+              <a href="{{ route('admin.portfolio.edit', $project) }}">{{ $project->title }}</a>
+            </h3>
+            @if ($project->categories->isNotEmpty())
+              <div class="portfolio-admin-card__tags">
+                @foreach ($project->categories->sortBy(fn ($c) => [$c->sort_order, strtolower($c->name)]) as $cat)
+                  <span class="admin-badge">{{ $cat->name }}</span>
+                @endforeach
+              </div>
+            @endif
+            <p class="portfolio-admin-card__meta">
+              {{ $project->photos_count }} / 15 photos
+              @if ($project->completed_on)
+                · {{ \App\Support\EasternStandardTimeDisplay::formatCalendarMediumDate($project->completed_on) }}
+              @endif
+            </p>
+            <div class="portfolio-admin-card__actions">
+              <a href="{{ route('admin.portfolio.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
+              <form action="{{ route('admin.portfolio.destroy', $project) }}" method="post" onsubmit="return confirm('Delete this project and all photos?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
+              </form>
+            </div>
+          </div>
+        </article>
+      @endforeach
     </div>
     <div class="admin-pagination">
       {{ $projects->links('pagination.admin') }}
