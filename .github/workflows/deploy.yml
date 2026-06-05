@@ -18,8 +18,6 @@ jobs:
 
     env:
       DEPLOY_ROOT: /home/u372714627/domains/zaninirenovations.ca/public_html
-      MAX_DEPLOY_ATTEMPTS: 3
-      RETRY_WAIT_SECONDS: 15
 
     steps:
       - name: Checkout repository
@@ -56,83 +54,17 @@ jobs:
           )
 
           echo "Deploying to: ${DEPLOY_ROOT}"
-          deploy_succeeded=0
 
-          for deploy_attempt in $(seq 1 "${MAX_DEPLOY_ATTEMPTS}"); do
-            echo "=========================================="
-            echo "Full deploy attempt ${deploy_attempt}/${MAX_DEPLOY_ATTEMPTS}"
-            echo "=========================================="
+          echo "[connect] Checking SSH connectivity..."
+          ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "test -d '${DEPLOY_ROOT}'"
 
-            connected=0
-            for attempt in 1 2 3; do
-              echo "[connect] Checking SSH connectivity (attempt ${attempt}/3)..."
-              if ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "test -d '${DEPLOY_ROOT}'"; then
-                connected=1
-                break
-              fi
-              echo "[connect] Failed, waiting 10s..."
-              sleep 10
-            done
+          echo "[rsync] Syncing files..."
+          rsync -az --timeout=120 \
+            "${RSYNC_EXCLUDES[@]}" \
+            -e "ssh ${SSH_ARGS}" \
+            ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/"
 
-            if [ "${connected}" -ne 1 ]; then
-              echo "[connect] ERROR: Could not reach SSH host or deploy path on attempt ${deploy_attempt}/${MAX_DEPLOY_ATTEMPTS}."
-              if [ "${deploy_attempt}" -lt "${MAX_DEPLOY_ATTEMPTS}" ]; then
-                echo "[connect] Retrying full deploy in ${RETRY_WAIT_SECONDS}s..."
-                sleep "${RETRY_WAIT_SECONDS}"
-              fi
-              continue
-            fi
-
-            rsynced=0
-            for attempt in 1 2 3; do
-              echo "[rsync] Syncing files (attempt ${attempt}/3)..."
-              if rsync -az --timeout=120 \
-                "${RSYNC_EXCLUDES[@]}" \
-                -e "ssh ${SSH_ARGS}" \
-                ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/"; then
-                rsynced=1
-                break
-              fi
-              echo "[rsync] Failed, waiting 10s..."
-              sleep 10
-            done
-
-            if [ "${rsynced}" -ne 1 ]; then
-              echo "[rsync] ERROR: File sync failed on attempt ${deploy_attempt}/${MAX_DEPLOY_ATTEMPTS}."
-              if [ "${deploy_attempt}" -lt "${MAX_DEPLOY_ATTEMPTS}" ]; then
-                echo "[rsync] Retrying full deploy in ${RETRY_WAIT_SECONDS}s..."
-                sleep "${RETRY_WAIT_SECONDS}"
-              fi
-              continue
-            fi
-
-            remote_ok=0
-            for attempt in 1 2 3; do
-              echo "[remote] Running Laravel deploy commands (attempt ${attempt}/3)..."
-              if ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "export DEPLOY_ROOT='${DEPLOY_ROOT}'; bash -s" < .github/scripts/remote-laravel-deploy.sh; then
-                remote_ok=1
-                break
-              fi
-              echo "[remote] Failed, waiting ${RETRY_WAIT_SECONDS}s..."
-              sleep "${RETRY_WAIT_SECONDS}"
-            done
-
-            if [ "${remote_ok}" -eq 1 ]; then
-              deploy_succeeded=1
-              break
-            fi
-
-            echo "[remote] ERROR: Laravel deploy failed on attempt ${deploy_attempt}/${MAX_DEPLOY_ATTEMPTS}."
-            if [ "${deploy_attempt}" -lt "${MAX_DEPLOY_ATTEMPTS}" ]; then
-              echo "[remote] Retrying full deploy in ${RETRY_WAIT_SECONDS}s..."
-              sleep "${RETRY_WAIT_SECONDS}"
-            fi
-          done
-
-          if [ "${deploy_succeeded}" -ne 1 ]; then
-            echo "ERROR: Deploy failed after ${MAX_DEPLOY_ATTEMPTS} full attempts."
-            echo "Hostinger can occasionally timeout under load; re-run the workflow if needed."
-            exit 1
-          fi
+          echo "[remote] Running Laravel deploy commands..."
+          ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "export DEPLOY_ROOT='${DEPLOY_ROOT}'; bash -s" < .github/scripts/remote-laravel-deploy.sh
 
           echo "Deploy completed successfully."
