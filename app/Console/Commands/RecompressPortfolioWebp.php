@@ -95,29 +95,32 @@ class RecompressPortfolioWebp extends Command
                 continue;
             }
 
-            $before = $size;
-            $webpStorage->recompressWebpAtPath($absolute);
-            clearstatcache(true, $absolute);
-            $after = (int) filesize($absolute);
+            $result = $webpStorage->recompressRelativeWebp($relative);
+            if ($result === null) {
+                $failed++;
+                $this->error("Failed [photo #{$photo->id}]: {$relative}");
 
-            if ($after < $before) {
+                continue;
+            }
+
+            if ($result['changed']) {
                 $compressed++;
-                $bytesAfter += $after;
+                $bytesAfter += $result['after'];
                 $photo->touch();
 
                 $this->line(sprintf(
                     'Compressed [photo #%d]: %s KB → %s KB',
                     $photo->id,
-                    number_format($before / 1024, 1),
-                    number_format($after / 1024, 1)
+                    number_format($result['before'] / 1024, 1),
+                    number_format($result['after'] / 1024, 1)
                 ));
             } else {
                 $alreadyOk++;
-                $bytesAfter += $after;
+                $bytesAfter += $result['after'];
                 $this->warn(sprintf(
                     'No change [photo #%d]: still %s KB (encoder could not shrink further)',
                     $photo->id,
-                    number_format($after / 1024, 1)
+                    number_format($result['after'] / 1024, 1)
                 ));
             }
         }

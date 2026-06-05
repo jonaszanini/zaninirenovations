@@ -33,6 +33,40 @@ class ProjectPhotoWebpStorage
         }
     }
 
+    /**
+     * Recompress an existing WebP on the public disk (relative path under storage/app/public).
+     *
+     * @return array{changed: bool, before: int, after: int}|null null when the file is missing or not WebP
+     */
+    public function recompressRelativeWebp(string $relativePath): ?array
+    {
+        $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
+        if ($relativePath === '' || ! str_ends_with(strtolower($relativePath), '.webp')) {
+            return null;
+        }
+
+        $absolute = Storage::disk('public')->path($relativePath);
+        if (! is_file($absolute)) {
+            return null;
+        }
+
+        $before = (int) filesize($absolute);
+        $this->recompressWebpAtPath($absolute);
+        clearstatcache(true, $absolute);
+        $after = (int) filesize($absolute);
+        $changed = $after !== $before;
+
+        if ($changed) {
+            $this->syncPublicStorageFallback($relativePath);
+        }
+
+        return [
+            'changed' => $changed,
+            'before' => $before,
+            'after' => $after,
+        ];
+    }
+
     public function storeFromPath(string $absolutePath, int $projectId, ?string $mime = null): string
     {
         if (! is_file($absolutePath)) {
