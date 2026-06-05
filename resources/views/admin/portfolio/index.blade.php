@@ -4,7 +4,7 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Manage portfolio photos shown on the public home page (WebP, JPEG, or PNG — stored as WebP, max edge {{ (int) config('webp.max_edge_px', 1920) }}px; up to 15 per project).</p>
+    <p class="admin-toolbar-lede">Manage portfolio photos shown on the public home page (WebP, JPEG, or PNG — stored as WebP at {{ (int) config('webp.quality', 75) }}% quality, max edge {{ (int) config('webp.max_edge_px', 1280) }}px, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB each; up to 15 per project).</p>
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
         <i class="fa fa-cog"></i> Categories

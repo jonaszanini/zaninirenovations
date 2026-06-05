@@ -44,6 +44,7 @@ class BlogImageStorage
             (int) $crop['width'],
             (int) $crop['height']
         );
+        $this->webpStorage->recompressWebpAtPath($absolute);
     }
 
     public function delete(string $relativePath): void

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\StairsMaterialType;
 use App\Models\StairsSettings;
+use App\Services\ProjectPhotoWebpStorage;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -127,12 +128,12 @@ class StairsDatabaseController extends Controller
                     ]);
                 }
 
-                $path = $upload->store('stairs-nosing-options', 'public');
-                if ($path === false) {
-                    throw ValidationException::withMessages([
-                        $prefix => 'Could not store the image on disk. Check storage permissions.',
-                    ]);
-                }
+                $path = app(ProjectPhotoWebpStorage::class)->store(
+                    $upload,
+                    0,
+                    'stairs-nosing-options',
+                    'nosing-'.$nKey
+                );
 
                 $prev = $photos[$nKey] ?? null;
                 if (is_string($prev) && $prev !== '' && Storage::disk('public')->exists($prev)) {
@@ -197,12 +198,12 @@ class StairsDatabaseController extends Controller
                     ]);
                 }
 
-                $path = $upload->store('stairs-materials', 'public');
-                if ($path === false) {
-                    throw ValidationException::withMessages([
-                        $prefix => 'Could not store the image on disk. Check storage permissions.',
-                    ]);
-                }
+                $path = app(ProjectPhotoWebpStorage::class)->store(
+                    $upload,
+                    $id,
+                    'stairs-materials',
+                    'photo'
+                );
 
                 if ($mat->photo_path && Storage::disk('public')->exists($mat->photo_path)) {
                     Storage::disk('public')->delete($mat->photo_path);

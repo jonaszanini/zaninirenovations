@@ -39,7 +39,7 @@ class ProjectPhotoCropService
 
     private function webpQuality(): int
     {
-        $q = (int) config('webp.quality', 78);
+        $q = (int) config('webp.quality', 75);
 
         return max(1, min(100, $q));
     }

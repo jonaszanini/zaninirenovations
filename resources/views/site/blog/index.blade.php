@@ -9,7 +9,7 @@
 @endpush
 
 @section('content')
-  <section class="page-header">
+  <section class="page-header page-header--blog">
     <div class="container">
       <div class="row">
         <div class="col-sm-12 text-center">

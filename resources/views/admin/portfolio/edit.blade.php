@@ -105,7 +105,7 @@
         <div class="admin-form-group">
           <label for="photos">Add photos</label>
           <input type="file" id="photos" name="photos[]" accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png" multiple>
-          <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP and scaled so the longest side is at most {{ (int) config('webp.max_edge_px', 1920) }}px; originals are not kept. Up to {{ $canAdd }} more (15 total). After you save, use the crop icon on any thumbnail to trim it.</p>
+          <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP at {{ (int) config('webp.quality', 75) }}% quality, scaled to at most {{ (int) config('webp.max_edge_px', 1280) }}px, and compressed to about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB or less; originals are not kept. Up to {{ $canAdd }} more (15 total). After you save, use the crop icon on any thumbnail to trim it.</p>
           @error('photos')
             <div class="admin-error">{{ $message }}</div>
           @enderror
