@@ -186,9 +186,22 @@
       <div class="admin-modal-backdrop" data-crop-modal-dismiss tabindex="-1" aria-hidden="true"></div>
       <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-photo-crop-title">
         <h2 id="admin-photo-crop-title" class="admin-modal-title">Crop photo</h2>
-        <p class="admin-modal-hint">Drag the box or corners, then apply. The file on the server is replaced (WebP).</p>
+        <p class="admin-modal-hint">Drag the box or corners, use the square button for a 1:1 crop, then apply. The file on the server is replaced (WebP).</p>
         <div class="admin-crop-stage">
           <img id="admin-photo-crop-img" src="" alt="">
+        </div>
+        <div class="admin-crop-toolbar">
+          <button
+            type="button"
+            class="admin-crop-aspect-btn"
+            id="admin-photo-crop-square"
+            disabled
+            title="Square crop (1:1)"
+            aria-label="Square crop (1:1)"
+            aria-pressed="false"
+          >
+            <span class="admin-crop-aspect-btn__icon" aria-hidden="true"></span>
+          </button>
         </div>
         <div class="admin-modal-actions">
           <button type="button" class="admin-btn admin-btn--ghost" data-crop-modal-dismiss>Cancel</button>
@@ -269,7 +282,8 @@
         var modal = document.getElementById('admin-photo-crop-modal');
         var img = document.getElementById('admin-photo-crop-img');
         var applyBtn = document.getElementById('admin-photo-crop-apply');
-        if (!modal || !img || !applyBtn || typeof Cropper === 'undefined') return;
+        var squareBtn = document.getElementById('admin-photo-crop-square');
+        if (!modal || !img || !applyBtn || !squareBtn || typeof Cropper === 'undefined') return;
 
         /* Keep overlay under <body> so position:fixed always covers the viewport (not the form column). */
         if (modal.parentElement !== document.body) {
@@ -280,7 +294,23 @@
         var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
         var cropper = null;
         var activeUrl = '';
+        var squareLocked = false;
         var stage = modal.querySelector('.admin-crop-stage');
+
+        function setSquareAspect(active) {
+          if (!cropper) return;
+          squareLocked = !!active;
+          squareBtn.setAttribute('aria-pressed', squareLocked ? 'true' : 'false');
+          squareBtn.classList.toggle('is-active', squareLocked);
+          cropper.setAspectRatio(squareLocked ? 1 : NaN);
+        }
+
+        function resetSquareControl() {
+          squareLocked = false;
+          squareBtn.disabled = true;
+          squareBtn.setAttribute('aria-pressed', 'false');
+          squareBtn.classList.remove('is-active');
+        }
 
         function sizeCropStagePx() {
           if (!stage) return;
@@ -317,6 +347,7 @@
           clearCropStagePx();
           applyBtn.disabled = true;
           activeUrl = '';
+          resetSquareControl();
           document.documentElement.classList.remove('admin-crop-modal-open');
         }
 
@@ -354,6 +385,7 @@
             destroyCropper();
             activeUrl = postUrl;
             applyBtn.disabled = true;
+            resetSquareControl();
             openModal();
 
             var bust = url + (url.indexOf('?') === -1 ? '?' : '&') + 'cropper=' + Date.now();
@@ -373,6 +405,7 @@
                     restore: false,
                     ready: function () {
                       applyBtn.disabled = false;
+                      squareBtn.disabled = false;
                       sizeCropStagePx();
                       try {
                         if (cropper && typeof cropper.resize === 'function') {
@@ -417,6 +450,10 @@
             img.onload = onImgReady;
             img.src = bust;
           });
+        });
+
+        squareBtn.addEventListener('click', function () {
+          setSquareAspect(!squareLocked);
         });
 
         applyBtn.addEventListener('click', function () {
