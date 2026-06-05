@@ -35,6 +35,7 @@
       <div class="admin-form-group">
         <label for="bp-featured">Featured / header image</label>
         <input type="file" id="bp-featured" name="featured_image" accept="image/jpeg,image/png,image/webp" class="admin-input">
+        <p class="admin-form-help">JPEG, PNG, or WebP — stored as WebP at {{ (int) config('webp.quality', 75) }}% quality, max {{ (int) config('webp.max_edge_px', 1280) }}px, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB. Inline images in the editor use the same compression.</p>
         @if ($post->featured_image_path)
           <div class="blog-admin-featured-preview">
             <img src="{{ $post->featuredImageUrl() }}" alt="" id="bp-featured-preview-img">

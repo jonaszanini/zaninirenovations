@@ -271,6 +271,7 @@ class ProjectController extends Controller
 
         try {
             app(ProjectPhotoRotationService::class)->rotateWebp($fullPath, $request->input('direction'));
+            app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
         } catch (\Throwable $e) {
             report($e);
 
@@ -350,6 +351,7 @@ class ProjectController extends Controller
 
         try {
             app(ProjectPhotoCropService::class)->cropWebp($fullPath, $ix, $iy, $cropW, $cropH);
+            app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
         } catch (\Throwable $e) {
             report($e);
             $msg = 'Could not crop the photo: '.$e->getMessage();

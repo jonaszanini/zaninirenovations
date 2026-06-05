@@ -1,7 +1,9 @@
 @php
   use App\Services\ClientProjectPhotoStorage;
 
-  $maxEdge = (int) config('webp.max_edge_px', 1920);
+  $maxEdge = (int) config('webp.max_edge_px', 1280);
+  $webpQuality = (int) config('webp.quality', 75);
+  $webpMaxKb = (int) round(config('webp.max_bytes', 102400) / 1024);
   $maxFiles = ClientProjectPhotoStorage::MAX_PHOTOS_PER_PROJECT;
   $inputId = $inputId ?? 'cp-project-photos';
   $previewId = $previewId ?? 'cp-project-photos-preview';
@@ -21,7 +23,7 @@
            accept="{{ $acceptList }}"
            multiple>
     <p class="admin-form-help">
-      <strong>Images</strong> — JPEG, PNG, or WebP ({{ ClientProjectPhotoStorage::MAX_IMAGE_KB / 1024 }} MB max each). Converted to WebP and resized so the longest side is at most {{ $maxEdge }}px.
+      <strong>Images</strong> — JPEG, PNG, or WebP ({{ ClientProjectPhotoStorage::MAX_IMAGE_KB / 1024 }} MB max each). Converted to WebP at {{ $webpQuality }}% quality, scaled to at most {{ $maxEdge }}px, and compressed to about {{ $webpMaxKb }}&nbsp;KB or less.
       <strong>Videos</strong> — MP4, WebM, or MOV ({{ ClientProjectPhotoStorage::MAX_VIDEO_KB / 1024 }} MB max each).
       <strong>PDFs</strong> — {{ ClientProjectPhotoStorage::MAX_PDF_KB / 1024 }} MB max each.
       @if ($existingCount > 0)
