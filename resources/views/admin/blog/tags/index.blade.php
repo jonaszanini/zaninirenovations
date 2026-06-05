@@ -8,6 +8,19 @@
       <i class="fa fa-plus"></i> New tag
     </a>
   </div>
+  <div class="admin-card admin-card--narrow" style="margin-bottom:1rem;">
+    <form method="post" action="{{ route('admin.blog.tags.bulk') }}">
+      @csrf
+      <div class="admin-form-group">
+        <label for="bt-bulk">Bulk add tags</label>
+        <textarea id="bt-bulk" name="names" rows="8" class="admin-input" placeholder="Paste one tag per line…">{{ old('names') }}</textarea>
+        <p class="admin-form-help">One tag per line. Existing tags (matched by name, case-insensitive) and duplicate lines are skipped automatically.</p>
+      </div>
+      <div class="admin-form-actions">
+        <button type="submit" class="admin-btn admin-btn--primary">Add tags</button>
+      </div>
+    </form>
+  </div>
   <div class="admin-card">
     <table class="admin-table">
       <thead>

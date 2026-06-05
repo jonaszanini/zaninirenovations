@@ -43,6 +43,51 @@ class BlogTagController extends Controller
         return redirect()->route('admin.blog.tags.index')->with('success', 'Tag created.');
     }
 
+    public function bulkStore(Request $request)
+    {
+        $data = $request->validate([
+            'names' => ['required', 'string'],
+        ]);
+
+        $lines = preg_split('/\r\n|\r|\n/', $data['names']) ?: [];
+
+        $created = 0;
+        $skipped = 0;
+        $seen = [];
+
+        foreach ($lines as $line) {
+            $name = trim($line);
+            if ($name === '' || mb_strlen($name) > 80) {
+                continue;
+            }
+
+            $key = mb_strtolower($name);
+            if (isset($seen[$key])) {
+                $skipped++;
+                continue;
+            }
+            $seen[$key] = true;
+
+            $exists = BlogTag::query()
+                ->whereRaw('LOWER(name) = ?', [$key])
+                ->exists();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            BlogTag::create([
+                'name' => $name,
+                'slug' => BlogTag::uniqueSlug($name),
+            ]);
+            $created++;
+        }
+
+        return redirect()->route('admin.blog.tags.index')
+            ->with('success', "{$created} tag(s) added, {$skipped} skipped (already exist or duplicate).");
+    }
+
     public function edit(BlogTag $tag)
     {
         return view('admin.blog.tags.form', compact('tag'));
