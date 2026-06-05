@@ -365,7 +365,7 @@
         </div>
         @endif
 
-        <div class="row wow fadeInUp no-gutter">
+        <div class="row wow fadeInUp">
           @include('site.partials.latest-projects', ['projects' => $projects])
         </div>
         <!-- end .row  -->
