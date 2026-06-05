@@ -6459,6 +6459,7 @@ ul.pagination {
   margin: 0;
   height: 0;
   padding-bottom: 100%;
+  aspect-ratio: auto;
   overflow: hidden;
 }
 
@@ -6474,8 +6475,32 @@ ul.pagination {
 }
 
 .latest-projects-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-left: 0;
+  margin-right: 0;
+
+  &::before,
+  &::after {
+    display: none;
+  }
+
+  > .js-latest-project-item {
+    float: none;
+    width: 100%;
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  @media (max-width: 991px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 767px) {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
 }
 
 .portfolio-carousel {

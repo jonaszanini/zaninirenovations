@@ -791,6 +791,50 @@ summary.admin-chevron-summary::after {
 details[open] > summary.admin-chevron-summary::after {
   transform: rotate(180deg);
 }
+
+.admin-accordion.admin-card {
+  padding: 0;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.admin-accordion > summary.admin-accordion__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.admin-accordion > summary.admin-accordion__summary::-webkit-details-marker {
+  display: none;
+}
+.admin-accordion > summary.admin-accordion__summary::marker {
+  content: '';
+}
+@media (min-width: 768px) {
+  .admin-accordion > summary.admin-accordion__summary {
+    padding: 1rem 2rem;
+  }
+}
+.admin-accordion__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-accordion__panel {
+  padding: 1rem 1.5rem 1.5rem;
+  border-top: 1px solid var(--admin-border);
+}
+@media (min-width: 768px) {
+  .admin-accordion__panel {
+    padding: 1rem 2rem 1.75rem;
+  }
+}
+
 .admin-body select:not([multiple]):not([size]),
 .admin-body select:not([multiple])[size="1"],
 .admin-select {

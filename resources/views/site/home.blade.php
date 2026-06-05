@@ -20,13 +20,29 @@
   .home-faq-item summary::-webkit-details-marker { display: none; }
   .home-faq-item__a { margin: 0 0 14px; line-height: 1.6; color: #475569; }
   /* Latest Projects: square thumbnails (loads after styles.css) */
-  #projects .latest-projects-grid { display: flex; flex-wrap: wrap; }
+  #projects .latest-projects-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  #projects .latest-projects-grid::before,
+  #projects .latest-projects-grid::after { display: none; }
+  #projects .latest-projects-grid > .js-latest-project-item {
+    float: none;
+    width: 100%;
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
   #projects .js-latest-project-item .portfolio-light-box { display: block; width: 100%; }
   #projects .js-latest-project-item .portfolio-light-box .portfolio-img {
     position: relative;
     width: 100%;
     height: 0 !important;
     padding-bottom: 100% !important;
+    aspect-ratio: auto !important;
     overflow: hidden;
     margin: 0;
   }
@@ -38,6 +54,12 @@
     height: 100% !important;
     object-fit: cover !important;
     object-position: center center;
+  }
+  @media (max-width: 991px) {
+    #projects .latest-projects-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 767px) {
+    #projects .latest-projects-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
   }
 </style>
 @endpush
@@ -385,7 +407,7 @@
         </div>
         @endif
 
-        <div class="row wow fadeInUp latest-projects-grid">
+        <div class="row wow fadeInUp no-gutter latest-projects-grid">
           @include('site.partials.latest-projects', ['projects' => $projects])
         </div>
         <!-- end .row  -->

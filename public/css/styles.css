@@ -6283,6 +6283,7 @@ ul.pagination li:last-child {
   margin: 0;
   height: 0;
   padding-bottom: 100%;
+  aspect-ratio: auto;
   overflow: hidden;
 }
 .js-latest-project-item .portfolio-light-box .portfolio-img img {
@@ -6298,11 +6299,32 @@ ul.pagination li:last-child {
 }
 
 .latest-projects-grid {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -ms-flex-wrap: wrap;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
+.latest-projects-grid::before,
+.latest-projects-grid::after {
+  display: none;
+}
+.latest-projects-grid > .js-latest-project-item {
+  float: none;
+  width: 100%;
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+@media (max-width: 991px) {
+  .latest-projects-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .latest-projects-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
 }
 
 .portfolio-carousel {
