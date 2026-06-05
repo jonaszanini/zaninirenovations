@@ -14,7 +14,7 @@
 
     <a
       href="#"
-      class="portfolio-light-box xs-margin text-center js-project-gallery"
+      class="portfolio-light-box text-center js-project-gallery"
       data-project-title="{{ e($project->title) }}"
       data-gallery='@json($galleryUrls)'
     >

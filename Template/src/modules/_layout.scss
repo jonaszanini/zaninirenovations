@@ -6341,8 +6341,12 @@ ul.pagination {
   .portfolio-img {
     display: block;
     position: relative;
+    width: 100%;
     max-width: 100%;
+    margin: 0;
     padding: 0px;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
 
     &:before {
       background: rgba(0, 0, 0, 0.3);
@@ -6374,8 +6378,11 @@ ul.pagination {
 
     img {
       width: 100%;
+      height: 100%;
       max-width: 100%;
       display: block;
+      object-fit: cover;
+      object-position: center center;
       opacity: 1;
       @include transition(all, 0.7s);
     }

@@ -5914,8 +5914,12 @@ ul.pagination li:last-child {
 .portfolio-light-box .portfolio-img {
   display: block;
   position: relative;
+  width: 100%;
   max-width: 100%;
+  margin: 0;
   padding: 0px;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
 }
 .portfolio-light-box .portfolio-img:before {
   background: rgba(0, 0, 0, 0.3);
@@ -5948,8 +5952,11 @@ ul.pagination li:last-child {
 }
 .portfolio-light-box .portfolio-img img {
   width: 100%;
+  height: 100%;
   max-width: 100%;
   display: block;
+  object-fit: cover;
+  object-position: center center;
   opacity: 1;
   -webkit-transition: all 0.7s ease-in-out;
   transition: all 0.7s ease-in-out;

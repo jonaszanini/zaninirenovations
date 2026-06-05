@@ -6138,7 +6138,9 @@ ul.pagination li:last-child {
 .portfolio-light-box .portfolio-img {
   display: block;
   position: relative;
+  width: 100%;
   max-width: 100%;
+  margin: 0;
   padding: 0px;
   aspect-ratio: 1 / 1;
   overflow: hidden;
@@ -6271,6 +6273,7 @@ ul.pagination li:last-child {
   position: relative;
   width: 100%;
   max-width: 100%;
+  margin: 0;
   padding: 0;
   aspect-ratio: 1 / 1;
   overflow: hidden;
