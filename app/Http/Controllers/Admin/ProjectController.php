@@ -48,7 +48,7 @@ class ProjectController extends Controller
 
         $query = Project::query()
             ->with('categories')
-            ->with(['photos' => fn ($q) => $q->orderBy('sort_order')->limit(1)])
+            ->with('coverPhoto')
             ->withCount('photos')
             ->orderByCompletionLatest();
 

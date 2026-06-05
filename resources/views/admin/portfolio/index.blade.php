@@ -52,7 +52,7 @@
     <div class="portfolio-admin-grid">
       @foreach ($projects as $project)
         @php
-          $cover = $project->photos->first();
+          $cover = $project->coverPhoto;
         @endphp
         <article class="portfolio-admin-card">
           <a href="{{ route('admin.portfolio.edit', $project) }}" class="portfolio-admin-card__media" title="Edit {{ $project->title }}">
