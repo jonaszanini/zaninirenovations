@@ -133,6 +133,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::resource('blog/categories', \App\Http\Controllers\Admin\BlogCategoryController::class)
         ->parameters(['categories' => 'category'])
         ->names('blog.categories');
+    Route::post('blog/tags/bulk', [\App\Http\Controllers\Admin\BlogTagController::class, 'bulkStore'])
+        ->name('blog.tags.bulk');
     Route::resource('blog/tags', \App\Http\Controllers\Admin\BlogTagController::class)
         ->parameters(['tags' => 'tag'])
         ->names('blog.tags');

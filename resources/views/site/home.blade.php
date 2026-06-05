@@ -19,6 +19,26 @@
   .home-faq-item summary { cursor: pointer; padding: 14px 0; list-style: none; }
   .home-faq-item summary::-webkit-details-marker { display: none; }
   .home-faq-item__a { margin: 0 0 14px; line-height: 1.6; color: #475569; }
+  /* Latest Projects: square thumbnails (loads after styles.css) */
+  #projects .latest-projects-grid { display: flex; flex-wrap: wrap; }
+  #projects .js-latest-project-item .portfolio-light-box { display: block; width: 100%; }
+  #projects .js-latest-project-item .portfolio-light-box .portfolio-img {
+    position: relative;
+    width: 100%;
+    height: 0 !important;
+    padding-bottom: 100% !important;
+    overflow: hidden;
+    margin: 0;
+  }
+  #projects .js-latest-project-item .portfolio-light-box .portfolio-img img {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center center;
+  }
 </style>
 @endpush
 
@@ -365,7 +385,7 @@
         </div>
         @endif
 
-        <div class="row wow fadeInUp">
+        <div class="row wow fadeInUp latest-projects-grid">
           @include('site.partials.latest-projects', ['projects' => $projects])
         </div>
         <!-- end .row  -->

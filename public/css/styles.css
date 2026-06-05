@@ -6183,6 +6183,9 @@ ul.pagination li:last-child {
   transition: all 0.9s ease-in-out;
 }
 .portfolio-light-box .portfolio-img img {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   max-width: 100%;
@@ -6267,23 +6270,20 @@ ul.pagination li:last-child {
 }
 
 /* Latest projects: force square tiles regardless of photo dimensions.
-   The image is pinned to fill the square and is cropped/centered. */
+   Padding-bottom keeps a 1:1 box even when aspect-ratio is ignored. */
+.js-latest-project-item .portfolio-light-box {
+  display: block;
+  width: 100%;
+}
 .js-latest-project-item .portfolio-light-box .portfolio-img {
   display: block;
   position: relative;
   width: 100%;
   max-width: 100%;
   margin: 0;
-  padding: 0;
-  aspect-ratio: 1 / 1;
+  height: 0;
+  padding-bottom: 100%;
   overflow: hidden;
-}
-/* Padding-bottom fallback for browsers that ignore aspect-ratio */
-@supports not (aspect-ratio: 1 / 1) {
-  .js-latest-project-item .portfolio-light-box .portfolio-img {
-    height: 0;
-    padding-bottom: 100%;
-  }
 }
 .js-latest-project-item .portfolio-light-box .portfolio-img img {
   position: absolute;
@@ -6293,8 +6293,16 @@ ul.pagination li:last-child {
   height: 100% !important;
   max-width: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: cover !important;
   object-position: center center;
+}
+
+.latest-projects-grid {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
 }
 
 .portfolio-carousel {

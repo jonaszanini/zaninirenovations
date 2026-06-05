@@ -6412,6 +6412,9 @@ ul.pagination {
     }
 
     img {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
       max-width: 100%;
@@ -6482,22 +6485,20 @@ ul.pagination {
 }
 
 /* Latest projects (home): square thumbnails, crop with object-fit: cover */
+.js-latest-project-item .portfolio-light-box {
+  display: block;
+  width: 100%;
+}
+
 .js-latest-project-item .portfolio-light-box .portfolio-img {
   display: block;
   position: relative;
   width: 100%;
   max-width: 100%;
   margin: 0;
-  padding: 0;
-  aspect-ratio: 1 / 1;
+  height: 0;
+  padding-bottom: 100%;
   overflow: hidden;
-}
-
-@supports not (aspect-ratio: 1 / 1) {
-  .js-latest-project-item .portfolio-light-box .portfolio-img {
-    height: 0;
-    padding-bottom: 100%;
-  }
 }
 
 .js-latest-project-item .portfolio-light-box .portfolio-img img {
@@ -6507,8 +6508,13 @@ ul.pagination {
   width: 100% !important;
   height: 100% !important;
   max-width: 100%;
-  object-fit: cover;
+  object-fit: cover !important;
   object-position: center center;
+}
+
+.latest-projects-grid {
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .js-latest-project-item .portfolio-light-box .portfolio-info-box {
