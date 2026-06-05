@@ -1699,6 +1699,105 @@ body.admin-nav-open {
   }
 }
 
+/* Portfolio edit — upload sources + Google Photos panel */
+.admin-portfolio-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.admin-portfolio-upload-files {
+  margin-bottom: 0;
+}
+
+.admin-portfolio-upload-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--admin-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-portfolio-upload-divider::before,
+.admin-portfolio-upload-divider::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--admin-border);
+}
+
+.admin-google-photos-panel {
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-bg, #f6f8fa);
+  padding: 1rem 1.1rem 1.05rem;
+}
+
+.admin-google-photos-panel--compact {
+  margin-top: 0.75rem;
+}
+
+.admin-google-photos-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-google-photos-panel__head .admin-form-group-label {
+  margin: 0;
+}
+
+.admin-google-photos-panel__badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-primary);
+  background: var(--admin-primary-ring, rgba(13, 110, 110, 0.12));
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+}
+
+.admin-google-photos-panel__intro {
+  margin: 0 0 0.5rem;
+}
+
+.admin-google-photos-panel__connect-hint {
+  display: inline-block;
+  margin-left: 0.5rem;
+  color: var(--admin-muted);
+}
+
+.admin-google-photos-panel__foot {
+  margin: 0.85rem 0 0;
+  font-size: 0.8rem;
+  color: var(--admin-muted);
+  line-height: 1.4;
+}
+
+.admin-google-photos-panel .admin-google-photos-head {
+  margin-top: 0;
+}
+
+.admin-google-photos-panel .admin-google-photos-toolbar {
+  margin-bottom: 0.5rem;
+}
+
+.admin-google-photos-panel .admin-google-photos-grid {
+  margin-top: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--admin-border);
+}
+
 /* ——— Google Photos picker (admin) ——— */
 .admin-google-photos-head {
   display: flex;

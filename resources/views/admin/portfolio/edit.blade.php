@@ -3,8 +3,9 @@
 @section('heading', 'Edit project')
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
-    <form action="{{ route('admin.portfolio.update', $project) }}" method="post" enctype="multipart/form-data">
+  <div class="cp-edit-project-layout">
+    <div class="admin-card admin-card--narrow cp-edit-project-form-card">
+    <form id="portfolio-edit-form" action="{{ route('admin.portfolio.update', $project) }}" method="post" enctype="multipart/form-data">
       @csrf
       @method('PUT')
       <div class="admin-form-group">
@@ -102,70 +103,80 @@
         $canAdd = 15 - $project->photos->count();
       @endphp
       @if ($canAdd > 0)
-        <div class="admin-form-group">
-          <label for="photos">Add photos</label>
-          <input type="file" id="photos" name="photos[]" accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png" multiple>
-          <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP at {{ (int) config('webp.quality', 75) }}% quality, scaled to at most {{ (int) config('webp.max_edge_px', 1280) }}px, and compressed to about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB or less; originals are not kept. Up to {{ $canAdd }} more (15 total). After you save, use the crop icon on any thumbnail to trim it.</p>
-          @error('photos')
-            <div class="admin-error">{{ $message }}</div>
-          @enderror
-          @error('photos.*')
-            <div class="admin-error">{{ $message }}</div>
-          @enderror
-        </div>
+        <div class="admin-portfolio-upload-section">
+          <div class="admin-form-group admin-portfolio-upload-files">
+            <label for="photos">Add photos</label>
+            <input type="file" id="photos" name="photos[]" accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png" multiple>
+            <p class="admin-form-hint">WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP at {{ (int) config('webp.quality', 75) }}% quality, scaled to at most {{ (int) config('webp.max_edge_px', 1280) }}px, and compressed to about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB or less; originals are not kept. Up to {{ $canAdd }} more (15 total). After you save, use the crop icon on any thumbnail to trim it.</p>
+            @error('photos')
+              <div class="admin-error">{{ $message }}</div>
+            @enderror
+            @error('photos.*')
+              <div class="admin-error">{{ $message }}</div>
+            @enderror
+          </div>
 
-        <div class="admin-form-group">
-          <span class="admin-form-group-label">Google Photos</span>
-          @if (auth()->user()->googlePhotosToken)
-            <div
-              class="admin-google-photos"
-              data-picker-create-url="{{ route('admin.google-photos.picker-sessions.create') }}"
-              data-picker-media-url-template="{{ route('admin.google-photos.picker-sessions.media', ['sessionId' => '__SESSION__']) }}"
-              data-max-total="{{ $canAdd }}"
-            >
-              <div class="admin-google-photos-head">
-                <span class="admin-google-photos-account">Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong></span>
-                <button
-                  type="button"
-                  class="admin-btn admin-btn--ghost admin-btn--sm"
-                  data-admin-google-disconnect
-                  data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
-                >Disconnect</button>
-              </div>
-              <p class="admin-form-hint" style="margin:0 0 0.5rem;">Open Google Photos Picker, choose photos (you can open your album there and select all), then import the picked results here.</p>
-              <div class="admin-google-photos-toolbar">
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-open-picker>Open Google Photos Picker</button>
-                <span class="admin-google-photos-status" data-google-status></span>
-                <span class="admin-google-photos-hint" data-google-hint hidden></span>
-              </div>
-              <div class="admin-google-photos-grid" data-google-grid></div>
-              <div data-google-picked-fields></div>
+          <div class="admin-portfolio-upload-divider" aria-hidden="true"><span>or</span></div>
+
+          <div class="admin-google-photos-panel">
+            <div class="admin-google-photos-panel__head">
+              <span class="admin-form-group-label">Google Photos</span>
+              @if (auth()->user()->googlePhotosToken)
+                <span class="admin-google-photos-panel__badge">Import from cloud</span>
+              @endif
             </div>
-            <p class="admin-form-hint">You can add up to {{ $canAdd }} more photos total (file uploads + picked Google photos).</p>
-          @else
-            <p class="admin-form-hint" style="margin-top:0;">
-              <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect') }}">Connect Google Photos</a>
-              <span style="margin-left:0.5rem;color:var(--admin-muted);">Required to open Google Photos Picker.</span>
-            </p>
-          @endif
-          @error('google_picker_items')
-            <div class="admin-error">{{ $message }}</div>
-          @enderror
-          @error('google_picker_items.*')
-            <div class="admin-error">{{ $message }}</div>
-          @enderror
+            @if (auth()->user()->googlePhotosToken)
+              <div
+                class="admin-google-photos"
+                data-picker-create-url="{{ route('admin.google-photos.picker-sessions.create') }}"
+                data-picker-media-url-template="{{ route('admin.google-photos.picker-sessions.media', ['sessionId' => '__SESSION__']) }}"
+                data-max-total="{{ $canAdd }}"
+              >
+                <div class="admin-google-photos-head">
+                  <span class="admin-google-photos-account">Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong></span>
+                  <button
+                    type="button"
+                    class="admin-btn admin-btn--ghost admin-btn--sm"
+                    data-admin-google-disconnect
+                    data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
+                  >Disconnect</button>
+                </div>
+                <p class="admin-form-hint admin-google-photos-panel__intro">Open Google Photos Picker, choose photos (you can open your album there and select all), then import the picked results here.</p>
+                <div class="admin-google-photos-toolbar">
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-open-picker>Open Google Photos Picker</button>
+                  <span class="admin-google-photos-status" data-google-status></span>
+                  <span class="admin-google-photos-hint" data-google-hint hidden></span>
+                </div>
+                <div class="admin-google-photos-grid" data-google-grid></div>
+                <div data-google-picked-fields></div>
+              </div>
+              <p class="admin-google-photos-panel__foot">You can add up to {{ $canAdd }} more photos total (file uploads + picked Google photos).</p>
+            @else
+              <p class="admin-form-hint admin-google-photos-panel__intro">
+                <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect') }}">Connect Google Photos</a>
+                <span class="admin-google-photos-panel__connect-hint">Required to open Google Photos Picker.</span>
+              </p>
+            @endif
+            @error('google_picker_items')
+              <div class="admin-error">{{ $message }}</div>
+            @enderror
+            @error('google_picker_items.*')
+              <div class="admin-error">{{ $message }}</div>
+            @enderror
+          </div>
         </div>
       @else
         <p class="admin-form-hint">Maximum of 15 photos reached. Remove one to add more.</p>
         @if (auth()->user()->googlePhotosToken)
-          <div class="admin-form-group">
-            <span class="admin-form-group-label">Google Photos</span>
-            <p class="admin-form-hint" style="margin-top:0;">
+          <div class="admin-google-photos-panel admin-google-photos-panel--compact">
+            <div class="admin-google-photos-panel__head">
+              <span class="admin-form-group-label">Google Photos</span>
+            </div>
+            <p class="admin-form-hint admin-google-photos-panel__intro">
               Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.
               <button
                 type="button"
                 class="admin-btn admin-btn--ghost admin-btn--sm"
-                style="margin-left:0.35rem;"
                 data-admin-google-disconnect
                 data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
               >Disconnect</button>
@@ -173,12 +184,15 @@
           </div>
         @endif
       @endif
-
-      <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save changes</button>
-        <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost">Back to list</a>
-      </div>
     </form>
+    </div>
+
+    <aside class="cp-edit-project-actions-aside" role="region" aria-label="Portfolio form actions">
+      <button type="submit" form="portfolio-edit-form" class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-check"></i> Save changes
+      </button>
+      <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Back to list</a>
+    </aside>
   </div>
 
   @if ($project->photos->isNotEmpty())
