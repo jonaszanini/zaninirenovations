@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectContractClient;
+use App\Models\AiInstruction;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectContract;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Services\GeminiService;
+use App\Support\SimpleMarkdownHtml;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -56,6 +59,37 @@ class ClientProjectContractController extends Controller
      * No HTML sanitization is applied because the requirements explicitly
      * say only the site owner uses the admin.
      */
+    /**
+     * Generate contract body text via Gemini from project context.
+     */
+    public function generateAiDraft(Request $request, ClientProject $client_project, GeminiService $gemini)
+    {
+        $data = $request->validate([
+            'context' => ['required', 'string', 'max:500000'],
+        ]);
+
+        $instruction = AiInstruction::forKey(AiInstruction::KEY_CONTRACT);
+        if (!$instruction) {
+            return response()->json([
+                'error' => 'Contract AI instruction is not configured. Add it under Tools → AI Instructions.',
+            ], 422);
+        }
+
+        try {
+            $text = $gemini->generate($instruction->instruction, $data['context']);
+            $html = SimpleMarkdownHtml::convert($text);
+
+            return response()->json([
+                'text' => $text,
+                'html' => $html,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
+        }
+    }
+
     public function update(Request $request, ClientProject $client_project)
     {
         $data = $request->validate([

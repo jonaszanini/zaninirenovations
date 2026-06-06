@@ -210,6 +210,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // Contract (rich-text body, PDF generation, email-to-client).
     Route::get('client-projects/{client_project}/contract/edit', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'edit'])
         ->name('client-projects.contract.edit');
+    Route::post('client-projects/{client_project}/contract/ai-draft', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'generateAiDraft'])
+        ->name('client-projects.contract.ai-draft');
     Route::put('client-projects/{client_project}/contract', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'update'])
         ->name('client-projects.contract.update');
     Route::get('client-projects/{client_project}/contract/pdf', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'downloadPdf'])
@@ -403,6 +405,13 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('communications.index');
 
     // Utilities — collection of standalone calculation tools.
+    Route::get('ai-instructions', [\App\Http\Controllers\Admin\AiInstructionController::class, 'index'])
+        ->name('ai-instructions.index');
+    Route::get('ai-instructions/{ai_instruction}/edit', [\App\Http\Controllers\Admin\AiInstructionController::class, 'edit'])
+        ->name('ai-instructions.edit');
+    Route::put('ai-instructions/{ai_instruction}', [\App\Http\Controllers\Admin\AiInstructionController::class, 'update'])
+        ->name('ai-instructions.update');
+
     Route::get('utilities', [\App\Http\Controllers\Admin\UtilitiesController::class, 'index'])
         ->name('utilities.index');
     Route::get('utilities/pillar-spindle', [\App\Http\Controllers\Admin\UtilitiesController::class, 'pillarSpindle'])

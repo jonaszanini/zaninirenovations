@@ -2967,6 +2967,50 @@ body.cp-modal-open {
   opacity: 0.85;
 }
 
+/* Contract context modal — Gemini draft */
+.cp-contract-gemini-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.cp-contract-gemini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 1px solid #d0d7de;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(55, 52, 53, 0.06);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cp-contract-gemini-btn:hover:not(:disabled) {
+  border-color: #9ca3af;
+  box-shadow: 0 4px 14px rgba(66, 133, 244, 0.12);
+}
+.cp-contract-gemini-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.cp-contract-gemini-btn__logo {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.cp-contract-gemini-status {
+  font-size: 12px;
+  color: #15803d;
+  margin: 0;
+}
+.cp-contract-gemini-status.is-error {
+  color: #b91c1c;
+}
+
 /* Mobile tweaks. */
 @media (max-width: 700px) {
   .cp-contract-header {

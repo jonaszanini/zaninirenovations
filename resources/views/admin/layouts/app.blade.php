@@ -30,7 +30,7 @@
         $isQuotation = request()->routeIs('admin.quotations.*');
         $isVehicles = request()->routeIs('admin.vehicles.*');
         $isComms = request()->routeIs('admin.communications.*');
-        $isUtilities = request()->routeIs('admin.utilities.*');
+        $isUtilities = request()->routeIs('admin.utilities.*') || request()->routeIs('admin.ai-instructions.*');
         $isBlog = request()->routeIs('admin.blog.*');
       @endphp
       <ul class="admin-nav">
@@ -177,7 +177,13 @@
             </summary>
             <ul class="admin-subnav">
               <li>
-                <a href="{{ route('admin.utilities.index') }}" class="{{ $isUtilities ? 'is-active' : '' }}">
+                <a href="{{ route('admin.ai-instructions.index') }}" class="{{ request()->routeIs('admin.ai-instructions.*') ? 'is-active' : '' }}">
+                  <i class="fa fa-magic"></i>
+                  AI Instructions
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.utilities.index') }}" class="{{ request()->routeIs('admin.utilities.*') ? 'is-active' : '' }}">
                   <i class="fa fa-wrench"></i>
                   Utilities
                 </a>
