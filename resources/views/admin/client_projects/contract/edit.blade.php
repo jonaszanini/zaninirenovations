@@ -101,9 +101,43 @@
         <button type="button" class="cp-modal-close" data-cp-modal-close aria-label="Close">&times;</button>
       </div>
       <div class="cp-modal-body">
-        <p class="admin-form-help" style="margin-top:0;">
-          All quotations linked to this project (calculator / fence / standard / paving data as JSON, line items, totals), client and site info, Financials installment amounts, schedule, billing, <strong>internal project notes</strong>, and e-transfer instructions — for pasting into an AI assistant to help draft the contract. Not sent to the client.
-        </p>
+        @php
+          $requiredChecklist = collect($contractDraftingChecklist)->filter(fn ($item) => empty($item['optional']));
+          $requiredPresent = $requiredChecklist->where('present', true)->count();
+          $requiredTotal = $requiredChecklist->count();
+        @endphp
+        <div class="cp-contract-context-checklist-wrap">
+          <div class="cp-contract-context-checklist-head">
+            <span class="cp-contract-context-checklist-title">Included in export</span>
+            <span class="cp-contract-context-checklist-summary @if($requiredPresent < $requiredTotal) is-incomplete @endif">
+              {{ $requiredPresent }} / {{ $requiredTotal }} required
+            </span>
+          </div>
+          <ul class="cp-contract-context-checklist" aria-label="Contract context checklist">
+            @foreach ($contractDraftingChecklist as $item)
+              @php
+                $state = $item['present']
+                  ? 'present'
+                  : (!empty($item['optional']) ? 'optional' : 'missing');
+              @endphp
+              <li class="cp-contract-context-check is-{{ $state }}">
+                <span class="cp-contract-context-check__icon" aria-hidden="true">
+                  @if ($item['present'])
+                    <i class="fa fa-check"></i>
+                  @else
+                    <i class="fa fa-times"></i>
+                  @endif
+                </span>
+                <span class="cp-contract-context-check__label">{{ $item['label'] }}</span>
+                @if (!$item['present'] && !empty($item['optional']))
+                  <span class="cp-contract-context-check__hint">optional</span>
+                @elseif (!$item['present'])
+                  <span class="cp-contract-context-check__hint">not in export</span>
+                @endif
+              </li>
+            @endforeach
+          </ul>
+        </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
           <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-contract-copy-context">
             <i class="fa fa-clipboard"></i> Copy to clipboard
@@ -112,9 +146,9 @@
         </div>
         <textarea id="cp-contract-context-textarea"
                   readonly
-                  rows="22"
+                  rows="10"
                   class="admin-input"
-                  style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;line-height:1.45;resize:vertical;min-height:280px;">{{ $contractDraftingContext }}</textarea>
+                  style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;line-height:1.45;resize:vertical;">{{ $contractDraftingContext }}</textarea>
       </div>
       <div class="cp-modal-footer">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-modal-close>Close</button>

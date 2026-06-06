@@ -2882,6 +2882,91 @@ body.cp-modal-open {
   background: #f9fafb;
 }
 
+/* Contract drafting context — readiness checklist */
+.cp-contract-context-checklist-wrap {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+.cp-contract-context-checklist-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+}
+.cp-contract-context-checklist-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.cp-contract-context-checklist-summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+}
+.cp-contract-context-checklist-summary.is-incomplete {
+  color: #b91c1c;
+}
+.cp-contract-context-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 10px;
+}
+.cp-contract-context-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.cp-contract-context-check__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+.cp-contract-context-check.is-present .cp-contract-context-check__icon {
+  background: #dcfce7;
+  color: #15803d;
+}
+.cp-contract-context-check.is-present .cp-contract-context-check__label {
+  color: #166534;
+}
+.cp-contract-context-check.is-missing .cp-contract-context-check__icon {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.cp-contract-context-check.is-missing .cp-contract-context-check__label {
+  color: #b91c1c;
+  font-weight: 600;
+}
+.cp-contract-context-check.is-optional .cp-contract-context-check__icon {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+.cp-contract-context-check.is-optional .cp-contract-context-check__label {
+  color: #6b7280;
+}
+.cp-contract-context-check__hint {
+  font-size: 10px;
+  color: inherit;
+  opacity: 0.85;
+}
+
 /* Mobile tweaks. */
 @media (max-width: 700px) {
   .cp-contract-header {

@@ -44,6 +44,7 @@ class ClientProjectContractController extends Controller
             'project' => $client_project,
             'contract' => $contract,
             'contractDraftingContext' => $client_project->contractDraftingContextPlainText(),
+            'contractDraftingChecklist' => $client_project->contractDraftingContextChecklist(),
         ]);
     }
 
