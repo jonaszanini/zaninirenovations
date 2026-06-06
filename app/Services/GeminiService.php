@@ -17,7 +17,7 @@ class GeminiService
             throw new RuntimeException('Gemini API key is not configured. Add GEMINI_API_KEY to your .env file.');
         }
 
-        $model = trim((string) config('gemini.model', 'gemini-2.0-flash'));
+        $model = trim((string) config('gemini.model', 'gemini-2.5-flash'));
         $baseUrl = rtrim((string) config('gemini.base_url'), '/');
         $timeout = (int) config('gemini.timeout_seconds', 120);
 
