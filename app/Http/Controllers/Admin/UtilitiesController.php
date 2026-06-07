@@ -24,6 +24,13 @@ class UtilitiesController extends Controller
                 'route' => route('admin.utilities.pillar-spindle'),
                 'available' => true,
             ],
+            [
+                'name' => 'Measurement Conversion',
+                'description' => 'Convert lengths between metric and imperial formats, organised by job-site project with optional links to real client projects.',
+                'icon' => 'fa-exchange',
+                'route' => route('admin.utilities.measurement-conversion'),
+                'available' => true,
+            ],
         ];
 
         return view('admin.utilities.index', [

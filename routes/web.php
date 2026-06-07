@@ -424,4 +424,19 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('utilities.calculations.store');
     Route::delete('utilities/calculations/{utility_calculation}', [\App\Http\Controllers\Admin\UtilitiesController::class, 'destroyCalculation'])
         ->name('utilities.calculations.destroy');
+
+    Route::get('utilities/measurement-conversion', [\App\Http\Controllers\Admin\MeasurementConversionController::class, 'index'])
+        ->name('utilities.measurement-conversion');
+    Route::post('utilities/measurement-conversion/preview', [\App\Http\Controllers\Admin\MeasurementConversionController::class, 'preview'])
+        ->name('utilities.measurement-conversion.preview');
+    Route::post('utilities/measurement-conversion/projects', [\App\Http\Controllers\Admin\MeasurementConversionController::class, 'storeProject'])
+        ->name('utilities.measurement-conversion.projects.store');
+    Route::put('utilities/measurement-conversion/projects/{measurement_project}', [\App\Http\Controllers\Admin\MeasurementConversionController::class, 'updateProject'])
+        ->name('utilities.measurement-conversion.projects.update');
+    Route::delete('utilities/measurement-conversion/projects/{measurement_project}', [\App\Http\Controllers\Admin\MeasurementConversionController::class, 'destroyProject'])
+        ->name('utilities.measurement-conversion.projects.destroy');
+    Route::post('utilities/measurement-conversion/projects/{measurement_project}/rows', [\App\Http\Controllers\Admin\MeasurementConversionController::class, 'storeRow'])
+        ->name('utilities.measurement-conversion.rows.store');
+    Route::delete('utilities/measurement-conversion/rows/{measurement_row}', [\App\Http\Controllers\Admin\MeasurementConversionController::class, 'destroyRow'])
+        ->name('utilities.measurement-conversion.rows.destroy');
 });
