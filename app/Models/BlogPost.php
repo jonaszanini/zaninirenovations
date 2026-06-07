@@ -22,6 +22,7 @@ class BlogPost extends Model
         'excerpt',
         'html_content',
         'featured_image_path',
+        'ai_image_prompt',
         'meta_description',
         'status',
         'published_at',

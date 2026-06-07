@@ -59,6 +59,12 @@
       </div>
 
       <div class="admin-form-group">
+        <label for="bp-ai-image-prompt">AI image prompt <small class="admin-form-help cp-inline-help">(saved for future featured image generation)</small></label>
+        <textarea id="bp-ai-image-prompt" name="ai_image_prompt" rows="3" maxlength="2000" class="admin-input" placeholder="Filled by Complete metadata with Gemini, or enter manually">{{ old('ai_image_prompt', $post->ai_image_prompt) }}</textarea>
+        <p class="admin-form-help">Text-to-image instruction for a future 16:9 header image based on this post.</p>
+      </div>
+
+      <div class="admin-form-group">
         <label for="bp-editor">Content</label>
         <textarea id="bp-editor" name="html_content" rows="24">{{ old('html_content', $post->html_content) }}</textarea>
         @error('html_content') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -90,7 +96,7 @@
           <span class="blog-admin-gemini-btn__text">Complete metadata with Gemini</span>
         </button>
         <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
-        <p class="admin-form-help" style="margin:0.35rem 0 0;">Uses title and content to fill excerpt, categories, tags, and meta description.</p>
+        <p class="admin-form-help" style="margin:0.35rem 0 0;">Uses title and content to fill excerpt, categories, tags, meta description, and AI image prompt.</p>
       </div>
 
       <div class="admin-form-group">
@@ -266,10 +272,12 @@
         var excerpt = document.getElementById('bp-excerpt');
         var meta = document.getElementById('bp-meta');
         var tags = document.getElementById('bp-tags');
+        var imagePrompt = document.getElementById('bp-ai-image-prompt');
         var hasCats = document.querySelectorAll('input[name="category_ids[]"]:checked').length > 0;
         return (excerpt && excerpt.value.trim() !== '')
           || (meta && meta.value.trim() !== '')
           || (tags && tags.value.trim() !== '')
+          || (imagePrompt && imagePrompt.value.trim() !== '')
           || hasCats;
       }
 
@@ -277,9 +285,11 @@
         var excerpt = document.getElementById('bp-excerpt');
         var meta = document.getElementById('bp-meta');
         var tags = document.getElementById('bp-tags');
+        var imagePrompt = document.getElementById('bp-ai-image-prompt');
         if (excerpt && data.excerpt) excerpt.value = data.excerpt;
         if (meta && data.meta_description) meta.value = data.meta_description;
         if (tags && data.tags) tags.value = data.tags;
+        if (imagePrompt && data.image_prompt) imagePrompt.value = data.image_prompt;
 
         var ids = Array.isArray(data.category_ids) ? data.category_ids.map(String) : [];
         document.querySelectorAll('input[name="category_ids[]"]').forEach(function (cb) {
@@ -308,7 +318,7 @@
           }
 
           if (metadataFieldsHaveValues()) {
-            if (!window.confirm('Replace excerpt, categories, tags, and meta description with AI suggestions?')) {
+            if (!window.confirm('Replace excerpt, categories, tags, meta description, and AI image prompt with AI suggestions?')) {
               return;
             }
           }

@@ -18,6 +18,7 @@ class BlogPostMetadataAiService
      *   excerpt: string,
      *   meta_description: string,
      *   tags: string,
+     *   image_prompt: string,
      *   category_ids: list<int>,
      *   category_names: list<string>
      * }
@@ -90,10 +91,13 @@ class BlogPostMetadataAiService
         }
         $tagStrings = array_slice(array_values(array_unique($tagStrings)), 0, 8);
 
+        $imagePrompt = $this->stringField($raw, 'image_prompt');
+
         return [
             'excerpt' => $this->trimToLength($excerpt, 500),
             'meta_description' => $meta,
             'tags' => implode(', ', $tagStrings),
+            'image_prompt' => $this->trimToLength($imagePrompt, 2000),
             'category_ids' => $matchedIds,
             'category_names' => $matchedNames,
         ];
@@ -130,8 +134,12 @@ class BlogPostMetadataAiService
                     'type' => 'STRING',
                     'description' => 'A high-conversion search engine optimization snippet under 160 characters, tailored strictly for Google rankings.',
                 ],
+                'image_prompt' => [
+                    'type' => 'STRING',
+                    'description' => 'A detailed text-to-image prompt for generating a 16:9 featured blog header image that visually represents the article. Write as a clear instruction to an image AI (e.g. "Create an image to feature a blog post where we compare Pressure-Treated, Cedar, Composite, and PVC decking"). Focus on the main topic, professional home renovation or construction context, realistic photography style, no text or logos in the image.',
+                ],
             ],
-            'required' => ['excerpt', 'categories', 'tags', 'meta_description'],
+            'required' => ['excerpt', 'categories', 'tags', 'meta_description', 'image_prompt'],
         ];
     }
 

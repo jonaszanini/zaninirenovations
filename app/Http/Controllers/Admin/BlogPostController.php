@@ -171,6 +171,7 @@ class BlogPostController extends Controller
             'excerpt' => ['nullable', 'string', 'max:500'],
             'html_content' => ['nullable', 'string'],
             'meta_description' => ['nullable', 'string', 'max:320'],
+            'ai_image_prompt' => ['nullable', 'string', 'max:2000'],
             'status' => ['required', Rule::in([BlogPost::STATUS_DRAFT, BlogPost::STATUS_PUBLISHED])],
             'published_at' => ['nullable', 'date'],
             'author_name' => ['required', 'string', 'max:120'],
