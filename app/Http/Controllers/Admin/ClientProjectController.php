@@ -766,9 +766,9 @@ class ClientProjectController extends Controller
 
     /**
      * Manual on-demand "here are your dates" email — sendable any time from
-     * the Calendar tab regardless of billing type or project status. Doesn't
-     * mutate status or any sent-at flag, so the admin can re-send freely
-     * (e.g. after pushing a date or as a reminder a few days out).
+     * the Calendar tab regardless of billing type. On success, promotes the
+     * project to Scheduled when it is not already past that stage (re-sends
+     * while In Progress / Completed etc. only log a history event).
      */
     public function sendScheduleDates(ClientProject $client_project, ClientProjectStatusService $statusService)
     {
@@ -826,10 +826,29 @@ class ClientProjectController extends Controller
 
         $sendNote = "Schedule dates emailed to {$client_project->clientEmailRecipientsLabel()}.";
 
+        // Sending dates to the client means the job is booked — mark Scheduled.
+        // Do not regress projects already in active work or finished.
+        $statusesPastScheduled = [
+            ClientProject::STATUS_IN_PROGRESS,
+            ClientProject::STATUS_AWAITING_FINAL_PAYMENT,
+            ClientProject::STATUS_COMPLETED,
+            ClientProject::STATUS_REJECTED,
+        ];
+
         try {
-            $statusService->recordEvent($client_project, $sendNote);
+            if ($client_project->status === ClientProject::STATUS_SCHEDULED) {
+                $statusService->recordEvent($client_project, $sendNote);
+            } elseif (! in_array($client_project->status, $statusesPastScheduled, true)) {
+                $statusService->transition(
+                    $client_project,
+                    ClientProject::STATUS_SCHEDULED,
+                    $sendNote
+                );
+            } else {
+                $statusService->recordEvent($client_project, $sendNote);
+            }
         } catch (\Throwable $e) {
-            Log::warning('Failed to record schedule-dates history entry', [
+            Log::warning('Failed to update project status after schedule-dates email', [
                 'project_id' => $client_project->id,
                 'exception' => $e->getMessage(),
             ]);

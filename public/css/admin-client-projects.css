@@ -1959,6 +1959,69 @@ a:hover .cp-expense-receipt-pdf {
   text-align: right;
 }
 
+/* Invoice line items: the fixed table columns squish badly on phones, so
+   stack each row into a labelled card. Scoped to the invoice editor table
+   (#cp-invoice-items) so quotation tables are untouched. */
+@media (max-width: 700px) {
+  #cp-invoice-items,
+  #cp-invoice-items tbody,
+  #cp-invoice-items tr,
+  #cp-invoice-items td {
+    display: block;
+    width: 100%;
+  }
+  #cp-invoice-items thead {
+    display: none;
+  }
+  #cp-invoice-items tr.cp-quotation-row {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #fff;
+  }
+  #cp-invoice-items td {
+    border-bottom: none;
+    padding: 8px 0 0;
+  }
+  #cp-invoice-items td:first-child {
+    padding-top: 0;
+  }
+  /* Field labels (the table header is hidden when stacked). */
+  #cp-invoice-items td.col-description::before,
+  #cp-invoice-items td.col-line-kind::before,
+  #cp-invoice-items td.col-amount::before {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+  }
+  #cp-invoice-items td.col-description::before { content: "Description"; }
+  #cp-invoice-items td.col-line-kind::before { content: "Type"; }
+  #cp-invoice-items td.col-amount::before { content: "Amount ($)"; }
+
+  #cp-invoice-items td.col-amount {
+    width: 100%;
+  }
+  #cp-invoice-items .cp-quotation-row-amount {
+    text-align: left;
+  }
+  #cp-invoice-items .cp-invoice-line-kind {
+    width: 100%;
+  }
+  /* Remove button on its own line, aligned right, divided from the fields. */
+  #cp-invoice-items td.col-actions {
+    width: 100%;
+    text-align: right;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px dashed #f1f5f9;
+  }
+}
+
 /* Full-width “insert line here” control — sits after the last row, before totals */
 .cp-quotation-add-row-slot {
   margin: 0 0 12px;

@@ -23,10 +23,6 @@
 
   $missing = $project->missingClientContactFields();
   $hasContactInfo = empty($missing);
-
-  // Email and SMS are independent delivery channels: email needs a recipient
-  // email address; SMS needs an SMS-capable phone. Don't block one on the other.
-  $canEmailClient = filled(trim((string) $project->client_email));
 @endphp
 
 @if ($project->usesInvoiceBillingOverride())
@@ -107,17 +103,6 @@
         </form>
       </div>
     </div>
-
-    @if (!$canEmailClient)
-      <div class="cp-contract-warning">
-        <i class="fa fa-exclamation-triangle"></i>
-        <div>
-          <strong>Can't email invoices yet.</strong>
-          Add the client's <strong>email address</strong> to email invoices.
-          <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project details to fix.</a>
-        </div>
-      </div>
-    @endif
 
     {{-- Hours summary tiles (same visual language as Financials "set-aside"
          tiles — kept lightweight so it doesn't compete with the table). --}}
@@ -268,17 +253,6 @@
         </form>
       </div>
     </div>
-
-    @if (!$canEmailClient)
-      <div class="cp-contract-warning">
-        <i class="fa fa-exclamation-triangle"></i>
-        <div>
-          <strong>Can't email invoices yet.</strong>
-          Add the client's <strong>email address</strong> to email invoices.
-          <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project details to fix.</a>
-        </div>
-      </div>
-    @endif
 
     @if ($installments->isEmpty())
       <p class="admin-form-help" style="margin-top:10px;">
