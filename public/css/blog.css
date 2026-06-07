@@ -59,3 +59,34 @@
   width: 100%;
   height: auto;
 }
+
+/* Post + sidebar tags — match admin "Ongoing pipeline" chip (square corners). */
+.single-post-inner-meta .tag-list,
+.widget .tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.single-post-inner-meta .tag-list a,
+.widget .tag-list a {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  border: 1px solid #024768;
+  background: rgba(2, 71, 104, 0.09);
+  color: #024768;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.single-post-inner-meta .tag-list a:hover,
+.widget .tag-list a:hover {
+  background: rgba(2, 71, 104, 0.14);
+  border-color: #013a52;
+  color: #013a52;
+}
