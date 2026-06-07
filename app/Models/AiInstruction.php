@@ -8,6 +8,8 @@ class AiInstruction extends Model
 {
     public const KEY_CONTRACT = 'contract';
 
+    public const KEY_BLOG_POST = 'blog_post';
+
     protected $fillable = [
         'key',
         'name',

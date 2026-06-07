@@ -127,6 +127,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
 
     Route::post('blog/posts/upload-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'uploadImage'])
         ->name('blog.posts.upload-image');
+    Route::post('blog/posts/ai-metadata', [\App\Http\Controllers\Admin\BlogPostController::class, 'generateAiMetadata'])
+        ->name('blog.posts.ai-metadata');
     Route::resource('blog/posts', \App\Http\Controllers\Admin\BlogPostController::class)
         ->parameters(['posts' => 'post'])
         ->names('blog.posts');

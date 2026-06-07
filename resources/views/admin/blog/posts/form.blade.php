@@ -64,6 +64,35 @@
         @error('html_content') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
+      <div class="blog-admin-ai-metadata-wrap">
+        <button type="button"
+                class="blog-admin-gemini-btn"
+                id="bp-ai-metadata-btn"
+                data-ai-url="{{ route('admin.blog.posts.ai-metadata') }}">
+          <span class="blog-admin-gemini-btn__logo" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L13.9 8.3L20 10.2L13.9 12.1L12 18.4L10.1 12.1L4 10.2L10.1 8.3L12 2Z" fill="url(#bp-gemini-grad-a)"/>
+              <path d="M19 14L19.8 16.6L22.4 17.4L19.8 18.2L19 20.8L18.2 18.2L15.6 17.4L18.2 16.6L19 14Z" fill="url(#bp-gemini-grad-b)"/>
+              <path d="M6 15L6.7 17.1L8.8 17.8L6.7 18.5L6 20.6L5.3 18.5L3.2 17.8L5.3 17.1L6 15Z" fill="url(#bp-gemini-grad-c)"/>
+              <defs>
+                <linearGradient id="bp-gemini-grad-a" x1="4" y1="2" x2="20" y2="18" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#4285F4"/><stop offset="1" stop-color="#9B72CB"/>
+                </linearGradient>
+                <linearGradient id="bp-gemini-grad-b" x1="15" y1="14" x2="23" y2="21" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#1BA1E3"/><stop offset="1" stop-color="#4285F4"/>
+                </linearGradient>
+                <linearGradient id="bp-gemini-grad-c" x1="3" y1="15" x2="9" y2="21" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#9B72CB"/><stop offset="1" stop-color="#D96570"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </span>
+          <span class="blog-admin-gemini-btn__text">Complete metadata with Gemini</span>
+        </button>
+        <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
+        <p class="admin-form-help" style="margin:0.35rem 0 0;">Uses title and content to fill excerpt, categories, tags, and meta description.</p>
+      </div>
+
       <div class="admin-form-group">
         <label for="bp-excerpt">Excerpt <small class="admin-form-help cp-inline-help">(optional — auto-generated from content if empty)</small></label>
         <textarea id="bp-excerpt" name="excerpt" rows="2" maxlength="500" class="admin-input">{{ old('excerpt', $post->excerpt) }}</textarea>
@@ -221,6 +250,100 @@
         }
         if (typeof tinymce !== 'undefined') tinymce.triggerSave();
       });
+
+      var aiBtn = document.getElementById('bp-ai-metadata-btn');
+      var aiStatus = document.getElementById('bp-ai-metadata-status');
+      var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
+
+      function setAiStatus(msg, isError) {
+        if (!aiStatus) return;
+        aiStatus.textContent = msg || '';
+        aiStatus.classList.toggle('is-error', !!isError);
+      }
+
+      function metadataFieldsHaveValues() {
+        var excerpt = document.getElementById('bp-excerpt');
+        var meta = document.getElementById('bp-meta');
+        var tags = document.getElementById('bp-tags');
+        var hasCats = document.querySelectorAll('input[name="category_ids[]"]:checked').length > 0;
+        return (excerpt && excerpt.value.trim() !== '')
+          || (meta && meta.value.trim() !== '')
+          || (tags && tags.value.trim() !== '')
+          || hasCats;
+      }
+
+      function applyAiMetadata(data) {
+        var excerpt = document.getElementById('bp-excerpt');
+        var meta = document.getElementById('bp-meta');
+        var tags = document.getElementById('bp-tags');
+        if (excerpt && data.excerpt) excerpt.value = data.excerpt;
+        if (meta && data.meta_description) meta.value = data.meta_description;
+        if (tags && data.tags) tags.value = data.tags;
+
+        var ids = Array.isArray(data.category_ids) ? data.category_ids.map(String) : [];
+        document.querySelectorAll('input[name="category_ids[]"]').forEach(function (cb) {
+          cb.checked = ids.indexOf(String(cb.value)) !== -1;
+        });
+      }
+
+      if (aiBtn) {
+        aiBtn.addEventListener('click', function () {
+          var url = aiBtn.getAttribute('data-ai-url');
+          var titleEl = document.getElementById('bp-title');
+          var title = titleEl ? titleEl.value.trim() : '';
+          var html = '';
+          if (typeof tinymce !== 'undefined') {
+            var ed = tinymce.get('bp-editor');
+            if (ed) html = ed.getContent() || '';
+          }
+          if (!html) {
+            var raw = document.getElementById('bp-editor');
+            html = raw ? (raw.value || '') : '';
+          }
+
+          if (!title || !html.replace(/<[^>]*>/g, '').trim()) {
+            window.alert('Enter a title and blog content before generating metadata.');
+            return;
+          }
+
+          if (metadataFieldsHaveValues()) {
+            if (!window.confirm('Replace excerpt, categories, tags, and meta description with AI suggestions?')) {
+              return;
+            }
+          }
+
+          aiBtn.disabled = true;
+          setAiStatus('Generating metadata with Gemini…', false);
+
+          fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ title: title, html_content: html }),
+          }).then(function (res) {
+            return res.json().then(function (body) {
+              if (!res.ok) {
+                throw new Error((body && body.error) ? body.error : ('HTTP ' + res.status));
+              }
+              return body;
+            });
+          }).then(function (body) {
+            applyAiMetadata(body);
+            setAiStatus('Metadata filled in. Review before saving.', false);
+            window.setTimeout(function () { setAiStatus('', false); }, 5000);
+          }).catch(function (err) {
+            setAiStatus(err && err.message ? err.message : 'Could not generate metadata.', true);
+          }).finally(function () {
+            aiBtn.disabled = false;
+          });
+        });
+      }
     })();
   </script>
 @endpush

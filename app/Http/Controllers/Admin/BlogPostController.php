@@ -8,6 +8,7 @@ use App\Models\BlogPost;
 use App\Models\BlogTag;
 use App\Services\BlogHtmlContentProcessor;
 use App\Services\BlogImageStorage;
+use App\Services\BlogPostMetadataAiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -117,6 +118,24 @@ class BlogPostController extends Controller
         return redirect()
             ->route('admin.blog.posts.index')
             ->with('success', 'Post deleted.');
+    }
+
+    public function generateAiMetadata(Request $request, BlogPostMetadataAiService $metadataAi): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'html_content' => ['required', 'string', 'max:500000'],
+        ]);
+
+        try {
+            $result = $metadataAi->suggest($data['title'], $data['html_content']);
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
+        }
     }
 
     public function uploadImage(Request $request, BlogImageStorage $images): JsonResponse
