@@ -138,7 +138,6 @@ class GeminiService
                     'responseModalities' => ['IMAGE'],
                     'imageConfig' => [
                         'aspectRatio' => '16:9',
-                        'sampleCount' => 1,
                     ],
                 ],
             ]);
