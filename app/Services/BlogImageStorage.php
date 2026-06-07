@@ -4,7 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use RuntimeException;
 
 class BlogImageStorage
 {
@@ -22,6 +22,71 @@ class BlogImageStorage
         }
 
         return $relative;
+    }
+
+    /**
+     * Store AI-generated raster bytes as a compressed WebP featured image.
+     */
+    public function storeFeaturedFromBinary(string $bytes, string $mime, int $postId): string
+    {
+        if ($bytes === '') {
+            throw new RuntimeException('Generated image is empty.');
+        }
+
+        $ext = 'jpg';
+        if (str_contains(strtolower($mime), 'png')) {
+            $ext = 'png';
+        } elseif (str_contains(strtolower($mime), 'webp')) {
+            $ext = 'webp';
+        }
+
+        $tmpBase = tempnam(sys_get_temp_dir(), 'blog-ai-');
+        if ($tmpBase === false) {
+            throw new RuntimeException('Could not create a temp file for the generated image.');
+        }
+
+        $tmpPath = $tmpBase.'.'.$ext;
+        if (!@rename($tmpBase, $tmpPath)) {
+            @unlink($tmpBase);
+            throw new RuntimeException('Could not prepare temp file for the generated image.');
+        }
+
+        try {
+            if (file_put_contents($tmpPath, $bytes) === false) {
+                throw new RuntimeException('Could not write generated image to disk.');
+            }
+
+            $upload = new UploadedFile($tmpPath, 'featured.'.$ext, $mime, null, true);
+
+            return $this->webpStorage->store($upload, $postId, 'blog-featured', 'featured');
+        } finally {
+            @unlink($tmpPath);
+        }
+    }
+
+    /**
+     * Move a pending featured image (blog-featured/0/…) onto a saved post.
+     */
+    public function adoptPendingFeatured(string $pendingRelativePath, int $postId): string
+    {
+        $pendingRelativePath = ltrim(str_replace('\\', '/', $pendingRelativePath), '/');
+        if ($postId < 1 || !preg_match('#^blog-featured/0/[\w.-]+\.webp$#', $pendingRelativePath)) {
+            throw new RuntimeException('Invalid pending featured image path.');
+        }
+
+        if (!Storage::disk('public')->exists($pendingRelativePath)) {
+            throw new RuntimeException('Pending featured image no longer exists. Generate again.');
+        }
+
+        $absolute = Storage::disk('public')->path($pendingRelativePath);
+        $bytes = file_get_contents($absolute);
+        if ($bytes === false || $bytes === '') {
+            throw new RuntimeException('Could not read pending featured image.');
+        }
+
+        Storage::disk('public')->delete($pendingRelativePath);
+
+        return $this->storeFeaturedFromBinary($bytes, 'image/webp', $postId);
     }
 
     public function storeInline(UploadedFile $file, int $postId): string

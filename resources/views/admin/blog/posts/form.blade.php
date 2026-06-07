@@ -36,17 +36,16 @@
         <label for="bp-featured">Featured / header image</label>
         <input type="file" id="bp-featured" name="featured_image" accept="image/jpeg,image/png,image/webp" class="admin-input">
         <p class="admin-form-help">JPEG, PNG, or WebP — stored as WebP at {{ (int) config('webp.quality', 75) }}% quality, max {{ (int) config('webp.max_edge_px', 1280) }}px, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB. Inline images in the editor use the same compression.</p>
-        @if ($post->featured_image_path)
-          <div class="blog-admin-featured-preview">
-            <img src="{{ $post->featuredImageUrl() }}" alt="" id="bp-featured-preview-img">
-          </div>
-          <label class="admin-checkbox" style="margin-top:8px;">
-            <input type="hidden" name="remove_featured_image" value="0">
-            <input type="checkbox" class="admin-checkbox__input" name="remove_featured_image" value="1">
-            <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text">Remove featured image</span>
-          </label>
-        @endif
+        <div class="blog-admin-featured-preview" id="bp-featured-preview-wrap" @if(!$post->featured_image_path) hidden @endif>
+          <img src="{{ $post->featuredImageUrl() }}" alt="" id="bp-featured-preview-img">
+        </div>
+        <label class="admin-checkbox" id="bp-remove-featured-wrap" style="margin-top:8px;@if(!$post->featured_image_path) display:none; @endif">
+          <input type="hidden" name="remove_featured_image" value="0" id="bp-remove-featured-hidden">
+          <input type="checkbox" class="admin-checkbox__input" name="remove_featured_image" value="1" id="bp-remove-featured">
+          <span class="admin-checkbox__mark" aria-hidden="true"></span>
+          <span class="admin-checkbox__text">Remove featured image</span>
+        </label>
+        <input type="hidden" name="pending_featured_image_path" id="bp-pending-featured-path" value="">
         <div class="blog-admin-crop-wrap" id="bp-crop-wrap" hidden>
           <img id="bp-crop-image" alt="Crop preview">
         </div>
@@ -61,7 +60,7 @@
       <div class="admin-form-group">
         <label for="bp-ai-image-prompt">AI image prompt <small class="admin-form-help cp-inline-help">(saved for future featured image generation)</small></label>
         <textarea id="bp-ai-image-prompt" name="ai_image_prompt" rows="3" maxlength="2000" class="admin-input" placeholder="Filled by Complete metadata with Gemini, or enter manually">{{ old('ai_image_prompt', $post->ai_image_prompt) }}</textarea>
-        <p class="admin-form-help">Text-to-image instruction for a future 16:9 header image based on this post.</p>
+        <p class="admin-form-help">Used by Gemini to generate the 16:9 featured header image when you run Complete metadata with Gemini.</p>
       </div>
 
       <div class="admin-form-group">
@@ -74,7 +73,8 @@
         <button type="button"
                 class="blog-admin-gemini-btn"
                 id="bp-ai-metadata-btn"
-                data-ai-url="{{ route('admin.blog.posts.ai-metadata') }}">
+                data-ai-url="{{ route('admin.blog.posts.ai-metadata') }}"
+                data-post-id="{{ (int) ($post->id ?? 0) }}">
           <span class="blog-admin-gemini-btn__logo" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2L13.9 8.3L20 10.2L13.9 12.1L12 18.4L10.1 12.1L4 10.2L10.1 8.3L12 2Z" fill="url(#bp-gemini-grad-a)"/>
@@ -96,7 +96,7 @@
           <span class="blog-admin-gemini-btn__text">Complete metadata with Gemini</span>
         </button>
         <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
-        <p class="admin-form-help" style="margin:0.35rem 0 0;">Uses title and content to fill excerpt, categories, tags, meta description, and AI image prompt.</p>
+        <p class="admin-form-help" style="margin:0.35rem 0 0;">Uses title and content to fill metadata, generate a 16:9 featured image (WebP, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB), and preview it above.</p>
       </div>
 
       <div class="admin-form-group">
@@ -281,6 +281,34 @@
           || hasCats;
       }
 
+      function applyFeaturedPreview(data) {
+        var wrap = document.getElementById('bp-featured-preview-wrap');
+        var img = document.getElementById('bp-featured-preview-img');
+        var removeWrap = document.getElementById('bp-remove-featured-wrap');
+        var removeCb = document.getElementById('bp-remove-featured');
+        var pending = document.getElementById('bp-pending-featured-path');
+        var postId = parseInt(aiBtn.getAttribute('data-post-id') || '0', 10);
+
+        if (!data.featured_image_url || !wrap || !img) {
+          return;
+        }
+
+        var url = data.featured_image_url;
+        if (url.indexOf('?') === -1) {
+          url += '?v=' + Date.now();
+        } else {
+          url += '&v=' + Date.now();
+        }
+        img.src = url;
+        wrap.hidden = false;
+        if (removeWrap) removeWrap.style.display = '';
+        if (removeCb) removeCb.checked = false;
+
+        if (pending) {
+          pending.value = (postId > 0) ? '' : (data.featured_image_path || '');
+        }
+      }
+
       function applyAiMetadata(data) {
         var excerpt = document.getElementById('bp-excerpt');
         var meta = document.getElementById('bp-meta');
@@ -295,6 +323,8 @@
         document.querySelectorAll('input[name="category_ids[]"]').forEach(function (cb) {
           cb.checked = ids.indexOf(String(cb.value)) !== -1;
         });
+
+        applyFeaturedPreview(data);
       }
 
       if (aiBtn) {
@@ -318,13 +348,17 @@
           }
 
           if (metadataFieldsHaveValues()) {
-            if (!window.confirm('Replace excerpt, categories, tags, meta description, and AI image prompt with AI suggestions?')) {
+            if (!window.confirm('Replace excerpt, categories, tags, meta description, AI image prompt, and featured image with AI suggestions?')) {
               return;
             }
           }
 
+          var postId = parseInt(aiBtn.getAttribute('data-post-id') || '0', 10);
+          var payload = { title: title, html_content: html };
+          if (postId > 0) payload.post_id = postId;
+
           aiBtn.disabled = true;
-          setAiStatus('Generating metadata with Gemini…', false);
+          setAiStatus('Generating metadata and featured image with Gemini…', false);
 
           fetch(url, {
             method: 'POST',
@@ -335,7 +369,7 @@
               'X-Requested-With': 'XMLHttpRequest',
               'X-CSRF-TOKEN': csrfToken,
             },
-            body: JSON.stringify({ title: title, html_content: html }),
+            body: JSON.stringify(payload),
           }).then(function (res) {
             return res.json().then(function (body) {
               if (!res.ok) {
@@ -345,8 +379,18 @@
             });
           }).then(function (body) {
             applyAiMetadata(body);
-            setAiStatus('Metadata filled in. Review before saving.', false);
-            window.setTimeout(function () { setAiStatus('', false); }, 5000);
+            var msg = 'Metadata filled in. Review before saving.';
+            if (body.featured_image_url) {
+              msg = 'Metadata and featured image ready. Review before saving.';
+            }
+            if (body.image_generation_error) {
+              msg = 'Metadata filled in, but featured image failed: ' + body.image_generation_error;
+              setAiStatus(msg, true);
+              window.setTimeout(function () { setAiStatus('', false); }, 12000);
+              return;
+            }
+            setAiStatus(msg, false);
+            window.setTimeout(function () { setAiStatus('', false); }, 8000);
           }).catch(function (err) {
             setAiStatus(err && err.message ? err.message : 'Could not generate metadata.', true);
           }).finally(function () {

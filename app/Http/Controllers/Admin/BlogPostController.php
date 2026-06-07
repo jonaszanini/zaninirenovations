@@ -64,6 +64,7 @@ class BlogPostController extends Controller
         $post->categories()->sync($categoryIds);
         $post->tags()->sync(BlogTag::syncFromNames($tagNames));
 
+        $this->adoptPendingFeaturedIfNeeded($request, $post, $images);
         $this->handleFeaturedUpload($request, $post, $images);
         $post->update([
             'html_content' => $htmlProcessor->persistInlineImages((string) $request->input('html_content', ''), $post->id),
@@ -101,6 +102,7 @@ class BlogPostController extends Controller
         $post->categories()->sync($categoryIds);
         $post->tags()->sync(BlogTag::syncFromNames($tagNames));
 
+        $this->adoptPendingFeaturedIfNeeded($request, $post, $images);
         $this->handleFeaturedUpload($request, $post, $images);
 
         return redirect()
@@ -125,10 +127,12 @@ class BlogPostController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'html_content' => ['required', 'string', 'max:500000'],
+            'post_id' => ['nullable', 'integer', 'exists:blog_posts,id'],
         ]);
 
         try {
-            $result = $metadataAi->suggest($data['title'], $data['html_content']);
+            $postId = isset($data['post_id']) ? (int) $data['post_id'] : null;
+            $result = $metadataAi->suggestWithFeaturedImage($data['title'], $data['html_content'], $postId);
 
             return response()->json($result);
         } catch (\Throwable $e) {
@@ -215,6 +219,25 @@ class BlogPostController extends Controller
         $parts = preg_split('/[,]+/', $raw) ?: [];
 
         return array_values(array_filter(array_map('trim', $parts), fn ($t) => $t !== ''));
+    }
+
+    protected function adoptPendingFeaturedIfNeeded(Request $request, BlogPost $post, BlogImageStorage $images): void
+    {
+        $pending = trim((string) $request->input('pending_featured_image_path', ''));
+        if ($pending === '' || $request->hasFile('featured_image')) {
+            return;
+        }
+
+        if ($post->featured_image_path && $post->featured_image_path !== $pending) {
+            $images->delete($post->featured_image_path);
+        }
+
+        try {
+            $path = $images->adoptPendingFeatured($pending, $post->id);
+            $post->update(['featured_image_path' => $path]);
+        } catch (\Throwable $e) {
+            // Pending path expired or invalid; manual upload still works.
+        }
     }
 
     protected function handleFeaturedUpload(Request $request, BlogPost $post, BlogImageStorage $images): void

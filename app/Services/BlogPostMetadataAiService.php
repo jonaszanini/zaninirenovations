@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AiInstruction;
 use App\Models\BlogCategory;
+use App\Models\BlogPost;
 use App\Models\BlogTag;
 use RuntimeException;
 
@@ -11,7 +12,61 @@ class BlogPostMetadataAiService
 {
     public function __construct(
         protected GeminiService $gemini,
+        protected BlogImageStorage $images,
     ) {}
+
+    /**
+     * @return array{
+     *   excerpt: string,
+     *   meta_description: string,
+     *   tags: string,
+     *   image_prompt: string,
+     *   featured_image_path?: string,
+     *   featured_image_url?: string,
+     *   image_generation_error?: string,
+     *   category_ids: list<int>,
+     *   category_names: list<string>
+     * }
+     */
+    public function suggestWithFeaturedImage(string $title, string $htmlContent, ?int $postId = null): array
+    {
+        $result = $this->suggest($title, $htmlContent);
+
+        if ($result['image_prompt'] === '') {
+            return $result;
+        }
+
+        try {
+            $generated = $this->gemini->generateImage($result['image_prompt']);
+            $storagePostId = ($postId !== null && $postId > 0) ? $postId : 0;
+
+            if ($storagePostId > 0) {
+                $post = BlogPost::query()->find($storagePostId);
+                if ($post?->featured_image_path) {
+                    $this->images->delete($post->featured_image_path);
+                }
+            }
+
+            $path = $this->images->storeFeaturedFromBinary(
+                $generated['bytes'],
+                $generated['mime'],
+                $storagePostId,
+            );
+
+            $result['featured_image_path'] = $path;
+            $result['featured_image_url'] = $this->images->publicUrl($path);
+
+            if ($storagePostId > 0) {
+                BlogPost::query()
+                    ->where('id', $storagePostId)
+                    ->update(['featured_image_path' => $path]);
+            }
+        } catch (\Throwable $e) {
+            $result['image_generation_error'] = $e->getMessage();
+        }
+
+        return $result;
+    }
 
     /**
      * @return array{
