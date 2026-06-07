@@ -109,6 +109,7 @@
           'latValue' => old('client_address_latitude', $project->client_address_latitude),
           'lngName' => 'client_address_longitude',
           'lngValue' => old('client_address_longitude', $project->client_address_longitude),
+          'directoryHintId' => 'cp-client-address-directory-hint',
           'disabled' => $clientFieldsLocked,
         ])
 

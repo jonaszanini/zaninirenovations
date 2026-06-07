@@ -20,15 +20,56 @@ class ProjectController extends Controller
 {
     private const MAX_PHOTOS_PER_PROJECT = 15;
 
-    public function index()
+    public function index(Request $request)
     {
-        $projects = Project::query()
-            ->with('categories')
-            ->withCount('photos')
-            ->orderByCompletionLatest()
-            ->paginate(15);
+        $categories = ProjectCategory::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.portfolio.index', compact('projects'));
+        $filters = [
+            'q' => trim((string) $request->query('q', '')),
+            'category' => trim((string) $request->query('category', '')),
+        ];
+
+        $categoryId = null;
+        if ($filters['category'] !== '') {
+            $matched = $categories->first(
+                fn (ProjectCategory $cat) => $cat->slug === $filters['category']
+                    || (string) $cat->id === $filters['category']
+            );
+            if ($matched) {
+                $categoryId = $matched->id;
+                $filters['category'] = $matched->slug;
+            } else {
+                $filters['category'] = '';
+            }
+        }
+
+        $query = Project::query()
+            ->with('categories')
+            ->with('coverPhoto')
+            ->withCount('photos')
+            ->orderByCompletionLatest();
+
+        if ($filters['q'] !== '') {
+            $search = $filters['q'];
+            $query->where(function ($sub) use ($search) {
+                $sub->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if ($categoryId !== null) {
+            $query->whereHas(
+                'categories',
+                fn ($sub) => $sub->where('project_categories.id', $categoryId)
+            );
+        }
+
+        $projects = $query->paginate(15)->withQueryString();
+
+        return view('admin.portfolio.index', compact('projects', 'filters', 'categories'));
     }
 
     public function create()
@@ -271,6 +312,7 @@ class ProjectController extends Controller
 
         try {
             app(ProjectPhotoRotationService::class)->rotateWebp($fullPath, $request->input('direction'));
+            app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
         } catch (\Throwable $e) {
             report($e);
 
@@ -350,6 +392,7 @@ class ProjectController extends Controller
 
         try {
             app(ProjectPhotoCropService::class)->cropWebp($fullPath, $ix, $iy, $cropW, $cropH);
+            app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
         } catch (\Throwable $e) {
             report($e);
             $msg = 'Could not crop the photo: '.$e->getMessage();

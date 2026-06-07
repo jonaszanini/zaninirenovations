@@ -435,6 +435,41 @@ body.admin-body {
   gap: 0.5rem;
 }
 
+.admin-list-filters {
+  flex-wrap: wrap;
+}
+.admin-list-filters__per-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+.admin-list-filters__per-page-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.admin-list-filters__per-page-select {
+  width: auto;
+  min-width: 5.5rem;
+  min-height: 44px;
+  padding-right: 2rem;
+}
+.admin-list-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-top: 1rem;
+}
+.admin-list-footer__summary {
+  margin: 0;
+}
+
 /* Table */
 .admin-table-wrap {
   overflow-x: auto;
@@ -791,6 +826,50 @@ summary.admin-chevron-summary::after {
 details[open] > summary.admin-chevron-summary::after {
   transform: rotate(180deg);
 }
+
+.admin-accordion.admin-card {
+  padding: 0;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.admin-accordion > summary.admin-accordion__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.admin-accordion > summary.admin-accordion__summary::-webkit-details-marker {
+  display: none;
+}
+.admin-accordion > summary.admin-accordion__summary::marker {
+  content: '';
+}
+@media (min-width: 768px) {
+  .admin-accordion > summary.admin-accordion__summary {
+    padding: 1rem 2rem;
+  }
+}
+.admin-accordion__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-accordion__panel {
+  padding: 1rem 1.5rem 1.5rem;
+  border-top: 1px solid var(--admin-border);
+}
+@media (min-width: 768px) {
+  .admin-accordion__panel {
+    padding: 1rem 2rem 1.75rem;
+  }
+}
+
 .admin-body select:not([multiple]):not([size]),
 .admin-body select:not([multiple])[size="1"],
 .admin-select {
@@ -848,6 +927,11 @@ details[open] > summary.admin-chevron-summary::after {
   color: var(--admin-danger, #c62828);
   font-weight: 500;
 }
+.cp-directory-address-hint {
+  color: #374151;
+  margin-top: 0.35rem;
+}
+
 .admin-places-status--ok {
   color: #166534;
 }
@@ -855,8 +939,15 @@ details[open] > summary.admin-chevron-summary::after {
 .admin-category-checkboxes {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1rem;
+  gap: 0.5rem 0.65rem;
   margin-top: 0.25rem;
+}
+
+.admin-category-checkboxes .admin-checkbox-tile {
+  width: auto;
+  max-width: 100%;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .admin-checkbox-tile {
@@ -888,6 +979,114 @@ details[open] > summary.admin-chevron-summary::after {
   font-size: 0.8rem;
   color: var(--admin-muted);
   margin-top: 0.35rem;
+}
+
+/* Portfolio index — card grid */
+.portfolio-admin-filters {
+  margin-bottom: 1.25rem;
+}
+
+.portfolio-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+}
+
+.portfolio-admin-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  overflow: hidden;
+  box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.portfolio-admin-card__media {
+  display: block;
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--admin-bg);
+  overflow: hidden;
+}
+
+.portfolio-admin-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.portfolio-admin-card__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 100%;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+}
+
+.portfolio-admin-card__placeholder .fa {
+  font-size: 1.75rem;
+  opacity: 0.55;
+}
+
+.portfolio-admin-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem 0.85rem;
+  flex: 1 1 auto;
+}
+
+.portfolio-admin-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.portfolio-admin-card__title a {
+  color: var(--admin-text);
+  text-decoration: none;
+}
+
+.portfolio-admin-card__title a:hover {
+  color: var(--admin-primary);
+}
+
+.portfolio-admin-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.portfolio-admin-card__tags .admin-badge {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.portfolio-admin-card__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+  line-height: 1.4;
+}
+
+.portfolio-admin-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
+.portfolio-admin-card__actions form {
+  display: inline;
 }
 
 .admin-form-actions {
@@ -1130,12 +1329,60 @@ details[open] > summary.admin-chevron-summary::after {
   max-width: 100% !important;
 }
 
+#admin-photo-crop-modal .admin-crop-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+  flex-shrink: 0;
+}
+
+#admin-photo-crop-modal .admin-crop-aspect-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+#admin-photo-crop-modal .admin-crop-aspect-btn:hover:not(:disabled) {
+  border-color: var(--admin-primary);
+  background: var(--admin-bg);
+}
+
+#admin-photo-crop-modal .admin-crop-aspect-btn.is-active {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary);
+  color: #fff;
+}
+
+#admin-photo-crop-modal .admin-crop-aspect-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#admin-photo-crop-modal .admin-crop-aspect-btn__icon {
+  display: block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid currentColor;
+  border-radius: 1px;
+  box-sizing: border-box;
+}
+
 #admin-photo-crop-modal .admin-modal-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
   justify-content: flex-end;
-  margin-top: 1rem;
+  margin-top: 0.65rem;
   flex-shrink: 0;
 }
 
@@ -1450,6 +1697,105 @@ body.admin-nav-open {
   body.admin-nav-open {
     overflow: auto;
   }
+}
+
+/* Portfolio edit — upload sources + Google Photos panel */
+.admin-portfolio-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.admin-portfolio-upload-files {
+  margin-bottom: 0;
+}
+
+.admin-portfolio-upload-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--admin-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-portfolio-upload-divider::before,
+.admin-portfolio-upload-divider::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--admin-border);
+}
+
+.admin-google-photos-panel {
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-bg, #f6f8fa);
+  padding: 1rem 1.1rem 1.05rem;
+}
+
+.admin-google-photos-panel--compact {
+  margin-top: 0.75rem;
+}
+
+.admin-google-photos-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-google-photos-panel__head .admin-form-group-label {
+  margin: 0;
+}
+
+.admin-google-photos-panel__badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-primary);
+  background: var(--admin-primary-ring, rgba(13, 110, 110, 0.12));
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+}
+
+.admin-google-photos-panel__intro {
+  margin: 0 0 0.5rem;
+}
+
+.admin-google-photos-panel__connect-hint {
+  display: inline-block;
+  margin-left: 0.5rem;
+  color: var(--admin-muted);
+}
+
+.admin-google-photos-panel__foot {
+  margin: 0.85rem 0 0;
+  font-size: 0.8rem;
+  color: var(--admin-muted);
+  line-height: 1.4;
+}
+
+.admin-google-photos-panel .admin-google-photos-head {
+  margin-top: 0;
+}
+
+.admin-google-photos-panel .admin-google-photos-toolbar {
+  margin-bottom: 0.5rem;
+}
+
+.admin-google-photos-panel .admin-google-photos-grid {
+  margin-top: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--admin-border);
 }
 
 /* ——— Google Photos picker (admin) ——— */

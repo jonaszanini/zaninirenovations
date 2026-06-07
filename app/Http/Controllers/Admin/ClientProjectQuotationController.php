@@ -14,7 +14,7 @@ use App\Models\StairsQuotation;
 use App\Models\StandardQuotation;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
-use App\Services\MoceanSmsService;
+use App\Services\ClientSmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -133,7 +133,7 @@ class ClientProjectQuotationController extends Controller
         ClientProject $client_project,
         ClientProjectQuotation $quotation,
         ClientProjectStatusService $statusService,
-        MoceanSmsService $moceanSms,
+        ClientSmsService $clientSms,
     )
     {
         $this->authorizeQuotation($client_project, $quotation);
@@ -235,7 +235,7 @@ class ClientProjectQuotationController extends Controller
                     ->with('error', 'The PDF was generated but the email could not be sent: '.$e->getMessage());
             }
         } else {
-            if (!$moceanSms->isConfigured()) {
+            if (! $clientSms->isConfigured()) {
                 return redirect()
                     ->route('admin.client-projects.show', $client_project)
                     ->withFragment('quotation')
@@ -250,20 +250,16 @@ class ClientProjectQuotationController extends Controller
 
             $totalFmt = ClientProject::formatMoney((float) $quotation->grandTotal());
             $smsBody = "Zanini Renovations — {$quotation->typeLabel()} {$quotation->quotation_number}. Total: {$totalFmt}. View PDF: {$signedUrl}";
-            $result = $moceanSms->send((string) $smsTo, $smsBody);
             $summary = "{$quotation->typeLabel()} {$quotation->quotation_number} SMS link — {$totalFmt} — \"".Str::limit($smsBody, 120).'"';
-
-            app(ClientCommunicationLogger::class)->logSms(
+            $result = $clientSms->sendToClient(
                 $client_project,
-                ClientCommunicationLog::REASON_QUOTATION_SENT,
                 (string) $smsTo,
+                $smsBody,
+                ClientCommunicationLog::REASON_QUOTATION_SENT,
                 $summary,
-                ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                $result['ok'],
-                $result['ok'] ? null : $result['detail'],
             );
 
-            if (!$result['ok']) {
+            if (! $result['ok']) {
                 return redirect()
                     ->route('admin.client-projects.show', $client_project)
                     ->withFragment('quotation')

@@ -1781,6 +1781,32 @@ a:hover .cp-expense-receipt-pdf {
   vertical-align: top;
   padding: 0 14px;
 }
+.cp-sig-cell--contractor .signature-line {
+  border-top: 1px solid #1f2937;
+  margin-bottom: 6px;
+}
+
+.cp-sig-cell--contractor .signature-contractor .signature-line,
+.cp-sig-cell--contractor .signature-contractor .signature-name,
+.cp-sig-cell--contractor .signature-name {
+  font-size: 14px;
+  margin-bottom: 0 !important;
+}
+
+.cp-sig-cell--contractor .signature-date {
+  font-size: 14px;
+  color: #4b5563;
+  margin-top: 8px;
+}
+
+.cp-sig-cell--contractor .contractor-signature-img {
+  display: block;
+  max-height: 64px;
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 4px;
+}
+
 .cp-sig-line {
   border-top: 1px solid #1f2937;
   margin-bottom: 6px;
@@ -2167,6 +2193,12 @@ textarea.admin-input {
   color: #024768;
 }
 
+.cp-mark-paid-receipt-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
 .cp-mark-paid-project-status {
   margin-top: 16px;
   padding: 14px 14px 12px;
@@ -2911,6 +2943,135 @@ body.cp-modal-open {
   padding: 12px 18px;
   border-top: 1px solid #eef1f4;
   background: #f9fafb;
+}
+
+/* Contract drafting context — readiness checklist */
+.cp-contract-context-checklist-wrap {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+.cp-contract-context-checklist-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+}
+.cp-contract-context-checklist-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.cp-contract-context-checklist-summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+}
+.cp-contract-context-checklist-summary.is-incomplete {
+  color: #b91c1c;
+}
+.cp-contract-context-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 10px;
+}
+.cp-contract-context-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.cp-contract-context-check__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+.cp-contract-context-check.is-present .cp-contract-context-check__icon {
+  background: #dcfce7;
+  color: #15803d;
+}
+.cp-contract-context-check.is-present .cp-contract-context-check__label {
+  color: #166534;
+}
+.cp-contract-context-check.is-missing .cp-contract-context-check__icon {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.cp-contract-context-check.is-missing .cp-contract-context-check__label {
+  color: #b91c1c;
+  font-weight: 600;
+}
+.cp-contract-context-check.is-optional .cp-contract-context-check__icon {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+.cp-contract-context-check.is-optional .cp-contract-context-check__label {
+  color: #6b7280;
+}
+.cp-contract-context-check__hint {
+  font-size: 10px;
+  color: inherit;
+  opacity: 0.85;
+}
+
+/* Contract context modal — Gemini draft */
+.cp-contract-gemini-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.cp-contract-gemini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 1px solid #d0d7de;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(55, 52, 53, 0.06);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cp-contract-gemini-btn:hover:not(:disabled) {
+  border-color: #9ca3af;
+  box-shadow: 0 4px 14px rgba(66, 133, 244, 0.12);
+}
+.cp-contract-gemini-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.cp-contract-gemini-btn__logo {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.cp-contract-gemini-status {
+  font-size: 12px;
+  color: #15803d;
+  margin: 0;
+}
+.cp-contract-gemini-status.is-error {
+  color: #b91c1c;
 }
 
 /* Mobile tweaks. */
@@ -3748,6 +3909,34 @@ body.cp-modal-open {
   /* Short name | Description (wider) | Unit price (narrower) | Qty (narrower) */
   grid-template-columns: minmax(120px, 1fr) minmax(260px, 4fr) minmax(90px, 0.6fr) minmax(70px, 0.45fr);
 }
+.sq-mat-row--url {
+  /* Full-width product URL on its own line so it never crowds the
+     short name / description / price inputs above it. */
+  grid-template-columns: 1fr;
+}
+.sq-mat-url-control {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+.sq-mat-url-control .sq-mat-url {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sq-mat-url-control .sq-mat-url-open {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+}
+.sq-mat-optional {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #94a3b8;
+}
 .sq-mat-row--computed {
   /* Subtotal | HST (13%) | Total w/ HST | HST checkbox */
   grid-template-columns: minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(90px, 0.7fr);
@@ -4398,9 +4587,28 @@ body.cp-modal-open {
 /* Client directory (admin) + Tom Select on project forms */
 .cp-clients-toolbar-search {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+}
+
+.cp-clients-toolbar-search__input {
+  width: min(320px, 100%);
+  max-width: 320px;
+  flex: 0 1 320px;
+}
+
+.cp-clients-toolbar-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.cp-clients-toolbar-total {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
 }
 .cp-client-directory-picker .ts-control {
   min-height: 44px;

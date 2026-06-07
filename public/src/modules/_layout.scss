@@ -5892,6 +5892,10 @@ ul.pagination {
   }
 }
 
+.page-header--blog {
+  background-image: url("../images/header-bg.webp");
+}
+
 /***********************************************************************************************/
 /* SINGLE TEAM PAGE */
 /***********************************************************************************************/
@@ -6467,6 +6471,32 @@ ul.pagination {
         left: 0;
       }
     }
+  }
+}
+
+/* Latest projects (home): title-only hover overlay */
+.js-latest-project-item .portfolio-light-box .portfolio-info-box {
+  padding: 10px 8px;
+  text-align: center;
+
+  h4 {
+    margin: 0;
+    font-size: 16px;
+    line-height: 20px;
+  }
+
+  span,
+  br,
+  p {
+    display: none !important;
+  }
+}
+
+.latest-projects-load-more-row {
+  margin-top: 24px;
+
+  .btn-theme.js-latest-projects-load-more {
+    min-width: 180px;
   }
 }
 

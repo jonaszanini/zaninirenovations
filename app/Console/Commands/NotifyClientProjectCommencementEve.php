@@ -7,6 +7,7 @@ use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Services\ClientSmsService;
 use App\Services\MoceanSmsService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -31,8 +32,12 @@ class NotifyClientProjectCommencementEve extends Command
 
     protected $description = 'Day-before commencement: optional admin email + SMS to the client (Mocean).';
 
-    public function handle(ClientProjectStatusService $statusService, MoceanSmsService $moceanSms, ClientCommunicationLogger $logger): int
-    {
+    public function handle(
+        ClientProjectStatusService $statusService,
+        MoceanSmsService $moceanSms,
+        ClientSmsService $clientSms,
+        ClientCommunicationLogger $logger,
+    ): int {
         $tz = 'America/Toronto';
         $tomorrow = Carbon::tomorrow($tz)->toDateString();
 
@@ -133,32 +138,22 @@ class NotifyClientProjectCommencementEve extends Command
                     $smsOk = false;
                 } else {
                     $smsBody = $this->commencementSmsBody($project);
-                    $result = $moceanSms->send($smsTo, $smsBody);
+                    $result = $clientSms->sendToClient(
+                        $project,
+                        $smsTo,
+                        $smsBody,
+                        ClientCommunicationLog::REASON_COMMENCEMENT_EVE_SMS,
+                        $smsDescription.' — "'.Str::limit($smsBody, 140).'"',
+                    );
                     if ($result['ok']) {
                         $smsOk = true;
-                        $this->info('SMS sent to client for project #'.$project->id.' '.$project->name);
-
-                        $logger->logSms(
-                            $project,
-                            ClientCommunicationLog::REASON_COMMENCEMENT_EVE_SMS,
-                            $smsTo,
-                            $smsDescription.' — "'.Str::limit($smsBody, 140).'"',
-                        );
+                        $introNote = ! empty($result['intro_sent']) ? ' (compliance intro sent first)' : '';
+                        $this->info('SMS sent to client for project #'.$project->id.' '.$project->name.$introNote);
                     } else {
                         Log::error('Commencement eve SMS failed', [
                             'client_project_id' => $project->id,
                             'detail' => $result['detail'],
                         ]);
-
-                        $logger->logSms(
-                            $project,
-                            ClientCommunicationLog::REASON_COMMENCEMENT_EVE_SMS,
-                            $smsTo,
-                            $smsDescription.' — "'.Str::limit($smsBody, 140).'"',
-                            ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                            false,
-                            $result['detail'],
-                        );
 
                         $this->error('SMS failed for project #'.$project->id.': '.$result['detail']);
                     }

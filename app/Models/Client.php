@@ -17,13 +17,53 @@ class Client extends Model
         'email',
         'email_secondary',
         'phone',
+        'sms_intro_sent_at',
         'address',
+        'address_place_id',
+        'address_latitude',
+        'address_longitude',
         'notes',
+    ];
+
+    protected $casts = [
+        'sms_intro_sent_at' => 'datetime',
+        'address_latitude' => 'decimal:7',
+        'address_longitude' => 'decimal:7',
     ];
 
     public function projects(): HasMany
     {
         return $this->hasMany(ClientProject::class, 'client_id');
+    }
+
+    /**
+     * Directory client for a project (linked id, or phone match on denormalised
+     * project contact fields).
+     */
+    public static function resolveForProject(ClientProject $project): ?self
+    {
+        if ($project->client_id) {
+            return $project->client;
+        }
+
+        return static::findBySmsPhone($project->client_phone);
+    }
+
+    /**
+     * Find a directory client whose phone normalises to the same SMS digits.
+     */
+    public static function findBySmsPhone(?string $phone): ?self
+    {
+        $digits = ClientProject::phoneDigitsForSms($phone);
+        if ($digits === null) {
+            return null;
+        }
+
+        return static::query()
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->get()
+            ->first(fn (self $client) => ClientProject::phoneDigitsForSms($client->phone) === $digits);
     }
 
     /** Single-line label for search dropdowns (Tom Select, etc.). */
@@ -47,6 +87,9 @@ class Client extends Model
             'email_secondary' => $this->email_secondary,
             'phone' => $this->phone,
             'address' => $this->address,
+            'address_place_id' => $this->address_place_id,
+            'address_latitude' => $this->address_latitude,
+            'address_longitude' => $this->address_longitude,
         ];
     }
 }

@@ -1095,6 +1095,66 @@ class ClientProject extends Model
     }
 
     /**
+     * Readiness checklist for the contract drafting context modal.
+     * Each item mirrors a field included in contractDraftingContextPlainText().
+     *
+     * @return list<array{key: string, label: string, present: bool, optional?: bool}>
+     */
+    public function contractDraftingContextChecklist(): array
+    {
+        $this->loadMissing(['quotations', 'installments']);
+
+        $items = [
+            ['key' => 'client_name', 'label' => 'Client name', 'present' => filled($this->client_name)],
+            ['key' => 'client_email', 'label' => 'Client email', 'present' => filled($this->client_email)],
+            ['key' => 'client_phone', 'label' => 'Client phone', 'present' => filled($this->client_phone)],
+            ['key' => 'service_address', 'label' => 'Service address', 'present' => filled($this->client_address)],
+            ['key' => 'start_date', 'label' => 'Start date', 'present' => $this->start_date !== null],
+            ['key' => 'end_date', 'label' => 'End date', 'present' => $this->end_date !== null],
+            ['key' => 'quotations', 'label' => 'Linked quotation(s)', 'present' => $this->quotations->isNotEmpty()],
+        ];
+
+        if ($this->isHourly()) {
+            $items[] = [
+                'key' => 'hourly_rate',
+                'label' => 'Hourly rate',
+                'present' => $this->hourly_rate !== null,
+            ];
+        } else {
+            $items[] = [
+                'key' => 'contract_total',
+                'label' => 'Contract total (fixed)',
+                'present' => $this->total_amount !== null,
+            ];
+
+            if ((int) ($this->payment_plan ?? 0) >= 1 || $this->installments->isNotEmpty()) {
+                $items[] = [
+                    'key' => 'installments',
+                    'label' => 'Payment installments',
+                    'present' => $this->installments->isNotEmpty(),
+                ];
+            }
+        }
+
+        if ($this->visit_required) {
+            $items[] = [
+                'key' => 'visit_date',
+                'label' => 'Visit date',
+                'present' => $this->visit_date !== null,
+            ];
+        }
+
+        $items[] = [
+            'key' => 'notes',
+            'label' => 'Internal notes',
+            'present' => trim((string) ($this->notes ?? '')) !== '',
+            'optional' => true,
+        ];
+
+        return $items;
+    }
+
+    /**
      * @param  list<string>  $lines
      */
     private function appendContractContextInstallmentLines(array &$lines): void

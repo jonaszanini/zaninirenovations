@@ -130,6 +130,7 @@
             'latValue' => old('client_address_latitude'),
             'lngName' => 'client_address_longitude',
             'lngValue' => old('client_address_longitude'),
+            'directoryHintId' => 'cp-client-address-directory-hint',
           ])
 
           <div class="admin-form-section" style="margin-top:1rem;padding-top:1rem;border-top:1px dashed #e5e7eb;">
@@ -236,7 +237,7 @@
 
         <p class="admin-form-help cp-form-footer" data-cp-fixed-quote-pending
            style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY || $cpCreateVisitRequired ? 'display:none;' : '' }}">
-          Status will be set to <strong>Quote Pending</strong>. You'll receive a daily email reminder until the quote is sent.
+          Status will be set to <strong>Quote Pending</strong>.
         </p>
         <p class="admin-form-help cp-form-footer" data-cp-fixed-visit-required
            style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY || ! $cpCreateVisitRequired || $cpCreateHasVisitDate ? 'display:none;' : '' }}">
@@ -244,7 +245,7 @@
         </p>
         <p class="admin-form-help cp-form-footer" data-cp-fixed-visit-scheduled
            style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY || ! $cpCreateVisitRequired || ! $cpCreateHasVisitDate ? 'display:none;' : '' }}">
-          Status will be set to <strong>Visit scheduled</strong>. You'll receive a daily email reminder until the visit is done and the quote is sent.
+          Status will be set to <strong>Visit scheduled</strong>.
         </p>
         <p class="admin-form-help cp-form-footer" data-cp-hourly-only
            style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY ? '' : 'display:none;' }}">

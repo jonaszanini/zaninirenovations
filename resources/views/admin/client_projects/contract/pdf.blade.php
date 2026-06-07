@@ -320,6 +320,18 @@
       border: 0 none transparent;
     }
 
+    .signature-contractor {
+      margin-bottom: 0;
+    }
+
+    .contractor-signature-img {
+      display: block;
+      max-height: 52pt;
+      width: auto;
+      max-width: 280pt;
+      margin: 0 0 2pt;
+    }
+
     .signature-line {
       border-top: 1pt solid #1f2937;
       width: 100%;
@@ -428,9 +440,7 @@
       <table class="signature-table">
         <tr>
           <td>
-            <div class="signature-line"></div>
-            <p class="signature-name">Jonas Zanini — ZANINI RENOVATIONS</p>
-            <p class="signature-date">Date:<span class="date-line"></span></p>
+            @include('admin.client_projects.contract._contractor_signature', ['forPdf' => true])
           </td>
           <td>
             <div class="signature-line"></div>

@@ -137,10 +137,8 @@
       <div class="cp-contract-preview-signatures">
         <table>
           <tr>
-            <td>
-              <div class="cp-sig-line"></div>
-              <div>Jonas Zanini — ZANINI RENOVATIONS</div>
-              <div class="cp-sig-date">Date: ____________________</div>
+            <td class="cp-sig-cell cp-sig-cell--contractor">
+              @include('admin.client_projects.contract._contractor_signature')
             </td>
             <td>
               <div class="cp-sig-line"></div>

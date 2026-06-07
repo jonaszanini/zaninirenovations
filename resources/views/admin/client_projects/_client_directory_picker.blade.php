@@ -36,6 +36,29 @@
       var email2El = document.getElementById('cp-client-email-secondary');
       var phoneEl = document.getElementById('cp-client-phone');
       var addrEl = document.getElementById('cp-client-address');
+      var placeIdEl = document.getElementById('cp-client-address-place-id');
+      var latEl = document.getElementById('cp-client-address-lat');
+      var lngEl = document.getElementById('cp-client-address-lng');
+      var hintEl = document.getElementById('cp-client-address-directory-hint');
+      var addressInputId = 'cp-client-address';
+
+      function updateDirectoryHint(o) {
+        if (!hintEl) return;
+        var addr = o && o.address ? String(o.address).trim() : '';
+        if (!addr) {
+          hintEl.hidden = true;
+          hintEl.textContent = '';
+          return;
+        }
+        hintEl.textContent = 'Address on file (saved with this project): ' + addr;
+        hintEl.hidden = false;
+      }
+
+      function syncPlacesAddress() {
+        if (window.ZR_GOOGLE_MAPS && typeof window.ZR_GOOGLE_MAPS.syncAddressFromHidden === 'function') {
+          window.ZR_GOOGLE_MAPS.syncAddressFromHidden(addressInputId);
+        }
+      }
 
       function applyClient(o) {
         if (!o) return;
@@ -43,11 +66,56 @@
         if (emailEl) emailEl.value = o.email || '';
         if (email2El) email2El.value = o.email_secondary || '';
         if (addrEl) addrEl.value = o.address || '';
+        if (placeIdEl) placeIdEl.value = o.address_place_id || '';
+        if (latEl) latEl.value = o.address_latitude != null && o.address_latitude !== '' ? String(o.address_latitude) : '';
+        if (lngEl) lngEl.value = o.address_longitude != null && o.address_longitude !== '' ? String(o.address_longitude) : '';
         if (phoneEl) {
           phoneEl.value = o.phone_display || o.phone || '';
           phoneEl.dispatchEvent(new Event('input', { bubbles: true }));
         }
+        updateDirectoryHint(o);
+        syncPlacesAddress();
       }
+
+      function fetchClientById(id, callback) {
+        var url = searchUrl + (searchUrl.indexOf('?') >= 0 ? '&' : '?') + 'id=' + encodeURIComponent(id);
+        fetch(url, {
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+          }
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (rows) { callback(rows && rows[0] ? rows[0] : null); })
+          .catch(function () { callback(null); });
+      }
+
+      function onClientSelected(id, option) {
+        if (!id) {
+          updateDirectoryHint(null);
+          return;
+        }
+        if (option && option.address !== undefined) {
+          applyClient(option);
+          return;
+        }
+        fetchClientById(id, function (row) {
+          if (row) applyClient(row);
+        });
+      }
+
+      document.addEventListener('zr-places-ready', function (e) {
+        if (e.detail && e.detail.inputId === addressInputId) {
+          syncPlacesAddress();
+        }
+      });
+
+      document.addEventListener('zr-places-address-changed', function (e) {
+        if (e.detail && e.detail.inputId === addressInputId) {
+          updateDirectoryHint(null);
+        }
+      });
 
       var opts = {
         plugins: ['clear_button'],
@@ -70,9 +138,7 @@
             .catch(function () { callback(); });
         },
         onChange: function (val) {
-          if (!val) return;
-          var o = this.options[val];
-          if (o) applyClient(o);
+          onClientSelected(val, val ? this.options[val] : null);
         }
       };
 
@@ -81,7 +147,11 @@
         opts.items = [String(initial.id)];
       }
 
-      new TomSelect(sel, opts);
+      var ts = new TomSelect(sel, opts);
+
+      if (initial && initial.id) {
+        onClientSelected(String(initial.id), initial);
+      }
     })();
   </script>
 @endpush

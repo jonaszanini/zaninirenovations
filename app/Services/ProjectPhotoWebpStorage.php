@@ -15,6 +15,58 @@ class ProjectPhotoWebpStorage
     /**
      * Store a photo that already exists on local disk (e.g. downloaded from Google Photos).
      */
+    /** Re-apply WebP budget after crop/rotate (in-place). */
+    public function recompressWebpAtPath(string $absolutePath): void
+    {
+        if (! is_file($absolutePath)) {
+            return;
+        }
+
+        $bytes = file_get_contents($absolutePath);
+        if ($bytes === false || $bytes === '') {
+            return;
+        }
+
+        $optimized = $this->fitWebpBudget($bytes);
+        if ($optimized !== $bytes) {
+            file_put_contents($absolutePath, $optimized);
+        }
+    }
+
+    /**
+     * Recompress an existing WebP on the public disk (relative path under storage/app/public).
+     *
+     * @return array{changed: bool, before: int, after: int}|null null when the file is missing or not WebP
+     */
+    public function recompressRelativeWebp(string $relativePath): ?array
+    {
+        $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
+        if ($relativePath === '' || ! str_ends_with(strtolower($relativePath), '.webp')) {
+            return null;
+        }
+
+        $absolute = Storage::disk('public')->path($relativePath);
+        if (! is_file($absolute)) {
+            return null;
+        }
+
+        $before = (int) filesize($absolute);
+        $this->recompressWebpAtPath($absolute);
+        clearstatcache(true, $absolute);
+        $after = (int) filesize($absolute);
+        $changed = $after !== $before;
+
+        if ($changed) {
+            $this->syncPublicStorageFallback($relativePath);
+        }
+
+        return [
+            'changed' => $changed,
+            'before' => $before,
+            'after' => $after,
+        ];
+    }
+
     public function storeFromPath(string $absolutePath, int $projectId, ?string $mime = null): string
     {
         if (! is_file($absolutePath)) {
@@ -96,18 +148,10 @@ class ProjectPhotoWebpStorage
                 throw new RuntimeException('Could not read the uploaded file.');
             }
 
-            if ($this->needsDownscale($realPath)) {
-                $webp = $this->reencodeWebpFromPath($realPath);
-                Storage::disk('public')->put($relativePath, $webp);
-                $this->syncPublicStorageFallback($relativePath);
-            } else {
-                $bytes = file_get_contents($realPath);
-                if ($bytes === false || $bytes === '') {
-                    throw new RuntimeException('Could not read the uploaded WebP file.');
-                }
-                Storage::disk('public')->put($relativePath, $bytes);
-                $this->syncPublicStorageFallback($relativePath);
-            }
+            $webp = $this->reencodeWebpFromPath($realPath);
+            $webp = $this->fitWebpBudget($webp);
+            Storage::disk('public')->put($relativePath, $webp);
+            $this->syncPublicStorageFallback($relativePath);
 
             return $relativePath;
         }
@@ -118,6 +162,7 @@ class ProjectPhotoWebpStorage
         }
 
         $webp = $this->convertRasterToWebp($file, $mime, $ext, $path);
+        $webp = $this->fitWebpBudget($webp);
         Storage::disk('public')->put($relativePath, $webp);
         $this->syncPublicStorageFallback($relativePath);
 
@@ -159,16 +204,118 @@ class ProjectPhotoWebpStorage
 
     private function quality(): int
     {
-        $q = (int) config('webp.quality', 78);
+        $q = (int) config('webp.quality', 75);
 
         return max(1, min(100, $q));
     }
 
     private function maxEdge(): int
     {
-        $m = (int) config('webp.max_edge_px', 1920);
+        $m = (int) config('webp.max_edge_px', 1280);
 
         return max(320, min(8192, $m));
+    }
+
+    private function maxBytes(): int
+    {
+        return max(32_768, (int) config('webp.max_bytes', 102_400));
+    }
+
+    /**
+     * Re-encode WebP until it fits the byte budget (default ~100 KB).
+     */
+    private function fitWebpBudget(string $webp): string
+    {
+        $maxBytes = $this->maxBytes();
+        if (strlen($webp) <= $maxBytes) {
+            return $webp;
+        }
+
+        $quality = $this->quality();
+        $edge = $this->maxEdge();
+        $current = $webp;
+
+        for ($attempt = 0; $attempt < 12 && strlen($current) > $maxBytes; $attempt++) {
+            $next = $this->reencodeWebpBlob($current, $quality, $edge);
+            if ($next === $current || strlen($next) >= strlen($current)) {
+                if ($quality > 45) {
+                    $quality -= 5;
+                } elseif ($edge > 640) {
+                    $edge = (int) max(640, round($edge * 0.85));
+                } else {
+                    break;
+                }
+
+                continue;
+            }
+            $current = $next;
+
+            if (strlen($current) > $maxBytes) {
+                if ($quality > 45) {
+                    $quality -= 5;
+                } elseif ($edge > 640) {
+                    $edge = (int) max(640, round($edge * 0.85));
+                }
+            }
+        }
+
+        return $current;
+    }
+
+    private function reencodeWebpBlob(string $webp, int $quality, int $maxEdge): string
+    {
+        if ($this->imagickSupportsWebp()) {
+            try {
+                $imagick = new \Imagick;
+                $imagick->readImageBlob($webp);
+                $w = $imagick->getImageWidth();
+                $h = $imagick->getImageHeight();
+                if ($w > $maxEdge || $h > $maxEdge) {
+                    $imagick->thumbnailImage($maxEdge, $maxEdge, true, true);
+                }
+                $imagick->setImageFormat('webp');
+                $imagick->setImageCompressionQuality(max(1, min(100, $quality)));
+                $blob = $imagick->getImageBlob();
+                $imagick->destroy();
+                if (is_string($blob) && $blob !== '') {
+                    return $blob;
+                }
+            } catch (Throwable) {
+                // fall through to GD
+            }
+        }
+
+        if (function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
+            $im = @imagecreatefromstring($webp);
+            if ($im !== false) {
+                imagesavealpha($im, true);
+                $w = imagesx($im);
+                $h = imagesy($im);
+                if ($w > $maxEdge || $h > $maxEdge) {
+                    if ($w >= $h) {
+                        $newW = $maxEdge;
+                        $newH = (int) max(1, round($h * ($maxEdge / $w)));
+                    } else {
+                        $newH = $maxEdge;
+                        $newW = (int) max(1, round($w * ($maxEdge / $h)));
+                    }
+                    $scaled = imagescale($im, $newW, $newH, IMG_BICUBIC);
+                    if ($scaled !== false) {
+                        imagedestroy($im);
+                        $im = $scaled;
+                    }
+                }
+                ob_start();
+                $ok = imagewebp($im, null, max(1, min(100, $quality)));
+                imagedestroy($im);
+                $out = ob_get_clean();
+                if ($ok && is_string($out) && $out !== '') {
+                    return $out;
+                }
+            }
+        }
+
+        return $webp;
     }
 
     private function cwebpMethod(): int

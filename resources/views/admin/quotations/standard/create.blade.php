@@ -26,7 +26,7 @@
       $matRows = is_array($quotation->materials) ? $quotation->materials : [];
   }
   if (!is_array($matRows) || count($matRows) === 0) {
-      $matRows = [['short_name' => '', 'description' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false]];
+      $matRows = [['short_name' => '', 'description' => '', 'url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false]];
   }
 
   $labourMode = old('labour_mode', $isEdit ? $quotation->labour_mode : 'hours');
@@ -310,6 +310,25 @@
                            name="materials[{{ $i }}][quantity]"
                            class="admin-input sq-mat-qty" placeholder="1"
                            value="{{ $row['quantity'] ?? '' }}">
+                  </div>
+                </div>
+
+                <div class="sq-mat-row sq-mat-row--url">
+                  <div class="sq-mat-field sq-mat-field--url">
+                    <label>Product URL <span class="sq-mat-optional">(optional)</span></label>
+                    <div class="sq-mat-url-control">
+                      <input type="url" inputmode="url" autocomplete="off"
+                             name="materials[{{ $i }}][url]"
+                             class="admin-input sq-mat-url" maxlength="2000"
+                             placeholder="https://supplier.com/product"
+                             value="{{ $row['url'] ?? '' }}">
+                      <a href="{{ $row['url'] ?? '#' }}"
+                         class="admin-btn admin-btn--ghost admin-btn--sm sq-mat-url-open"
+                         target="_blank" rel="noopener" title="Open link in new tab"
+                         @if (empty($row['url'])) hidden @endif>
+                        <i class="fa fa-external-link"></i>
+                      </a>
+                    </div>
                   </div>
                 </div>
 
@@ -676,6 +695,21 @@
           </div>
         </div>
 
+        <div class="sq-mat-row sq-mat-row--url">
+          <div class="sq-mat-field sq-mat-field--url">
+            <label>Product URL <span class="sq-mat-optional">(optional)</span></label>
+            <div class="sq-mat-url-control">
+              <input type="url" inputmode="url" autocomplete="off" name="materials[__I__][url]"
+                     class="admin-input sq-mat-url" maxlength="2000"
+                     placeholder="https://supplier.com/product">
+              <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm sq-mat-url-open"
+                 target="_blank" rel="noopener" title="Open link in new tab" hidden>
+                <i class="fa fa-external-link"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
         <div class="sq-mat-row sq-mat-row--computed">
           <div class="sq-mat-field sq-mat-field--readonly">
             <label>Subtotal</label>
@@ -1017,9 +1051,27 @@
     }
   }
 
+  function syncUrlOpenLink(input) {
+    var control = input.closest('.sq-mat-url-control');
+    if (!control) return;
+    var open = control.querySelector('.sq-mat-url-open');
+    if (!open) return;
+    var val = String(input.value || '').trim();
+    if (val === '') {
+      open.hidden = true;
+      open.setAttribute('href', '#');
+    } else {
+      open.hidden = false;
+      open.setAttribute('href', val);
+    }
+  }
+
   document.getElementById('sq-standard-form').addEventListener('input', function (e) {
     if (e.target && e.target.classList && e.target.classList.contains('sq-mat-qty')) {
       sanitizeDecimalInput(e.target);
+    }
+    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-url')) {
+      syncUrlOpenLink(e.target);
     }
     if (e.target && e.target.id === 'sq-contingency-percent') {
       sanitizeDecimalInput(e.target);

@@ -365,6 +365,7 @@ class StandardQuotationController extends Controller
             'materials' => ['nullable', 'array'],
             'materials.*.short_name' => ['nullable', 'string', 'max:60'],
             'materials.*.description' => ['nullable', 'string', 'max:500'],
+            'materials.*.url' => ['nullable', 'string', 'max:2000'],
             'materials.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'materials.*.quantity' => ['nullable', 'numeric', 'min:0'],
             'materials.*.apply_hst' => ['nullable'],
@@ -449,9 +450,12 @@ class StandardQuotationController extends Controller
         );
 
         $materialsForStorage = array_map(static function (array $m): array {
+            $url = trim((string) ($m['url'] ?? ''));
+
             return [
                 'short_name' => $m['short_name'] ?? '',
                 'description' => $m['description'],
+                'url' => $url === '' ? null : $url,
                 'unit_price' => $m['unit_price'],
                 'quantity' => $m['quantity'],
                 'apply_hst' => $m['apply_hst'],

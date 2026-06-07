@@ -165,6 +165,7 @@ class ClientProjectStatusService
      *   - 'waiting-dates'    first installment paid but dates not set
      *   - 'waiting-payment'  dates set but first installment not paid yet
      *   - 'skipped'          neither condition met, nothing to do
+     *   - 'disabled'         no admin recipient configured (self-emails off)
      *   - 'failed'           tried to send but SMTP/exception blew up
      */
     public function maybeSendCalendarDatesEmail(ClientProject $project): string
@@ -185,6 +186,11 @@ class ClientProjectStatusService
             return 'waiting-payment';
         }
 
+        // Admin calendar notification disabled (no recipient configured).
+        if ((string) config('client_projects.calendar_email_to') === '') {
+            return 'disabled';
+        }
+
         return $this->sendCalendarDatesEmail($project) ? 'sent' : 'failed';
     }
 
@@ -194,8 +200,12 @@ class ClientProjectStatusService
      */
     public function sendCalendarDatesEmail(ClientProject $project): bool
     {
-        $adminEmail = config('client_projects.calendar_email_to')
-            ?: 'jonaszanini@gmail.com';
+        $adminEmail = (string) config('client_projects.calendar_email_to');
+
+        // Disabled when no recipient is configured.
+        if ($adminEmail === '') {
+            return false;
+        }
 
         $start = optional($project->start_date)->format('d/m/Y');
         $end = optional($project->end_date)->format('d/m/Y');

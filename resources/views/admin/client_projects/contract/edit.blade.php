@@ -101,9 +101,43 @@
         <button type="button" class="cp-modal-close" data-cp-modal-close aria-label="Close">&times;</button>
       </div>
       <div class="cp-modal-body">
-        <p class="admin-form-help" style="margin-top:0;">
-          All quotations linked to this project (calculator / fence / standard / paving data as JSON, line items, totals), client and site info, Financials installment amounts, schedule, billing, <strong>internal project notes</strong>, and e-transfer instructions — for pasting into an AI assistant to help draft the contract. Not sent to the client.
-        </p>
+        @php
+          $requiredChecklist = collect($contractDraftingChecklist)->filter(fn ($item) => empty($item['optional']));
+          $requiredPresent = $requiredChecklist->where('present', true)->count();
+          $requiredTotal = $requiredChecklist->count();
+        @endphp
+        <div class="cp-contract-context-checklist-wrap">
+          <div class="cp-contract-context-checklist-head">
+            <span class="cp-contract-context-checklist-title">Included in export</span>
+            <span class="cp-contract-context-checklist-summary @if($requiredPresent < $requiredTotal) is-incomplete @endif">
+              {{ $requiredPresent }} / {{ $requiredTotal }} required
+            </span>
+          </div>
+          <ul class="cp-contract-context-checklist" aria-label="Contract context checklist">
+            @foreach ($contractDraftingChecklist as $item)
+              @php
+                $state = $item['present']
+                  ? 'present'
+                  : (!empty($item['optional']) ? 'optional' : 'missing');
+              @endphp
+              <li class="cp-contract-context-check is-{{ $state }}">
+                <span class="cp-contract-context-check__icon" aria-hidden="true">
+                  @if ($item['present'])
+                    <i class="fa fa-check"></i>
+                  @else
+                    <i class="fa fa-times"></i>
+                  @endif
+                </span>
+                <span class="cp-contract-context-check__label">{{ $item['label'] }}</span>
+                @if (!$item['present'] && !empty($item['optional']))
+                  <span class="cp-contract-context-check__hint">optional</span>
+                @elseif (!$item['present'])
+                  <span class="cp-contract-context-check__hint">not in export</span>
+                @endif
+              </li>
+            @endforeach
+          </ul>
+        </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
           <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-contract-copy-context">
             <i class="fa fa-clipboard"></i> Copy to clipboard
@@ -112,9 +146,39 @@
         </div>
         <textarea id="cp-contract-context-textarea"
                   readonly
-                  rows="22"
+                  rows="10"
                   class="admin-input"
-                  style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;line-height:1.45;resize:vertical;min-height:280px;">{{ $contractDraftingContext }}</textarea>
+                  style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;line-height:1.45;resize:vertical;">{{ $contractDraftingContext }}</textarea>
+        <div class="cp-contract-gemini-wrap">
+          <button type="button"
+                  class="cp-contract-gemini-btn"
+                  id="cp-contract-gemini-draft"
+                  data-ai-url="{{ route('admin.client-projects.contract.ai-draft', $project) }}">
+            <span class="cp-contract-gemini-btn__logo" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L13.9 8.3L20 10.2L13.9 12.1L12 18.4L10.1 12.1L4 10.2L10.1 8.3L12 2Z" fill="url(#cp-gemini-grad-a)"/>
+                <path d="M19 14L19.8 16.6L22.4 17.4L19.8 18.2L19 20.8L18.2 18.2L15.6 17.4L18.2 16.6L19 14Z" fill="url(#cp-gemini-grad-b)"/>
+                <path d="M6 15L6.7 17.1L8.8 17.8L6.7 18.5L6 20.6L5.3 18.5L3.2 17.8L5.3 17.1L6 15Z" fill="url(#cp-gemini-grad-c)"/>
+                <defs>
+                  <linearGradient id="cp-gemini-grad-a" x1="4" y1="2" x2="20" y2="18" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#4285F4"/>
+                    <stop offset="1" stop-color="#9B72CB"/>
+                  </linearGradient>
+                  <linearGradient id="cp-gemini-grad-b" x1="15" y1="14" x2="23" y2="21" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#1BA1E3"/>
+                    <stop offset="1" stop-color="#4285F4"/>
+                  </linearGradient>
+                  <linearGradient id="cp-gemini-grad-c" x1="3" y1="15" x2="9" y2="21" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#9B72CB"/>
+                    <stop offset="1" stop-color="#D96570"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </span>
+            <span class="cp-contract-gemini-btn__text">Generate contract with Gemini</span>
+          </button>
+          <span id="cp-contract-gemini-status" class="cp-contract-gemini-status" aria-live="polite"></span>
+        </div>
       </div>
       <div class="cp-modal-footer">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-modal-close>Close</button>
@@ -202,6 +266,91 @@
           closeModal();
         }
       });
+
+      var geminiBtn = document.getElementById('cp-contract-gemini-draft');
+      var geminiStatus = document.getElementById('cp-contract-gemini-status');
+      var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
+
+      function setGeminiStatus(msg, isError) {
+        if (!geminiStatus) return;
+        geminiStatus.textContent = msg || '';
+        geminiStatus.classList.toggle('is-error', !!isError);
+      }
+
+      function editorHasContent() {
+        if (typeof tinymce !== 'undefined') {
+          var ed = tinymce.get('cp-contract-editor');
+          if (ed) {
+            var html = (ed.getContent({ format: 'text' }) || '').trim();
+            return html.length > 0;
+          }
+        }
+        var raw = document.getElementById('cp-contract-editor');
+        return raw && (raw.value || '').trim().length > 0;
+      }
+
+      function applyDraftToEditor(html) {
+        if (typeof tinymce !== 'undefined') {
+          var ed = tinymce.get('cp-contract-editor');
+          if (ed) {
+            ed.setContent(html || '');
+            ed.save();
+            return;
+          }
+        }
+        var raw = document.getElementById('cp-contract-editor');
+        if (raw) {
+          raw.value = html || '';
+        }
+      }
+
+      if (geminiBtn && ta) {
+        geminiBtn.addEventListener('click', function () {
+          var url = geminiBtn.getAttribute('data-ai-url');
+          var context = ta.value || '';
+          if (!url || !context.trim()) {
+            window.alert('Project details are empty. Fill in the project and quotations first.');
+            return;
+          }
+          if (editorHasContent()) {
+            if (!window.confirm('Replace the current contract editor content with the AI draft?')) {
+              return;
+            }
+          }
+
+          geminiBtn.disabled = true;
+          setGeminiStatus('Generating with Gemini…', false);
+
+          fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ context: context }),
+          }).then(function (res) {
+            return res.json().then(function (body) {
+              if (!res.ok) {
+                throw new Error((body && body.error) ? body.error : ('HTTP ' + res.status));
+              }
+              return body;
+            });
+          }).then(function (body) {
+            applyDraftToEditor(body.html || '');
+            closeModal();
+            setGeminiStatus('Draft inserted into the contract editor.', false);
+            window.setTimeout(function () { setGeminiStatus('', false); }, 4000);
+          }).catch(function (err) {
+            setGeminiStatus(err && err.message ? err.message : 'Could not generate contract.', true);
+          }).finally(function () {
+            geminiBtn.disabled = false;
+          });
+        });
+      }
 
       if (copyBtn && ta) {
         copyBtn.addEventListener('click', function () {

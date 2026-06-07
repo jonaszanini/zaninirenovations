@@ -36,8 +36,13 @@ Route::view('/terms-and-conditions', 'site.terms-and-conditions')->name('terms-a
 Route::permanentRedirect('/services/custom-kitchen-remodel', '/');
 
 Route::get('/sitemap.xml', function () {
+    $blogPosts = \App\Models\BlogPost::query()
+        ->published()
+        ->orderByDesc('updated_at')
+        ->get(['slug', 'updated_at']);
+
     return response()
-        ->view('site.sitemap-xml', [], 200)
+        ->view('site.sitemap-xml', compact('blogPosts'), 200)
         ->header('Content-Type', 'application/xml; charset=UTF-8');
 })->name('sitemap');
 
@@ -50,6 +55,9 @@ Route::get('/robots.txt', function () {
 Route::get('/client/invoice/{client_project}/{invoice}', [ClientProjectInvoiceController::class, 'guestDownloadInvoicePdf'])
     ->middleware('signed')
     ->name('public.client-project.invoice-pdf');
+Route::get('/client/receipt/{client_project}/{invoice}', [ClientProjectInvoiceController::class, 'guestDownloadReceiptPdf'])
+    ->middleware('signed')
+    ->name('public.client-project.receipt-pdf');
 Route::get('/client/quotation/{client_project}/{quotation}', [ClientProjectQuotationController::class, 'guestDownloadQuotationPdf'])
     ->middleware('signed')
     ->name('public.client-project.quotation-pdf');
@@ -74,6 +82,13 @@ Route::get('/', function () {
 
     return view('site.home', compact('projects', 'projectFilterCategories'));
 });
+
+Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/feed.xml', [\App\Http\Controllers\BlogRssController::class, 'index'])->name('blog.rss');
+Route::post('/blog/{post:slug}/comments', [\App\Http\Controllers\BlogCommentController::class, 'store'])
+    ->middleware('throttle:6,1')
+    ->name('blog.comments.store');
+Route::get('/blog/{post:slug}', [\App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
 
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -109,6 +124,28 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // Client directory (shared contacts for new projects).
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class)->except(['show']);
+
+    Route::post('blog/posts/upload-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'uploadImage'])
+        ->name('blog.posts.upload-image');
+    Route::post('blog/posts/ai-metadata', [\App\Http\Controllers\Admin\BlogPostController::class, 'generateAiMetadata'])
+        ->name('blog.posts.ai-metadata');
+    Route::resource('blog/posts', \App\Http\Controllers\Admin\BlogPostController::class)
+        ->parameters(['posts' => 'post'])
+        ->names('blog.posts');
+    Route::resource('blog/categories', \App\Http\Controllers\Admin\BlogCategoryController::class)
+        ->parameters(['categories' => 'category'])
+        ->names('blog.categories');
+    Route::post('blog/tags/bulk', [\App\Http\Controllers\Admin\BlogTagController::class, 'bulkStore'])
+        ->name('blog.tags.bulk');
+    Route::resource('blog/tags', \App\Http\Controllers\Admin\BlogTagController::class)
+        ->parameters(['tags' => 'tag'])
+        ->names('blog.tags');
+    Route::get('blog/comments', [\App\Http\Controllers\Admin\BlogCommentController::class, 'index'])
+        ->name('blog.comments.index');
+    Route::post('blog/comments/{comment}/approve', [\App\Http\Controllers\Admin\BlogCommentController::class, 'approve'])
+        ->name('blog.comments.approve');
+    Route::delete('blog/comments/{comment}', [\App\Http\Controllers\Admin\BlogCommentController::class, 'destroy'])
+        ->name('blog.comments.destroy');
 
     // Client Projects management (quote → completion lifecycle).
     Route::get('client-projects/calendar', [\App\Http\Controllers\Admin\ClientProjectController::class, 'calendar'])
@@ -175,6 +212,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // Contract (rich-text body, PDF generation, email-to-client).
     Route::get('client-projects/{client_project}/contract/edit', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'edit'])
         ->name('client-projects.contract.edit');
+    Route::post('client-projects/{client_project}/contract/ai-draft', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'generateAiDraft'])
+        ->name('client-projects.contract.ai-draft');
     Route::put('client-projects/{client_project}/contract', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'update'])
         ->name('client-projects.contract.update');
     Route::get('client-projects/{client_project}/contract/pdf', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'downloadPdf'])
@@ -368,6 +407,13 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('communications.index');
 
     // Utilities — collection of standalone calculation tools.
+    Route::get('ai-instructions', [\App\Http\Controllers\Admin\AiInstructionController::class, 'index'])
+        ->name('ai-instructions.index');
+    Route::get('ai-instructions/{ai_instruction}/edit', [\App\Http\Controllers\Admin\AiInstructionController::class, 'edit'])
+        ->name('ai-instructions.edit');
+    Route::put('ai-instructions/{ai_instruction}', [\App\Http\Controllers\Admin\AiInstructionController::class, 'update'])
+        ->name('ai-instructions.update');
+
     Route::get('utilities', [\App\Http\Controllers\Admin\UtilitiesController::class, 'index'])
         ->name('utilities.index');
     Route::get('utilities/pillar-spindle', [\App\Http\Controllers\Admin\UtilitiesController::class, 'pillarSpindle'])

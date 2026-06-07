@@ -137,6 +137,7 @@ class StandardQuotationCalculator
 
             $shortName = trim((string) ($row['short_name'] ?? ''));
             $desc = trim((string) ($row['description'] ?? ''));
+            $url = trim((string) ($row['url'] ?? ''));
             $unit = round((float) ($row['unit_price'] ?? 0), 2);
             $qty = (float) ($row['quantity'] ?? 0);
 
@@ -149,6 +150,7 @@ class StandardQuotationCalculator
             $cleanMaterials[] = [
                 'short_name' => $shortName,
                 'description' => $desc,
+                'url' => $url,
                 'unit_price' => $unit,
                 'quantity' => $qty,
                 'apply_hst' => $b['apply_hst'],

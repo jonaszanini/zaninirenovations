@@ -8,31 +8,35 @@
     $coverSrc = $cover ? $cover->url() : '/images/gallery_1.jpg';
   @endphp
   <div
-    class="col-md-3 col-sm-6 col-xs-12 portfolio-container js-latest-project-item"
+    class="col-md-3 col-sm-6 col-xs-12 js-latest-project-item"
     data-category-slugs="{{ $project->categories->pluck('slug')->implode(',') }}"
   >
 
-    <a
-      href="#"
-      class="portfolio-light-box xs-margin text-center js-project-gallery"
-      data-project-title="{{ e($project->title) }}"
-      data-gallery='@json($galleryUrls)'
-    >
+    <div class="portfolio-container">
 
-      <figure class="portfolio-img">
+      <a
+        href="#"
+        class="portfolio-light-box xs-margin text-center js-project-gallery"
+        data-project-title="{{ e($project->title) }}"
+        data-gallery='@json($galleryUrls)'
+      >
 
-        <img src="{{ $coverSrc }}" alt="{{ e(\Illuminate\Support\Str::limit($project->title.' — Rough Carpentry Contractors; Finish Carpentry Services Ontario; O.Reg. 332/12 compliant portfolio', 200)) }}" loading="lazy" decoding="async">
+        <figure class="portfolio-img">
 
-      </figure>
-      <!-- end .cause-img  -->
+          <img src="{{ $coverSrc }}" alt="{{ e(\Illuminate\Support\Str::limit($project->title.' — Rough Carpentry Contractors; Finish Carpentry Services Ontario; O.Reg. 332/12 compliant portfolio', 200)) }}" loading="lazy" decoding="async">
 
-      <div class="portfolio-info-box">
-        <h4>{{ $project->title }}</h4>
-        <span>{{ $project->categoryLabel() }}</span>
-      </div>
+        </figure>
+        <!-- end .cause-img  -->
 
-    </a>
-    <!-- end .gallery-light-box  -->
+        <div class="portfolio-info-box">
+          <h4>{{ $project->title }}</h4>
+          <span>{{ $project->categoryLabel() }}</span>
+        </div>
+
+      </a>
+      <!-- end .gallery-light-box  -->
+
+    </div>
 
   </div>
   <!-- end .col-sm-3  -->

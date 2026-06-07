@@ -9,15 +9,19 @@
              name="q"
              value="{{ $q }}"
              placeholder="Search name, email, phone…"
-             class="admin-input"
-             style="max-width:320px;">
+             class="admin-input cp-clients-toolbar-search__input">
       <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-search"></i> Search
       </button>
     </form>
-    <a href="{{ route('admin.clients.create') }}" class="admin-btn admin-btn--primary admin-btn--sm">
-      <i class="fa fa-plus"></i> New client
-    </a>
+    <div class="cp-clients-toolbar-actions">
+      <a href="{{ route('admin.clients.create') }}" class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-plus"></i> New client
+      </a>
+      <p class="admin-form-help cp-clients-toolbar-total">
+        {{ number_format($totalClients) }} {{ $totalClients === 1 ? 'client' : 'clients' }} in database
+      </p>
+    </div>
   </div>
 
   <div class="admin-card">
