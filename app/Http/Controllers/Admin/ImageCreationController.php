@@ -24,8 +24,6 @@ class ImageCreationController extends Controller
         $models = [
             [
                 'name' => 'Nano Banana 2',
-                'description' => 'Generate images with Gemini. Choose aspect ratio and resolution, then save originals plus optimized WebP copies.',
-                'icon' => 'fa-picture-o',
                 'route' => route('admin.image-creation.nano-banana-2'),
                 'available' => true,
             ],

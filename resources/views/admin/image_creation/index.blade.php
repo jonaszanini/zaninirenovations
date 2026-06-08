@@ -2,10 +2,6 @@
 
 @section('heading', 'Image creation')
 
-@push('head')
-  <link rel="stylesheet" href="{{ asset('css/admin-utilities.css') }}?v={{ @filemtime(public_path('css/admin-utilities.css')) ?: time() }}">
-@endpush
-
 @section('content')
   <div class="admin-toolbar">
     <p class="admin-toolbar-lede">
@@ -13,25 +9,22 @@
     </p>
   </div>
 
-  <div class="util-tools-grid">
+  <div class="ic-model-grid">
     @foreach ($models as $model)
       @if ($model['available'])
-        <a href="{{ $model['route'] }}" class="admin-card util-tool-card">
-          <span class="util-tool-card__icon"><i class="fa {{ $model['icon'] }}"></i></span>
-          <span class="util-tool-card__body">
-            <span class="util-tool-card__name">{{ $model['name'] }}</span>
-            <span class="util-tool-card__desc">{{ $model['description'] }}</span>
+        <a href="{{ $model['route'] }}" class="admin-card ic-model-card">
+          <span class="ic-model-card__icon">
+            @include('admin.image_creation._model_icon')
           </span>
-          <span class="util-tool-card__cta" aria-hidden="true"><i class="fa fa-arrow-right"></i></span>
+          <span class="ic-model-card__name">{{ $model['name'] }}</span>
         </a>
       @else
-        <div class="admin-card util-tool-card util-tool-card--soon" aria-disabled="true">
-          <span class="util-tool-card__icon"><i class="fa {{ $model['icon'] }}"></i></span>
-          <span class="util-tool-card__body">
-            <span class="util-tool-card__name">{{ $model['name'] }}</span>
-            <span class="util-tool-card__desc">{{ $model['description'] }}</span>
+        <div class="admin-card ic-model-card ic-model-card--soon" aria-disabled="true">
+          <span class="ic-model-card__icon">
+            @include('admin.image_creation._model_icon')
           </span>
-          <span class="util-tool-card__badge">Coming soon</span>
+          <span class="ic-model-card__name">{{ $model['name'] }}</span>
+          <span class="ic-model-card__badge">Coming soon</span>
         </div>
       @endif
     @endforeach
