@@ -56,12 +56,15 @@
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group">
           <label>Photos — order &amp; remove</label>
-          <p class="admin-form-hint">Drag by the grip icon to reorder. Use rotate to fix orientation (90°) or crop to trim the frame (saved as WebP). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
+          <p class="admin-form-hint">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Use rotate to fix orientation (90°) or crop to trim the frame (saved as WebP). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
                 <span class="admin-photo-drag-handle" title="Drag to reorder"><i class="fa fa-bars"></i></span>
                 <div class="admin-photo-sortable-thumb">
+                  @if ($loop->first)
+                    <span class="admin-photo-cover-badge">Homepage cover</span>
+                  @endif
                   <img src="{{ $photo->url() }}" alt="">
                 </div>
                 <div class="admin-photo-sortable-actions">

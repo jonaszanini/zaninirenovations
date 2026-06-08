@@ -393,6 +393,7 @@ class ProjectController extends Controller
         try {
             app(ProjectPhotoCropService::class)->cropWebp($fullPath, $ix, $iy, $cropW, $cropH);
             app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
+            clearstatcache(true, $fullPath);
         } catch (\Throwable $e) {
             report($e);
             $msg = 'Could not crop the photo: '.$e->getMessage();
@@ -405,10 +406,16 @@ class ProjectController extends Controller
         }
 
         $photo->touch();
-        $this->syncPublicStorageFallback($photo->path);
+        app(ProjectPhotoWebpStorage::class)->syncPublicMirror($photo->path);
 
         if ($request->expectsJson()) {
-            return response()->json(['ok' => true]);
+            $info = @getimagesize($fullPath);
+
+            return response()->json([
+                'ok' => true,
+                'width' => $info !== false ? (int) $info[0] : null,
+                'height' => $info !== false ? (int) $info[1] : null,
+            ]);
         }
 
         return redirect()
