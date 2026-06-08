@@ -30,7 +30,9 @@
         $isQuotation = request()->routeIs('admin.quotations.*');
         $isVehicles = request()->routeIs('admin.vehicles.*');
         $isComms = request()->routeIs('admin.communications.*');
-        $isUtilities = request()->routeIs('admin.utilities.*') || request()->routeIs('admin.ai-instructions.*');
+        $isUtilities = request()->routeIs('admin.utilities.*')
+            || request()->routeIs('admin.ai-instructions.*')
+            || request()->routeIs('admin.image-creation.*');
         $isBlog = request()->routeIs('admin.blog.*');
       @endphp
       <ul class="admin-nav">
@@ -180,6 +182,12 @@
                 <a href="{{ route('admin.ai-instructions.index') }}" class="{{ request()->routeIs('admin.ai-instructions.*') ? 'is-active' : '' }}">
                   <i class="fa fa-magic"></i>
                   AI Instructions
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.image-creation.index') }}" class="{{ request()->routeIs('admin.image-creation.*') ? 'is-active' : '' }}">
+                  <i class="fa fa-picture-o"></i>
+                  Image Creation
                 </a>
               </li>
               <li>

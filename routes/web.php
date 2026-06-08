@@ -414,6 +414,15 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::put('ai-instructions/{ai_instruction}', [\App\Http\Controllers\Admin\AiInstructionController::class, 'update'])
         ->name('ai-instructions.update');
 
+    Route::get('image-creation', [\App\Http\Controllers\Admin\ImageCreationController::class, 'index'])
+        ->name('image-creation.index');
+    Route::post('image-creation/generate', [\App\Http\Controllers\Admin\ImageCreationController::class, 'generate'])
+        ->name('image-creation.generate');
+    Route::get('image-creation/{ai_generated_image}/download', [\App\Http\Controllers\Admin\ImageCreationController::class, 'download'])
+        ->name('image-creation.download');
+    Route::delete('image-creation/{ai_generated_image}', [\App\Http\Controllers\Admin\ImageCreationController::class, 'destroy'])
+        ->name('image-creation.destroy');
+
     Route::get('utilities', [\App\Http\Controllers\Admin\UtilitiesController::class, 'index'])
         ->name('utilities.index');
     Route::get('utilities/pillar-spindle', [\App\Http\Controllers\Admin\UtilitiesController::class, 'pillarSpindle'])

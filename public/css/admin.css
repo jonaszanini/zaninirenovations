@@ -1925,3 +1925,137 @@ body.admin-nav-open {
   padding: 0.45rem 0.5rem 0.55rem;
   word-break: break-word;
 }
+
+/* Tools: Image creation (Nano Banana 2) */
+.nb2-prompt-card {
+  margin-bottom: 1.5rem;
+}
+
+.nb2-card-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.nb2-card-lede {
+  margin: 0 0 1.1rem;
+}
+
+.nb2-generate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.nb2-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+  color: var(--admin-muted);
+}
+
+.nb2-loading .fa-spinner {
+  color: var(--admin-primary);
+}
+
+.nb2-status {
+  margin: 0.85rem 0 0;
+  font-size: 0.88rem;
+  color: var(--admin-muted);
+}
+
+.nb2-status.is-error {
+  color: var(--admin-danger);
+}
+
+.nb2-gallery-section {
+  margin-top: 0.5rem;
+}
+
+.nb2-gallery-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.nb2-section-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.nb2-gallery-count {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+}
+
+.nb2-gallery-grid {
+  margin-bottom: 1rem;
+}
+
+.nb2-gallery-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  overflow: hidden;
+  box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.nb2-gallery-card__media {
+  display: block;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--admin-bg);
+  overflow: hidden;
+}
+
+.nb2-gallery-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.nb2-gallery-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem 0.85rem;
+  flex: 1 1 auto;
+}
+
+.nb2-gallery-card__prompt {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--admin-text);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.nb2-gallery-card__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+}
+
+.nb2-gallery-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.35rem;
+}

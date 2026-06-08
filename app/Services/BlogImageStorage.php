@@ -23,9 +23,25 @@ class BlogImageStorage
     }
 
     /**
-     * Store AI-generated raster bytes as a compressed WebP featured image.
+     * Store AI generated raster bytes as a compressed WebP featured image.
      */
     public function storeFeaturedFromBinary(string $bytes, string $mime, int $postId): string
+    {
+        return $this->storeGeneratedBinary($bytes, $mime, 'blog-featured', $postId);
+    }
+
+    /**
+     * Store AI generated raster bytes for the Tools image creation gallery.
+     */
+    public function storeAiToolImageFromBinary(string $bytes, string $mime): string
+    {
+        return $this->storeGeneratedBinary($bytes, $mime, 'ai-tool-images', 0);
+    }
+
+    /**
+     * Shared Gemini image pipeline: normalize to 16:9, convert to WebP, store on public disk.
+     */
+    private function storeGeneratedBinary(string $bytes, string $mime, string $storageFolder, int $folderId): string
     {
         if ($bytes === '') {
             throw new RuntimeException('Generated image is empty.');
@@ -47,7 +63,7 @@ class BlogImageStorage
         }
 
         $tmpPath = $tmpBase.'.'.$ext;
-        if (!@rename($tmpBase, $tmpPath)) {
+        if (! @rename($tmpBase, $tmpPath)) {
             @unlink($tmpBase);
             throw new RuntimeException('Could not prepare temp file for the generated image.');
         }
@@ -57,9 +73,9 @@ class BlogImageStorage
                 throw new RuntimeException('Could not write generated image to disk.');
             }
 
-            $upload = new UploadedFile($tmpPath, 'featured.'.$ext, $mime, null, true);
+            $upload = new UploadedFile($tmpPath, 'generated.'.$ext, $mime, null, true);
 
-            return $this->webpStorage->store($upload, $postId, 'blog-featured');
+            return $this->webpStorage->store($upload, $folderId, $storageFolder);
         } finally {
             @unlink($tmpPath);
         }
