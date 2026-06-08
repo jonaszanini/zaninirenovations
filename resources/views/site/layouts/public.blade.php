@@ -15,6 +15,12 @@
   <link rel="canonical" href="@yield('canonical', url()->current())">
   <link rel="shortcut icon" href="{{ url('images/favicon.png') }}">
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400;1,700&family=Open+Sans:wght@300;400;500;700;800&display=swap">
+
+  @stack('head-assets')
+
   @php
     $seoTitle = trim($__env->yieldContent('page_title')) ?: 'Zanini Renovations';
     $seoDesc = trim($__env->yieldContent('meta_description')) ?: 'Zanini Renovations — licensed carpenter Ottawa, Carleton Place, finish & rough carpentry, O.Reg. 332/12 compliant work.';
@@ -40,24 +46,15 @@
   <meta name="google-site-verification" content="{{ config('seo.google_site_verification') }}">
   @endif
 
-  @if (filled(config('seo.ga4_measurement_id')))
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('seo.ga4_measurement_id') }}"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', '{{ config('seo.ga4_measurement_id') }}');
-  </script>
-  @endif
-
   @stack('jsonld')
 
   <link href="{{ url('css/bootstrap.min.css') }}" rel="stylesheet" type="text/css">
   <link href="{{ url('css/font-awesome.min.css') }}" rel="stylesheet" type="text/css">
   <link href="{{ url('css/owl.carousel.css') }}" rel="stylesheet" type="text/css">
-  <link href="{{ url('css/owl.theme.css') }}" rel="stylesheet" type="text/css">
-  <link href="{{ url('css/animate.css') }}" rel="stylesheet" type="text/css">
-  <link href="{{ url('css/venobox.css') }}" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="{{ url('css/owl.theme.css') }}" media="print" onload="this.media='all'">
+  <noscript><link href="{{ url('css/owl.theme.css') }}" rel="stylesheet" type="text/css"></noscript>
+  <link rel="stylesheet" href="{{ url('css/animate.css') }}" media="print" onload="this.media='all'">
+  <noscript><link href="{{ url('css/animate.css') }}" rel="stylesheet" type="text/css"></noscript>
   {{-- Cache-bust styles.css so every push to prod is picked up by phones,
        browsers and CDNs that would otherwise serve a stale copy. The query
        string changes whenever the file on disk is modified. --}}
@@ -76,10 +73,6 @@
   </div>
 </noscript>
 
-<div id="preloader">
-  <span class="margin-bottom"><img src="{{ url('images/loader.gif') }}" alt="Loading......"></span>
-</div>
-
 @include('site.partials.public-header')
 
 @yield('content')
@@ -88,17 +81,23 @@
 
 <a id="backTop" role="button" aria-label="Back to top">Back To Top</a>
 
-<script src="{{ url('js/jquery.min.js') }}"></script>
-<script src="{{ url('js/bootstrap.min.js') }}"></script>
-<script src="{{ url('js/wow.min.js') }}"></script>
-<script src="{{ url('js/jquery.backTop.min.js') }}"></script>
-<script src="{{ url('js/waypoints.min.js') }}"></script>
-<script src="{{ url('js/waypoints-sticky.min.js') }}"></script>
-<script src="{{ url('js/owl.carousel.min.js') }}"></script>
-<script src="{{ url('js/jquery.stellar.min.js') }}"></script>
-<script src="{{ url('js/jquery.counterup.min.js') }}"></script>
-<script src="{{ url('js/venobox.min.js') }}"></script>
-<script src="{{ url('js/custom-scripts.js') }}?v={{ @filemtime(public_path('js/custom-scripts.js')) ?: time() }}"></script>
+<script defer src="{{ url('js/jquery.min.js') }}"></script>
+<script defer src="{{ url('js/bootstrap.min.js') }}"></script>
+<script defer src="{{ url('js/wow.min.js') }}"></script>
+<script defer src="{{ url('js/jquery.backTop.min.js') }}"></script>
+<script defer src="{{ url('js/waypoints.min.js') }}"></script>
+<script defer src="{{ url('js/waypoints-sticky.min.js') }}"></script>
+<script defer src="{{ url('js/owl.carousel.min.js') }}"></script>
+<script defer src="{{ url('js/custom-scripts.js') }}?v={{ @filemtime(public_path('js/custom-scripts.js')) ?: time() }}"></script>
+@if (filled(config('seo.ga4_measurement_id')))
+<script defer src="https://www.googletagmanager.com/gtag/js?id={{ config('seo.ga4_measurement_id') }}"></script>
+<script defer>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ config('seo.ga4_measurement_id') }}');
+</script>
+@endif
 @stack('scripts')
 </body>
 </html>

@@ -8,6 +8,10 @@
 <script type="application/ld+json">{!! \App\Support\SeoStructuredData::toJsonLd(\App\Support\SeoStructuredData::homeGraph()) !!}</script>
 @endpush
 
+@push('head-assets')
+<link rel="preload" as="image" href="{{ url('images/home_1_slider_1.webp') }}" fetchpriority="high">
+@endpush
+
 @push('styles')
 <style>
   .home-geo-intro { padding-top: 28px; padding-bottom: 8px; }

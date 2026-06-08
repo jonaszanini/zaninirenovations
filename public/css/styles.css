@@ -2,9 +2,9 @@
  * File: styles.css
  * Site: Zanini Renovations — public front-end styles.
  **/
-@import url("https://fonts.googleapis.com/css?family=Lora:400,400i,700,700i|Open+Sans:300,400,500,700,800");
 /**
  * CSS reset / baseline (standard HTML5 document defaults).
+ * Web fonts load via <link> in site/layouts/public.blade.php (not @import — avoids render-blocking chains).
  */
 html, body, div, span, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,

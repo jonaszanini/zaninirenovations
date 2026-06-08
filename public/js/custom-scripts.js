@@ -674,10 +674,8 @@ jQuery(function ($) {
     
     // GALLERY.
     
-    if ( $('.gallery-light-box').length ) {
-            
+    if ($('.gallery-light-box').length && typeof $.fn.venobox !== 'undefined') {
         $('.gallery-light-box').venobox();
-        
     }
     
     // FITERABLE GALLERY.
@@ -1141,9 +1139,11 @@ jQuery(function ($) {
     
     // VENOBOX VIDEO.
     
-       $(document).ready(function(){
-            $('.venobox').venobox();   
-        });  
+    $(document).ready(function () {
+        if (typeof $.fn.venobox !== 'undefined') {
+            $('.venobox').venobox();
+        }
+    });
 
     // COUNTDOWN.
     
