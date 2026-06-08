@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\StairsDatabaseController;
 use App\Http\Controllers\Admin\StairsQuotationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\ContactFormController;
+use App\Models\BlogPost;
 use App\Models\Project;
 use Illuminate\Support\Facades\Route;
 
@@ -80,7 +81,23 @@ Route::get('/', function () {
         ->sortBy(fn ($c) => [$c->sort_order, strtolower($c->name)])
         ->values();
 
-    return view('site.home', compact('projects', 'projectFilterCategories'));
+    $homeBlogPosts = BlogPost::query()
+        ->published()
+        ->with(['categories:id,name,slug'])
+        ->orderByDesc('published_at')
+        ->orderByDesc('id')
+        ->limit(4)
+        ->get();
+
+    $homeBlogFeatured = $homeBlogPosts->first();
+    $homeBlogMore = $homeBlogPosts->slice(1, 3)->values();
+
+    return view('site.home', compact(
+        'projects',
+        'projectFilterCategories',
+        'homeBlogFeatured',
+        'homeBlogMore',
+    ));
 });
 
 Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->name('blog.index');

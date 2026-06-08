@@ -13,29 +13,64 @@
   .home-geo-intro { padding-top: 28px; padding-bottom: 8px; }
   .home-geo-intro__lead { max-width: 52rem; margin: 0 auto; font-size: 1.05rem; line-height: 1.65; color: #334155; text-align: center; }
   .home-faq-section__intro { max-width: 40rem; margin: 12px auto 0; color: #64748b; font-size: 15px; }
-  .home-faq-list { margin-top: 24px; }
-  .home-faq-item { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; padding: 0 16px; background: #fff; }
-  .home-faq-item__q { flex: 1; font-size: 1.05rem; font-weight: 600; margin: 0; color: #0f172a; }
-  .home-faq-item summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    cursor: pointer;
-    padding: 14px 0;
+  .home-blog-featured-row { margin-bottom: 8px; }
+  .home-blog-featured { margin-bottom: 0; }
+  .home-blog-featured .latest-thumbnail img { width: 100%; height: auto; display: block; }
+  .home-blog-featured__label {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #024768;
+    margin-bottom: 8px;
+  }
+  .home-blog-featured .latest-title { margin-top: 0; padding-top: 0; font-size: 22px; }
+  .home-blog-more {
+    background: #fff;
+    padding: 28px 24px;
+    height: 100%;
+    margin-bottom: 24px;
+  }
+  .home-blog-more__title {
+    margin: 0 0 18px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #3a4856;
+  }
+  .home-blog-more__list {
     list-style: none;
+    padding: 0;
+    margin: 0;
   }
-  .home-faq-item summary::-webkit-details-marker { display: none; }
-  .home-faq-item summary::after {
-    font-family: "FontAwesome";
-    content: "\f0d7";
-    flex-shrink: 0;
-    font-size: 14px;
+  .home-blog-more__item {
+    padding: 14px 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .home-blog-more__item:first-child { padding-top: 0; }
+  .home-blog-more__item:last-child { border-bottom: 0; padding-bottom: 0; }
+  .home-blog-more__link {
+    display: block;
+    color: #3a4856;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration: none;
+  }
+  .home-blog-more__link:hover { color: #024768; }
+  .home-blog-more__date {
+    margin: 6px 0 0;
+    font-size: 13px;
     color: #64748b;
-    line-height: 1;
   }
-  .home-faq-item[open] summary::after { content: "\f0d8"; }
-  .home-faq-item__a { margin: 0 0 14px; line-height: 1.6; color: #475569; }
+  @media (min-width: 1200px) {
+    .home-blog-featured-row { display: flex; flex-wrap: wrap; }
+    .home-blog-featured-row::before,
+    .home-blog-featured-row::after { display: none; }
+    .home-blog-featured-row > [class*="col-"] { display: flex; flex-direction: column; }
+    .home-blog-featured,
+    .home-blog-more { flex: 1; }
+  }
 </style>
 @endpush
 
@@ -666,21 +701,23 @@
 
     </section>
 
+    @include('site.partials.home-blog')
+
     @php $homeFaq = config('seo.home_faq', []); @endphp
     @if (is_array($homeFaq) && count($homeFaq) > 0)
     <section id="faq" class="section-content-block home-faq-section" aria-labelledby="home-faq-heading">
       <div class="container">
         <div class="row section-heading-wrapper">
-          <div class="col-md-12 text-center">
-            <h4 class="heading-alt-style text-uppercase text-dark-color">Questions</h4>
+          <div class="col-md-12 col-sm-12 text-center">
+            <h4 class="heading-alt-style text-uppercase text-dark-color">FAQ</h4>
             <span class="heading-separator heading-separator-horizontal"></span>
             <h2 id="home-faq-heading" class="subheading-alt-style">Renovation &amp; carpentry — common questions</h2>
             <p class="home-faq-section__intro">Direct answers for homeowners searching for a licensed carpenter or renovation contractor in Ottawa and Carleton Place.</p>
           </div>
         </div>
         <div class="row">
-          <div class="col-md-10 col-md-offset-1">
-            <div class="home-faq-list">
+          <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+            <div class="faq-layout" id="home-faq-accordion">
               @foreach ($homeFaq as $faqRow)
                 @if (! is_array($faqRow))
                   @continue
@@ -688,14 +725,21 @@
                 @php
                   $faqQ = trim((string) ($faqRow['question'] ?? ''));
                   $faqA = trim((string) ($faqRow['answer'] ?? ''));
+                  $faqCollapseId = 'home-faq-collapse-' . $loop->index;
                 @endphp
                 @if ($faqQ === '' || $faqA === '')
                   @continue
                 @endif
-                <details class="home-faq-item">
-                  <summary><h3 class="home-faq-item__q">{{ $faqQ }}</h3></summary>
-                  <p class="home-faq-item__a">{{ $faqA }}</p>
-                </details>
+                <div class="panel panel-default faq-box">
+                  <div class="panel-heading">
+                    <p class="panel-title">
+                      <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#home-faq-accordion" href="#{{ $faqCollapseId }}">{{ $faqQ }}</a>
+                    </p>
+                  </div>
+                  <div id="{{ $faqCollapseId }}" class="panel-collapse collapse">
+                    <div class="panel-body">{{ $faqA }}</div>
+                  </div>
+                </div>
               @endforeach
             </div>
           </div>
