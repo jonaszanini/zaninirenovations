@@ -58,74 +58,10 @@ class BlogImageStorage
         return $this->storeGeneratedBinary($bytes, $mime, 'ai-tool-images', 0, normalizeTo16x9: false);
     }
 
-    /**
-     * Gemini often returns a square canvas with the requested content letterboxed inside.
-     * Center-crop to the target aspect ratio (e.g. 16:9) and return JPEG bytes.
-     */
+    /** @see GeminiImageCropService */
     public function cropGeminiOutputToAspectRatio(string $bytes, string $aspectRatio): string
     {
-        if ($bytes === '' || ! preg_match('/^(\d+):(\d+)$/', trim($aspectRatio), $matches)) {
-            return $bytes;
-        }
-
-        $ratioW = max(1, (int) $matches[1]);
-        $ratioH = max(1, (int) $matches[2]);
-        $targetRatio = $ratioW / $ratioH;
-
-        if (! function_exists('imagecreatefromstring') || ! function_exists('imagejpeg')) {
-            return $bytes;
-        }
-
-        $image = @imagecreatefromstring($bytes);
-        if ($image === false) {
-            return $bytes;
-        }
-
-        $width = imagesx($image);
-        $height = imagesy($image);
-        if ($width < 2 || $height < 2) {
-            imagedestroy($image);
-
-            return $bytes;
-        }
-
-        $currentRatio = $width / $height;
-        if (abs($currentRatio - $targetRatio) < 0.015) {
-            imagedestroy($image);
-
-            return $bytes;
-        }
-
-        if ($currentRatio > $targetRatio) {
-            $cropWidth = (int) max(1, round($height * $targetRatio));
-            $cropHeight = $height;
-            $cropX = (int) max(0, floor(($width - $cropWidth) / 2));
-            $cropY = 0;
-        } else {
-            $cropWidth = $width;
-            $cropHeight = (int) max(1, round($width / $targetRatio));
-            $cropX = 0;
-            $cropY = (int) max(0, floor(($height - $cropHeight) / 2));
-        }
-
-        $cropped = imagecrop($image, [
-            'x' => $cropX,
-            'y' => $cropY,
-            'width' => $cropWidth,
-            'height' => $cropHeight,
-        ]);
-        imagedestroy($image);
-
-        if ($cropped === false) {
-            return $bytes;
-        }
-
-        ob_start();
-        $ok = imagejpeg($cropped, null, 92);
-        imagedestroy($cropped);
-        $jpeg = ob_get_clean();
-
-        return ($ok && is_string($jpeg) && $jpeg !== '') ? $jpeg : $bytes;
+        return app(GeminiImageCropService::class)->cropToAspectRatio($bytes, $aspectRatio);
     }
 
     /**

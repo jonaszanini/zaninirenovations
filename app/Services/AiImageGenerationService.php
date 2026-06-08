@@ -32,11 +32,25 @@ class AiImageGenerationService
         );
 
         // Gemini may return a square canvas with the scene letterboxed; crop to the requested AR.
-        $imageBytes = $this->images->cropGeminiOutputToAspectRatio(
+        $cropper = app(GeminiImageCropService::class);
+        $imageBytes = $cropper->cropToAspectRatio(
             $generated['bytes'],
             $params['aspect_ratio'],
         );
         $imageMime = $imageBytes !== $generated['bytes'] ? 'image/jpeg' : $generated['mime'];
+
+        if (! $cropper->matchesAspectRatio($imageBytes, $params['aspect_ratio'])) {
+            $cropChanged = $imageBytes !== $generated['bytes'];
+            $verified = $cropper->readAspectRatio($imageBytes) !== null;
+
+            if (! $cropChanged || $verified) {
+                throw new RuntimeException(
+                    'Gemini returned a square letterboxed image and this server could not crop it to '
+                    .$params['aspect_ratio'].'. Enable PHP GD (php-gd) or Imagick, install ImageMagick '
+                    .'(MAGICK_PATH in .env), or set FFMPEG_PATH in .env.'
+                );
+            }
+        }
 
         $originalPath = $this->images->storeAiToolOriginalFromBinary(
             $imageBytes,
