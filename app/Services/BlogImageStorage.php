@@ -33,6 +33,9 @@ class BlogImageStorage
             throw new RuntimeException('Generated image is empty.');
         }
 
+        $bytes = $this->normalizeAiFeaturedTo16x9($bytes);
+        $mime = 'image/jpeg';
+
         $ext = 'jpg';
         if (str_contains(strtolower($mime), 'png')) {
             $ext = 'png';
@@ -110,6 +113,69 @@ class BlogImageStorage
             (int) $crop['height']
         );
         $this->webpStorage->recompressWebpAtPath($absolute);
+    }
+
+    /**
+     * Gemini often returns a square canvas with 16:9 content letterboxed inside.
+     * Center-crop to true 16:9 before WebP conversion (manual uploads use Cropper instead).
+     */
+    private function normalizeAiFeaturedTo16x9(string $bytes): string
+    {
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagejpeg')) {
+            return $bytes;
+        }
+
+        $image = @imagecreatefromstring($bytes);
+        if ($image === false) {
+            return $bytes;
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        if ($width < 2 || $height < 2) {
+            imagedestroy($image);
+
+            return $bytes;
+        }
+
+        $targetRatio = 16 / 9;
+        $currentRatio = $width / $height;
+        if (abs($currentRatio - $targetRatio) < 0.015) {
+            imagedestroy($image);
+
+            return $bytes;
+        }
+
+        if ($currentRatio > $targetRatio) {
+            $cropWidth = (int) max(1, round($height * $targetRatio));
+            $cropHeight = $height;
+            $cropX = (int) max(0, floor(($width - $cropWidth) / 2));
+            $cropY = 0;
+        } else {
+            $cropWidth = $width;
+            $cropHeight = (int) max(1, round($width / $targetRatio));
+            $cropX = 0;
+            $cropY = (int) max(0, floor(($height - $cropHeight) / 2));
+        }
+
+        $cropped = imagecrop($image, [
+            'x' => $cropX,
+            'y' => $cropY,
+            'width' => $cropWidth,
+            'height' => $cropHeight,
+        ]);
+        imagedestroy($image);
+
+        if ($cropped === false) {
+            return $bytes;
+        }
+
+        ob_start();
+        $ok = imagejpeg($cropped, null, 92);
+        imagedestroy($cropped);
+        $jpeg = ob_get_clean();
+
+        return ($ok && is_string($jpeg) && $jpeg !== '') ? $jpeg : $bytes;
     }
 
     public function delete(string $relativePath): void
