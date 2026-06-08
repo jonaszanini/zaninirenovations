@@ -18,6 +18,7 @@
       <div class="admin-form-group">
         <label for="description">Description</label>
         <textarea id="description" name="description" required>{{ old('description', $project->description) }}</textarea>
+        @include('admin.partials.portfolio_description_ai', ['hasExistingPhotos' => $project->photos->isNotEmpty()])
         @error('description')
           <div class="admin-error">{{ $message }}</div>
         @enderror
@@ -179,6 +180,17 @@
     </div>
   @endif
 @endsection
+
+@push('scripts')
+  <script>
+    window.portfolioDescriptionAiConfig = {
+      descriptionInputId: 'description',
+      fileInputId: 'photos',
+      csrfToken: @json(csrf_token()),
+      improveUrl: @json(route('admin.portfolio.ai-improve-description.edit', $project)),
+    };
+  </script>
+@endpush
 
 @if ($project->photos->isNotEmpty())
   @push('head')

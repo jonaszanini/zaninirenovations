@@ -37,12 +37,39 @@ class GeminiService
     }
 
     /**
-     * @param  array<string, mixed>  $generationConfig
-     *
-     * @throws RuntimeException
+     * @param  list<array{bytes: string, mime: string}>  $images
+     * @param  array<string, mixed>  $responseSchema
+     * @return array<string, mixed>
      */
-    private function requestText(string $systemInstruction, string $userText, array $generationConfig = []): string
-    {
+    public function generateStructuredJsonWithImages(
+        string $systemInstruction,
+        string $userText,
+        array $responseSchema,
+        array $images,
+    ): array {
+        $text = $this->requestTextWithImages($systemInstruction, $userText, $images, [
+            'responseMimeType' => 'application/json',
+            'responseSchema' => $responseSchema,
+        ]);
+
+        $decoded = json_decode($text, true);
+        if (! is_array($decoded)) {
+            throw new RuntimeException('Gemini returned invalid JSON for structured output.');
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * @param  list<array{bytes: string, mime: string}>  $images
+     * @param  array<string, mixed>  $generationConfig
+     */
+    private function requestTextWithImages(
+        string $systemInstruction,
+        string $userText,
+        array $images,
+        array $generationConfig = [],
+    ): string {
         $apiKey = trim((string) config('gemini.api_key', ''));
         if ($apiKey === '') {
             throw new RuntimeException('Gemini API key is not configured. Add GEMINI_API_KEY to your .env file.');
@@ -51,6 +78,17 @@ class GeminiService
         $model = trim((string) config('gemini.model', 'gemini-2.5-flash'));
         $baseUrl = rtrim((string) config('gemini.base_url'), '/');
         $timeout = (int) config('gemini.timeout_seconds', 120);
+        $inlineMax = max(1, (int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024));
+
+        $parts = [['text' => $userText]];
+        foreach ($images as $image) {
+            $bytes = $image['bytes'] ?? '';
+            $mime = $image['mime'] ?? 'image/jpeg';
+            if (! is_string($bytes) || $bytes === '') {
+                continue;
+            }
+            $parts[] = $this->buildInlineOrFileImagePart($bytes, $mime, $apiKey, $baseUrl, $timeout, $inlineMax);
+        }
 
         $url = $baseUrl.'/models/'.$model.':generateContent?key='.urlencode($apiKey);
 
@@ -58,9 +96,7 @@ class GeminiService
             'contents' => [
                 [
                     'role' => 'user',
-                    'parts' => [
-                        ['text' => $userText],
-                    ],
+                    'parts' => $parts,
                 ],
             ],
             'systemInstruction' => [
@@ -78,7 +114,7 @@ class GeminiService
             ->acceptJson()
             ->post($url, $payload);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $message = $response->json('error.message')
                 ?? $response->json('message')
                 ?? ('Gemini API error (HTTP '.$response->status().').');
@@ -87,7 +123,7 @@ class GeminiService
         }
 
         $text = $response->json('candidates.0.content.parts.0.text');
-        if (!is_string($text) || trim($text) === '') {
+        if (! is_string($text) || trim($text) === '') {
             $reason = $response->json('candidates.0.finishReason');
             $block = $response->json('promptFeedback.blockReason');
             $detail = $reason ?: $block ?: 'empty response';
@@ -96,6 +132,16 @@ class GeminiService
         }
 
         return trim($text);
+    }
+
+    /**
+     * @param  array<string, mixed>  $generationConfig
+     *
+     * @throws RuntimeException
+     */
+    private function requestText(string $systemInstruction, string $userText, array $generationConfig = []): string
+    {
+        return $this->requestTextWithImages($systemInstruction, $userText, [], $generationConfig);
     }
 
     /**
@@ -204,16 +250,7 @@ class GeminiService
         $timeout = (int) config('gemini.image_timeout_seconds', 180);
         $inlineMax = max(1, (int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024));
 
-        $imagePart = strlen($imageBytes) <= $inlineMax
-            ? [
-                'inlineData' => [
-                    'mimeType' => $mime,
-                    'data' => base64_encode($imageBytes),
-                ],
-            ]
-            : [
-                'fileData' => $this->uploadImageForGemini($imageBytes, $mime, $apiKey, $baseUrl, $timeout),
-            ];
+        $imagePart = $this->buildInlineOrFileImagePart($imageBytes, $mime, $apiKey, $baseUrl, $timeout, $inlineMax);
 
         $url = $baseUrl.'/models/'.$model.':generateContent?key='.urlencode($apiKey);
 
@@ -259,6 +296,36 @@ class GeminiService
         return [
             'bytes' => $bytes,
             'mime' => $inline['mime'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildInlineOrFileImagePart(
+        string $imageBytes,
+        string $mime,
+        string $apiKey,
+        string $baseUrl,
+        int $timeout,
+        int $inlineMax,
+    ): array {
+        $mime = strtolower(trim($mime));
+        if ($mime === '' || ! str_starts_with($mime, 'image/')) {
+            $mime = 'image/jpeg';
+        }
+
+        if (strlen($imageBytes) <= $inlineMax) {
+            return [
+                'inlineData' => [
+                    'mimeType' => $mime,
+                    'data' => base64_encode($imageBytes),
+                ],
+            ];
+        }
+
+        return [
+            'fileData' => $this->uploadImageForGemini($imageBytes, $mime, $apiKey, $baseUrl, $timeout),
         ];
     }
 

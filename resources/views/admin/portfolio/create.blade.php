@@ -17,6 +17,7 @@
       <div class="admin-form-group">
         <label for="description">Description</label>
         <textarea id="description" name="description" required>{{ old('description') }}</textarea>
+        @include('admin.partials.portfolio_description_ai')
         @error('description')
           <div class="admin-error">{{ $message }}</div>
         @enderror
@@ -92,6 +93,12 @@
       csrfToken: @json(csrf_token()),
       improveUrl: @json(route('admin.image-creation.improve-prompt')),
       aiImproveUrl: @json(route('admin.portfolio.ai-improve-photos')),
+    };
+    window.portfolioDescriptionAiConfig = {
+      descriptionInputId: 'description',
+      fileInputId: 'photos',
+      csrfToken: @json(csrf_token()),
+      improveUrl: @json(route('admin.portfolio.ai-improve-description')),
     };
   </script>
 @endpush

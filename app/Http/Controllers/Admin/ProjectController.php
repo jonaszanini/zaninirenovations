@@ -8,6 +8,7 @@ use App\Models\ProjectCategory;
 use App\Models\ProjectPhoto;
 use App\Models\GooglePhotosToken;
 use App\Services\GooglePhotosService;
+use App\Services\PortfolioDescriptionAiService;
 use App\Services\PortfolioPhotoAiImprovementService;
 use App\Services\ProjectPhotoCropService;
 use App\Services\ProjectPhotoRotationService;
@@ -133,6 +134,19 @@ class ProjectController extends Controller
                 'error' => $e->getMessage(),
             ], 502);
         }
+    }
+
+    public function aiImproveDescription(Request $request, PortfolioDescriptionAiService $describer): JsonResponse
+    {
+        return $this->respondWithImprovedDescription($request, $describer, null);
+    }
+
+    public function aiImproveDescriptionForProject(
+        Request $request,
+        Project $project,
+        PortfolioDescriptionAiService $describer,
+    ): JsonResponse {
+        return $this->respondWithImprovedDescription($request, $describer, $project);
     }
 
     public function store(Request $request)
@@ -571,6 +585,54 @@ class ProjectController extends Controller
                     @unlink($tmp);
                 }
             }
+        }
+    }
+
+    private function respondWithImprovedDescription(
+        Request $request,
+        PortfolioDescriptionAiService $describer,
+        ?Project $project,
+    ): JsonResponse {
+        set_time_limit(max(120, (int) config('gemini.timeout_seconds', 120) + 60));
+
+        $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
+
+        $data = $request->validate([
+            'description' => ['required', 'string', 'max:8000'],
+            'photos' => ['nullable', 'array', 'max:8'],
+            'photos.*' => ['file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
+            'google_picker_items' => ['nullable', 'array', 'max:8'],
+            'google_picker_items.*' => ['string', 'max:4000'],
+        ]);
+
+        $uploads = array_values(array_filter(
+            (array) $request->file('photos', []),
+            fn ($file) => $file instanceof \Illuminate\Http\UploadedFile,
+        ));
+        $googleItems = array_values(array_filter(
+            (array) ($data['google_picker_items'] ?? []),
+            fn ($item) => is_string($item) && $item !== '',
+        ));
+
+        try {
+            $result = $describer->suggest(
+                $request->user(),
+                $data['description'],
+                $uploads,
+                $googleItems,
+                $project,
+            );
+
+            return response()->json([
+                'description' => $result['option_1'],
+                'option_1' => $result['option_1'],
+                'option_2' => $result['option_2'],
+                'image_count' => $result['image_count'],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
         }
     }
 }

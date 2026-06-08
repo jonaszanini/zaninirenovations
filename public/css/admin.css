@@ -1728,6 +1728,34 @@ body.admin-nav-open {
   margin-top: 0.15rem;
 }
 
+.portfolio-description-ai {
+  margin-top: 0.65rem;
+}
+
+.portfolio-description-ai__actions {
+  margin-top: 0;
+}
+
+.portfolio-description-ai__options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.portfolio-description-ai__options-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+
+.portfolio-description-ai__options .admin-btn.is-active {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+
 .admin-portfolio-ai-improve {
   margin-top: 0.5rem;
   padding-top: 1.25rem;
