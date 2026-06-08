@@ -1947,11 +1947,11 @@ body.admin-nav-open {
   word-break: break-word;
 }
 
-/* Tools: Image creation — model picker landing */
+/* Tools: AI Image — workflow picker landing */
 .ic-model-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 11rem));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 16rem));
+  gap: 1.25rem;
 }
 
 .ic-model-card {
@@ -1961,8 +1961,8 @@ body.admin-nav-open {
   justify-content: center;
   gap: 0.85rem;
   width: 100%;
-  max-width: 11rem;
-  min-height: 10.5rem;
+  max-width: 16rem;
+  min-height: 11rem;
   padding: 1.35rem 1rem 1.25rem;
   text-align: center;
   text-decoration: none;
@@ -2002,6 +2002,17 @@ a.ic-model-card:hover {
   color: var(--admin-primary);
 }
 
+.ic-model-card__desc {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--admin-muted);
+  max-width: 14rem;
+}
+
+.ic-model-card__icon .fa {
+  font-size: 1.35rem;
+}
+
 .ic-model-card--soon {
   opacity: 0.7;
   cursor: not-allowed;
@@ -2019,6 +2030,66 @@ a.ic-model-card:hover {
   border-radius: 999px;
   background: var(--admin-surface-hover);
   color: var(--admin-muted);
+}
+
+/* Tools: AI Image — modify upload */
+.aim-upload-zone {
+  position: relative;
+  border: 2px dashed var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-bg);
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.aim-upload-zone.is-dragover,
+.aim-upload-zone:hover {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+.aim-upload-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aim-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--admin-muted);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.aim-upload-placeholder .fa {
+  font-size: 2rem;
+  color: var(--admin-primary);
+}
+
+.aim-upload-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  width: 100%;
+}
+
+.aim-upload-preview img {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
 }
 
 /* Tools: Image creation (Nano Banana 2) */

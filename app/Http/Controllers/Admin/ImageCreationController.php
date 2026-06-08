@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AiGeneratedImage;
 use App\Services\AiImageGenerationService;
+use App\Services\AiImageModificationService;
 use App\Support\NanoBananaOptions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,33 +15,62 @@ use InvalidArgumentException;
 
 class ImageCreationController extends Controller
 {
-    /**
-     * Landing page listing available image-generation models. New models can be
-     * added to the $models array (and given their own route + page) without
-     * touching the layout.
-     */
     public function index()
     {
-        $models = [
+        $workflows = [
             [
-                'name' => 'Nano Banana 2',
-                'route' => route('admin.image-creation.nano-banana-2'),
+                'name' => 'Create image',
+                'description' => 'Generate a new image from a text prompt with aspect ratio and resolution controls.',
+                'route' => route('admin.image-creation.create'),
+                'icon' => 'fa-magic',
+                'available' => true,
+            ],
+            [
+                'name' => 'Modify image',
+                'description' => 'Upload a photo and describe what to change. The edited result is saved at full resolution (no WebP).',
+                'route' => route('admin.image-creation.modify'),
+                'icon' => 'fa-pencil-square-o',
                 'available' => true,
             ],
         ];
 
-        return view('admin.image_creation.index', compact('models'));
+        return view('admin.image_creation.index', compact('workflows'));
     }
 
-    public function nanoBanana2()
+    public function create()
     {
         $images = AiGeneratedImage::query()
+            ->where(function ($query) {
+                $query->where('mode', AiGeneratedImage::MODE_CREATE)
+                    ->orWhereNull('mode');
+            })
             ->orderByDesc('created_at')
             ->paginate(24);
 
-        return view('admin.image_creation.nano_banana_2', [
+        return view('admin.image_creation.create', [
             'images' => $images,
             'nb2Options' => NanoBananaOptions::clientConfig(),
+        ]);
+    }
+
+    /** @deprecated Use create() — kept for existing bookmarks. */
+    public function nanoBanana2()
+    {
+        return $this->create();
+    }
+
+    public function modify()
+    {
+        $images = AiGeneratedImage::query()
+            ->where('mode', AiGeneratedImage::MODE_MODIFY)
+            ->orderByDesc('created_at')
+            ->paginate(24);
+
+        $inlineMaxMb = round((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024 / 1024, 1);
+
+        return view('admin.image_creation.modify', [
+            'images' => $images,
+            'inlineMaxMb' => $inlineMaxMb,
         ]);
     }
 
@@ -69,29 +99,62 @@ class ImageCreationController extends Controller
         }
     }
 
+    public function modifyImage(Request $request, AiImageModificationService $modifier): JsonResponse
+    {
+        $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
+
+        $data = $request->validate([
+            'prompt' => ['required', 'string', 'max:2000'],
+            'source_image' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
+        ]);
+
+        try {
+            $image = $modifier->modify($data['source_image'], $data['prompt']);
+
+            return response()->json($this->imagePayload($image));
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
+        }
+    }
+
     public function download(AiGeneratedImage $ai_generated_image, string $format)
     {
-        if (! in_array($format, ['original', 'webp'], true)) {
+        if (! in_array($format, ['original', 'webp', 'source'], true)) {
             abort(404);
         }
 
-        $path = $format === 'original'
-            ? $ai_generated_image->original_image_path
-            : $ai_generated_image->webp_image_path;
+        $path = match ($format) {
+            'original' => $ai_generated_image->original_image_path,
+            'webp' => $ai_generated_image->webp_image_path,
+            'source' => $ai_generated_image->source_image_path,
+        };
 
         if (! filled($path) || ! Storage::disk('public')->exists($path)) {
             abort(404);
         }
 
-        $extension = pathinfo($path, PATHINFO_EXTENSION) ?: ($format === 'webp' ? 'webp' : 'jpg');
-        $filename = 'nano-banana-'.$ai_generated_image->id.'-'.$format.'.'.$extension;
+        $extension = pathinfo($path, PATHINFO_EXTENSION) ?: match ($format) {
+            'webp' => 'webp',
+            'source' => 'jpg',
+            default => 'jpg',
+        };
+        $filename = 'ai-image-'.$ai_generated_image->id.'-'.$format.'.'.$extension;
 
         return Storage::disk('public')->download($path, $filename);
     }
 
-    public function destroy(AiGeneratedImage $ai_generated_image, AiImageGenerationService $generator): JsonResponse
-    {
-        $generator->deleteRecord($ai_generated_image);
+    public function destroy(
+        AiGeneratedImage $ai_generated_image,
+        AiImageGenerationService $generator,
+        AiImageModificationService $modifier,
+    ): JsonResponse {
+        if ($ai_generated_image->isModify()) {
+            $modifier->deleteRecord($ai_generated_image);
+        } else {
+            $generator->deleteRecord($ai_generated_image);
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -103,10 +166,12 @@ class ImageCreationController extends Controller
     {
         return [
             'id' => $image->id,
+            'mode' => $image->mode,
             'prompt' => $image->prompt,
             'aspect_ratio' => $image->aspect_ratio,
             'image_size' => $image->image_size,
             'image_url' => $image->imageUrl(),
+            'source_image_url' => $image->sourceImageUrl(),
             'created_at' => $image->displayCreatedAt(),
             'meta' => $image->displayMeta(),
             'download_original_url' => $image->hasOriginalDownload()
@@ -114,6 +179,9 @@ class ImageCreationController extends Controller
                 : null,
             'download_webp_url' => $image->hasWebpDownload()
                 ? route('admin.image-creation.download', ['ai_generated_image' => $image, 'format' => 'webp'])
+                : null,
+            'download_source_url' => filled($image->source_image_path) && Storage::disk('public')->exists($image->source_image_path)
+                ? route('admin.image-creation.download', ['ai_generated_image' => $image, 'format' => 'source'])
                 : null,
             'delete_url' => route('admin.image-creation.destroy', $image),
         ];

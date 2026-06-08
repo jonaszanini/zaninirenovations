@@ -187,7 +187,7 @@
               <li>
                 <a href="{{ route('admin.image-creation.index') }}" class="{{ request()->routeIs('admin.image-creation.*') ? 'is-active' : '' }}">
                   <i class="fa fa-picture-o"></i>
-                  Image Creation
+                  AI Image
                 </a>
               </li>
               <li>

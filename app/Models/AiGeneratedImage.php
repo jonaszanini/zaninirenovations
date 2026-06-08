@@ -7,20 +7,45 @@ use Illuminate\Support\Facades\Storage;
 
 class AiGeneratedImage extends Model
 {
+    public const MODE_CREATE = 'create';
+
+    public const MODE_MODIFY = 'modify';
+
     protected $fillable = [
+        'mode',
         'prompt',
         'original_image_path',
         'webp_image_path',
+        'source_image_path',
         'aspect_ratio',
         'image_size',
     ];
 
+    public function isModify(): bool
+    {
+        return $this->mode === self::MODE_MODIFY;
+    }
+
+    public function isCreate(): bool
+    {
+        return $this->mode === self::MODE_CREATE || $this->mode === null;
+    }
+
     /**
-     * Gallery preview URL — optimized WebP when available.
+     * Gallery preview URL — WebP for create flow; original for modify flow.
      */
     public function imageUrl(): ?string
     {
-        return $this->storageUrl($this->webp_image_path);
+        if ($this->isModify()) {
+            return $this->storageUrl($this->original_image_path);
+        }
+
+        return $this->storageUrl($this->webp_image_path) ?? $this->storageUrl($this->original_image_path);
+    }
+
+    public function sourceImageUrl(): ?string
+    {
+        return $this->storageUrl($this->source_image_path);
     }
 
     public function originalImageUrl(): ?string
@@ -35,6 +60,10 @@ class AiGeneratedImage extends Model
 
     public function displayMeta(): string
     {
+        if ($this->isModify()) {
+            return 'Modified · '.($this->displayCreatedAt() ?? '');
+        }
+
         $parts = array_filter([
             $this->aspect_ratio,
             $this->image_size,

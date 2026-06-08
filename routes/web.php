@@ -433,10 +433,16 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
 
     Route::get('image-creation', [\App\Http\Controllers\Admin\ImageCreationController::class, 'index'])
         ->name('image-creation.index');
+    Route::get('image-creation/create', [\App\Http\Controllers\Admin\ImageCreationController::class, 'create'])
+        ->name('image-creation.create');
     Route::get('image-creation/nano-banana-2', [\App\Http\Controllers\Admin\ImageCreationController::class, 'nanoBanana2'])
         ->name('image-creation.nano-banana-2');
+    Route::get('image-creation/modify', [\App\Http\Controllers\Admin\ImageCreationController::class, 'modify'])
+        ->name('image-creation.modify');
     Route::post('image-creation/generate', [\App\Http\Controllers\Admin\ImageCreationController::class, 'generate'])
         ->name('image-creation.generate');
+    Route::post('image-creation/modify', [\App\Http\Controllers\Admin\ImageCreationController::class, 'modifyImage'])
+        ->name('image-creation.modify.store');
     Route::get('image-creation/{ai_generated_image}/download/{format}', [\App\Http\Controllers\Admin\ImageCreationController::class, 'download'])
         ->where('format', 'original|webp')
         ->name('image-creation.download');

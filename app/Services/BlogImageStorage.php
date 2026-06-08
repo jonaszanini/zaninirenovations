@@ -31,6 +31,25 @@ class BlogImageStorage
     }
 
     /**
+     * Store the user's source upload for an AI modify/edit request.
+     */
+    public function storeAiToolSourceFromBinary(string $bytes, string $mime): string
+    {
+        if ($bytes === '') {
+            throw new RuntimeException('Source image is empty.');
+        }
+
+        $ext = $this->extensionForMime($mime);
+        $leaf = \Illuminate\Support\Str::uuid()->toString();
+        $relativePath = 'ai-tool-images/sources/'.$leaf.'.'.$ext;
+
+        Storage::disk('public')->put($relativePath, $bytes);
+        $this->webpStorage->syncPublicMirror($relativePath);
+
+        return $relativePath;
+    }
+
+    /**
      * Store the full-resolution AI tool image exactly as returned by Gemini.
      */
     public function storeAiToolOriginalFromBinary(string $bytes, string $mime): string

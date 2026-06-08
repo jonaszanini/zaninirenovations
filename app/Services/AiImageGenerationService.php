@@ -63,6 +63,7 @@ class AiImageGenerationService
         );
 
         return AiGeneratedImage::query()->create([
+            'mode' => AiGeneratedImage::MODE_CREATE,
             'prompt' => $prompt,
             'original_image_path' => $originalPath,
             'webp_image_path' => $webpPath,
@@ -73,6 +74,7 @@ class AiImageGenerationService
 
     public function deleteRecord(AiGeneratedImage $image): void
     {
+        $this->images->delete($image->source_image_path);
         $this->images->delete($image->original_image_path);
         $this->images->delete($image->webp_image_path);
         $image->delete();

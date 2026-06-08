@@ -1,29 +1,30 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Image creation')
+@section('heading', 'AI Image')
 
 @section('content')
   <div class="admin-toolbar">
     <p class="admin-toolbar-lede">
-      Choose an AI model to generate images. Each model has its own workspace, prompt history, and gallery.
+      Generate new images from prompts or edit existing photos with AI. Each workflow has its own history and gallery.
     </p>
   </div>
 
   <div class="ic-model-grid">
-    @foreach ($models as $model)
-      @if ($model['available'])
-        <a href="{{ $model['route'] }}" class="admin-card ic-model-card">
+    @foreach ($workflows as $workflow)
+      @if ($workflow['available'])
+        <a href="{{ $workflow['route'] }}" class="admin-card ic-model-card">
           <span class="ic-model-card__icon">
-            @include('admin.image_creation._model_icon')
+            <i class="fa {{ $workflow['icon'] }}" aria-hidden="true"></i>
           </span>
-          <span class="ic-model-card__name">{{ $model['name'] }}</span>
+          <span class="ic-model-card__name">{{ $workflow['name'] }}</span>
+          <span class="ic-model-card__desc">{{ $workflow['description'] }}</span>
         </a>
       @else
         <div class="admin-card ic-model-card ic-model-card--soon" aria-disabled="true">
           <span class="ic-model-card__icon">
-            @include('admin.image_creation._model_icon')
+            <i class="fa {{ $workflow['icon'] }}" aria-hidden="true"></i>
           </span>
-          <span class="ic-model-card__name">{{ $model['name'] }}</span>
+          <span class="ic-model-card__name">{{ $workflow['name'] }}</span>
           <span class="ic-model-card__badge">Coming soon</span>
         </div>
       @endif
