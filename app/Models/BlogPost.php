@@ -94,7 +94,15 @@ class BlogPost extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->featured_image_path);
+        $url = Storage::disk('public')->url($this->featured_image_path);
+        $absolute = Storage::disk('public')->path($this->featured_image_path);
+        if (is_file($absolute)) {
+            $url .= (str_contains($url, '?') ? '&' : '?').'v='.filemtime($absolute);
+        } elseif ($this->updated_at !== null) {
+            $url .= (str_contains($url, '?') ? '&' : '?').'v='.$this->updated_at->getTimestamp();
+        }
+
+        return $url;
     }
 
     public function readTimeMinutes(): int

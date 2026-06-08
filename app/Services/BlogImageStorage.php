@@ -15,13 +15,11 @@ class BlogImageStorage
 
     public function storeFeatured(UploadedFile $file, int $postId, ?array $crop = null): string
     {
-        $relative = $this->webpStorage->store($file, $postId, 'blog-featured', 'featured');
-
-        if ($crop) {
-            $this->applyCrop($relative, $crop);
+        if ($crop !== null) {
+            $file = $this->cropUploadedRaster($file, $crop);
         }
 
-        return $relative;
+        return $this->webpStorage->store($file, $postId, 'blog-featured');
     }
 
     /**
@@ -61,7 +59,7 @@ class BlogImageStorage
 
             $upload = new UploadedFile($tmpPath, 'featured.'.$ext, $mime, null, true);
 
-            return $this->webpStorage->store($upload, $postId, 'blog-featured', 'featured');
+            return $this->webpStorage->store($upload, $postId, 'blog-featured');
         } finally {
             @unlink($tmpPath);
         }
@@ -113,6 +111,7 @@ class BlogImageStorage
             (int) $crop['height']
         );
         $this->webpStorage->recompressWebpAtPath($absolute);
+        $this->webpStorage->syncPublicMirror($relativePath);
     }
 
     /**
@@ -180,9 +179,98 @@ class BlogImageStorage
 
     public function delete(string $relativePath): void
     {
-        if (filled($relativePath)) {
-            Storage::disk('public')->delete($relativePath);
+        if (! filled($relativePath)) {
+            return;
         }
+
+        Storage::disk('public')->delete($relativePath);
+
+        $mirror = public_path('storage/'.ltrim(str_replace('\\', '/', $relativePath), '/'));
+        if (is_file($mirror)) {
+            @unlink($mirror);
+        }
+    }
+
+    /**
+     * Crop an uploaded raster (JPEG/PNG/WebP) before WebP conversion.
+     * Coordinates match Cropper.js getData(true) — natural image pixels.
+     */
+    private function cropUploadedRaster(UploadedFile $file, array $crop): UploadedFile
+    {
+        if (! function_exists('imagecreatefromstring') || ! function_exists('imagecrop')) {
+            return $file;
+        }
+
+        $path = $file->getRealPath();
+        if ($path === false) {
+            return $file;
+        }
+
+        $bytes = file_get_contents($path);
+        if ($bytes === false || $bytes === '') {
+            return $file;
+        }
+
+        $image = @imagecreatefromstring($bytes);
+        if ($image === false) {
+            return $file;
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $x = max(0, min($width - 1, (int) $crop['x']));
+        $y = max(0, min($height - 1, (int) $crop['y']));
+        $cropWidth = max(1, min($width - $x, (int) $crop['width']));
+        $cropHeight = max(1, min($height - $y, (int) $crop['height']));
+
+        $cropped = imagecrop($image, [
+            'x' => $x,
+            'y' => $y,
+            'width' => $cropWidth,
+            'height' => $cropHeight,
+        ]);
+        imagedestroy($image);
+
+        if ($cropped === false) {
+            return $file;
+        }
+
+        $mime = strtolower((string) $file->getMimeType());
+        $ext = match (true) {
+            str_contains($mime, 'png') => 'png',
+            str_contains($mime, 'webp') => 'webp',
+            default => 'jpg',
+        };
+
+        $tmpBase = tempnam(sys_get_temp_dir(), 'blog-crop-');
+        if ($tmpBase === false) {
+            imagedestroy($cropped);
+
+            return $file;
+        }
+
+        $tmpPath = $tmpBase.'.'.$ext;
+        if (! @rename($tmpBase, $tmpPath)) {
+            @unlink($tmpBase);
+            imagedestroy($cropped);
+
+            return $file;
+        }
+
+        $written = match ($ext) {
+            'png' => function_exists('imagepng') && imagepng($cropped, $tmpPath, 6),
+            'webp' => function_exists('imagewebp') && imagewebp($cropped, $tmpPath, 92),
+            default => imagejpeg($cropped, $tmpPath, 92),
+        };
+        imagedestroy($cropped);
+
+        if (! $written) {
+            @unlink($tmpPath);
+
+            return $file;
+        }
+
+        return new UploadedFile($tmpPath, 'featured-cropped.'.$ext, $mime, null, true);
     }
 
     public function publicUrl(?string $relativePath): ?string

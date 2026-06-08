@@ -49,6 +49,7 @@
         <div class="blog-admin-crop-wrap" id="bp-crop-wrap" hidden>
           <img id="bp-crop-image" alt="Crop preview">
         </div>
+        <input type="hidden" name="featured_crop_applies" id="bp-featured-crop-applies" value="0">
         <input type="hidden" name="crop_x" id="bp-crop-x">
         <input type="hidden" name="crop_y" id="bp-crop-y">
         <input type="hidden" name="crop_width" id="bp-crop-w">
@@ -234,10 +235,25 @@
       var cropImg = document.getElementById('bp-crop-image');
       var cropper = null;
 
+      var cropAppliesInput = document.getElementById('bp-featured-crop-applies');
+      var pendingFeaturedInput = document.getElementById('bp-pending-featured-path');
+
+      function clearFeaturedCropFields() {
+        if (cropAppliesInput) cropAppliesInput.value = '0';
+        ['bp-crop-x', 'bp-crop-y', 'bp-crop-w', 'bp-crop-h'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
+
       if (fileInput && cropImg) {
         fileInput.addEventListener('change', function () {
           var file = fileInput.files && fileInput.files[0];
-          if (!file) return;
+          if (!file) {
+            clearFeaturedCropFields();
+            return;
+          }
+          if (pendingFeaturedInput) pendingFeaturedInput.value = '';
           var url = URL.createObjectURL(file);
           cropImg.src = url;
           cropWrap.hidden = false;
@@ -247,12 +263,15 @@
       }
 
       document.getElementById('blog-post-form').addEventListener('submit', function () {
-        if (cropper) {
+        clearFeaturedCropFields();
+        var hasNewFile = fileInput && fileInput.files && fileInput.files.length > 0;
+        if (cropper && hasNewFile) {
           var d = cropper.getData(true);
           document.getElementById('bp-crop-x').value = Math.round(d.x);
           document.getElementById('bp-crop-y').value = Math.round(d.y);
           document.getElementById('bp-crop-w').value = Math.round(d.width);
           document.getElementById('bp-crop-h').value = Math.round(d.height);
+          if (cropAppliesInput) cropAppliesInput.value = '1';
         }
         if (typeof tinymce !== 'undefined') tinymce.triggerSave();
       });

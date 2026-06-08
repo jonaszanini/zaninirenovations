@@ -173,6 +173,11 @@ class ProjectPhotoWebpStorage
      * Shared hosting fallback when symlink() is disabled:
      * keep a mirrored copy under public/storage so /storage/* URLs resolve.
      */
+    public function syncPublicMirror(string $relativePath): void
+    {
+        $this->syncPublicStorageFallback($relativePath);
+    }
+
     private function syncPublicStorageFallback(string $relativePath): void
     {
         $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');

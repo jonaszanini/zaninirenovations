@@ -248,7 +248,11 @@ class BlogPostController extends Controller
         }
 
         if (! $request->hasFile('featured_image')) {
-            if ($request->filled(['crop_x', 'crop_y', 'crop_width', 'crop_height']) && $post->featured_image_path) {
+            if (
+                $request->boolean('featured_crop_applies')
+                && $request->filled(['crop_x', 'crop_y', 'crop_width', 'crop_height'])
+                && $post->featured_image_path
+            ) {
                 $images->applyCrop($post->featured_image_path, [
                     'x' => (int) $request->input('crop_x'),
                     'y' => (int) $request->input('crop_y'),
