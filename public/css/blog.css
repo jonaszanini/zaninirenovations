@@ -20,6 +20,15 @@
   margin-bottom: 0.5rem;
 }
 
+.related-post ul li a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.related-post ul li a:hover {
+  text-decoration: underline;
+}
+
 .blog-post-body pre,
 .blog-post-body code {
   white-space: pre-wrap;

@@ -1967,7 +1967,8 @@ a.ic-model-card:hover {
   color: var(--admin-primary);
 }
 
-.ic-model-card__banana {
+.ic-model-card__banana,
+.ic-model-card__glyph {
   width: 28px;
   height: 28px;
   display: block;

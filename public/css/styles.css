@@ -5459,9 +5459,12 @@ img.centered {
   -webkit-transition: 0.3s 0.3s ease-in-out;
   transition: 0.3s 0.3s ease-in-out;
   color: #3a4856;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .related-post ul li a:hover {
   color: #024768;
+  text-decoration: underline;
 }
 
 ul.pagination li a {

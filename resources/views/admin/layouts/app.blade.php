@@ -191,15 +191,9 @@
                 </a>
               </li>
               <li>
-                <a href="{{ route('admin.utilities.index') }}" class="{{ request()->routeIs('admin.utilities.index') || request()->routeIs('admin.utilities.pillar-spindle*') ? 'is-active' : '' }}">
+                <a href="{{ route('admin.utilities.index') }}" class="{{ request()->routeIs('admin.utilities.*') ? 'is-active' : '' }}">
                   <i class="fa fa-wrench"></i>
                   Utilities
-                </a>
-              </li>
-              <li>
-                <a href="{{ route('admin.utilities.measurement-conversion') }}" class="{{ request()->routeIs('admin.utilities.measurement-conversion*') ? 'is-active' : '' }}">
-                  <i class="fa fa-exchange"></i>
-                  Measurement Conversion
                 </a>
               </li>
             </ul>

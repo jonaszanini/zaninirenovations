@@ -5611,9 +5611,12 @@ img.centered {
         position: relative;
         @include transition(0.3s);
         color: $default-font-color;
+        text-decoration: underline;
+        text-underline-offset: 2px;
 
         &:hover {
           color: $primary-color;
+          text-decoration: underline;
         }
       }
     }

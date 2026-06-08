@@ -1,90 +1,5 @@
 /* Zanini Renovations — Utilities (tools landing + Pillar & Spindle calc) */
 
-/* ── Tools landing grid ─────────────────────────────────────────────── */
-.util-tools-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-.util-tool-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.25rem;
-  text-decoration: none;
-  color: var(--admin-text);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-  position: relative;
-}
-
-a.util-tool-card:hover {
-  border-color: var(--admin-primary);
-  box-shadow: var(--admin-shadow-md);
-  transform: translateY(-2px);
-}
-
-.util-tool-card__icon {
-  flex-shrink: 0;
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: var(--admin-primary-soft);
-  color: var(--admin-primary);
-  font-size: 1.2rem;
-}
-
-.util-tool-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  flex: 1;
-}
-
-.util-tool-card__name {
-  font-weight: 700;
-  font-size: 1.02rem;
-  color: var(--admin-primary);
-}
-
-.util-tool-card__desc {
-  color: var(--admin-muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.util-tool-card__cta {
-  flex-shrink: 0;
-  color: var(--admin-muted);
-  align-self: center;
-  transition: transform 0.15s, color 0.15s;
-}
-
-a.util-tool-card:hover .util-tool-card__cta {
-  color: var(--admin-primary);
-  transform: translateX(3px);
-}
-
-.util-tool-card--soon {
-  opacity: 0.7;
-}
-
-.util-tool-card__badge {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background: var(--admin-surface-hover);
-  color: var(--admin-muted);
-}
-
 /* ── Calculator layout ──────────────────────────────────────────────── */
 
 /* The HTML `hidden` attribute must always win, even on elements this
@@ -601,6 +516,31 @@ a.util-tool-card:hover .util-tool-card__cta {
   margin: 0;
 }
 
+.util-mc-project-bar__row .admin-form-group {
+  margin-bottom: 0;
+}
+
+.util-mc-project-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.util-mc-action-btn {
+  min-height: 44px;
+  height: 44px;
+  padding-top: 0;
+  padding-bottom: 0;
+  white-space: nowrap;
+}
+
+.util-mc-label-spacer {
+  visibility: hidden;
+  user-select: none;
+}
+
 .util-mc-new-project {
   margin-top: 1rem;
   padding-top: 1rem;
@@ -696,12 +636,13 @@ a.util-tool-card:hover .util-tool-card__cta {
   align-items: end;
 }
 
-.util-mc-add-cell {
-  margin: 0;
+.util-mc-input-grid .admin-form-group {
+  margin-bottom: 0;
 }
 
-.util-mc-add-btn {
-  white-space: nowrap;
+.util-mc-add-cell {
+  margin: 0;
+  min-width: 10.5rem;
 }
 
 .util-mc-input-hint {
@@ -850,9 +791,10 @@ a.util-tool-card:hover .util-tool-card__cta {
 
   .util-mc-add-cell {
     grid-column: 1 / -1;
+    min-width: 0;
   }
 
-  .util-mc-add-btn {
+  .util-mc-add-cell .util-mc-action-btn {
     width: 100%;
     justify-content: center;
   }
@@ -867,8 +809,12 @@ a.util-tool-card:hover .util-tool-card__cta {
     grid-template-columns: 1fr;
   }
 
-  .util-mc-project-bar__row .admin-btn--danger {
+  .util-mc-project-bar__actions {
     width: 100%;
+  }
+
+  .util-mc-project-bar__actions .util-mc-action-btn {
+    flex: 1 1 auto;
     justify-content: center;
   }
 }

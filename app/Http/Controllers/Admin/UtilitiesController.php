@@ -18,16 +18,14 @@ class UtilitiesController extends Controller
     {
         $tools = [
             [
-                'name' => 'Pillar & Spindle Layout Calculator',
-                'description' => 'Work out how many pillars or spindles you need, the exact spacing between them, and preview the layout before you build.',
-                'icon' => 'fa-arrows-h',
+                'name' => 'Pillar & Spindle',
+                'icon' => 'pillar_spindle',
                 'route' => route('admin.utilities.pillar-spindle'),
                 'available' => true,
             ],
             [
                 'name' => 'Measurement Conversion',
-                'description' => 'Convert lengths between metric and imperial formats, organised by job-site project with optional links to real client projects.',
-                'icon' => 'fa-exchange',
+                'icon' => 'measurement',
                 'route' => route('admin.utilities.measurement-conversion'),
                 'available' => true,
             ],

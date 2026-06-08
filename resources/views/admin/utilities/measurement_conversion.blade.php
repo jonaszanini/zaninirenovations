@@ -41,12 +41,14 @@
             <option value="">— Select a project —</option>
           </select>
         </div>
-        <button type="button" class="admin-btn admin-btn--ghost" data-mc-new-project-toggle>
-          <i class="fa fa-plus"></i> New project
-        </button>
-        <button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-mc-delete-project hidden>
-          <i class="fa fa-trash"></i> Delete project
-        </button>
+        <div class="util-mc-project-bar__actions">
+          <button type="button" class="admin-btn admin-btn--ghost util-mc-action-btn" data-mc-new-project-toggle>
+            <i class="fa fa-plus"></i> New project
+          </button>
+          <button type="button" class="admin-btn admin-btn--danger util-mc-action-btn" data-mc-delete-project hidden>
+            <i class="fa fa-trash"></i> Delete project
+          </button>
+        </div>
       </div>
 
       <div class="util-mc-new-project" data-mc-new-project hidden>
@@ -115,8 +117,8 @@
             <input type="text" id="mc-label" maxlength="120" placeholder="e.g. Post height" data-mc-label>
           </div>
           <div class="admin-form-group util-mc-add-cell">
-            <label class="util-sr-only">Add</label>
-            <button type="button" class="admin-btn admin-btn--primary util-mc-add-btn" data-mc-add>
+            <label class="util-mc-label-spacer" aria-hidden="true">Add</label>
+            <button type="button" class="admin-btn admin-btn--primary util-mc-action-btn" data-mc-add>
               <i class="fa fa-plus"></i> Add to project
             </button>
           </div>
