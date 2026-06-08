@@ -195,6 +195,13 @@
       var bpWordWrapKey = 'bp-editor-word-wrap';
 
       function bpApplyWordWrap(editor, enabled) {
+        if (!editor.getBody) return;
+        var body = editor.getBody();
+        if (!body) return;
+
+        body.classList.toggle('bp-wrap-on', !!enabled);
+        body.classList.toggle('bp-wrap-off', !enabled);
+
         var doc = editor.getDoc();
         if (!doc || !doc.head) return;
         var style = doc.getElementById('bp-word-wrap-style');
@@ -203,20 +210,28 @@
           style.id = 'bp-word-wrap-style';
           doc.head.appendChild(style);
         }
-        style.textContent = enabled
-          ? 'body { overflow-wrap: break-word; } pre, code { white-space: pre-wrap !important; overflow-wrap: anywhere; word-break: break-word; }'
-          : 'body { overflow-wrap: normal; } pre, code { white-space: pre !important; overflow-wrap: normal; word-break: normal; }';
+        style.textContent = [
+          'body.bp-wrap-on, body.bp-wrap-on p, body.bp-wrap-on div, body.bp-wrap-on li,',
+          'body.bp-wrap-on td, body.bp-wrap-on th, body.bp-wrap-on span {',
+          '  overflow-wrap: anywhere !important;',
+          '  word-break: break-word !important;',
+          '  white-space: normal !important;',
+          '}',
+          'body.bp-wrap-on pre, body.bp-wrap-on code {',
+          '  white-space: pre-wrap !important;',
+          '  overflow-wrap: anywhere !important;',
+          '  word-break: break-word !important;',
+          '}',
+          'body.bp-wrap-off pre, body.bp-wrap-off code {',
+          '  white-space: pre !important;',
+          '  overflow-wrap: normal !important;',
+          '  word-break: normal !important;',
+          '}',
+        ].join('\n');
+
         try {
           localStorage.setItem(bpWordWrapKey, enabled ? '1' : '0');
         } catch (e) { /* ignore */ }
-      }
-
-      function bpWordWrapDefault() {
-        try {
-          return localStorage.getItem(bpWordWrapKey) !== '0';
-        } catch (e) {
-          return true;
-        }
       }
 
       tinymce.init({
@@ -251,15 +266,21 @@
               .catch(function () { reject('Upload failed'); });
           });
         },
-        content_style: 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; line-height: 1.55; } img { max-width: 100%; height: auto; }',
+        content_style: 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; line-height: 1.55; overflow-wrap: break-word; word-break: break-word; } pre, code { white-space: pre-wrap; overflow-wrap: anywhere; } img { max-width: 100%; height: auto; }',
         setup: function (editor) {
-          var wrapEnabled = bpWordWrapDefault();
+          var wrapEnabled = true;
+          try {
+            wrapEnabled = localStorage.getItem(bpWordWrapKey) !== '0';
+          } catch (e) { /* ignore */ }
+
+          editor.ui.registry.addIcon('bpwordwrap', '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M4 19h6v-2H4v2zm16-14H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3 3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"/></svg>');
 
           editor.ui.registry.addToggleButton('bpwordwrap', {
-            text: 'Wrap',
-            tooltip: 'Toggle word wrap (helps with Preformatted blocks)',
+            icon: 'bpwordwrap',
+            tooltip: 'Word wrap',
             onAction: function (api) {
-              wrapEnabled = api.isActive();
+              wrapEnabled = !wrapEnabled;
+              api.setActive(wrapEnabled);
               bpApplyWordWrap(editor, wrapEnabled);
             },
             onSetup: function (api) {
@@ -269,6 +290,10 @@
           });
 
           editor.on('init', function () {
+            bpApplyWordWrap(editor, wrapEnabled);
+          });
+
+          editor.on('SetContent Undo Redo', function () {
             bpApplyWordWrap(editor, wrapEnabled);
           });
 
