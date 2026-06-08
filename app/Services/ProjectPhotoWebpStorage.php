@@ -27,7 +27,13 @@ class ProjectPhotoWebpStorage
             return;
         }
 
-        $optimized = $this->fitWebpBudget($bytes);
+        try {
+            $reencoded = $this->reencodeWebpFromPath($absolutePath);
+        } catch (RuntimeException) {
+            $reencoded = $bytes;
+        }
+
+        $optimized = $this->fitWebpBudget($reencoded);
         if ($optimized !== $bytes) {
             file_put_contents($absolutePath, $optimized);
         }

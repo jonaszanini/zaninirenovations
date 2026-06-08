@@ -11,6 +11,9 @@
 @push('head-assets')
 <link rel="preload" as="image" href="{{ url('images/home_1_slider_1.webp') }}" fetchpriority="high">
 <style>
+  /* Owl hides .owl-carousel until JS runs — show first slide immediately for LCP */
+  #slider_1.owl-carousel { display: block; }
+  #slider_1.owl-carousel:not(.owl-loaded) > .slider_item_container:not(:first-child) { display: none; }
   #slider_1 .slider_item_container { position: relative; min-height: 320px; }
   @media (min-width: 992px) { #slider_1 .slider_item_container { min-height: 520px; } }
   @media (min-width: 1371px) { #slider_1 .slider_item_container { min-height: 800px; } }
