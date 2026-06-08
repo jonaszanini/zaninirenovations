@@ -31,31 +31,52 @@ class BlogImageStorage
     }
 
     /**
-     * Store AI generated raster bytes for the Tools image creation gallery.
+     * Store the full-resolution AI tool image exactly as returned by Gemini.
      */
-    public function storeAiToolImageFromBinary(string $bytes, string $mime): string
-    {
-        return $this->storeGeneratedBinary($bytes, $mime, 'ai-tool-images', 0);
-    }
-
-    /**
-     * Shared Gemini image pipeline: normalize to 16:9, convert to WebP, store on public disk.
-     */
-    private function storeGeneratedBinary(string $bytes, string $mime, string $storageFolder, int $folderId): string
+    public function storeAiToolOriginalFromBinary(string $bytes, string $mime): string
     {
         if ($bytes === '') {
             throw new RuntimeException('Generated image is empty.');
         }
 
-        $bytes = $this->normalizeAiFeaturedTo16x9($bytes);
+        $ext = $this->extensionForMime($mime);
+        $leaf = \Illuminate\Support\Str::uuid()->toString();
+        $relativePath = 'ai-tool-images/originals/'.$leaf.'.'.$ext;
+
+        Storage::disk('public')->put($relativePath, $bytes);
+        $this->webpStorage->syncPublicMirror($relativePath);
+
+        return $relativePath;
+    }
+
+    /**
+     * Store a compressed WebP copy for gallery preview and optimized download.
+     */
+    public function storeAiToolWebpFromBinary(string $bytes, string $mime): string
+    {
+        return $this->storeGeneratedBinary($bytes, $mime, 'ai-tool-images', 0, normalizeTo16x9: false);
+    }
+
+    /**
+     * Shared Gemini image pipeline: optional 16:9 crop, convert to WebP, store on public disk.
+     */
+    private function storeGeneratedBinary(
+        string $bytes,
+        string $mime,
+        string $storageFolder,
+        int $folderId,
+        bool $normalizeTo16x9 = true,
+    ): string {
+        if ($bytes === '') {
+            throw new RuntimeException('Generated image is empty.');
+        }
+
+        if ($normalizeTo16x9) {
+            $bytes = $this->normalizeAiFeaturedTo16x9($bytes);
+        }
         $mime = 'image/jpeg';
 
-        $ext = 'jpg';
-        if (str_contains(strtolower($mime), 'png')) {
-            $ext = 'png';
-        } elseif (str_contains(strtolower($mime), 'webp')) {
-            $ext = 'webp';
-        }
+        $ext = $this->extensionForMime($mime);
 
         $tmpBase = tempnam(sys_get_temp_dir(), 'blog-ai-');
         if ($tmpBase === false) {
@@ -193,7 +214,7 @@ class BlogImageStorage
         return ($ok && is_string($jpeg) && $jpeg !== '') ? $jpeg : $bytes;
     }
 
-    public function delete(string $relativePath): void
+    public function delete(?string $relativePath): void
     {
         if (! filled($relativePath)) {
             return;
@@ -205,6 +226,17 @@ class BlogImageStorage
         if (is_file($mirror)) {
             @unlink($mirror);
         }
+    }
+
+    private function extensionForMime(string $mime): string
+    {
+        $mime = strtolower($mime);
+
+        return match (true) {
+            str_contains($mime, 'png') => 'png',
+            str_contains($mime, 'webp') => 'webp',
+            default => 'jpg',
+        };
     }
 
     /**

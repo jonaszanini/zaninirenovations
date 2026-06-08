@@ -105,7 +105,7 @@ class GeminiService
      *
      * @throws RuntimeException
      */
-    public function generateImage(string $prompt): array
+    public function generateImage(string $prompt, string $aspectRatio = '16:9', string $imageSize = '1K'): array
     {
         $prompt = trim($prompt);
         if ($prompt === '') {
@@ -137,8 +137,8 @@ class GeminiService
                 'generationConfig' => [
                     'responseModalities' => ['IMAGE'],
                     'imageConfig' => [
-                        'aspectRatio' => '16:9',
-                        'imageSize' => '1K',
+                        'aspectRatio' => $aspectRatio,
+                        'imageSize' => $imageSize,
                     ],
                 ],
             ]);
