@@ -443,6 +443,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('image-creation.generate');
     Route::post('image-creation/modify', [\App\Http\Controllers\Admin\ImageCreationController::class, 'modifyImage'])
         ->name('image-creation.modify.store');
+    Route::post('image-creation/improve-prompt', [\App\Http\Controllers\Admin\ImageCreationController::class, 'improvePrompt'])
+        ->name('image-creation.improve-prompt');
     Route::get('image-creation/{ai_generated_image}/download/{format}', [\App\Http\Controllers\Admin\ImageCreationController::class, 'download'])
         ->where('format', 'original|webp')
         ->name('image-creation.download');

@@ -40,7 +40,7 @@ class GooglePhotosService
         return rtrim((string) config('app.url'), '/').'/admin/google-photos/callback';
     }
 
-    public function buildAuthorizeUrl(User $user): string
+    public function buildAuthorizeUrl(User $user, ?string $returnUrl = null): string
     {
         $clientId = (string) Config::get('google_photos.client_id', '');
         if ($clientId === '') {
@@ -51,6 +51,7 @@ class GooglePhotosService
         session([
             'google_photos_oauth_state' => $state,
             'google_photos_oauth_user_id' => (int) $user->id,
+            'google_photos_oauth_return_url' => $returnUrl,
         ]);
 
         $query = http_build_query([
@@ -71,7 +72,10 @@ class GooglePhotosService
     {
         $expected = (string) session('google_photos_oauth_state', '');
         $expectedUserId = (int) session('google_photos_oauth_user_id', 0);
-        session()->forget(['google_photos_oauth_state', 'google_photos_oauth_user_id']);
+        session()->forget([
+            'google_photos_oauth_state',
+            'google_photos_oauth_user_id',
+        ]);
 
         if ($expected === '' || ! hash_equals($expected, $state) || $expectedUserId !== $userId) {
             throw new RuntimeException('Invalid OAuth state. Please try connecting again.');
@@ -156,7 +160,21 @@ class GooglePhotosService
 
         $payload = json_decode((string) $response->getBody(), true);
         if (! is_array($payload) || empty($payload['access_token'])) {
-            throw new RuntimeException('Google token refresh failed: '.((string) $response->getBody()));
+            $oauthError = is_array($payload) ? (string) ($payload['error'] ?? '') : '';
+
+            if ($oauthError === 'invalid_grant') {
+                $token->delete();
+
+                throw new GooglePhotosReconnectRequiredException(
+                    'Your Google Photos connection expired or was revoked. Click Disconnect, then Connect Google Photos again.'
+                );
+            }
+
+            report(new RuntimeException('Google token refresh failed: '.((string) $response->getBody())));
+
+            throw new RuntimeException(
+                'Could not refresh Google Photos access. Try disconnecting and connecting Google Photos again.'
+            );
         }
 
         $token->access_token = (string) $payload['access_token'];

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AiGeneratedImage;
 use App\Services\AiImageGenerationService;
 use App\Services\AiImageModificationService;
+use App\Services\AiImagePromptImprovementService;
 use App\Support\GooglePickerItems;
 use App\Support\NanoBananaOptions;
 use Illuminate\Http\JsonResponse;
@@ -144,6 +145,27 @@ class ImageCreationController extends Controller
                 'images' => array_map(fn (AiGeneratedImage $image) => $this->imagePayload($image), $result['images']),
                 'failures' => $result['failures'],
                 'summary' => $result['summary'],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
+        }
+    }
+
+    public function improvePrompt(Request $request, AiImagePromptImprovementService $improver): JsonResponse
+    {
+        $data = $request->validate([
+            'prompt' => ['required', 'string', 'max:2000'],
+        ]);
+
+        try {
+            $result = $improver->improve($data['prompt']);
+
+            return response()->json([
+                'prompt' => $result['optimized_prompt'],
+                'critique' => $result['critique'],
+                'why_better' => $result['why_better'],
             ]);
         } catch (\Throwable $e) {
             return response()->json([

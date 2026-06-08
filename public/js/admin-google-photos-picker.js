@@ -8,6 +8,34 @@
     return Math.round(n * 1000);
   }
 
+  function PickerReconnectError(message) {
+    this.name = 'PickerReconnectError';
+    this.message = message || 'Your Google Photos connection expired. Reload the page, then connect again.';
+  }
+  PickerReconnectError.prototype = Object.create(Error.prototype);
+  PickerReconnectError.prototype.constructor = PickerReconnectError;
+
+  function throwPickerApiError(res, data, fallback) {
+    if (data && data.reconnect_required) {
+      var err = new PickerReconnectError(data.error);
+      err.reconnectRequired = true;
+      throw err;
+    }
+    throw new Error((data && data.error) ? data.error : (fallback + (res && res.status ? ' (HTTP ' + res.status + ').' : '.')));
+  }
+
+  function handlePickerFailure(e, popup) {
+    if (popup && !popup.closed) {
+      try { popup.close(); } catch (ignore) {}
+    }
+    if (e && e.reconnectRequired) {
+      alert(e.message);
+      window.location.reload();
+      return;
+    }
+    alert(e && e.message ? e.message : 'Could not open Google Photos Picker.');
+  }
+
   function pickerThumbUrl(baseUrl) {
     if (!baseUrl || typeof baseUrl !== 'string') return '';
     var t = baseUrl.trim();
@@ -152,7 +180,9 @@
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       });
       var data = await res.json().catch(function () { return null; });
-      if (!res.ok || !data || data.error) throw new Error((data && data.error) ? data.error : 'Could not read picked media.');
+      if (!res.ok || !data || data.error) {
+        throwPickerApiError(res, data, 'Could not read picked media');
+      }
       return data;
     }
 
@@ -178,7 +208,7 @@
       });
       var data = await res.json().catch(function () { return null; });
       if (!res.ok || !data || data.error) {
-        throw new Error((data && data.error) ? data.error : ('Could not open Google Photos picker (HTTP ' + res.status + ').'));
+        throwPickerApiError(res, data, 'Could not open Google Photos picker');
       }
       var pickerUrl = data.pickerUriAutoclose || data.pickerUri;
       var sessionId = data.id;
@@ -249,7 +279,7 @@
         await openPicker(popup, allowedSlots);
       } catch (e) {
         status.textContent = '';
-        alert(e && e.message ? e.message : 'Could not open Google Photos Picker.');
+        handlePickerFailure(e, popup);
       } finally {
         btnOpen.disabled = false;
         refreshStatus();

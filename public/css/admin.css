@@ -2213,6 +2213,10 @@ a.ic-model-card:hover {
   margin-top: 0.25rem;
 }
 
+.aim-prompt-group {
+  margin-top: 1.75rem;
+}
+
 .nb2-loading {
   display: inline-flex;
   align-items: center;

@@ -10,6 +10,8 @@ class AiInstruction extends Model
 
     public const KEY_BLOG_POST = 'blog_post';
 
+    public const KEY_IMAGE_MODIFY_PROMPT = 'image_modify_prompt';
+
     protected $fillable = [
         'key',
         'name',

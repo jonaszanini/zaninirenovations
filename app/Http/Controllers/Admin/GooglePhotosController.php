@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\GooglePhotosReconnectRequiredException;
 use App\Services\GooglePhotosService;
 use Illuminate\Http\Request;
 use Throwable;
 
 class GooglePhotosController extends Controller
 {
-    public function connect(GooglePhotosService $photos)
+    public function connect(Request $request, GooglePhotosService $photos)
     {
         try {
-            $url = $photos->buildAuthorizeUrl(request()->user());
+            $url = $photos->buildAuthorizeUrl(
+                $request->user(),
+                $this->sanitizeReturnUrl($request->query('return')),
+            );
 
             return redirect()->away($url);
         } catch (Throwable $e) {
@@ -31,6 +35,8 @@ class GooglePhotosController extends Controller
             'code' => ['required', 'string'],
         ]);
 
+        $returnUrl = $this->sanitizeReturnUrl(session('google_photos_oauth_return_url'));
+
         try {
             $photos->exchangeCodeForTokens(
                 (string) $request->string('code'),
@@ -38,14 +44,17 @@ class GooglePhotosController extends Controller
                 (int) $request->user()->id,
             );
 
+            session()->forget('google_photos_oauth_return_url');
+
             return redirect()
-                ->route('admin.portfolio.index')
+                ->to($returnUrl ?: route('admin.portfolio.index'))
                 ->with('success', 'Google Photos connected.');
         } catch (Throwable $e) {
             report($e);
+            session()->forget('google_photos_oauth_return_url');
 
             return redirect()
-                ->route('admin.portfolio.index')
+                ->to($returnUrl ?: route('admin.portfolio.index'))
                 ->with('error', 'Google Photos connection failed: '.$e->getMessage());
         }
     }
@@ -77,6 +86,11 @@ class GooglePhotosController extends Controller
                 : $pickerUri.'/autoclose';
 
             return response()->json($session);
+        } catch (GooglePhotosReconnectRequiredException $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'reconnect_required' => true,
+            ], 401);
         } catch (Throwable $e) {
             report($e);
 
@@ -92,6 +106,11 @@ class GooglePhotosController extends Controller
             $session = $photos->getPickerSession($request->user(), $sessionId);
 
             return response()->json($session);
+        } catch (GooglePhotosReconnectRequiredException $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'reconnect_required' => true,
+            ], 401);
         } catch (Throwable $e) {
             report($e);
 
@@ -126,6 +145,11 @@ class GooglePhotosController extends Controller
                 'ready' => true,
                 'items' => $items,
             ]);
+        } catch (GooglePhotosReconnectRequiredException $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'reconnect_required' => true,
+            ], 401);
         } catch (Throwable $e) {
             report($e);
 
@@ -133,5 +157,21 @@ class GooglePhotosController extends Controller
                 'error' => $e->getMessage(),
             ], 422);
         }
+    }
+
+    /**
+     * @param  mixed  $return
+     */
+    private function sanitizeReturnUrl($return): ?string
+    {
+        if (! is_string($return) || $return === '') {
+            return null;
+        }
+
+        if (! str_starts_with($return, '/admin') || str_contains($return, '//')) {
+            return null;
+        }
+
+        return $return;
     }
 }

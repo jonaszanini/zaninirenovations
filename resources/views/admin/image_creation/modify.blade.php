@@ -28,7 +28,7 @@
       'fileErrors' => ['source_images', 'source_images.*'],
     ])
 
-    <div class="admin-form-group">
+    <div class="admin-form-group aim-prompt-group">
       <label for="aim-prompt">Edit instructions</label>
       <textarea id="aim-prompt" rows="5" maxlength="2000" class="admin-input" placeholder="Describe what to change, e.g. “Change the background to a modern backyard patio at sunset.”"></textarea>
     </div>
@@ -38,9 +38,13 @@
         <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
         <span>Apply changes</span>
       </button>
+      <button type="button" id="aim-improve-btn" class="admin-btn admin-btn--ghost admin-btn--lg">
+        <i class="fa fa-magic" aria-hidden="true"></i>
+        <span>Improve prompt</span>
+      </button>
       <div id="aim-loading" class="nb2-loading" hidden aria-live="polite">
         <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
-        <span>Editing with Gemini…</span>
+        <span id="aim-loading-text">Editing with Gemini…</span>
       </div>
     </div>
 
@@ -105,16 +109,19 @@
   <script>
     (function () {
       var modifyBtn = document.getElementById('aim-modify-btn');
+      var improveBtn = document.getElementById('aim-improve-btn');
       var fileInput = document.getElementById('aim-source-images');
       var googleRoot = document.querySelector('.admin-google-photos');
       var promptEl = document.getElementById('aim-prompt');
       var loadingEl = document.getElementById('aim-loading');
+      var loadingTextEl = document.getElementById('aim-loading-text');
       var statusEl = document.getElementById('aim-status');
       var gridEl = document.getElementById('aim-gallery-grid');
       var emptyEl = document.getElementById('aim-gallery-empty');
       var countEl = document.getElementById('aim-gallery-count');
       var cardTemplate = document.getElementById('aim-gallery-card-template');
       var modifyUrl = @json(route('admin.image-creation.modify.store'));
+      var improveUrl = @json(route('admin.image-creation.improve-prompt'));
       var csrfMeta = document.querySelector('meta[name="csrf-token"]');
       var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
       var galleryCount = {{ (int) $images->total() }};
@@ -126,9 +133,11 @@
         statusEl.classList.toggle('is-error', !!isError);
       }
 
-      function setLoading(active) {
+      function setLoading(active, message) {
         if (loadingEl) loadingEl.hidden = !active;
+        if (loadingTextEl && message) loadingTextEl.textContent = message;
         if (modifyBtn) modifyBtn.disabled = !!active;
+        if (improveBtn) improveBtn.disabled = !!active;
       }
 
       function updateGalleryCount() {
@@ -274,6 +283,55 @@
         });
       }
 
+      if (improveBtn) {
+        improveBtn.addEventListener('click', function () {
+          var prompt = promptEl ? promptEl.value.trim() : '';
+          if (!prompt) {
+            setStatus('Enter edit instructions first, then click Improve prompt.', true);
+            if (promptEl) promptEl.focus();
+            return;
+          }
+
+          setLoading(true, 'Improving prompt with Gemini…');
+          setStatus('', false);
+
+          fetch(improveUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ prompt: prompt }),
+          }).then(function (res) {
+            return res.json().then(function (body) {
+              if (!res.ok) {
+                throw new Error((body && body.error) ? body.error : ('HTTP ' + res.status));
+              }
+              return body;
+            });
+          }).then(function (body) {
+            if (promptEl && body.prompt) {
+              promptEl.value = body.prompt;
+              promptEl.focus();
+            }
+            var note = 'Prompt improved. Review the updated instructions, then apply changes when ready.';
+            if (body.why_better) {
+              var why = body.why_better;
+              if (why.length > 240) why = why.slice(0, 239) + '…';
+              note += ' ' + why;
+            }
+            setStatus(note, false);
+          }).catch(function (err) {
+            setStatus(err.message || 'Could not improve prompt.', true);
+          }).finally(function () {
+            setLoading(false, 'Editing with Gemini…');
+          });
+        });
+      }
+
       if (modifyBtn) {
         modifyBtn.addEventListener('click', function () {
           var prompt = promptEl ? promptEl.value.trim() : '';
@@ -307,7 +365,7 @@
             formData.append('google_picker_items[]', payload);
           });
 
-          setLoading(true);
+          setLoading(true, 'Editing with Gemini…');
           setStatus('Processing ' + total + ' photo' + (total === 1 ? '' : 's') + '…', false);
 
           fetch(modifyUrl, {
@@ -345,7 +403,7 @@
           }).catch(function (err) {
             setStatus(err.message || 'Image edit failed.', true);
           }).finally(function () {
-            setLoading(false);
+            setLoading(false, 'Editing with Gemini…');
           });
         });
       }

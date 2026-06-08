@@ -52,7 +52,7 @@
     @endif
   @else
     <p class="admin-form-hint admin-google-photos-panel__intro">
-      <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect') }}">Connect Google Photos</a>
+      <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect', ['return' => request()->getRequestUri()]) }}">Connect Google Photos</a>
       <span class="admin-google-photos-panel__connect-hint">Required to open Google Photos Picker.</span>
     </p>
   @endif
