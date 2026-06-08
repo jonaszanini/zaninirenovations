@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AiGeneratedImage;
 use App\Services\AiImageGenerationService;
 use App\Services\AiImageModificationService;
+use App\Support\GooglePickerItems;
 use App\Support\NanoBananaOptions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,8 @@ use InvalidArgumentException;
 
 class ImageCreationController extends Controller
 {
+    private const MAX_MODIFY_SOURCES = 15;
+
     public function index()
     {
         $workflows = [
@@ -71,6 +74,7 @@ class ImageCreationController extends Controller
         return view('admin.image_creation.modify', [
             'images' => $images,
             'inlineMaxMb' => $inlineMaxMb,
+            'maxSources' => self::MAX_MODIFY_SOURCES,
         ]);
     }
 
@@ -105,13 +109,42 @@ class ImageCreationController extends Controller
 
         $data = $request->validate([
             'prompt' => ['required', 'string', 'max:2000'],
-            'source_image' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
+            'source_images' => ['nullable', 'array', 'max:'.self::MAX_MODIFY_SOURCES],
+            'source_images.*' => ['file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
+            'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_MODIFY_SOURCES],
+            'google_picker_items.*' => ['string'],
         ]);
 
-        try {
-            $image = $modifier->modify($data['source_image'], $data['prompt']);
+        $uploads = array_values(array_filter(
+            (array) $request->file('source_images', []),
+            fn ($file) => $file instanceof \Illuminate\Http\UploadedFile,
+        ));
+        $googleItems = array_values(array_filter(
+            (array) ($data['google_picker_items'] ?? []),
+            fn ($item) => is_string($item) && $item !== '',
+        ));
 
-            return response()->json($this->imagePayload($image));
+        $sourceCount = count($uploads) + count(GooglePickerItems::parse($googleItems));
+        if ($sourceCount < 1) {
+            return response()->json(['error' => 'Choose at least one source photo (upload or Google Photos).'], 422);
+        }
+        if ($sourceCount > self::MAX_MODIFY_SOURCES) {
+            return response()->json(['error' => 'Too many photos selected (max '.self::MAX_MODIFY_SOURCES.').'], 422);
+        }
+
+        try {
+            $result = $modifier->modifyBatch(
+                $request->user(),
+                $data['prompt'],
+                $uploads,
+                $googleItems,
+            );
+
+            return response()->json([
+                'images' => array_map(fn (AiGeneratedImage $image) => $this->imagePayload($image), $result['images']),
+                'failures' => $result['failures'],
+                'summary' => $result['summary'],
+            ]);
         } catch (\Throwable $e) {
             return response()->json([
                 'error' => $e->getMessage(),

@@ -259,8 +259,12 @@ class GooglePhotosService
     /**
      * @return array{0:string,1:?string}
      */
-    public function downloadPickedMedia(User $user, string $baseUrl, ?string $mimeTypeHint = null): array
-    {
+    public function downloadPickedMedia(
+        User $user,
+        string $baseUrl,
+        ?string $mimeTypeHint = null,
+        bool $preferFullResolution = false,
+    ): array {
         $token = GooglePhotosToken::query()->where('user_id', $user->id)->first();
         if (! $token) {
             throw new RuntimeException('Google Photos is not connected.');
@@ -270,8 +274,12 @@ class GooglePhotosService
         $downloadUrl = $baseUrl;
         if (! str_contains($downloadUrl, '=')) {
             $isImage = is_string($mimeTypeHint) && str_starts_with(strtolower($mimeTypeHint), 'image/');
-            // Avoid downloading very large originals when we only keep a resized WebP copy.
-            $downloadUrl .= $isImage ? '=w2048-h2048' : '=d';
+            if ($preferFullResolution && $isImage) {
+                $downloadUrl .= '=d';
+            } else {
+                // Avoid downloading very large originals when we only keep a resized WebP copy.
+                $downloadUrl .= $isImage ? '=w2048-h2048' : '=d';
+            }
         }
 
         $tmp = tempnam(sys_get_temp_dir(), 'gpp_');

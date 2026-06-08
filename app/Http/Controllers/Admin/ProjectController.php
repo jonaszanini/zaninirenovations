@@ -11,6 +11,7 @@ use App\Services\GooglePhotosService;
 use App\Services\ProjectPhotoCropService;
 use App\Services\ProjectPhotoRotationService;
 use App\Services\ProjectPhotoWebpStorage;
+use App\Support\GooglePickerItems;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -481,22 +482,7 @@ class ProjectController extends Controller
             return;
         }
 
-        $items = [];
-        foreach ($rawItems as $raw) {
-            $decoded = json_decode($raw, true);
-            if (! is_array($decoded)) {
-                continue;
-            }
-            $baseUrl = isset($decoded['baseUrl']) ? trim((string) $decoded['baseUrl']) : '';
-            if ($baseUrl === '') {
-                continue;
-            }
-            $items[] = [
-                'baseUrl' => $baseUrl,
-                'mimeType' => isset($decoded['mimeType']) ? trim((string) $decoded['mimeType']) : null,
-            ];
-        }
-        $items = array_values(array_unique($items, SORT_REGULAR));
+        $items = GooglePickerItems::parse($rawItems);
         if ($items === []) {
             return;
         }

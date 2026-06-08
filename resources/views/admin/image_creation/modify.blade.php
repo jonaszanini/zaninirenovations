@@ -4,7 +4,7 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Upload a photo and describe what to change. Gemini returns a full-resolution edited image — saved as the original format (no WebP conversion).</p>
+    <p class="admin-toolbar-lede">Upload one or more photos (from your PC or Google Photos) and describe what to change. The same prompt is applied to every selected photo. Results are saved at full resolution (no WebP).</p>
     <a href="{{ route('admin.image-creation.index') }}" class="admin-btn admin-btn--ghost">
       <i class="fa fa-arrow-left"></i> AI Image
     </a>
@@ -12,24 +12,21 @@
 
   <div class="admin-card admin-card--wide nb2-prompt-card">
     <h2 class="nb2-card-title">Modify image</h2>
-    <p class="admin-form-help nb2-card-lede">JPEG, PNG, or WebP up to {{ (int) round($inlineMaxMb * 4) }}&nbsp;MB. Files up to {{ $inlineMaxMb }}&nbsp;MB are sent inline; larger uploads use the Gemini File API automatically.</p>
+    <p class="admin-form-help nb2-card-lede">JPEG, PNG, or WebP up to {{ (int) round($inlineMaxMb * 4) }}&nbsp;MB each. Files up to {{ $inlineMaxMb }}&nbsp;MB are sent inline to Gemini; larger uploads use the File API automatically.</p>
 
-    <div class="admin-form-group">
-      <label for="aim-source-image">Source photo</label>
-      <div class="aim-upload-zone" id="aim-upload-zone">
-        <input type="file" id="aim-source-image" class="aim-upload-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
-        <div class="aim-upload-placeholder" id="aim-upload-placeholder">
-          <i class="fa fa-cloud-upload" aria-hidden="true"></i>
-          <span>Click or drop a photo here</span>
-        </div>
-        <div class="aim-upload-preview" id="aim-upload-preview" hidden>
-          <img id="aim-preview-img" src="" alt="Source preview">
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="aim-clear-image">
-            <i class="fa fa-times"></i> Remove
-          </button>
-        </div>
-      </div>
-    </div>
+    @include('admin.partials.local_and_google_photos', [
+      'fileInputId' => 'aim-source-images',
+      'fileInputName' => 'source_images[]',
+      'fileLabel' => 'Source photos',
+      'fileHint' => 'Select one or more photos from your computer. The same edit prompt below will be applied to each photo you include (uploads and checked Google Photos).',
+      'maxTotal' => $maxSources,
+      'statusMode' => 'total',
+      'formSync' => false,
+      'googleFootText' => 'Combined total cannot exceed '.$maxSources.' (file uploads + picked Google photos).',
+      'showPreviewGrid' => true,
+      'previewGridId' => 'aim-local-preview-grid',
+      'fileErrors' => ['source_images', 'source_images.*'],
+    ])
 
     <div class="admin-form-group">
       <label for="aim-prompt">Edit instructions</label>
@@ -59,7 +56,7 @@
     @if ($images->isEmpty())
       <div class="admin-table-wrap" id="aim-gallery-empty">
         <div class="admin-empty">
-          <p>No edited images yet. Upload a photo, describe the changes, and click Apply changes.</p>
+          <p>No edited images yet. Choose source photos, describe the changes, and click Apply changes.</p>
         </div>
       </div>
     @endif
@@ -108,7 +105,8 @@
   <script>
     (function () {
       var modifyBtn = document.getElementById('aim-modify-btn');
-      var fileInput = document.getElementById('aim-source-image');
+      var fileInput = document.getElementById('aim-source-images');
+      var googleRoot = document.querySelector('.admin-google-photos');
       var promptEl = document.getElementById('aim-prompt');
       var loadingEl = document.getElementById('aim-loading');
       var statusEl = document.getElementById('aim-status');
@@ -116,15 +114,11 @@
       var emptyEl = document.getElementById('aim-gallery-empty');
       var countEl = document.getElementById('aim-gallery-count');
       var cardTemplate = document.getElementById('aim-gallery-card-template');
-      var uploadZone = document.getElementById('aim-upload-zone');
-      var uploadPlaceholder = document.getElementById('aim-upload-placeholder');
-      var uploadPreview = document.getElementById('aim-upload-preview');
-      var previewImg = document.getElementById('aim-preview-img');
-      var clearImageBtn = document.getElementById('aim-clear-image');
       var modifyUrl = @json(route('admin.image-creation.modify.store'));
       var csrfMeta = document.querySelector('meta[name="csrf-token"]');
       var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
       var galleryCount = {{ (int) $images->total() }};
+      var maxSources = {{ (int) $maxSources }};
 
       function setStatus(message, isError) {
         if (!statusEl) return;
@@ -148,22 +142,22 @@
         return text.slice(0, limit - 1) + '…';
       }
 
-      function showPreview(file) {
-        if (!file || !previewImg || !uploadPreview || !uploadPlaceholder) return;
-        var reader = new FileReader();
-        reader.onload = function (e) {
-          previewImg.src = e.target.result;
-          uploadPlaceholder.hidden = true;
-          uploadPreview.hidden = false;
-        };
-        reader.readAsDataURL(file);
+      function uploadCount() {
+        return fileInput && fileInput.files ? fileInput.files.length : 0;
       }
 
-      function clearPreview() {
-        if (fileInput) fileInput.value = '';
-        if (previewImg) previewImg.removeAttribute('src');
-        if (uploadPreview) uploadPreview.hidden = true;
-        if (uploadPlaceholder) uploadPlaceholder.hidden = false;
+      function googleCheckedCount() {
+        if (!googleRoot || !googleRoot.googlePhotosPicker) return 0;
+        return googleRoot.googlePhotosPicker.getCheckedCount();
+      }
+
+      function googlePayloads() {
+        if (!googleRoot || !googleRoot.googlePhotosPicker) return [];
+        return googleRoot.googlePhotosPicker.getCheckedPayloads();
+      }
+
+      function totalSourceCount() {
+        return uploadCount() + googleCheckedCount();
       }
 
       function buildCardFromTemplate(data) {
@@ -234,7 +228,7 @@
               promptEl.value = btn.getAttribute('data-prompt') || '';
               promptEl.focus();
             }
-            setStatus('Edit prompt loaded. Upload a source photo if needed, then apply changes.', false);
+            setStatus('Edit prompt loaded. Choose source photos if needed, then apply changes.', false);
           });
         });
 
@@ -280,60 +274,41 @@
         });
       }
 
-      if (fileInput) {
-        fileInput.addEventListener('change', function () {
-          if (fileInput.files && fileInput.files[0]) {
-            showPreview(fileInput.files[0]);
-          }
-        });
-      }
-
-      if (clearImageBtn) {
-        clearImageBtn.addEventListener('click', clearPreview);
-      }
-
-      if (uploadZone && fileInput) {
-        uploadZone.addEventListener('dragover', function (e) {
-          e.preventDefault();
-          uploadZone.classList.add('is-dragover');
-        });
-        uploadZone.addEventListener('dragleave', function () {
-          uploadZone.classList.remove('is-dragover');
-        });
-        uploadZone.addEventListener('drop', function (e) {
-          e.preventDefault();
-          uploadZone.classList.remove('is-dragover');
-          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
-            fileInput.files = e.dataTransfer.files;
-            showPreview(e.dataTransfer.files[0]);
-          }
-        });
-        uploadZone.addEventListener('click', function (e) {
-          if (e.target === clearImageBtn || (clearImageBtn && clearImageBtn.contains(e.target))) return;
-          fileInput.click();
-        });
-      }
-
       if (modifyBtn) {
         modifyBtn.addEventListener('click', function () {
           var prompt = promptEl ? promptEl.value.trim() : '';
-          if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-            setStatus('Choose a source photo first.', true);
+          var total = totalSourceCount();
+
+          if (total < 1) {
+            setStatus('Choose at least one source photo (upload or Google Photos).', true);
             if (fileInput) fileInput.click();
             return;
           }
+          if (total > maxSources) {
+            setStatus('Too many photos selected (max ' + maxSources + ').', true);
+            return;
+          }
           if (!prompt) {
-            setStatus('Describe what you want changed in the photo.', true);
+            setStatus('Describe what you want changed in the photo(s).', true);
             if (promptEl) promptEl.focus();
             return;
           }
 
           var formData = new FormData();
           formData.append('prompt', prompt);
-          formData.append('source_image', fileInput.files[0]);
+
+          if (fileInput && fileInput.files) {
+            Array.prototype.forEach.call(fileInput.files, function (file) {
+              formData.append('source_images[]', file);
+            });
+          }
+
+          googlePayloads().forEach(function (payload) {
+            formData.append('google_picker_items[]', payload);
+          });
 
           setLoading(true);
-          setStatus('', false);
+          setStatus('Processing ' + total + ' photo' + (total === 1 ? '' : 's') + '…', false);
 
           fetch(modifyUrl, {
             method: 'POST',
@@ -352,9 +327,21 @@
               return body;
             });
           }).then(function (body) {
-            prependGalleryCard(body);
+            (body.images || []).forEach(function (item) {
+              prependGalleryCard(item);
+            });
             bindGalleryActions(gridEl);
-            setStatus('Image edited and saved to history.', false);
+
+            var msg = body.summary || 'Done.';
+            if (body.failures && body.failures.length) {
+              var detail = body.failures.map(function (f) {
+                return (f.label || 'Photo') + ': ' + (f.error || 'failed');
+              }).join('; ');
+              msg += ' ' + detail;
+              setStatus(msg, true);
+            } else {
+              setStatus(msg, false);
+            }
           }).catch(function (err) {
             setStatus(err.message || 'Image edit failed.', true);
           }).finally(function () {
