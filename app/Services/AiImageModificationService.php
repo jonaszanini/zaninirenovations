@@ -151,8 +151,6 @@ class AiImageModificationService
             'source_image_path' => $sourcePath,
             'original_image_path' => $originalPath,
             'webp_image_path' => null,
-            'aspect_ratio' => null,
-            'image_size' => null,
         ]);
     }
 
