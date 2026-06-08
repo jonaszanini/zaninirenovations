@@ -142,7 +142,78 @@
           }
         }
         if (body && body.message) return body.message;
+        if (status === 504 || status === 502) {
+          return 'The server timed out while editing. Each photo is processed separately; if this persists, try again or use fewer photos.';
+        }
         return 'HTTP ' + status;
+      }
+
+      function fetchJsonPost(url, formData) {
+        return fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': csrfToken,
+          },
+          body: formData,
+        }).then(function (res) {
+          return res.text().then(function (text) {
+            var body = null;
+            if (text) {
+              try {
+                body = JSON.parse(text);
+              } catch (ignore) {
+                if (!res.ok) {
+                  throw new Error(errorFromBody(null, res.status));
+                }
+                throw new Error('Server returned an unexpected response (HTTP ' + res.status + ').');
+              }
+            }
+            if (!res.ok) {
+              throw new Error(errorFromBody(body, res.status));
+            }
+            return body;
+          });
+        });
+      }
+
+      function googleJobLabel(payload, index) {
+        try {
+          var data = JSON.parse(payload);
+          if (data && data.filename) return data.filename;
+        } catch (ignore) {}
+        return 'Google photo ' + (index + 1);
+      }
+
+      function buildModifyJobs(prompt) {
+        var jobs = [];
+        if (fileInput && fileInput.files) {
+          Array.prototype.forEach.call(fileInput.files, function (file, index) {
+            jobs.push({
+              label: file.name || ('Upload ' + (index + 1)),
+              buildFormData: function () {
+                var fd = new FormData();
+                fd.append('prompt', prompt);
+                fd.append('source_images[]', file);
+                return fd;
+              },
+            });
+          });
+        }
+        googlePayloads().forEach(function (payload, index) {
+          jobs.push({
+            label: googleJobLabel(payload, index),
+            buildFormData: function () {
+              var fd = new FormData();
+              fd.append('prompt', prompt);
+              fd.append('google_picker_items[]', payload);
+              return fd;
+            },
+          });
+        });
+        return jobs;
       }
 
       function setLoading(active, message) {
@@ -345,7 +416,7 @@
       }
 
       if (modifyBtn) {
-        modifyBtn.addEventListener('click', function () {
+        modifyBtn.addEventListener('click', async function () {
           var prompt = promptEl ? promptEl.value.trim() : '';
           var total = totalSourceCount();
 
@@ -364,59 +435,55 @@
             return;
           }
 
-          var formData = new FormData();
-          formData.append('prompt', prompt);
+          var jobs = buildModifyJobs(prompt);
+          var failures = [];
+          var successCount = 0;
 
-          if (fileInput && fileInput.files) {
-            Array.prototype.forEach.call(fileInput.files, function (file) {
-              formData.append('source_images[]', file);
-            });
+          setLoading(true, 'Editing photo 1 of ' + jobs.length + '…');
+          setStatus('Processing ' + jobs.length + ' photo' + (jobs.length === 1 ? '' : 's') + ' one at a time…', false);
+
+          for (var i = 0; i < jobs.length; i++) {
+            var job = jobs[i];
+            var progress = 'Editing photo ' + (i + 1) + ' of ' + jobs.length + '…';
+            setLoading(true, progress);
+            setStatus(progress, false);
+
+            try {
+              var body = await fetchJsonPost(modifyUrl, job.buildFormData());
+              (body.images || []).forEach(function (item) {
+                prependGalleryCard(item);
+                successCount += 1;
+              });
+              bindGalleryActions(gridEl);
+              (body.failures || []).forEach(function (f) {
+                failures.push(f);
+              });
+            } catch (err) {
+              failures.push({
+                label: job.label,
+                error: err && err.message ? err.message : 'Image edit failed.',
+              });
+            }
           }
 
-          googlePayloads().forEach(function (payload) {
-            formData.append('google_picker_items[]', payload);
-          });
+          var msg;
+          if (successCount === 0 && failures.length) {
+            msg = failures.map(function (f) {
+              return (f.label || 'Photo') + ': ' + (f.error || 'failed');
+            }).join('; ');
+            setStatus(msg, true);
+          } else if (failures.length) {
+            msg = successCount + ' edited, ' + failures.length + ' failed. ';
+            msg += failures.map(function (f) {
+              return (f.label || 'Photo') + ': ' + (f.error || 'failed');
+            }).join('; ');
+            setStatus(msg, true);
+          } else {
+            msg = successCount === 1 ? '1 image edited and saved.' : successCount + ' images edited and saved.';
+            setStatus(msg, false);
+          }
 
-          setLoading(true, 'Editing with Gemini…');
-          setStatus('Processing ' + total + ' photo' + (total === 1 ? '' : 's') + '…', false);
-
-          fetch(modifyUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              'Accept': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest',
-              'X-CSRF-TOKEN': csrfToken,
-            },
-            body: formData,
-          }).then(function (res) {
-            return res.json().then(function (body) {
-              if (!res.ok) {
-                throw new Error(errorFromBody(body, res.status));
-              }
-              return body;
-            });
-          }).then(function (body) {
-            (body.images || []).forEach(function (item) {
-              prependGalleryCard(item);
-            });
-            bindGalleryActions(gridEl);
-
-            var msg = body.summary || 'Done.';
-            if (body.failures && body.failures.length) {
-              var detail = body.failures.map(function (f) {
-                return (f.label || 'Photo') + ': ' + (f.error || 'failed');
-              }).join('; ');
-              msg += ' ' + detail;
-              setStatus(msg, true);
-            } else {
-              setStatus(msg, false);
-            }
-          }).catch(function (err) {
-            setStatus(err.message || 'Image edit failed.', true);
-          }).finally(function () {
-            setLoading(false, 'Editing with Gemini…');
-          });
+          setLoading(false, 'Editing with Gemini…');
         });
       }
 

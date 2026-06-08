@@ -109,6 +109,9 @@ class ImageCreationController extends Controller
 
     public function modifyImage(Request $request, AiImageModificationService $modifier): JsonResponse
     {
+        $imageTimeout = max(60, (int) config('gemini.image_timeout_seconds', 180));
+        set_time_limit($imageTimeout + 120);
+
         $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
 
         $data = $request->validate([
