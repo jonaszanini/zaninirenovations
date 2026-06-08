@@ -435,7 +435,7 @@
         </div>
         @endif
 
-        <div class="row wow fadeInUp">
+        <div class="row wow fadeInUp latest-projects-grid">
           @include('site.partials.latest-projects', ['projects' => $projects])
         </div>
         <!-- end .row  -->

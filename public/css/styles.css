@@ -6255,6 +6255,37 @@ ul.pagination li:last-child {
   left: 0;
 }
 
+/* Latest projects: flex grid so mixed image heights do not leave float gaps */
+.latest-projects-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+.latest-projects-grid::before,
+.latest-projects-grid::after {
+  display: none;
+}
+.latest-projects-grid > .js-latest-project-item {
+  float: none;
+  display: flex;
+  flex-direction: column;
+}
+.latest-projects-grid .portfolio-light-box {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.latest-projects-grid .portfolio-img {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+.latest-projects-grid .portfolio-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* Latest projects: Load More button row */
 .latest-projects-load-more-row {
   margin-top: 24px;
