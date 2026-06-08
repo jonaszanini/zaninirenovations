@@ -10,6 +10,14 @@
 
 @push('head-assets')
 <link rel="preload" as="image" href="{{ url('images/home_1_slider_1.webp') }}" fetchpriority="high">
+<style>
+  #slider_1 .slider_item_container { position: relative; min-height: 320px; }
+  @media (min-width: 992px) { #slider_1 .slider_item_container { min-height: 520px; } }
+  @media (min-width: 1371px) { #slider_1 .slider_item_container { min-height: 800px; } }
+  #slider_1 .slide-bg { position: absolute; inset: 0; background-size: cover; background-position: center center; background-repeat: no-repeat; }
+  #slider_1 .slide-bg::after { content: ""; position: absolute; inset: 0; background: rgba(17, 17, 17, 0.5); pointer-events: none; }
+  #slider_1 .slide-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+</style>
 @endpush
 
 @push('styles')
@@ -92,12 +100,15 @@
       <div id="slider_1" class="owl-carousel" data-nav="true" data-dots="true" data-autoplay="false" data-autoplaytimeout="10000" data-bg_effect="true">
 
         <div class="slider_item_container" data-bg_img="images/home_1_slider_1.webp" data-bg_color="#111111" data-bg_opacity="0.5">
+          <div class="slide-bg" aria-hidden="true">
+            <img src="{{ url('images/home_1_slider_1.webp') }}" alt="" fetchpriority="high" decoding="async" width="1920" height="1080">
+          </div>
           <div class="item">
             <div class="slider-content">
               <div class="container text-left">
                 <div class="row">
                   <div class="slider-bg" data-animation-in="fadeInUp" data-animation-out="zoomInDown">
-                    <div class="col-sm-12 wow fadeInDown" data-wow-duration="1s">
+                    <div class="col-sm-12">
                       <h3>Decks & Outdoor Living</h3>
                       <h2 class="margin-bottom-12">
                         QUALITY DECKS
@@ -677,7 +688,7 @@
 
           <div class="col-lg-6 hidden-md hidden-xs hidden-sm no-padding">
             <figure>
-              <img src="images/reviews.webp" alt="Client testimonials — Home Renovation Carpentry Ottawa; Finish Carpentry Services Ontario; Egress window compliance projects" class="db">
+              <img src="images/reviews.webp" alt="Client testimonials — Home Renovation Carpentry Ottawa; Finish Carpentry Services Ontario; Egress window compliance projects" class="db" loading="lazy" decoding="async">
             </figure>
           </div>
 

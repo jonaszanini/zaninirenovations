@@ -234,9 +234,15 @@ jQuery(function ($) {
             }
             var $color_overlay = hexToRgbA(bg_color, bg_opacity);
             
-            $this.find('.item').before('<div class="slide-bg"></div>');
-            
-            $this.find('.slide-bg').attr("style", "background:linear-gradient( " + $color_overlay + ",  " + $color_overlay + " )" + bg_img + "; background-position: center center; background-repeat: no-repeat; background-attachment: inherit; background-size: cover; overflow:hidden;");
+            var $slideBg = $this.find('.slide-bg').first();
+            if (!$slideBg.length) {
+                $this.find('.item').before('<div class="slide-bg"></div>');
+                $slideBg = $this.find('.slide-bg').first();
+            } else if ($slideBg.find('img').length) {
+                return;
+            }
+
+            $slideBg.attr("style", "background:linear-gradient( " + $color_overlay + ",  " + $color_overlay + " )" + bg_img + "; background-position: center center; background-repeat: no-repeat; background-attachment: inherit; background-size: cover; overflow:hidden;");
             
         });
         
@@ -1285,7 +1291,9 @@ jQuery(function ($) {
 
 
     //WoW Animation.
-    animations();
+    if (typeof WOW !== 'undefined') {
+        animations();
+    }
 
     //One Page Scrolling.
 //    smooth_scrolling();
