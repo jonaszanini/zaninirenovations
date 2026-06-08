@@ -11,13 +11,33 @@ use Illuminate\Support\Facades\Storage;
 
 class ImageCreationController extends Controller
 {
+    /**
+     * Landing page listing available image-generation models. New models can be
+     * added to the $models array (and given their own route + page) without
+     * touching the layout.
+     */
     public function index()
+    {
+        $models = [
+            [
+                'name' => 'Nano Banana 2',
+                'description' => 'Generate 16:9 images with Gemini. Prompts and results are saved for download, reuse, or deletion.',
+                'icon' => 'fa-picture-o',
+                'route' => route('admin.image-creation.nano-banana-2'),
+                'available' => true,
+            ],
+        ];
+
+        return view('admin.image_creation.index', compact('models'));
+    }
+
+    public function nanoBanana2()
     {
         $images = AiGeneratedImage::query()
             ->orderByDesc('created_at')
             ->paginate(24);
 
-        return view('admin.image_creation.index', compact('images'));
+        return view('admin.image_creation.nano_banana_2', compact('images'));
     }
 
     public function generate(Request $request, AiImageGenerationService $generator): JsonResponse

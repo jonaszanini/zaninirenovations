@@ -1958,6 +1958,10 @@ body.admin-nav-open {
   color: var(--admin-muted);
 }
 
+.nb2-loading[hidden] {
+  display: none;
+}
+
 .nb2-loading .fa-spinner {
   color: var(--admin-primary);
 }
