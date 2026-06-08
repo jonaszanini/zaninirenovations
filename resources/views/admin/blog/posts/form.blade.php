@@ -192,11 +192,38 @@
         });
       }
 
+      var bpWordWrapKey = 'bp-editor-word-wrap';
+
+      function bpApplyWordWrap(editor, enabled) {
+        var doc = editor.getDoc();
+        if (!doc || !doc.head) return;
+        var style = doc.getElementById('bp-word-wrap-style');
+        if (!style) {
+          style = doc.createElement('style');
+          style.id = 'bp-word-wrap-style';
+          doc.head.appendChild(style);
+        }
+        style.textContent = enabled
+          ? 'body { overflow-wrap: break-word; } pre, code { white-space: pre-wrap !important; overflow-wrap: anywhere; word-break: break-word; }'
+          : 'body { overflow-wrap: normal; } pre, code { white-space: pre !important; overflow-wrap: normal; word-break: normal; }';
+        try {
+          localStorage.setItem(bpWordWrapKey, enabled ? '1' : '0');
+        } catch (e) { /* ignore */ }
+      }
+
+      function bpWordWrapDefault() {
+        try {
+          return localStorage.getItem(bpWordWrapKey) !== '0';
+        } catch (e) {
+          return true;
+        }
+      }
+
       tinymce.init({
         selector: '#bp-editor',
         menubar: 'edit insert view format table tools',
         plugins: 'advlist autolink lists link image table code preview searchreplace fullscreen visualblocks wordcount paste help',
-        toolbar: 'undo redo | blocks | bold italic underline strikethrough | alignleft aligncenter alignright | bullist numlist | link table image | removeformat code preview fullscreen help',
+        toolbar: 'undo redo | blocks | bold italic underline strikethrough | alignleft aligncenter alignright | bullist numlist | link table image | bpwordwrap | removeformat code preview fullscreen help',
         height: 560,
         branding: false,
         promotion: false,
@@ -226,6 +253,25 @@
         },
         content_style: 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; line-height: 1.55; } img { max-width: 100%; height: auto; }',
         setup: function (editor) {
+          var wrapEnabled = bpWordWrapDefault();
+
+          editor.ui.registry.addToggleButton('bpwordwrap', {
+            text: 'Wrap',
+            tooltip: 'Toggle word wrap (helps with Preformatted blocks)',
+            onAction: function (api) {
+              wrapEnabled = api.isActive();
+              bpApplyWordWrap(editor, wrapEnabled);
+            },
+            onSetup: function (api) {
+              api.setActive(wrapEnabled);
+              return function () {};
+            },
+          });
+
+          editor.on('init', function () {
+            bpApplyWordWrap(editor, wrapEnabled);
+          });
+
           editor.on('change keyup undo redo', function () { editor.save(); });
         }
       });
