@@ -31,14 +31,21 @@ class AiImageGenerationService
             $params['image_size'],
         );
 
-        $originalPath = $this->images->storeAiToolOriginalFromBinary(
+        // Gemini may return a square canvas with the scene letterboxed; crop to the requested AR.
+        $imageBytes = $this->images->cropGeminiOutputToAspectRatio(
             $generated['bytes'],
-            $generated['mime'],
+            $params['aspect_ratio'],
+        );
+        $imageMime = $imageBytes !== $generated['bytes'] ? 'image/jpeg' : $generated['mime'];
+
+        $originalPath = $this->images->storeAiToolOriginalFromBinary(
+            $imageBytes,
+            $imageMime,
         );
 
         $webpPath = $this->images->storeAiToolWebpFromBinary(
-            $generated['bytes'],
-            $generated['mime'],
+            $imageBytes,
+            $imageMime,
         );
 
         return AiGeneratedImage::query()->create([

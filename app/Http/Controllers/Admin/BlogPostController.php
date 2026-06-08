@@ -199,12 +199,9 @@ class BlogPostController extends Controller
             $data['excerpt'] = Str::limit($plain, 500);
         }
 
-        if ($data['status'] === BlogPost::STATUS_PUBLISHED && empty($data['published_at'])) {
-            $data['published_at'] = now();
-        }
-
-        if ($data['status'] === BlogPost::STATUS_DRAFT) {
-            $data['published_at'] = $data['published_at'] ?? null;
+        // datetime-local submits "" when empty; MySQL rejects that for timestamp columns.
+        if (! filled($data['published_at'] ?? null)) {
+            $data['published_at'] = $data['status'] === BlogPost::STATUS_PUBLISHED ? now() : null;
         }
 
         $data['category_ids'] = array_values(array_unique(array_map('intval', $data['category_ids'] ?? [])));
