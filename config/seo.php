@@ -108,8 +108,8 @@ return [
             'answer' => 'We are based in Carleton Place, Ontario and serve Ottawa, Kanata, Barrhaven, Orléans, Stittsville, Perth, Smiths Falls, and communities across the National Capital Region and Lanark County.',
         ],
         [
-            'question' => 'Is Zanini Renovations licensed and insured for residential work?',
-            'answer' => 'Yes. Jonas Zanini is a licensed carpenter (Red Seal certified) with WSIB clearance, Form 1000 construction safety compliance, and $3M general liability insurance. We follow Ontario Building Code requirements for Part 9 housing and small buildings, including O.Reg. 332/12 compliance.',
+            'question' => 'Is Zanini Renovations fully insured for residential work?',
+            'answer' => 'Yes. Zanini Renovations carries $3M in general liability insurance, ensuring your home and project are fully protected. All of our work strictly adheres to the Ontario Building Code (O.Reg. 332/12) requirements for Part 9 housing and small buildings, delivering structural integrity and professional craftsmanship you can trust.',
         ],
         [
             'question' => 'How do I get a quote for a renovation or carpentry project?',

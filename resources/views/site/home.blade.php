@@ -15,9 +15,26 @@
   .home-faq-section__intro { max-width: 40rem; margin: 12px auto 0; color: #64748b; font-size: 15px; }
   .home-faq-list { margin-top: 24px; }
   .home-faq-item { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; padding: 0 16px; background: #fff; }
-  .home-faq-item__q { display: inline; font-size: 1.05rem; font-weight: 600; margin: 0; color: #0f172a; }
-  .home-faq-item summary { cursor: pointer; padding: 14px 0; list-style: none; }
+  .home-faq-item__q { flex: 1; font-size: 1.05rem; font-weight: 600; margin: 0; color: #0f172a; }
+  .home-faq-item summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    padding: 14px 0;
+    list-style: none;
+  }
   .home-faq-item summary::-webkit-details-marker { display: none; }
+  .home-faq-item summary::after {
+    font-family: "FontAwesome";
+    content: "\f0d7";
+    flex-shrink: 0;
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1;
+  }
+  .home-faq-item[open] summary::after { content: "\f0d8"; }
   .home-faq-item__a { margin: 0 0 14px; line-height: 1.6; color: #475569; }
 </style>
 @endpush
