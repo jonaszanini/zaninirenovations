@@ -159,6 +159,29 @@ class GooglePhotosController extends Controller
         }
     }
 
+    public function thumbnail(Request $request, GooglePhotosService $photos)
+    {
+        $data = $request->validate([
+            'url' => ['required', 'string', 'max:4096'],
+        ]);
+
+        try {
+            [$bytes, $mime] = $photos->fetchPickerThumbnail($request->user(), $data['url']);
+
+            return response($bytes, 200)
+                ->header('Content-Type', $mime)
+                ->header('Cache-Control', 'private, max-age=600');
+        } catch (GooglePhotosReconnectRequiredException $e) {
+            return response($e->getMessage(), 401)
+                ->header('Content-Type', 'text/plain; charset=UTF-8');
+        } catch (Throwable $e) {
+            report($e);
+
+            return response($e->getMessage(), 422)
+                ->header('Content-Type', 'text/plain; charset=UTF-8');
+        }
+    }
+
     /**
      * @param  mixed  $return
      */

@@ -19,6 +19,8 @@ class ImageCreationController extends Controller
 {
     private const MAX_MODIFY_SOURCES = 15;
 
+    private const PROMPT_MAX_LENGTH = 8000;
+
     public function index()
     {
         $workflows = [
@@ -76,6 +78,7 @@ class ImageCreationController extends Controller
             'images' => $images,
             'inlineMaxMb' => $inlineMaxMb,
             'maxSources' => self::MAX_MODIFY_SOURCES,
+            'promptMaxLength' => self::PROMPT_MAX_LENGTH,
         ]);
     }
 
@@ -109,11 +112,11 @@ class ImageCreationController extends Controller
         $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
 
         $data = $request->validate([
-            'prompt' => ['required', 'string', 'max:2000'],
+            'prompt' => ['required', 'string', 'max:'.self::PROMPT_MAX_LENGTH],
             'source_images' => ['nullable', 'array', 'max:'.self::MAX_MODIFY_SOURCES],
             'source_images.*' => ['file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
             'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_MODIFY_SOURCES],
-            'google_picker_items.*' => ['string'],
+            'google_picker_items.*' => ['string', 'max:4000'],
         ]);
 
         $uploads = array_values(array_filter(
@@ -156,7 +159,7 @@ class ImageCreationController extends Controller
     public function improvePrompt(Request $request, AiImagePromptImprovementService $improver): JsonResponse
     {
         $data = $request->validate([
-            'prompt' => ['required', 'string', 'max:2000'],
+            'prompt' => ['required', 'string', 'max:'.self::PROMPT_MAX_LENGTH],
         ]);
 
         try {

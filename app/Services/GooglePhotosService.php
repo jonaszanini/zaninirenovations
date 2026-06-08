@@ -210,9 +210,7 @@ class GooglePhotosService
         ]);
 
         $payload = json_decode((string) $response->getBody(), true);
-        if (! is_array($payload) || ($response->getStatusCode() ?? 500) >= 400) {
-            throw new RuntimeException('Google Photos picker session create failed: '.((string) $response->getBody()));
-        }
+        $this->assertPickerResponseOk($response, $payload, $token, 'session create');
 
         return $this->parseSessionPayload($payload, true);
     }
@@ -236,9 +234,7 @@ class GooglePhotosService
         ]);
 
         $payload = json_decode((string) $response->getBody(), true);
-        if (! is_array($payload) || ($response->getStatusCode() ?? 500) >= 400) {
-            throw new RuntimeException('Google Photos picker session read failed: '.((string) $response->getBody()));
-        }
+        $this->assertPickerResponseOk($response, $payload, $token, 'session read');
 
         return $this->parseSessionPayload($payload, false);
     }
@@ -258,7 +254,7 @@ class GooglePhotosService
         $out = [];
         $pageToken = null;
         while (count($out) < $maxItems) {
-            $result = $this->listPickedMediaPage($access, $sessionId, $pageToken, 100);
+            $result = $this->listPickedMediaPage($access, $sessionId, $pageToken, 100, $token);
             foreach ($result['items'] as $item) {
                 $out[] = $item;
                 if (count($out) >= $maxItems) {
@@ -287,6 +283,7 @@ class GooglePhotosService
         if (! $token) {
             throw new RuntimeException('Google Photos is not connected.');
         }
+        $this->assertAllowedPickerBaseUrl($baseUrl);
         $access = $this->ensureFreshAccessToken($token);
 
         $downloadUrl = $baseUrl;
@@ -329,10 +326,76 @@ class GooglePhotosService
     }
 
     /**
+     * Fetch a small preview image for admin UI (requires OAuth; not loadable in browser directly).
+     *
+     * @return array{0: string, 1: string} bytes and mime type
+     */
+    public function fetchPickerThumbnail(User $user, string $baseUrl): array
+    {
+        $this->assertAllowedPickerBaseUrl($baseUrl);
+
+        $token = GooglePhotosToken::query()->where('user_id', $user->id)->first();
+        if (! $token) {
+            throw new RuntimeException('Google Photos is not connected.');
+        }
+        $access = $this->ensureFreshAccessToken($token);
+
+        $thumbUrl = $baseUrl;
+        if (! str_contains($thumbUrl, '=')) {
+            $thumbUrl .= '=w240-h240-c';
+        }
+
+        $response = $this->http()->get($thumbUrl, [
+            'headers' => [
+                'Authorization' => 'Bearer '.$access,
+            ],
+        ]);
+
+        $status = (int) ($response->getStatusCode() ?? 500);
+        $body = (string) $response->getBody();
+        if ($status >= 400 || $body === '') {
+            $payload = json_decode($body, true);
+            $this->assertPickerResponseOk($response, $payload, $token, 'thumbnail');
+
+            throw new RuntimeException('Google Photos thumbnail failed (HTTP '.$status.').');
+        }
+
+        $mime = $response->getHeaderLine('Content-Type');
+        if ($mime === '' || ! str_starts_with(strtolower($mime), 'image/')) {
+            $mime = 'image/jpeg';
+        }
+
+        return [$body, explode(';', $mime)[0]];
+    }
+
+    private function assertAllowedPickerBaseUrl(string $baseUrl): void
+    {
+        $baseUrl = trim($baseUrl);
+        if ($baseUrl === '' || ! filter_var($baseUrl, FILTER_VALIDATE_URL)) {
+            throw new RuntimeException('Invalid Google Photos media URL.');
+        }
+
+        $host = parse_url($baseUrl, PHP_URL_HOST);
+        if (! is_string($host) || $host === '') {
+            throw new RuntimeException('Invalid Google Photos media URL.');
+        }
+
+        $host = strtolower($host);
+        if (! str_ends_with($host, '.googleusercontent.com') && ! str_ends_with($host, '.google.com')) {
+            throw new RuntimeException('Invalid Google Photos media URL.');
+        }
+    }
+
+    /**
      * @return array{items:array<int,array{id:string,baseUrl:?string,mimeType:?string,filename:?string,type:?string}>,nextPageToken:?string}
      */
-    private function listPickedMediaPage(string $accessToken, string $sessionId, ?string $pageToken, int $pageSize): array
-    {
+    private function listPickedMediaPage(
+        string $accessToken,
+        string $sessionId,
+        ?string $pageToken,
+        int $pageSize,
+        GooglePhotosToken $token,
+    ): array {
         $query = [
             'sessionId' => $sessionId,
             'pageSize' => max(1, min(100, $pageSize)),
@@ -349,9 +412,7 @@ class GooglePhotosService
         ]);
 
         $payload = json_decode((string) $response->getBody(), true);
-        if (! is_array($payload) || ($response->getStatusCode() ?? 500) >= 400) {
-            throw new RuntimeException('Google Photos picker media list failed: '.((string) $response->getBody()));
-        }
+        $this->assertPickerResponseOk($response, $payload, $token, 'media list');
 
         $items = [];
         foreach ((array) ($payload['mediaItems'] ?? []) as $mi) {
@@ -435,6 +496,35 @@ class GooglePhotosService
             'pollingConfig' => $polling,
             'mediaItemsSet' => $mediaItemsSet,
         ];
+    }
+
+    /**
+     * @param  mixed  $payload
+     */
+    private function assertPickerResponseOk($response, $payload, GooglePhotosToken $token, string $action): void
+    {
+        $status = (int) ($response->getStatusCode() ?? 500);
+        if ($status < 400 && is_array($payload)) {
+            return;
+        }
+
+        $body = (string) $response->getBody();
+        $reason = is_array($payload) ? (string) Arr::get($payload, 'error.details.0.reason', '') : '';
+        $message = is_array($payload) ? (string) Arr::get($payload, 'error.message', '') : '';
+
+        if ($status === 403 && (
+            $reason === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT'
+            || stripos($message, 'insufficient authentication scopes') !== false
+        )) {
+            $token->delete();
+
+            throw new GooglePhotosReconnectRequiredException(
+                'Google Photos Picker permission is missing on your connection. Click Disconnect, then Connect Google Photos again. '
+                .'If it still fails, enable the Google Photos Picker API and add the photospicker.mediaitems.readonly scope in Google Cloud Console.'
+            );
+        }
+
+        throw new RuntimeException('Google Photos picker '.$action.' failed: '.$body);
     }
 
     private function fetchGoogleAccountEmail(string $accessToken): string

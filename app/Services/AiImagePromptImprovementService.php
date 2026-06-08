@@ -39,8 +39,8 @@ class AiImagePromptImprovementService
             throw new RuntimeException('Gemini did not return an optimized prompt.');
         }
 
-        if (strlen($optimized) > 2000) {
-            $optimized = mb_substr($optimized, 0, 2000);
+        if (strlen($optimized) > 8000) {
+            $optimized = mb_substr($optimized, 0, 8000);
         }
 
         return [

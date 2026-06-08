@@ -43,6 +43,15 @@
     return t + '=w240-h240-c';
   }
 
+  function pickerThumbnailSrc(baseUrl, proxyUrl) {
+    var thumb = pickerThumbUrl(baseUrl);
+    if (!thumb) return '';
+    if (proxyUrl) {
+      return proxyUrl + (proxyUrl.indexOf('?') === -1 ? '?' : '&') + 'url=' + encodeURIComponent(thumb);
+    }
+    return thumb;
+  }
+
   function getFileInput(root) {
     var id = root.getAttribute('data-file-input-id') || 'photos';
     return document.getElementById(id);
@@ -54,6 +63,7 @@
 
     var createSessionUrl = root.getAttribute('data-picker-create-url');
     var mediaUrlTemplate = root.getAttribute('data-picker-media-url-template');
+    var thumbnailProxyUrl = root.getAttribute('data-picker-thumbnail-url') || '';
     var maxTotal = parseInt(root.getAttribute('data-max-total') || '15', 10);
     var statusMode = root.getAttribute('data-status-mode') || 'total';
     var formSync = root.getAttribute('data-form-sync') !== 'false';
@@ -119,7 +129,7 @@
       grid.innerHTML = '';
       items.forEach(function (it) {
         if (!it || !it.baseUrl) return;
-        var url = pickerThumbUrl(it.baseUrl);
+        var url = pickerThumbnailSrc(it.baseUrl, thumbnailProxyUrl);
         var label = it.filename || 'Photo';
 
         var tile = document.createElement('label');

@@ -24,6 +24,7 @@
       class="admin-google-photos"
       data-picker-create-url="{{ route('admin.google-photos.picker-sessions.create') }}"
       data-picker-media-url-template="{{ route('admin.google-photos.picker-sessions.media', ['sessionId' => '__SESSION__']) }}"
+      data-picker-thumbnail-url="{{ route('admin.google-photos.thumbnail') }}"
       data-max-total="{{ (int) $maxTotal }}"
       data-file-input-id="{{ $fileInputId }}"
       data-status-mode="{{ $statusMode }}"

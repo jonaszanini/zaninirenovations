@@ -30,7 +30,7 @@
 
     <div class="admin-form-group aim-prompt-group">
       <label for="aim-prompt">Edit instructions</label>
-      <textarea id="aim-prompt" rows="5" maxlength="2000" class="admin-input" placeholder="Describe what to change, e.g. “Change the background to a modern backyard patio at sunset.”"></textarea>
+      <textarea id="aim-prompt" rows="5" maxlength="{{ (int) $promptMaxLength }}" class="admin-input" placeholder="Describe what to change, e.g. “Change the background to a modern backyard patio at sunset.”"></textarea>
     </div>
 
     <div class="nb2-generate-row">
@@ -131,6 +131,18 @@
         if (!statusEl) return;
         statusEl.textContent = message || '';
         statusEl.classList.toggle('is-error', !!isError);
+      }
+
+      function errorFromBody(body, status) {
+        if (body && body.error) return body.error;
+        if (body && body.errors) {
+          var keys = Object.keys(body.errors);
+          if (keys.length && body.errors[keys[0]] && body.errors[keys[0]][0]) {
+            return body.errors[keys[0]][0];
+          }
+        }
+        if (body && body.message) return body.message;
+        return 'HTTP ' + status;
       }
 
       function setLoading(active, message) {
@@ -308,7 +320,7 @@
           }).then(function (res) {
             return res.json().then(function (body) {
               if (!res.ok) {
-                throw new Error((body && body.error) ? body.error : ('HTTP ' + res.status));
+                throw new Error(errorFromBody(body, res.status));
               }
               return body;
             });
@@ -380,7 +392,7 @@
           }).then(function (res) {
             return res.json().then(function (body) {
               if (!res.ok) {
-                throw new Error((body && body.error) ? body.error : ('HTTP ' + res.status));
+                throw new Error(errorFromBody(body, res.status));
               }
               return body;
             });
