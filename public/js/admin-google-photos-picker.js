@@ -328,6 +328,11 @@
       getUploadCount: uploadCount,
       getMaxTotal: function () { return maxTotal; },
       refreshStatus: refreshStatus,
+      clearPickedItems: function () {
+        grid.innerHTML = '';
+        if (pickedFields) pickedFields.innerHTML = '';
+        refreshStatus();
+      },
     };
 
     refreshStatus();

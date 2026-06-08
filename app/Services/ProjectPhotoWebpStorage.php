@@ -92,6 +92,54 @@ class ProjectPhotoWebpStorage
     }
 
     /**
+     * Convert raw image bytes to portfolio-grade WebP (scaled, ~100 KB budget).
+     */
+    public function convertBinaryToWebp(string $bytes, string $mime, ?string $originalBasename = null): string
+    {
+        if ($bytes === '') {
+            throw new RuntimeException('Image is empty.');
+        }
+
+        $mime = strtolower(trim($mime));
+        if ($mime === '' || ! str_starts_with($mime, 'image/')) {
+            $mime = 'image/jpeg';
+        }
+
+        $ext = match ($mime) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            default => 'jpg',
+        };
+
+        $tmp = tempnam(sys_get_temp_dir(), 'pwp_');
+        if ($tmp === false) {
+            throw new RuntimeException('Could not create temp file.');
+        }
+        $path = $tmp.'.'.$ext;
+        @unlink($tmp);
+
+        try {
+            if (file_put_contents($path, $bytes) === false) {
+                throw new RuntimeException('Could not write temp image.');
+            }
+
+            if ($mime === 'image/webp') {
+                $webp = $this->reencodeWebpFromPath($path);
+            } else {
+                $upload = new UploadedFile($path, $originalBasename ?? ('photo.'.$ext), $mime, null, true);
+                $webp = $this->convertRasterToWebp($upload, $mime, $ext, $path);
+            }
+
+            return $this->fitWebpBudget($webp);
+        } finally {
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+    }
+
+    /**
      * Store a project expense receipt: images → WebP (same as {@see store()} with
      * a fixed basename); PDFs are stored without conversion as "{basename}.pdf".
      *

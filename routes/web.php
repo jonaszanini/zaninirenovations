@@ -130,6 +130,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('google-photos/thumbnail', [GooglePhotosController::class, 'thumbnail'])->name('google-photos.thumbnail');
 
     // Portfolio (a.k.a. "Latest Projects Photos") — manages Project/ProjectPhoto used on the public home page.
+    Route::post('portfolio/ai-improve-photos', [ProjectController::class, 'aiImprovePhotos'])
+        ->name('portfolio.ai-improve-photos');
     Route::post('portfolio/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])
         ->name('portfolio.photos.rotate');
     Route::post('portfolio/{project}/photos/{photo}/crop', [ProjectController::class, 'cropPhoto'])

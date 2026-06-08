@@ -1728,6 +1728,12 @@ body.admin-nav-open {
   margin-top: 0.15rem;
 }
 
+.admin-portfolio-ai-improve {
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--admin-border);
+}
+
 .admin-portfolio-upload-files {
   margin-bottom: 0;
 }

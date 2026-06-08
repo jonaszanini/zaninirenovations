@@ -61,7 +61,15 @@
           'statusMode' => 'total',
           'formSync' => true,
           'googleFootText' => 'Combined total cannot exceed 15 (file uploads + picked Google photos).',
+          'showPreviewGrid' => true,
+          'previewGridId' => 'portfolio-local-preview-grid',
           'fileErrors' => ['photos', 'photos.*'],
+        ])
+
+        @include('admin.partials.portfolio_ai_improve', [
+          'fileInputId' => 'photos',
+          'maxTotal' => 15,
+          'promptMaxLength' => 8000,
         ])
       </div>
     </form>
@@ -75,5 +83,17 @@
     </aside>
   </div>
 @endsection
+
+@push('scripts')
+  <script>
+    window.portfolioAiImproveConfig = {
+      fileInputId: 'photos',
+      maxTotal: 15,
+      csrfToken: @json(csrf_token()),
+      improveUrl: @json(route('admin.image-creation.improve-prompt')),
+      aiImproveUrl: @json(route('admin.portfolio.ai-improve-photos')),
+    };
+  </script>
+@endpush
 
 

@@ -8,10 +8,12 @@ use App\Models\ProjectCategory;
 use App\Models\ProjectPhoto;
 use App\Models\GooglePhotosToken;
 use App\Services\GooglePhotosService;
+use App\Services\PortfolioPhotoAiImprovementService;
 use App\Services\ProjectPhotoCropService;
 use App\Services\ProjectPhotoRotationService;
 use App\Services\ProjectPhotoWebpStorage;
 use App\Support\GooglePickerItems;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -20,6 +22,8 @@ use Illuminate\Validation\Rule;
 class ProjectController extends Controller
 {
     private const MAX_PHOTOS_PER_PROJECT = 15;
+
+    private const AI_PROMPT_MAX_LENGTH = 8000;
 
     public function index(Request $request)
     {
@@ -81,6 +85,54 @@ class ProjectController extends Controller
             ->get();
 
         return view('admin.portfolio.create', compact('categories'));
+    }
+
+    public function aiImprovePhotos(Request $request, PortfolioPhotoAiImprovementService $improver): JsonResponse
+    {
+        $imageTimeout = max(60, (int) config('gemini.image_timeout_seconds', 180));
+        set_time_limit($imageTimeout + 120);
+
+        $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
+
+        $data = $request->validate([
+            'prompt' => ['required', 'string', 'max:'.self::AI_PROMPT_MAX_LENGTH],
+            'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'photos.*' => ['file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
+            'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'google_picker_items.*' => ['string', 'max:4000'],
+        ]);
+
+        $uploads = array_values(array_filter(
+            (array) $request->file('photos', []),
+            fn ($file) => $file instanceof \Illuminate\Http\UploadedFile,
+        ));
+        $googleItems = array_values(array_filter(
+            (array) ($data['google_picker_items'] ?? []),
+            fn ($item) => is_string($item) && $item !== '',
+        ));
+
+        $sourceCount = count($uploads) + count(GooglePickerItems::parse($googleItems));
+        if ($sourceCount < 1) {
+            return response()->json(['error' => 'Choose at least one photo (upload or checked Google Photos).'], 422);
+        }
+        if ($sourceCount > self::MAX_PHOTOS_PER_PROJECT) {
+            return response()->json(['error' => 'Too many photos selected (max '.self::MAX_PHOTOS_PER_PROJECT.').'], 422);
+        }
+
+        try {
+            $result = $improver->improveBatch(
+                $request->user(),
+                $data['prompt'],
+                $uploads,
+                $googleItems,
+            );
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
+        }
     }
 
     public function store(Request $request)
