@@ -610,6 +610,7 @@ body.admin-body {
 .admin-form-group input[type="email"],
 .admin-form-group input[type="password"],
 .admin-form-group input[type="date"],
+.admin-form-group input[type="number"],
 .admin-form-group input[type="file"],
 .admin-form-group select,
 .admin-form-group textarea {

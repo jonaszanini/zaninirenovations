@@ -369,20 +369,23 @@
 
   function buildStockRow(data) {
     var id = data && data.id ? data.id : 's' + (state.stockIdSeq++);
-    var row = document.createElement('div');
-    row.className = 'util-lb-stock-row';
+    var row = document.createElement('tr');
     row.setAttribute('data-lb-stock-row', '');
     row.setAttribute('data-id', id);
     var unitLabel = state.unit === 'ft' ? 'ft' : 'in';
     row.innerHTML =
-      '<div class="util-lb-stock-row__length">' +
-        '<input type="number" min="0" step="any" inputmode="decimal" placeholder="Length" data-lb-stock-length value="' + (data && data.lengthVal != null ? escapeAttr(data.lengthVal) : '') + '">' +
-        '<span class="util-lb-unit-tag">' + unitLabel + '</span>' +
-      '</div>' +
-      '<div class="util-lb-stock-row__price">' +
-        '<input type="number" min="0" step="any" inputmode="decimal" placeholder="Price ($)" data-lb-stock-price value="' + (data && data.price != null ? escapeAttr(data.price) : '') + '">' +
-      '</div>' +
-      '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-lb-remove-stock title="Remove"><i class="fa fa-times"></i></button>';
+      '<td>' +
+        '<div class="util-lb-stock-length-cell">' +
+          '<input type="number" min="0" step="any" inputmode="decimal" placeholder="Length" data-lb-stock-length value="' + (data && data.lengthVal != null ? escapeAttr(data.lengthVal) : '') + '">' +
+          '<span class="util-lb-unit-tag">' + unitLabel + '</span>' +
+        '</div>' +
+      '</td>' +
+      '<td>' +
+        '<input type="number" min="0" step="any" inputmode="decimal" placeholder="Optional" data-lb-stock-price value="' + (data && data.price != null ? escapeAttr(data.price) : '') + '">' +
+      '</td>' +
+      '<td class="util-lb-col-action">' +
+        '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm util-lb-row-remove" data-lb-remove-stock title="Remove" aria-label="Remove board length"><i class="fa fa-times"></i></button>' +
+      '</td>';
     row.querySelector('[data-lb-remove-stock]').addEventListener('click', function () {
       delete state.manualCounts[id];
       row.remove();
@@ -402,7 +405,7 @@
       '<td><input type="text" placeholder="Optional" data-lb-piece-desc value="' + (data && data.desc ? escapeAttr(data.desc) : '') + '"></td>' +
       '<td><input type="number" min="0" step="any" inputmode="decimal" placeholder="Length" data-lb-piece-length value="' + (data && data.lengthVal != null ? escapeAttr(data.lengthVal) : '') + '"></td>' +
       '<td><input type="number" min="1" step="1" inputmode="numeric" placeholder="1" data-lb-piece-qty value="' + (data && data.qty != null ? escapeAttr(data.qty) : '1') + '"></td>' +
-      '<td><button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-lb-remove-piece title="Remove"><i class="fa fa-times"></i></button></td>';
+      '<td class="util-lb-col-action"><button type="button" class="admin-btn admin-btn--danger admin-btn--sm util-lb-row-remove" data-lb-remove-piece title="Remove" aria-label="Remove piece"><i class="fa fa-times"></i></button></td>';
     row.querySelector('[data-lb-remove-piece]').addEventListener('click', function () {
       row.remove();
       render();

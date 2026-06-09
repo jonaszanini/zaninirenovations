@@ -71,7 +71,7 @@
           <span class="admin-checkbox__text">Include 1/8″ kerf between cuts</span>
         </label>
 
-        <div class="util-lb-section-head">
+        <div class="util-lb-section-block">
           <span class="util-lb-section-label">Available board lengths</span>
           <div class="util-lb-quick-btns" data-lb-quick-lengths>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-quick-ft="8">8′</button>
@@ -81,7 +81,18 @@
           </div>
         </div>
         <p class="util-lb-hint">Optional price per board helps estimate total cost.</p>
-        <div class="util-lb-stock-list" data-lb-stock-list></div>
+        <div class="util-lb-stock-wrap">
+          <table class="util-lb-stock-table">
+            <thead>
+              <tr>
+                <th>Length</th>
+                <th>Price ($)</th>
+                <th class="util-lb-col-action" aria-hidden="true"></th>
+              </tr>
+            </thead>
+            <tbody data-lb-stock-list></tbody>
+          </table>
+        </div>
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm util-lb-add-row" data-lb-add-stock>
           <i class="fa fa-plus"></i> Add board length
         </button>
@@ -96,7 +107,7 @@
                 <th>Description</th>
                 <th>Length</th>
                 <th>Qty</th>
-                <th></th>
+                <th class="util-lb-col-action" aria-hidden="true"></th>
               </tr>
             </thead>
             <tbody data-lb-pieces-body></tbody>

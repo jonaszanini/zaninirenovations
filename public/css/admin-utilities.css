@@ -1,4 +1,10 @@
-/* Zanini Renovations — Utilities (tools landing + Pillar & Spindle calc) */
+/* Zanini Renovations — Utilities (tools landing + calculators) */
+
+/*
+ * Utility tool inputs must match .admin-form-group controls (44px min-height,
+ * 0.95rem type, full border). Table-row inputs are NOT exempt — always include
+ * them when styling a new util-* tool (see .util-lb-stock-table / .util-lb-pieces-table).
+ */
 
 /* ── Calculator layout ──────────────────────────────────────────────── */
 
@@ -833,7 +839,7 @@
 
 .util-lb-grid {
   display: grid;
-  grid-template-columns: minmax(300px, 420px) 1fr;
+  grid-template-columns: minmax(340px, 480px) minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
 }
@@ -854,10 +860,18 @@
   margin-bottom: 1rem;
 }
 
+/* Lumber calculator: every input/select matches admin form controls (including table rows). */
 .util-lb .admin-form-group input[type="number"],
 .util-lb .admin-form-group input[type="text"],
-.util-lb .admin-form-group select {
+.util-lb .admin-form-group select,
+.util-lb-stock-table input[type="number"],
+.util-lb-stock-table input[type="text"],
+.util-lb-pieces-table input[type="number"],
+.util-lb-pieces-table input[type="text"],
+.util-lb-save-row input[type="text"] {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 0.65rem 0.9rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
@@ -865,11 +879,15 @@
   color: var(--admin-text);
   font-family: inherit;
   font-size: 0.95rem;
+  line-height: 1.25;
   min-height: 44px;
 }
 
 .util-lb .admin-form-group input:focus,
-.util-lb .admin-form-group select:focus {
+.util-lb .admin-form-group select:focus,
+.util-lb-stock-table input:focus,
+.util-lb-pieces-table input:focus,
+.util-lb-save-row input:focus {
   outline: none;
   border-color: var(--admin-primary);
   box-shadow: 0 0 0 3px var(--admin-primary-ring);
@@ -879,13 +897,15 @@
   margin: 0 0 0.75rem;
 }
 
-.util-lb-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.util-lb-section-head,
+.util-lb-section-block {
   margin: 1rem 0 0.35rem;
+}
+
+.util-lb-section-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .util-lb-section-head--spaced {
@@ -913,55 +933,21 @@
   line-height: 1.45;
 }
 
-.util-lb-stock-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.util-lb-stock-row {
-  display: grid;
-  grid-template-columns: 1fr 7rem auto;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.util-lb-stock-row__length {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.35rem;
-  align-items: center;
-}
-
-.util-lb-unit-tag {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--admin-muted);
-  min-width: 1.5rem;
-}
-
-.util-lb-add-row {
-  margin-top: 0.35rem;
-}
-
-.util-lb-reset {
-  width: 100%;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
+.util-lb-stock-wrap,
 .util-lb-pieces-wrap {
   overflow-x: auto;
   margin-bottom: 0.5rem;
 }
 
+.util-lb-stock-table,
 .util-lb-pieces-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: fixed;
 }
 
+.util-lb-stock-table th,
 .util-lb-pieces-table th {
   text-align: left;
   font-size: 0.72rem;
@@ -973,25 +959,87 @@
   border-bottom: 1px solid var(--admin-border);
 }
 
+.util-lb-stock-table td,
 .util-lb-pieces-table td {
-  padding: 0.35rem 0.4rem;
+  padding: 0.4rem 0.35rem;
   vertical-align: middle;
 }
 
-.util-lb-pieces-table input {
-  width: 100%;
-  min-width: 0;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--admin-border);
-  border-radius: 8px;
-  font: inherit;
-  font-size: 0.9rem;
+.util-lb-stock-table th:nth-child(1),
+.util-lb-stock-table td:nth-child(1) {
+  width: 46%;
 }
 
-.util-lb-pieces-table input:focus {
-  outline: none;
-  border-color: var(--admin-primary);
-  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+.util-lb-stock-table th:nth-child(2),
+.util-lb-stock-table td:nth-child(2) {
+  width: 38%;
+}
+
+.util-lb-pieces-table th:nth-child(1),
+.util-lb-pieces-table td:nth-child(1) {
+  width: 42%;
+}
+
+.util-lb-pieces-table th:nth-child(2),
+.util-lb-pieces-table td:nth-child(2) {
+  width: 32%;
+}
+
+.util-lb-pieces-table th:nth-child(3),
+.util-lb-pieces-table td:nth-child(3) {
+  width: 18%;
+}
+
+.util-lb-col-action {
+  width: 3rem;
+  min-width: 3rem;
+  text-align: center;
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+}
+
+.util-lb-stock-length-cell {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.util-lb-stock-length-cell input {
+  flex: 1;
+  min-width: 0;
+}
+
+.util-lb-unit-tag {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+  min-width: 1.35rem;
+}
+
+.util-lb-row-remove {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.util-lb-add-row {
+  margin-top: 0.35rem;
+}
+
+.util-lb-reset {
+  width: 100%;
+  justify-content: center;
+  margin-top: 1rem;
 }
 
 .util-lb-results-head {
@@ -1266,10 +1314,6 @@
 }
 
 @media (max-width: 560px) {
-  .util-lb-stock-row {
-    grid-template-columns: 1fr;
-  }
-
   .util-lb-save-row {
     grid-template-columns: 1fr;
   }
