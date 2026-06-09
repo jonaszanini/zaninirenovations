@@ -593,6 +593,19 @@ body.admin-body {
   letter-spacing: 0.04em;
 }
 
+.admin-form-group__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.admin-form-group__label-row .admin-form-group-label {
+  margin-bottom: 0;
+}
+
 .admin-form-group input[type="text"],
 .admin-form-group input[type="email"],
 .admin-form-group input[type="password"],

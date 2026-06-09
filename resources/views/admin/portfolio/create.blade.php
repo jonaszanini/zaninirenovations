@@ -26,7 +26,12 @@
         $selectedCategoryIds = old('project_category_ids', []);
       @endphp
       <div class="admin-form-group">
-        <span class="admin-form-group-label">Categories</span>
+        <div class="admin-form-group__label-row">
+          <span class="admin-form-group-label">Categories</span>
+          <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
+            <i class="fa fa-cog" aria-hidden="true"></i> Configure
+          </a>
+        </div>
         <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
         <div class="admin-category-checkboxes">
           @foreach ($categories as $cat)
