@@ -11,6 +11,8 @@ class UtilityCalculation extends Model
 
     public const TOOL_PILLAR_SPINDLE = 'pillar_spindle';
 
+    public const TOOL_LUMBER_BOARD = 'lumber_board';
+
     protected $fillable = [
         'tool',
         'name',

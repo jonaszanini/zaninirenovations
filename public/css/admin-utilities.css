@@ -824,3 +824,453 @@
     justify-content: center;
   }
 }
+
+/* ── Lumber / Board Material Calculator ─────────────────────────────── */
+
+.util-lb [hidden] {
+  display: none !important;
+}
+
+.util-lb-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.util-lb-output {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.util-lb-card-title {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  color: var(--admin-primary);
+}
+
+.util-lb .admin-form-group {
+  margin-bottom: 1rem;
+}
+
+.util-lb .admin-form-group input[type="number"],
+.util-lb .admin-form-group input[type="text"],
+.util-lb .admin-form-group select {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  min-height: 44px;
+}
+
+.util-lb .admin-form-group input:focus,
+.util-lb .admin-form-group select:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+
+.util-lb-check {
+  margin: 0 0 0.75rem;
+}
+
+.util-lb-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1rem 0 0.35rem;
+}
+
+.util-lb-section-head--spaced {
+  margin-top: 1.35rem;
+}
+
+.util-lb-section-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.util-lb-quick-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.util-lb-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  line-height: 1.45;
+}
+
+.util-lb-stock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.util-lb-stock-row {
+  display: grid;
+  grid-template-columns: 1fr 7rem auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.util-lb-stock-row__length {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.util-lb-unit-tag {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+  min-width: 1.5rem;
+}
+
+.util-lb-add-row {
+  margin-top: 0.35rem;
+}
+
+.util-lb-reset {
+  width: 100%;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.util-lb-pieces-wrap {
+  overflow-x: auto;
+  margin-bottom: 0.5rem;
+}
+
+.util-lb-pieces-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.util-lb-pieces-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.util-lb-pieces-table td {
+  padding: 0.35rem 0.4rem;
+  vertical-align: middle;
+}
+
+.util-lb-pieces-table input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.util-lb-pieces-table input:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+
+.util-lb-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.util-lb-results-head .util-lb-card-title {
+  margin: 0;
+}
+
+.util-lb-empty {
+  text-align: center;
+  padding: 1.5rem 1rem 0.5rem;
+  color: var(--admin-muted);
+}
+
+.util-lb-empty__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.util-lb-empty__title {
+  font-weight: 700;
+  color: var(--admin-text);
+  margin: 0.25rem 0;
+}
+
+.util-lb-empty__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.util-lb-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+  border: 1px solid rgba(198, 40, 40, 0.35);
+  font-size: 0.92rem;
+}
+
+.util-lb-strategy {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--admin-primary-soft);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.util-lb-strategy__alt {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  font-weight: 400;
+}
+
+.util-lb-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.util-lb-stat {
+  text-align: center;
+  padding: 0.85rem 0.5rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-surface);
+}
+
+.util-lb-stat__value {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--admin-primary);
+  line-height: 1.25;
+}
+
+.util-lb-stat__label {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+}
+
+.util-lb-stat--waste.is-low .util-lb-stat__value { color: #2e7d32; }
+.util-lb-stat--waste.is-mid .util-lb-stat__value { color: #f9a825; }
+.util-lb-stat--waste.is-high .util-lb-stat__value { color: var(--admin-danger); }
+
+.util-lb-breakdown {
+  margin-top: 1.1rem;
+}
+
+.util-lb-breakdown__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.util-lb-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.util-lb-breakdown-row__info {
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.util-lb-breakdown-row__qty {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.util-lb-qty-btn {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.util-lb-qty-btn:hover {
+  background: var(--admin-primary-soft);
+}
+
+.util-lb-qty-input {
+  width: 3rem;
+  text-align: center;
+  padding: 0.35rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+}
+
+.util-lb-diagrams {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.util-lb-diagram-block {
+  overflow-x: auto;
+  padding: 0.5rem 0;
+}
+
+.util-lb-diagram-svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.util-lb-diagram-title {
+  font-size: 12px;
+  font-weight: 700;
+  fill: #024768;
+  font-family: "Open Sans", sans-serif;
+}
+
+.util-lb-export {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.util-lb-save-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.util-lb-save-feedback {
+  margin: 0.65rem 0 0;
+  font-size: 0.88rem;
+}
+
+.util-lb-save-feedback.is-ok { color: #2e7d32; }
+.util-lb-save-feedback.is-error { color: var(--admin-danger); }
+
+.util-lb-saved {
+  margin-top: 1.25rem;
+}
+
+.util-lb-saved-empty {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+}
+
+.util-lb-saved-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.util-lb-saved-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.util-lb-saved-item__name {
+  display: block;
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.util-lb-saved-item__summary {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  margin-top: 0.15rem;
+}
+
+.util-lb-saved-item__date {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+  margin-top: 0.1rem;
+}
+
+.util-lb-saved-item__actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 960px) {
+  .util-lb-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .util-lb-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .util-lb-stock-row {
+    grid-template-columns: 1fr;
+  }
+
+  .util-lb-save-row {
+    grid-template-columns: 1fr;
+  }
+}

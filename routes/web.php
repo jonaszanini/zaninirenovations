@@ -468,6 +468,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('utilities.pillar-spindle');
     Route::post('utilities/pillar-spindle/pdf', [\App\Http\Controllers\Admin\UtilitiesController::class, 'pillarSpindlePdf'])
         ->name('utilities.pillar-spindle.pdf');
+    Route::get('utilities/lumber-board', [\App\Http\Controllers\Admin\UtilitiesController::class, 'lumberBoard'])
+        ->name('utilities.lumber-board');
+    Route::post('utilities/lumber-board/pdf', [\App\Http\Controllers\Admin\UtilitiesController::class, 'lumberBoardPdf'])
+        ->name('utilities.lumber-board.pdf');
     Route::post('utilities/calculations', [\App\Http\Controllers\Admin\UtilitiesController::class, 'storeCalculation'])
         ->name('utilities.calculations.store');
     Route::delete('utilities/calculations/{utility_calculation}', [\App\Http\Controllers\Admin\UtilitiesController::class, 'destroyCalculation'])

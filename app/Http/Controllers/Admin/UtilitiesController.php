@@ -29,6 +29,12 @@ class UtilitiesController extends Controller
                 'route' => route('admin.utilities.measurement-conversion'),
                 'available' => true,
             ],
+            [
+                'name' => 'Lumber / Board Material',
+                'icon' => 'lumber_board',
+                'route' => route('admin.utilities.lumber-board'),
+                'available' => true,
+            ],
         ];
 
         return view('admin.utilities.index', [
@@ -50,6 +56,62 @@ class UtilitiesController extends Controller
         return view('admin.utilities.pillar_spindle', [
             'savedCalculations' => $saved,
         ]);
+    }
+
+    /**
+     * Lumber / Board Material Calculator. Packing runs in the browser; this
+     * method only supplies saved calculations for this tool.
+     */
+    public function lumberBoard()
+    {
+        $saved = UtilityCalculation::query()
+            ->where('tool', UtilityCalculation::TOOL_LUMBER_BOARD)
+            ->latest()
+            ->get(['id', 'name', 'payload', 'created_at']);
+
+        return view('admin.utilities.lumber_board', [
+            'savedCalculations' => $saved,
+        ]);
+    }
+
+    /**
+     * PDF export for a Lumber / Board Material calculation (diagrams as PNG).
+     */
+    public function lumberBoardPdf(Request $request)
+    {
+        $data = $request->validate([
+            'title' => ['nullable', 'string', 'max:160'],
+            'summary' => ['nullable', 'string', 'max:500'],
+            'rows' => ['required', 'array', 'min:1'],
+            'rows.*.label' => ['required', 'string', 'max:120'],
+            'rows.*.value' => ['required', 'string', 'max:120'],
+            'breakdown' => ['nullable', 'array'],
+            'breakdown.*.label' => ['required', 'string', 'max:120'],
+            'breakdown.*.value' => ['required', 'string', 'max:120'],
+            'diagrams' => ['nullable', 'array'],
+            'diagrams.*' => ['nullable', 'string'],
+        ]);
+
+        $diagrams = [];
+        foreach ($data['diagrams'] ?? [] as $diagram) {
+            if (is_string($diagram) && str_starts_with($diagram, 'data:image/png;base64,')) {
+                $diagrams[] = $diagram;
+            }
+        }
+
+        $pdf = Pdf::loadView('admin.utilities.lumber_board_pdf', [
+            'title' => $data['title'] ?? 'Lumber / Board Material',
+            'summary' => $data['summary'] ?? '',
+            'rows' => $data['rows'],
+            'breakdown' => $data['breakdown'] ?? [],
+            'diagrams' => $diagrams,
+            'generatedAt' => now()->format('M j, Y g:i A'),
+        ])
+            ->setPaper('a4', 'portrait')
+            ->setOption('isRemoteEnabled', true)
+            ->setOption('isHtml5ParserEnabled', true);
+
+        return $pdf->stream('lumber-board-material.pdf');
     }
 
     /**
