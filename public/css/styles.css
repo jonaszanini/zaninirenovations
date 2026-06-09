@@ -869,6 +869,20 @@ a.btn-load-more:hover {
   color: #ffffff;
   background: #444357;
 }
+.btn-theme:focus,
+.btn-theme:active,
+.btn-theme.focus {
+  border: 0px solid transparent;
+  color: #ffffff;
+  background: #024768;
+  outline: none;
+}
+.btn-theme:hover:focus,
+.btn-theme:hover:active,
+.btn-theme:hover.focus {
+  color: #ffffff;
+  background: #444357;
+}
 .btn-theme:hover i.fa {
   margin-left: 2px;
 }

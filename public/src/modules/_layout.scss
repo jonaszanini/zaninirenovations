@@ -721,6 +721,22 @@ a.btn-load-more {
     }
   }
 
+  &:focus,
+  &:active,
+  &.focus {
+    border: 0px solid transparent;
+    color: $light-text-color;
+    background: $primary-color;
+    outline: none;
+  }
+
+  &:hover:focus,
+  &:hover:active,
+  &:hover.focus {
+    color: $light-text-color;
+    background: $secondary-color;
+  }
+
   i.fa {
     margin: 0 2px;
   }
