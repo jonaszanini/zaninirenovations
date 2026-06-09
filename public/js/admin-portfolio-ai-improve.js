@@ -192,8 +192,12 @@
         setStatus('Choose at least one photo to improve (uploads or checked Google Photos). Already-improved WebP files are skipped.', true);
         return;
       }
-      if (total > maxTotal) {
-        setStatus('Too many photos selected (max ' + maxTotal + ').', true);
+      var draftSlots = 0;
+      if (config.stashDrafts && window.portfolioDraftPhotos && window.portfolioDraftPhotos.count) {
+        draftSlots = window.portfolioDraftPhotos.count();
+      }
+      if (total + draftSlots > maxTotal) {
+        setStatus('Too many photos (max ' + maxTotal + ' including saved photos).', true);
         return;
       }
 
@@ -221,9 +225,21 @@
         }
 
         try {
-          var body = await fetchJsonPost(aiImproveUrl, job.buildFormData(), csrfToken);
+          var fd = job.buildFormData();
+          if (config.stashDrafts) {
+            fd.append('stash_drafts', '1');
+          }
+          var body = await fetchJsonPost(aiImproveUrl, fd, csrfToken);
           (body.files || []).forEach(function (item) {
-            if (!item || !item.content_base64) return;
+            if (!item) return;
+            if (config.stashDrafts && item.draft_path) {
+              if (window.portfolioDraftPhotos && window.portfolioDraftPhotos.append) {
+                window.portfolioDraftPhotos.append(item);
+              }
+              improvedFiles.push({ draft: true, path: item.draft_path });
+              return;
+            }
+            if (!item.content_base64) return;
             improvedFiles.push(base64ToFile(
               item.content_base64,
               item.filename || 'photo-ai.webp',
@@ -242,12 +258,25 @@
       }
 
       if (improvedFiles.length || failures.length) {
-        if (processedGoogle) {
-          if (googleRoot && googleRoot.googlePhotosPicker && googleRoot.googlePhotosPicker.clearPickedItems) {
+        var stashedDrafts = config.stashDrafts && improvedFiles.some(function (f) {
+          return f && f.draft;
+        });
+
+        if (stashedDrafts) {
+          if (window.portfolioDraftPhotos && window.portfolioDraftPhotos.clearFileInput) {
+            window.portfolioDraftPhotos.clearFileInput();
+          } else {
+            setFileInputFiles(fileInput, []);
+          }
+          if (processedGoogle && googleRoot && googleRoot.googlePhotosPicker && googleRoot.googlePhotosPicker.clearPickedItems) {
             googleRoot.googlePhotosPicker.clearPickedItems();
           }
+        } else if (processedGoogle) {
           if (improvedFiles.length) {
             appendFilesToInput(fileInput, improvedFiles);
+          }
+          if (googleRoot && googleRoot.googlePhotosPicker && googleRoot.googlePhotosPicker.clearPickedItems) {
+            googleRoot.googlePhotosPicker.clearPickedItems();
           }
         } else {
           var failedLabels = {};
@@ -286,9 +315,15 @@
         setStatus(msg, true);
       } else {
         var saveHint = config.saveHint || 'Save project';
-        msg = improvedFiles.length === 1
-          ? '1 AI-improved WebP photo ready. Review previews, then ' + saveHint + '.'
-          : improvedFiles.length + ' AI-improved WebP photos ready. Review previews, then ' + saveHint + '.';
+        if (config.stashDrafts) {
+          msg = improvedFiles.length === 1
+            ? '1 AI-improved photo saved. Finish the form, then ' + saveHint + '.'
+            : improvedFiles.length + ' AI-improved photos saved. Finish the form, then ' + saveHint + '.';
+        } else {
+          msg = improvedFiles.length === 1
+            ? '1 AI-improved WebP photo ready. Review previews, then ' + saveHint + '.'
+            : improvedFiles.length + ' AI-improved WebP photos ready. Review previews, then ' + saveHint + '.';
+        }
         setStatus(msg, false);
       }
 

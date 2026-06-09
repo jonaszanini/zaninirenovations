@@ -75,9 +75,15 @@
           'fileErrors' => ['photos', 'photos.*'],
         ])
 
+        @include('admin.partials.portfolio_draft_photos', [
+          'draftPhotos' => $draftPhotos ?? [],
+          'gridId' => 'portfolio-draft-photo-grid',
+        ])
+
         @include('admin.partials.portfolio_ai_improve', [
           'fileInputId' => 'photos',
           'maxTotal' => 15,
+          'stashDraftHint' => ' Improved photos are saved on the server (see Saved photos below) so they are kept if you need to fix the form.',
         ])
       </div>
     </form>
@@ -93,10 +99,19 @@
 @endsection
 
 @push('scripts')
+  <script src="{{ asset('js/admin-portfolio-create.js') }}?v={{ @filemtime(public_path('js/admin-portfolio-create.js')) ?: time() }}"></script>
   <script>
+    window.portfolioCreateConfig = {
+      formId: 'portfolio-create-form',
+      fileInputId: 'photos',
+      maxTotal: 15,
+      stashDraftUrl: @json(route('admin.portfolio.draft-photos.store')),
+      removeDraftUrl: @json(route('admin.portfolio.draft-photos.destroy')),
+    };
     window.portfolioAiImproveConfig = {
       fileInputId: 'photos',
       maxTotal: 15,
+      stashDrafts: true,
       csrfToken: @json(csrf_token()),
       aiImproveUrl: @json(route('admin.portfolio.ai-improve-photos')),
       saveHint: 'Save project',

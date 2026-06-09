@@ -9,6 +9,7 @@ use App\Models\ProjectPhoto;
 use App\Models\GooglePhotosToken;
 use App\Services\GooglePhotosService;
 use App\Services\PortfolioDescriptionAiService;
+use App\Services\PortfolioDraftPhotoService;
 use App\Services\PortfolioPhotoAiImprovementService;
 use App\Services\ProjectPhotoCropService;
 use App\Services\ProjectPhotoRotationService;
@@ -78,14 +79,16 @@ class ProjectController extends Controller
         return view('admin.portfolio.index', compact('projects', 'filters', 'categories'));
     }
 
-    public function create()
+    public function create(PortfolioDraftPhotoService $draftPhotos)
     {
         $categories = ProjectCategory::query()
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
 
-        return view('admin.portfolio.create', compact('categories'));
+        $draftPhotos = $draftPhotos->resolveForForm(old('draft_photos'));
+
+        return view('admin.portfolio.create', compact('categories', 'draftPhotos'));
     }
 
     public function aiImprovePhotos(Request $request, PortfolioPhotoAiImprovementService $improver): JsonResponse
@@ -119,6 +122,15 @@ class ProjectController extends Controller
             return response()->json(['error' => 'Too many photos selected (max '.self::MAX_PHOTOS_PER_PROJECT.').'], 422);
         }
 
+        if ($request->boolean('stash_drafts')) {
+            $existingDrafts = count(app(PortfolioDraftPhotoService::class)->listPaths());
+            if ($existingDrafts + $sourceCount > self::MAX_PHOTOS_PER_PROJECT) {
+                return response()->json([
+                    'error' => 'Too many photos (max '.self::MAX_PHOTOS_PER_PROJECT.' including saved photos).',
+                ], 422);
+            }
+        }
+
         try {
             $result = $improver->improveBatch(
                 $request->user(),
@@ -126,12 +138,90 @@ class ProjectController extends Controller
                 $googleItems,
             );
 
+            if ($request->boolean('stash_drafts')) {
+                $drafts = app(PortfolioDraftPhotoService::class);
+                $stashed = [];
+                foreach ($result['files'] as $file) {
+                    if (empty($file['content_base64'])) {
+                        continue;
+                    }
+                    $webp = base64_decode((string) $file['content_base64'], true);
+                    if ($webp === false || $webp === '') {
+                        continue;
+                    }
+                    $path = $drafts->stashWebp($webp);
+                    $stashed[] = [
+                        'draft_path' => $path,
+                        'url' => '/storage/'.$path,
+                        'filename' => $file['filename'] ?? basename($path),
+                        'label' => $file['label'] ?? basename($path),
+                        'size_bytes' => strlen($webp),
+                    ];
+                }
+                $result['files'] = $stashed;
+            }
+
             return response()->json($result);
         } catch (\Throwable $e) {
             return response()->json([
                 'error' => $e->getMessage(),
             ], 502);
         }
+    }
+
+    public function stashDraftPhotos(Request $request, PortfolioDraftPhotoService $drafts): JsonResponse
+    {
+        $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
+
+        $data = $request->validate([
+            'photos' => ['required', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'photos.*' => ['file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
+        ]);
+
+        $uploads = array_values(array_filter(
+            (array) $request->file('photos', []),
+            fn ($file) => $file instanceof \Illuminate\Http\UploadedFile,
+        ));
+
+        if ($uploads === []) {
+            return response()->json(['error' => 'No photos to save.'], 422);
+        }
+
+        $existing = count($drafts->listPaths());
+        if ($existing + count($uploads) > self::MAX_PHOTOS_PER_PROJECT) {
+            return response()->json([
+                'error' => 'Too many draft photos (max '.self::MAX_PHOTOS_PER_PROJECT.' total).',
+            ], 422);
+        }
+
+        $saved = [];
+        foreach ($uploads as $file) {
+            try {
+                $path = $drafts->stashUpload($file);
+                $saved[] = [
+                    'draft_path' => $path,
+                    'url' => '/storage/'.$path,
+                    'filename' => basename($path),
+                ];
+            } catch (\Throwable $e) {
+                return response()->json(['error' => $e->getMessage()], 502);
+            }
+        }
+
+        return response()->json(['photos' => $saved]);
+    }
+
+    public function removeDraftPhoto(Request $request, PortfolioDraftPhotoService $drafts): JsonResponse
+    {
+        $data = $request->validate([
+            'draft_path' => ['required', 'string', 'max:500'],
+        ]);
+
+        if (! $drafts->remove($data['draft_path'])) {
+            return response()->json(['error' => 'Draft photo not found.'], 404);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     public function aiImproveDescription(Request $request, PortfolioDescriptionAiService $describer): JsonResponse
@@ -147,7 +237,7 @@ class ProjectController extends Controller
         return $this->respondWithImprovedDescription($request, $describer, $project);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PortfolioDraftPhotoService $draftPhotos)
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -155,15 +245,18 @@ class ProjectController extends Controller
             'project_category_ids' => ['required', 'array', 'min:1'],
             'project_category_ids.*' => ['integer', 'distinct', 'exists:project_categories,id'],
             'completed_on' => ['required', 'date'],
+            'draft_photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'draft_photos.*' => ['string', 'max:500'],
             'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
             'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'google_picker_items.*' => ['string', 'max:4000', 'distinct'],
         ]);
 
+        $draftPaths = $draftPhotos->validatePaths($validated['draft_photos'] ?? []);
         $fileCount = $request->hasFile('photos') ? count((array) $request->file('photos')) : 0;
         $googleItems = array_values(array_filter((array) $request->input('google_picker_items', []), fn ($v) => is_string($v) && $v !== ''));
-        if ($fileCount + count($googleItems) > self::MAX_PHOTOS_PER_PROJECT) {
+        if (count($draftPaths) + $fileCount + count($googleItems) > self::MAX_PHOTOS_PER_PROJECT) {
             return back()
                 ->withErrors(['photos' => 'Too many images selected (max '.self::MAX_PHOTOS_PER_PROJECT.' total).'])
                 ->withInput();
@@ -183,19 +276,30 @@ class ProjectController extends Controller
 
             $project->categories()->sync($validated['project_category_ids']);
 
+            $sortOrder = 0;
+            foreach ($draftPhotos->adoptPathsForProject((int) $project->id, $draftPaths) as $path) {
+                $savedPaths[] = $path;
+                $project->photos()->create([
+                    'path' => $path,
+                    'sort_order' => $sortOrder,
+                ]);
+                $sortOrder++;
+            }
+
             if ($request->hasFile('photos')) {
-                foreach ($request->file('photos') as $index => $file) {
+                foreach ($request->file('photos') as $file) {
                     $path = $converter->store($file, (int) $project->id);
                     $savedPaths[] = $path;
                     $project->photos()->create([
                         'path' => $path,
-                        'sort_order' => $index,
+                        'sort_order' => $sortOrder,
                     ]);
+                    $sortOrder++;
                 }
             }
 
             if ($googleItems !== []) {
-                $this->importGooglePickerMedia($request, $project, $converter, $savedPaths, (int) $project->photos()->count());
+                $this->importGooglePickerMedia($request, $project, $converter, $savedPaths, $sortOrder);
             }
 
             DB::commit();
@@ -210,6 +314,8 @@ class ProjectController extends Controller
                 ->withErrors(['photos' => 'Could not save images. '.$e->getMessage()])
                 ->withInput();
         }
+
+        $draftPhotos->clear();
 
         return redirect()
             ->route('admin.portfolio.index')
