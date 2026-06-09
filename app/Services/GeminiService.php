@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -254,29 +256,27 @@ class GeminiService
 
         $url = $baseUrl.'/models/'.$model.':generateContent?key='.urlencode($apiKey);
 
-        $response = Http::timeout($timeout)
-            ->acceptJson()
-            ->post($url, [
-                'contents' => [
-                    [
-                        'role' => 'user',
-                        'parts' => [
-                            ['text' => $prompt],
-                            $imagePart,
-                        ],
+        $response = $this->postJsonWithRetry($url, [
+            'contents' => [
+                [
+                    'role' => 'user',
+                    'parts' => [
+                        ['text' => $prompt],
+                        $imagePart,
                     ],
                 ],
-                'generationConfig' => [
-                    'responseModalities' => ['IMAGE'],
-                ],
-            ]);
+            ],
+            'generationConfig' => [
+                'responseModalities' => ['IMAGE'],
+            ],
+        ], $timeout);
 
         if (! $response->successful()) {
             $message = $response->json('error.message')
                 ?? $response->json('message')
                 ?? ('Gemini image edit API error (HTTP '.$response->status().').');
 
-            throw new RuntimeException($message);
+            throw new RuntimeException($this->sanitizeClientError($message));
         }
 
         $inline = $this->extractInlineImageData($response->json());
@@ -452,5 +452,40 @@ class GeminiService
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function postJsonWithRetry(string $url, array $payload, int $timeout): Response
+    {
+        $maxAttempts = 3;
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return Http::timeout($timeout)
+                    ->acceptJson()
+                    ->post($url, $payload);
+            } catch (ConnectionException $e) {
+                $lastException = $e;
+                if ($attempt < $maxAttempts) {
+                    usleep(750_000 * $attempt);
+                }
+            }
+        }
+
+        report($lastException ?? new RuntimeException('Gemini connection failed.'));
+
+        throw new RuntimeException(
+            'Gemini connection failed (network reset or timeout). Wait a few seconds and try again.'
+        );
+    }
+
+    private function sanitizeClientError(string $message): string
+    {
+        $message = preg_replace('/key=[^&\s\'"]+/i', 'key=[redacted]', $message) ?? $message;
+
+        return preg_replace('/\?key=[^\s\'"]+/i', '', $message) ?? $message;
     }
 }

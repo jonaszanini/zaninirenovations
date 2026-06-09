@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  var JOB_DELAY_MS = 2000;
+
   function errorFromBody(body, status) {
     if (body && body.error) return body.error;
     if (body && body.errors) {
@@ -14,6 +16,11 @@
       return 'The server timed out while editing. Each photo is processed separately; try again or use fewer photos.';
     }
     return 'HTTP ' + status;
+  }
+
+  function isAiImprovedFile(file) {
+    if (!file || !file.name) return false;
+    return file.name.toLowerCase().indexOf('-ai.webp') !== -1;
   }
 
   function fetchJsonPost(url, formData, csrfToken) {
@@ -57,19 +64,25 @@
     return new File([arr], filename, { type: mime || 'image/webp' });
   }
 
-  function appendFilesToInput(input, newFiles) {
-    if (!input || !newFiles.length) return;
+  function setFileInputFiles(input, files) {
+    if (!input) return;
     var dt = new DataTransfer();
-    if (input.files) {
-      Array.prototype.forEach.call(input.files, function (file) {
-        dt.items.add(file);
-      });
-    }
-    newFiles.forEach(function (file) {
+    files.forEach(function (file) {
       dt.items.add(file);
     });
     input.files = dt.files;
     input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function appendFilesToInput(input, newFiles) {
+    if (!input || !newFiles.length) return;
+    var existing = [];
+    if (input.files) {
+      Array.prototype.forEach.call(input.files, function (file) {
+        existing.push(file);
+      });
+    }
+    setFileInputFiles(input, existing.concat(newFiles));
   }
 
   function googleJobLabel(payload, index) {
@@ -78,6 +91,12 @@
       if (data && data.filename) return data.filename;
     } catch (ignore) {}
     return 'Google photo ' + (index + 1);
+  }
+
+  function delay(ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
   }
 
   function init(config) {
@@ -109,13 +128,13 @@
       applyBtn.disabled = !!active;
     }
 
-    function uploadCount() {
-      return fileInput.files ? fileInput.files.length : 0;
-    }
-
-    function googleCheckedCount() {
-      if (!googleRoot || !googleRoot.googlePhotosPicker) return 0;
-      return googleRoot.googlePhotosPicker.getCheckedCount();
+    function improvableUploadCount() {
+      if (!fileInput.files) return 0;
+      var count = 0;
+      Array.prototype.forEach.call(fileInput.files, function (file) {
+        if (!isAiImprovedFile(file)) count += 1;
+      });
+      return count;
     }
 
     function googlePayloads() {
@@ -126,7 +145,7 @@
     function totalSourceCount() {
       var google = googlePayloads().length;
       if (google > 0) return google;
-      return uploadCount();
+      return improvableUploadCount();
     }
 
     function buildJobs() {
@@ -137,6 +156,7 @@
         google.forEach(function (payload, index) {
           jobs.push({
             label: googleJobLabel(payload, index),
+            sourceFile: null,
             buildFormData: function () {
               var fd = new FormData();
               fd.append('google_picker_items[]', payload);
@@ -149,8 +169,10 @@
 
       if (fileInput.files) {
         Array.prototype.forEach.call(fileInput.files, function (file, index) {
+          if (isAiImprovedFile(file)) return;
           jobs.push({
             label: file.name || ('Upload ' + (index + 1)),
+            sourceFile: file,
             buildFormData: function () {
               var fd = new FormData();
               fd.append('photos[]', file);
@@ -167,7 +189,7 @@
       var total = totalSourceCount();
 
       if (total < 1) {
-        setStatus('Choose at least one photo (upload or checked Google Photos).', true);
+        setStatus('Choose at least one photo to improve (uploads or checked Google Photos). Already-improved WebP files are skipped.', true);
         return;
       }
       if (total > maxTotal) {
@@ -176,9 +198,14 @@
       }
 
       var jobs = buildJobs();
+      if (!jobs.length) {
+        setStatus('No photos left to improve. Files ending in -ai.webp are already processed.', true);
+        return;
+      }
+
       var failures = [];
       var improvedFiles = [];
-      var processedGoogle = googleCheckedCount() > 0;
+      var processedGoogle = googlePayloads().length > 0;
 
       setLoading(true, 'Editing photo 1 of ' + jobs.length + '…');
       setStatus('Processing ' + jobs.length + ' photo' + (jobs.length === 1 ? '' : 's') + ' one at a time…', false);
@@ -188,6 +215,10 @@
         var progress = 'Editing photo ' + (i + 1) + ' of ' + jobs.length + '…';
         setLoading(true, progress);
         setStatus(progress, false);
+
+        if (i > 0) {
+          await delay(JOB_DELAY_MS);
+        }
 
         try {
           var body = await fetchJsonPost(aiImproveUrl, job.buildFormData(), csrfToken);
@@ -210,10 +241,32 @@
         }
       }
 
-      if (improvedFiles.length) {
-        appendFilesToInput(fileInput, improvedFiles);
-        if (processedGoogle && googleRoot && googleRoot.googlePhotosPicker && googleRoot.googlePhotosPicker.clearPickedItems) {
-          googleRoot.googlePhotosPicker.clearPickedItems();
+      if (improvedFiles.length || failures.length) {
+        if (processedGoogle) {
+          if (improvedFiles.length) {
+            appendFilesToInput(fileInput, improvedFiles);
+          }
+          if (googleRoot && googleRoot.googlePhotosPicker && googleRoot.googlePhotosPicker.clearPickedItems) {
+            googleRoot.googlePhotosPicker.clearPickedItems();
+          }
+        } else {
+          var failedLabels = {};
+          failures.forEach(function (f) {
+            if (f && f.label) failedLabels[f.label] = true;
+          });
+          var keptOriginals = [];
+          jobs.forEach(function (j) {
+            if (j.sourceFile && failedLabels[j.label]) {
+              keptOriginals.push(j.sourceFile);
+            }
+          });
+          var alreadyImproved = [];
+          if (fileInput.files) {
+            Array.prototype.forEach.call(fileInput.files, function (file) {
+              if (isAiImprovedFile(file)) alreadyImproved.push(file);
+            });
+          }
+          setFileInputFiles(fileInput, alreadyImproved.concat(keptOriginals).concat(improvedFiles));
         }
       }
 
@@ -224,15 +277,17 @@
         }).join('; ');
         setStatus(msg, true);
       } else if (failures.length) {
-        msg = improvedFiles.length + ' WebP photo' + (improvedFiles.length === 1 ? '' : 's') + ' added. ';
+        msg = improvedFiles.length + ' WebP photo' + (improvedFiles.length === 1 ? '' : 's') + ' ready. ';
+        msg += 'Failed: ';
         msg += failures.map(function (f) {
           return (f.label || 'Photo') + ': ' + (f.error || 'failed');
         }).join('; ');
+        msg += ' Click Apply again to retry failed photos only.';
         setStatus(msg, true);
       } else {
         msg = improvedFiles.length === 1
-          ? '1 AI-improved WebP photo added above. Review previews, then Save project.'
-          : improvedFiles.length + ' AI-improved WebP photos added above. Review previews, then Save project.';
+          ? '1 AI-improved WebP photo ready. Review previews, then Save project.'
+          : improvedFiles.length + ' AI-improved WebP photos ready. Review previews, then Save project.';
         setStatus(msg, false);
       }
 

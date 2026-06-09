@@ -44,7 +44,7 @@ class PortfolioPhotoAiImprovementService
             } catch (\Throwable $e) {
                 $failures[] = [
                     'label' => $label,
-                    'error' => $e->getMessage(),
+                    'error' => $this->publicError($e),
                 ];
             }
         }
@@ -77,7 +77,7 @@ class PortfolioPhotoAiImprovementService
             } catch (\Throwable $e) {
                 $failures[] = [
                     'label' => $label,
-                    'error' => $e->getMessage(),
+                    'error' => $this->publicError($e),
                 ];
             }
         }
@@ -177,5 +177,20 @@ class PortfolioPhotoAiImprovementService
         }
 
         return $prompt;
+    }
+
+    private function publicError(\Throwable $e): string
+    {
+        $message = trim($e->getMessage());
+        $message = preg_replace('/key=[^&\s\'"]+/i', 'key=[redacted]', $message) ?? $message;
+        $message = preg_replace('/\?key=[^\s\'"]+/i', '', $message) ?? $message;
+
+        if (stripos($message, 'cURL error 56') !== false
+            || stripos($message, 'connection reset') !== false
+            || stripos($message, 'connection failed') !== false) {
+            return 'Gemini connection dropped. Try this photo again in a moment.';
+        }
+
+        return $message !== '' ? $message : 'AI improve failed.';
     }
 }
