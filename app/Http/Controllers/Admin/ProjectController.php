@@ -503,14 +503,6 @@ class ProjectController extends Controller
     {
         abort_unless((int) $photo->project_id === (int) $project->id, 404);
 
-        $validated = $request->validate([
-            'x' => ['required', 'numeric'],
-            'y' => ['required', 'numeric'],
-            'width' => ['required', 'numeric', 'min:1'],
-            'height' => ['required', 'numeric', 'min:1'],
-            'label_before' => ['sometimes', 'boolean'],
-        ]);
-
         $disk = Storage::disk('public');
         if (! $disk->exists($photo->path)) {
             if ($request->expectsJson()) {
@@ -521,6 +513,80 @@ class ProjectController extends Controller
         }
 
         $fullPath = $disk->path($photo->path);
+        $labelBefore = $request->boolean('label_before');
+
+        if ($request->hasFile('image')) {
+            $request->validate([
+                'image' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:20480'],
+                'label_before' => ['sometimes', 'boolean'],
+            ]);
+
+            try {
+                $upload = $request->file('image');
+                $realPath = $upload->getRealPath();
+                if ($realPath === false || ! is_file($realPath)) {
+                    throw new \RuntimeException('Could not read the edited image.');
+                }
+
+                $bytes = file_get_contents($realPath);
+                if ($bytes === false || $bytes === '') {
+                    throw new \RuntimeException('Edited image is empty.');
+                }
+
+                $mime = strtolower((string) $upload->getMimeType());
+                if ($mime === '' || ! str_starts_with($mime, 'image/')) {
+                    $mime = 'image/png';
+                }
+
+                $converter = app(ProjectPhotoWebpStorage::class);
+                $webp = $converter->convertBinaryToWebp($bytes, $mime, basename($photo->path));
+                if (file_put_contents($fullPath, $webp) === false) {
+                    throw new \RuntimeException('Could not save the edited photo.');
+                }
+
+                if ($labelBefore) {
+                    app(ProjectPhotoLabelService::class)->applyBeforeLabel($fullPath);
+                }
+
+                app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
+                clearstatcache(true, $fullPath);
+            } catch (\Throwable $e) {
+                report($e);
+                $msg = 'Could not save the edited photo: '.$e->getMessage();
+
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => $msg], 500);
+                }
+
+                return back()->with('error', $msg);
+            }
+
+            $photo->touch();
+            app(ProjectPhotoWebpStorage::class)->syncPublicMirror($photo->path);
+
+            if ($request->expectsJson()) {
+                $info = @getimagesize($fullPath);
+
+                return response()->json([
+                    'ok' => true,
+                    'width' => $info !== false ? (int) $info[0] : null,
+                    'height' => $info !== false ? (int) $info[1] : null,
+                ]);
+            }
+
+            return redirect()
+                ->route('admin.portfolio.edit', $project)
+                ->with('success', $labelBefore ? 'Photo updated with Before label.' : 'Photo updated.');
+        }
+
+        $validated = $request->validate([
+            'x' => ['required', 'numeric'],
+            'y' => ['required', 'numeric'],
+            'width' => ['required', 'numeric', 'min:1'],
+            'height' => ['required', 'numeric', 'min:1'],
+            'label_before' => ['sometimes', 'boolean'],
+        ]);
+
         $info = @getimagesize($fullPath);
         if ($info === false) {
             if ($request->expectsJson()) {

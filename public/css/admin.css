@@ -1187,6 +1187,11 @@ details[open] > summary.admin-chevron-summary::after {
   padding-right: 0.5rem;
 }
 
+.admin-photo-edit-btn {
+  min-width: 4.25rem;
+  font-weight: 600;
+}
+
 .admin-sr-only {
   position: absolute;
   width: 1px;
@@ -1267,12 +1272,12 @@ details[open] > summary.admin-chevron-summary::after {
   margin: 0;
 }
 
-/* Crop modal (project photos) — id-scoped: fixed overlay + bounded crop stage */
-#admin-photo-crop-modal[hidden] {
+/* Edit photo modal (project photos) — id-scoped: fixed overlay + bounded crop stage */
+#admin-photo-edit-modal[hidden] {
   display: none !important;
 }
 
-#admin-photo-crop-modal:not([hidden]) {
+#admin-photo-edit-modal:not([hidden]) {
   display: flex !important;
   flex-direction: column;
   align-items: center;
@@ -1291,7 +1296,7 @@ details[open] > summary.admin-chevron-summary::after {
   -webkit-overflow-scrolling: touch;
 }
 
-#admin-photo-crop-modal .admin-modal-backdrop {
+#admin-photo-edit-modal .admin-modal-backdrop {
   position: absolute;
   inset: 0;
   z-index: 0;
@@ -1299,7 +1304,7 @@ details[open] > summary.admin-chevron-summary::after {
   cursor: pointer;
 }
 
-#admin-photo-crop-modal .admin-modal-panel {
+#admin-photo-edit-modal .admin-modal-panel {
   position: relative;
   z-index: 2;
   width: min(800px, calc(100vw - 1.5rem));
@@ -1318,7 +1323,7 @@ details[open] > summary.admin-chevron-summary::after {
   flex-direction: column;
 }
 
-#admin-photo-crop-modal .admin-modal-title {
+#admin-photo-edit-modal .admin-modal-title {
   margin: 0 0 0.35rem;
   font-size: 1.15rem;
   font-weight: 700;
@@ -1326,7 +1331,7 @@ details[open] > summary.admin-chevron-summary::after {
   flex-shrink: 0;
 }
 
-#admin-photo-crop-modal .admin-modal-hint {
+#admin-photo-edit-modal .admin-modal-hint {
   margin: 0 0 0.85rem;
   font-size: 0.88rem;
   color: var(--admin-muted);
@@ -1338,7 +1343,7 @@ details[open] > summary.admin-chevron-summary::after {
  * Cropper.js measures the img parent's offsetWidth/offsetHeight. Use a modest fixed
  * fallback height; JS also sets explicit px height on open so the crop never blows up to natural size.
  */
-#admin-photo-crop-modal .admin-crop-stage {
+#admin-photo-edit-modal .admin-crop-stage {
   width: 100%;
   flex: 0 0 auto;
   height: 360px;
@@ -1352,18 +1357,18 @@ details[open] > summary.admin-chevron-summary::after {
   box-sizing: border-box;
 }
 
-#admin-photo-crop-modal .admin-crop-stage img {
+#admin-photo-edit-modal .admin-crop-stage img {
   display: block;
   max-width: 100%;
   max-height: 100%;
 }
 
 /* Outer wrapper only — let Cropper own inner dimensions once fitted to this box */
-#admin-photo-crop-modal .admin-crop-stage .cropper-container {
+#admin-photo-edit-modal .admin-crop-stage .cropper-container {
   max-width: 100% !important;
 }
 
-#admin-photo-crop-modal .admin-crop-toolbar {
+#admin-photo-edit-modal .admin-crop-toolbar {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1372,7 +1377,7 @@ details[open] > summary.admin-chevron-summary::after {
   flex-shrink: 0;
 }
 
-#admin-photo-crop-modal .admin-crop-toolbar__label {
+#admin-photo-edit-modal .admin-crop-toolbar__label {
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -1380,38 +1385,75 @@ details[open] > summary.admin-chevron-summary::after {
   color: var(--admin-muted);
 }
 
-#admin-photo-crop-modal .admin-crop-ar-picker {
+#admin-photo-edit-modal .admin-crop-ar-picker {
   width: 100%;
 }
 
-#admin-photo-crop-modal .admin-crop-ar-free__shape {
+#admin-photo-edit-modal .admin-crop-ar-free__shape {
   width: 15px;
   height: 11px;
   border-style: dashed;
   border-radius: 2px;
 }
 
-#admin-photo-crop-modal .nb2-ar-btn[data-ar-w="3"][data-ar-h="2"] .nb2-ar-btn__shape {
+#admin-photo-edit-modal .nb2-ar-btn[data-ar-w="3"][data-ar-h="2"] .nb2-ar-btn__shape {
   width: 16px;
   height: 11px;
 }
 
-#admin-photo-crop-modal .nb2-ar-btn[data-ar-w="3"][data-ar-h="4"] .nb2-ar-btn__shape {
+#admin-photo-edit-modal .nb2-ar-btn[data-ar-w="3"][data-ar-h="4"] .nb2-ar-btn__shape {
   width: 11px;
   height: 15px;
 }
 
-#admin-photo-crop-modal .admin-crop-options {
+#admin-photo-edit-modal .admin-crop-rotate-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+#admin-photo-edit-modal .admin-crop-straighten {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+}
+
+#admin-photo-edit-modal .admin-crop-straighten__slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--admin-primary, #1e6b6b);
+}
+
+#admin-photo-edit-modal .admin-crop-straighten__value {
+  flex-shrink: 0;
+  min-width: 3.25rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--admin-text);
+}
+
+#admin-photo-edit-modal .admin-crop-toolbar--rotate {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--admin-border);
+}
+
+#admin-photo-edit-modal .admin-crop-options {
   margin-top: 0.85rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--admin-border);
 }
 
-#admin-photo-crop-modal .admin-crop-options .admin-checkbox {
+#admin-photo-edit-modal .admin-crop-options .admin-checkbox {
   margin: 0;
 }
 
-#admin-photo-crop-modal .admin-modal-actions {
+#admin-photo-edit-modal .admin-modal-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
@@ -1420,7 +1462,7 @@ details[open] > summary.admin-chevron-summary::after {
   flex-shrink: 0;
 }
 
-html.admin-crop-modal-open {
+html.admin-photo-edit-modal-open {
   overflow: hidden;
 }
 

@@ -62,7 +62,7 @@
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group">
           <label>Photos — order &amp; remove</label>
-          <p class="admin-form-hint">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Use rotate to fix orientation (90°) or crop to trim the frame (saved as WebP). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
+          <p class="admin-form-hint">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> on a photo to straighten, rotate, crop, or add a Before label (saved as WebP). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
@@ -74,23 +74,11 @@
                   <img src="{{ $photo->url() }}" alt="">
                 </div>
                 <div class="admin-photo-sortable-actions">
-                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-crop-photo"
-                    title="Crop photo"
-                    data-crop-url="{{ route('admin.portfolio.photos.crop', [$project, $photo]) }}"
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm admin-photo-edit-btn js-edit-photo"
+                    title="Edit photo"
+                    data-edit-url="{{ route('admin.portfolio.photos.crop', [$project, $photo]) }}"
                     data-image-url="{{ $photo->url() }}">
-                    <i class="fa fa-crop" aria-hidden="true"></i><span class="admin-sr-only"> Crop</span>
-                  </button>
-                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-rotate-photo"
-                    title="Rotate 90° counter-clockwise"
-                    data-post-url="{{ route('admin.portfolio.photos.rotate', [$project, $photo]) }}"
-                    data-direction="ccw">
-                    <i class="fa fa-undo" aria-hidden="true"></i><span class="admin-sr-only"> Rotate left</span>
-                  </button>
-                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-rotate-photo"
-                    title="Rotate 90° clockwise"
-                    data-post-url="{{ route('admin.portfolio.photos.rotate', [$project, $photo]) }}"
-                    data-direction="cw">
-                    <i class="fa fa-repeat" aria-hidden="true"></i><span class="admin-sr-only"> Rotate right</span>
+                    Edit
                   </button>
                 </div>
                 <label class="admin-photo-remove-label admin-checkbox admin-checkbox--sm">
@@ -120,7 +108,7 @@
             'fileInputId' => 'photos',
             'fileInputName' => 'photos[]',
             'fileLabel' => 'Add photos',
-            'fileHint' => 'WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP at '.$portfolioWebp['quality'].'% quality, scaled to at most '.$portfolioWebp['max_edge_px'].'px, and compressed to about '.(int) round($portfolioWebp['max_bytes'] / 1024).' KB or less; originals are not kept. Up to '.$canAdd.' more (15 total). After you save, use the crop icon on any thumbnail to trim it.',
+            'fileHint' => 'WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP at '.$portfolioWebp['quality'].'% quality, scaled to at most '.$portfolioWebp['max_edge_px'].'px, and compressed to about '.(int) round($portfolioWebp['max_bytes'] / 1024).' KB or less; originals are not kept. Up to '.$canAdd.' more (15 total). After you save, use <strong>Edit</strong> on any thumbnail to straighten, rotate, or crop.',
             'maxTotal' => $canAdd,
             'statusMode' => 'remaining',
             'formSync' => true,
@@ -166,13 +154,31 @@
   </div>
 
   @if ($project->photos->isNotEmpty())
-    <div id="admin-photo-crop-modal" class="admin-modal" hidden>
-      <div class="admin-modal-backdrop" data-crop-modal-dismiss tabindex="-1" aria-hidden="true"></div>
-      <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-photo-crop-title">
-        <h2 id="admin-photo-crop-title" class="admin-modal-title">Crop photo</h2>
-        <p class="admin-modal-hint">Drag the box or corners to adjust the crop. Pick an aspect ratio below, or use <strong>Free</strong> to resize manually. The file on the server is replaced (WebP). Optionally add a <strong>Before</strong> label for before-and-after galleries.</p>
+    @php
+      $editPhotoWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
+    @endphp
+    <div id="admin-photo-edit-modal" class="admin-modal" hidden>
+      <div class="admin-modal-backdrop" data-edit-modal-dismiss tabindex="-1" aria-hidden="true"></div>
+      <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-photo-edit-title">
+        <h2 id="admin-photo-edit-title" class="admin-modal-title">Edit photo</h2>
+        <p class="admin-modal-hint">Straighten a tilted shot, rotate 90°, and crop the frame. Pick an aspect ratio below, or use <strong>Free</strong> to resize manually. The file on the server is replaced (WebP). Optionally add a <strong>Before</strong> label for before-and-after galleries.</p>
         <div class="admin-crop-stage">
-          <img id="admin-photo-crop-img" src="" alt="">
+          <img id="admin-photo-edit-img" src="" alt="">
+        </div>
+        <div class="admin-crop-toolbar admin-crop-toolbar--rotate">
+          <span class="admin-crop-toolbar__label">Straighten &amp; rotate</span>
+          <div class="admin-crop-rotate-row">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="admin-photo-edit-rotate-ccw" disabled title="Rotate 90° counter-clockwise" aria-label="Rotate 90 degrees left">
+              <i class="fa fa-undo" aria-hidden="true"></i>
+            </button>
+            <div class="admin-crop-straighten">
+              <input type="range" id="admin-photo-edit-straighten" class="admin-crop-straighten__slider" min="-15" max="15" step="0.1" value="0" disabled aria-label="Straighten tilt">
+              <span id="admin-photo-edit-rotate-value" class="admin-crop-straighten__value" aria-live="polite">0.0°</span>
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="admin-photo-edit-rotate-cw" disabled title="Rotate 90° clockwise" aria-label="Rotate 90 degrees right">
+              <i class="fa fa-repeat" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
         <div class="admin-crop-toolbar">
           <span class="admin-crop-toolbar__label">Aspect ratio</span>
@@ -223,8 +229,8 @@
           </label>
         </div>
         <div class="admin-modal-actions">
-          <button type="button" class="admin-btn admin-btn--ghost" data-crop-modal-dismiss>Cancel</button>
-          <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-crop-apply" disabled>Apply crop</button>
+          <button type="button" class="admin-btn admin-btn--ghost" data-edit-modal-dismiss>Cancel</button>
+          <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-apply" disabled>Save changes</button>
         </div>
       </div>
     </div>
@@ -261,31 +267,6 @@
       (function () {
         var csrf = @json(csrf_token());
 
-        /* Rotate: full form POST (same as normal Laravel) — works even if Sortable CDN fails */
-        document.querySelectorAll('.js-rotate-photo').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var url = btn.getAttribute('data-post-url');
-            var direction = btn.getAttribute('data-direction');
-            if (!url || !direction) return;
-            if (btn.disabled) return;
-            btn.disabled = true;
-            var f = document.createElement('form');
-            f.method = 'POST';
-            f.action = url;
-            f.style.display = 'none';
-            var token = document.createElement('input');
-            token.name = '_token';
-            token.value = csrf;
-            var dir = document.createElement('input');
-            dir.name = 'direction';
-            dir.value = direction;
-            f.appendChild(token);
-            f.appendChild(dir);
-            document.body.appendChild(f);
-            f.submit();
-          });
-        });
-
         var list = document.getElementById('admin-photo-sortable');
         var form = list && list.closest('form');
         var fields = document.getElementById('admin-photo-sequence-fields');
@@ -318,14 +299,18 @@
     <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js" crossorigin="anonymous"></script>
     <script>
       (function () {
-        var modal = document.getElementById('admin-photo-crop-modal');
-        var img = document.getElementById('admin-photo-crop-img');
-        var applyBtn = document.getElementById('admin-photo-crop-apply');
+        var modal = document.getElementById('admin-photo-edit-modal');
+        var img = document.getElementById('admin-photo-edit-img');
+        var applyBtn = document.getElementById('admin-photo-edit-apply');
         var labelBeforeCheckbox = document.getElementById('admin-photo-crop-label-before');
-        var aspectButtons = modal.querySelectorAll('[data-crop-ar]');
+        var straightenSlider = document.getElementById('admin-photo-edit-straighten');
+        var rotateValueEl = document.getElementById('admin-photo-edit-rotate-value');
+        var rotateCcwBtn = document.getElementById('admin-photo-edit-rotate-ccw');
+        var rotateCwBtn = document.getElementById('admin-photo-edit-rotate-cw');
+        var aspectButtons = modal ? modal.querySelectorAll('[data-crop-ar]') : [];
+        var maxEdge = {{ (int) $editPhotoWebp['max_edge_px'] }};
         if (!modal || !img || !applyBtn || !aspectButtons.length || typeof Cropper === 'undefined') return;
 
-        /* Keep overlay under <body> so position:fixed always covers the viewport (not the form column). */
         if (modal.parentElement !== document.body) {
           document.body.appendChild(modal);
         }
@@ -334,8 +319,8 @@
         var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
         var cropper = null;
         var activeUrl = '';
-        var activeAspect = 'free';
         var stage = modal.querySelector('.admin-crop-stage');
+        var straightenFine = 0;
 
         function aspectRatioValue(mode) {
           if (mode === 'free') return NaN;
@@ -349,7 +334,6 @@
 
         function setAspectMode(mode) {
           if (!cropper) return;
-          activeAspect = mode;
           aspectButtons.forEach(function (btn) {
             var key = btn.getAttribute('data-crop-ar') || '';
             var isActive = key === mode;
@@ -360,7 +344,6 @@
         }
 
         function resetAspectControls() {
-          activeAspect = 'free';
           aspectButtons.forEach(function (btn) {
             var isFree = btn.getAttribute('data-crop-ar') === 'free';
             btn.disabled = true;
@@ -376,13 +359,36 @@
           setAspectMode('free');
         }
 
+        function resetRotateControls() {
+          straightenFine = 0;
+          if (straightenSlider) {
+            straightenSlider.value = '0';
+            straightenSlider.disabled = true;
+          }
+          if (rotateCcwBtn) rotateCcwBtn.disabled = true;
+          if (rotateCwBtn) rotateCwBtn.disabled = true;
+          updateRotateDisplay();
+        }
+
+        function enableRotateControls() {
+          if (straightenSlider) straightenSlider.disabled = false;
+          if (rotateCcwBtn) rotateCcwBtn.disabled = false;
+          if (rotateCwBtn) rotateCwBtn.disabled = false;
+          updateRotateDisplay();
+        }
+
+        function updateRotateDisplay() {
+          if (!rotateValueEl || !cropper) return;
+          var deg = cropper.getImageData().rotate || 0;
+          rotateValueEl.textContent = deg.toFixed(1) + '°';
+        }
+
         function sizeCropStagePx() {
           if (!stage) return;
           var vh = window.innerHeight || 640;
-          /* ~half viewport minus room for modal chrome; clamp keeps it usable on short / tall screens */
-          var h = Math.floor(vh * 0.48);
-          if (h < 260) h = 260;
-          if (h > 480) h = 480;
+          var h = Math.floor(vh * 0.42);
+          if (h < 240) h = 240;
+          if (h > 440) h = 440;
           stage.style.height = h + 'px';
           stage.style.minHeight = h + 'px';
           stage.style.maxHeight = h + 'px';
@@ -412,15 +418,16 @@
           applyBtn.disabled = true;
           activeUrl = '';
           resetAspectControls();
+          resetRotateControls();
           if (labelBeforeCheckbox) {
             labelBeforeCheckbox.checked = false;
           }
-          document.documentElement.classList.remove('admin-crop-modal-open');
+          document.documentElement.classList.remove('admin-photo-edit-modal-open');
         }
 
         function openModal() {
           sizeCropStagePx();
-          document.documentElement.classList.add('admin-crop-modal-open');
+          document.documentElement.classList.add('admin-photo-edit-modal-open');
           modal.hidden = false;
         }
 
@@ -428,13 +435,11 @@
           if (modal.hidden) return;
           sizeCropStagePx();
           if (cropper && typeof cropper.resize === 'function') {
-            try {
-              cropper.resize();
-            } catch (e) { /* ignore */ }
+            try { cropper.resize(); } catch (e) { /* ignore */ }
           }
         });
 
-        modal.querySelectorAll('[data-crop-modal-dismiss]').forEach(function (el) {
+        modal.querySelectorAll('[data-edit-modal-dismiss]').forEach(function (el) {
           el.addEventListener('click', closeModal);
         });
 
@@ -444,18 +449,49 @@
           }
         });
 
-        document.querySelectorAll('.js-crop-photo').forEach(function (btn) {
+        if (straightenSlider) {
+          straightenSlider.addEventListener('input', function () {
+            if (!cropper) return;
+            var nextFine = parseFloat(straightenSlider.value);
+            if (isNaN(nextFine)) return;
+            var delta = nextFine - straightenFine;
+            if (delta !== 0) {
+              cropper.rotate(delta);
+              straightenFine = nextFine;
+            }
+            updateRotateDisplay();
+          });
+        }
+
+        if (rotateCcwBtn) {
+          rotateCcwBtn.addEventListener('click', function () {
+            if (!cropper) return;
+            cropper.rotate(-90);
+            updateRotateDisplay();
+          });
+        }
+
+        if (rotateCwBtn) {
+          rotateCwBtn.addEventListener('click', function () {
+            if (!cropper) return;
+            cropper.rotate(90);
+            updateRotateDisplay();
+          });
+        }
+
+        document.querySelectorAll('.js-edit-photo').forEach(function (btn) {
           btn.addEventListener('click', function () {
             var url = btn.getAttribute('data-image-url');
-            var postUrl = btn.getAttribute('data-crop-url');
+            var postUrl = btn.getAttribute('data-edit-url');
             if (!url || !postUrl) return;
             destroyCropper();
             activeUrl = postUrl;
             applyBtn.disabled = true;
             resetAspectControls();
+            resetRotateControls();
             openModal();
 
-            var bust = url + (url.indexOf('?') === -1 ? '?' : '&') + 'cropper=' + Date.now();
+            var bust = url + (url.indexOf('?') === -1 ? '?' : '&') + 'editor=' + Date.now();
             var initScheduled = false;
 
             function initCropperOnce() {
@@ -471,8 +507,12 @@
                     responsive: true,
                     restore: false,
                     ready: function () {
+                      cropper.rotateTo(0);
+                      straightenFine = 0;
+                      if (straightenSlider) straightenSlider.value = '0';
                       applyBtn.disabled = false;
                       enableAspectControls();
+                      enableRotateControls();
                       sizeCropStagePx();
                       try {
                         if (cropper && typeof cropper.resize === 'function') {
@@ -491,7 +531,7 @@
                   });
                 } catch (e) {
                   closeModal();
-                  alert('Could not open the crop tool. Try refreshing the page, or check that Cropper.js loaded (network / ad blocker).');
+                  alert('Could not open the photo editor. Try refreshing the page, or check that Cropper.js loaded (network / ad blocker).');
                   if (typeof console !== 'undefined' && console.error) {
                     console.error(e);
                   }
@@ -502,7 +542,7 @@
             function onImgReady() {
               if (!img.naturalWidth || !img.naturalHeight) {
                 closeModal();
-                alert('Could not load this image for cropping.');
+                alert('Could not load this image for editing.');
                 return;
               }
               initCropperOnce();
@@ -512,7 +552,7 @@
               img.onerror = null;
               img.onload = null;
               closeModal();
-              alert('Could not load this image for cropping (broken link or blocked request).');
+              alert('Could not load this image for editing (broken link or blocked request).');
             };
             img.onload = onImgReady;
             img.src = bust;
@@ -527,44 +567,62 @@
 
         applyBtn.addEventListener('click', function () {
           if (!cropper || !activeUrl) return;
-          var d = cropper.getData(true);
-          applyBtn.disabled = true;
-          fetch(activeUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest',
-              'X-CSRF-TOKEN': csrfToken,
-            },
-            body: JSON.stringify({
-              x: d.x,
-              y: d.y,
-              width: d.width,
-              height: d.height,
-              label_before: !!(labelBeforeCheckbox && labelBeforeCheckbox.checked),
-            }),
-          }).then(function (res) {
-            return res.json().then(function (body) {
-              if (!res.ok) {
-                var msg = (body && body.message) ? body.message : ('HTTP ' + res.status);
-                if (body && body.errors && typeof body.errors === 'object') {
-                  var keys = Object.keys(body.errors);
-                  if (keys.length && body.errors[keys[0]] && body.errors[keys[0]][0]) {
-                    msg = body.errors[keys[0]][0];
-                  }
-                }
-                throw new Error(msg);
-              }
-              return body;
-            });
-          }).then(function () {
-            window.location.reload();
-          }).catch(function (err) {
-            alert(err && err.message ? err.message : 'Could not crop photo.');
-            applyBtn.disabled = false;
+          var canvas = cropper.getCroppedCanvas({
+            maxWidth: maxEdge,
+            maxHeight: maxEdge,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+            fillColor: '#ffffff',
           });
+          if (!canvas) {
+            alert('Could not prepare the edited image. Try adjusting the crop area.');
+            return;
+          }
+
+          applyBtn.disabled = true;
+          canvas.toBlob(function (blob) {
+            if (!blob) {
+              alert('Could not export the edited image.');
+              applyBtn.disabled = false;
+              return;
+            }
+
+            var fd = new FormData();
+            fd.append('image', blob, 'edited.png');
+            if (labelBeforeCheckbox && labelBeforeCheckbox.checked) {
+              fd.append('label_before', '1');
+            }
+
+            fetch(activeUrl, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
+              },
+              body: fd,
+            }).then(function (res) {
+              return res.json().then(function (body) {
+                if (!res.ok) {
+                  var msg = (body && body.message) ? body.message : ('HTTP ' + res.status);
+                  if (body && body.errors && typeof body.errors === 'object') {
+                    var keys = Object.keys(body.errors);
+                    if (keys.length && body.errors[keys[0]] && body.errors[keys[0]][0]) {
+                      msg = body.errors[keys[0]][0];
+                    }
+                  }
+                  throw new Error(msg);
+                }
+                return body;
+              });
+            }).then(function () {
+              window.location.reload();
+            }).catch(function (err) {
+              alert(err && err.message ? err.message : 'Could not save the edited photo.');
+              applyBtn.disabled = false;
+            });
+          }, 'image/png');
         });
       })();
     </script>

@@ -65,7 +65,7 @@
           'fileInputId' => 'photos',
           'fileInputName' => 'photos[]',
           'fileLabel' => 'Photos',
-          'fileHint' => 'WebP, JPEG, or PNG (10 MB max each). Files are converted to WebP at '.$portfolioWebp['quality'].'% quality, scaled to at most '.$portfolioWebp['max_edge_px'].'px on the longest side, and compressed to about '.(int) round($portfolioWebp['max_bytes'] / 1024).' KB or less; originals are not kept. Up to 15 photos per project. Display order matches the order you select (first = top). To crop a photo after it is saved, edit the project and use the crop button on the thumbnail.',
+          'fileHint' => 'WebP, JPEG, or PNG (10 MB max each). Files are converted to WebP at '.$portfolioWebp['quality'].'% quality, scaled to at most '.$portfolioWebp['max_edge_px'].'px on the longest side, and compressed to about '.(int) round($portfolioWebp['max_bytes'] / 1024).' KB or less; originals are not kept. Up to 15 photos per project. Display order matches the order you select (first = top). To straighten, rotate, or crop a photo after it is saved, edit the project and click <strong>Edit</strong> on the thumbnail.',
           'maxTotal' => 15,
           'statusMode' => 'total',
           'formSync' => true,
