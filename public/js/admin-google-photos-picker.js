@@ -121,7 +121,12 @@
       if (!checkbox.checked) return;
       if (selectedCount() > maxGoogle) {
         checkbox.checked = false;
-        alert('Too many Google Photos selected for current upload count (max ' + maxTotal + ' ' + maxSuffix() + ').');
+        if (status) {
+          var slotWord = maxSuffix() === 'more' ? 'more' : 'total';
+          status.textContent = maxGoogle < 1
+            ? 'No Google photo slots left — remove some uploads first (max ' + maxTotal + ' ' + slotWord + ').'
+            : 'Only ' + maxGoogle + ' Google photo' + (maxGoogle === 1 ? '' : 's') + ' can be checked with your current uploads (max ' + maxTotal + ' ' + slotWord + ').';
+        }
       }
     }
 
@@ -299,10 +304,11 @@
     var fileInput = getFileInput(root);
     if (fileInput) {
       fileInput.addEventListener('change', function () {
-        grid.querySelectorAll('input[type="checkbox"][data-picker-checkbox]:checked').forEach(function (cb) {
-          enforceMax(cb);
-        });
-        refreshStatus();
+        if (pickedTileCount() > 0) {
+          applyDefaultChecks();
+        } else {
+          refreshStatus();
+        }
       });
     }
 
@@ -328,6 +334,7 @@
       getUploadCount: uploadCount,
       getMaxTotal: function () { return maxTotal; },
       refreshStatus: refreshStatus,
+      applyDefaultChecks: applyDefaultChecks,
       clearPickedItems: function () {
         grid.innerHTML = '';
         if (pickedFields) pickedFields.innerHTML = '';

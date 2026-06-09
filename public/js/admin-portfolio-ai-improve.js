@@ -243,11 +243,11 @@
 
       if (improvedFiles.length || failures.length) {
         if (processedGoogle) {
-          if (improvedFiles.length) {
-            appendFilesToInput(fileInput, improvedFiles);
-          }
           if (googleRoot && googleRoot.googlePhotosPicker && googleRoot.googlePhotosPicker.clearPickedItems) {
             googleRoot.googlePhotosPicker.clearPickedItems();
+          }
+          if (improvedFiles.length) {
+            appendFilesToInput(fileInput, improvedFiles);
           }
         } else {
           var failedLabels = {};
