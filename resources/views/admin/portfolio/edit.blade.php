@@ -155,22 +155,50 @@
       <div class="admin-modal-backdrop" data-crop-modal-dismiss tabindex="-1" aria-hidden="true"></div>
       <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-photo-crop-title">
         <h2 id="admin-photo-crop-title" class="admin-modal-title">Crop photo</h2>
-        <p class="admin-modal-hint">Drag the box or corners, use the square button for a 1:1 crop, then apply. The file on the server is replaced (WebP).</p>
+        <p class="admin-modal-hint">Drag the box or corners to adjust the crop. Pick an aspect ratio below, or use <strong>Free</strong> to resize manually. The file on the server is replaced (WebP).</p>
         <div class="admin-crop-stage">
           <img id="admin-photo-crop-img" src="" alt="">
         </div>
         <div class="admin-crop-toolbar">
-          <button
-            type="button"
-            class="admin-crop-aspect-btn"
-            id="admin-photo-crop-square"
-            disabled
-            title="Square crop (1:1)"
-            aria-label="Square crop (1:1)"
-            aria-pressed="false"
-          >
-            <span class="admin-crop-aspect-btn__icon" aria-hidden="true"></span>
-          </button>
+          <span class="admin-crop-toolbar__label">Aspect ratio</span>
+          <div class="admin-crop-ar-picker nb2-ar-picker" role="group" aria-label="Crop aspect ratio">
+            <button
+              type="button"
+              class="nb2-ar-btn admin-crop-ar-btn"
+              data-crop-ar="free"
+              disabled
+              title="Free crop — drag corners freely"
+              aria-label="Free aspect ratio"
+              aria-pressed="true"
+            >
+              <span class="nb2-ar-btn__shape admin-crop-ar-free__shape" aria-hidden="true"></span>
+              <span class="nb2-ar-btn__label">Free</span>
+            </button>
+            <button type="button" class="nb2-ar-btn admin-crop-ar-btn" data-crop-ar="1:1" data-ar-w="1" data-ar-h="1" disabled title="Square 1:1" aria-label="Square 1:1" aria-pressed="false">
+              <span class="nb2-ar-btn__shape" aria-hidden="true"></span>
+              <span class="nb2-ar-btn__label">1:1</span>
+            </button>
+            <button type="button" class="nb2-ar-btn admin-crop-ar-btn" data-crop-ar="4:3" data-ar-w="4" data-ar-h="3" disabled title="Classic 4:3" aria-label="4:3" aria-pressed="false">
+              <span class="nb2-ar-btn__shape" aria-hidden="true"></span>
+              <span class="nb2-ar-btn__label">4:3</span>
+            </button>
+            <button type="button" class="nb2-ar-btn admin-crop-ar-btn" data-crop-ar="3:2" data-ar-w="3" data-ar-h="2" disabled title="Photo 3:2" aria-label="3:2" aria-pressed="false">
+              <span class="nb2-ar-btn__shape" aria-hidden="true"></span>
+              <span class="nb2-ar-btn__label">3:2</span>
+            </button>
+            <button type="button" class="nb2-ar-btn admin-crop-ar-btn" data-crop-ar="16:9" data-ar-w="16" data-ar-h="9" disabled title="Widescreen 16:9" aria-label="16:9" aria-pressed="false">
+              <span class="nb2-ar-btn__shape" aria-hidden="true"></span>
+              <span class="nb2-ar-btn__label">16:9</span>
+            </button>
+            <button type="button" class="nb2-ar-btn admin-crop-ar-btn" data-crop-ar="3:4" data-ar-w="3" data-ar-h="4" disabled title="Portrait 3:4" aria-label="3:4" aria-pressed="false">
+              <span class="nb2-ar-btn__shape" aria-hidden="true"></span>
+              <span class="nb2-ar-btn__label">3:4</span>
+            </button>
+            <button type="button" class="nb2-ar-btn admin-crop-ar-btn" data-crop-ar="9:16" data-ar-w="9" data-ar-h="16" disabled title="Vertical 9:16" aria-label="9:16" aria-pressed="false">
+              <span class="nb2-ar-btn__shape" aria-hidden="true"></span>
+              <span class="nb2-ar-btn__label">9:16</span>
+            </button>
+          </div>
         </div>
         <div class="admin-modal-actions">
           <button type="button" class="admin-btn admin-btn--ghost" data-crop-modal-dismiss>Cancel</button>
@@ -262,8 +290,8 @@
         var modal = document.getElementById('admin-photo-crop-modal');
         var img = document.getElementById('admin-photo-crop-img');
         var applyBtn = document.getElementById('admin-photo-crop-apply');
-        var squareBtn = document.getElementById('admin-photo-crop-square');
-        if (!modal || !img || !applyBtn || !squareBtn || typeof Cropper === 'undefined') return;
+        var aspectButtons = modal.querySelectorAll('[data-crop-ar]');
+        if (!modal || !img || !applyBtn || !aspectButtons.length || typeof Cropper === 'undefined') return;
 
         /* Keep overlay under <body> so position:fixed always covers the viewport (not the form column). */
         if (modal.parentElement !== document.body) {
@@ -274,22 +302,46 @@
         var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
         var cropper = null;
         var activeUrl = '';
-        var squareLocked = false;
+        var activeAspect = 'free';
         var stage = modal.querySelector('.admin-crop-stage');
 
-        function setSquareAspect(active) {
-          if (!cropper) return;
-          squareLocked = !!active;
-          squareBtn.setAttribute('aria-pressed', squareLocked ? 'true' : 'false');
-          squareBtn.classList.toggle('is-active', squareLocked);
-          cropper.setAspectRatio(squareLocked ? 1 : NaN);
+        function aspectRatioValue(mode) {
+          if (mode === 'free') return NaN;
+          var parts = String(mode).split(':');
+          if (parts.length !== 2) return NaN;
+          var w = parseFloat(parts[0]);
+          var h = parseFloat(parts[1]);
+          if (!w || !h) return NaN;
+          return w / h;
         }
 
-        function resetSquareControl() {
-          squareLocked = false;
-          squareBtn.disabled = true;
-          squareBtn.setAttribute('aria-pressed', 'false');
-          squareBtn.classList.remove('is-active');
+        function setAspectMode(mode) {
+          if (!cropper) return;
+          activeAspect = mode;
+          aspectButtons.forEach(function (btn) {
+            var key = btn.getAttribute('data-crop-ar') || '';
+            var isActive = key === mode;
+            btn.classList.toggle('is-active', isActive);
+            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+          });
+          cropper.setAspectRatio(aspectRatioValue(mode));
+        }
+
+        function resetAspectControls() {
+          activeAspect = 'free';
+          aspectButtons.forEach(function (btn) {
+            var isFree = btn.getAttribute('data-crop-ar') === 'free';
+            btn.disabled = true;
+            btn.classList.toggle('is-active', isFree);
+            btn.setAttribute('aria-pressed', isFree ? 'true' : 'false');
+          });
+        }
+
+        function enableAspectControls() {
+          aspectButtons.forEach(function (btn) {
+            btn.disabled = false;
+          });
+          setAspectMode('free');
         }
 
         function sizeCropStagePx() {
@@ -327,7 +379,7 @@
           clearCropStagePx();
           applyBtn.disabled = true;
           activeUrl = '';
-          resetSquareControl();
+          resetAspectControls();
           document.documentElement.classList.remove('admin-crop-modal-open');
         }
 
@@ -365,7 +417,7 @@
             destroyCropper();
             activeUrl = postUrl;
             applyBtn.disabled = true;
-            resetSquareControl();
+            resetAspectControls();
             openModal();
 
             var bust = url + (url.indexOf('?') === -1 ? '?' : '&') + 'cropper=' + Date.now();
@@ -385,7 +437,7 @@
                     restore: false,
                     ready: function () {
                       applyBtn.disabled = false;
-                      squareBtn.disabled = false;
+                      enableAspectControls();
                       sizeCropStagePx();
                       try {
                         if (cropper && typeof cropper.resize === 'function') {
@@ -432,8 +484,10 @@
           });
         });
 
-        squareBtn.addEventListener('click', function () {
-          setSquareAspect(!squareLocked);
+        aspectButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            setAspectMode(btn.getAttribute('data-crop-ar') || 'free');
+          });
         });
 
         applyBtn.addEventListener('click', function () {
