@@ -131,6 +131,9 @@
           <div class="util-lb-results-head">
             <h3 class="util-lb-card-title">Results</h3>
             <div class="util-lb-results-actions" data-lb-results-actions hidden>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-save-quick>
+                <i class="fa fa-save"></i> Save
+              </button>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-print>
                 <i class="fa fa-print"></i> Print list
               </button>
@@ -176,20 +179,6 @@
           </div>
         </div>
 
-        <div class="admin-card util-lb-diagram-card" data-lb-diagram-card hidden>
-          <h3 class="util-lb-card-title">Cutting diagrams</h3>
-          <p class="util-lb-hint">Coloured segments are cuts; grey is leftover waste on each board.</p>
-          <div class="util-lb-diagrams" data-lb-diagrams></div>
-          <div class="util-lb-export">
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-print>
-              <i class="fa fa-print"></i> Print list
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-export-pdf>
-              <i class="fa fa-file-pdf-o"></i> Export PDF
-            </button>
-          </div>
-        </div>
-
         <div class="admin-card util-lb-save-card" data-lb-save-card hidden>
           <h3 class="util-lb-card-title">Save this calculation</h3>
           <div class="util-lb-save-form">
@@ -214,6 +203,21 @@
           </div>
           <p class="util-lb-save-feedback" data-lb-save-feedback hidden></p>
         </div>
+
+        <div class="admin-card util-lb-diagram-card" data-lb-diagram-card hidden>
+          <h3 class="util-lb-card-title">Cutting diagrams</h3>
+          <p class="util-lb-hint">Coloured segments are cuts; grey is leftover waste on each board.</p>
+          <div class="util-lb-diagrams" data-lb-diagrams></div>
+          <div class="util-lb-export">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-print>
+              <i class="fa fa-print"></i> Print list
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-export-pdf>
+              <i class="fa fa-file-pdf-o"></i> Export PDF
+            </button>
+          </div>
+        </div>
+
       </section>
     </div>
 

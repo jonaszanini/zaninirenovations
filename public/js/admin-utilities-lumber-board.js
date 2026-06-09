@@ -936,6 +936,18 @@
     };
   }
 
+  function focusSaveForm() {
+    if (!lastResult) return;
+    show(els.saveCard, true);
+    if (els.saveCard) {
+      els.saveCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    if (els.saveName) {
+      els.saveName.focus();
+      els.saveName.select();
+    }
+  }
+
   function saveCalculation() {
     if (!lastResult) return;
     var name = (els.saveName.value || '').trim();
@@ -1016,7 +1028,7 @@
     li.querySelector('.util-lb-saved-item__summary').textContent = summary;
     li.querySelector('.util-lb-saved-item__date').textContent = c.created_label || '';
     li.querySelector('[data-lb-load]').addEventListener('click', function () {
-      loadPayload(payload, c.client_project_id);
+      loadPayload(payload, c.client_project_id, c.name);
     });
     li.querySelector('[data-lb-delete]').addEventListener('click', function () { deleteSaved(c.id, li); });
     return li;
@@ -1044,7 +1056,7 @@
       .catch(function () { window.alert('Could not delete. Please try again.'); });
   }
 
-  function loadPayload(p, clientProjectId) {
+  function loadPayload(p, clientProjectId, calcName) {
     if (!p) return;
     if (p.stock_unit || p.piece_unit) {
       state.stockUnit = p.stock_unit === 'in' ? 'in' : 'ft';
@@ -1077,9 +1089,12 @@
     });
     if (els.singleStock && p.single_stock_id) els.singleStock.value = p.single_stock_id;
     setLinkProject(clientProjectId);
+    if (els.saveName) els.saveName.value = calcName ? String(calcName) : '';
     updateUnitLabels();
     render();
-    root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (lastResult) {
+      focusSaveForm();
+    }
   }
 
   function setActive(group, attr, value) {
@@ -1176,6 +1191,9 @@
   });
 
   if (els.copyBtn) els.copyBtn.addEventListener('click', copyResults);
+  root.querySelectorAll('[data-lb-save-quick]').forEach(function (btn) {
+    btn.addEventListener('click', focusSaveForm);
+  });
   root.querySelectorAll('[data-lb-print]').forEach(function (btn) {
     btn.addEventListener('click', printMaterialList);
   });
