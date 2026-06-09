@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClientProject;
 use App\Models\UtilityCalculation;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -62,15 +63,32 @@ class UtilitiesController extends Controller
      * Lumber / Board Material Calculator. Packing runs in the browser; this
      * method only supplies saved calculations for this tool.
      */
-    public function lumberBoard()
+    public function lumberBoard(Request $request)
     {
         $saved = UtilityCalculation::query()
             ->where('tool', UtilityCalculation::TOOL_LUMBER_BOARD)
+            ->with('clientProject:id,name')
             ->latest()
-            ->get(['id', 'name', 'payload', 'created_at']);
+            ->get(['id', 'name', 'client_project_id', 'payload', 'created_at']);
+
+        $clientProjects = ClientProject::query()
+            ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED])
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $linkProjectId = max(0, (int) $request->query('project', 0)) ?: null;
+        $linkProject = $linkProjectId
+            ? ClientProject::query()->find($linkProjectId, ['id', 'name'])
+            : null;
+
+        if ($linkProject && ! $clientProjects->contains('id', $linkProject->id)) {
+            $clientProjects->prepend($linkProject);
+        }
 
         return view('admin.utilities.lumber_board', [
             'savedCalculations' => $saved,
+            'clientProjects' => $clientProjects,
+            'linkProject' => $linkProject,
         ]);
     }
 
@@ -122,24 +140,22 @@ class UtilitiesController extends Controller
         $data = $request->validate([
             'tool' => ['required', 'string', 'max:60'],
             'name' => ['required', 'string', 'max:120'],
+            'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'payload' => ['required', 'array'],
         ]);
 
         $calculation = UtilityCalculation::create([
             'tool' => $data['tool'],
             'name' => $data['name'],
+            'client_project_id' => $data['client_project_id'] ?? null,
             'payload' => $data['payload'],
         ]);
 
+        $calculation->load('clientProject:id,name');
+
         return response()->json([
             'ok' => true,
-            'calculation' => [
-                'id' => $calculation->id,
-                'name' => $calculation->name,
-                'payload' => $calculation->payload,
-                'created_at' => $calculation->created_at?->toIso8601String(),
-                'created_label' => $calculation->created_at?->format('M j, Y g:i A'),
-            ],
+            'calculation' => $this->utilityCalculationJson($calculation),
         ]);
     }
 
@@ -188,5 +204,19 @@ class UtilitiesController extends Controller
             ->setOption('isHtml5ParserEnabled', true);
 
         return $pdf->stream('pillar-spindle-layout.pdf');
+    }
+
+    /** @return array<string, mixed> */
+    private function utilityCalculationJson(UtilityCalculation $calculation): array
+    {
+        return [
+            'id' => $calculation->id,
+            'name' => $calculation->name,
+            'client_project_id' => $calculation->client_project_id,
+            'client_project_name' => $calculation->clientProject?->name,
+            'payload' => $calculation->payload,
+            'created_at' => $calculation->created_at?->toIso8601String(),
+            'created_label' => $calculation->created_at?->format('M j, Y g:i A'),
+        ];
     }
 }

@@ -32,6 +32,7 @@
     diagrams: root.querySelector('[data-lb-diagrams]'),
     saveCard: root.querySelector('[data-lb-save-card]'),
     saveName: root.querySelector('#lb-save-name'),
+    linkProject: root.querySelector('[data-lb-link-project]'),
     saveFeedback: root.querySelector('[data-lb-save-feedback]'),
     copyBtn: root.querySelector('[data-lb-copy]'),
     resultsActions: root.querySelector('[data-lb-results-actions]'),
@@ -49,6 +50,18 @@
   };
 
   var lastResult = null;
+  var initialLinkProjectId = root.getAttribute('data-link-project-id') || '';
+
+  function projectUrl(id) {
+    if (!id) return '#';
+    var template = root.getAttribute('data-project-url-template') || '';
+    return template.replace('__ID__', String(id));
+  }
+
+  function setLinkProject(id) {
+    if (!els.linkProject) return;
+    els.linkProject.value = id ? String(id) : '';
+  }
 
   function csrf() {
     var input = root.querySelector('#util-lb-csrf');
@@ -107,6 +120,14 @@
       }
     }
     return parts.join(' ') || '0';
+  }
+
+  function formatDiagramCutLength(six) {
+    if (!six || six <= 0) return '';
+    if (state.pieceUnit === 'in') {
+      return formatInches(sixteenthsToInches(six)) + '\u2033';
+    }
+    return formatLength(six, 'ft');
   }
 
   function reduceFrac(n, d) {
@@ -531,6 +552,12 @@
         var fill = seg.isWaste ? '#b0bec5' : PIECE_COLORS[colorIdx % PIECE_COLORS.length];
         if (!seg.isWaste) colorIdx++;
         svg += '<rect x="' + cx + '" y="' + y + '" width="' + segW + '" height="' + barH + '" fill="' + fill + '"/>';
+        if (!seg.isWaste && segW >= 14) {
+          var sizeLabel = formatDiagramCutLength(seg.len);
+          if (sizeLabel) {
+            svg += '<text x="' + (cx + segW / 2) + '" y="' + (y - 2) + '" text-anchor="middle" fill="#37474f" font-size="8" font-family="Open Sans,sans-serif">' + escapeXml(sizeLabel) + '</text>';
+          }
+        }
         if (segW > 36 && !seg.isWaste) {
           var t = seg.label.length > 14 ? seg.label.slice(0, 12) + '…' : seg.label;
           svg += '<text x="' + (cx + segW / 2) + '" y="' + (y + barH / 2 + 4) + '" text-anchor="middle" fill="#fff" font-size="10" font-family="Open Sans,sans-serif">' + escapeXml(t) + '</text>';
@@ -919,6 +946,9 @@
     }
     var btn = root.querySelector('[data-lb-save]');
     if (btn) btn.disabled = true;
+    var clientProjectId = els.linkProject && els.linkProject.value
+      ? parseInt(els.linkProject.value, 10)
+      : null;
     fetch(root.getAttribute('data-save-url'), {
       method: 'POST',
       credentials: 'same-origin',
@@ -931,6 +961,7 @@
       body: JSON.stringify({
         tool: 'lumber_board',
         name: name,
+        client_project_id: clientProjectId,
         payload: currentPayload()
       })
     })
@@ -958,12 +989,22 @@
   function savedItemHtml(c) {
     var payload = c.payload || {};
     var summary = payload.summary || '';
+    var projectHtml = '';
+    if (c.client_project_id && c.client_project_name) {
+      projectHtml =
+        '<span class="util-lb-saved-item__project">' +
+          'Linked: <a href="' + escapeAttr(projectUrl(c.client_project_id)) + '">' +
+            escapeHtml(c.client_project_name) +
+          '</a>' +
+        '</span>';
+    }
     var li = document.createElement('li');
     li.className = 'util-lb-saved-item';
     li.setAttribute('data-id', c.id);
     li.innerHTML =
       '<div class="util-lb-saved-item__main">' +
         '<span class="util-lb-saved-item__name"></span>' +
+        projectHtml +
         '<span class="util-lb-saved-item__summary"></span>' +
         '<span class="util-lb-saved-item__date"></span>' +
       '</div>' +
@@ -974,7 +1015,9 @@
     li.querySelector('.util-lb-saved-item__name').textContent = c.name;
     li.querySelector('.util-lb-saved-item__summary').textContent = summary;
     li.querySelector('.util-lb-saved-item__date').textContent = c.created_label || '';
-    li.querySelector('[data-lb-load]').addEventListener('click', function () { loadPayload(payload); });
+    li.querySelector('[data-lb-load]').addEventListener('click', function () {
+      loadPayload(payload, c.client_project_id);
+    });
     li.querySelector('[data-lb-delete]').addEventListener('click', function () { deleteSaved(c.id, li); });
     return li;
   }
@@ -1001,7 +1044,7 @@
       .catch(function () { window.alert('Could not delete. Please try again.'); });
   }
 
-  function loadPayload(p) {
+  function loadPayload(p, clientProjectId) {
     if (!p) return;
     if (p.stock_unit || p.piece_unit) {
       state.stockUnit = p.stock_unit === 'in' ? 'in' : 'ft';
@@ -1033,6 +1076,7 @@
       els.piecesBody.appendChild(buildPieceRow(row));
     });
     if (els.singleStock && p.single_stock_id) els.singleStock.value = p.single_stock_id;
+    setLinkProject(clientProjectId);
     updateUnitLabels();
     render();
     root.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1084,6 +1128,7 @@
     els.stockList.innerHTML = '';
     els.piecesBody.innerHTML = '';
     initDefaults();
+    setLinkProject(initialLinkProjectId);
     render();
   });
 

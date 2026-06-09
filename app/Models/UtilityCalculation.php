@@ -16,10 +16,16 @@ class UtilityCalculation extends Model
     protected $fillable = [
         'tool',
         'name',
+        'client_project_id',
         'payload',
     ];
 
     protected $casts = [
         'payload' => 'array',
     ];
+
+    public function clientProject()
+    {
+        return $this->belongsTo(ClientProject::class, 'client_project_id');
+    }
 }

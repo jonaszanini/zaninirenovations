@@ -23,7 +23,9 @@
     data-save-url="{{ route('admin.utilities.calculations.store') }}"
     data-pdf-url="{{ route('admin.utilities.lumber-board.pdf') }}"
     data-destroy-template="{{ route('admin.utilities.calculations.destroy', ['utility_calculation' => '__ID__']) }}"
-    data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A')])) }}"
+    data-project-url-template="{{ route('admin.client-projects.show', ['client_project' => '__ID__']) }}"
+    data-link-project-id="{{ $linkProject?->id }}"
+    data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'client_project_id' => $c->client_project_id, 'client_project_name' => $c->clientProject?->name, 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A')])) }}"
   >
     <input type="hidden" id="util-lb-csrf" value="{{ csrf_token() }}">
 
@@ -190,14 +192,25 @@
 
         <div class="admin-card util-lb-save-card" data-lb-save-card hidden>
           <h3 class="util-lb-card-title">Save this calculation</h3>
-          <div class="util-lb-save-row">
+          <div class="util-lb-save-form">
             <div class="admin-form-group">
-              <label for="lb-save-name" class="util-sr-only">Calculation name</label>
-              <input type="text" id="lb-save-name" maxlength="120" placeholder="e.g. Back deck boards">
+              <label for="lb-link-project">Link to client project <span class="util-lb-optional">(optional)</span></label>
+              <select id="lb-link-project" data-lb-link-project>
+                <option value="">— None —</option>
+                @foreach ($clientProjects as $cp)
+                  <option value="{{ $cp->id }}" @selected($linkProject && (int) $linkProject->id === (int) $cp->id)>{{ $cp->name }}</option>
+                @endforeach
+              </select>
             </div>
-            <button type="button" class="admin-btn admin-btn--primary" data-lb-save>
-              <i class="fa fa-save"></i> Save
-            </button>
+            <div class="util-lb-save-row">
+              <div class="admin-form-group">
+                <label for="lb-save-name" class="util-sr-only">Calculation name</label>
+                <input type="text" id="lb-save-name" maxlength="120" placeholder="e.g. Back deck boards">
+              </div>
+              <button type="button" class="admin-btn admin-btn--primary" data-lb-save>
+                <i class="fa fa-save"></i> Save
+              </button>
+            </div>
           </div>
           <p class="util-lb-save-feedback" data-lb-save-feedback hidden></p>
         </div>
