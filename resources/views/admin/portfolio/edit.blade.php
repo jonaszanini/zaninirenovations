@@ -107,12 +107,13 @@
         $canAdd = 15 - $project->photos->count();
       @endphp
       @if ($canAdd > 0)
+        @php($portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings())
         <div class="admin-portfolio-upload-section">
           @include('admin.partials.local_and_google_photos', [
             'fileInputId' => 'photos',
             'fileInputName' => 'photos[]',
             'fileLabel' => 'Add photos',
-            'fileHint' => 'WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP at '.(int) config('webp.quality', 75).'% quality, scaled to at most '.(int) config('webp.max_edge_px', 1280).'px, and compressed to about '.(int) round(config('webp.max_bytes', 102400) / 1024).' KB or less; originals are not kept. Up to '.$canAdd.' more (15 total). After you save, use the crop icon on any thumbnail to trim it.',
+            'fileHint' => 'WebP, JPEG, or PNG (10 MB max each). New files are converted to WebP at '.$portfolioWebp['quality'].'% quality, scaled to at most '.$portfolioWebp['max_edge_px'].'px, and compressed to about '.(int) round($portfolioWebp['max_bytes'] / 1024).' KB or less; originals are not kept. Up to '.$canAdd.' more (15 total). After you save, use the crop icon on any thumbnail to trim it.',
             'maxTotal' => $canAdd,
             'statusMode' => 'remaining',
             'formSync' => true,

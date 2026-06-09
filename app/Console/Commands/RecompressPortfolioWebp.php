@@ -17,7 +17,8 @@ class RecompressPortfolioWebp extends Command
 
     public function handle(ProjectPhotoWebpStorage $webpStorage): int
     {
-        $maxBytes = max(32_768, (int) config('webp.max_bytes', 102_400));
+        $portfolio = ProjectPhotoWebpStorage::portfolioEncodingSettings();
+        $maxBytes = $portfolio['max_bytes'];
         $dryRun = (bool) $this->option('dry-run');
         $projectId = $this->option('project');
         $projectId = is_numeric($projectId) ? (int) $projectId : null;
@@ -45,8 +46,8 @@ class RecompressPortfolioWebp extends Command
             $photos->count(),
             number_format($maxBytes / 1024, 0),
             $maxBytes,
-            (int) config('webp.quality', 75),
-            (int) config('webp.max_edge_px', 1280)
+            $portfolio['quality'],
+            $portfolio['max_edge_px']
         ));
 
         if ($dryRun) {

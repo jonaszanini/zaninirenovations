@@ -52,5 +52,18 @@ return [
     */
     'cwebp_method' => (int) env('WEBP_CWEBP_METHOD', 6),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Latest Projects Photos (portfolio) — higher quality than the defaults above
+    |--------------------------------------------------------------------------
+    |
+    | Public homepage gallery + lightbox; these overrides apply only to files
+    | stored under project-photos/ (not blog, receipts, or client-project photos).
+    |
+    */
+    'portfolio_quality' => (int) env('WEBP_PORTFOLIO_QUALITY', 85),
+    'portfolio_max_edge_px' => (int) env('WEBP_PORTFOLIO_MAX_EDGE', 1920),
+    'portfolio_max_bytes' => (int) env('WEBP_PORTFOLIO_MAX_BYTES', 280000),
+
 ];
 

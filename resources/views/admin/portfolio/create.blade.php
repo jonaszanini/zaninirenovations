@@ -52,12 +52,13 @@
           <div class="admin-error">{{ $message }}</div>
         @enderror
       </div>
+      @php($portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings())
       <div class="admin-portfolio-upload-section">
         @include('admin.partials.local_and_google_photos', [
           'fileInputId' => 'photos',
           'fileInputName' => 'photos[]',
           'fileLabel' => 'Photos',
-          'fileHint' => 'WebP, JPEG, or PNG (10 MB max each). Files are converted to WebP at '.(int) config('webp.quality', 75).'% quality, scaled to at most '.(int) config('webp.max_edge_px', 1280).'px on the longest side, and compressed to about '.(int) round(config('webp.max_bytes', 102400) / 1024).' KB or less; originals are not kept. Up to 15 photos per project. Display order matches the order you select (first = top). To crop a photo after it is saved, edit the project and use the crop button on the thumbnail.',
+          'fileHint' => 'WebP, JPEG, or PNG (10 MB max each). Files are converted to WebP at '.$portfolioWebp['quality'].'% quality, scaled to at most '.$portfolioWebp['max_edge_px'].'px on the longest side, and compressed to about '.(int) round($portfolioWebp['max_bytes'] / 1024).' KB or less; originals are not kept. Up to 15 photos per project. Display order matches the order you select (first = top). To crop a photo after it is saved, edit the project and use the crop button on the thumbnail.',
           'maxTotal' => 15,
           'statusMode' => 'total',
           'formSync' => true,

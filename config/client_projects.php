@@ -36,4 +36,10 @@ return [
 
     // Canadian HST rate used in profit calculations.
     'hst_rate' => 0.13,
+
+    /*
+    | GST/HST registration number (15 characters, CRA format: 123456789RT0001).
+    | Shown on invoice PDFs so clients can claim Input Tax Credits (ITCs).
+    */
+    'gst_hst_registration_number' => env('GST_HST_REGISTRATION_NUMBER', '709216154RT0001'),
 ];

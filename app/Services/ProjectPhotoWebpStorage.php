@@ -19,6 +19,9 @@ use Throwable;
  */
 class ProjectPhotoWebpStorage
 {
+    /** When true, use config webp.portfolio_* instead of the global defaults. */
+    private bool $portfolioProfile = false;
+
     /** Re-apply WebP budget after crop/rotate (in-place). */
     public function recompressWebpAtPath(string $absolutePath): void
     {
@@ -26,21 +29,23 @@ class ProjectPhotoWebpStorage
             return;
         }
 
-        $bytes = file_get_contents($absolutePath);
-        if ($bytes === false || $bytes === '') {
-            return;
-        }
+        $this->runWithPortfolioProfile($this->pathUsesPortfolioProfile($absolutePath), function () use ($absolutePath): void {
+            $bytes = file_get_contents($absolutePath);
+            if ($bytes === false || $bytes === '') {
+                return;
+            }
 
-        try {
-            $reencoded = $this->reencodeWebpFromPath($absolutePath);
-        } catch (RuntimeException) {
-            $reencoded = $bytes;
-        }
+            try {
+                $reencoded = $this->reencodeWebpFromPath($absolutePath);
+            } catch (RuntimeException) {
+                $reencoded = $bytes;
+            }
 
-        $optimized = $this->fitWebpBudget($reencoded);
-        if ($optimized !== $bytes) {
-            file_put_contents($absolutePath, $optimized);
-        }
+            $optimized = $this->fitWebpBudget($reencoded);
+            if ($optimized !== $bytes) {
+                file_put_contents($absolutePath, $optimized);
+            }
+        });
     }
 
     /**
@@ -96,51 +101,57 @@ class ProjectPhotoWebpStorage
     }
 
     /**
-     * Convert raw image bytes to portfolio-grade WebP (scaled, ~100 KB budget).
+     * Convert raw image bytes to WebP using the portfolio profile when requested.
      */
-    public function convertBinaryToWebp(string $bytes, string $mime, ?string $originalBasename = null): string
-    {
-        if ($bytes === '') {
-            throw new RuntimeException('Image is empty.');
-        }
-
-        $mime = strtolower(trim($mime));
-        if ($mime === '' || ! str_starts_with($mime, 'image/')) {
-            $mime = 'image/jpeg';
-        }
-
-        $ext = match ($mime) {
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-            'image/gif' => 'gif',
-            default => 'jpg',
-        };
-
-        $tmp = tempnam(sys_get_temp_dir(), 'pwp_');
-        if ($tmp === false) {
-            throw new RuntimeException('Could not create temp file.');
-        }
-        $path = $tmp.'.'.$ext;
-        @unlink($tmp);
-
-        try {
-            if (file_put_contents($path, $bytes) === false) {
-                throw new RuntimeException('Could not write temp image.');
+    public function convertBinaryToWebp(
+        string $bytes,
+        string $mime,
+        ?string $originalBasename = null,
+        bool $portfolioProfile = true,
+    ): string {
+        return $this->runWithPortfolioProfile($portfolioProfile, function () use ($bytes, $mime, $originalBasename): string {
+            if ($bytes === '') {
+                throw new RuntimeException('Image is empty.');
             }
 
-            if ($mime === 'image/webp') {
-                $webp = $this->reencodeWebpFromPath($path);
-            } else {
-                $upload = new UploadedFile($path, $originalBasename ?? ('photo.'.$ext), $mime, null, true);
-                $webp = $this->convertRasterToWebp($upload, $mime, $ext, $path);
+            $mime = strtolower(trim($mime));
+            if ($mime === '' || ! str_starts_with($mime, 'image/')) {
+                $mime = 'image/jpeg';
             }
 
-            return $this->fitWebpBudget($webp);
-        } finally {
-            if (is_file($path)) {
-                @unlink($path);
+            $ext = match ($mime) {
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+                'image/gif' => 'gif',
+                default => 'jpg',
+            };
+
+            $tmp = tempnam(sys_get_temp_dir(), 'pwp_');
+            if ($tmp === false) {
+                throw new RuntimeException('Could not create temp file.');
             }
-        }
+            $path = $tmp.'.'.$ext;
+            @unlink($tmp);
+
+            try {
+                if (file_put_contents($path, $bytes) === false) {
+                    throw new RuntimeException('Could not write temp image.');
+                }
+
+                if ($mime === 'image/webp') {
+                    $webp = $this->reencodeWebpFromPath($path);
+                } else {
+                    $upload = new UploadedFile($path, $originalBasename ?? ('photo.'.$ext), $mime, null, true);
+                    $webp = $this->convertRasterToWebp($upload, $mime, $ext, $path);
+                }
+
+                return $this->fitWebpBudget($webp);
+            } finally {
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+            }
+        });
     }
 
     /**
@@ -185,6 +196,19 @@ class ProjectPhotoWebpStorage
      */
     public function store(UploadedFile $file, int $projectId, string $storageFolder = 'project-photos', ?string $preferredBasenameSansExt = null): string
     {
+        $storageFolder = trim(str_replace(['\\', '..'], '', $storageFolder), '/');
+
+        return $this->runWithPortfolioProfile($storageFolder === 'project-photos', function () use ($file, $projectId, $storageFolder, $preferredBasenameSansExt): string {
+            return $this->storeWithCurrentProfile($file, $projectId, $storageFolder, $preferredBasenameSansExt);
+        });
+    }
+
+    private function storeWithCurrentProfile(
+        UploadedFile $file,
+        int $projectId,
+        string $storageFolder,
+        ?string $preferredBasenameSansExt,
+    ): string {
         $mime = strtolower((string) $file->getMimeType());
         $ext = strtolower((string) $file->getClientOriginalExtension());
 
@@ -196,7 +220,6 @@ class ProjectPhotoWebpStorage
             $leaf = Str::uuid()->toString();
         }
         $basename = $leaf.'.webp';
-        $storageFolder = trim(str_replace(['\\', '..'], '', $storageFolder), '/');
         $directory = "{$storageFolder}/{$projectId}";
         $relativePath = $directory.'/'.$basename;
 
@@ -225,6 +248,18 @@ class ProjectPhotoWebpStorage
         $this->syncPublicStorageFallback($relativePath);
 
         return $relativePath;
+    }
+
+    /**
+     * @return array{quality: int, max_edge_px: int, max_bytes: int}
+     */
+    public static function portfolioEncodingSettings(): array
+    {
+        return [
+            'quality' => max(1, min(100, (int) config('webp.portfolio_quality', 85))),
+            'max_edge_px' => max(320, min(8192, (int) config('webp.portfolio_max_edge_px', 1920))),
+            'max_bytes' => max(32_768, (int) config('webp.portfolio_max_bytes', 280_000)),
+        ];
     }
 
     /**
@@ -267,6 +302,10 @@ class ProjectPhotoWebpStorage
 
     private function quality(): int
     {
+        if ($this->portfolioProfile) {
+            return self::portfolioEncodingSettings()['quality'];
+        }
+
         $q = (int) config('webp.quality', 75);
 
         return max(1, min(100, $q));
@@ -274,6 +313,10 @@ class ProjectPhotoWebpStorage
 
     private function maxEdge(): int
     {
+        if ($this->portfolioProfile) {
+            return self::portfolioEncodingSettings()['max_edge_px'];
+        }
+
         $m = (int) config('webp.max_edge_px', 1280);
 
         return max(320, min(8192, $m));
@@ -281,7 +324,37 @@ class ProjectPhotoWebpStorage
 
     private function maxBytes(): int
     {
+        if ($this->portfolioProfile) {
+            return self::portfolioEncodingSettings()['max_bytes'];
+        }
+
         return max(32_768, (int) config('webp.max_bytes', 102_400));
+    }
+
+    private function pathUsesPortfolioProfile(string $path): bool
+    {
+        $normalized = str_replace('\\', '/', $path);
+
+        return str_contains($normalized, '/project-photos/')
+            || str_ends_with($normalized, '/project-photos');
+    }
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    private function runWithPortfolioProfile(bool $portfolioProfile, callable $callback)
+    {
+        $previous = $this->portfolioProfile;
+        $this->portfolioProfile = $portfolioProfile;
+
+        try {
+            return $callback();
+        } finally {
+            $this->portfolioProfile = $previous;
+        }
     }
 
     /**

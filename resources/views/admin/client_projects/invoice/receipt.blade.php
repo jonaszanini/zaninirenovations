@@ -66,6 +66,11 @@
     }
     .pdf-header .info-cell .info-line { margin: 0; }
     .pdf-header .info-cell .info-line + .info-line { margin-top: 1pt; }
+    .pdf-header .info-cell .gst-hst-line {
+      margin-top: 4pt;
+      font-weight: 700;
+      color: #024768;
+    }
 
     .pdf-footer {
       position: fixed;
@@ -205,10 +210,7 @@
           @endif
         </td>
         <td class="info-cell">
-          <p class="info-line">53 Antonakos Dr, Carleton Place, ON K7C 0L1</p>
-          <p class="info-line">(647) 834-7570</p>
-          <p class="info-line">zaninirenovations@gmail.com</p>
-          <p class="info-line">zaninirenovations.ca</p>
+          @include('admin.client_projects._pdf_header_contact')
         </td>
       </tr>
     </table>
