@@ -12,6 +12,7 @@ use App\Services\PortfolioDescriptionAiService;
 use App\Services\PortfolioDraftPhotoService;
 use App\Services\PortfolioPhotoAiImprovementService;
 use App\Services\ProjectPhotoCropService;
+use App\Services\ProjectPhotoLabelService;
 use App\Services\ProjectPhotoRotationService;
 use App\Services\ProjectPhotoWebpStorage;
 use App\Support\GooglePickerItems;
@@ -507,6 +508,7 @@ class ProjectController extends Controller
             'y' => ['required', 'numeric'],
             'width' => ['required', 'numeric', 'min:1'],
             'height' => ['required', 'numeric', 'min:1'],
+            'label_before' => ['sometimes', 'boolean'],
         ]);
 
         $disk = Storage::disk('public');
@@ -563,11 +565,16 @@ class ProjectController extends Controller
 
         try {
             app(ProjectPhotoCropService::class)->cropWebp($fullPath, $ix, $iy, $cropW, $cropH);
+            if ($request->boolean('label_before')) {
+                app(ProjectPhotoLabelService::class)->applyBeforeLabel($fullPath);
+            }
             app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
             clearstatcache(true, $fullPath);
         } catch (\Throwable $e) {
             report($e);
-            $msg = 'Could not crop the photo: '.$e->getMessage();
+            $msg = $request->boolean('label_before')
+                ? 'Could not crop or label the photo: '.$e->getMessage()
+                : 'Could not crop the photo: '.$e->getMessage();
 
             if ($request->expectsJson()) {
                 return response()->json(['message' => $msg], 500);
@@ -589,9 +596,13 @@ class ProjectController extends Controller
             ]);
         }
 
+        $success = $request->boolean('label_before')
+            ? 'Photo cropped with Before label.'
+            : 'Photo cropped.';
+
         return redirect()
             ->route('admin.portfolio.edit', $project)
-            ->with('success', 'Photo cropped.');
+            ->with('success', $success);
     }
 
     public function destroy(Project $project)

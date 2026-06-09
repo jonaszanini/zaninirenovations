@@ -1401,6 +1401,16 @@ details[open] > summary.admin-chevron-summary::after {
   height: 15px;
 }
 
+#admin-photo-crop-modal .admin-crop-options {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--admin-border);
+}
+
+#admin-photo-crop-modal .admin-crop-options .admin-checkbox {
+  margin: 0;
+}
+
 #admin-photo-crop-modal .admin-modal-actions {
   display: flex;
   flex-wrap: wrap;

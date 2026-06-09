@@ -170,7 +170,7 @@
       <div class="admin-modal-backdrop" data-crop-modal-dismiss tabindex="-1" aria-hidden="true"></div>
       <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-photo-crop-title">
         <h2 id="admin-photo-crop-title" class="admin-modal-title">Crop photo</h2>
-        <p class="admin-modal-hint">Drag the box or corners to adjust the crop. Pick an aspect ratio below, or use <strong>Free</strong> to resize manually. The file on the server is replaced (WebP).</p>
+        <p class="admin-modal-hint">Drag the box or corners to adjust the crop. Pick an aspect ratio below, or use <strong>Free</strong> to resize manually. The file on the server is replaced (WebP). Optionally add a <strong>Before</strong> label for before-and-after galleries.</p>
         <div class="admin-crop-stage">
           <img id="admin-photo-crop-img" src="" alt="">
         </div>
@@ -214,6 +214,13 @@
               <span class="nb2-ar-btn__label">9:16</span>
             </button>
           </div>
+        </div>
+        <div class="admin-crop-options">
+          <label class="admin-checkbox admin-checkbox--sm" for="admin-photo-crop-label-before">
+            <input type="checkbox" class="admin-checkbox__input" id="admin-photo-crop-label-before" value="1">
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text">Add <strong>Before</strong> label (bottom-left badge)</span>
+          </label>
         </div>
         <div class="admin-modal-actions">
           <button type="button" class="admin-btn admin-btn--ghost" data-crop-modal-dismiss>Cancel</button>
@@ -314,6 +321,7 @@
         var modal = document.getElementById('admin-photo-crop-modal');
         var img = document.getElementById('admin-photo-crop-img');
         var applyBtn = document.getElementById('admin-photo-crop-apply');
+        var labelBeforeCheckbox = document.getElementById('admin-photo-crop-label-before');
         var aspectButtons = modal.querySelectorAll('[data-crop-ar]');
         if (!modal || !img || !applyBtn || !aspectButtons.length || typeof Cropper === 'undefined') return;
 
@@ -404,6 +412,9 @@
           applyBtn.disabled = true;
           activeUrl = '';
           resetAspectControls();
+          if (labelBeforeCheckbox) {
+            labelBeforeCheckbox.checked = false;
+          }
           document.documentElement.classList.remove('admin-crop-modal-open');
         }
 
@@ -532,6 +543,7 @@
               y: d.y,
               width: d.width,
               height: d.height,
+              label_before: !!(labelBeforeCheckbox && labelBeforeCheckbox.checked),
             }),
           }).then(function (res) {
             return res.json().then(function (body) {
