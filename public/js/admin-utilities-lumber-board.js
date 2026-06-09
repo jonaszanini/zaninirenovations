@@ -8,7 +8,8 @@
   var PIECE_COLORS = ['#024768', '#2a7a9b', '#3d8b6e', '#5c6bc0', '#8d6e63', '#6a8f3a'];
 
   var els = {
-    unitToggle: root.querySelector('[data-lb-unit-toggle]'),
+    stockUnitToggle: root.querySelector('[data-lb-stock-unit-toggle]'),
+    pieceUnitToggle: root.querySelector('[data-lb-piece-unit-toggle]'),
     modeToggle: root.querySelector('[data-lb-mode-toggle]'),
     modeFields: root.querySelectorAll('[data-lb-mode-field]'),
     singleStock: root.querySelector('[data-lb-single-stock]'),
@@ -33,12 +34,14 @@
     saveName: root.querySelector('#lb-save-name'),
     saveFeedback: root.querySelector('[data-lb-save-feedback]'),
     copyBtn: root.querySelector('[data-lb-copy]'),
+    resultsActions: root.querySelector('[data-lb-results-actions]'),
     savedList: root.querySelector('[data-lb-saved-list]'),
     savedEmpty: root.querySelector('[data-lb-saved-empty]')
   };
 
   var state = {
-    unit: 'ft',
+    stockUnit: 'ft',
+    pieceUnit: 'in',
     mode: 'minimize',
     manualCounts: {},
     stockIdSeq: 1,
@@ -137,7 +140,7 @@
       var lenInput = row.querySelector('[data-lb-stock-length]');
       var priceInput = row.querySelector('[data-lb-stock-price]');
       var lenVal = lenInput ? lenInput.value : '';
-      var six = toSixteenths(lenVal, state.unit);
+      var six = toSixteenths(lenVal, state.stockUnit);
       if (six > 0) {
         rows.push({
           id: id,
@@ -164,7 +167,7 @@
       rows.push({
         desc: desc ? desc.value.trim() : '',
         lengthVal: len ? len.value : '',
-        lengthSix: toSixteenths(len ? len.value : '', state.unit),
+        lengthSix: toSixteenths(len ? len.value : '', state.pieceUnit),
         qty: q
       });
     });
@@ -302,20 +305,20 @@
     var maxPiece = Math.max.apply(null, pieces.map(function (p) { return p.len; }));
     var maxStock = Math.max.apply(null, stocks.map(function (s) { return s.lengthSix; }));
     if (maxPiece > maxStock) {
-      return { error: 'One or more pieces are longer than the longest available board (' + formatLength(maxStock, state.unit) + ').' };
+      return { error: 'One or more pieces are longer than the longest available board (' + formatLength(maxStock, state.stockUnit) + ').' };
     }
 
     if (mode === 'single') {
       var stock = stocks.find(function (s) { return s.id === singleStockId; });
       if (!stock) return { error: 'Select a board length for single-board mode.' };
       if (maxPiece > stock.lengthSix) {
-        return { error: 'Some pieces are longer than the selected board (' + formatLength(stock.lengthSix, state.unit) + ').' };
+        return { error: 'Some pieces are longer than the selected board (' + formatLength(stock.lengthSix, state.stockUnit) + ').' };
       }
       var bins = packBestFit(pieces, stock.lengthSix, kerf);
       var groups = [{ stockId: stock.id, lengthSix: stock.lengthSix, bins: bins, count: state.manualCounts[stock.id] || bins.length }];
       var stats = solutionStats(groups, stocks, kerf);
       return {
-        strategy: 'Single board type — ' + formatLength(stock.lengthSix, state.unit),
+        strategy: 'Single board type — ' + formatLength(stock.lengthSix, state.stockUnit),
         groups: groups,
         stats: stats,
         stocks: stocks
@@ -328,7 +331,7 @@
       var groups = [{ stockId: stock.id, lengthSix: stock.lengthSix, bins: bins }];
       var stats = solutionStats(groups, stocks, kerf);
       candidates.push({
-        strategy: 'All ' + formatLength(stock.lengthSix, state.unit) + ' boards',
+        strategy: 'All ' + formatLength(stock.lengthSix, state.stockUnit) + ' boards',
         groups: groups,
         stats: stats,
         waste: stats.waste
@@ -372,7 +375,7 @@
     var row = document.createElement('tr');
     row.setAttribute('data-lb-stock-row', '');
     row.setAttribute('data-id', id);
-    var unitLabel = state.unit === 'ft' ? 'ft' : 'in';
+    var unitLabel = state.stockUnit === 'ft' ? 'ft' : 'in';
     row.innerHTML =
       '<td>' +
         '<div class="util-lb-stock-length-cell">' +
@@ -401,9 +404,15 @@
   function buildPieceRow(data) {
     var row = document.createElement('tr');
     row.setAttribute('data-lb-piece-row', '');
+    var pieceUnitLabel = state.pieceUnit === 'ft' ? 'ft' : 'in';
     row.innerHTML =
       '<td><input type="text" placeholder="Optional" data-lb-piece-desc value="' + (data && data.desc ? escapeAttr(data.desc) : '') + '"></td>' +
-      '<td><input type="number" min="0" step="any" inputmode="decimal" placeholder="Length" data-lb-piece-length value="' + (data && data.lengthVal != null ? escapeAttr(data.lengthVal) : '') + '"></td>' +
+      '<td>' +
+        '<div class="util-lb-stock-length-cell">' +
+          '<input type="number" min="0" step="any" inputmode="decimal" placeholder="Length" data-lb-piece-length value="' + (data && data.lengthVal != null ? escapeAttr(data.lengthVal) : '') + '">' +
+          '<span class="util-lb-unit-tag">' + pieceUnitLabel + '</span>' +
+        '</div>' +
+      '</td>' +
       '<td><input type="number" min="1" step="1" inputmode="numeric" placeholder="1" data-lb-piece-qty value="' + (data && data.qty != null ? escapeAttr(data.qty) : '1') + '"></td>' +
       '<td class="util-lb-col-action"><button type="button" class="admin-btn admin-btn--danger admin-btn--sm util-lb-row-remove" data-lb-remove-piece title="Remove" aria-label="Remove piece"><i class="fa fa-times"></i></button></td>';
     row.querySelector('[data-lb-remove-piece]').addEventListener('click', function () {
@@ -428,7 +437,7 @@
     stocks.forEach(function (s) {
       var opt = document.createElement('option');
       opt.value = s.id;
-      opt.textContent = formatLength(s.lengthSix, state.unit);
+      opt.textContent = formatLength(s.lengthSix, state.stockUnit);
       els.singleStock.appendChild(opt);
     });
     if (current && stocks.some(function (s) { return s.id === current; })) {
@@ -437,12 +446,20 @@
   }
 
   function updateUnitLabels() {
-    var tag = state.unit === 'ft' ? 'ft' : 'in';
-    root.querySelectorAll('.util-lb-unit-tag').forEach(function (el) {
-      el.textContent = tag;
-    });
+    var stockTag = state.stockUnit === 'ft' ? 'ft' : 'in';
+    var pieceTag = state.pieceUnit === 'ft' ? 'ft' : 'in';
+    if (els.stockList) {
+      els.stockList.querySelectorAll('.util-lb-unit-tag').forEach(function (el) {
+        el.textContent = stockTag;
+      });
+    }
+    if (els.piecesBody) {
+      els.piecesBody.querySelectorAll('.util-lb-unit-tag').forEach(function (el) {
+        el.textContent = pieceTag;
+      });
+    }
     root.querySelectorAll('[data-quick-ft]').forEach(function (btn) {
-      btn.hidden = state.unit !== 'ft';
+      btn.hidden = state.stockUnit !== 'ft';
     });
   }
 
@@ -458,7 +475,7 @@
       var count = g.count != null ? g.count : g.bins.length;
       var row = document.createElement('div');
       row.className = 'util-lb-breakdown-row';
-      var label = formatLength(g.lengthSix, state.unit);
+      var label = formatLength(g.lengthSix, state.stockUnit);
       var priceHint = stock && stock.price > 0 ? ' @ ' + formatMoney(stock.price) + ' each' : '';
       row.innerHTML =
         '<div class="util-lb-breakdown-row__info">' +
@@ -538,7 +555,7 @@
       if (count < 1) return;
       var wrap = document.createElement('div');
       wrap.className = 'util-lb-diagram-block';
-      wrap.innerHTML = buildDiagramSvg(g, formatLength(g.lengthSix, state.unit));
+      wrap.innerHTML = buildDiagramSvg(g, formatLength(g.lengthSix, state.stockUnit));
       els.diagrams.appendChild(wrap);
     });
   }
@@ -547,8 +564,8 @@
     if (!result || result.error) return '';
     var s = result.stats;
     return result.strategy + ' — ' + result.stats.boards + ' board(s), ' +
-      formatLength(s.waste, state.unit) + ' waste (' + s.wastePct.toFixed(1) + '%), ' +
-      formatLength(linearSix, state.unit) + ' required';
+      formatLength(s.waste, state.stockUnit) + ' waste (' + s.wastePct.toFixed(1) + '%), ' +
+      formatLength(linearSix, state.pieceUnit) + ' required';
   }
 
   function render() {
@@ -566,7 +583,7 @@
       show(els.live, false);
       show(els.diagramCard, false);
       show(els.saveCard, false);
-      show(els.copyBtn, false);
+      show(els.resultsActions, false);
       return;
     }
 
@@ -579,7 +596,7 @@
       show(els.live, false);
       show(els.diagramCard, false);
       show(els.saveCard, false);
-      show(els.copyBtn, false);
+      show(els.resultsActions, false);
       return;
     }
 
@@ -589,7 +606,7 @@
     show(els.live, true);
     show(els.diagramCard, true);
     show(els.saveCard, true);
-    show(els.copyBtn, true);
+    show(els.resultsActions, true);
 
     var s = result.stats;
     if (els.strategy) {
@@ -598,11 +615,11 @@
         : '';
       els.strategy.innerHTML = '<strong>' + result.strategy + '</strong>' + hint;
     }
-    if (els.statLinear) els.statLinear.textContent = formatLength(linearSix, state.unit);
+    if (els.statLinear) els.statLinear.textContent = formatLength(linearSix, state.pieceUnit);
     if (els.statBoards) els.statBoards.textContent = String(s.boards);
     if (els.statCost) els.statCost.textContent = s.cost > 0 ? formatMoney(s.cost) : '—';
     if (els.statWaste) {
-      els.statWaste.textContent = formatLength(s.waste, state.unit) + ' (' + s.wastePct.toFixed(1) + '%)';
+      els.statWaste.textContent = formatLength(s.waste, state.stockUnit) + ' (' + s.wastePct.toFixed(1) + '%)';
     }
     if (els.statWasteWrap) {
       els.statWasteWrap.className = 'util-lb-stat util-lb-stat--waste ' + wasteClass(s.wastePct);
@@ -618,9 +635,9 @@
     var s = r.stats;
     return [
       { label: 'Strategy', value: r.strategy },
-      { label: 'Linear length required', value: formatLength(lastResult.linearSix, state.unit) },
+      { label: 'Linear length required', value: formatLength(lastResult.linearSix, state.pieceUnit) },
       { label: 'Total boards', value: String(s.boards) },
-      { label: 'Total waste', value: formatLength(s.waste, state.unit) + ' (' + s.wastePct.toFixed(1) + '%)' },
+      { label: 'Total waste', value: formatLength(s.waste, state.stockUnit) + ' (' + s.wastePct.toFixed(1) + '%)' },
       { label: 'Estimated cost', value: s.cost > 0 ? formatMoney(s.cost) : '—' }
     ];
   }
@@ -630,7 +647,7 @@
     return lastResult.result.groups.map(function (g) {
       var count = g.count != null ? g.count : g.bins.length;
       return {
-        label: formatLength(g.lengthSix, state.unit),
+        label: formatLength(g.lengthSix, state.stockUnit),
         value: count + ' board' + (count === 1 ? '' : 's')
       };
     });
@@ -724,9 +741,163 @@
     }
   }
 
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function pieceListGrouped() {
+    var map = {};
+    pieceRows().forEach(function (row) {
+      if (!row.lengthSix || row.qty < 1) return;
+      var key = (row.desc || '') + '\0' + row.lengthSix;
+      if (!map[key]) {
+        map[key] = {
+          desc: row.desc || '—',
+          length: formatLength(row.lengthSix, state.pieceUnit),
+          qty: 0
+        };
+      }
+      map[key].qty += row.qty;
+    });
+    return Object.keys(map).map(function (k) { return map[k]; });
+  }
+
+  function purchaseListDetailed() {
+    if (!lastResult) return [];
+    return lastResult.result.groups.map(function (g) {
+      var stock = lastResult.result.stocks.find(function (s) {
+        return s.id === g.stockId || s.lengthSix === g.lengthSix;
+      });
+      var count = g.count != null ? g.count : g.bins.length;
+      var unitPrice = stock && stock.price > 0 ? stock.price : 0;
+      var lineTotal = unitPrice > 0 ? count * unitPrice : 0;
+      return {
+        length: formatLength(g.lengthSix, state.stockUnit),
+        qty: count,
+        unitPrice: unitPrice > 0 ? formatMoney(unitPrice) : '—',
+        lineTotal: lineTotal > 0 ? formatMoney(lineTotal) : '—'
+      };
+    });
+  }
+
+  function printDiagramsHtml() {
+    if (!els.diagrams) return '';
+    var blocks = els.diagrams.querySelectorAll('.util-lb-diagram-block');
+    if (!blocks.length) return '';
+    var html = '<h2>Cutting diagrams</h2>';
+    blocks.forEach(function (block) {
+      var svg = block.querySelector('svg');
+      if (svg) {
+        html += '<div class="diagram">' + svg.outerHTML + '</div>';
+      }
+    });
+    return html;
+  }
+
+  function buildPrintHtml() {
+    var title = (els.saveName && els.saveName.value.trim()) || 'Lumber material list';
+    var now = new Date().toLocaleString();
+    var r = lastResult.result;
+    var s = r.stats;
+    var kerfNote = els.kerf && els.kerf.checked ? 'Includes 1/8″ kerf between cuts.' : 'Kerf not included.';
+    var stockUnitLabel = state.stockUnit === 'ft' ? 'Feet' : 'Inches';
+    var pieceUnitLabel = state.pieceUnit === 'ft' ? 'Feet' : 'Inches';
+    var unitNote = 'Boards in ' + stockUnitLabel + ', pieces in ' + pieceUnitLabel;
+
+    var summaryRows = [
+      ['Strategy', r.strategy],
+      ['Linear length required', formatLength(lastResult.linearSix, state.pieceUnit)],
+      ['Total boards', String(s.boards)],
+      ['Total waste', formatLength(s.waste, state.stockUnit) + ' (' + s.wastePct.toFixed(1) + '%)'],
+      ['Estimated cost', s.cost > 0 ? formatMoney(s.cost) : '—']
+    ];
+
+    var purchase = purchaseListDetailed();
+    var hasPrice = purchase.some(function (row) { return row.unitPrice !== '—'; });
+
+    var purchaseHead = '<tr><th>Board length</th><th>Qty</th>';
+    if (hasPrice) {
+      purchaseHead += '<th>Unit price</th><th>Line total</th>';
+    }
+    purchaseHead += '</tr>';
+
+    var purchaseBody = purchase.map(function (row) {
+      var tr = '<tr><td>' + escapeHtml(row.length) + '</td><td>' + row.qty + '</td>';
+      if (hasPrice) {
+        tr += '<td>' + escapeHtml(row.unitPrice) + '</td><td>' + escapeHtml(row.lineTotal) + '</td>';
+      }
+      return tr + '</tr>';
+    }).join('');
+
+    var pieces = pieceListGrouped();
+    var piecesBody = pieces.map(function (row) {
+      return '<tr><td>' + escapeHtml(row.desc) + '</td><td>' + escapeHtml(row.length) + '</td><td>' + row.qty + '</td></tr>';
+    }).join('');
+
+    return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>' + escapeHtml(title) + '</title>' +
+      '<style>' +
+      'body{font-family:"Open Sans",Segoe UI,sans-serif;color:#373435;margin:0;padding:24px 28px;font-size:13px;}' +
+      '.head{border-bottom:2px solid #024768;padding-bottom:10px;margin-bottom:18px;}' +
+      'h1{font-size:22px;color:#024768;margin:0 0 4px;}' +
+      '.meta{color:#5a6570;font-size:11px;margin:0;}' +
+      '.note{margin:0 0 18px;line-height:1.5;}' +
+      'h2{font-size:15px;color:#024768;margin:22px 0 8px;}' +
+      'table{width:100%;border-collapse:collapse;margin-bottom:8px;}' +
+      'th,td{border:1px solid #d8dee4;padding:8px 10px;text-align:left;}' +
+      'th{background:#f4f6f8;color:#5a6570;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;}' +
+      'td.num{text-align:right;font-weight:700;}' +
+      '.summary td.label{color:#5a6570;width:55%;}' +
+      '.summary td.value{font-weight:700;text-align:right;}' +
+      '.diagram{margin:12px 0 20px;page-break-inside:avoid;}' +
+      '.diagram svg{width:100%;max-width:100%;height:auto;}' +
+      '@media print{body{padding:12mm;}}' +
+      '</style></head><body>' +
+      '<div class="head"><h1>' + escapeHtml(title) + '</h1>' +
+      '<p class="meta">Zanini Renovations &middot; ' + escapeHtml(now) + ' &middot; Units: ' + unitNote + '</p></div>' +
+      '<p class="note">' + escapeHtml(summaryText(r, lastResult.linearSix)) + '<br>' + escapeHtml(kerfNote) + '</p>' +
+      '<h2>Material to purchase</h2>' +
+      '<table><thead>' + purchaseHead + '</thead><tbody>' + purchaseBody + '</tbody></table>' +
+      '<h2>Pieces required</h2>' +
+      '<table><thead><tr><th>Description</th><th>Length each</th><th>Qty</th></tr></thead><tbody>' + piecesBody + '</tbody></table>' +
+      '<h2>Summary</h2>' +
+      '<table class="summary"><tbody>' +
+      summaryRows.map(function (row) {
+        return '<tr><td class="label">' + escapeHtml(row[0]) + '</td><td class="value">' + escapeHtml(row[1]) + '</td></tr>';
+      }).join('') +
+      '</tbody></table>' +
+      printDiagramsHtml() +
+      '</body></html>';
+  }
+
+  function printMaterialList() {
+    if (!lastResult) return;
+    var html = buildPrintHtml();
+    var w = window.open('', 'lb_material_print', 'noopener,width=820,height=900');
+    if (!w) {
+      window.alert('Pop-up blocked. Allow pop-ups for this site to print the material list.');
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    window.setTimeout(function () {
+      try {
+        w.print();
+      } finally {
+        w.close();
+      }
+    }, 400);
+  }
+
   function currentPayload() {
     return {
-      unit: state.unit,
+      stock_unit: state.stockUnit,
+      piece_unit: state.pieceUnit,
       mode: state.mode,
       single_stock_id: els.singleStock ? els.singleStock.value : '',
       round_up: !!(els.roundUp && els.roundUp.checked),
@@ -832,10 +1003,20 @@
 
   function loadPayload(p) {
     if (!p) return;
-    state.unit = p.unit === 'in' ? 'in' : 'ft';
+    if (p.stock_unit || p.piece_unit) {
+      state.stockUnit = p.stock_unit === 'in' ? 'in' : 'ft';
+      state.pieceUnit = p.piece_unit === 'in' ? 'in' : 'ft';
+    } else if (p.unit) {
+      state.stockUnit = p.unit === 'in' ? 'in' : 'ft';
+      state.pieceUnit = state.stockUnit;
+    } else {
+      state.stockUnit = 'ft';
+      state.pieceUnit = 'in';
+    }
     state.mode = p.mode === 'single' ? 'single' : 'minimize';
     state.manualCounts = p.manual_counts || {};
-    setActive(els.unitToggle, 'data-unit', state.unit);
+    setActive(els.stockUnitToggle, 'data-stock-unit', state.stockUnit);
+    setActive(els.pieceUnitToggle, 'data-piece-unit', state.pieceUnit);
     setActive(els.modeToggle, 'data-mode', state.mode);
     els.modeFields.forEach(function (f) {
       show(f, f.getAttribute('data-lb-mode-field') === state.mode);
@@ -892,8 +1073,10 @@
   root.querySelector('[data-lb-reset]').addEventListener('click', function () {
     state.manualCounts = {};
     state.mode = 'minimize';
-    state.unit = 'ft';
-    setActive(els.unitToggle, 'data-unit', 'ft');
+    state.stockUnit = 'ft';
+    state.pieceUnit = 'in';
+    setActive(els.stockUnitToggle, 'data-stock-unit', 'ft');
+    setActive(els.pieceUnitToggle, 'data-piece-unit', 'in');
     setActive(els.modeToggle, 'data-mode', 'minimize');
     els.modeFields.forEach(function (f) { show(f, false); });
     if (els.roundUp) els.roundUp.checked = false;
@@ -904,14 +1087,27 @@
     render();
   });
 
-  els.unitToggle.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-unit]');
-    if (!btn) return;
-    state.unit = btn.getAttribute('data-unit');
-    setActive(els.unitToggle, 'data-unit', state.unit);
-    updateUnitLabels();
-    render();
-  });
+  if (els.stockUnitToggle) {
+    els.stockUnitToggle.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-stock-unit]');
+      if (!btn) return;
+      state.stockUnit = btn.getAttribute('data-stock-unit');
+      setActive(els.stockUnitToggle, 'data-stock-unit', state.stockUnit);
+      updateUnitLabels();
+      render();
+    });
+  }
+
+  if (els.pieceUnitToggle) {
+    els.pieceUnitToggle.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-piece-unit]');
+      if (!btn) return;
+      state.pieceUnit = btn.getAttribute('data-piece-unit');
+      setActive(els.pieceUnitToggle, 'data-piece-unit', state.pieceUnit);
+      updateUnitLabels();
+      render();
+    });
+  }
 
   els.modeToggle.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-mode]');
@@ -935,6 +1131,9 @@
   });
 
   if (els.copyBtn) els.copyBtn.addEventListener('click', copyResults);
+  root.querySelectorAll('[data-lb-print]').forEach(function (btn) {
+    btn.addEventListener('click', printMaterialList);
+  });
   root.querySelector('[data-lb-export-pdf]').addEventListener('click', exportPdf);
   root.querySelector('[data-lb-save]').addEventListener('click', saveCalculation);
   els.saveName.addEventListener('keydown', function (e) {

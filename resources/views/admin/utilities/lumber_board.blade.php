@@ -32,14 +32,6 @@
         <h3 class="util-lb-card-title">Inputs</h3>
 
         <div class="admin-form-group">
-          <span class="admin-form-group-label">Unit system</span>
-          <div class="util-segmented" role="group" aria-label="Unit system" data-lb-unit-toggle>
-            <button type="button" class="util-segmented__btn is-active" data-unit="ft">Feet</button>
-            <button type="button" class="util-segmented__btn" data-unit="in">Inches</button>
-          </div>
-        </div>
-
-        <div class="admin-form-group">
           <span class="admin-form-group-label">
             Calculation mode
             <span class="util-tip" tabindex="0" data-tip="Minimize waste compares every stock length and a mixed-length plan. Single board type uses only the length you select below.">
@@ -72,7 +64,13 @@
         </label>
 
         <div class="util-lb-section-block">
-          <span class="util-lb-section-label">Available board lengths</span>
+          <div class="util-lb-section-head-inline">
+            <span class="util-lb-section-label">Available board lengths</span>
+            <div class="util-segmented util-segmented--compact" role="group" aria-label="Board length units" data-lb-stock-unit-toggle>
+              <button type="button" class="util-segmented__btn is-active" data-stock-unit="ft">Feet</button>
+              <button type="button" class="util-segmented__btn" data-stock-unit="in">Inches</button>
+            </div>
+          </div>
           <div class="util-lb-quick-btns" data-lb-quick-lengths>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-quick-ft="8">8′</button>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-quick-ft="10">10′</button>
@@ -97,8 +95,12 @@
           <i class="fa fa-plus"></i> Add board length
         </button>
 
-        <div class="util-lb-section-head util-lb-section-head--spaced">
+        <div class="util-lb-section-head util-lb-section-head--spaced util-lb-section-head-inline">
           <span class="util-lb-section-label">Required pieces</span>
+          <div class="util-segmented util-segmented--compact" role="group" aria-label="Piece length units" data-lb-piece-unit-toggle>
+            <button type="button" class="util-segmented__btn" data-piece-unit="ft">Feet</button>
+            <button type="button" class="util-segmented__btn is-active" data-piece-unit="in">Inches</button>
+          </div>
         </div>
         <div class="util-lb-pieces-wrap">
           <table class="util-lb-pieces-table">
@@ -126,9 +128,14 @@
         <div class="admin-card util-lb-results">
           <div class="util-lb-results-head">
             <h3 class="util-lb-card-title">Results</h3>
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-copy hidden>
-              <i class="fa fa-copy"></i> Copy
-            </button>
+            <div class="util-lb-results-actions" data-lb-results-actions hidden>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-print>
+                <i class="fa fa-print"></i> Print list
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-copy>
+                <i class="fa fa-copy"></i> Copy
+              </button>
+            </div>
           </div>
 
           <div class="util-lb-empty" data-lb-empty>
@@ -172,6 +179,9 @@
           <p class="util-lb-hint">Coloured segments are cuts; grey is leftover waste on each board.</p>
           <div class="util-lb-diagrams" data-lb-diagrams></div>
           <div class="util-lb-export">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-print>
+              <i class="fa fa-print"></i> Print list
+            </button>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-export-pdf>
               <i class="fa fa-file-pdf-o"></i> Export PDF
             </button>

@@ -920,6 +920,26 @@
   color: var(--admin-muted);
 }
 
+.util-lb-section-head-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.util-lb-section-head-inline .util-segmented--compact {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.util-segmented--compact .util-segmented__btn {
+  flex: 0 0 auto;
+  min-width: 3.25rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
 .util-lb-quick-btns {
   display: flex;
   flex-wrap: wrap;
@@ -1052,6 +1072,13 @@
 
 .util-lb-results-head .util-lb-card-title {
   margin: 0;
+}
+
+.util-lb-results-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
 }
 
 .util-lb-empty {
