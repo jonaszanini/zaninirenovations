@@ -21,11 +21,12 @@
     class="util-lb"
     data-lumber-board
     data-save-url="{{ route('admin.utilities.calculations.store') }}"
+    data-update-template="{{ route('admin.utilities.calculations.update', ['utility_calculation' => '__ID__']) }}"
     data-pdf-url="{{ route('admin.utilities.lumber-board.pdf') }}"
     data-destroy-template="{{ route('admin.utilities.calculations.destroy', ['utility_calculation' => '__ID__']) }}"
     data-project-url-template="{{ route('admin.client-projects.show', ['client_project' => '__ID__']) }}"
     data-link-project-id="{{ $linkProject?->id }}"
-    data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'client_project_id' => $c->client_project_id, 'client_project_name' => $c->clientProject?->name, 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A')])) }}"
+    data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'client_project_id' => $c->client_project_id, 'client_project_name' => $c->clientProject?->name, 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A'), 'saved_label' => optional($c->updated_at)->format('M j, Y g:i A')])) }}"
   >
     <input type="hidden" id="util-lb-csrf" value="{{ csrf_token() }}">
 

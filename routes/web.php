@@ -474,6 +474,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('utilities.lumber-board.pdf');
     Route::post('utilities/calculations', [\App\Http\Controllers\Admin\UtilitiesController::class, 'storeCalculation'])
         ->name('utilities.calculations.store');
+    Route::put('utilities/calculations/{utility_calculation}', [\App\Http\Controllers\Admin\UtilitiesController::class, 'updateCalculation'])
+        ->name('utilities.calculations.update');
     Route::delete('utilities/calculations/{utility_calculation}', [\App\Http\Controllers\Admin\UtilitiesController::class, 'destroyCalculation'])
         ->name('utilities.calculations.destroy');
 

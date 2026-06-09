@@ -159,6 +159,36 @@ class UtilitiesController extends Controller
         ]);
     }
 
+    /**
+     * Update a saved calculation (same tool only).
+     */
+    public function updateCalculation(Request $request, UtilityCalculation $utility_calculation)
+    {
+        $data = $request->validate([
+            'tool' => ['required', 'string', 'max:60'],
+            'name' => ['required', 'string', 'max:120'],
+            'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
+            'payload' => ['required', 'array'],
+        ]);
+
+        if ($data['tool'] !== $utility_calculation->tool) {
+            return response()->json(['message' => 'Tool mismatch.'], 422);
+        }
+
+        $utility_calculation->update([
+            'name' => $data['name'],
+            'client_project_id' => $data['client_project_id'] ?? null,
+            'payload' => $data['payload'],
+        ]);
+
+        $utility_calculation->load('clientProject:id,name');
+
+        return response()->json([
+            'ok' => true,
+            'calculation' => $this->utilityCalculationJson($utility_calculation),
+        ]);
+    }
+
     public function destroyCalculation(UtilityCalculation $utility_calculation)
     {
         $utility_calculation->delete();
@@ -217,6 +247,7 @@ class UtilitiesController extends Controller
             'payload' => $calculation->payload,
             'created_at' => $calculation->created_at?->toIso8601String(),
             'created_label' => $calculation->created_at?->format('M j, Y g:i A'),
+            'saved_label' => $calculation->updated_at?->format('M j, Y g:i A'),
         ];
     }
 }

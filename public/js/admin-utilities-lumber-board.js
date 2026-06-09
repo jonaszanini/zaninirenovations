@@ -46,7 +46,8 @@
     mode: 'minimize',
     manualCounts: {},
     stockIdSeq: 1,
-    pieceIdSeq: 1
+    pieceIdSeq: 1,
+    loadedCalculationId: null
   };
 
   var lastResult = null;
@@ -61,6 +62,24 @@
   function setLinkProject(id) {
     if (!els.linkProject) return;
     els.linkProject.value = id ? String(id) : '';
+  }
+
+  function updateSaveUi() {
+    var editing = !!state.loadedCalculationId;
+    var saveBtn = root.querySelector('[data-lb-save]');
+    var saveCardTitle = els.saveCard && els.saveCard.querySelector('.util-lb-card-title');
+    if (saveBtn) {
+      saveBtn.innerHTML = editing
+        ? '<i class="fa fa-save"></i> Update'
+        : '<i class="fa fa-save"></i> Save';
+    }
+    if (saveCardTitle) {
+      saveCardTitle.textContent = editing ? 'Update this calculation' : 'Save this calculation';
+    }
+  }
+
+  function savedListLabel(c) {
+    return c.saved_label || c.created_label || '';
   }
 
   function csrf() {
@@ -961,8 +980,12 @@
     var clientProjectId = els.linkProject && els.linkProject.value
       ? parseInt(els.linkProject.value, 10)
       : null;
-    fetch(root.getAttribute('data-save-url'), {
-      method: 'POST',
+    var isUpdate = !!state.loadedCalculationId;
+    var url = isUpdate
+      ? root.getAttribute('data-update-template').replace('__ID__', state.loadedCalculationId)
+      : root.getAttribute('data-save-url');
+    fetch(url, {
+      method: isUpdate ? 'PUT' : 'POST',
       credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
@@ -980,9 +1003,16 @@
       .then(function (res) { return res.ok ? res.json() : Promise.reject(res); })
       .then(function (data) {
         if (btn) btn.disabled = false;
-        els.saveName.value = '';
-        showSaveFeedback('Saved "' + data.calculation.name + '".', true);
-        prependSaved(data.calculation);
+        state.loadedCalculationId = data.calculation.id;
+        updateSaveUi();
+        if (isUpdate) {
+          showSaveFeedback('Updated "' + data.calculation.name + '".', true);
+          replaceSaved(data.calculation);
+        } else {
+          els.saveName.value = '';
+          showSaveFeedback('Saved "' + data.calculation.name + '".', true);
+          prependSaved(data.calculation);
+        }
       })
       .catch(function () {
         if (btn) btn.disabled = false;
@@ -1026,9 +1056,9 @@
       '</div>';
     li.querySelector('.util-lb-saved-item__name').textContent = c.name;
     li.querySelector('.util-lb-saved-item__summary').textContent = summary;
-    li.querySelector('.util-lb-saved-item__date').textContent = c.created_label || '';
+    li.querySelector('.util-lb-saved-item__date').textContent = savedListLabel(c);
     li.querySelector('[data-lb-load]').addEventListener('click', function () {
-      loadPayload(payload, c.client_project_id, c.name);
+      loadPayload(payload, c.client_project_id, c.name, c.id);
     });
     li.querySelector('[data-lb-delete]').addEventListener('click', function () { deleteSaved(c.id, li); });
     return li;
@@ -1036,6 +1066,18 @@
 
   function prependSaved(c) {
     els.savedList.insertBefore(savedItemHtml(c), els.savedList.firstChild);
+    refreshSavedEmpty();
+  }
+
+  function replaceSaved(c) {
+    var li = els.savedList.querySelector('[data-id="' + c.id + '"]');
+    var newLi = savedItemHtml(c);
+    if (li) {
+      li.replaceWith(newLi);
+      els.savedList.insertBefore(newLi, els.savedList.firstChild);
+    } else {
+      prependSaved(c);
+    }
     refreshSavedEmpty();
   }
 
@@ -1052,12 +1094,20 @@
       headers: { 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' }
     })
       .then(function (res) { return res.ok ? res.json() : Promise.reject(res); })
-      .then(function () { li.remove(); refreshSavedEmpty(); })
+      .then(function () {
+        if (String(state.loadedCalculationId) === String(id)) {
+          state.loadedCalculationId = null;
+          updateSaveUi();
+        }
+        li.remove();
+        refreshSavedEmpty();
+      })
       .catch(function () { window.alert('Could not delete. Please try again.'); });
   }
 
-  function loadPayload(p, clientProjectId, calcName) {
+  function loadPayload(p, clientProjectId, calcName, calcId) {
     if (!p) return;
+    state.loadedCalculationId = calcId ? String(calcId) : null;
     if (p.stock_unit || p.piece_unit) {
       state.stockUnit = p.stock_unit === 'in' ? 'in' : 'ft';
       state.pieceUnit = p.piece_unit === 'in' ? 'in' : 'ft';
@@ -1091,6 +1141,7 @@
     setLinkProject(clientProjectId);
     if (els.saveName) els.saveName.value = calcName ? String(calcName) : '';
     updateUnitLabels();
+    updateSaveUi();
     render();
     if (lastResult) {
       focusSaveForm();
@@ -1134,6 +1185,7 @@
     state.mode = 'minimize';
     state.stockUnit = 'ft';
     state.pieceUnit = 'in';
+    state.loadedCalculationId = null;
     setActive(els.stockUnitToggle, 'data-stock-unit', 'ft');
     setActive(els.pieceUnitToggle, 'data-piece-unit', 'in');
     setActive(els.modeToggle, 'data-mode', 'minimize');
@@ -1144,6 +1196,7 @@
     els.piecesBody.innerHTML = '';
     initDefaults();
     setLinkProject(initialLinkProjectId);
+    updateSaveUi();
     render();
   });
 
@@ -1211,5 +1264,6 @@
   })();
 
   initDefaults();
+  updateSaveUi();
   render();
 })();
