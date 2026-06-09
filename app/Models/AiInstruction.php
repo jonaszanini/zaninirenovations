@@ -12,6 +12,8 @@ class AiInstruction extends Model
 
     public const KEY_IMAGE_MODIFY_PROMPT = 'image_modify_prompt';
 
+    public const KEY_PORTFOLIO_PHOTO_PROMPT = 'portfolio_photo_prompt';
+
     public const KEY_PORTFOLIO_DESCRIPTION = 'portfolio_description';
 
     protected $fillable = [

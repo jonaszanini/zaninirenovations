@@ -91,7 +91,7 @@
       fileInputId: 'photos',
       maxTotal: 15,
       csrfToken: @json(csrf_token()),
-      improveUrl: @json(route('admin.image-creation.improve-prompt')),
+      improveUrl: @json(route('admin.portfolio.improve-photo-prompt')),
       aiImproveUrl: @json(route('admin.portfolio.ai-improve-photos')),
     };
     window.portfolioDescriptionAiConfig = {

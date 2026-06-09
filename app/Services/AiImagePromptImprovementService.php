@@ -14,11 +14,16 @@ class AiImagePromptImprovementService
     /**
      * @return array{critique: string, optimized_prompt: string, why_better: string}
      */
-    public function improve(string $prompt): array
+    public function improve(string $prompt, ?string $instructionKey = null): array
     {
-        $instruction = AiInstruction::forKey(AiInstruction::KEY_IMAGE_MODIFY_PROMPT);
+        $instructionKey = $instructionKey ?? AiInstruction::KEY_IMAGE_MODIFY_PROMPT;
+        $instruction = AiInstruction::forKey($instructionKey);
         if (! $instruction) {
-            throw new RuntimeException('Image modify prompt AI instruction is not configured. Add it under Tools → AI Instructions.');
+            $label = $instructionKey === AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT
+                ? 'Latest projects photo prompt improvement'
+                : 'Image modify prompt improvement';
+
+            throw new RuntimeException($label.' AI instruction is not configured. Add it under Tools → AI Instructions.');
         }
 
         $prompt = trim($prompt);
