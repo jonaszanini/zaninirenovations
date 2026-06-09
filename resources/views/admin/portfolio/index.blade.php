@@ -4,7 +4,9 @@
 
 @section('content')
   <div class="admin-toolbar">
-    @php($portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings())
+    @php
+      $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
+    @endphp
     <p class="admin-toolbar-lede">Manage portfolio photos shown on the public home page (WebP, JPEG, or PNG — stored as WebP at {{ $portfolioWebp['quality'] }}% quality, max edge {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each; up to 15 per project).</p>
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">

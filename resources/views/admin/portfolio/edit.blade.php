@@ -107,7 +107,9 @@
         $canAdd = 15 - $project->photos->count();
       @endphp
       @if ($canAdd > 0)
-        @php($portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings())
+        @php
+          $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
+        @endphp
         <div class="admin-portfolio-upload-section">
           @include('admin.partials.local_and_google_photos', [
             'fileInputId' => 'photos',
