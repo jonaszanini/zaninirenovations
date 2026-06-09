@@ -117,7 +117,14 @@
             'statusMode' => 'remaining',
             'formSync' => true,
             'googleFootText' => 'You can add up to '.$canAdd.' more photos total (file uploads + picked Google photos).',
+            'showPreviewGrid' => true,
+            'previewGridId' => 'portfolio-local-preview-grid',
             'fileErrors' => ['photos', 'photos.*'],
+          ])
+
+          @include('admin.partials.portfolio_ai_improve', [
+            'fileInputId' => 'photos',
+            'maxTotal' => $canAdd,
           ])
         </div>
       @else
@@ -211,6 +218,15 @@
 
 @push('scripts')
   <script>
+    @if ($canAdd > 0)
+    window.portfolioAiImproveConfig = {
+      fileInputId: 'photos',
+      maxTotal: {{ (int) $canAdd }},
+      csrfToken: @json(csrf_token()),
+      aiImproveUrl: @json(route('admin.portfolio.ai-improve-photos')),
+      saveHint: 'Save changes',
+    };
+    @endif
     window.portfolioDescriptionAiConfig = {
       descriptionInputId: 'description',
       fileInputId: 'photos',

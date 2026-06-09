@@ -91,6 +91,7 @@
       maxTotal: 15,
       csrfToken: @json(csrf_token()),
       aiImproveUrl: @json(route('admin.portfolio.ai-improve-photos')),
+      saveHint: 'Save project',
     };
     window.portfolioDescriptionAiConfig = {
       descriptionInputId: 'description',

@@ -10,11 +10,15 @@ use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 use Throwable;
 
+/**
+ * WebP storage for portfolio photos, blog images, client-project photos, receipts, etc.
+ *
+ * Downscaling always preserves the source aspect ratio (longest edge capped at max_edge_px).
+ * Never use Imagick thumbnailImage with fill, or any center-crop, in this class — only
+ * {@see scaleDownMaxEdgeImagick} / {@see scaleDownMaxEdgeGd} / cwebp -resize W 0|0 H.
+ */
 class ProjectPhotoWebpStorage
 {
-    /**
-     * Store a photo that already exists on local disk (e.g. downloaded from Google Photos).
-     */
     /** Re-apply WebP budget after crop/rotate (in-place). */
     public function recompressWebpAtPath(string $absolutePath): void
     {
@@ -327,11 +331,7 @@ class ProjectPhotoWebpStorage
             try {
                 $imagick = new \Imagick;
                 $imagick->readImageBlob($webp);
-                $w = $imagick->getImageWidth();
-                $h = $imagick->getImageHeight();
-                if ($w > $maxEdge || $h > $maxEdge) {
-                    $imagick->thumbnailImage($maxEdge, $maxEdge, true, true);
-                }
+                $this->scaleDownMaxEdgeImagick($imagick, $maxEdge);
                 $imagick->setImageFormat('webp');
                 $imagick->setImageCompressionQuality(max(1, min(100, $quality)));
                 $blob = $imagick->getImageBlob();
@@ -348,22 +348,7 @@ class ProjectPhotoWebpStorage
             $im = @imagecreatefromstring($webp);
             if ($im !== false) {
                 imagesavealpha($im, true);
-                $w = imagesx($im);
-                $h = imagesy($im);
-                if ($w > $maxEdge || $h > $maxEdge) {
-                    if ($w >= $h) {
-                        $newW = $maxEdge;
-                        $newH = (int) max(1, round($h * ($maxEdge / $w)));
-                    } else {
-                        $newH = $maxEdge;
-                        $newW = (int) max(1, round($w * ($maxEdge / $h)));
-                    }
-                    $scaled = imagescale($im, $newW, $newH, IMG_BICUBIC);
-                    if ($scaled !== false) {
-                        imagedestroy($im);
-                        $im = $scaled;
-                    }
-                }
+                $im = $this->scaleDownMaxEdgeGd($im, $maxEdge);
                 ob_start();
                 $ok = imagewebp($im, null, max(1, min(100, $quality)));
                 imagedestroy($im);
@@ -461,26 +446,36 @@ class ProjectPhotoWebpStorage
     }
 
     /**
+     * @return array{0: int, 1: int}|null [newWidth, newHeight], or null when already within max edge
+     */
+    private function scaledDimensionsWithinMaxEdge(int $width, int $height, int $maxEdge): ?array
+    {
+        if ($width <= $maxEdge && $height <= $maxEdge) {
+            return null;
+        }
+
+        if ($width >= $height) {
+            return [$maxEdge, (int) max(1, round($height * ($maxEdge / $width)))];
+        }
+
+        return [(int) max(1, round($width * ($maxEdge / $height))), $maxEdge];
+    }
+
+    /**
      * @param  \GdImage|resource  $image
      * @return \GdImage|resource
      */
-    private function scaleDownMaxEdgeGd($image)
+    private function scaleDownMaxEdgeGd($image, ?int $maxEdge = null)
     {
-        $maxEdge = $this->maxEdge();
+        $maxEdge = $maxEdge ?? $this->maxEdge();
         $w = imagesx($image);
         $h = imagesy($image);
-        if ($w <= $maxEdge && $h <= $maxEdge) {
+        $scaledDims = $this->scaledDimensionsWithinMaxEdge($w, $h, $maxEdge);
+        if ($scaledDims === null) {
             return $image;
         }
 
-        if ($w >= $h) {
-            $newW = $maxEdge;
-            $newH = (int) max(1, round($h * ($maxEdge / $w)));
-        } else {
-            $newH = $maxEdge;
-            $newW = (int) max(1, round($w * ($maxEdge / $h)));
-        }
-
+        [$newW, $newH] = $scaledDims;
         $scaled = imagescale($image, $newW, $newH, IMG_BICUBIC);
         if ($scaled === false) {
             return $image;
@@ -532,13 +527,10 @@ class ProjectPhotoWebpStorage
             $info = @getimagesize($absolutePath);
             if ($info !== false) {
                 [$w, $h] = $info;
-                $max = $this->maxEdge();
-                if ($w > $max || $h > $max) {
-                    if ($w >= $h) {
-                        array_push($args, '-resize', (string) $max, '0');
-                    } else {
-                        array_push($args, '-resize', '0', (string) $max);
-                    }
+                $scaledDims = $this->scaledDimensionsWithinMaxEdge($w, $h, $this->maxEdge());
+                if ($scaledDims !== null) {
+                    [$newW, $newH] = $scaledDims;
+                    array_push($args, '-resize', (string) $newW, (string) $newH);
                 }
             }
 
@@ -568,6 +560,21 @@ class ProjectPhotoWebpStorage
         }
     }
 
+    private function scaleDownMaxEdgeImagick(\Imagick $imagick, int $maxEdge): void
+    {
+        $scaledDims = $this->scaledDimensionsWithinMaxEdge(
+            $imagick->getImageWidth(),
+            $imagick->getImageHeight(),
+            $maxEdge,
+        );
+        if ($scaledDims === null) {
+            return;
+        }
+
+        [$newW, $newH] = $scaledDims;
+        $imagick->resizeImage($newW, $newH, \Imagick::FILTER_LANCZOS, 1);
+    }
+
     private function imagickSupportsWebp(): bool
     {
         if (! extension_loaded('imagick') || ! class_exists(\Imagick::class)) {
@@ -590,12 +597,7 @@ class ProjectPhotoWebpStorage
         }
 
         try {
-            $max = $this->maxEdge();
-            $w = $imagick->getImageWidth();
-            $h = $imagick->getImageHeight();
-            if ($w > $max || $h > $max) {
-                $imagick->thumbnailImage($max, $max, true, true);
-            }
+            $this->scaleDownMaxEdgeImagick($imagick, $this->maxEdge());
             $imagick->setImageFormat('webp');
             $imagick->setImageCompressionQuality($this->quality());
             $blob = $imagick->getImageBlob();

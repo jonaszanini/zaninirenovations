@@ -285,9 +285,10 @@
         msg += ' Click Apply again to retry failed photos only.';
         setStatus(msg, true);
       } else {
+        var saveHint = config.saveHint || 'Save project';
         msg = improvedFiles.length === 1
-          ? '1 AI-improved WebP photo ready. Review previews, then Save project.'
-          : improvedFiles.length + ' AI-improved WebP photos ready. Review previews, then Save project.';
+          ? '1 AI-improved WebP photo ready. Review previews, then ' + saveHint + '.'
+          : improvedFiles.length + ' AI-improved WebP photos ready. Review previews, then ' + saveHint + '.';
         setStatus(msg, false);
       }
 
