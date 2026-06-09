@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AiInstruction;
 use App\Models\User;
 use App\Support\GooglePickerItems;
 use Illuminate\Http\UploadedFile;
@@ -24,12 +25,9 @@ class PortfolioPhotoAiImprovementService
      *   summary: string
      * }
      */
-    public function improveBatch(User $user, string $prompt, array $uploads, array $googlePickerRawItems): array
+    public function improveBatch(User $user, array $uploads, array $googlePickerRawItems): array
     {
-        $prompt = trim($prompt);
-        if ($prompt === '') {
-            throw new RuntimeException('Edit prompt is empty.');
-        }
+        $prompt = $this->resolvePrompt();
 
         $files = [];
         $failures = [];
@@ -164,5 +162,20 @@ class PortfolioPhotoAiImprovementService
         }
 
         return $mime;
+    }
+
+    private function resolvePrompt(): string
+    {
+        $instruction = AiInstruction::forKey(AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT);
+        if (! $instruction) {
+            throw new RuntimeException('Latest projects photo prompt improvement is not configured. Add it under Tools → AI Instructions.');
+        }
+
+        $prompt = trim($instruction->instruction);
+        if ($prompt === '') {
+            throw new RuntimeException('Latest projects photo prompt improvement is empty. Edit it under Tools → AI Instructions.');
+        }
+
+        return $prompt;
     }
 }

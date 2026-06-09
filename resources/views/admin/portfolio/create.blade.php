@@ -70,7 +70,6 @@
         @include('admin.partials.portfolio_ai_improve', [
           'fileInputId' => 'photos',
           'maxTotal' => 15,
-          'promptMaxLength' => 8000,
         ])
       </div>
     </form>
@@ -91,7 +90,6 @@
       fileInputId: 'photos',
       maxTotal: 15,
       csrfToken: @json(csrf_token()),
-      improveUrl: @json(route('admin.portfolio.improve-photo-prompt')),
       aiImproveUrl: @json(route('admin.portfolio.ai-improve-photos')),
     };
     window.portfolioDescriptionAiConfig = {

@@ -87,15 +87,12 @@
 
     var fileInput = document.getElementById(config.fileInputId || 'photos');
     var googleRoot = document.querySelector('.admin-google-photos');
-    var promptEl = document.getElementById('portfolio-ai-prompt');
     var applyBtn = document.getElementById('portfolio-ai-apply-btn');
-    var improveBtn = document.getElementById('portfolio-ai-improve-prompt-btn');
     var loadingEl = document.getElementById('portfolio-ai-loading');
     var loadingTextEl = document.getElementById('portfolio-ai-loading-text');
     var statusEl = document.getElementById('portfolio-ai-status');
     var maxTotal = parseInt(config.maxTotal || '15', 10);
     var csrfToken = config.csrfToken || '';
-    var improveUrl = config.improveUrl || '';
     var aiImproveUrl = config.aiImproveUrl || '';
 
     if (!applyBtn || !fileInput) return;
@@ -110,7 +107,6 @@
       if (loadingEl) loadingEl.hidden = !active;
       if (loadingTextEl && message) loadingTextEl.textContent = message;
       applyBtn.disabled = !!active;
-      if (improveBtn) improveBtn.disabled = !!active;
     }
 
     function uploadCount() {
@@ -133,7 +129,7 @@
       return uploadCount();
     }
 
-    function buildJobs(prompt) {
+    function buildJobs() {
       var jobs = [];
       var google = googlePayloads();
 
@@ -143,7 +139,6 @@
             label: googleJobLabel(payload, index),
             buildFormData: function () {
               var fd = new FormData();
-              fd.append('prompt', prompt);
               fd.append('google_picker_items[]', payload);
               return fd;
             },
@@ -158,7 +153,6 @@
             label: file.name || ('Upload ' + (index + 1)),
             buildFormData: function () {
               var fd = new FormData();
-              fd.append('prompt', prompt);
               fd.append('photos[]', file);
               return fd;
             },
@@ -169,56 +163,7 @@
       return jobs;
     }
 
-    if (improveBtn && improveUrl) {
-      improveBtn.addEventListener('click', async function () {
-        var prompt = promptEl ? promptEl.value.trim() : '';
-        if (!prompt) {
-          setStatus('Enter edit instructions first, then click Improve prompt.', true);
-          if (promptEl) promptEl.focus();
-          return;
-        }
-
-        setLoading(true, 'Improving prompt with Gemini…');
-        setStatus('', false);
-
-        try {
-          var res = await fetch(improveUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest',
-              'X-CSRF-TOKEN': csrfToken,
-            },
-            body: JSON.stringify({ prompt: prompt }),
-          });
-          var text = await res.text();
-          var body = text ? JSON.parse(text) : null;
-          if (!res.ok) {
-            throw new Error(errorFromBody(body, res.status));
-          }
-          if (promptEl && body.prompt) {
-            promptEl.value = body.prompt;
-            promptEl.focus();
-          }
-          var note = 'Prompt improved. Review it, then click Apply AI improvements.';
-          if (body.why_better) {
-            var why = body.why_better;
-            if (why.length > 240) why = why.slice(0, 239) + '…';
-            note += ' ' + why;
-          }
-          setStatus(note, false);
-        } catch (err) {
-          setStatus(err.message || 'Could not improve prompt.', true);
-        } finally {
-          setLoading(false, 'Editing with Gemini…');
-        }
-      });
-    }
-
     applyBtn.addEventListener('click', async function () {
-      var prompt = promptEl ? promptEl.value.trim() : '';
       var total = totalSourceCount();
 
       if (total < 1) {
@@ -229,13 +174,8 @@
         setStatus('Too many photos selected (max ' + maxTotal + ').', true);
         return;
       }
-      if (!prompt) {
-        setStatus('Describe how the photos should be improved.', true);
-        if (promptEl) promptEl.focus();
-        return;
-      }
 
-      var jobs = buildJobs(prompt);
+      var jobs = buildJobs();
       var failures = [];
       var improvedFiles = [];
       var processedGoogle = googleCheckedCount() > 0;

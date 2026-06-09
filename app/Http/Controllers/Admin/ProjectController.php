@@ -7,9 +7,7 @@ use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\ProjectPhoto;
 use App\Models\GooglePhotosToken;
-use App\Services\AiImagePromptImprovementService;
 use App\Services\GooglePhotosService;
-use App\Models\AiInstruction;
 use App\Services\PortfolioDescriptionAiService;
 use App\Services\PortfolioPhotoAiImprovementService;
 use App\Services\ProjectPhotoCropService;
@@ -98,7 +96,6 @@ class ProjectController extends Controller
         $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
 
         $data = $request->validate([
-            'prompt' => ['required', 'string', 'max:'.self::AI_PROMPT_MAX_LENGTH],
             'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'photos.*' => ['file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
             'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
@@ -125,7 +122,6 @@ class ProjectController extends Controller
         try {
             $result = $improver->improveBatch(
                 $request->user(),
-                $data['prompt'],
                 $uploads,
                 $googleItems,
             );
@@ -141,27 +137,6 @@ class ProjectController extends Controller
     public function aiImproveDescription(Request $request, PortfolioDescriptionAiService $describer): JsonResponse
     {
         return $this->respondWithImprovedDescription($request, $describer, null);
-    }
-
-    public function improvePhotoPrompt(Request $request, AiImagePromptImprovementService $improver): JsonResponse
-    {
-        $data = $request->validate([
-            'prompt' => ['required', 'string', 'max:8000'],
-        ]);
-
-        try {
-            $result = $improver->improve($data['prompt'], AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT);
-
-            return response()->json([
-                'prompt' => $result['optimized_prompt'],
-                'critique' => $result['critique'],
-                'why_better' => $result['why_better'],
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 502);
-        }
     }
 
     public function aiImproveDescriptionForProject(

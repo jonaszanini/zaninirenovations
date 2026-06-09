@@ -132,8 +132,6 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // Portfolio (a.k.a. "Latest Projects Photos") — manages Project/ProjectPhoto used on the public home page.
     Route::post('portfolio/ai-improve-photos', [ProjectController::class, 'aiImprovePhotos'])
         ->name('portfolio.ai-improve-photos');
-    Route::post('portfolio/improve-photo-prompt', [ProjectController::class, 'improvePhotoPrompt'])
-        ->name('portfolio.improve-photo-prompt');
     Route::post('portfolio/ai-improve-description', [ProjectController::class, 'aiImproveDescription'])
         ->name('portfolio.ai-improve-description');
     Route::post('portfolio/{project}/ai-improve-description', [ProjectController::class, 'aiImproveDescriptionForProject'])
