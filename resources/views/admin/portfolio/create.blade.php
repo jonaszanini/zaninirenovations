@@ -3,7 +3,7 @@
 @section('heading', 'New project')
 
 @section('content')
-  <div class="cp-edit-project-layout">
+  <div class="cp-edit-project-layout cp-portfolio-project-layout">
     <div class="admin-card admin-card--narrow cp-edit-project-form-card">
     <form id="portfolio-create-form" action="{{ route('admin.portfolio.store') }}" method="post" enctype="multipart/form-data">
       @csrf
