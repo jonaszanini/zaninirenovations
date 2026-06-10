@@ -67,18 +67,19 @@ class UtilitiesController extends Controller
     {
         $saved = UtilityCalculation::query()
             ->where('tool', UtilityCalculation::TOOL_LUMBER_BOARD)
-            ->with('clientProject:id,name')
+            ->with('clientProject:id,name,client_name')
             ->latest()
             ->get(['id', 'name', 'client_project_id', 'payload', 'created_at']);
 
         $clientProjects = ClientProject::query()
             ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED])
+            ->orderBy('client_name')
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'client_name']);
 
         $linkProjectId = max(0, (int) $request->query('project', 0)) ?: null;
         $linkProject = $linkProjectId
-            ? ClientProject::query()->find($linkProjectId, ['id', 'name'])
+            ? ClientProject::query()->find($linkProjectId, ['id', 'name', 'client_name'])
             : null;
 
         if ($linkProject && ! $clientProjects->contains('id', $linkProject->id)) {
@@ -151,7 +152,7 @@ class UtilitiesController extends Controller
             'payload' => $data['payload'],
         ]);
 
-        $calculation->load('clientProject:id,name');
+        $calculation->load('clientProject:id,name,client_name');
 
         return response()->json([
             'ok' => true,
@@ -181,7 +182,7 @@ class UtilitiesController extends Controller
             'payload' => $data['payload'],
         ]);
 
-        $utility_calculation->load('clientProject:id,name');
+        $utility_calculation->load('clientProject:id,name,client_name');
 
         return response()->json([
             'ok' => true,
@@ -243,7 +244,7 @@ class UtilitiesController extends Controller
             'id' => $calculation->id,
             'name' => $calculation->name,
             'client_project_id' => $calculation->client_project_id,
-            'client_project_name' => $calculation->clientProject?->name,
+            'client_project_name' => $calculation->clientProject?->linkSelectLabel(),
             'payload' => $calculation->payload,
             'created_at' => $calculation->created_at?->toIso8601String(),
             'created_label' => $calculation->created_at?->format('M j, Y g:i A'),

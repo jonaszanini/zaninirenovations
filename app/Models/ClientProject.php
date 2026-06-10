@@ -379,6 +379,19 @@ class ClientProject extends Model
             && filled($this->client_address);
     }
 
+    /** Label for project pickers: "Client name - Project name". */
+    public function linkSelectLabel(): string
+    {
+        $client = trim((string) $this->client_name);
+        $project = trim((string) $this->name);
+
+        if ($client !== '' && $project !== '') {
+            return $client.' - '.$project;
+        }
+
+        return $project !== '' ? $project : $client;
+    }
+
     /** Returns a list of human labels for the missing client contact fields. */
     public function missingClientContactFields(): array
     {
