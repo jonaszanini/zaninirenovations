@@ -71,10 +71,11 @@
         @csrf
         <div class="admin-form-group">
           <label for="mat-bulk-skus">SKUs or product URLs</label>
-          <textarea id="mat-bulk-skus" name="skus" rows="8" class="admin-input" aria-label="SKU list, one per line" placeholder="Paste one SKU or product URL per line…">{{ old('skus') }}</textarea>
+          <textarea id="mat-bulk-skus" name="skus" rows="8" class="admin-input @error('skus') is-invalid @enderror" aria-label="SKU list, one per line" placeholder="Paste one SKU or product URL per line…">{{ old('skus') }}</textarea>
+          @error('skus') <p class="admin-form-error">{{ $message }}</p> @enderror
           <p class="admin-form-help">
             One SKU (e.g. <code>1000108771</code>) or full Home Depot product URL per line.
-            Product and image URLs are built automatically. Duplicate lines and invalid entries are skipped.
+            Blank lines are ignored. If the same SKU appears more than once in your paste, only the first is imported; the rest are skipped. SKUs already in the catalog are updated.
           </p>
         </div>
         <div class="admin-form-grid-2">

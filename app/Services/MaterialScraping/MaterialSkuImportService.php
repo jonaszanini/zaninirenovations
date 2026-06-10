@@ -13,6 +13,9 @@ class MaterialSkuImportService
      *     created: int,
      *     updated: int,
      *     skipped: int,
+     *     blank_lines: int,
+     *     duplicate_lines: int,
+     *     invalid_lines: int,
      *     material_ids: list<int>,
      *     skip_reasons: list<string>
      * }
@@ -24,29 +27,35 @@ class MaterialSkuImportService
 
         $created = 0;
         $updated = 0;
-        $skipped = 0;
+        $blankLines = 0;
+        $duplicateLines = 0;
+        $invalidLines = 0;
         $materialIds = [];
         $skipReasons = [];
         $seen = [];
 
+        $rawInput = preg_replace('/^\x{FEFF}/u', '', $rawInput) ?? $rawInput;
         $lines = preg_split('/\r\n|\r|\n/', $rawInput) ?: [];
 
         foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line === '') {
+            $line = $this->trimLine($line);
+
+            if ($this->isBlankLine($line)) {
+                $blankLines++;
+
                 continue;
             }
 
             $sku = HomeDepotCaUrls::normalizeSku($line);
             if ($sku === null) {
-                $skipped++;
+                $invalidLines++;
                 $skipReasons[] = 'Invalid SKU or URL: '.$line;
 
                 continue;
             }
 
             if (isset($seen[$sku])) {
-                $skipped++;
+                $duplicateLines++;
                 $skipReasons[] = 'Duplicate in paste: '.$sku;
 
                 continue;
@@ -84,9 +93,50 @@ class MaterialSkuImportService
         return [
             'created' => $created,
             'updated' => $updated,
-            'skipped' => $skipped,
+            'skipped' => $duplicateLines + $invalidLines,
+            'blank_lines' => $blankLines,
+            'duplicate_lines' => $duplicateLines,
+            'invalid_lines' => $invalidLines,
             'material_ids' => $materialIds,
             'skip_reasons' => $skipReasons,
         ];
+    }
+
+    public function hasImportableSku(string $rawInput): bool
+    {
+        $rawInput = preg_replace('/^\x{FEFF}/u', '', $rawInput) ?? $rawInput;
+        $lines = preg_split('/\r\n|\r|\n/', $rawInput) ?: [];
+        $seen = [];
+
+        foreach ($lines as $line) {
+            $line = $this->trimLine($line);
+            if ($this->isBlankLine($line)) {
+                continue;
+            }
+
+            $sku = HomeDepotCaUrls::normalizeSku($line);
+            if ($sku === null || isset($seen[$sku])) {
+                continue;
+            }
+
+            $seen[$sku] = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function trimLine(string $line): string
+    {
+        $line = preg_replace('/^\x{FEFF}/u', '', $line) ?? $line;
+        $line = str_replace("\xc2\xa0", ' ', $line);
+
+        return trim($line);
+    }
+
+    private function isBlankLine(string $line): bool
+    {
+        return $line === '' || preg_match('/^\s*$/u', $line) === 1;
     }
 }

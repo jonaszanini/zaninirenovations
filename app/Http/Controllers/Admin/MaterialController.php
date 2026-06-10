@@ -94,18 +94,58 @@ class MaterialController extends Controller
             'sync_prices' => ['sometimes', 'boolean'],
         ]);
 
+        if (! $importer->hasImportableSku($data['skus'])) {
+            return redirect()
+                ->route('admin.materials.index')
+                ->withErrors([
+                    'skus' => 'Paste at least one valid Home Depot SKU or product URL. Blank lines are ignored; duplicate lines in the same paste are skipped.',
+                ])
+                ->withInput($request->only(['skus', 'category', 'vendor']));
+        }
+
         $result = $importer->import(
             $data['skus'],
             $data['category'] ?? null,
             $data['vendor'] ?? null,
         );
 
+        if ($result['created'] === 0 && $result['updated'] === 0) {
+            $detail = collect([
+                $result['duplicate_lines'] > 0 ? $result['duplicate_lines'].' duplicate line(s)' : null,
+                $result['invalid_lines'] > 0 ? $result['invalid_lines'].' invalid line(s)' : null,
+            ])->filter()->implode(', ');
+
+            return redirect()
+                ->route('admin.materials.index')
+                ->withErrors([
+                    'skus' => $detail !== ''
+                        ? 'No materials imported — '.$detail.' skipped.'
+                        : 'No materials imported.',
+                ])
+                ->withInput($request->only(['skus', 'category', 'vendor']));
+        }
+
         $message = sprintf(
-            '%d created, %d updated, %d skipped.',
+            '%d created, %d updated',
             $result['created'],
             $result['updated'],
-            $result['skipped'],
         );
+
+        $skipParts = [];
+        if ($result['blank_lines'] > 0) {
+            $skipParts[] = $result['blank_lines'].' blank line(s) ignored';
+        }
+        if ($result['duplicate_lines'] > 0) {
+            $skipParts[] = $result['duplicate_lines'].' duplicate line(s) skipped';
+        }
+        if ($result['invalid_lines'] > 0) {
+            $skipParts[] = $result['invalid_lines'].' invalid line(s) skipped';
+        }
+        if ($skipParts !== []) {
+            $message .= '. '.ucfirst(implode(', ', $skipParts)).'.';
+        } else {
+            $message .= '.';
+        }
 
         if ($request->boolean('sync_prices') && $result['material_ids'] !== []) {
             $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
