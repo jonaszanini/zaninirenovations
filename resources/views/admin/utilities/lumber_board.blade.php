@@ -9,8 +9,8 @@
 @section('content')
   <div class="admin-toolbar">
     <p class="admin-toolbar-lede">
-      Plan how many boards to buy for a job. Enter the lengths you need, pick available stock sizes,
-      and see the best cutting layout with waste and cost estimates.
+      Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.),
+      enter required pieces for each, and see cutting layouts with waste and cost estimates.
     </p>
     <a href="{{ route('admin.utilities.index') }}" class="admin-btn admin-btn--ghost">
       <i class="fa fa-arrow-left"></i> All utilities
@@ -32,27 +32,7 @@
 
     <div class="util-lb-grid">
       <section class="admin-card util-lb-inputs">
-        <h3 class="util-lb-card-title">Inputs</h3>
-
-        <div class="admin-form-group">
-          <span class="admin-form-group-label">
-            Calculation mode
-            <span class="util-tip" tabindex="0" data-tip="Minimize waste compares every stock length and a mixed-length plan. Single board type uses only the length you select below.">
-              <i class="fa fa-info-circle"></i>
-            </span>
-          </span>
-          <div class="util-segmented" role="group" aria-label="Calculation mode" data-lb-mode-toggle>
-            <button type="button" class="util-segmented__btn is-active" data-mode="minimize">Minimize waste</button>
-            <button type="button" class="util-segmented__btn" data-mode="single">Single board type</button>
-          </div>
-        </div>
-
-        <div class="admin-form-group" data-lb-mode-field="single" hidden>
-          <label for="lb-single-stock">Board length to use</label>
-          <select id="lb-single-stock" data-lb-single-stock>
-            <option value="">— Select after adding stock lengths —</option>
-          </select>
-        </div>
+        <h3 class="util-lb-card-title">Board types</h3>
 
         <label class="admin-checkbox admin-checkbox--sm util-lb-check">
           <input type="checkbox" class="admin-checkbox__input" id="lb-round-up" data-lb-round-up>
@@ -66,69 +46,19 @@
           <span class="admin-checkbox__text">Include 1/8″ kerf between cuts</span>
         </label>
 
-        <div class="util-lb-section-block">
-          <div class="util-lb-section-head-inline">
-            <span class="util-lb-section-label">Available board lengths</span>
-            <div class="util-segmented util-segmented--compact" role="group" aria-label="Board length units" data-lb-stock-unit-toggle>
-              <button type="button" class="util-segmented__btn is-active" data-stock-unit="ft">Feet</button>
-              <button type="button" class="util-segmented__btn" data-stock-unit="in">Inches</button>
-            </div>
-          </div>
-          <div class="util-lb-quick-btns" data-lb-quick-lengths>
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-quick-ft="8">8′</button>
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-quick-ft="10">10′</button>
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-quick-ft="12">12′</button>
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-quick-ft="16">16′</button>
-          </div>
-        </div>
-        <p class="util-lb-hint">Optional price per board helps estimate total cost.</p>
-        <div class="util-lb-stock-wrap">
-          <table class="util-lb-stock-table">
-            <thead>
-              <tr>
-                <th>Length</th>
-                <th>Price ($)</th>
-                <th class="util-lb-col-action" aria-hidden="true"></th>
-              </tr>
-            </thead>
-            <tbody data-lb-stock-list></tbody>
-          </table>
-        </div>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm util-lb-add-row" data-lb-add-stock>
-          <i class="fa fa-plus"></i> Add board length
-        </button>
+        <div class="util-lb-board-types" data-lb-board-types></div>
 
-        <div class="util-lb-section-head util-lb-section-head--spaced util-lb-section-head-inline">
-          <span class="util-lb-section-label">Required pieces</span>
-          <div class="util-segmented util-segmented--compact" role="group" aria-label="Piece length units" data-lb-piece-unit-toggle>
-            <button type="button" class="util-segmented__btn" data-piece-unit="ft">Feet</button>
-            <button type="button" class="util-segmented__btn is-active" data-piece-unit="in">Inches</button>
-          </div>
-        </div>
-        <div class="util-lb-pieces-wrap">
-          <table class="util-lb-pieces-table">
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th>Length</th>
-                <th>Qty</th>
-                <th class="util-lb-col-action" aria-hidden="true"></th>
-              </tr>
-            </thead>
-            <tbody data-lb-pieces-body></tbody>
-          </table>
-        </div>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm util-lb-add-row" data-lb-add-piece>
-          <i class="fa fa-plus"></i> Add piece
+        <button type="button" class="admin-btn admin-btn--ghost util-lb-add-bt" data-lb-add-board-type>
+          <i class="fa fa-plus"></i> Add new board type
         </button>
 
         <button type="button" class="admin-btn admin-btn--ghost util-lb-reset" data-lb-reset>
-          <i class="fa fa-undo"></i> Reset
+          <i class="fa fa-undo"></i> Reset all
         </button>
       </section>
 
       <section class="util-lb-output">
-        <div class="admin-card util-lb-results">
+        <div class="admin-card util-lb-results util-lb-results--shell">
           <div class="util-lb-results-head">
             <h3 class="util-lb-card-title">Results</h3>
             <div class="util-lb-results-actions" data-lb-results-actions hidden>
@@ -146,37 +76,29 @@
 
           <div class="util-lb-empty" data-lb-empty>
             <span class="util-lb-empty__icon"><i class="fa fa-th-large"></i></span>
-            <p class="util-lb-empty__title">Add stock lengths and pieces</p>
-            <p class="util-lb-empty__hint">Enter at least one <strong>board length</strong> and one <strong>required piece</strong> to see the cutting plan.</p>
+            <p class="util-lb-empty__title">Add board types and pieces</p>
+            <p class="util-lb-empty__hint">Create at least one <strong>board type</strong> with stock lengths and required pieces to see the cutting plan.</p>
           </div>
 
-          <div class="util-lb-error" data-lb-error hidden>
-            <i class="fa fa-exclamation-triangle"></i>
-            <span data-lb-error-text></span>
-          </div>
+          <div class="util-lb-type-results" data-lb-type-results hidden></div>
 
-          <div class="util-lb-live" data-lb-live hidden>
-            <p class="util-lb-strategy" data-lb-strategy></p>
-            <div class="util-lb-stats">
+          <div class="admin-card util-lb-global-summary" data-lb-global-summary hidden>
+            <h3 class="util-lb-card-title">Grand total</h3>
+            <div class="util-lb-stats util-lb-stats--global">
               <div class="util-lb-stat">
-                <span class="util-lb-stat__value" data-lb-stat-linear>—</span>
-                <span class="util-lb-stat__label">Linear length required</span>
-              </div>
-              <div class="util-lb-stat">
-                <span class="util-lb-stat__value" data-lb-stat-boards>—</span>
+                <span class="util-lb-stat__value" data-lb-global-boards>—</span>
                 <span class="util-lb-stat__label">Total boards</span>
               </div>
               <div class="util-lb-stat">
-                <span class="util-lb-stat__value" data-lb-stat-cost>—</span>
+                <span class="util-lb-stat__value" data-lb-global-cost>—</span>
                 <span class="util-lb-stat__label">Estimated cost</span>
               </div>
-              <div class="util-lb-stat util-lb-stat--waste" data-lb-stat-waste-wrap>
-                <span class="util-lb-stat__value" data-lb-stat-waste>—</span>
-                <span class="util-lb-stat__label">Waste</span>
+              <div class="util-lb-stat util-lb-stat--waste" data-lb-global-waste-wrap>
+                <span class="util-lb-stat__value" data-lb-global-waste>—</span>
+                <span class="util-lb-stat__label">Total waste</span>
               </div>
             </div>
-
-            <div class="util-lb-breakdown" data-lb-breakdown></div>
+            <div class="util-lb-breakdown" data-lb-global-breakdown></div>
           </div>
         </div>
 
@@ -195,7 +117,7 @@
             <div class="util-lb-save-row">
               <div class="admin-form-group">
                 <label for="lb-save-name" class="util-sr-only">Calculation name</label>
-                <input type="text" id="lb-save-name" maxlength="120" placeholder="e.g. Back deck boards">
+                <input type="text" id="lb-save-name" maxlength="120" placeholder="e.g. Scott deck — all lumber">
               </div>
               <button type="button" class="admin-btn admin-btn--primary" data-lb-save>
                 <i class="fa fa-save"></i> Save
@@ -218,7 +140,6 @@
             </button>
           </div>
         </div>
-
       </section>
     </div>
 
