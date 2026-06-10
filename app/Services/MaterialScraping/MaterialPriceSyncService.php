@@ -1,0 +1,124 @@
+<?php
+
+namespace App\Services\MaterialScraping;
+
+use App\Models\Material;
+use Illuminate\Support\Collection;
+
+class MaterialPriceSyncService
+{
+    private MaterialPageFetcher $fetcher;
+
+    private HomeDepotCaProductParser $homeDepotParser;
+
+    public function __construct(MaterialPageFetcher $fetcher, HomeDepotCaProductParser $homeDepotParser)
+    {
+        $this->fetcher = $fetcher;
+        $this->homeDepotParser = $homeDepotParser;
+    }
+
+    /**
+     * @return Collection<int, Material>
+     */
+    public function materialsToSync(?int $id = null, ?string $vendor = null): Collection
+    {
+        return Material::query()
+            ->where('is_active', true)
+            ->whereNotNull('product_url')
+            ->where('product_url', '!=', '')
+            ->when($id !== null, fn ($q) => $q->where('id', $id))
+            ->when(filled($vendor), function ($q) use ($vendor) {
+                $q->where('vendor', 'like', '%'.$vendor.'%');
+            })
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * @return array{status: string, parsed: ?ParsedProductData, error: ?string, old_price: float}
+     */
+    public function syncOne(Material $material, bool $dryRun = false): array
+    {
+        $oldPrice = (float) $material->price_cad;
+
+        if (! $material->hasProductUrl()) {
+            return $this->record($material, Material::SCRAPE_SKIPPED, null, 'No product URL.', $dryRun, $oldPrice);
+        }
+
+        try {
+            $html = $this->fetcher->fetch((string) $material->product_url);
+            $parsed = $this->resolveParser($material)->parse($html, (string) $material->product_url);
+
+            if (! $parsed->isComplete()) {
+                return $this->record(
+                    $material,
+                    Material::SCRAPE_FAILED,
+                    $parsed,
+                    'Could not extract name and price from page.',
+                    $dryRun,
+                    $oldPrice,
+                );
+            }
+
+            if (! $dryRun) {
+                $material->name = $parsed->name ?? $material->name;
+                if (filled($parsed->sku)) {
+                    $material->store_sku = $parsed->sku;
+                }
+                if (filled($parsed->model)) {
+                    $material->model = $parsed->model;
+                }
+                if (filled($parsed->imageUrl)) {
+                    $material->image_url = $parsed->imageUrl;
+                }
+                $material->price_cad = $parsed->priceCad;
+                $material->last_scraped_at = now();
+                $material->last_scrape_status = Material::SCRAPE_OK;
+                $material->last_scrape_error = null;
+                $material->save();
+            }
+
+            return [
+                'status' => Material::SCRAPE_OK,
+                'parsed' => $parsed,
+                'error' => null,
+                'old_price' => $oldPrice,
+            ];
+        } catch (\Throwable $e) {
+            return $this->record($material, Material::SCRAPE_FAILED, null, $e->getMessage(), $dryRun, $oldPrice);
+        }
+    }
+
+    private function resolveParser(Material $material): HomeDepotCaProductParser
+    {
+        // v1: Home Depot CA parser; extend with vendor router later.
+        return $this->homeDepotParser;
+    }
+
+    /**
+     * @return array{status: string, parsed: ?ParsedProductData, error: ?string, old_price: float}
+     */
+    private function record(
+        Material $material,
+        string $status,
+        ?ParsedProductData $parsed,
+        ?string $error,
+        bool $dryRun,
+        float $oldPrice,
+    ): array {
+        if (! $dryRun && $status !== Material::SCRAPE_OK) {
+            $material->last_scraped_at = now();
+            $material->last_scrape_status = $status;
+            $material->last_scrape_error = $error;
+            $material->save();
+        }
+
+        return [
+            'status' => $status,
+            'parsed' => $parsed,
+            'error' => $error,
+            'old_price' => $oldPrice,
+        ];
+    }
+}

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ClientController;
+use App\Http\Controllers\Admin\MaterialController;
 use App\Http\Controllers\Admin\ClientProjectInvoiceController;
 use App\Http\Controllers\Admin\ClientProjectQuotationController;
 use App\Http\Controllers\Admin\Auth\LoginController;
@@ -152,6 +153,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // Client directory (shared contacts for new projects).
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class)->except(['show']);
+
+    Route::resource('materials', MaterialController::class)->except(['show']);
 
     Route::post('blog/posts/upload-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'uploadImage'])
         ->name('blog.posts.upload-image');

@@ -28,6 +28,7 @@
         $projectsOpen = $isAllProjects || $isCalendar || $isPhotos;
 
         $isQuotation = request()->routeIs('admin.quotations.*');
+        $isMaterials = request()->routeIs('admin.materials.*');
         $isVehicles = request()->routeIs('admin.vehicles.*');
         $isComms = request()->routeIs('admin.communications.*');
         $isUtilities = request()->routeIs('admin.utilities.*')
@@ -132,6 +133,13 @@
               </li>
             </ul>
           </details>
+        </li>
+
+        <li>
+          <a href="{{ route('admin.materials.index') }}" class="{{ $isMaterials ? 'is-active' : '' }}">
+            <i class="fa fa-cubes"></i>
+            Materials
+          </a>
         </li>
 
         <li class="admin-nav-group">

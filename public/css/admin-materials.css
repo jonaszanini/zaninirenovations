@@ -1,0 +1,85 @@
+.mat-toolbar-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 280px;
+}
+
+.mat-toolbar-search__input {
+  min-width: 200px;
+  flex: 1 1 200px;
+}
+
+.mat-toolbar-search__category {
+  width: auto;
+  min-width: 140px;
+}
+
+.mat-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mat-toolbar-total {
+  margin: 0;
+}
+
+.mat-sync-hint {
+  margin: 0 0 1rem;
+  max-width: 42rem;
+}
+
+.mat-sync-hint code {
+  font-size: 0.85em;
+}
+
+.mat-table .mat-col-price {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.mat-row--inactive {
+  opacity: 0.65;
+}
+
+.mat-product-link {
+  font-size: 0.85rem;
+}
+
+.mat-scrape-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mat-scrape-badge--ok {
+  background: var(--admin-success-soft, rgba(46, 125, 74, 0.12));
+  color: var(--admin-success, #2e7d4a);
+}
+
+.mat-scrape-badge--failed {
+  background: var(--admin-danger-soft, rgba(198, 40, 40, 0.08));
+  color: var(--admin-danger, #c62828);
+}
+
+.mat-scrape-badge--skipped {
+  background: var(--admin-surface-hover, #f4f6f8);
+  color: var(--admin-muted, #5a6570);
+}
+
+.mat-scrape-meta__error {
+  color: var(--admin-danger, #c62828);
+}
+
+.mat-delete-form {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--admin-border, #d8dee4);
+}
