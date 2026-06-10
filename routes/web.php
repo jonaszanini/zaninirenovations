@@ -154,6 +154,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class)->except(['show']);
 
+    Route::post('materials/bulk-import', [MaterialController::class, 'bulkImport'])
+        ->name('materials.bulk-import');
     Route::resource('materials', MaterialController::class)->except(['show']);
 
     Route::post('blog/posts/upload-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'uploadImage'])

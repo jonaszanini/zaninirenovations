@@ -483,6 +483,8 @@ class FenceQuotationController extends Controller
      */
     public function purchaseList(FenceQuotation $fence_quotation)
     {
+        $fence_quotation->load('project');
+
         $calc = $fence_quotation->calculation;
         $rows = [];
 

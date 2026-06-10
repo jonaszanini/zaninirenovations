@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Material;
+use App\Services\MaterialScraping\MaterialPriceSyncService;
+use App\Services\MaterialScraping\MaterialSkuImportService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -78,6 +80,63 @@ class MaterialController extends Controller
         return redirect()
             ->route('admin.materials.index')
             ->with('success', 'Material deleted.');
+    }
+
+    public function bulkImport(
+        Request $request,
+        MaterialSkuImportService $importer,
+        MaterialPriceSyncService $syncService,
+    ) {
+        $data = $request->validate([
+            'skus' => ['required', 'string'],
+            'category' => ['nullable', 'string', 'max:120'],
+            'vendor' => ['nullable', 'string', 'max:120'],
+            'sync_prices' => ['sometimes', 'boolean'],
+        ]);
+
+        $result = $importer->import(
+            $data['skus'],
+            $data['category'] ?? null,
+            $data['vendor'] ?? null,
+        );
+
+        $message = sprintf(
+            '%d created, %d updated, %d skipped.',
+            $result['created'],
+            $result['updated'],
+            $result['skipped'],
+        );
+
+        if ($request->boolean('sync_prices') && $result['material_ids'] !== []) {
+            $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
+            $ok = 0;
+            $failed = 0;
+
+            foreach ($result['material_ids'] as $index => $materialId) {
+                if ($index > 0 && $delayMs > 0) {
+                    usleep($delayMs * 1000);
+                }
+
+                $material = Material::query()->find($materialId);
+                if ($material === null) {
+                    continue;
+                }
+
+                $syncResult = $syncService->syncOne($material);
+                if ($syncResult['status'] === Material::SCRAPE_OK) {
+                    $ok++;
+                } else {
+                    $failed++;
+                }
+            }
+
+            $message .= sprintf(' Sync: %d ok, %d failed.', $ok, $failed);
+        }
+
+        return redirect()
+            ->route('admin.materials.index')
+            ->with('success', $message)
+            ->withInput($request->only(['skus', 'category', 'vendor']));
     }
 
     /**

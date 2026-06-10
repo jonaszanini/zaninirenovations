@@ -68,6 +68,28 @@
       cursor: pointer;
     }
     .toolbar button:hover { background: #f9fafb; }
+    .delivery {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      max-width: 32rem;
+    }
+    .delivery h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #374151;
+    }
+    .delivery__address {
+      margin: 0 0 10px;
+      white-space: pre-line;
+    }
+    .delivery__proextra {
+      margin: 0;
+      font-weight: 600;
+    }
     @media print {
       body { padding: 12px; }
       .no-print { display: none !important; }
@@ -114,5 +136,16 @@
       </tbody>
     </table>
   @endif
+
+  @php
+    $deliveryAddress = trim((string) ($quotation->project?->client_address ?? ''));
+  @endphp
+  <section class="delivery">
+    <h2>Delivery address</h2>
+    @if ($deliveryAddress !== '')
+      <p class="delivery__address">{{ e($deliveryAddress) }}</p>
+    @endif
+    <p class="delivery__proextra">ProExtra: 647 834 7570</p>
+  </section>
 </body>
 </html>
