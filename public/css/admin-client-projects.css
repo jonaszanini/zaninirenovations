@@ -1676,11 +1676,6 @@ a:hover .cp-expense-receipt-pdf {
   font-size: 16px;
   margin-top: 1px;
 }
-.cp-contract-warning a {
-  color: #024768;
-  font-weight: 600;
-  text-decoration: underline;
-}
 
 /* On-screen preview of the contract body (mirrors the PDF look). */
 .cp-contract-preview {

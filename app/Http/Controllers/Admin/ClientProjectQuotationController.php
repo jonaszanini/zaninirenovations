@@ -319,8 +319,12 @@ class ClientProjectQuotationController extends Controller
     /**
      * Set workflow status (draft / sent / accepted / rejected) for one quotation document.
      */
-    public function updateStatus(Request $request, ClientProject $client_project, ClientProjectQuotation $quotation)
-    {
+    public function updateStatus(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectQuotation $quotation,
+        ClientProjectStatusService $statusService,
+    ) {
         $this->authorizeQuotation($client_project, $quotation);
 
         $data = $request->validate([
@@ -341,6 +345,36 @@ class ClientProjectQuotationController extends Controller
 
         $client_project->refresh();
         $client_project->syncFixedContractTotalsFromQuotation();
+
+        if ($data['status'] === ClientProjectQuotation::STATUS_ACCEPTED) {
+            $acceptNote = "{$quotation->typeLabel()} {$quotation->quotation_number} marked accepted.";
+
+            if ($client_project->canPromoteToProposalAcceptedFromQuotation()) {
+                try {
+                    $statusService->transition(
+                        $client_project,
+                        ClientProject::STATUS_PROPOSAL_ACCEPTED,
+                        $acceptNote,
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to auto-transition project to Proposal Accepted', [
+                        'project_id' => $client_project->id,
+                        'quotation_id' => $quotation->id,
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
+            } else {
+                try {
+                    $statusService->recordEvent($client_project, $acceptNote);
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to record quotation-accepted history entry', [
+                        'project_id' => $client_project->id,
+                        'quotation_id' => $quotation->id,
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
 
         return redirect()
             ->route('admin.client-projects.show', $client_project)

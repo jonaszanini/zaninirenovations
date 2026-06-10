@@ -509,6 +509,21 @@ class ClientProject extends Model
         return in_array($this->status, self::preQuoteSentStatuses(), true);
     }
 
+    /**
+     * True while accepting a quotation should promote the project to
+     * Proposal Accepted (visit / quote stages only — never regress later
+     * statuses or revive a rejected project).
+     */
+    public function canPromoteToProposalAcceptedFromQuotation(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_VISIT_REQUIRED,
+            self::STATUS_VISIT_SCHEDULED,
+            self::STATUS_QUOTE_PENDING,
+            self::STATUS_QUOTE_SENT,
+        ], true);
+    }
+
     /** All valid status keys (in workflow order). */
     public static function statuses(): array
     {

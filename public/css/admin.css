@@ -671,6 +671,60 @@ textarea.is-invalid:focus {
   line-height: 1.4;
 }
 
+/* Small helper copy under labels and in cards */
+.admin-form-help {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--admin-muted);
+}
+
+/* Inline contextual links in helper copy, flashes, and warnings */
+.admin-text-link,
+.admin-form-help a:not([class]),
+.admin-flash a:not([class]),
+.admin-toolbar-lede a:not([class]),
+.cp-contract-warning a,
+.pq-hint a:not([class]) {
+  color: var(--admin-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(2, 71, 104, 0.32);
+  text-underline-offset: 2px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease, background 0.15s ease;
+}
+
+.admin-text-link:visited,
+.admin-form-help a:not([class]):visited,
+.admin-flash a:not([class]):visited,
+.admin-toolbar-lede a:not([class]):visited,
+.cp-contract-warning a:visited,
+.pq-hint a:not([class]):visited {
+  color: var(--admin-primary);
+}
+
+.admin-text-link:hover,
+.admin-form-help a:not([class]):hover,
+.admin-flash a:not([class]):hover,
+.admin-toolbar-lede a:not([class]):hover,
+.cp-contract-warning a:hover,
+.pq-hint a:not([class]):hover {
+  color: var(--admin-primary-hover);
+  text-decoration-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+.admin-text-link:focus-visible,
+.admin-form-help a:not([class]):focus-visible,
+.admin-flash a:not([class]):focus-visible,
+.admin-toolbar-lede a:not([class]):focus-visible,
+.cp-contract-warning a:focus-visible,
+.pq-hint a:not([class]):focus-visible {
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
 /* -------------------------------------------------------------------------
    Admin checkbox — use for every checkbox in the admin UI.
    Markup: label.admin-checkbox > input.admin-checkbox__input + span.admin-checkbox__mark + span.admin-checkbox__text
