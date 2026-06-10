@@ -1010,7 +1010,7 @@
       hasAnyResult = true;
       var s = result.stats;
       var hint = result.suggestion && result.suggestion !== result.strategy
-        ? ' <span class="util-lb-strategy__alt">Next best: ' + escapeHtml(result.suggestion) + '</span>'
+        ? ' <span class="util-lb-strategy__sep" aria-hidden="true">/</span> <span class="util-lb-strategy__alt">Next best: ' + escapeHtml(result.suggestion) + '</span>'
         : '';
 
       resultBlock.innerHTML =
