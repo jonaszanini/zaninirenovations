@@ -8,7 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Run `php artisan materials:sync-prices` on your PC — not on Hostinger.
-    | Requires a headless browser for JavaScript-heavy retailer pages.
+    | Home Depot CA uses the store price API when MATERIALS_SCRAPER_HD_STORE_ID is set.
     |
     */
 
@@ -38,13 +38,6 @@ return [
         // Home Depot CA store ID for localized shelf pricing (Carleton Place = 7263).
         // Without this, hdca-state returns an unlocalized list price that can be wrong.
         'homedepot_store_id' => env('MATERIALS_SCRAPER_HD_STORE_ID'),
-    ],
-
-    'ollama' => [
-        'enabled' => (bool) env('OLLAMA_ENABLED', true),
-        'base_url' => rtrim((string) env('OLLAMA_BASE_URL', 'http://127.0.0.1:11434'), '/'),
-        'model' => (string) env('OLLAMA_MODEL', 'qwen3:14b'),
-        'timeout_seconds' => (int) env('OLLAMA_TIMEOUT', 120),
     ],
 
 ];

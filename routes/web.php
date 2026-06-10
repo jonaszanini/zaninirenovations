@@ -162,6 +162,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('materials.bulk-import.step');
     Route::post('materials/bulk-import', [MaterialController::class, 'bulkImport'])
         ->name('materials.bulk-import');
+    Route::post('materials/{material}/sync-price', [MaterialController::class, 'syncPrice'])
+        ->name('materials.sync-price');
     Route::resource('materials', MaterialController::class)->except(['show']);
 
     Route::post('blog/posts/upload-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'uploadImage'])

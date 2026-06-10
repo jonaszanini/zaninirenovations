@@ -32,35 +32,6 @@
     </div>
   </div>
 
-  <div class="admin-card admin-card--narrow mat-sync-commands" id="mat-local-sync">
-    <h3 class="mat-sync-commands__title">Local price sync</h3>
-    <p class="admin-form-help mat-sync-commands__lede">
-      Run these from your project root on your PC. Set <code>MATERIALS_SCRAPER_HD_STORE_ID</code> in your local <code>.env</code> for correct shelf prices (no Ollama or Browsershot needed).
-    </p>
-    <ul class="mat-sync-commands__list">
-      <li class="mat-sync-commands__row">
-        <div class="mat-sync-commands__cmd-wrap">
-          <code class="mat-sync-commands__cmd" id="mat-sync-cmd-dry">php artisan materials:sync-prices --dry-run</code>
-          <span class="admin-form-help mat-sync-commands__label">Preview changes</span>
-        </div>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-mat-copy="mat-sync-cmd-dry" data-mat-copy-feedback="mat-sync-copy-dry">
-          <i class="fa fa-copy"></i> Copy
-        </button>
-        <span id="mat-sync-copy-dry" class="mat-sync-commands__feedback" aria-live="polite" hidden>Copied.</span>
-      </li>
-      <li class="mat-sync-commands__row">
-        <div class="mat-sync-commands__cmd-wrap">
-          <code class="mat-sync-commands__cmd" id="mat-sync-cmd-live">php artisan materials:sync-prices</code>
-          <span class="admin-form-help mat-sync-commands__label">Apply updates</span>
-        </div>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-mat-copy="mat-sync-cmd-live" data-mat-copy-feedback="mat-sync-copy-live">
-          <i class="fa fa-copy"></i> Copy
-        </button>
-        <span id="mat-sync-copy-live" class="mat-sync-commands__feedback" aria-live="polite" hidden>Copied.</span>
-      </li>
-    </ul>
-  </div>
-
   <details class="admin-accordion admin-card admin-card--narrow mat-bulk-import" @if(old('skus')) open @endif>
     <summary class="admin-accordion__summary">
       <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
@@ -105,8 +76,8 @@
             'label' => 'Sync prices after import',
           ])
           <p class="admin-form-help">
-            When checked, fetches name and price from Home Depot for each imported item (~2&nbsp;s each).
-            For 30+ SKUs, leave unchecked and use the <a href="#mat-local-sync" class="admin-text-link">local sync commands</a> above.
+            When checked, fetches name and price from the Home Depot store API for each imported item (~2&nbsp;s each).
+            For large lists (30+ SKUs), leave unchecked and sync later from the admin or via <code>php artisan materials:sync-prices</code> on your PC.
           </p>
         </div>
         <div id="mat-bulk-progress" class="mat-bulk-progress" hidden aria-live="polite">
@@ -147,6 +118,7 @@
           <i class="fa fa-trash"></i> Delete selected
         </button>
       </div>
+    </form>
       <div class="admin-table-scroll">
       <table class="admin-table mat-table">
         <thead>
@@ -167,7 +139,7 @@
             <th class="mat-col-price">Price</th>
             <th>Last synced</th>
             <th style="width:90px;">Active</th>
-            <th style="width:140px;">Actions</th>
+            <th class="mat-col-actions">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -175,7 +147,7 @@
             <tr class="{{ $material->is_active ? '' : 'mat-row--inactive' }}">
               <td class="mat-col-select">
                 <label class="admin-checkbox mat-row-select-label">
-                  <input type="checkbox" name="ids[]" value="{{ $material->id }}" class="admin-checkbox__input mat-row-select"
+                  <input type="checkbox" form="mat-bulk-delete-form" name="ids[]" value="{{ $material->id }}" class="admin-checkbox__input mat-row-select"
                          aria-label="Select {{ $material->name }}">
                   <span class="admin-checkbox__mark" aria-hidden="true"></span>
                 </label>
@@ -208,10 +180,20 @@
                 @endif
               </td>
               <td>{{ $material->is_active ? 'Yes' : 'No' }}</td>
-              <td>
-                <a href="{{ route('admin.materials.edit', $material) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-                  <i class="fa fa-pencil"></i> Edit
-                </a>
+              <td class="mat-col-actions">
+                <div class="mat-row-actions">
+                  <a href="{{ route('admin.materials.edit', $material) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+                    <i class="fa fa-pencil"></i> Edit
+                  </a>
+                  @if ($material->hasProductUrl())
+                    <form method="post" action="{{ route('admin.materials.sync-price', $material) }}" class="mat-sync-inline-form">
+                      @csrf
+                      <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="Sync price from Home Depot">
+                        <i class="fa fa-refresh"></i> Sync
+                      </button>
+                    </form>
+                  @endif
+                </div>
               </td>
             </tr>
           @empty
@@ -222,7 +204,6 @@
         </tbody>
       </table>
       </div>
-    </form>
     @if ($materials->hasPages())
       <div style="margin-top:16px;">{{ $materials->links('pagination.admin') }}</div>
     @endif
@@ -232,57 +213,6 @@
 @push('scripts')
   <script>
     (function () {
-      function copyText(text, feedbackEl) {
-        function showOk() {
-          if (!feedbackEl) return;
-          feedbackEl.hidden = false;
-          setTimeout(function () {
-            feedbackEl.hidden = true;
-          }, 2000);
-        }
-
-        function showErr() {
-          window.alert('Could not copy to clipboard. Select the command text and copy manually (Ctrl+C).');
-        }
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(showOk).catch(function () {
-            fallbackCopy(text) ? showOk() : showErr();
-          });
-        } else {
-          fallbackCopy(text) ? showOk() : showErr();
-        }
-      }
-
-      function fallbackCopy(text) {
-        var ta = document.createElement('textarea');
-        ta.value = text;
-        ta.setAttribute('readonly', '');
-        ta.style.position = 'absolute';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        var ok = false;
-        try {
-          ok = document.execCommand('copy');
-        } catch (e) {
-          ok = false;
-        }
-        document.body.removeChild(ta);
-        return ok;
-      }
-
-      document.querySelectorAll('[data-mat-copy]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var codeId = btn.getAttribute('data-mat-copy');
-          var feedbackId = btn.getAttribute('data-mat-copy-feedback');
-          var codeEl = codeId ? document.getElementById(codeId) : null;
-          var feedbackEl = feedbackId ? document.getElementById(feedbackId) : null;
-          if (!codeEl) return;
-          copyText(codeEl.textContent.trim(), feedbackEl);
-        });
-      });
-
       var bulkForm = document.getElementById('mat-bulk-form');
       if (bulkForm) {
         var csrf = bulkForm.querySelector('input[name="_token"]');

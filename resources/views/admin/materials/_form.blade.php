@@ -90,7 +90,7 @@
     <input type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
            placeholder="https://www.homedepot.ca/product/…"
            class="@error('product_url') is-invalid @enderror" autocomplete="off" spellcheck="false">
-    <p class="admin-form-help">Used by <code>php artisan materials:sync-prices</code> when you run it locally on your PC.</p>
+    <p class="admin-form-help">Home Depot product link — used to fetch store price and details during bulk import sync.</p>
     @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 

@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\Material;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
-use App\Services\OllamaService;
 use Illuminate\Console\Command;
 
 class SyncMaterialPrices extends Command
@@ -16,7 +15,7 @@ class SyncMaterialPrices extends Command
 
     protected $description = 'Fetch retailer product pages and update material prices (run locally on your PC)';
 
-    public function handle(MaterialPriceSyncService $syncService, OllamaService $ollama): int
+    public function handle(MaterialPriceSyncService $syncService): int
     {
         $dryRun = (bool) $this->option('dry-run');
         $id = $this->option('id') !== null ? (int) $this->option('id') : null;
@@ -32,13 +31,11 @@ class SyncMaterialPrices extends Command
 
         $fetcher = (string) config('materials.scraper.fetcher', 'http');
         $hdStore = trim((string) config('materials.scraper.homedepot_store_id', ''));
-        $ollamaStatus = $hdStore !== '' ? 'skipped (store API)' : ($ollama->isReachable() ? 'reachable' : 'not reachable');
         $this->info(sprintf(
-            'Syncing %d material(s). Fetcher: %s. HD store: %s. Ollama: %s. %s',
+            'Syncing %d material(s). Fetcher: %s. HD store: %s. %s',
             $materials->count(),
             $fetcher,
             $hdStore !== '' ? $hdStore : 'not set',
-            $ollamaStatus,
             $dryRun ? '[DRY RUN]' : '[LIVE]'
         ));
 

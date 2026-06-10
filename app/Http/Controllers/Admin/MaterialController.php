@@ -67,6 +67,34 @@ class MaterialController extends Controller
         return view('admin.materials.edit', compact('material'));
     }
 
+    public function syncPrice(Material $material, MaterialPriceSyncService $syncService)
+    {
+        if (! $material->hasProductUrl()) {
+            return redirect()
+                ->back()
+                ->with('error', 'Add a product URL before syncing price.');
+        }
+
+        $result = $syncService->syncOne($material);
+        $material->refresh();
+
+        if ($result['status'] === Material::SCRAPE_OK) {
+            return redirect()
+                ->back()
+                ->with('success', 'Price synced — '.$material->name.' is now '.$material->formattedPrice().'.');
+        }
+
+        if ($result['status'] === Material::SCRAPE_SKIPPED) {
+            return redirect()
+                ->back()
+                ->with('error', $result['error'] ?? 'Sync skipped.');
+        }
+
+        return redirect()
+            ->back()
+            ->with('error', $result['error'] ?? 'Could not sync price from the store.');
+    }
+
     public function update(Request $request, Material $material)
     {
         $material->update($this->validated($request));

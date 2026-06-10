@@ -2,18 +2,14 @@
 
 namespace App\Services\MaterialScraping;
 
-use App\Services\OllamaService;
 use Symfony\Component\DomCrawler\Crawler;
 
 class HomeDepotCaProductParser
 {
-    private OllamaService $ollama;
-
     private HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher;
 
-    public function __construct(OllamaService $ollama, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher)
+    public function __construct(HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher)
     {
-        $this->ollama = $ollama;
         $this->localizedPriceFetcher = $localizedPriceFetcher;
     }
 
@@ -46,20 +42,6 @@ class HomeDepotCaProductParser
         $merged = $this->merge($fromState, $this->merge($fromJsonLd, $this->merge($fromMicrodata, $fromDom)));
         if ($merged->isComplete()) {
             return $merged;
-        }
-
-        if ($this->ollama->isReachable()) {
-            $snippet = $this->buildSnippetForAi($html);
-            $ai = $this->ollama->extractProductFromHtmlSnippet($snippet, $pageUrl);
-
-            return new ParsedProductData(
-                name: filled($ai['name'] ?? null) ? (string) $ai['name'] : $merged->name,
-                sku: filled($ai['sku'] ?? null) ? (string) $ai['sku'] : $merged->sku,
-                priceCad: $this->normalizePrice($ai['price_cad'] ?? $merged->priceCad),
-                imageUrl: filled($ai['image_url'] ?? null) ? (string) $ai['image_url'] : $merged->imageUrl,
-                model: filled($ai['model'] ?? null) ? (string) $ai['model'] : $merged->model,
-                source: 'ollama',
-            );
         }
 
         return $merged;
@@ -331,20 +313,4 @@ class HomeDepotCaProductParser
         );
     }
 
-    private function buildSnippetForAi(string $html): string
-    {
-        $crawler = new Crawler($html);
-
-        foreach (['main', '[data-product-id]', '.product-details', 'body'] as $selector) {
-            $nodes = $crawler->filter($selector);
-            if ($nodes->count() > 0) {
-                $snippet = $nodes->first()->html();
-                if (strlen($snippet) > 500) {
-                    return mb_substr($snippet, 0, 12000);
-                }
-            }
-        }
-
-        return mb_substr($html, 0, 12000);
-    }
 }
