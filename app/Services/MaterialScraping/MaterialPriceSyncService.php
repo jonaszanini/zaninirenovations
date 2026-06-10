@@ -73,17 +73,7 @@ class MaterialPriceSyncService
             }
 
             if (! $dryRun) {
-                $material->name = $parsed->name ?? $material->name;
-                if (filled($parsed->sku)) {
-                    $material->store_sku = $parsed->sku;
-                }
-                if (filled($parsed->model)) {
-                    $material->model = $parsed->model;
-                }
-                if (filled($parsed->imageUrl)) {
-                    $material->image_url = $parsed->imageUrl;
-                }
-                $material->price_cad = $parsed->priceCad;
+                $this->applyParsedFields($material, $parsed);
                 $material->last_scraped_at = now();
                 $material->last_scrape_status = Material::SCRAPE_OK;
                 $material->last_scrape_error = null;
@@ -139,6 +129,60 @@ class MaterialPriceSyncService
     private function resolveParser(Material $material): HomeDepotCaProductParser
     {
         return $this->homeDepotParser;
+    }
+
+    private function applyParsedFields(Material $material, ParsedProductData $parsed): void
+    {
+        $material->name = $parsed->name ?? $material->name;
+
+        if (filled($parsed->sku)) {
+            $material->store_sku = $parsed->sku;
+        }
+
+        if (filled($parsed->model)) {
+            $material->model = $parsed->model;
+        }
+
+        if (filled($parsed->productUrl)) {
+            $material->product_url = $parsed->productUrl;
+        }
+
+        if (filled($parsed->vendor)) {
+            $material->vendor = $parsed->vendor;
+        }
+
+        if (filled($parsed->unit)) {
+            $material->unit = $parsed->unit;
+        }
+
+        if ($parsed->quantityPerPackage !== null && $parsed->quantityPerPackage >= 2) {
+            $material->quantity_per_package = $parsed->quantityPerPackage;
+        }
+
+        if ($this->shouldUpdateImageUrl($material, $parsed)) {
+            $material->image_url = $parsed->imageUrl;
+        }
+
+        $material->price_cad = $parsed->priceCad;
+    }
+
+    private function shouldUpdateImageUrl(Material $material, ParsedProductData $parsed): bool
+    {
+        if (! filled($parsed->imageUrl)) {
+            return false;
+        }
+
+        $sku = $parsed->sku ?? $material->store_sku;
+
+        if (! filled($material->image_url)) {
+            return true;
+        }
+
+        if (HomeDepotCaUrls::isGenericImageUrl((string) $material->image_url, $sku)) {
+            return true;
+        }
+
+        return ! HomeDepotCaUrls::isGenericImageUrl($parsed->imageUrl, $sku);
     }
 
     /**

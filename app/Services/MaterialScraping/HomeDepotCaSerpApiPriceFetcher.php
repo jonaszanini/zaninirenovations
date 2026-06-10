@@ -92,7 +92,7 @@ class HomeDepotCaSerpApiPriceFetcher
             return new ParsedProductData(source: 'serpapi-hd');
         }
 
-        return $this->parseProduct($product, $sku);
+        return $this->parseProduct($product, $sku)->withTitlePackagingHints();
     }
 
     public function configuredStoreId(): ?string
@@ -146,6 +146,8 @@ class HomeDepotCaSerpApiPriceFetcher
             ? round((float) $product['price'], 2)
             : null;
 
+        $unit = filled($product['unit'] ?? null) ? strtolower((string) $product['unit']) : null;
+
         return new ParsedProductData(
             name: filled($product['title'] ?? null) ? (string) $product['title'] : null,
             sku: filled($product['product_id'] ?? null) ? (string) $product['product_id'] : $sku,
@@ -153,6 +155,9 @@ class HomeDepotCaSerpApiPriceFetcher
             imageUrl: $this->resolveImageUrl($product, $sku),
             model: filled($product['model_number'] ?? null) ? (string) $product['model_number'] : null,
             source: 'serpapi-hd',
+            productUrl: filled($product['link'] ?? null) ? (string) $product['link'] : null,
+            vendor: filled($product['brand'] ?? null) ? (string) $product['brand'] : null,
+            unit: $unit,
         );
     }
 
@@ -167,7 +172,7 @@ class HomeDepotCaSerpApiPriceFetcher
             for ($i = count($sizes) - 1; $i >= 0; $i--) {
                 $url = $sizes[$i] ?? null;
                 if (is_string($url) && $url !== '') {
-                    return $this->normalizeImageUrl($url);
+                    return $this->normalizeImageUrl($url, $sku);
                 }
             }
         }
@@ -175,9 +180,11 @@ class HomeDepotCaSerpApiPriceFetcher
         return HomeDepotCaUrls::imageUrl($sku);
     }
 
-    private function normalizeImageUrl(string $url): string
+    private function normalizeImageUrl(string $url, string $sku): string
     {
-        $url = strtok($url, '?') ?: $url;
+        if (preg_match('~^https?://(?:www\.)?homedepot\.ca/productimages/p_\d+\.jpg~i', $url)) {
+            return HomeDepotCaUrls::imageUrl($sku);
+        }
 
         return $url;
     }

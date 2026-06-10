@@ -14,7 +14,49 @@ class HomeDepotCaUrls
 
     public static function imageUrl(string $sku): string
     {
-        return 'https://images.homedepot.ca/productimages/p_'.rawurlencode($sku).'.jpg';
+        return 'https://images.homedepot.ca/productimages/p_'.rawurlencode($sku).'.jpg?product-images=l';
+    }
+
+    public static function productUrlFromPath(string $path): string
+    {
+        $path = trim($path);
+        if ($path === '') {
+            return '';
+        }
+
+        if (preg_match('~^https?://~i', $path)) {
+            return $path;
+        }
+
+        return 'https://www.homedepot.ca/'.ltrim($path, '/');
+    }
+
+    /**
+     * True when the URL is the canonical placeholder pattern (no real product photo synced yet).
+     */
+    public static function isGenericImageUrl(?string $url, ?string $sku = null): bool
+    {
+        if (! filled($url)) {
+            return true;
+        }
+
+        $url = (string) $url;
+
+        if (preg_match('~^https?://(?:www\.)?homedepot\.ca/productimages/p_\d+\.jpg(?:\?|$)~i', $url)) {
+            return true;
+        }
+
+        if ($sku !== null && self::isValidSku($sku)) {
+            $generic = self::imageUrl($sku);
+            $normalizedUrl = strtok($url, '?') ?: $url;
+            $normalizedGeneric = strtok($generic, '?') ?: $generic;
+
+            if (strcasecmp($normalizedUrl, $normalizedGeneric) === 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

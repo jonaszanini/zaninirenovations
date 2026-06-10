@@ -318,15 +318,26 @@ class HomeDepotCaFbtPriceFetcher
         }
 
         $image = isset($article['images'][0]['url']) ? (string) $article['images'][0]['url'] : null;
+        if (filled($image) && preg_match('~homedepot\.ca/productimages/p_\d+\.jpg~i', $image)) {
+            $image = HomeDepotCaUrls::imageUrl($sku);
+        } elseif (! filled($image)) {
+            $image = HomeDepotCaUrls::imageUrl($sku);
+        }
 
-        return new ParsedProductData(
+        $productUrl = filled($article['url'] ?? null)
+            ? HomeDepotCaUrls::productUrlFromPath((string) $article['url'])
+            : HomeDepotCaUrls::productUrl($sku);
+
+        return (new ParsedProductData(
             name: filled($article['name'] ?? null) ? (string) $article['name'] : null,
             sku: filled($article['code'] ?? null) ? (string) $article['code'] : $sku,
             priceCad: $price,
             imageUrl: $image,
             model: filled($article['modelNumber'] ?? null) ? (string) $article['modelNumber'] : null,
             source: 'fbt-store',
-        );
+            productUrl: $productUrl,
+            vendor: filled($article['manufacturer'] ?? null) ? (string) $article['manufacturer'] : null,
+        ))->withTitlePackagingHints();
     }
 
     /**
