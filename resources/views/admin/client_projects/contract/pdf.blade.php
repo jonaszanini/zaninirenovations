@@ -40,7 +40,7 @@
          left    60pt ≈ 21 mm
        ============================================================ */
     @page {
-      margin: 160pt 60pt 90pt 60pt;
+      margin: 118pt 60pt 90pt 60pt;
     }
 
     /* ============================================================
@@ -96,19 +96,17 @@
     /* ============================================================
        Repeating page header (logo left, company info right).
 
-       top: -130pt means 130pt ABOVE the body content origin.
-       Body origin is at @page margin-top (160pt from page edge),
-       so the header sits at 160 - 130 = 30pt from the page edge.
-       Header height follows logo + contact block; the rule sits
-       just below with minimal padding.
+       top: -88pt places the header 30pt from the page edge
+       (118pt margin-top − 88pt). Header height follows logo +
+       contact block; padding-bottom adds one row before the rule.
        ============================================================ */
     .pdf-header {
       position: fixed;
-      top: -130pt;
+      top: -88pt;
       left: 0;
       right: 0;
       border-bottom: 1pt solid #024768;
-      padding-bottom: 2pt;
+      padding-bottom: 8pt;
     }
 
     .pdf-header table {

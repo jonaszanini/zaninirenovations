@@ -31,7 +31,7 @@
   @endphp
   <style>
     @page {
-      margin: 160pt 60pt 90pt 60pt;
+      margin: 118pt 60pt 90pt 60pt;
     }
 
     @font-face {
@@ -73,11 +73,11 @@
     /* -- Repeating header (logo left, contact right) ---------------- */
     .pdf-header {
       position: fixed;
-      top: -130pt;
+      top: -88pt;
       left: 0;
       right: 0;
       border-bottom: 1pt solid #024768;
-      padding-bottom: 2pt;
+      padding-bottom: 8pt;
     }
     .pdf-header table { width: 100%; border-collapse: collapse; }
     .pdf-header td { vertical-align: bottom; padding: 0; }
