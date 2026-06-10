@@ -99,17 +99,16 @@
        top: -130pt means 130pt ABOVE the body content origin.
        Body origin is at @page margin-top (160pt from page edge),
        so the header sits at 160 - 130 = 30pt from the page edge.
-       With height 100pt the header ends at 130pt from page edge,
-       leaving a 30pt gap before the body content starts at 160pt.
+       Header height follows logo + contact block; the rule sits
+       just below with minimal padding.
        ============================================================ */
     .pdf-header {
       position: fixed;
       top: -130pt;
       left: 0;
       right: 0;
-      height: 100pt;
       border-bottom: 1pt solid #024768;
-      padding-bottom: 6pt;
+      padding-bottom: 2pt;
     }
 
     .pdf-header table {
@@ -118,7 +117,7 @@
     }
 
     .pdf-header td {
-      vertical-align: middle;
+      vertical-align: bottom;
       padding: 0;
     }
 

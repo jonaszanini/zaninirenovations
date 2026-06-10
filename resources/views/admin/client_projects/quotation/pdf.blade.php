@@ -79,12 +79,11 @@
       top: -130pt;
       left: 0;
       right: 0;
-      height: 100pt;
       border-bottom: 1pt solid #024768;
-      padding-bottom: 6pt;
+      padding-bottom: 2pt;
     }
     .pdf-header table { width: 100%; border-collapse: collapse; }
-    .pdf-header td { vertical-align: middle; padding: 0; }
+    .pdf-header td { vertical-align: bottom; padding: 0; }
     .pdf-header .logo-cell { width: 260px; }
     .pdf-header .logo-cell img { width: 254px; height: 63px; }
     .pdf-header .info-cell {
