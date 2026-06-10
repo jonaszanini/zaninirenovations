@@ -31,9 +31,13 @@ class SyncMaterialPrices extends Command
 
         $fetcher = (string) config('materials.scraper.fetcher', 'http');
         $hdStore = trim((string) config('materials.scraper.homedepot_store_id', ''));
+        $via = filled(config('materials.scraper.serpapi_key'))
+            ? 'SerpApi'
+            : 'Home Depot FBT store API (local PC)';
         $this->info(sprintf(
-            'Syncing %d material(s). Fetcher: %s. HD store: %s. %s',
+            'Syncing %d material(s). Backend: %s. Fetcher: %s. HD store: %s. %s',
             $materials->count(),
+            $via,
             $fetcher,
             $hdStore !== '' ? $hdStore : 'not set',
             $dryRun ? '[DRY RUN]' : '[LIVE]'
@@ -41,6 +45,10 @@ class SyncMaterialPrices extends Command
 
         if ($hdStore === '') {
             $this->line('Tip: set MATERIALS_SCRAPER_HD_STORE_ID=7263 (Carleton Place) for correct Home Depot shelf prices.');
+        }
+
+        if (filled(config('materials.scraper.serpapi_key'))) {
+            $this->warn('SerpApi key is set — each SKU uses one SerpApi search credit.');
         }
 
         $rows = [];

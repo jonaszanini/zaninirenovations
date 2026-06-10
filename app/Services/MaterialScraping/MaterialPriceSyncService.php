@@ -126,7 +126,8 @@ class MaterialPriceSyncService
         }
 
         $detail = $this->localizedPriceFetcher->lastFailureReason();
-        $message = 'Could not fetch store-localized price for SKU '.$sku.' (store '.$storeId.').';
+        $via = $this->localizedPriceFetcher->usesSerpApi() ? 'SerpApi' : 'store API';
+        $message = 'Could not fetch store-localized price for SKU '.$sku.' (store '.$storeId.') via '.$via.'.';
         if (filled($detail)) {
             $message .= ' '.$detail;
         } else {

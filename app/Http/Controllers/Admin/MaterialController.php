@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Material;
+use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Services\MaterialScraping\MaterialSkuImportService;
 use Illuminate\Http\JsonResponse;
@@ -52,7 +53,9 @@ class MaterialController extends Controller
             ->where('product_url', '!=', '')
             ->count();
 
-        return view('admin.materials.index', compact('materials', 'q', 'category', 'categories', 'totalMaterials', 'syncableCount'));
+        $usesSerpApi = (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi();
+
+        return view('admin.materials.index', compact('materials', 'q', 'category', 'categories', 'totalMaterials', 'syncableCount', 'usesSerpApi'));
     }
 
     public function create(): View
@@ -75,7 +78,7 @@ class MaterialController extends Controller
         return view('admin.materials.edit', compact('material'));
     }
 
-    public function syncPrice(Material $material, MaterialPriceSyncService $syncService)
+    public function syncPrice(Material $material, MaterialPriceSyncService $syncService, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher)
     {
         if (! $material->hasProductUrl()) {
             return redirect()
@@ -98,9 +101,14 @@ class MaterialController extends Controller
                 ->with('error', $result['error'] ?? 'Sync skipped.');
         }
 
+        $error = $result['error'] ?? 'Could not sync price from the store.';
+        if ($result['status'] !== Material::SCRAPE_OK && ! $localizedPriceFetcher->usesSerpApi() && str_contains($error, 'Akamai')) {
+            $error .= ' From your PC: php artisan materials:sync-prices --id='.$material->id;
+        }
+
         return redirect()
             ->back()
-            ->with('error', $result['error'] ?? 'Could not sync price from the store.');
+            ->with('error', $error);
     }
 
     public function update(Request $request, Material $material)
@@ -121,7 +129,7 @@ class MaterialController extends Controller
             ->with('success', 'Material deleted.');
     }
 
-    public function syncAllStart(Request $request, MaterialPriceSyncService $syncService): JsonResponse
+    public function syncAllStart(Request $request, MaterialPriceSyncService $syncService, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher): JsonResponse
     {
         $materialIds = $syncService->materialsToSync()->pluck('id')->all();
 
@@ -144,6 +152,8 @@ class MaterialController extends Controller
             'log' => [],
         ]);
 
+        $via = $localizedPriceFetcher->usesSerpApi() ? 'SerpApi' : 'Home Depot store API';
+
         return response()->json([
             'token' => $token,
             'phase' => 'sync',
@@ -151,7 +161,7 @@ class MaterialController extends Controller
             'current' => 0,
             'phase_total' => $total,
             'remaining' => $total,
-            'message' => 'Starting sync of '.$total.' material(s) from the Home Depot store API.',
+            'message' => 'Starting sync of '.$total.' material(s) via '.$via.'.',
             'stats' => $this->syncAllStats(['ok' => 0, 'failed' => 0, 'skipped' => 0]),
             'log' => [],
             'done' => false,

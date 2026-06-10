@@ -37,6 +37,11 @@
         @if ($syncableCount > 0)
           · {{ number_format($syncableCount) }} syncable
         @endif
+        @if ($usesSerpApi)
+          · admin sync via SerpApi
+        @else
+          · bulk sync on your PC: <code>php artisan materials:sync-prices</code>
+        @endif
       </p>
     </div>
   </div>
@@ -107,7 +112,7 @@
             'label' => 'Sync prices after import',
           ])
           <p class="admin-form-help">
-            When checked, fetches name and price from the Home Depot store API for each imported item (~2&nbsp;s each).
+            When checked, fetches name and price via SerpApi (online admin) or the local store API for each imported item (~2&nbsp;s each).
             For large lists (30+ SKUs), leave unchecked and use <strong>Sync all</strong> on the list page afterward.
           </p>
         </div>
