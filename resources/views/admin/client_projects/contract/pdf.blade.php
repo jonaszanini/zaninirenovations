@@ -134,17 +134,19 @@
 
     .pdf-header .info-cell {
       text-align: right;
-      font-size: 9.5pt;
-      line-height: 1.45;
+      font-size: 8.5pt;
+      line-height: 1.1;
       color: #1f2937;
     }
 
     .pdf-header .info-cell .info-line {
       margin: 0;
+      padding: 0;
+      line-height: 1.1;
     }
 
     .pdf-header .info-cell .info-line + .info-line {
-      margin-top: 1pt;
+      margin-top: 0;
     }
 
     /* ============================================================
