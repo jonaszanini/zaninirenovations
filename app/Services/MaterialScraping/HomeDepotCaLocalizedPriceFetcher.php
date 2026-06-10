@@ -88,7 +88,7 @@ class HomeDepotCaLocalizedPriceFetcher
         $response = Http::withHeaders($this->requestHeaders($sku))
             ->timeout($timeout)
             ->connectTimeout(min(3, $timeout))
-            ->retry($retries, $retryDelayMs, fn ($e) => $e instanceof ConnectionException, throw: false)
+            ->retry($retries, $retryDelayMs, fn ($e) => $this->shouldRetryApiRequest($e), throw: false)
             ->get($url);
 
         if (! $response->successful()) {
@@ -129,6 +129,21 @@ class HomeDepotCaLocalizedPriceFetcher
             model: filled($article['modelNumber'] ?? null) ? (string) $article['modelNumber'] : null,
             source: 'fbt-store',
         );
+    }
+
+    /**
+     * Retry transient connection errors only — not API hangs (curl 28 timeout).
+     */
+    private function shouldRetryApiRequest(\Throwable $e): bool
+    {
+        if (! $e instanceof ConnectionException) {
+            return false;
+        }
+
+        $message = strtolower($e->getMessage());
+
+        return ! str_contains($message, 'timed out')
+            && ! str_contains($message, 'timeout');
     }
 
     /**

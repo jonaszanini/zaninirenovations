@@ -127,7 +127,8 @@ class MaterialPriceSyncService
 
         throw new \RuntimeException(
             'Could not fetch store-localized price for SKU '.$sku.' (store '.$storeId.'). '.
-            'The embedded page price is unlocalized and was not used.'
+            'The product may be discontinued, unavailable, or not sold at this store. '.
+            'The product page is not loaded during sync — only the store API is queried.'
         );
     }
 
