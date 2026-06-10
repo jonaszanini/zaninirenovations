@@ -9,30 +9,24 @@ class MaterialSkuImportService
     public const DEFAULT_VENDOR = 'Home Depot';
 
     /**
+     * Parse pasted input without writing to the database.
+     *
      * @return array{
-     *     created: int,
-     *     updated: int,
-     *     skipped: int,
+     *     skus: list<string>,
      *     blank_lines: int,
      *     duplicate_lines: int,
      *     invalid_lines: int,
-     *     material_ids: list<int>,
      *     skip_reasons: list<string>
      * }
      */
-    public function import(string $rawInput, ?string $category = null, ?string $vendor = null): array
+    public function buildPlan(string $rawInput): array
     {
-        $category = filled($category) ? trim($category) : null;
-        $vendor = filled($vendor) ? trim($vendor) : self::DEFAULT_VENDOR;
-
-        $created = 0;
-        $updated = 0;
         $blankLines = 0;
         $duplicateLines = 0;
         $invalidLines = 0;
-        $materialIds = [];
         $skipReasons = [];
         $seen = [];
+        $skus = [];
 
         $rawInput = preg_replace('/^\x{FEFF}/u', '', $rawInput) ?? $rawInput;
         $lines = preg_split('/\r\n|\r|\n/', $rawInput) ?: [];
@@ -61,70 +55,113 @@ class MaterialSkuImportService
                 continue;
             }
             $seen[$sku] = true;
+            $skus[] = $sku;
+        }
 
-            $attributes = [
-                'product_url' => HomeDepotCaUrls::productUrl($sku),
-                'image_url' => HomeDepotCaUrls::imageUrl($sku),
-                'vendor' => $vendor,
-                'is_active' => true,
+        return [
+            'skus' => $skus,
+            'blank_lines' => $blankLines,
+            'duplicate_lines' => $duplicateLines,
+            'invalid_lines' => $invalidLines,
+            'skip_reasons' => $skipReasons,
+        ];
+    }
+
+    /**
+     * @return array{
+     *     action: string,
+     *     material_id: int,
+     *     sku: string,
+     *     name: string
+     * }
+     */
+    public function importSku(string $sku, ?string $category = null, ?string $vendor = null): array
+    {
+        $category = filled($category) ? trim($category) : null;
+        $vendor = filled($vendor) ? trim($vendor) : self::DEFAULT_VENDOR;
+
+        $attributes = [
+            'product_url' => HomeDepotCaUrls::productUrl($sku),
+            'image_url' => HomeDepotCaUrls::imageUrl($sku),
+            'vendor' => $vendor,
+            'is_active' => true,
+        ];
+
+        if ($category !== null) {
+            $attributes['category'] = $category;
+        }
+
+        $existing = Material::query()->where('store_sku', $sku)->first();
+
+        if ($existing === null) {
+            $attributes['name'] = 'HD '.$sku;
+            $attributes['store_sku'] = $sku;
+            $material = Material::create($attributes);
+
+            return [
+                'action' => 'created',
+                'material_id' => $material->id,
+                'sku' => $sku,
+                'name' => $material->name,
             ];
+        }
 
-            if ($category !== null) {
-                $attributes['category'] = $category;
-            }
+        $existing->fill($attributes);
+        $existing->save();
 
-            $existing = Material::query()->where('store_sku', $sku)->first();
+        return [
+            'action' => 'updated',
+            'material_id' => $existing->id,
+            'sku' => $sku,
+            'name' => $existing->name,
+        ];
+    }
 
-            if ($existing === null) {
-                $attributes['name'] = 'HD '.$sku;
-                $attributes['store_sku'] = $sku;
-                $material = Material::create($attributes);
+    /**
+     * @return array{
+     *     created: int,
+     *     updated: int,
+     *     skipped: int,
+     *     blank_lines: int,
+     *     duplicate_lines: int,
+     *     invalid_lines: int,
+     *     material_ids: list<int>,
+     *     skip_reasons: list<string>
+     * }
+     */
+    public function import(string $rawInput, ?string $category = null, ?string $vendor = null): array
+    {
+        $plan = $this->buildPlan($rawInput);
+        $created = 0;
+        $updated = 0;
+        $materialIds = [];
+
+        foreach ($plan['skus'] as $sku) {
+            $result = $this->importSku($sku, $category, $vendor);
+            $materialIds[] = $result['material_id'];
+
+            if ($result['action'] === 'created') {
                 $created++;
             } else {
-                $existing->fill($attributes);
-                $existing->save();
-                $material = $existing;
                 $updated++;
             }
-
-            $materialIds[] = $material->id;
         }
 
         return [
             'created' => $created,
             'updated' => $updated,
-            'skipped' => $duplicateLines + $invalidLines,
-            'blank_lines' => $blankLines,
-            'duplicate_lines' => $duplicateLines,
-            'invalid_lines' => $invalidLines,
+            'skipped' => $plan['duplicate_lines'] + $plan['invalid_lines'],
+            'blank_lines' => $plan['blank_lines'],
+            'duplicate_lines' => $plan['duplicate_lines'],
+            'invalid_lines' => $plan['invalid_lines'],
             'material_ids' => $materialIds,
-            'skip_reasons' => $skipReasons,
+            'skip_reasons' => $plan['skip_reasons'],
         ];
     }
 
     public function hasImportableSku(string $rawInput): bool
     {
-        $rawInput = preg_replace('/^\x{FEFF}/u', '', $rawInput) ?? $rawInput;
-        $lines = preg_split('/\r\n|\r|\n/', $rawInput) ?: [];
-        $seen = [];
-
-        foreach ($lines as $line) {
-            $line = $this->trimLine($line);
-            if ($this->isBlankLine($line)) {
-                continue;
-            }
-
-            $sku = HomeDepotCaUrls::normalizeSku($line);
-            if ($sku === null || isset($seen[$sku])) {
-                continue;
-            }
-
-            $seen[$sku] = true;
-
-            return true;
-        }
-
-        return false;
+        return $this->buildPlan($rawInput)['skus'] !== [];
     }
 
     private function trimLine(string $line): string

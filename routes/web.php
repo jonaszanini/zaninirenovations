@@ -154,6 +154,12 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class)->except(['show']);
 
+    Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])
+        ->name('materials.bulk-destroy');
+    Route::post('materials/bulk-import/start', [MaterialController::class, 'bulkImportStart'])
+        ->name('materials.bulk-import.start');
+    Route::post('materials/bulk-import/step', [MaterialController::class, 'bulkImportStep'])
+        ->name('materials.bulk-import.step');
     Route::post('materials/bulk-import', [MaterialController::class, 'bulkImport'])
         ->name('materials.bulk-import');
     Route::resource('materials', MaterialController::class)->except(['show']);

@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Material;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Services\MaterialScraping\MaterialSkuImportService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class MaterialController extends Controller
 {
+    private const BULK_IMPORT_SESSION_PREFIX = 'material_bulk_import.';
     public function index(Request $request): View
     {
         $q = trim((string) $request->get('q', ''));
@@ -80,6 +83,182 @@ class MaterialController extends Controller
         return redirect()
             ->route('admin.materials.index')
             ->with('success', 'Material deleted.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'distinct', 'exists:materials,id'],
+        ]);
+
+        $deleted = Material::query()->whereIn('id', $data['ids'])->delete();
+
+        return redirect()
+            ->back()
+            ->with('success', $deleted === 1 ? '1 material deleted.' : $deleted.' materials deleted.');
+    }
+
+    public function bulkImportStart(Request $request, MaterialSkuImportService $importer): JsonResponse
+    {
+        $data = $request->validate([
+            'skus' => ['required', 'string'],
+            'category' => ['nullable', 'string', 'max:120'],
+            'vendor' => ['nullable', 'string', 'max:120'],
+            'sync_prices' => ['sometimes', 'boolean'],
+        ]);
+
+        $plan = $importer->buildPlan($data['skus']);
+
+        if ($plan['skus'] === []) {
+            return response()->json([
+                'message' => 'Paste at least one valid Home Depot SKU or product URL. Blank lines are ignored; duplicate lines in the same paste are skipped.',
+            ], 422);
+        }
+
+        $token = Str::random(40);
+        $syncPrices = $request->boolean('sync_prices');
+        $importTotal = count($plan['skus']);
+
+        $state = [
+            'user_id' => $request->user()->id,
+            'skus' => $plan['skus'],
+            'category' => $data['category'] ?? null,
+            'vendor' => $data['vendor'] ?? null,
+            'sync_prices' => $syncPrices,
+            'import_index' => 0,
+            'sync_index' => 0,
+            'material_ids' => [],
+            'created' => 0,
+            'updated' => 0,
+            'sync_ok' => 0,
+            'sync_failed' => 0,
+            'blank_lines' => $plan['blank_lines'],
+            'duplicate_lines' => $plan['duplicate_lines'],
+            'invalid_lines' => $plan['invalid_lines'],
+            'log' => [],
+        ];
+
+        session()->put(self::BULK_IMPORT_SESSION_PREFIX.$token, $state);
+
+        $overallTotal = $importTotal + ($syncPrices ? $importTotal : 0);
+        $skipNote = $this->bulkImportSkipNote($state);
+
+        return response()->json([
+            'token' => $token,
+            'phase' => 'import',
+            'phase_label' => 'Importing SKUs',
+            'current' => 0,
+            'phase_total' => $importTotal,
+            'overall_current' => 0,
+            'overall_total' => $overallTotal,
+            'total_import' => $importTotal,
+            'total_sync' => $syncPrices ? $importTotal : 0,
+            'message' => sprintf(
+                'Starting import of %d SKU(s)%s.',
+                $importTotal,
+                $syncPrices ? ', then syncing prices' : ''
+            ),
+            'stats' => $this->bulkImportStats($state),
+            'skip_note' => $skipNote,
+            'log' => [],
+            'done' => false,
+        ]);
+    }
+
+    public function bulkImportStep(
+        Request $request,
+        MaterialSkuImportService $importer,
+        MaterialPriceSyncService $syncService,
+    ): JsonResponse {
+        $data = $request->validate([
+            'token' => ['required', 'string', 'max:64'],
+        ]);
+
+        $sessionKey = self::BULK_IMPORT_SESSION_PREFIX.$data['token'];
+        $state = session($sessionKey);
+
+        if (! is_array($state) || (int) ($state['user_id'] ?? 0) !== (int) $request->user()->id) {
+            return response()->json([
+                'message' => 'Import session expired or invalid. Please start again.',
+            ], 404);
+        }
+
+        $importTotal = count($state['skus']);
+
+        if ($state['import_index'] < $importTotal) {
+            $sku = $state['skus'][$state['import_index']];
+            $result = $importer->importSku($sku, $state['category'], $state['vendor']);
+
+            $state['material_ids'][] = $result['material_id'];
+            if ($result['action'] === 'created') {
+                $state['created']++;
+            } else {
+                $state['updated']++;
+            }
+            $state['import_index']++;
+
+            $message = $result['action'] === 'created'
+                ? 'Created material for SKU '.$sku
+                : 'Updated existing material for SKU '.$sku;
+
+            $state = $this->bulkImportAppendLog($state, $message);
+
+            $importDone = $state['import_index'] >= $importTotal;
+            $done = $importDone && ! $state['sync_prices'];
+
+            if ($done) {
+                session()->forget($sessionKey);
+            } else {
+                session()->put($sessionKey, $state);
+            }
+
+            return $this->bulkImportProgressResponse($state, $message, $done);
+        }
+
+        if ($state['sync_prices'] && $state['sync_index'] < count($state['material_ids'])) {
+            if ($state['sync_index'] > 0) {
+                $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
+                if ($delayMs > 0) {
+                    usleep($delayMs * 1000);
+                }
+            }
+
+            $materialId = $state['material_ids'][$state['sync_index']];
+            $material = Material::query()->find($materialId);
+
+            if ($material !== null) {
+                $syncResult = $syncService->syncOne($material);
+                $material->refresh();
+
+                if ($syncResult['status'] === Material::SCRAPE_OK) {
+                    $state['sync_ok']++;
+                    $message = 'Synced price for '.$material->name.' (SKU '.($material->store_sku ?: '—').')';
+                } else {
+                    $state['sync_failed']++;
+                    $message = 'Sync failed for '.$material->name.': '.($syncResult['error'] ?? 'unknown error');
+                }
+            } else {
+                $state['sync_failed']++;
+                $message = 'Material #'.$materialId.' not found for sync.';
+            }
+
+            $state['sync_index']++;
+            $state = $this->bulkImportAppendLog($state, $message);
+            session()->put($sessionKey, $state);
+
+            $done = $state['sync_index'] >= count($state['material_ids']);
+
+            if ($done) {
+                session()->forget($sessionKey);
+            }
+
+            return $this->bulkImportProgressResponse($state, $message, $done);
+        }
+
+        session()->forget($sessionKey);
+
+        return $this->bulkImportProgressResponse($state, 'Import complete.', true);
     }
 
     public function bulkImport(
@@ -215,5 +394,136 @@ class MaterialController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, int>
+     */
+    private function bulkImportStats(array $state): array
+    {
+        return [
+            'created' => (int) ($state['created'] ?? 0),
+            'updated' => (int) ($state['updated'] ?? 0),
+            'sync_ok' => (int) ($state['sync_ok'] ?? 0),
+            'sync_failed' => (int) ($state['sync_failed'] ?? 0),
+            'blank_lines' => (int) ($state['blank_lines'] ?? 0),
+            'duplicate_lines' => (int) ($state['duplicate_lines'] ?? 0),
+            'invalid_lines' => (int) ($state['invalid_lines'] ?? 0),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function bulkImportSkipNote(array $state): ?string
+    {
+        $parts = [];
+        if (($state['blank_lines'] ?? 0) > 0) {
+            $parts[] = $state['blank_lines'].' blank line(s) will be ignored';
+        }
+        if (($state['duplicate_lines'] ?? 0) > 0) {
+            $parts[] = $state['duplicate_lines'].' duplicate line(s) will be skipped';
+        }
+        if (($state['invalid_lines'] ?? 0) > 0) {
+            $parts[] = $state['invalid_lines'].' invalid line(s) will be skipped';
+        }
+
+        return $parts !== [] ? ucfirst(implode(', ', $parts)).'.' : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function bulkImportAppendLog(array $state, string $message): array
+    {
+        $log = is_array($state['log'] ?? null) ? $state['log'] : [];
+        $log[] = $message;
+        $state['log'] = array_slice($log, -30);
+
+        return $state;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function bulkImportProgressResponse(array $state, string $message, bool $done): JsonResponse
+    {
+        $importTotal = count($state['skus']);
+        $syncTotal = $state['sync_prices'] ? $importTotal : 0;
+        $overallTotal = $importTotal + $syncTotal;
+
+        if ($done) {
+            $phase = 'done';
+            $phaseLabel = 'Complete';
+            $current = $state['sync_prices'] ? $syncTotal : $importTotal;
+            $phaseTotal = $state['sync_prices'] ? $syncTotal : $importTotal;
+            $overallCurrent = $overallTotal;
+        } elseif ($state['import_index'] < $importTotal) {
+            $phase = 'import';
+            $phaseLabel = 'Importing SKUs';
+            $current = $state['import_index'];
+            $phaseTotal = $importTotal;
+            $overallCurrent = $current;
+        } else {
+            $phase = 'sync';
+            $phaseLabel = 'Syncing prices';
+            $current = $state['sync_index'];
+            $phaseTotal = $syncTotal;
+            $overallCurrent = $importTotal + $current;
+        }
+
+        return response()->json([
+            'done' => $done,
+            'phase' => $phase,
+            'phase_label' => $phaseLabel,
+            'current' => $current,
+            'phase_total' => $phaseTotal,
+            'overall_current' => $overallCurrent,
+            'overall_total' => $overallTotal,
+            'message' => $message,
+            'stats' => $this->bulkImportStats($state),
+            'log' => $state['log'] ?? [],
+            'summary' => $done ? $this->bulkImportSummary($state) : null,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function bulkImportSummary(array $state): string
+    {
+        $message = sprintf(
+            '%d created, %d updated',
+            (int) $state['created'],
+            (int) $state['updated'],
+        );
+
+        $skipParts = [];
+        if (($state['blank_lines'] ?? 0) > 0) {
+            $skipParts[] = $state['blank_lines'].' blank line(s) ignored';
+        }
+        if (($state['duplicate_lines'] ?? 0) > 0) {
+            $skipParts[] = $state['duplicate_lines'].' duplicate line(s) skipped';
+        }
+        if (($state['invalid_lines'] ?? 0) > 0) {
+            $skipParts[] = $state['invalid_lines'].' invalid line(s) skipped';
+        }
+        if ($skipParts !== []) {
+            $message .= '. '.ucfirst(implode(', ', $skipParts)).'.';
+        } else {
+            $message .= '.';
+        }
+
+        if ($state['sync_prices']) {
+            $message .= sprintf(
+                ' Sync: %d ok, %d failed.',
+                (int) $state['sync_ok'],
+                (int) $state['sync_failed'],
+            );
+        }
+
+        return $message;
     }
 }
