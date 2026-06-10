@@ -1404,6 +1404,11 @@
   line-height: 1.4;
 }
 
+.util-lb-breakdown-row__prefix {
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
 .util-lb-breakdown-row__qty {
   display: flex;
   align-items: center;

@@ -899,10 +899,6 @@
 
   function renderBreakdown(container, result, card, stockUnit) {
     container.innerHTML = '';
-    var head = document.createElement('p');
-    head.className = 'util-lb-breakdown__title';
-    head.textContent = 'Boards to buy';
-    container.appendChild(head);
 
     result.groups.forEach(function (g) {
       var stock = result.stocks.find(function (s) { return s.id === g.stockId || s.lengthSix === g.lengthSix; });
@@ -912,7 +908,9 @@
       var label = formatLength(g.lengthSix, stockUnit);
       var priceHint = stock && stock.price > 0 ? ' @ ' + formatMoney(stock.price) + ' each' : '';
       row.innerHTML =
-        '<div class="util-lb-breakdown-row__info"><strong>' + label + '</strong>' + priceHint + '</div>' +
+        '<div class="util-lb-breakdown-row__info">' +
+          '<span class="util-lb-breakdown-row__prefix">Boards to buy:</span> <strong>' + label + '</strong>' + priceHint +
+        '</div>' +
         '<div class="util-lb-breakdown-row__qty">' +
           '<button type="button" class="util-lb-qty-btn" data-lb-qty-dec aria-label="Decrease">−</button>' +
           '<input type="number" min="0" step="1" class="util-lb-qty-input" data-lb-qty-input value="' + count + '">' +
