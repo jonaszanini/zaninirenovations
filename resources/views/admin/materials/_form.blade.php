@@ -84,20 +84,29 @@
   </div>
 </div>
 
-<div class="admin-form-group">
-  <label for="mat-product-url">Product URL</label>
-  <input type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
-         placeholder="https://www.homedepot.ca/product/…"
-         class="@error('product_url') is-invalid @enderror">
-  <p class="admin-form-help">Used by <code>php artisan materials:sync-prices</code> when you run it locally on your PC.</p>
-  @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
-</div>
+<div class="mat-url-fields">
+  <div class="admin-form-group">
+    <label for="mat-product-url">Product URL</label>
+    <input type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
+           placeholder="https://www.homedepot.ca/product/…"
+           class="@error('product_url') is-invalid @enderror" autocomplete="off" spellcheck="false">
+    <p class="admin-form-help">Used by <code>php artisan materials:sync-prices</code> when you run it locally on your PC.</p>
+    @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
+  </div>
 
-<div class="admin-form-group">
-  <label for="mat-image-url">Image URL</label>
-  <input type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
-         class="@error('image_url') is-invalid @enderror">
-  @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
+  <div class="admin-form-group">
+    <label for="mat-image-url">Image URL</label>
+    <input type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
+           placeholder="https://images.homedepot.ca/productimages/…"
+           class="@error('image_url') is-invalid @enderror" autocomplete="off" spellcheck="false">
+    @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
+    @php $imagePreview = old('image_url', $m?->image_url); @endphp
+    @if (filled($imagePreview))
+      <div class="mat-image-preview">
+        <img src="{{ $imagePreview }}" alt="" class="mat-image-preview__img" loading="lazy" width="80" height="80">
+      </div>
+    @endif
+  </div>
 </div>
 
 <div class="admin-form-group">

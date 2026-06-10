@@ -48,12 +48,23 @@ class MaterialPageFetcher
     private function fetchViaBrowsershot(string $url): string
     {
         $timeout = max(10, (int) config('materials.scraper.timeout_seconds', 60));
+        $delayMs = max(1000, (int) config('materials.scraper.delay_after_load_ms', 5000));
 
+        // Home Depot never reaches networkidle0 (analytics/ads). Load DOM, wait for
+        // product markup, then pause for price JS. setDelay() breaks on Puppeteer 24+
+        // (waitForTimeout removed), so we use waitForFunction instead.
         /** @var \Spatie\Browsershot\Browsershot $shot */
         $shot = \Spatie\Browsershot\Browsershot::url($url)
+            ->setNodeModulePath(base_path())
             ->userAgent((string) config('materials.scraper.user_agent'))
             ->timeout($timeout)
-            ->waitUntilNetworkIdle();
+            ->setOption('waitUntil', 'domcontentloaded')
+            ->waitForSelector('h1', ['timeout' => min(30, $timeout) * 1000])
+            ->waitForFunction(
+                '() => new Promise(resolve => setTimeout(resolve, '.(int) $delayMs.'))',
+                \Spatie\Browsershot\Browsershot::POLLING_MUTATION,
+                $delayMs + 10000
+            );
 
         $html = $shot->bodyHtml();
 

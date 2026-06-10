@@ -43,6 +43,7 @@
       <table class="admin-table mat-table">
         <thead>
           <tr>
+            <th class="mat-col-image" scope="col"><span class="admin-sr-only">Image</span></th>
             <th>Name</th>
             <th>Category</th>
             <th>Vendor</th>
@@ -56,6 +57,13 @@
         <tbody>
           @forelse ($materials as $material)
             <tr class="{{ $material->is_active ? '' : 'mat-row--inactive' }}">
+              <td class="mat-col-image">
+                @if ($material->image_url)
+                  <img src="{{ $material->image_url }}" alt="" class="mat-thumb" loading="lazy" width="48" height="48">
+                @else
+                  <span class="mat-thumb mat-thumb--empty" aria-hidden="true"><i class="fa fa-image"></i></span>
+                @endif
+              </td>
               <td>
                 <strong>{{ $material->name }}</strong>
                 @if ($material->product_url)
@@ -85,7 +93,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="8" class="admin-form-help">No materials yet. Add your first item or paste product URLs for local price sync.</td>
+              <td colspan="9" class="admin-form-help">No materials yet. Add your first item or paste product URLs for local price sync.</td>
             </tr>
           @endforelse
         </tbody>

@@ -31,16 +31,19 @@ class SyncMaterialPrices extends Command
         }
 
         $fetcher = (string) config('materials.scraper.fetcher', 'http');
+        $hdStore = trim((string) config('materials.scraper.homedepot_store_id', ''));
+        $ollamaStatus = $hdStore !== '' ? 'skipped (store API)' : ($ollama->isReachable() ? 'reachable' : 'not reachable');
         $this->info(sprintf(
-            'Syncing %d material(s). Fetcher: %s. Ollama: %s. %s',
+            'Syncing %d material(s). Fetcher: %s. HD store: %s. Ollama: %s. %s',
             $materials->count(),
             $fetcher,
-            $ollama->isReachable() ? 'reachable' : 'not reachable',
+            $hdStore !== '' ? $hdStore : 'not set',
+            $ollamaStatus,
             $dryRun ? '[DRY RUN]' : '[LIVE]'
         ));
 
-        if ($fetcher === 'http') {
-            $this->line('Tip: set MATERIALS_SCRAPER_FETCHER=browsershot and install spatie/browsershot for JS-heavy pages.');
+        if ($hdStore === '') {
+            $this->line('Tip: set MATERIALS_SCRAPER_HD_STORE_ID=7263 (Carleton Place) for correct Home Depot shelf prices.');
         }
 
         $rows = [];

@@ -11,10 +11,16 @@ class MaterialPriceSyncService
 
     private HomeDepotCaProductParser $homeDepotParser;
 
-    public function __construct(MaterialPageFetcher $fetcher, HomeDepotCaProductParser $homeDepotParser)
-    {
+    private HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher;
+
+    public function __construct(
+        MaterialPageFetcher $fetcher,
+        HomeDepotCaProductParser $homeDepotParser,
+        HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher,
+    ) {
         $this->fetcher = $fetcher;
         $this->homeDepotParser = $homeDepotParser;
+        $this->localizedPriceFetcher = $localizedPriceFetcher;
     }
 
     /**
@@ -46,9 +52,14 @@ class MaterialPriceSyncService
             return $this->record($material, Material::SCRAPE_SKIPPED, null, 'No product URL.', $dryRun, $oldPrice);
         }
 
+        $productUrl = (string) $material->product_url;
+
         try {
-            $html = $this->fetcher->fetch((string) $material->product_url);
-            $parsed = $this->resolveParser($material)->parse($html, (string) $material->product_url);
+            $parsed = $this->resolveHomeDepotStorePrice($productUrl);
+            if ($parsed === null) {
+                $html = $this->fetcher->fetch($productUrl);
+                $parsed = $this->resolveParser($material)->parse($html, $productUrl);
+            }
 
             if (! $parsed->isComplete()) {
                 return $this->record(
@@ -90,9 +101,38 @@ class MaterialPriceSyncService
         }
     }
 
+    /**
+     * Fast path for Home Depot CA when a store ID is configured.
+     */
+    private function resolveHomeDepotStorePrice(string $productUrl): ?ParsedProductData
+    {
+        if (! HomeDepotCaLocalizedPriceFetcher::isHomeDepotCaUrl($productUrl)) {
+            return null;
+        }
+
+        $storeId = $this->localizedPriceFetcher->configuredStoreId();
+        if ($storeId === null) {
+            return null;
+        }
+
+        $sku = HomeDepotCaLocalizedPriceFetcher::skuFromUrl($productUrl);
+        if ($sku === null) {
+            throw new \RuntimeException('Could not extract Home Depot SKU from product URL.');
+        }
+
+        $parsed = $this->localizedPriceFetcher->tryFetch($sku, $storeId);
+        if ($parsed !== null) {
+            return $parsed;
+        }
+
+        throw new \RuntimeException(
+            'Could not fetch store-localized price for SKU '.$sku.' (store '.$storeId.'). '.
+            'The embedded page price is unlocalized and was not used.'
+        );
+    }
+
     private function resolveParser(Material $material): HomeDepotCaProductParser
     {
-        // v1: Home Depot CA parser; extend with vendor router later.
         return $this->homeDepotParser;
     }
 

@@ -608,6 +608,7 @@ body.admin-body {
 
 .admin-form-group input[type="text"],
 .admin-form-group input[type="email"],
+.admin-form-group input[type="url"],
 .admin-form-group input[type="password"],
 .admin-form-group input[type="date"],
 .admin-form-group input[type="number"],

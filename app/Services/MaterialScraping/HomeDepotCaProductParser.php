@@ -9,24 +9,41 @@ class HomeDepotCaProductParser
 {
     private OllamaService $ollama;
 
-    public function __construct(OllamaService $ollama)
+    private HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher;
+
+    public function __construct(OllamaService $ollama, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher)
     {
         $this->ollama = $ollama;
+        $this->localizedPriceFetcher = $localizedPriceFetcher;
     }
 
     public function parse(string $html, string $pageUrl): ParsedProductData
     {
+        $fromState = $this->parseHdcaState($html, $pageUrl);
+
+        // hdca-state price is unlocalized; never treat it as authoritative when a store ID is set.
+        if ($this->localizedPriceFetcher->configuredStoreId() !== null) {
+            $fromState = new ParsedProductData(
+                name: $fromState->name,
+                sku: $fromState->sku,
+                priceCad: null,
+                imageUrl: $fromState->imageUrl,
+                model: $fromState->model,
+                source: $fromState->source,
+            );
+        } elseif ($fromState->isComplete()) {
+            return $fromState;
+        }
+
         $fromJsonLd = $this->parseJsonLd($html);
         if ($fromJsonLd->isComplete()) {
             return $fromJsonLd;
         }
 
+        $fromMicrodata = $this->parseMicrodata($html);
         $fromDom = $this->parseDom($html);
-        if ($fromDom->isComplete()) {
-            return $fromDom;
-        }
 
-        $merged = $this->merge($fromJsonLd, $fromDom);
+        $merged = $this->merge($fromState, $this->merge($fromJsonLd, $this->merge($fromMicrodata, $fromDom)));
         if ($merged->isComplete()) {
             return $merged;
         }
@@ -46,6 +63,128 @@ class HomeDepotCaProductParser
         }
 
         return $merged;
+    }
+
+    /**
+     * Home Depot CA embeds SSR product data in <script id="hdca-state">.
+     */
+    private function parseHdcaState(string $html, string $pageUrl): ParsedProductData
+    {
+        if (! preg_match('/<script[^>]+id=["\']hdca-state["\'][^>]*>(.*?)<\/script>/is', $html, $match)) {
+            return new ParsedProductData(source: 'hdca-state');
+        }
+
+        $state = json_decode(html_entity_decode(trim($match[1]), ENT_QUOTES | ENT_HTML5), true);
+        if (! is_array($state)) {
+            return new ParsedProductData(source: 'hdca-state');
+        }
+
+        $product = $this->resolveHdcaProductNode($state, $pageUrl);
+        if ($product === null) {
+            return new ParsedProductData(source: 'hdca-state');
+        }
+
+        $price = null;
+        if (isset($product['price']) && is_array($product['price'])) {
+            $price = $this->normalizePrice($product['price']['value'] ?? $product['price']['formattedValue'] ?? null);
+        }
+
+        $image = null;
+        if (isset($product['images'][0]['url'])) {
+            $image = (string) $product['images'][0]['url'];
+        }
+
+        return new ParsedProductData(
+            name: filled($product['name'] ?? null) ? (string) $product['name'] : null,
+            sku: filled($product['code'] ?? null) ? (string) $product['code'] : null,
+            priceCad: $price,
+            imageUrl: $image,
+            model: filled($product['modelNumber'] ?? null) ? (string) $product['modelNumber'] : null,
+            source: 'hdca-state',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>|null
+     */
+    private function resolveHdcaProductNode(array $state, string $pageUrl): ?array
+    {
+        $skuFromUrl = $this->skuFromUrl($pageUrl);
+        if ($skuFromUrl !== null) {
+            $directKey = 'product-'.$skuFromUrl;
+            if (isset($state[$directKey])) {
+                $node = $state[$directKey];
+                $product = is_array($node['b'] ?? null) ? $node['b'] : (is_array($node) ? $node : null);
+                if ($product !== null) {
+                    return $product;
+                }
+            }
+        }
+
+        foreach ($state as $key => $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $product = is_array($node['b'] ?? null) ? $node['b'] : $node;
+            if (! is_array($product)) {
+                continue;
+            }
+
+            if (! isset($product['price'], $product['name'])) {
+                continue;
+            }
+
+            if ($skuFromUrl !== null && filled($product['code'] ?? null) && (string) $product['code'] !== $skuFromUrl) {
+                continue;
+            }
+
+            if (is_string($key) && str_starts_with($key, 'product-')) {
+                return $product;
+            }
+
+            if (isset($product['price']['value']) || isset($product['price']['formattedValue'])) {
+                return $product;
+            }
+        }
+
+        return null;
+    }
+
+    private function skuFromUrl(string $pageUrl): ?string
+    {
+        if (preg_match('~/product/(?:[^/]+/)?(\d{6,})~', $pageUrl, $match)) {
+            return $match[1];
+        }
+
+        return null;
+    }
+
+    private function parseMicrodata(string $html): ParsedProductData
+    {
+        $name = null;
+        $sku = null;
+        $price = null;
+        $image = null;
+
+        if (preg_match('/hdca-product-schema-definition.*?itemprop=["\']name["\'][^>]*>([^<]+)/is', $html, $match)) {
+            $name = trim(html_entity_decode($match[1], ENT_QUOTES | ENT_HTML5));
+        }
+
+        if (preg_match('/itemprop=["\']sku["\'][^>]*>([^<]+)/i', $html, $match)) {
+            $sku = trim($match[1]);
+        }
+
+        if (preg_match('/itemprop=["\']price["\'][^>]*content=["\']([^"\']+)/i', $html, $match)) {
+            $price = $this->normalizePrice($match[1]);
+        }
+
+        if (preg_match('/itemprop=["\']image["\'][^>]*src=["\']([^"\']+)/i', $html, $match)) {
+            $image = $match[1];
+        }
+
+        return new ParsedProductData($name, $sku, $price, $image, null, 'microdata');
     }
 
     private function parseJsonLd(string $html): ParsedProductData
