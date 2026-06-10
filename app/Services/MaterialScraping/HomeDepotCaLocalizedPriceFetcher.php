@@ -13,13 +13,29 @@ use RuntimeException;
  */
 class HomeDepotCaLocalizedPriceFetcher
 {
+    private ?string $lastFailureReason = null;
+
+    public function lastFailureReason(): ?string
+    {
+        return $this->lastFailureReason;
+    }
+
     public function tryFetch(string $sku, ?string $storeId = null): ?ParsedProductData
     {
+        $this->lastFailureReason = null;
+
         try {
             $parsed = $this->fetch($sku, $storeId);
+            if ($parsed->isComplete()) {
+                return $parsed;
+            }
 
-            return $parsed->isComplete() ? $parsed : null;
-        } catch (\Throwable) {
+            $this->lastFailureReason = 'Store API responded but returned no localized price for this SKU.';
+
+            return null;
+        } catch (\Throwable $e) {
+            $this->lastFailureReason = $e->getMessage();
+
             return null;
         }
     }
@@ -85,7 +101,14 @@ class HomeDepotCaLocalizedPriceFetcher
         $retries = max(1, (int) config('materials.scraper.api_retries', 3));
         $retryDelayMs = max(50, (int) config('materials.scraper.api_retry_delay_ms', 100));
 
+        // Home Depot's FBT endpoint is flaky over HTTP/2 (stream errors) and often hangs until timeout.
         $response = Http::withHeaders($this->requestHeaders($sku))
+            ->withOptions([
+                'version' => 1.1,
+                'curl' => [
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                ],
+            ])
             ->timeout($timeout)
             ->connectTimeout(min(3, $timeout))
             ->retry($retries, $retryDelayMs, fn ($e) => $this->shouldRetryApiRequest($e), throw: false)
@@ -132,18 +155,11 @@ class HomeDepotCaLocalizedPriceFetcher
     }
 
     /**
-     * Retry transient connection errors only — not API hangs (curl 28 timeout).
+     * Retry transient connection errors, including HTTP/2 stream resets and API hangs.
      */
     private function shouldRetryApiRequest(\Throwable $e): bool
     {
-        if (! $e instanceof ConnectionException) {
-            return false;
-        }
-
-        $message = strtolower($e->getMessage());
-
-        return ! str_contains($message, 'timed out')
-            && ! str_contains($message, 'timeout');
+        return $e instanceof ConnectionException;
     }
 
     /**

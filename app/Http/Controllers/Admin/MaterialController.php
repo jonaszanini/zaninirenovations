@@ -14,6 +14,9 @@ use Illuminate\View\View;
 class MaterialController extends Controller
 {
     private const BULK_IMPORT_SESSION_PREFIX = 'material_bulk_import.';
+
+    private const SYNC_ALL_SESSION_PREFIX = 'material_sync_all.';
+
     public function index(Request $request): View
     {
         $q = trim((string) $request->get('q', ''));
@@ -43,8 +46,13 @@ class MaterialController extends Controller
             ->pluck('category');
 
         $totalMaterials = Material::query()->count();
+        $syncableCount = Material::query()
+            ->where('is_active', true)
+            ->whereNotNull('product_url')
+            ->where('product_url', '!=', '')
+            ->count();
 
-        return view('admin.materials.index', compact('materials', 'q', 'category', 'categories', 'totalMaterials'));
+        return view('admin.materials.index', compact('materials', 'q', 'category', 'categories', 'totalMaterials', 'syncableCount'));
     }
 
     public function create(): View
@@ -111,6 +119,109 @@ class MaterialController extends Controller
         return redirect()
             ->route('admin.materials.index')
             ->with('success', 'Material deleted.');
+    }
+
+    public function syncAllStart(Request $request, MaterialPriceSyncService $syncService): JsonResponse
+    {
+        $materialIds = $syncService->materialsToSync()->pluck('id')->all();
+
+        if ($materialIds === []) {
+            return response()->json([
+                'message' => 'No active materials with a product URL to sync.',
+            ], 422);
+        }
+
+        $token = Str::random(40);
+        $total = count($materialIds);
+
+        session()->put(self::SYNC_ALL_SESSION_PREFIX.$token, [
+            'user_id' => $request->user()->id,
+            'material_ids' => $materialIds,
+            'index' => 0,
+            'ok' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+            'log' => [],
+        ]);
+
+        return response()->json([
+            'token' => $token,
+            'phase' => 'sync',
+            'phase_label' => 'Syncing prices',
+            'current' => 0,
+            'phase_total' => $total,
+            'remaining' => $total,
+            'message' => 'Starting sync of '.$total.' material(s) from the Home Depot store API.',
+            'stats' => $this->syncAllStats(['ok' => 0, 'failed' => 0, 'skipped' => 0]),
+            'log' => [],
+            'done' => false,
+        ]);
+    }
+
+    public function syncAllStep(Request $request, MaterialPriceSyncService $syncService): JsonResponse
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string', 'max:64'],
+        ]);
+
+        $sessionKey = self::SYNC_ALL_SESSION_PREFIX.$data['token'];
+        $state = session($sessionKey);
+
+        if (! is_array($state) || (int) ($state['user_id'] ?? 0) !== (int) $request->user()->id) {
+            return response()->json([
+                'message' => 'Sync session expired or invalid. Please start again.',
+            ], 404);
+        }
+
+        $total = count($state['material_ids']);
+
+        if ($state['index'] >= $total) {
+            session()->forget($sessionKey);
+
+            return $this->syncAllProgressResponse($state, 'Sync complete.', true);
+        }
+
+        if ($state['index'] > 0) {
+            $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
+            if ($delayMs > 0) {
+                usleep($delayMs * 1000);
+            }
+        }
+
+        $materialId = $state['material_ids'][$state['index']];
+        $material = Material::query()->find($materialId);
+
+        if ($material === null) {
+            $state['failed']++;
+            $message = 'Material #'.$materialId.' not found.';
+        } else {
+            $result = $syncService->syncOne($material);
+            $material->refresh();
+
+            if ($result['status'] === Material::SCRAPE_OK) {
+                $state['ok']++;
+                $message = 'Synced '.$material->name.' — '.$material->formattedPrice();
+            } elseif ($result['status'] === Material::SCRAPE_SKIPPED) {
+                $state['skipped']++;
+                $message = 'Skipped '.$material->name.': '.($result['error'] ?? 'no product URL');
+            } else {
+                $state['failed']++;
+                $message = 'Failed '.$material->name.': '.($result['error'] ?? 'unknown error');
+            }
+        }
+
+        $state['index']++;
+        $state = $this->bulkImportAppendLog($state, $message);
+
+        $done = $state['index'] >= $total;
+
+        if ($done) {
+            session()->forget($sessionKey);
+        } else {
+            session()->put($sessionKey, $state);
+        }
+
+        return $this->syncAllProgressResponse($state, $message, $done);
     }
 
     public function bulkDestroy(Request $request)
@@ -553,5 +664,56 @@ class MaterialController extends Controller
         }
 
         return $message;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, int>
+     */
+    private function syncAllStats(array $state): array
+    {
+        return [
+            'ok' => (int) ($state['ok'] ?? 0),
+            'failed' => (int) ($state['failed'] ?? 0),
+            'skipped' => (int) ($state['skipped'] ?? 0),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function syncAllProgressResponse(array $state, string $message, bool $done): JsonResponse
+    {
+        $total = count($state['material_ids']);
+        $current = (int) $state['index'];
+        $remaining = max(0, $total - $current);
+
+        return response()->json([
+            'done' => $done,
+            'phase' => $done ? 'done' : 'sync',
+            'phase_label' => $done ? 'Complete' : 'Syncing prices',
+            'current' => $current,
+            'phase_total' => $total,
+            'remaining' => $remaining,
+            'message' => $message,
+            'stats' => $this->syncAllStats($state),
+            'log' => $state['log'] ?? [],
+            'summary' => $done ? $this->syncAllSummary($state) : null,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function syncAllSummary(array $state): string
+    {
+        return sprintf(
+            '%d synced, %d failed, %d skipped. %d of %d complete.',
+            (int) $state['ok'],
+            (int) $state['failed'],
+            (int) $state['skipped'],
+            (int) $state['index'],
+            count($state['material_ids']),
+        );
     }
 }

@@ -27,6 +27,10 @@
   margin: 0;
 }
 
+.mat-sync-all-progress {
+  margin-bottom: 1rem;
+}
+
 .mat-bulk-import {
   margin-bottom: 1rem;
 }

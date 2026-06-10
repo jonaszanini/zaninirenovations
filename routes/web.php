@@ -162,6 +162,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('materials.bulk-import.step');
     Route::post('materials/bulk-import', [MaterialController::class, 'bulkImport'])
         ->name('materials.bulk-import');
+    Route::post('materials/sync-all/start', [MaterialController::class, 'syncAllStart'])
+        ->name('materials.sync-all.start');
+    Route::post('materials/sync-all/step', [MaterialController::class, 'syncAllStep'])
+        ->name('materials.sync-all.step');
     Route::post('materials/{material}/sync-price', [MaterialController::class, 'syncPrice'])
         ->name('materials.sync-price');
     Route::resource('materials', MaterialController::class)->except(['show']);

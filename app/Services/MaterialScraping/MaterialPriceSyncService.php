@@ -125,11 +125,16 @@ class MaterialPriceSyncService
             return $parsed;
         }
 
-        throw new \RuntimeException(
-            'Could not fetch store-localized price for SKU '.$sku.' (store '.$storeId.'). '.
-            'The product may be discontinued, unavailable, or not sold at this store. '.
-            'The product page is not loaded during sync — only the store API is queried.'
-        );
+        $detail = $this->localizedPriceFetcher->lastFailureReason();
+        $message = 'Could not fetch store-localized price for SKU '.$sku.' (store '.$storeId.').';
+        if (filled($detail)) {
+            $message .= ' '.$detail;
+        } else {
+            $message .= ' The product may be discontinued, unavailable, or not sold at this store.';
+        }
+        $message .= ' The product page is not loaded during sync — only the store API is queried.';
+
+        throw new \RuntimeException($message);
     }
 
     private function resolveParser(Material $material): HomeDepotCaProductParser

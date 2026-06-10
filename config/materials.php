@@ -24,10 +24,10 @@ return [
         // Page fetch timeout (HTTP or Browsershot HTML fallback).
         'timeout_seconds' => (int) env('MATERIALS_SCRAPER_TIMEOUT', 30),
 
-        // Home Depot store-price API (FBT). Responds in ~300ms or hangs — keep timeout short.
-        'api_timeout_seconds' => (int) env('MATERIALS_SCRAPER_API_TIMEOUT', 5),
-        'api_retries' => (int) env('MATERIALS_SCRAPER_API_RETRIES', 3),
-        'api_retry_delay_ms' => (int) env('MATERIALS_SCRAPER_API_RETRY_DELAY_MS', 100),
+        // Home Depot store-price API (FBT). Usually ~300ms; intermittently hangs until timeout.
+        'api_timeout_seconds' => (int) env('MATERIALS_SCRAPER_API_TIMEOUT', 8),
+        'api_retries' => (int) env('MATERIALS_SCRAPER_API_RETRIES', 4),
+        'api_retry_delay_ms' => (int) env('MATERIALS_SCRAPER_API_RETRY_DELAY_MS', 200),
 
         // After page load (Browsershot): wait for retailer price JS to render.
         'delay_after_load_ms' => (int) env('MATERIALS_SCRAPER_DELAY_AFTER_LOAD_MS', 5000),

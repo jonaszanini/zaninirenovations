@@ -23,12 +23,43 @@
       </button>
     </form>
     <div class="mat-toolbar-actions">
+      <button type="button" id="mat-sync-all-btn" class="admin-btn admin-btn--ghost admin-btn--sm"
+              data-start-url="{{ route('admin.materials.sync-all.start') }}"
+              data-step-url="{{ route('admin.materials.sync-all.step') }}"
+              @disabled($syncableCount === 0)>
+        <i class="fa fa-refresh"></i> Sync all
+      </button>
       <a href="{{ route('admin.materials.create') }}" class="admin-btn admin-btn--primary admin-btn--sm">
         <i class="fa fa-plus"></i> Add material
       </a>
       <p class="admin-form-help mat-toolbar-total">
         {{ number_format($totalMaterials) }} {{ $totalMaterials === 1 ? 'material' : 'materials' }} in database
+        @if ($syncableCount > 0)
+          · {{ number_format($syncableCount) }} syncable
+        @endif
       </p>
+    </div>
+  </div>
+
+  <div id="mat-sync-all-progress" class="admin-card admin-card--narrow mat-bulk-progress mat-sync-all-progress" hidden aria-live="polite">
+    <div class="mat-bulk-progress__head">
+      <h3 class="mat-bulk-progress__title" id="mat-sync-all-phase-label">Sync in progress</h3>
+      <span class="mat-bulk-progress__counter" id="mat-sync-all-counter">0 / 0</span>
+    </div>
+    <div class="mat-bulk-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="mat-sync-all-progressbar">
+      <div class="mat-bulk-progress__bar" id="mat-sync-all-bar" style="width:0%"></div>
+    </div>
+    <p class="mat-bulk-progress__message" id="mat-sync-all-message">Preparing…</p>
+    <dl class="mat-bulk-progress__stats" id="mat-sync-all-stats">
+      <div><dt>Synced</dt><dd id="mat-sync-all-ok">0</dd></div>
+      <div><dt>Failed</dt><dd id="mat-sync-all-failed">0</dd></div>
+      <div><dt>Skipped</dt><dd id="mat-sync-all-skipped">0</dd></div>
+      <div><dt>Remaining</dt><dd id="mat-sync-all-remaining">0</dd></div>
+    </dl>
+    <ul class="mat-bulk-progress__log" id="mat-sync-all-log"></ul>
+    <div class="mat-bulk-progress__done" id="mat-sync-all-done" hidden>
+      <p class="mat-bulk-progress__summary" id="mat-sync-all-summary"></p>
+      <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-sync-all-reload">Reload page</button>
     </div>
   </div>
 
@@ -77,7 +108,7 @@
           ])
           <p class="admin-form-help">
             When checked, fetches name and price from the Home Depot store API for each imported item (~2&nbsp;s each).
-            For large lists (30+ SKUs), leave unchecked and sync later from the admin or via <code>php artisan materials:sync-prices</code> on your PC.
+            For large lists (30+ SKUs), leave unchecked and use <strong>Sync all</strong> on the list page afterward.
           </p>
         </div>
         <div id="mat-bulk-progress" class="mat-bulk-progress" hidden aria-live="polite">
@@ -213,9 +244,173 @@
 @push('scripts')
   <script>
     (function () {
+      function getCsrfToken() {
+        var el = document.querySelector('#mat-bulk-delete-form input[name="_token"]')
+          || document.querySelector('#mat-bulk-form input[name="_token"]');
+        return el ? el.value : '';
+      }
+
+      function postJson(url, body, csrf) {
+        return fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(body),
+          credentials: 'same-origin'
+        }).then(function (res) {
+          return res.json().then(function (data) {
+            if (!res.ok) {
+              var err = new Error(data.message || 'Request failed');
+              err.data = data;
+              err.status = res.status;
+              throw err;
+            }
+            return data;
+          });
+        });
+      }
+
+      function postForm(url, formData, csrf) {
+        return fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData,
+          credentials: 'same-origin'
+        }).then(function (res) {
+          return res.json().then(function (data) {
+            if (!res.ok) {
+              var err = new Error(data.message || 'Request failed');
+              err.data = data;
+              err.status = res.status;
+              throw err;
+            }
+            return data;
+          });
+        });
+      }
+
+      var syncAllBtn = document.getElementById('mat-sync-all-btn');
+      if (syncAllBtn) {
+        var syncProgressEl = document.getElementById('mat-sync-all-progress');
+        var syncPhaseLabel = document.getElementById('mat-sync-all-phase-label');
+        var syncCounterEl = document.getElementById('mat-sync-all-counter');
+        var syncBarEl = document.getElementById('mat-sync-all-bar');
+        var syncProgressbarEl = document.getElementById('mat-sync-all-progressbar');
+        var syncMessageEl = document.getElementById('mat-sync-all-message');
+        var syncLogEl = document.getElementById('mat-sync-all-log');
+        var syncDoneEl = document.getElementById('mat-sync-all-done');
+        var syncSummaryEl = document.getElementById('mat-sync-all-summary');
+        var syncReloadBtn = document.getElementById('mat-sync-all-reload');
+        var syncOkEl = document.getElementById('mat-sync-all-ok');
+        var syncFailedEl = document.getElementById('mat-sync-all-failed');
+        var syncSkippedEl = document.getElementById('mat-sync-all-skipped');
+        var syncRemainingEl = document.getElementById('mat-sync-all-remaining');
+
+        function updateSyncAllProgress(data) {
+          var total = data.phase_total || 1;
+          var current = data.current || 0;
+          var pct = total > 0 ? Math.round((current / total) * 100) : 0;
+
+          if (syncPhaseLabel) {
+            syncPhaseLabel.textContent = data.phase_label || 'Syncing…';
+          }
+          if (syncCounterEl) {
+            if (data.phase === 'done') {
+              syncCounterEl.textContent = current + ' / ' + total + ' complete';
+            } else {
+              syncCounterEl.textContent = current + ' / ' + total + ' · ' + (data.remaining ?? (total - current)) + ' remaining';
+            }
+          }
+          if (syncBarEl) {
+            syncBarEl.style.width = pct + '%';
+          }
+          if (syncProgressbarEl) {
+            syncProgressbarEl.setAttribute('aria-valuenow', String(pct));
+          }
+          if (syncMessageEl) {
+            syncMessageEl.textContent = data.message || '';
+            syncMessageEl.classList.remove('mat-bulk-progress__message--error');
+          }
+          if (data.stats) {
+            if (syncOkEl) syncOkEl.textContent = String(data.stats.ok || 0);
+            if (syncFailedEl) syncFailedEl.textContent = String(data.stats.failed || 0);
+            if (syncSkippedEl) syncSkippedEl.textContent = String(data.stats.skipped || 0);
+            if (syncRemainingEl) syncRemainingEl.textContent = String(data.remaining ?? Math.max(0, total - current));
+          }
+          if (syncLogEl && Array.isArray(data.log)) {
+            syncLogEl.innerHTML = '';
+            data.log.slice().reverse().forEach(function (line) {
+              var li = document.createElement('li');
+              li.textContent = line;
+              syncLogEl.appendChild(li);
+            });
+          }
+        }
+
+        function setSyncAllRunning(running) {
+          syncAllBtn.disabled = running;
+          syncAllBtn.innerHTML = running
+            ? '<i class="fa fa-refresh"></i> Syncing…'
+            : '<i class="fa fa-refresh"></i> Sync all';
+        }
+
+        syncAllBtn.addEventListener('click', function () {
+          var startUrl = syncAllBtn.getAttribute('data-start-url');
+          var stepUrl = syncAllBtn.getAttribute('data-step-url');
+          if (!startUrl || !stepUrl || !syncProgressEl) return;
+
+          var csrf = getCsrfToken();
+          syncProgressEl.hidden = false;
+          if (syncDoneEl) syncDoneEl.hidden = true;
+          if (syncLogEl) syncLogEl.innerHTML = '';
+          setSyncAllRunning(true);
+
+          postJson(startUrl, {}, csrf)
+            .then(function (startData) {
+              updateSyncAllProgress(startData);
+
+              function runStep(token) {
+                return postJson(stepUrl, { token: token }, csrf).then(function (stepData) {
+                  updateSyncAllProgress(stepData);
+                  if (stepData.done) {
+                    setSyncAllRunning(false);
+                    if (syncDoneEl) syncDoneEl.hidden = false;
+                    if (syncSummaryEl) syncSummaryEl.textContent = stepData.summary || stepData.message || 'Done.';
+                    return stepData;
+                  }
+                  return runStep(token);
+                });
+              }
+
+              return runStep(startData.token);
+            })
+            .catch(function (err) {
+              setSyncAllRunning(false);
+              if (syncMessageEl) {
+                syncMessageEl.textContent = err.message || 'Sync failed.';
+                syncMessageEl.classList.add('mat-bulk-progress__message--error');
+              }
+            });
+        });
+
+        if (syncReloadBtn) {
+          syncReloadBtn.addEventListener('click', function () {
+            window.location.reload();
+          });
+        }
+      }
+
       var bulkForm = document.getElementById('mat-bulk-form');
       if (bulkForm) {
-        var csrf = bulkForm.querySelector('input[name="_token"]');
+        var csrf = getCsrfToken();
         var progressEl = document.getElementById('mat-bulk-progress');
         var submitBtn = document.getElementById('mat-bulk-submit');
         var phaseLabel = document.getElementById('mat-bulk-phase-label');
@@ -231,53 +426,6 @@
         var statUpdated = document.getElementById('mat-stat-updated');
         var statSyncOk = document.getElementById('mat-stat-sync-ok');
         var statSyncFailed = document.getElementById('mat-stat-sync-failed');
-
-        function postJson(url, body) {
-          return fetch(url, {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'X-CSRF-TOKEN': csrf ? csrf.value : '',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify(body),
-            credentials: 'same-origin'
-          }).then(function (res) {
-            return res.json().then(function (data) {
-              if (!res.ok) {
-                var err = new Error(data.message || 'Request failed');
-                err.data = data;
-                err.status = res.status;
-                throw err;
-              }
-              return data;
-            });
-          });
-        }
-
-        function postForm(url, formData) {
-          return fetch(url, {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'X-CSRF-TOKEN': csrf ? csrf.value : '',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData,
-            credentials: 'same-origin'
-          }).then(function (res) {
-            return res.json().then(function (data) {
-              if (!res.ok) {
-                var err = new Error(data.message || 'Request failed');
-                err.data = data;
-                err.status = res.status;
-                throw err;
-              }
-              return data;
-            });
-          });
-        }
 
         function updateProgress(data) {
           var overallTotal = data.overall_total || 1;
@@ -357,7 +505,7 @@
             formData.append('sync_prices', '0');
           }
 
-          postForm(startUrl, formData)
+          postForm(startUrl, formData, csrf)
             .then(function (startData) {
               updateProgress(startData);
               if (startData.skip_note && messageEl) {
@@ -365,7 +513,7 @@
               }
 
               function runStep(token) {
-                return postJson(stepUrl, { token: token }).then(function (stepData) {
+                return postJson(stepUrl, { token: token }, csrf).then(function (stepData) {
                   updateProgress(stepData);
                   if (stepData.done) {
                     setRunning(false);
@@ -394,7 +542,7 @@
       var deleteForm = document.getElementById('mat-bulk-delete-form');
       if (deleteForm) {
         var selectAll = document.getElementById('mat-select-all');
-        var rowChecks = deleteForm.querySelectorAll('.mat-row-select');
+        var rowChecks = document.querySelectorAll('.mat-row-select');
         var actionsBar = document.getElementById('mat-bulk-actions');
         var countEl = document.getElementById('mat-selected-count');
         var deleteBtn = document.getElementById('mat-bulk-delete-btn');
