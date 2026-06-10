@@ -132,8 +132,6 @@ class MaterialPriceSyncService
         } else {
             $message .= ' The product may be discontinued, unavailable, or not sold at this store.';
         }
-        $message .= ' The product page is not loaded during sync — only the store API is queried.';
-
         throw new \RuntimeException($message);
     }
 

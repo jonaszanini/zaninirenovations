@@ -2,6 +2,7 @@
   $m = $material ?? null;
 @endphp
 
+<div class="mat-form">
 <div class="admin-form-group">
   <label for="mat-name">Name <span class="cp-required">*</span></label>
   <input type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255"
@@ -72,7 +73,6 @@
            value="{{ old('quantity_per_package', $m?->quantity_per_package) }}"
            min="1" max="999999" placeholder="For box/bag pricing"
            class="@error('quantity_per_package') is-invalid @enderror">
-    <p class="admin-form-help">Optional. Use when the store price is per box/bag, not per single unit.</p>
     @error('quantity_per_package') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -83,8 +83,10 @@
     @error('sort_order') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
+<p class="admin-form-help mat-qty-help">Optional. Use when the store price is per box/bag, not per single unit.</p>
 
 <div class="mat-url-fields">
+  <h3 class="mat-form-section-title">Store links</h3>
   <div class="admin-form-group">
     <label for="mat-product-url">Product URL</label>
     <input type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
@@ -94,22 +96,26 @@
     @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 
-  <div class="admin-form-group">
+  <div class="admin-form-group mat-image-url-group">
     <label for="mat-image-url">Image URL</label>
-    <input type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
-           placeholder="https://images.homedepot.ca/productimages/…"
-           class="@error('image_url') is-invalid @enderror" autocomplete="off" spellcheck="false">
-    @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
-    @php $imagePreview = old('image_url', $m?->image_url); @endphp
-    @if (filled($imagePreview))
-      <div class="mat-image-preview">
-        <img src="{{ $imagePreview }}" alt="" class="mat-image-preview__img" loading="lazy" width="80" height="80">
+    <div class="mat-image-url-row">
+      <div class="mat-image-url-row__field">
+        <input type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
+               placeholder="https://images.homedepot.ca/productimages/…"
+               class="@error('image_url') is-invalid @enderror" autocomplete="off" spellcheck="false">
       </div>
-    @endif
+      @php $imagePreview = old('image_url', $m?->image_url); @endphp
+      @if (filled($imagePreview))
+        <div class="mat-image-preview" aria-hidden="true">
+          <img src="{{ $imagePreview }}" alt="" class="mat-image-preview__img" loading="lazy" width="72" height="72">
+        </div>
+      @endif
+    </div>
+    @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
 
-<div class="admin-form-group">
+<div class="mat-form-status">
   <label class="admin-checkbox admin-checkbox--block">
     <input type="hidden" name="is_active" value="0">
     <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
@@ -117,15 +123,19 @@
     <span class="admin-checkbox__mark" aria-hidden="true"></span>
     <span class="admin-checkbox__text">Active (include in price sync)</span>
   </label>
-</div>
 
-@if ($m && $m->last_scraped_at)
-  <p class="admin-form-help mat-scrape-meta">
-    Last price sync:
-    {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
-    — {{ $m->last_scrape_status ?? 'unknown' }}
-    @if ($m->last_scrape_error)
-      <br><span class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</span>
-    @endif
-  </p>
-@endif
+  @if ($m && $m->last_scraped_at)
+    <div class="mat-form-status__sync">
+      <span class="mat-scrape-badge mat-scrape-badge--{{ $m->last_scrape_status ?? 'unknown' }}">
+        {{ $m->last_scrape_status ?? 'unknown' }}
+      </span>
+      <span class="mat-form-status__sync-date">
+        Last synced {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
+      </span>
+      @if ($m->last_scrape_error)
+        <p class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</p>
+      @endif
+    </div>
+  @endif
+</div>
+</div>
