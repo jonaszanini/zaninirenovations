@@ -878,6 +878,23 @@
                 </div>
 
                 <div class="form-group">
+                  <label class="home-contact-date-label" for="user_phone">Phone number <span class="text-muted">(optional)</span></label>
+                  <input type="tel" class="form-control" id="user_phone" name="user_phone" placeholder="e.g. (613) 555-1234" maxlength="30" autocomplete="tel">
+                </div>
+
+                <div class="form-group home-contact-sms-opt-in">
+                  <label class="home-contact-sms-opt-in__label" for="sms_opt_in">
+                    <input type="checkbox" class="home-contact-sms-opt-in__input" id="sms_opt_in" name="sms_opt_in" value="1">
+                    <span class="home-contact-sms-opt-in__text">
+                      By checking this box, I agree to receive service notifications via SMS from Zanini Renovations, including project alerts, schedule updates, and quotation notifications. Message frequency varies. Message and data rates may apply. Reply STOP to opt out. See our
+                      <a href="{{ route('terms-and-conditions') }}" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                      and
+                      <a href="{{ route('privacy-policy') }}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+                    </span>
+                  </label>
+                </div>
+
+                <div class="form-group">
                   <input type="text" class="form-control" id="location_city" name="location_city" placeholder=" Location / city" data-msg="Please enter your location or city">
                 </div>
 

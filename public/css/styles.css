@@ -6492,6 +6492,7 @@ ul.pagination li:last-child {
 
 #contact-form input[type=text],
 #contact-form input[type=email],
+#contact-form input[type=tel],
 #contact-form input[type=url],
 #contact-form input[type=password],
 #contact-form input[type=date] {
@@ -6512,6 +6513,7 @@ ul.pagination li:last-child {
 }
 #contact-form input[type=text]:focus,
 #contact-form input[type=email]:focus,
+#contact-form input[type=tel]:focus,
 #contact-form input[type=url]:focus,
 #contact-form input[type=password]:focus,
 #contact-form input[type=date]:focus {
@@ -6670,8 +6672,41 @@ ul.pagination li:last-child {
   scroll-margin-top: 100px;
 }
 
+.home-contact-sms-opt-in {
+  margin-bottom: 20px;
+}
+.home-contact-sms-opt-in__label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+.home-contact-sms-opt-in__input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0;
+  cursor: pointer;
+}
+.home-contact-sms-opt-in__text {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #3a4856;
+}
+.home-contact-palette .home-contact-sms-opt-in__text a {
+  color: #024768;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.home-contact-palette .home-contact-sms-opt-in__text a:hover {
+  color: #013251;
+}
+
 .home-contact-palette #contact-form input[type="text"]:focus,
 .home-contact-palette #contact-form input[type="email"]:focus,
+.home-contact-palette #contact-form input[type="tel"]:focus,
 .home-contact-palette #contact-form input[type="date"]:focus,
 .home-contact-palette #contact-form textarea:focus {
   border-bottom-color: #4a9bc4;

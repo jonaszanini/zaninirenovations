@@ -1190,6 +1190,8 @@ jQuery(function ($) {
         var $contact_submit_btn = $contact_form.find("button.btn-custom");
         var $user_name = $contact_form.find("#user_name");
         var $user_email = $contact_form.find("#user_email");
+        var $user_phone = $contact_form.find("#user_phone");
+        var $sms_opt_in = $contact_form.find("#sms_opt_in");
         var $location_city = $contact_form.find("#location_city");
         var $starting_date = $contact_form.find("#starting_date");
         var $budget = $contact_form.find("#budget");
@@ -1198,7 +1200,7 @@ jQuery(function ($) {
         
         var emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
         
-        var $all_fields = $([]).add($user_name).add($user_email).add($location_city).add($starting_date).add($budget).add($email_subject).add($email_message);
+        var $all_fields = $([]).add($user_name).add($user_email).add($user_phone).add($location_city).add($starting_date).add($budget).add($email_subject).add($email_message);
 
         var $contact_feedback = $contact_form.find("#contact-form-feedback");
         if (!$contact_feedback.length) {
@@ -1339,6 +1341,12 @@ jQuery(function ($) {
                             email_subject: $email_subject.val(),
                             email_message: $email_message.val()
                         };
+                        if ($user_phone.length) {
+                            payload.user_phone = $user_phone.val();
+                        }
+                        if ($sms_opt_in.length) {
+                            payload.sms_opt_in = $sms_opt_in.is(":checked") ? "1" : "0";
+                        }
                         if ($location_city.length) {
                             payload.location_city = $location_city.val();
                         }
@@ -1356,6 +1364,9 @@ jQuery(function ($) {
 
                             contactDismissibleAlert("success", data.msg || "Thank you! Your message has been sent.");
                             $all_fields.removeAttr("disabled").val("");
+                            if ($sms_opt_in.length) {
+                                $sms_opt_in.prop("checked", false);
+                            }
                             $contact_submit_btn.removeAttr("disabled");
 
                         } else {

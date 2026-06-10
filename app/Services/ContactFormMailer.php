@@ -40,6 +40,8 @@ class ContactFormMailer
         if ($extended) {
             $rules['location_city'] = 'required|string|max:255';
             $rules['starting_date'] = 'nullable|date_format:Y-m-d';
+            $rules['user_phone'] = 'nullable|string|max:30';
+            $rules['sms_opt_in'] = 'nullable|boolean';
         }
 
         $validator = Validator::make($input, $rules);
@@ -98,6 +100,16 @@ class ContactFormMailer
         $budgetVal = trim((string) ($data['budget'] ?? ''));
         if ($budgetVal !== '') {
             $extra .= '<p><strong>Budget:</strong> '.e($budgetVal).'</p>';
+        }
+
+        $phoneVal = trim((string) ($data['user_phone'] ?? ''));
+        if ($phoneVal !== '') {
+            $extra .= '<p><strong>Phone:</strong> '.e($phoneVal).'</p>';
+        }
+
+        if (array_key_exists('sms_opt_in', $data)) {
+            $smsOptIn = filter_var($data['sms_opt_in'], FILTER_VALIDATE_BOOLEAN);
+            $extra .= '<p><strong>SMS notifications opt-in:</strong> '.($smsOptIn ? 'Yes' : 'No').'</p>';
         }
 
         return sprintf(
