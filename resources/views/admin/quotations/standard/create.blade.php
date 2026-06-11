@@ -921,16 +921,16 @@
 
     var initial = selectEl.getAttribute('data-initial') || '';
     var ts = new TomSelect(selectEl, {
+      plugins: ['clear_button'],
       options: sqCatalogOptions,
       valueField: 'id',
       labelField: 'label',
       searchField: ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-      maxOptions: 50,
+      maxOptions: 80,
       maxItems: 1,
-      placeholder: 'Search by name or SKU…',
+      placeholder: 'Type to search name or SKU…',
       allowEmptyOption: true,
       closeAfterSelect: true,
-      dropdownParent: 'body',
       render: {
         option: function (data, escape) {
           return '<div class="fq-catalog-picker__option">' +
@@ -940,7 +940,7 @@
             '</div>';
         },
         item: function (data, escape) {
-          return '<div class="fq-catalog-picker__item">' + escape(data.label) + '</div>';
+          return '<span class="fq-catalog-picker__item">' + escape(data.label) + '</span>';
         }
       },
       onChange: function (value) {

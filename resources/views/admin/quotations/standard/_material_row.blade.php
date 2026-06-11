@@ -31,15 +31,14 @@
     <div class="sq-mat-catalog-wrap" @if ($sourceMode !== 'catalog') hidden @endif>
       <div class="admin-form-group sq-mat-catalog-group">
         <label class="sq-mat-catalog-label" for="sq-mat-catalog-{{ $i }}">Search materials</label>
-        <div class="fq-catalog-picker sq-mat-catalog-picker">
+        <div class="fq-catalog-picker">
           <select id="sq-mat-catalog-{{ $i }}" name="materials[{{ $i }}][catalog_material_id]"
-                  class="sq-mat-catalog-select"
+                  class="admin-input fq-catalog-picker__select sq-mat-catalog-select"
                   data-initial="{{ (int) $catalogMaterialId }}"
                   aria-label="Search materials database">
-            <option value=""></option>
+            <option value="">— Search name or SKU —</option>
           </select>
         </div>
-        <p class="admin-form-help sq-mat-catalog-hint">Type a name or SKU, then pick a row. Price and description fill in automatically — adjust qty or price if needed.</p>
       </div>
     </div>
 

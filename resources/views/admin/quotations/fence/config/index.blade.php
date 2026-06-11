@@ -77,19 +77,31 @@
                 <input type="hidden" name="materials[{{ $i }}][id]" value="{{ $m->id }}">
               </td>
               <td>
-                <div class="fq-catalog-picker">
-                  <select name="materials[{{ $i }}][material_id]"
-                          id="fq-catalog-picker-{{ $i }}"
-                          class="admin-input fq-catalog-picker__select"
-                          data-preview-target="fq-preview-{{ $i }}"
-                          data-price-target="fq-price-{{ $i }}"
-                          @if ($m->key === \App\Models\FenceMaterial::KEY_NAILS)
-                            data-nails-per-box-target="fq-nails-per-box-{{ $i }}"
-                          @endif
-                          data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
-                          aria-label="Catalog material for {{ $m->effectiveName() }}">
-                    <option value="">— Search name or SKU —</option>
-                  </select>
+                <div class="fq-catalog-picker-wrap">
+                  <a href="{{ $m->material?->product_url ?: '#' }}"
+                     class="admin-btn admin-btn--ghost admin-btn--sm fq-catalog-picker__open"
+                     id="fq-link-{{ $i }}"
+                     target="_blank" rel="noopener"
+                     title="Open product page"
+                     aria-label="Open product page"
+                     @if (! filled($m->material?->product_url)) hidden @endif>
+                    <i class="fa fa-external-link" aria-hidden="true"></i>
+                  </a>
+                  <div class="fq-catalog-picker">
+                    <select name="materials[{{ $i }}][material_id]"
+                            id="fq-catalog-picker-{{ $i }}"
+                            class="admin-input fq-catalog-picker__select"
+                            data-preview-target="fq-preview-{{ $i }}"
+                            data-price-target="fq-price-{{ $i }}"
+                            data-url-target="fq-link-{{ $i }}"
+                            @if ($m->key === \App\Models\FenceMaterial::KEY_NAILS)
+                              data-nails-per-box-target="fq-nails-per-box-{{ $i }}"
+                            @endif
+                            data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
+                            aria-label="Catalog material for {{ $m->effectiveName() }}">
+                      <option value="">— Search name or SKU —</option>
+                    </select>
+                  </div>
                 </div>
               </td>
               <td>
@@ -98,12 +110,6 @@
                     <span class="fq-material-preview__name">{{ $m->material->displayName() }}</span>
                     @if ($m->material->store_sku)
                       <span class="admin-form-help">SKU {{ $m->material->store_sku }}</span>
-                    @endif
-                    @if ($m->material->model)
-                      <span class="admin-form-help">Model {{ $m->material->model }}</span>
-                    @endif
-                    @if ($m->material->product_url)
-                      <a href="{{ $m->material->product_url }}" target="_blank" rel="noopener" class="admin-text-link fq-material-preview__link">Product page</a>
                     @endif
                   @elseif ($m->effectiveLongName() || $m->effectiveStoreSku())
                     <span class="fq-material-preview__name">{{ $m->effectiveLongName() }}</span>
@@ -256,6 +262,26 @@
           .replace(/"/g, '&quot;');
       }
 
+      function updateProductLink(selectEl, value, optionMap) {
+        var linkEl = document.getElementById(selectEl.getAttribute('data-url-target') || '');
+        if (!linkEl) return;
+
+        if (!value) {
+          linkEl.hidden = true;
+          linkEl.setAttribute('href', '#');
+          return;
+        }
+
+        var item = optionMap[String(value)] || null;
+        if (item && item.url) {
+          linkEl.setAttribute('href', item.url);
+          linkEl.hidden = false;
+        } else {
+          linkEl.hidden = true;
+          linkEl.setAttribute('href', '#');
+        }
+      }
+
       function updateNailsPerBox(selectEl, value, optionMap) {
         var nailsPerBoxEl = document.getElementById(selectEl.getAttribute('data-nails-per-box-target') || '');
         if (!nailsPerBoxEl) return;
@@ -279,6 +305,7 @@
         if (!value) {
           previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
           if (priceEl) priceEl.textContent = '—';
+          updateProductLink(selectEl, value, optionMap);
           updateNailsPerBox(selectEl, value, optionMap);
           return;
         }
@@ -287,6 +314,7 @@
         if (!item) {
           previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
           if (priceEl) priceEl.textContent = '—';
+          updateProductLink(selectEl, value, optionMap);
           updateNailsPerBox(selectEl, value, optionMap);
           return;
         }
@@ -295,16 +323,11 @@
         if (item.sku) {
           html += '<span class="admin-form-help">SKU ' + escapeHtml(item.sku) + '</span>';
         }
-        if (item.model) {
-          html += '<span class="admin-form-help">Model ' + escapeHtml(item.model) + '</span>';
-        }
-        if (item.url) {
-          html += '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener" class="admin-text-link fq-material-preview__link">Product page</a>';
-        }
         previewEl.innerHTML = html;
         if (priceEl) {
           priceEl.textContent = item.price_label || '—';
         }
+        updateProductLink(selectEl, value, optionMap);
         updateNailsPerBox(selectEl, value, optionMap);
       }
 
@@ -336,7 +359,7 @@
                 '</div>';
             },
             item: function (data, escape) {
-              return '<div class="fq-catalog-picker__item">' + escape(data.label) + '</div>';
+              return '<span class="fq-catalog-picker__item">' + escape(data.label) + '</span>';
             }
           },
           onChange: function (value) {
