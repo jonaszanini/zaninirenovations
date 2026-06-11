@@ -166,42 +166,33 @@
       <p class="admin-form-help">Preview updates at the top of the form. Usually filled automatically when you sync prices.</p>
       @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
-  </div>
 
-  <div class="mat-form-status">
-    <label class="admin-checkbox admin-checkbox--block">
-      <input type="hidden" name="is_active" value="0">
-      <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
-             @checked(old('is_active', $m?->is_active ?? true))>
-      <span class="admin-checkbox__mark" aria-hidden="true"></span>
-      <span class="admin-checkbox__text">Active (include in price sync)</span>
-    </label>
-    @error('is_active') <p class="admin-form-error">{{ $message }}</p> @enderror
-    <p class="admin-form-help mat-active-sync-help">
-    @if ($priceSyncChannel === 'amazon')
-      Syncs via SerpApi Amazon Canada using the ASIN in Store SKU.
-    @elseif ($priceSyncChannel === 'home_depot')
-      Syncs via SerpApi or local Home Depot store API using the homedepot.ca product URL.
-    @elseif ($priceSyncEligibilityError)
-      To enable sync: {{ $priceSyncEligibilityError }}
-    @else
-      Choose Home Depot or Amazon vendor and add the matching product URL or ASIN.
-    @endif
-  </p>
-
-    @if ($m && $m->last_scraped_at)
-      <div class="mat-form-status__sync">
-        <span class="mat-scrape-badge mat-scrape-badge--{{ $m->last_scrape_status ?? 'unknown' }}">
-          {{ $m->last_scrape_status ?? 'unknown' }}
-        </span>
-        <span class="mat-form-status__sync-date">
-          Last synced {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
-        </span>
-        @if ($m->last_scrape_error)
-          <p class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</p>
+    <div class="admin-form-group mat-form-active-group">
+      <span class="mat-form-active-group__label" aria-hidden="true">&nbsp;</span>
+      <div class="mat-form-status mat-form-status--inline">
+        @if ($m && $m->last_scraped_at)
+          <div class="mat-form-status__sync">
+            <span class="mat-scrape-badge mat-scrape-badge--{{ $m->last_scrape_status ?? 'unknown' }}">
+              {{ $m->last_scrape_status ?? 'unknown' }}
+            </span>
+            <span class="mat-form-status__sync-date">
+              Last synced {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
+            </span>
+            @if ($m->last_scrape_error)
+              <p class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</p>
+            @endif
+          </div>
         @endif
+        <label class="admin-checkbox admin-checkbox--block">
+          <input type="hidden" name="is_active" value="0">
+          <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
+                 @checked(old('is_active', $m?->is_active ?? true))>
+          <span class="admin-checkbox__mark" aria-hidden="true"></span>
+          <span class="admin-checkbox__text">Active (include in price sync)</span>
+        </label>
+        @error('is_active') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
-    @endif
+    </div>
   </div>
 </div>
 </div>
