@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Material;
+use App\Models\MaterialCategory;
 use App\Models\MaterialVendor;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
@@ -23,10 +24,10 @@ class MaterialController extends Controller
     public function index(Request $request): View
     {
         $q = trim((string) $request->get('q', ''));
-        $category = trim((string) $request->get('category', ''));
+        $categoryId = $request->filled('category') ? (int) $request->get('category') : null;
 
         $materials = Material::query()
-            ->with('vendor')
+            ->with(['vendor', 'category'])
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', '%'.$q.'%')
@@ -37,18 +38,13 @@ class MaterialController extends Controller
                         ->orWhereHas('vendor', fn ($vendor) => $vendor->where('name', 'like', '%'.$q.'%'));
                 });
             })
-            ->when($category !== '', fn ($query) => $query->where('category', $category))
+            ->when($categoryId !== null && $categoryId > 0, fn ($query) => $query->where('category_id', $categoryId))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->paginate(25)
             ->withQueryString();
 
-        $categories = Material::query()
-            ->whereNotNull('category')
-            ->where('category', '!=', '')
-            ->distinct()
-            ->orderBy('category')
-            ->pluck('category');
+        $categories = $this->categoriesForSelect();
 
         $totalMaterials = Material::query()->count();
         $syncService = app(MaterialPriceSyncService::class);
@@ -62,7 +58,7 @@ class MaterialController extends Controller
         return view('admin.materials.index', compact(
             'materials',
             'q',
-            'category',
+            'categoryId',
             'categories',
             'totalMaterials',
             'syncableCount',
@@ -101,6 +97,7 @@ class MaterialController extends Controller
     {
         return view('admin.materials.create', [
             'vendors' => $this->vendorsForSelect(),
+            'categories' => $this->categoriesForSelect(),
         ]);
     }
 
@@ -117,8 +114,9 @@ class MaterialController extends Controller
     public function edit(Material $material): View
     {
         return view('admin.materials.edit', [
-            'material' => $material,
+            'material' => $material->load('category'),
             'vendors' => $this->vendorsForSelect(),
+            'categories' => $this->categoriesForSelect(),
         ]);
     }
 
@@ -296,7 +294,7 @@ class MaterialController extends Controller
     {
         $data = $request->validate([
             'skus' => ['required', 'string'],
-            'category' => ['nullable', 'string', 'max:120'],
+            'category_id' => ['nullable', 'integer', 'exists:material_categories,id'],
             'sync_prices' => ['sometimes', 'boolean'],
         ]);
 
@@ -315,7 +313,7 @@ class MaterialController extends Controller
         $state = [
             'user_id' => $request->user()->id,
             'skus' => $plan['skus'],
-            'category' => $data['category'] ?? null,
+            'category_id' => filled($data['category_id'] ?? null) ? (int) $data['category_id'] : null,
             'vendor_id' => MaterialVendor::defaultForHomeDepotImport()?->id,
             'sync_prices' => $syncPrices,
             'import_index' => 0,
@@ -380,7 +378,7 @@ class MaterialController extends Controller
 
         if ($state['import_index'] < $importTotal) {
             $sku = $state['skus'][$state['import_index']];
-            $result = $importer->importSku($sku, $state['category'], $state['vendor_id'] ?? null);
+            $result = $importer->importSku($sku, $state['category_id'] ?? null, $state['vendor_id'] ?? null);
 
             $state['material_ids'][] = $result['material_id'];
             if ($result['action'] === 'created') {
@@ -460,7 +458,7 @@ class MaterialController extends Controller
     ) {
         $data = $request->validate([
             'skus' => ['required', 'string'],
-            'category' => ['nullable', 'string', 'max:120'],
+            'category_id' => ['nullable', 'integer', 'exists:material_categories,id'],
             'sync_prices' => ['sometimes', 'boolean'],
         ]);
 
@@ -470,12 +468,12 @@ class MaterialController extends Controller
                 ->withErrors([
                     'skus' => 'Paste at least one valid Home Depot SKU or product URL. Blank lines are ignored; duplicate lines in the same paste are skipped.',
                 ])
-                ->withInput($request->only(['skus', 'category']));
+                ->withInput($request->only(['skus', 'category_id']));
         }
 
         $result = $importer->import(
             $data['skus'],
-            $data['category'] ?? null,
+            filled($data['category_id'] ?? null) ? (int) $data['category_id'] : null,
             MaterialVendor::defaultForHomeDepotImport()?->id,
         );
 
@@ -492,7 +490,7 @@ class MaterialController extends Controller
                         ? 'No materials imported — '.$detail.' skipped.'
                         : 'No materials imported.',
                 ])
-                ->withInput($request->only(['skus', 'category']));
+                ->withInput($request->only(['skus', 'category_id']));
         }
 
         $message = sprintf(
@@ -546,7 +544,7 @@ class MaterialController extends Controller
         return redirect()
             ->route('admin.materials.config')
             ->with('success', $message)
-            ->withInput($request->only(['skus', 'category']));
+            ->withInput($request->only(['skus', 'category_id']));
     }
 
     /**
@@ -554,15 +552,13 @@ class MaterialController extends Controller
      */
     private function materialsConfigData(): array
     {
-        $categories = Material::query()
-            ->whereNotNull('category')
-            ->where('category', '!=', '')
-            ->distinct()
-            ->orderBy('category')
-            ->pluck('category');
-
         return [
-            'categories' => $categories,
+            'materialCategories' => MaterialCategory::query()
+                ->withCount('materials')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
+            'categories' => $this->categoriesForSelect(),
             'vendors' => MaterialVendor::query()
                 ->withCount('materials')
                 ->orderBy('sort_order')
@@ -588,7 +584,7 @@ class MaterialController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'short_name' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'category' => ['nullable', 'string', 'max:120'],
+            'category_id' => ['nullable', 'integer', 'exists:material_categories,id'],
             'vendor_id' => ['nullable', 'integer', 'exists:material_vendors,id'],
             'store_sku' => ['nullable', 'string', 'max:160'],
             'model' => ['nullable', 'string', 'max:160'],
@@ -605,7 +601,7 @@ class MaterialController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['sort_order'] = (int) ($data['sort_order'] ?? 0);
 
-        foreach (['short_name', 'description', 'category', 'store_sku', 'model', 'product_url', 'image_url', 'unit'] as $nullable) {
+        foreach (['short_name', 'description', 'store_sku', 'model', 'product_url', 'image_url', 'unit'] as $nullable) {
             if (array_key_exists($nullable, $data) && ! filled($data[$nullable])) {
                 $data[$nullable] = null;
             }
@@ -613,6 +609,10 @@ class MaterialController extends Controller
 
         if (! filled($data['vendor_id'] ?? null)) {
             $data['vendor_id'] = null;
+        }
+
+        if (! filled($data['category_id'] ?? null)) {
+            $data['category_id'] = null;
         }
 
         if (! filled($data['quantity_per_package'] ?? null)) {
@@ -637,6 +637,17 @@ class MaterialController extends Controller
     private function vendorsForSelect()
     {
         return MaterialVendor::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, MaterialCategory>
+     */
+    private function categoriesForSelect()
+    {
+        return MaterialCategory::query()
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();

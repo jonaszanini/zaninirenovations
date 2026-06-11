@@ -163,6 +163,12 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('materials.config.vendors.update');
     Route::delete('materials/config/vendors/{materialVendor}', [\App\Http\Controllers\Admin\MaterialVendorController::class, 'destroy'])
         ->name('materials.config.vendors.destroy');
+    Route::post('materials/config/categories', [\App\Http\Controllers\Admin\MaterialCategoryController::class, 'store'])
+        ->name('materials.config.categories.store');
+    Route::put('materials/config/categories/{materialCategory}', [\App\Http\Controllers\Admin\MaterialCategoryController::class, 'update'])
+        ->name('materials.config.categories.update');
+    Route::delete('materials/config/categories/{materialCategory}', [\App\Http\Controllers\Admin\MaterialCategoryController::class, 'destroy'])
+        ->name('materials.config.categories.destroy');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])
         ->name('materials.bulk-destroy');
     Route::post('materials/bulk-import/start', [MaterialController::class, 'bulkImportStart'])

@@ -44,10 +44,16 @@
 <div class="admin-form-grid-2">
   <div class="admin-form-group">
     <label for="mat-category">Category</label>
-    <input type="text" id="mat-category" name="category" value="{{ old('category', $m?->category) }}" maxlength="120"
-           placeholder="e.g. Lumber, Hardware, Paving"
-           class="@error('category') is-invalid @enderror">
-    @error('category') <p class="admin-form-error">{{ $message }}</p> @enderror
+    <select id="mat-category" name="category_id" class="admin-input @error('category_id') is-invalid @enderror">
+      <option value="">— Select category —</option>
+      @foreach (($categories ?? collect()) as $category)
+        <option value="{{ $category->id }}" @selected((int) old('category_id', $m?->category_id) === (int) $category->id)>
+          {{ $category->name }}
+        </option>
+      @endforeach
+    </select>
+    @error('category_id') <p class="admin-form-error">{{ $message }}</p> @enderror
+    <p class="admin-form-help">Manage categories on <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>.</p>
   </div>
   <div class="admin-form-group">
     <label for="mat-vendor">Vendor</label>
@@ -91,9 +97,19 @@
   </div>
   <div class="admin-form-group">
     <label for="mat-unit">Unit</label>
-    <input type="text" id="mat-unit" name="unit" value="{{ old('unit', $m?->unit) }}" maxlength="40"
-           placeholder="each, box, bag…"
-           class="@error('unit') is-invalid @enderror">
+    @php
+      $unitOptions = Material::unitOptions();
+      $currentUnit = old('unit', $m?->unit);
+    @endphp
+    <select id="mat-unit" name="unit" class="admin-input @error('unit') is-invalid @enderror">
+      <option value="">— Select unit —</option>
+      @foreach ($unitOptions as $value => $label)
+        <option value="{{ $value }}" @selected($currentUnit === $value)>{{ $label }}</option>
+      @endforeach
+      @if (filled($currentUnit) && ! array_key_exists($currentUnit, $unitOptions))
+        <option value="{{ $currentUnit }}" selected>{{ $currentUnit }} (custom)</option>
+      @endif
+    </select>
     @error('unit') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>

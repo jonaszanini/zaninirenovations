@@ -14,7 +14,7 @@
         <select name="category" class="admin-input mat-toolbar-search__category">
           <option value="">All categories</option>
           @foreach ($categories as $cat)
-            <option value="{{ $cat }}" @selected($category === $cat)>{{ $cat }}</option>
+            <option value="{{ $cat->id }}" @selected((int) ($categoryId ?? 0) === (int) $cat->id)>{{ $cat->name }}</option>
           @endforeach
         </select>
       @endif
@@ -136,7 +136,7 @@
                   <br><a href="{{ $material->product_url }}" target="_blank" rel="noopener" class="admin-text-link mat-product-link">Product page</a>
                 @endif
               </td>
-              <td>{{ $material->category ?: '—' }}</td>
+              <td>{{ $material->categoryName() ?: '—' }}</td>
               <td>{{ $material->vendorName() ?: '—' }}</td>
               <td>{{ $material->store_sku ?: '—' }}</td>
               <td class="mat-col-price">{{ $material->formattedPrice() }}</td>

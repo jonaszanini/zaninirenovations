@@ -5,6 +5,7 @@
 
 <form method="post" action="{{ route('admin.materials.config.vendors.store') }}" class="mat-vendors__add">
   @csrf
+  <input type="hidden" name="_config_section" value="vendors">
   <div class="mat-vendors__add-row">
     <div class="admin-form-group mat-vendors__add-name">
       <label for="mat-vendor-add-name">New vendor name</label>

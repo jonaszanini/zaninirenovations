@@ -76,9 +76,8 @@ class MaterialSkuImportService
      *     name: string
      * }
      */
-    public function importSku(string $sku, ?string $category = null, ?int $vendorId = null): array
+    public function importSku(string $sku, ?int $categoryId = null, ?int $vendorId = null): array
     {
-        $category = filled($category) ? trim($category) : null;
         $vendorId = $vendorId ?? MaterialVendor::defaultForHomeDepotImport()?->id;
 
         $attributes = [
@@ -88,8 +87,8 @@ class MaterialSkuImportService
             'is_active' => true,
         ];
 
-        if ($category !== null) {
-            $attributes['category'] = $category;
+        if ($categoryId !== null) {
+            $attributes['category_id'] = $categoryId;
         }
 
         $existing = Material::query()->where('store_sku', $sku)->first();
@@ -130,7 +129,7 @@ class MaterialSkuImportService
      *     skip_reasons: list<string>
      * }
      */
-    public function import(string $rawInput, ?string $category = null, ?int $vendorId = null): array
+    public function import(string $rawInput, ?int $categoryId = null, ?int $vendorId = null): array
     {
         $plan = $this->buildPlan($rawInput);
         $created = 0;
@@ -138,7 +137,7 @@ class MaterialSkuImportService
         $materialIds = [];
 
         foreach ($plan['skus'] as $sku) {
-            $result = $this->importSku($sku, $category, $vendorId);
+            $result = $this->importSku($sku, $categoryId, $vendorId);
             $materialIds[] = $result['material_id'];
 
             if ($result['action'] === 'created') {

@@ -9,7 +9,7 @@
 @section('content')
   <div class="admin-toolbar mat-config-toolbar">
     <p class="admin-toolbar-lede mat-config-toolbar__lede">
-      Bulk import Home Depot SKUs, manage vendors, and copy local sync commands for your PC.
+      Bulk import Home Depot SKUs, manage categories and vendors, and copy local sync commands for your PC.
     </p>
     <div class="mat-config-toolbar__actions">
       <form method="post" action="{{ route('admin.materials.config.delete-failed') }}"
@@ -58,14 +58,12 @@
           </div>
           <div class="admin-form-group">
             <label for="mat-bulk-category">Category</label>
-            <input type="text" id="mat-bulk-category" name="category" value="{{ old('category') }}" class="admin-input" list="mat-bulk-category-list" placeholder="e.g. Lumber">
-            @if ($categories->isNotEmpty())
-              <datalist id="mat-bulk-category-list">
-                @foreach ($categories as $cat)
-                  <option value="{{ $cat }}">
-                @endforeach
-              </datalist>
-            @endif
+            <select id="mat-bulk-category" name="category_id" class="admin-input">
+              <option value="">— None —</option>
+              @foreach ($categories as $cat)
+                <option value="{{ $cat->id }}" @selected((int) old('category_id') === (int) $cat->id)>{{ $cat->name }}</option>
+              @endforeach
+            </select>
           </div>
           <p class="admin-form-help mat-bulk-vendor-note">
             Vendor:
@@ -117,7 +115,17 @@
       </div>
     </details>
 
-    <details class="admin-accordion admin-card mat-config-accordion mat-vendors" @if($errors->has('name') || $errors->has('slug')) open @endif>
+    <details class="admin-accordion admin-card mat-config-accordion mat-categories" @if(old('_config_section') === 'categories') open @endif>
+      <summary class="admin-accordion__summary">
+        <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+        <span class="admin-accordion__title">Categories</span>
+      </summary>
+      <div class="admin-accordion__panel">
+        @include('admin.materials._config_categories')
+      </div>
+    </details>
+
+    <details class="admin-accordion admin-card mat-config-accordion mat-vendors" @if(old('_config_section') === 'vendors' || $errors->has('slug')) open @endif>
       <summary class="admin-accordion__summary">
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
         <span class="admin-accordion__title">Vendors</span>
@@ -193,6 +201,9 @@
     @endif
     @if ($failedCount > 0)
       · {{ number_format($failedCount) }} failed sync
+    @endif
+    @if ($materialCategories->isNotEmpty())
+      · {{ number_format($materialCategories->count()) }} {{ $materialCategories->count() === 1 ? 'category' : 'categories' }}
     @endif
     @if ($vendors->isNotEmpty())
       · {{ number_format($vendors->count()) }} {{ $vendors->count() === 1 ? 'vendor' : 'vendors' }}

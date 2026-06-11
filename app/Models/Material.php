@@ -23,7 +23,7 @@ class Material extends Model
         'name',
         'short_name',
         'description',
-        'category',
+        'category_id',
         'vendor_id',
         'store_sku',
         'model',
@@ -52,6 +52,16 @@ class Material extends Model
         return $this->belongsTo(MaterialVendor::class, 'vendor_id');
     }
 
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(MaterialCategory::class, 'category_id');
+    }
+
+    public function categoryName(): ?string
+    {
+        return $this->category?->name;
+    }
+
     public function vendorName(): ?string
     {
         return $this->vendor?->name;
@@ -63,6 +73,29 @@ class Material extends Model
     public function displayName(): string
     {
         return filled($this->short_name) ? (string) $this->short_name : (string) $this->name;
+    }
+
+    /**
+     * Common units for the materials admin form (value => label).
+     *
+     * @return array<string, string>
+     */
+    public static function unitOptions(): array
+    {
+        return [
+            'each' => 'Each',
+            'box' => 'Box',
+            'bag' => 'Bag',
+            'package' => 'Package',
+            'sheet' => 'Sheet',
+            'linear ft' => 'Linear foot',
+            'sq ft' => 'Square foot',
+            'roll' => 'Roll',
+            'pair' => 'Pair',
+            'set' => 'Set',
+            'case' => 'Case',
+            'pail' => 'Pail',
+        ];
     }
 
     public function formattedPrice(): string

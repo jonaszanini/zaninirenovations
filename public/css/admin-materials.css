@@ -86,6 +86,7 @@
 }
 
 .mat-bulk-import,
+.mat-categories,
 .mat-vendors,
 .mat-local-sync {
   margin-bottom: 0;
@@ -99,65 +100,122 @@
   background: var(--admin-surface-hover, #f4f6f8);
 }
 
-.mat-vendors__lede {
+.mat-vendors__lede,
+.mat-categories__lede {
   margin: 0 0 1rem;
 }
 
-.mat-vendors__add {
+.mat-vendors__add,
+.mat-categories__add {
   margin-bottom: 1rem;
 }
 
-.mat-vendors__add-row {
+.mat-vendors__add-row,
+.mat-categories__add-row {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) 6.5rem auto;
   gap: 0.75rem 1rem;
   align-items: end;
 }
 
-.mat-vendors__add-name {
+.mat-vendors__add-name,
+.mat-categories__add-name {
   margin: 0;
   min-width: 0;
 }
 
-.mat-vendors__add-sort {
+.mat-vendors__add-sort,
+.mat-categories__add-sort {
   margin: 0;
 }
 
-.mat-vendors__add-sort .admin-input {
+.mat-vendors__add-sort .admin-input,
+.mat-categories__add-sort .admin-input {
   width: 100%;
 }
 
-.mat-vendors__add-submit {
+.mat-vendors__add-submit,
+.mat-categories__add-submit {
   display: flex;
   align-items: flex-end;
   padding-bottom: 0;
 }
 
-.mat-vendors__add-submit .admin-btn {
+.mat-vendors__add-submit .admin-btn,
+.mat-categories__add-submit .admin-btn {
   white-space: nowrap;
 }
 
 @media (max-width: 640px) {
-  .mat-vendors__add-row {
+  .mat-vendors__add-row,
+  .mat-categories__add-row {
     grid-template-columns: 1fr;
   }
 
-  .mat-vendors__add-submit .admin-btn {
+  .mat-vendors__add-submit .admin-btn,
+  .mat-categories__add-submit .admin-btn {
     width: 100%;
     justify-content: center;
   }
 }
 
-.mat-vendors__table-wrap {
+.mat-vendors__table-wrap,
+.mat-categories__table-wrap {
   margin-top: 0.25rem;
 }
 
-.mat-vendors__edit-row {
+.mat-vendors__edit-row,
+.mat-categories__edit-row {
   padding: 0.75rem !important;
   position: relative;
 }
 
-.mat-vendors__edit-form {
+.mat-vendors__edit-form,
+.mat-categories__edit-form {
+  margin: 0;
+}
+
+.mat-categories__edit-grid {
+  display: grid;
+  grid-template-columns: 5rem minmax(180px, 1fr) 4.5rem 5.5rem;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  padding-right: 2.75rem;
+}
+
+.mat-categories__edit-grid .admin-form-group {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .mat-categories__edit-grid {
+    grid-template-columns: 1fr 1fr;
+    padding-right: 0;
+  }
+
+  .mat-categories__edit-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+.mat-categories__edit-meta {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.mat-categories__count {
+  font-weight: 600;
+}
+
+.mat-categories__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mat-categories__delete-form {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.75rem;
   margin: 0;
 }
 
