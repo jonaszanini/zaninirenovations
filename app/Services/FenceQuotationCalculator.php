@@ -235,7 +235,7 @@ class FenceQuotationCalculator
         $nailsPerPicket = (int) $settings->nails_per_picket;
         $nailsNeeded = $picketsTotal * $nailsPerPicket;
         $nailsMat = $this->catalogue->get(FenceMaterial::KEY_NAILS);
-        $nailsBoxSize = (int) ($nailsMat->quantity_per_box ?? 0);
+        $nailsBoxSize = (int) ($nailsMat->effectiveQuantityPerBox() ?? 0);
         $boxesTotal = ($nailsBoxSize > 0 && $nailsNeeded > 0)
             ? (int) ceil($nailsNeeded / $nailsBoxSize)
             : 0;

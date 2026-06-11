@@ -29,7 +29,7 @@ class FenceConfigController extends Controller
             ->with('vendor')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'short_name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor_id']);
+            ->get(['id', 'name', 'short_name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor_id', 'quantity_per_package']);
 
         $linkedSyncCount = $materials
             ->filter(fn (FenceMaterial $row) => $row->material_id !== null
@@ -52,7 +52,6 @@ class FenceConfigController extends Controller
             'materials' => ['required', 'array'],
             'materials.*.id' => ['required', 'integer', 'exists:fence_materials,id'],
             'materials.*.material_id' => ['nullable', 'integer', 'exists:materials,id'],
-            'materials.*.quantity_per_box' => ['nullable', 'integer', 'min:1', 'max:999999'],
         ]);
 
         foreach ($data['materials'] as $row) {
@@ -61,13 +60,7 @@ class FenceConfigController extends Controller
                 continue;
             }
 
-            $catalogId = filled($row['material_id'] ?? null) ? (int) $row['material_id'] : null;
-            $material->material_id = $catalogId;
-
-            if ($material->key === FenceMaterial::KEY_NAILS) {
-                $material->quantity_per_box = $row['quantity_per_box'] ?? null;
-            }
-
+            $material->material_id = filled($row['material_id'] ?? null) ? (int) $row['material_id'] : null;
             $material->save();
         }
 
@@ -174,6 +167,7 @@ class FenceConfigController extends Controller
                 'price' => number_format((float) $catalog->price_cad, 2, '.', ''),
                 'price_label' => $priceLabel,
                 'url' => (string) ($catalog->product_url ?? ''),
+                'quantity_per_package' => $catalog->quantity_per_package,
             ];
         })->values()->all();
     }

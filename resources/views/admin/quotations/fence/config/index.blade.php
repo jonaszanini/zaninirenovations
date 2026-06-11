@@ -83,6 +83,9 @@
                           class="fq-catalog-picker__select"
                           data-preview-target="fq-preview-{{ $i }}"
                           data-price-target="fq-price-{{ $i }}"
+                          @if ($m->key === \App\Models\FenceMaterial::KEY_NAILS)
+                            data-nails-per-box-target="fq-nails-per-box-{{ $i }}"
+                          @endif
                           data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
                           aria-label="Catalog material for {{ $m->effectiveName() }}">
                     <option value="">— Search name or SKU —</option>
@@ -125,13 +128,10 @@
               </td>
               <td>
                 @if ($m->key === \App\Models\FenceMaterial::KEY_NAILS)
-                  <input type="number"
-                         min="1"
-                         step="1"
-                         name="materials[{{ $i }}][quantity_per_box]"
-                         class="admin-input"
-                         value="{{ old('materials.'.$i.'.quantity_per_box', $m->quantity_per_box) }}">
-                  <p class="admin-form-help">Nails per box (for per-nail pricing).</p>
+                  <strong id="fq-nails-per-box-{{ $i }}" class="fq-nails-per-box">
+                    {{ $m->effectiveQuantityPerBox() ?? '—' }}
+                  </strong>
+                  <p class="admin-form-help">Nails per box (from catalog qty per package).</p>
                 @else
                   <span class="admin-form-help">—</span>
                 @endif
@@ -256,6 +256,20 @@
           .replace(/"/g, '&quot;');
       }
 
+      function updateNailsPerBox(selectEl, value, optionMap) {
+        var nailsPerBoxEl = document.getElementById(selectEl.getAttribute('data-nails-per-box-target') || '');
+        if (!nailsPerBoxEl) return;
+
+        if (!value) {
+          nailsPerBoxEl.textContent = '—';
+          return;
+        }
+
+        var item = optionMap[String(value)] || null;
+        var qty = item && item.quantity_per_package ? parseInt(item.quantity_per_package, 10) : 0;
+        nailsPerBoxEl.textContent = qty > 0 ? String(qty) : '—';
+      }
+
       function updatePreview(selectEl, value, optionMap) {
         var previewEl = document.getElementById(selectEl.getAttribute('data-preview-target') || '');
         var priceEl = document.getElementById(selectEl.getAttribute('data-price-target') || '');
@@ -265,6 +279,7 @@
         if (!value) {
           previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
           if (priceEl) priceEl.textContent = '—';
+          updateNailsPerBox(selectEl, value, optionMap);
           return;
         }
 
@@ -272,6 +287,7 @@
         if (!item) {
           previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
           if (priceEl) priceEl.textContent = '—';
+          updateNailsPerBox(selectEl, value, optionMap);
           return;
         }
 
@@ -289,6 +305,7 @@
         if (priceEl) {
           priceEl.textContent = item.price_label || '—';
         }
+        updateNailsPerBox(selectEl, value, optionMap);
       }
 
       if (typeof TomSelect === 'undefined') return;

@@ -133,7 +133,12 @@ class FenceMaterial extends Model
             return null;
         }
 
-        return $this->quantity_per_box;
+        $fromCatalog = $this->material?->quantity_per_package;
+        if ($fromCatalog !== null && (int) $fromCatalog > 0) {
+            return (int) $fromCatalog;
+        }
+
+        return $this->quantity_per_box !== null ? (int) $this->quantity_per_box : null;
     }
 
     /** True when this material is sold by the box (only nails today). */
