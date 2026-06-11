@@ -140,8 +140,8 @@
 
 <div class="mat-url-fields">
   <h3 class="mat-form-section-title">Store links &amp; sync</h3>
-  <div class="mat-form-grid-urls">
-    <div class="admin-form-group">
+  <div class="mat-form-url-row">
+    <div class="admin-form-group mat-form-url-row__field">
       <label for="mat-product-url">Product URL</label>
       <input @class(['admin-input', 'is-invalid' => $errors->has('product_url')]) type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
              placeholder="https://www.homedepot.ca/product/…"
@@ -158,7 +158,7 @@
       @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
 
-    <div class="admin-form-group mat-image-url-group">
+    <div class="admin-form-group mat-form-url-row__field">
       <label for="mat-image-url">Image URL</label>
       <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ $imageUrlFieldValue }}" maxlength="500"
              placeholder="https://images.homedepot.ca/productimages/…"
@@ -167,31 +167,31 @@
       @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
 
-    <div class="admin-form-group mat-form-active-group">
-      <span class="mat-form-active-group__label" aria-hidden="true">&nbsp;</span>
-      <div class="mat-form-status mat-form-status--inline">
-        @if ($m && $m->last_scraped_at)
-          <div class="mat-form-status__sync">
-            <span class="mat-scrape-badge mat-scrape-badge--{{ $m->last_scrape_status ?? 'unknown' }}">
-              {{ $m->last_scrape_status ?? 'unknown' }}
-            </span>
-            <span class="mat-form-status__sync-date">
-              Last synced {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
-            </span>
-            @if ($m->last_scrape_error)
-              <p class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</p>
-            @endif
-          </div>
-        @endif
+    <div class="admin-form-group mat-form-url-row__field mat-form-url-row__field--active">
+      <span class="mat-form-active-header__label">Active</span>
+      @if ($m && $m->last_scraped_at)
+        <div class="mat-form-status__sync">
+          <span class="mat-scrape-badge mat-scrape-badge--{{ $m->last_scrape_status ?? 'unknown' }}">
+            {{ $m->last_scrape_status ?? 'unknown' }}
+          </span>
+          <span class="mat-form-status__sync-date">
+            Last synced {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
+          </span>
+          @if ($m->last_scrape_error)
+            <p class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</p>
+          @endif
+        </div>
+      @endif
+      <div class="mat-form-active-control">
         <label class="admin-checkbox admin-checkbox--block">
           <input type="hidden" name="is_active" value="0">
           <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
                  @checked(old('is_active', $m?->is_active ?? true))>
           <span class="admin-checkbox__mark" aria-hidden="true"></span>
-          <span class="admin-checkbox__text">Active (include in price sync)</span>
+          <span class="admin-checkbox__text">Include in price sync</span>
         </label>
-        @error('is_active') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
+      @error('is_active') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
   </div>
 </div>
