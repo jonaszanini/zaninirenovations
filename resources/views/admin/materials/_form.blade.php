@@ -37,8 +37,7 @@
 
 <div class="admin-form-group">
   <label for="mat-description">Description</label>
-  <textarea id="mat-description" name="description" rows="3" maxlength="5000"
-            class="admin-input @error("description') is-invalid @enderror">{{ old('description', $m?->description) }}</textarea>
+  <textarea @class(['admin-input', 'is-invalid' => $errors->has('description')]) id="mat-description" name="description" rows="3" maxlength="5000">{{ old('description', $m?->description) }}</textarea>
   @error('description') <p class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 

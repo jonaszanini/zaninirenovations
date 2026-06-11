@@ -9,22 +9,19 @@
 
       <div class="admin-form-group">
         <label for="cl-name">Name <span class="cp-required">*</span></label>
-        <input type="text" id="cl-name" name="name" value="{{ old('name') }}" required maxlength="255"
-               class="admin-input @error("name') is-invalid @enderror">
+        <input @class(['admin-input', 'is-invalid' => $errors->has('name')]) type="text" id="cl-name" name="name" value="{{ old('name') }}" required maxlength="255">
         @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
           <label for="cl-email">Email</label>
-          <input type="email" id="cl-email" name="email" value="{{ old('email') }}" maxlength="255"
-                 class="admin-input @error("email') is-invalid @enderror">
+          <input @class(['admin-input', 'is-invalid' => $errors->has('email')]) type="email" id="cl-email" name="email" value="{{ old('email') }}" maxlength="255">
           @error('email') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
           <label for="cl-phone">Phone</label>
-          <input type="text" id="cl-phone" name="phone" value="{{ \App\Models\ClientProject::formatPhone(old('phone')) }}"
-                 class="admin-input cp-phone-input @error("phone') is-invalid @enderror"
+          <input @class(['admin-input', 'cp-phone-input', 'is-invalid' => $errors->has('phone')]) type="text" id="cl-phone" name="phone" value="{{ \App\Models\ClientProject::formatPhone(old('phone')) }}"
                  inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx">
           @error('phone') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
@@ -32,8 +29,7 @@
 
       <div class="admin-form-group">
         <label for="cl-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(optional)</small></label>
-        <input type="email" id="cl-email-secondary" name="email_secondary" value="{{ old('email_secondary') }}" maxlength="255"
-               class="admin-input @error("email_secondary') is-invalid @enderror">
+        <input @class(['admin-input', 'is-invalid' => $errors->has('email_secondary')]) type="email" id="cl-email-secondary" name="email_secondary" value="{{ old('email_secondary') }}" maxlength="255">
         @error('email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 

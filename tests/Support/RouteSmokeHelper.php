@@ -1,0 +1,149 @@
+<?php
+
+namespace Tests\Support;
+
+use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Route as RouteFacade;
+
+final class RouteSmokeHelper
+{
+    /** @var list<string> */
+    private const SKIP_ROUTE_NAMES = [
+        'ignition.healthCheck',
+        'sanctum.csrf-cookie',
+        'login',
+        'admin.google-photos.callback',
+        'admin.google-photos.picker-sessions.show',
+        'admin.google-photos.picker-sessions.media',
+        'admin.google-photos.thumbnail',
+        'public.client-project.invoice-pdf',
+        'public.client-project.receipt-pdf',
+        'public.client-project.quotation-pdf',
+        'public.helper-payment.acknowledge',
+        'cron.run',
+    ];
+
+    /** @var list<string> */
+    private const SKIP_URI_PREFIXES = [
+        '_ignition/',
+        'api/',
+    ];
+
+    public function __construct(
+        private readonly SmokeTestFixtures $fixtures = new SmokeTestFixtures,
+    ) {}
+
+    /**
+     * @return list<array{route: Route, url: string}>
+     */
+    public function getGetRoutes(bool $adminOnly, bool $publicOnly): array
+    {
+        $routes = [];
+
+        foreach (RouteFacade::getRoutes() as $route) {
+            if (! $this->isGetRoute($route)) {
+                continue;
+            }
+
+            if ($this->shouldSkip($route)) {
+                continue;
+            }
+
+            $isAdmin = $this->isAdminRoute($route);
+
+            if ($adminOnly && ! $isAdmin) {
+                continue;
+            }
+
+            if ($publicOnly && $isAdmin) {
+                continue;
+            }
+
+            try {
+                $routes[] = [
+                    'route' => $route,
+                    'url' => $this->urlForRoute($route),
+                ];
+            } catch (\InvalidArgumentException) {
+                // Parameter we cannot resolve yet — skip until a fixture exists.
+            }
+        }
+
+        return $routes;
+    }
+
+    private function isGetRoute(Route $route): bool
+    {
+        return in_array('GET', $route->methods(), true);
+    }
+
+    private function shouldSkip(Route $route): bool
+    {
+        $name = (string) $route->getName();
+        if ($name !== '' && in_array($name, self::SKIP_ROUTE_NAMES, true)) {
+            return true;
+        }
+
+        $uri = $route->uri();
+        foreach (self::SKIP_URI_PREFIXES as $prefix) {
+            if (str_starts_with($uri, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isAdminRoute(Route $route): bool
+    {
+        $name = (string) $route->getName();
+        if (str_starts_with($name, 'admin.')) {
+            return true;
+        }
+
+        $uri = $route->uri();
+
+        return str_starts_with($uri, 'admin/')
+            || str_starts_with($uri, 'admin')
+            || $uri === 'dashboard';
+    }
+
+    private function urlForRoute(Route $route): string
+    {
+        $name = $route->getName();
+        $parameters = $this->resolveParameters($route);
+
+        if ($name) {
+            return route($name, $parameters, false);
+        }
+
+        $uri = $route->uri();
+        foreach ($parameters as $key => $value) {
+            $uri = str_replace('{'.$key.'}', (string) $value, $uri);
+            $uri = preg_replace('/\{'.$key.':[^}]+\}/', (string) $value, $uri) ?? $uri;
+        }
+
+        return '/'.ltrim($uri, '/');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolveParameters(Route $route): array
+    {
+        $parameters = [];
+
+        foreach ($route->parameterNames() as $name) {
+            $parameters[$name] = $this->fixtures->resolve($name, $route);
+        }
+
+        return $parameters;
+    }
+
+    public static function routeLabel(Route $route, string $url): string
+    {
+        $name = $route->getName();
+
+        return $name ? "{$name} ({$url})" : "{$url}";
+    }
+}

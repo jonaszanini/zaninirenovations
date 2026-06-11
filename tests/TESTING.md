@@ -101,6 +101,21 @@ Generated as part of an initial test harness build. Use this as the living map f
 - `tests/Unit/Models/FenceMaterialTest.php`
 - `tests/Unit/Models/ClientProjectInvoiceTest.php`
 
+### Smoke tests (500 / Blade regressions)
+- `tests/Unit/Views/BladeSyntaxTest.php` — compiles all `admin/` and `site/` Blade files; fails on mismatched `@error("` quotes (no database)
+- `tests/Feature/Smoke/PublicGetRoutesSmokeTest.php` — every public GET route must return HTTP &lt; 500
+- `tests/Feature/Smoke/AdminGetRoutesSmokeTest.php` — every authenticated admin GET route must return HTTP &lt; 500
+- `tests/Support/RouteSmokeHelper.php` + `SmokeTestFixtures.php` — resolve route parameters with minimal factory data
+
+Run after view or route changes:
+
+```bash
+php artisan test tests/Unit/Views/BladeSyntaxTest.php   # fast, no MySQL
+php artisan test tests/Feature/Smoke                    # needs MySQL test DB
+```
+
+Signed URLs, OAuth callbacks, and cron are excluded from the smoke sweep (covered elsewhere or need special tokens).
+
 ### Feature tests
 - `tests/Feature/Auth/AdminLoginTest.php`
 - `tests/Feature/Auth/AdminLogoutTest.php`
