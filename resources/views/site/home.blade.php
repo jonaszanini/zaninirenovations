@@ -535,17 +535,11 @@
                       <h4>Owner & Contractor</h4>
 
                       <div class="team-social-share clearfix">
-                        <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif title="Facebook">
-                          <i class="fa fa-facebook rectangle"></i>
+                        <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Jonas Zanini on Facebook">
+                          <i class="fa fa-facebook rectangle" aria-hidden="true"></i>
                         </a>
-                        <a href="#" title="Twitter">
-                          <i class="fa fa-twitter rectangle"></i>
-                        </a>
-                        <a href="{{ $socialInstagramUrl }}"@if (str_starts_with($socialInstagramUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif title="Instagram">
-                          <i class="fa fa-instagram rectangle"></i>
-                        </a>
-                        <a href="#" title="Linkedin">
-                          <i class="fa fa-linkedin rectangle"></i>
+                        <a href="{{ $socialInstagramUrl }}"@if (str_starts_with($socialInstagramUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Jonas Zanini on Instagram">
+                          <i class="fa fa-instagram rectangle" aria-hidden="true"></i>
                         </a>
                       </div>
                       <!-- end .author-social-box  -->
@@ -572,17 +566,11 @@
                       <h3>Mayara Zanini</h3>
                       <h4>Office & Marketing</h4>
                       <div class="team-social-share clearfix">
-                        <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif title="Facebook">
-                          <i class="fa fa-facebook rectangle"></i>
+                        <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Jonas Zanini on Facebook">
+                          <i class="fa fa-facebook rectangle" aria-hidden="true"></i>
                         </a>
-                        <a href="#" title="Twitter">
-                          <i class="fa fa-twitter rectangle"></i>
-                        </a>
-                        <a href="{{ $socialInstagramUrl }}"@if (str_starts_with($socialInstagramUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif title="Instagram">
-                          <i class="fa fa-instagram rectangle"></i>
-                        </a>
-                        <a href="#" title="Linkedin">
-                          <i class="fa fa-linkedin rectangle"></i>
+                        <a href="{{ $socialInstagramUrl }}"@if (str_starts_with($socialInstagramUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Jonas Zanini on Instagram">
+                          <i class="fa fa-instagram rectangle" aria-hidden="true"></i>
                         </a>
                       </div>
                       <!-- end .author-social-box  -->
@@ -751,7 +739,7 @@
                 <div class="panel panel-default faq-box">
                   <div class="panel-heading">
                     <p class="panel-title">
-                      <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#home-faq-accordion" href="#{{ $faqCollapseId }}">{{ $faqQ }}</a>
+                      <a class="accordion-toggle collapsed" role="button" data-toggle="collapse" data-parent="#home-faq-accordion" href="#{{ $faqCollapseId }}" aria-expanded="false" aria-controls="{{ $faqCollapseId }}">{{ $faqQ }}</a>
                     </p>
                   </div>
                   <div id="{{ $faqCollapseId }}" class="panel-collapse collapse">
@@ -870,11 +858,13 @@
               <form role="form" action="#" method="post" id="contact-form">
 
                 <div class="form-group">
-                  <input type="text" class="form-control" id="user_name" name="user_name" placeholder=" Name" data-msg="Please enter your name">
+                  <label for="user_name" class="sr-only">Your name</label>
+                  <input type="text" class="form-control" id="user_name" name="user_name" placeholder="Your name" required autocomplete="name" data-msg="Please enter your name">
                 </div>
 
                 <div class="form-group">
-                  <input type="email" class="form-control" id="user_email" name="user_email" placeholder=" Email" data-msg="Please enter a valid email">
+                  <label for="user_email" class="sr-only">Email address</label>
+                  <input type="email" class="form-control" id="user_email" name="user_email" placeholder="Email address" required autocomplete="email" data-msg="Please enter a valid email">
                 </div>
 
                 <div class="form-group">
@@ -895,7 +885,8 @@
                 </div>
 
                 <div class="form-group">
-                  <input type="text" class="form-control" id="location_city" name="location_city" placeholder=" Location / city" data-msg="Please enter your location or city">
+                  <label for="location_city" class="sr-only">Location or city</label>
+                  <input type="text" class="form-control" id="location_city" name="location_city" placeholder="Location / city" required autocomplete="address-level2" data-msg="Please enter your location or city">
                 </div>
 
                 <div class="form-group">
@@ -909,11 +900,13 @@
                 </div>
 
                 <div class="form-group">
-                  <input type="text" class="form-control" id="email_subject" name="email_subject" placeholder=" Subject" data-msg="Please enter a subject">
+                  <label for="email_subject" class="sr-only">Subject</label>
+                  <input type="text" class="form-control" id="email_subject" name="email_subject" placeholder="Subject" required data-msg="Please enter a subject">
                 </div>
 
                 <div class="form-group">
-                  <textarea class="form-control" rows="5" name="email_message" id="email_message" placeholder=" Describe your project, timeline, and what you have in mind" data-msg="Please enter your message"></textarea>
+                  <label for="email_message" class="sr-only">Message</label>
+                  <textarea class="form-control" rows="5" name="email_message" id="email_message" placeholder="Describe your project, timeline, and what you have in mind" required data-msg="Please enter your message"></textarea>
                 </div>
 
                 <div class="form-group">

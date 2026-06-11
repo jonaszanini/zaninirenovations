@@ -65,7 +65,7 @@
             <label for="cp-personal-event-description">Description</label>
             <textarea id="cp-personal-event-description" name="description" rows="4" maxlength="5000" class="admin-input"></textarea>
           </div>
-          <p id="cp-personal-event-error" class="admin-form-error" style="display:none;" role="alert"></p>
+          <p id="cp-personal-event-error" class="admin-form-error admin-flash--js-hidden" role="alert"></p>
         </div>
         <div class="cp-modal-footer cp-personal-event-footer">
           <button type="button" class="admin-btn admin-btn--danger admin-btn--sm" id="cp-personal-event-delete" style="display:none;margin-right:auto;">

@@ -212,7 +212,7 @@
   @endif
 
   @error('calculation')
-    <div class="admin-flash admin-flash--danger" style="margin-bottom:14px;">{{ $message }}</div>
+    <div class="admin-flash admin-flash--danger">{{ $message }}</div>
   @enderror
 
   <div class="pq-layout">
@@ -227,7 +227,7 @@
             <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
           @endif
 
-          <div class="admin-card" style="margin-bottom:16px;">
+          <div class="admin-card">
             <h3 style="margin:0 0 14px;">Step 1 — Basic information</h3>
             <div class="admin-form-group">
               <label for="sq-client">Client name @if(!$isEdit || !($quotation->is_draft ?? false))<span class="cp-required">*</span>@endif</label>
@@ -243,7 +243,7 @@
             </div>
           </div>
 
-          <div class="admin-card" style="margin-bottom:16px;">
+          <div class="admin-card">
             <h3 style="margin:0 0 14px;">Step 2 — Carpet removal</h3>
             <label class="admin-checkbox admin-checkbox--block">
               <input type="checkbox" name="carpet_removal" value="1" class="admin-checkbox__input sq-calc-in" id="sq-carpet"
@@ -253,7 +253,7 @@
             </label>
           </div>
 
-          <div class="admin-card" style="margin-bottom:16px;">
+          <div class="admin-card">
             <h3 style="margin:0 0 14px;">Step 3 — Stair configuration</h3>
             <p class="pq-hint" style="margin-top:0;" id="sq-seg-hint">Add one row per stair section. Choose open sides and stair type for each section. The sum of quantities must match total steps for published quotes.</p>
             <div id="sq-segments"></div>
@@ -263,7 +263,7 @@
             <div id="sq-step-sum" class="sq-step-hint" role="status"></div>
           </div>
 
-          <div class="admin-card" style="margin-bottom:16px;">
+          <div class="admin-card">
             <h3 style="margin:0 0 14px;">Step 4 — Material</h3>
             <div class="sq-material-grid">
               @foreach ($materialTypes as $mat)
@@ -310,7 +310,7 @@
             <p id="sq-nosing-included" class="pq-hint" style="margin-top:10px;display:none;">Nosing is included in the material rate for this option.</p>
           </div>
 
-          <div class="admin-card" style="margin-bottom:16px;">
+          <div class="admin-card">
             <h3 style="margin:0 0 14px;">Step 5 — Materials (optional)</h3>
             <div class="admin-form-group">
               <label for="sq-material-price">Materials price (pre-tax)</label>
@@ -320,7 +320,7 @@
             </div>
           </div>
 
-          <div class="admin-card" style="margin-bottom:16px;">
+          <div class="admin-card">
             <h3 style="margin:0 0 14px;">Step 6 — Additional options</h3>
             <label class="admin-checkbox admin-checkbox--block">
               <input type="checkbox" name="requires_stain" value="1" class="admin-checkbox__input sq-calc-in" @checked(old('requires_stain', $inputs['requires_stain'] ?? false))>
@@ -354,7 +354,7 @@
                     </select>
                     <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
                   </div>
-                  <div class="admin-form-group" style="margin-top:10px;">
+                  <div class="admin-form-group cp-form-group-spaced">
                     <label>Line description (optional)</label>
                     <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
                   </div>
@@ -398,11 +398,11 @@
 
       <aside class="pq-sticky">
         <div class="pq-summary-card">
-          <h4 style="margin:0 0 12px;">Live summary</h4>
+          <h4 class="cp-form-help-spaced">Live summary</h4>
           <div id="sq-live-root">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>
-          <p class="pq-hint" style="margin-top:10px;">Prices valid for quoting; HST 13% applied to subtotal (Ontario).</p>
+          <p class="pq-hint cp-form-group-spaced">Prices valid for quoting; HST 13% applied to subtotal (Ontario).</p>
         </div>
       </aside>
     </div>

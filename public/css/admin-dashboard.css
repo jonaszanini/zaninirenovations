@@ -134,45 +134,34 @@
   color: var(--admin-text);
 }
 
+.dash-toolbar-meta {
+  margin: 0 0 4px;
+}
+
+.dash-toolbar-title {
+  font-size: 1.05rem;
+}
+
+.dash-toolbar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.dash-grid--spaced {
+  margin-bottom: 1.25rem;
+}
+
 .dash-quick-actions {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 0.75rem;
 }
 
-.dash-action-btn {
-  display: inline-flex;
-  align-items: center;
+.dash-quick-actions .admin-btn {
+  width: 100%;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-decoration: none;
-  border: 1px solid var(--admin-border);
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.dash-action-btn--primary {
-  background: var(--admin-primary);
-  color: #fff;
-  border-color: var(--admin-primary);
-}
-
-.dash-action-btn--primary:hover {
-  background: var(--admin-primary-hover);
-  border-color: var(--admin-primary-hover);
-  color: #fff;
-}
-
-.dash-action-btn--secondary {
-  background: var(--admin-surface);
-  color: var(--admin-primary);
-}
-
-.dash-action-btn--secondary:hover {
-  background: var(--admin-surface-hover);
 }
 
 .dash-table {

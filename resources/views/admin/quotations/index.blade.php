@@ -8,18 +8,18 @@
   @endphp
 
   @if (!empty($hubProjectError))
-    <div class="admin-flash admin-flash--danger" style="margin-bottom:16px;">{{ $hubProjectError }}</div>
+    <div class="admin-flash admin-flash--danger">{{ $hubProjectError }}</div>
   @endif
 
   @if ($hubProject ?? null)
-    <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
+    <div class="admin-flash admin-flash--info">
       Creating quotations for project <strong>{{ $hubProject->name }}</strong> ({{ $hubProject->client_name }}).
       The first saved quotation will attach to this project automatically.
     </div>
   @else
     <div class="admin-card fq-hub-intro">
       <h3 style="margin:0 0 8px;">Standalone quotations</h3>
-      <p class="admin-form-help" style="margin:0;">
+      <p class="admin-form-help cp-form-help-flush">
         Calculators produce saved quotes that you can tie to a project when you're ready —
         either from here or via the project's Quotation tab.
       </p>

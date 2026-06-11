@@ -11,7 +11,7 @@
         <label for="title">Title</label>
         <input type="text" id="title" name="title" value="{{ old('title') }}" required maxlength="255">
         @error('title')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
@@ -19,7 +19,7 @@
         <textarea id="description" name="description" required>{{ old('description') }}</textarea>
         @include('admin.partials.portfolio_description_ai')
         @error('description')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       @php
@@ -32,7 +32,7 @@
             <i class="fa fa-cog" aria-hidden="true"></i> Configure
           </a>
         </div>
-        <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
+        <p class="admin-form-help" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
         <div class="admin-category-checkboxes">
           @foreach ($categories as $cat)
             <label class="admin-checkbox admin-checkbox-tile">
@@ -43,18 +43,18 @@
           @endforeach
         </div>
         @error('project_category_ids')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
         @error('project_category_ids.*')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
         <label for="completed_on">Completed on</label>
         <input type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', now()->toDateString()) }}" required>
-        <p class="admin-form-hint">When the work was finished (used to order projects on the site — newest completion first).</p>
+        <p class="admin-form-help">When the work was finished (used to order projects on the site — newest completion first).</p>
         @error('completed_on')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       @php

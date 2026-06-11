@@ -31,28 +31,28 @@
       multiple
       @if($showPreviewGrid) data-admin-local-preview-target="{{ $previewGridId }}" @endif
     >
-    <p class="admin-form-hint">{{ $fileHint }}</p>
+    <p class="admin-form-help">{{ $fileHint }}</p>
     @if ($showPreviewGrid)
       <div class="admin-local-photo-preview-grid" id="{{ $previewGridId }}" hidden aria-live="polite"></div>
     @endif
     @isset($fileErrors)
       @foreach ((array) $fileErrors as $errorKey)
         @error($errorKey)
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       @endforeach
     @else
       @error('photos')
-        <div class="admin-error">{{ $message }}</div>
+        <div class="admin-form-error">{{ $message }}</div>
       @enderror
       @error('photos.*')
-        <div class="admin-error">{{ $message }}</div>
+        <div class="admin-form-error">{{ $message }}</div>
       @enderror
       @error('source_images')
-        <div class="admin-error">{{ $message }}</div>
+        <div class="admin-form-error">{{ $message }}</div>
       @enderror
       @error('source_images.*')
-        <div class="admin-error">{{ $message }}</div>
+        <div class="admin-form-error">{{ $message }}</div>
       @enderror
     @endisset
   </div>

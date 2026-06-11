@@ -9,8 +9,26 @@
   <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
   <link rel="stylesheet" href="{{ asset('css/font-awesome.min.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) ?: time() }}">
+  @php
+    $loadsClientProjectsCss = request()->routeIs(
+      'admin.client-projects.*',
+      'admin.clients.*',
+      'admin.quotations.*',
+      'admin.portfolio.*',
+      'admin.categories.*',
+      'admin.helpers.*',
+      'admin.communications.*',
+      'admin.vehicles.*',
+      'admin.dashboard',
+    );
+    $loadsBlogCss = request()->routeIs('admin.blog.*');
+  @endphp
+  @if ($loadsClientProjectsCss)
   <link rel="stylesheet" href="{{ asset('css/admin-client-projects.css') }}?v={{ @filemtime(public_path('css/admin-client-projects.css')) ?: time() }}">
+  @endif
+  @if ($loadsBlogCss)
   <link rel="stylesheet" href="{{ asset('css/admin-blog.css') }}?v={{ @filemtime(public_path('css/admin-blog.css')) ?: time() }}">
+  @endif
   @stack('head')
 </head>
 <body class="admin-body">

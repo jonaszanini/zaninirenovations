@@ -39,7 +39,7 @@
           data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
         >Disconnect</button>
       </div>
-      <p class="admin-form-hint admin-google-photos-panel__intro">Open Google Photos Picker, choose photos (you can open your album there and select all), then import the picked results here.</p>
+      <p class="admin-form-help admin-google-photos-panel__intro">Open Google Photos Picker, choose photos (you can open your album there and select all), then import the picked results here.</p>
       <div class="admin-google-photos-toolbar">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-open-picker>Open Google Photos Picker</button>
         <span class="admin-google-photos-status" data-google-status></span>
@@ -52,17 +52,17 @@
       <p class="admin-google-photos-panel__foot">{{ $footText }}</p>
     @endif
   @else
-    <p class="admin-form-hint admin-google-photos-panel__intro">
+    <p class="admin-form-help admin-google-photos-panel__intro">
       <a class="admin-btn admin-btn--ghost admin-btn--sm" href="{{ route('admin.google-photos.connect', ['return' => request()->getRequestUri()]) }}">Connect Google Photos</a>
       <span class="admin-google-photos-panel__connect-hint">Required to open Google Photos Picker.</span>
     </p>
   @endif
 
   @error('google_picker_items')
-    <div class="admin-error">{{ $message }}</div>
+    <div class="admin-form-error">{{ $message }}</div>
   @enderror
   @error('google_picker_items.*')
-    <div class="admin-error">{{ $message }}</div>
+    <div class="admin-form-error">{{ $message }}</div>
   @enderror
 </div>
 

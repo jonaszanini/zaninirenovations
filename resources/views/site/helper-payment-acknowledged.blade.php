@@ -1,14 +1,19 @@
 @extends('site.layouts.public')
 
-@section('title', 'Payment confirmed')
+@section('page_title', 'Payment confirmed')
 
 @section('content')
-  <section class="section-padding">
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-lg-8">
-          <div class="admin-card" style="max-width:560px;margin:40px auto;padding:32px;">
-            <h1 style="font-size:1.5rem;margin-bottom:12px;">Thank you</h1>
+  <main class="page-warranty">
+    <section class="section-primary-bg page-warranty-hero">
+      <div class="container text-center">
+        <h1 class="page-warranty-h1">Thank you</h1>
+      </div>
+    </section>
+
+    <section class="section-secondary-bg home-contact-palette page-warranty-body">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-8 col-md-offset-2 warranty-prose text-center">
             @if ($payment->isAcknowledged())
               <p>
                 Your confirmation for
@@ -19,12 +24,10 @@
             @else
               <p>We could not record your confirmation. Please reply to the payment email instead.</p>
             @endif
-            <p class="admin-form-help" style="margin-top:16px;">
-              {{ config('mail.from.name', 'Zanini Renovations') }}
-            </p>
+            <p class="margin-top-24">{{ config('mail.from.name', 'Zanini Renovations') }}</p>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 @endsection

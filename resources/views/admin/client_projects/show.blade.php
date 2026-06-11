@@ -314,7 +314,7 @@
       <div class="admin-card">
         <h3>Start &amp; End dates</h3>
         <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link.</p>
-        <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning" style="display:none;margin-bottom:14px;" role="alert"></div>
+        <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning admin-flash--js-hidden" role="alert"></div>
 
         <div class="cp-schedule-pick-row">
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="cp-open-date-picker">
@@ -490,7 +490,7 @@
               Clear
             </button>
           </div>
-          <div id="cp-date-picker-conflict" class="admin-flash admin-flash--warning cp-date-picker-conflict" style="display:none;" role="alert"></div>
+          <div id="cp-date-picker-conflict" class="admin-flash admin-flash--warning cp-date-picker-conflict admin-flash--js-hidden" role="alert"></div>
           <div id="cp-date-picker-calendar" class="cp-date-picker-calendar"></div>
         </div>
         <div class="cp-modal-footer">
@@ -657,16 +657,16 @@
       function checkScheduleDates() {
         if (!start || !end || !warn) return true;
         if (!start.value || !end.value) {
-          warn.style.display = 'none';
+          warn.classList.add('admin-flash--js-hidden');
           warn.textContent = '';
           return true;
         }
         if (start.value > end.value) {
           warn.textContent = 'The start date is after the end date. Choose an end date on or after the start date (same day is fine), then save.';
-          warn.style.display = 'block';
+          warn.classList.remove('admin-flash--js-hidden');
           return false;
         }
-        warn.style.display = 'none';
+        warn.classList.add('admin-flash--js-hidden');
         warn.textContent = '';
         return true;
       }
@@ -781,11 +781,11 @@
 
         var conflict = rangeOverlapsBusy(selection.start, selection.end);
         if (conflict) {
-          conflictBox.style.display = 'block';
+          conflictBox.classList.remove('admin-flash--js-hidden');
           conflictBox.innerHTML = 'This range overlaps <strong>' +
             (conflict.title || 'another project') + '</strong>';
         } else {
-          conflictBox.style.display = 'none';
+          conflictBox.classList.add('admin-flash--js-hidden');
           conflictBox.textContent = '';
         }
       }

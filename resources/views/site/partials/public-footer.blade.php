@@ -31,16 +31,16 @@
                 </p>
                 <div class="footer-social-icons">
 
-                  <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif>
-                    <i class="fa fa-facebook"></i>
+                  <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Facebook">
+                    <i class="fa fa-facebook" aria-hidden="true"></i>
                   </a>
 
-                  <a href="{{ $socialInstagramUrl }}"@if (str_starts_with($socialInstagramUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif>
-                    <i class="fa fa-instagram"></i>
+                  <a href="{{ $socialInstagramUrl }}"@if (str_starts_with($socialInstagramUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Instagram">
+                    <i class="fa fa-instagram" aria-hidden="true"></i>
                   </a>
 
-                  <a href="{{ $socialWhatsappUrl }}"@if (str_starts_with($socialWhatsappUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif title="WhatsApp">
-                    <i class="fa fa-whatsapp"></i>
+                  <a href="{{ $socialWhatsappUrl }}"@if (str_starts_with($socialWhatsappUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="WhatsApp">
+                    <i class="fa fa-whatsapp" aria-hidden="true"></i>
                   </a>
 
                 </div>

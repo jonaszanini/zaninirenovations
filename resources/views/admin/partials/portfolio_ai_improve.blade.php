@@ -6,7 +6,7 @@
 <div class="admin-portfolio-ai-improve" id="portfolio-ai-improve">
   <div class="admin-form-group aim-prompt-group">
     <span class="admin-form-group-label">AI photo enhancement</span>
-    <p class="admin-form-hint">Pick and check Google Photos below (or choose local files), then click Apply. Gemini uses the <strong>Latest projects photo prompt improvement</strong> instruction from Tools → AI Instructions. Results are converted to WebP at {{ $portfolioWebp['quality'] }}% quality, max {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each.@if (!empty($stashDraftHint)) {{ $stashDraftHint }}@else Improved photos are added to the Photos field above; Google picks are cleared so they are not imported twice.@endif</p>
+    <p class="admin-form-help">Pick and check Google Photos below (or choose local files), then click Apply. Gemini uses the <strong>Latest projects photo prompt improvement</strong> instruction from Tools → AI Instructions. Results are converted to WebP at {{ $portfolioWebp['quality'] }}% quality, max {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each.@if (!empty($stashDraftHint)) {{ $stashDraftHint }}@else Improved photos are added to the Photos field above; Google picks are cleared so they are not imported twice.@endif</p>
   </div>
 
   <div class="nb2-generate-row">

@@ -11,22 +11,22 @@
         <label for="name">Name</label>
         <input type="text" id="name" name="name" value="{{ old('name', $category->name) }}" required maxlength="120">
         @error('name')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
         <label for="slug">Slug</label>
         <input type="text" id="slug" name="slug" value="{{ old('slug', $category->slug) }}" required maxlength="80" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers, and hyphens only">
-        <p class="admin-form-hint">Used internally. Change only if you know you need a new identifier.</p>
+        <p class="admin-form-help">Used internally. Change only if you know you need a new identifier.</p>
         @error('slug')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
         <label for="sort_order">Sort order</label>
         <input type="number" id="sort_order" name="sort_order" value="{{ old('sort_order', $category->sort_order) }}" min="0" max="32767">
         @error('sort_order')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-actions">

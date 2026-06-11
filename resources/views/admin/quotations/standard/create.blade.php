@@ -117,7 +117,7 @@
   </div>
 
   @if ($returnToProject && $projectForReturn)
-    <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
+    <div class="admin-flash admin-flash--info">
       Editing this standard quotation in the context of project
       <a href="{{ route('admin.client-projects.show', $projectForReturn) }}#quotation">
         {{ $projectForReturn->name }}
@@ -260,7 +260,7 @@
       {{-- Materials ------------------------------------------------ --}}
       <div class="admin-card sq-panel">
         <div class="sq-panel-head">
-          <h3 style="margin:0;">Materials</h3>
+          <h3 class="cp-form-help-flush">Materials</h3>
         </div>
         <p class="admin-form-help">By default, unit price is <strong>before HST</strong> and <strong>Pre-tax + HST</strong> adds 13% on the line. Check <strong>HST-incl. price</strong> when the unit price already includes HST (subtotal is back-calculated).</p>
 
@@ -440,7 +440,7 @@
 
         <div class="admin-form-group sq-labour-fixed-block">
           <input type="hidden" name="labour_use_fixed" value="0">
-          <label class="admin-checkbox sq-checkbox-label" style="margin-bottom:10px;">
+          <label class="admin-checkbox sq-checkbox-label cp-geometry-hint">
             <input type="checkbox" name="labour_use_fixed" value="1" id="sq-labour-use-fixed" class="admin-checkbox__input sq-labour-use-fixed-cb" @checked($labourUseFixed)>
             <span class="admin-checkbox__mark" aria-hidden="true"></span>
             <span class="admin-checkbox__text"><strong>Flat labour fee</strong> (skip rate &amp; hours)</span>
@@ -449,7 +449,7 @@
             <label for="sq-labour-fixed-amount">Amount (CAD)</label>
             <input type="text" inputmode="decimal" autocomplete="off" id="sq-labour-fixed-amount" name="labour_fixed_amount"
                    class="admin-input cp-money-input" placeholder="0.00" value="{{ $labourFixedAmount }}">
-            <div style="margin-top:10px;">
+            <div class="cp-form-group-spaced">
               <input type="hidden" name="labour_fixed_hst_included" value="0">
               <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label" style="display:inline-flex;">
                 <input type="checkbox" name="labour_fixed_hst_included" value="1" id="sq-labour-fixed-hst-inc" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
@@ -555,7 +555,7 @@
           </div>
         </section>
 
-        <div class="sq-grand-row sq-grand-row--commute" id="sq-g-commute-row" style="display:none;">
+        <div class="sq-grand-row sq-grand-row--commute is-hidden" id="sq-g-commute-row" >
           <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
           <span id="sq-g-commute">CA$0.00</span>
         </div>
@@ -577,8 +577,8 @@
   @if ($isEdit && !$quotation->project)
     @php $linkable = $linkableProjects ?? collect(); @endphp
     <div class="admin-card fq-link-project-card">
-      <h4 style="margin:0 0 6px;">Connect to a project</h4>
-      <p class="admin-form-help" style="margin:0 0 12px;">
+      <h4 class="cp-heading-md">Connect to a project</h4>
+      <p class="admin-form-help cp-form-help-spaced">
         Adds the <strong>pre-HST</strong> amounts to the project's <strong>Quotation</strong>. The project quotation's "Apply HST" toggle will then add HST to the taxable portion (no double taxation). If some materials are HST-exempt, two lines are added — one taxable, one exempt.
       </p>
 
@@ -597,7 +597,7 @@
           @if ($linkable->isNotEmpty())
             <form method="post" action="{{ route('admin.quotations.standard.link', $quotation) }}" class="fq-link-existing-form" id="sq-link-existing-form">
               @csrf
-              <div class="admin-form-group" style="margin-bottom:10px;">
+              <div class="admin-form-group cp-geometry-hint">
                 <label for="sq-project-filter">Search projects</label>
                 <input type="search" id="sq-project-filter" class="admin-input" placeholder="Type client or project name…" autocomplete="off">
               </div>
@@ -619,7 +619,7 @@
               </div>
             </form>
           @else
-            <p class="admin-form-help" style="margin:0;">No active projects to link.</p>
+            <p class="admin-form-help cp-form-help-flush">No active projects to link.</p>
           @endif
         </div>
 
@@ -627,7 +627,7 @@
 
         <div class="fq-link-col fq-link-col--stack">
           <h5><i class="fa fa-plus-circle"></i> New project</h5>
-          <p class="admin-form-help" style="margin:0 0 12px;">
+          <p class="admin-form-help cp-form-help-spaced">
             Creates a <strong>fixed price</strong> project (status: Visit scheduled). Client name required. No client email is sent from here.
           </p>
           <form method="post" action="{{ route('admin.quotations.standard.create-project', $quotation) }}" class="fq-create-project-form"
@@ -975,7 +975,7 @@
     gLab.textContent = money(lab);
     if (gLabHst) gLabHst.textContent = money(labHst);
     if (gLabTot) gLabTot.textContent = money(labWithHst);
-    if (gCommuteRow) gCommuteRow.style.display = lastCommuteAmount > 0 ? '' : 'none';
+    if (gCommuteRow) gCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount > 0));
     if (gCommute) gCommute.textContent = money(lastCommuteAmount);
     gGrand.textContent = money(withSumWithCont + labWithHst + lastCommuteAmount);
 

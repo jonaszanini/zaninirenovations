@@ -51,7 +51,7 @@
     </div>
 
     <div class="cp-contract-editor-heading">
-      <h3 style="margin:0;">Contract editor</h3>
+      <h3 class="cp-form-help-flush">Contract editor</h3>
       <p class="admin-form-help" style="margin:4px 0 0;">
         Paste from Word or Google Docs and the formatting will be preserved.
         Use the toolbar for headings, lists, tables and more. The contract

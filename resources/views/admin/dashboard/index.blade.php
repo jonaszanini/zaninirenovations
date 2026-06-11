@@ -17,12 +17,10 @@
   <div class="dash-page">
     <div class="dash-toolbar">
       <div>
-        <p class="dash-toolbar-meta" style="margin:0 0 4px;">
-          Snapshot for {{ \App\Support\EasternStandardTimeDisplay::formatDateTimeMedium($d['generated_at']) }}
-        </p>
-        <strong style="font-size:1.05rem;">Business overview</strong>
+        <p class="dash-toolbar-meta">Snapshot for {{ \App\Support\EasternStandardTimeDisplay::formatDateTimeMedium($d['generated_at']) }}</p>
+        <strong class="dash-toolbar-title">Business overview</strong>
       </div>
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+      <div class="dash-toolbar-actions">
         <a href="{{ route('admin.dashboard', ['refresh' => 1]) }}" class="admin-btn admin-btn--secondary admin-btn--sm" title="Bypass cache and recompute figures">
           <i class="fa fa-refresh" aria-hidden="true"></i> Refresh data
         </a>
@@ -40,7 +38,7 @@
     @endif
 
     {{-- Summary cards --}}
-    <div class="dash-grid dash-grid--cards" style="margin-bottom:1.25rem;">
+    <div class="dash-grid dash-grid--cards dash-grid--spaced">
       <div class="dash-card dash-card--stat" title="Projects not completed or rejected, with contract total where set.">
         <span class="dash-stat-label">Active projects <span class="dash-tip" title="Excludes completed & rejected">ⓘ</span></span>
         <span class="dash-stat-value">{{ $c['active_projects_count'] }}</span>
@@ -118,11 +116,11 @@
         <h2 class="dash-section-title">Quick actions</h2>
         <div class="dash-quick-actions">
           @foreach ($d['quick_actions'] as $action)
-            <a class="dash-action-btn dash-action-btn--{{ $action['variant'] }}" href="{{ route($action['route'], $action['query'] ?? []) }}">
+            <a class="admin-btn admin-btn--{{ $action['variant'] === 'primary' ? 'primary' : 'secondary' }}" href="{{ route($action['route'], $action['query'] ?? []) }}">
               <i class="fa {{ $action['icon'] }}" aria-hidden="true"></i> {{ $action['label'] }}
             </a>
           @endforeach
-          <a class="dash-action-btn dash-action-btn--secondary" href="{{ route('admin.client-projects.index') }}#invoice" title="Open a project, then use the Invoices section">
+          <a class="admin-btn admin-btn--secondary" href="{{ route('admin.client-projects.index') }}#invoice" title="Open a project, then use the Invoices section">
             <i class="fa fa-file-text-o" aria-hidden="true"></i> Create / send invoice
           </a>
         </div>

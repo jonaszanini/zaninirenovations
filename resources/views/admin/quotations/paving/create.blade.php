@@ -721,7 +721,7 @@
                     </select>
                     <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
                   </div>
-                  <div class="admin-form-group" style="margin-top:10px;">
+                  <div class="admin-form-group cp-form-group-spaced">
                     <label>Line description (optional)</label>
                     <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
                   </div>
@@ -771,7 +771,7 @@
           </div>
         </div>
         <div class="pq-summary-card">
-          <h4 style="margin:0 0 12px;">Live summary</h4>
+          <h4 class="cp-form-help-spaced">Live summary</h4>
           <div id="pq-live-root">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>
@@ -982,8 +982,8 @@
           '</div>';
       }
       function row(label, value, cls, valueCls) {
-        var valueClass = valueCls ? ' class="' + valueCls + '"' : '';
-        return '<div class="pq-row' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><strong' + valueClass + '>' + value + '</strong></div>';
+        var valueClass = valueCls ? ' class="' + valueCls + ' pq-row' + (cls ? ' ' + cls : '') + '"' : '';
+        return '<div ><span>' + label + '</span><strong' + valueClass + '>' + value + '</strong></div>';
       }
       function render(c) {
         if (!c || !c.summary) return;

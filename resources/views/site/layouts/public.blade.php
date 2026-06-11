@@ -70,6 +70,8 @@
   {{-- Cache-bust styles.css so every push to prod is picked up by phones,
        browsers and CDNs that would otherwise serve a stale copy. The query
        string changes whenever the file on disk is modified. --}}
+  <link rel="stylesheet" href="{{ url('css/venobox.css') }}" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="{{ url('css/venobox.css') }}"></noscript>
   <link rel="stylesheet" href="{{ url('css/styles.css') }}?v={{ @filemtime(public_path('css/styles.css')) ?: time() }}" type="text/css">
   @stack('styles')
 </head>

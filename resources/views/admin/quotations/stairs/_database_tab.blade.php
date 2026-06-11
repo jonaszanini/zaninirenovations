@@ -4,7 +4,7 @@
 @endphp
 <div class="pq-db-wrap admin-card">
   @unless ($hideDatabaseHeading ?? false)
-  <h3 style="margin:0 0 12px;">Stairs price database</h3>
+  <h3 class="cp-form-help-spaced">Stairs price database</h3>
   @endunless
   <p class="admin-form-help">Set per-step rates (before HST). Carpet removal, stain, and clear coat are global — one price for all materials. Other fields are per material type.</p>
 
@@ -34,7 +34,7 @@
       <p class="admin-form-help" style="margin:0 0 14px;">These images appear when quoting <strong>Vinyl without nosing</strong> (materials where nosing is an add-on). Same image format as material photos.</p>
       <div class="pq-form-grid">
         @foreach (\App\Models\StairsMaterialType::nosingChoiceLabels() as $nk => $nLabel)
-          <div class="admin-form-group" style="margin-bottom:0;">
+          <div class="admin-form-group cp-label-flush">
             <label>{{ $nLabel }}</label>
             @if ($settings->nosingOptionPhotoUrl($nk))
               <div style="margin:6px 0;"><img src="{{ $settings->nosingOptionPhotoUrl($nk) }}" alt="" style="max-height:100px;border-radius:6px;border:1px solid #e2e8f0;"></div>

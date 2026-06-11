@@ -94,7 +94,7 @@
 
     <div class="navbar navbar-default">
       <div class="container clearfix">
-        <div class="navbar-collapse collapse pull-left">
+        <div class="navbar-collapse collapse pull-left" id="main-nav-collapse">
           <ul class="nav navbar-nav">
             <li>
               <a href="{{ $home }}#home" class="nav_menu @if (! $isWarranty) link-active @endif" title="Home">Home</a>
@@ -120,7 +120,8 @@
           </ul>
         </div>
         <div class="navbar-header pull-right">
-          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#main-nav-collapse" aria-controls="main-nav-collapse" aria-expanded="false" aria-label="Open menu">
+            <span class="sr-only">Menu</span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
@@ -128,14 +129,14 @@
           <div class="navbar-contact">
 
             <div class="top-bar-social margin-top-16">
-              <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif>
-                <i class="fa fa-facebook"></i>
+              <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Facebook">
+                <i class="fa fa-facebook" aria-hidden="true"></i>
               </a>
-              <a href="{{ $socialInstagramUrl }}"@if (str_starts_with($socialInstagramUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif>
-                <i class="fa fa-instagram"></i>
+              <a href="{{ $socialInstagramUrl }}"@if (str_starts_with($socialInstagramUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Instagram">
+                <i class="fa fa-instagram" aria-hidden="true"></i>
               </a>
-              <a href="{{ $socialWhatsappUrl }}"@if (str_starts_with($socialWhatsappUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif title="WhatsApp">
-                <i class="fa fa-whatsapp"></i>
+              <a href="{{ $socialWhatsappUrl }}"@if (str_starts_with($socialWhatsappUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="WhatsApp">
+                <i class="fa fa-whatsapp" aria-hidden="true"></i>
               </a>
             </div>
           </div>
@@ -246,8 +247,22 @@
     var BREAKPOINT = 991;
     function isMobile() { return window.innerWidth <= BREAKPOINT; }
 
-    var $collapse = $('.main-header-2 .navbar-default .navbar-collapse').first();
+    var $collapse = $('#main-nav-collapse');
+    var $toggle = $('.main-header-2 .navbar-toggle');
     if (!$collapse.length) return;
+
+    $collapse.on('shown.bs.collapse', function () {
+      $toggle.attr('aria-expanded', 'true');
+    });
+    $collapse.on('hidden.bs.collapse', function () {
+      $toggle.attr('aria-expanded', 'false');
+    });
+
+    $('#home-faq-accordion').on('shown.bs.collapse hidden.bs.collapse', function (e) {
+      var $panel = $(e.target);
+      var $trigger = $('a[href="#' + e.target.id + '"]');
+      $trigger.attr('aria-expanded', e.type === 'shown' ? 'true' : 'false');
+    });
 
     $('.main-header-2 a.nav_menu').on('click', function () {
       if (!isMobile()) return;

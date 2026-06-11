@@ -9,7 +9,7 @@
       <span>Writing with Gemini…</span>
     </div>
   </div>
-  <p class="admin-form-hint">Write a rough description first. AI uses your text plus up to 8 project photos (uploads, checked Google Photos{{ isset($hasExistingPhotos) && $hasExistingPhotos ? ', or saved photos on edit' : '' }}) to draft two portfolio options.</p>
+  <p class="admin-form-help">Write a rough description first. AI uses your text plus up to 8 project photos (uploads, checked Google Photos{{ isset($hasExistingPhotos) && $hasExistingPhotos ? ', or saved photos on edit' : '' }}) to draft two portfolio options.</p>
   <div id="portfolio-desc-ai-options" class="portfolio-description-ai__options" hidden>
     <span class="portfolio-description-ai__options-label">Switch version:</span>
     <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-portfolio-desc-option="1">Option 1 · Craftsmanship</button>

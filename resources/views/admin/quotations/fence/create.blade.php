@@ -309,7 +309,7 @@
       <strong>Heads up:</strong> these materials have no price set yet — the calculator
       will treat them as $0.00:
       {{ implode(', ', $zeroPricedMaterials) }}.
-      <a href="{{ route('admin.quotations.fence.config') }}" style="text-decoration:underline;">
+      <a href="{{ route('admin.quotations.fence.config') }}" class="admin-text-link">
         Open configuration
       </a>.
     </div>
@@ -318,7 +318,7 @@
   @if ($errors->any())
     <div class="admin-flash admin-flash--error">
       <strong>Please fix the following:</strong>
-      <ul style="margin:6px 0 0 18px;">
+      <ul class="cp-list-indented">
         @foreach ($errors->all() as $error)
           <li>{{ $error }}</li>
         @endforeach
@@ -358,8 +358,8 @@
 
         {{-- Labour rates (saved per quotation) ----------------------- --}}
         <div class="admin-form-section fq-quote-labour-section">
-          <h4 style="margin:0 0 4px;font-size:1rem;">Labour rates for this quotation</h4>
-          <p class="admin-form-help" style="margin:0 0 12px;">
+          <h4 class="cp-heading-sm">Labour rates for this quotation</h4>
+          <p class="admin-form-help cp-form-help-spaced">
             Stored with this quote{{ $isEdit ? '' : ' (prefilled from your last global defaults)' }}.
             Change them here to adjust labour for this project only.
           </p>
@@ -426,11 +426,11 @@
         </div>
 
         {{-- Sides ---------------------------------------------------- --}}
-        <div class="admin-form-group" style="margin-top:10px;">
+        <div class="admin-form-group cp-form-group-spaced">
           <div class="fq-sides-header">
             <div>
-              <label style="margin-bottom:0;">Sides (up to 4)</label>
-              <p class="admin-form-help" style="margin:2px 0 0;">Enter each side's length in feet.</p>
+              <label class="cp-label-flush">Sides (up to 4)</label>
+              <p class="admin-form-help cp-form-help-tight-top">Enter each side's length in feet.</p>
             </div>
             <div class="fq-sides-actions">
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-add-side">
@@ -454,8 +454,8 @@
           $linkable = $linkableProjects ?? collect();
         @endphp
         <div class="admin-card fq-link-project-card">
-          <h4 style="margin:0 0 6px;">Connect to a project</h4>
-          <p class="admin-form-help" style="margin:0;">
+          <h4 class="cp-heading-md">Connect to a project</h4>
+          <p class="admin-form-help cp-form-help-flush">
             Add this fence estimate as a line on a project <strong>Quotation</strong> (pre-tax materials + labour — the project quotation adds HST).
           </p>
 
@@ -466,7 +466,7 @@
                 <form method="post" action="{{ route('admin.quotations.fence.link', $quotation) }}" class="fq-link-existing-form">
                   @csrf
                   <div class="fq-link-existing-row">
-                    <div class="admin-form-group" style="margin:0;">
+                    <div class="admin-form-group cp-form-group-flush">
                       <label for="fq-link-project">Project</label>
                       <select id="fq-link-project" name="client_project_id" class="admin-input" required>
                         <option value="" disabled selected>Choose a project…</option>
@@ -481,7 +481,7 @@
                   </div>
                 </form>
               @else
-                <p class="admin-form-help" style="margin:0;">No active projects to link. Create a new one below, or finish a rejected/completed project first.</p>
+                <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below, or finish a rejected/completed project first.</p>
               @endif
             </div>
 
@@ -489,7 +489,7 @@
 
             <div class="fq-link-col">
               <h5><i class="fa fa-plus-circle"></i> New project</h5>
-              <p class="admin-form-help" style="margin:0 0 12px;">
+              <p class="admin-form-help cp-form-help-spaced">
                 Always <strong>fixed price</strong>. Only client name is required. No automated client email is sent from here.
               </p>
               <form method="post"
@@ -539,12 +539,12 @@
 
     {{-- ====================== RIGHT: BREAKDOWN ==================== --}}
     <aside class="admin-card fq-breakdown-card">
-      <h3 style="margin:0 0 6px;">Live breakdown</h3>
-      <p class="admin-form-help" style="margin:0 0 10px;">
+      <h3 class="cp-heading-md">Live breakdown</h3>
+      <p class="admin-form-help cp-breakdown-intro">
         Preview updates as you type. <span class="fq-badge" id="fq-status-badge">Calculating…</span>
       </p>
 
-      <div id="fq-geometry" class="admin-form-help" style="margin-bottom:10px;"></div>
+      <div id="fq-geometry" class="admin-form-help cp-geometry-hint"></div>
 
       <div class="admin-table-scroll">
         <table class="fq-materials-preview" id="fq-materials">
@@ -581,7 +581,7 @@
           <span>HST on labour (13%)</span>
           <span id="fq-t-labour-hst">CA$0.00</span>
         </div>
-        <div class="fq-totals-row" id="fq-t-commute-row" style="display:none;">
+        <div class="fq-totals-row is-hidden" id="fq-t-commute-row" >
           <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
           <span id="fq-t-commute">CA$0.00</span>
         </div>
@@ -642,7 +642,7 @@
       card.className = 'fq-side-card';
       card.innerHTML = [
         '<h5>Side ' + (i + 1) + '</h5>',
-        '<div class="admin-form-group" style="margin:0;">',
+        '<div class="admin-form-group cp-form-group-flush">',
         '  <label for="fq-side-' + i + '">Length (feet)</label>',
         '  <input id="fq-side-' + i + '" type="number" min="0.5" step="0.1"',
         '         name="sides[' + i + '][length_ft]"',
@@ -827,7 +827,7 @@
     tLabour.textContent = money(t.labour_subtotal);
     tTotal.textContent = money(t.total);
     tLabourHst.textContent = money(t.labour_hst);
-    if (tCommuteRow) tCommuteRow.style.display = lastCommuteAmount > 0 ? '' : 'none';
+    if (tCommuteRow) tCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount > 0));
     if (tCommute) tCommute.textContent = money(lastCommuteAmount);
     tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount);
     if (t.labour_rate_per_ft) {

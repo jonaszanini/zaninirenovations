@@ -13,8 +13,8 @@
   gap: 12px;
   margin-bottom: 16px;
   padding: 14px 16px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: var(--admin-surface-hover);
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
   align-items: end;
 }
@@ -22,7 +22,7 @@
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: var(--admin-muted);
   margin-bottom: 4px;
 }
 .cp-filters input,
@@ -30,9 +30,9 @@
   width: 100%;
   padding: 8px 10px;
   font-size: 14px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--admin-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--admin-surface);
 }
 .cp-filters .cp-filter--actions {
   display: flex;
@@ -118,6 +118,93 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-badge--lg {
   padding: 8px 14px;
   font-size: 14px;
+}
+.cp-badge--ml {
+  margin-left: 8px;
+}
+.cp-badge--sent {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1e40af;
+}
+.cp-badge--paid {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+.cp-badge--draft {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+.cp-badge--hourly {
+  background: #ecfdf5;
+  color: #15803d;
+}
+.cp-badge--manual {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+.cp-badge--materials {
+  background: #ecfdf5;
+  color: #047857;
+}
+.cp-heading-reset {
+  margin: 0;
+}
+.cp-section-spaced {
+  margin-top: 18px;
+}
+.cp-text-right {
+  text-align: right;
+}
+.cp-input-amount {
+  max-width: 110px;
+  text-align: right;
+}
+.cp-input-note {
+  max-width: 200px;
+  text-align: right;
+}
+.cp-invoice-help-block {
+  display: block;
+  margin-top: 22px;
+  line-height: 1.5;
+  color: var(--admin-text);
+}
+.cp-discount-field-value {
+  text-align: right;
+}
+.cp-heading-sm {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.cp-heading-md {
+  margin: 0 0 6px;
+}
+.cp-form-help-flush {
+  margin: 0;
+}
+.cp-form-help-spaced {
+  margin: 0 0 12px;
+}
+.cp-form-help-tight-top {
+  margin: 2px 0 0;
+}
+.cp-form-group-flush {
+  margin: 0;
+}
+.cp-form-group-spaced {
+  margin-top: 10px;
+}
+.cp-list-indented {
+  margin: 6px 0 0 18px;
+}
+.cp-breakdown-intro {
+  margin: 0 0 10px;
+}
+.cp-geometry-hint {
+  margin-bottom: 10px;
+}
+.cp-label-flush {
+  margin-bottom: 0;
 }
 .cp-subtle {
   color: #6b7280;

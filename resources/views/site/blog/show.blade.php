@@ -64,9 +64,9 @@
           <div class="blog-share clearfix">
             <span>Share:</span>
             @php $shareUrl = urlencode($post->publicUrl()); $shareTitle = urlencode($post->title); @endphp
-            <a href="https://www.facebook.com/sharer/sharer.php?u={{ $shareUrl }}" target="_blank" rel="noopener noreferrer" class="fa fa-facebook"></a>
-            <a href="https://twitter.com/intent/tweet?url={{ $shareUrl }}&text={{ $shareTitle }}" target="_blank" rel="noopener noreferrer" class="fa fa-twitter"></a>
-            <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ $shareUrl }}" target="_blank" rel="noopener noreferrer" class="fa fa-linkedin"></a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ $shareUrl }}" target="_blank" rel="noopener noreferrer" class="fa fa-facebook" aria-label="Share on Facebook"></a>
+            <a href="https://twitter.com/intent/tweet?url={{ $shareUrl }}&text={{ $shareTitle }}" target="_blank" rel="noopener noreferrer" class="fa fa-twitter" aria-label="Share on X (Twitter)"></a>
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ $shareUrl }}" target="_blank" rel="noopener noreferrer" class="fa fa-linkedin" aria-label="Share on LinkedIn"></a>
           </div>
 
           @if ($prevPost || $nextPost)

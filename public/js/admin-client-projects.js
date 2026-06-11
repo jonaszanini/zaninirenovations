@@ -636,16 +636,16 @@
     function checkDates() {
       if (!start || !end || !warn) return true;
       if (!toggle.checked || !start.value || !end.value) {
-        warn.style.display = 'none';
+        warn.classList.add('admin-flash--js-hidden');
         warn.textContent = '';
         return true;
       }
       if (start.value > end.value) {
         warn.textContent = 'The start date is after the end date. Choose an end date on or after the start date (same day is fine), then save.';
-        warn.style.display = 'block';
+        warn.classList.remove('admin-flash--js-hidden');
         return false;
       }
-      warn.style.display = 'none';
+      warn.classList.add('admin-flash--js-hidden');
       warn.textContent = '';
       return true;
     }
@@ -655,7 +655,7 @@
         if (start) start.value = '';
         if (end) end.value = '';
         if (warn) {
-          warn.style.display = 'none';
+          warn.classList.add('admin-flash--js-hidden');
           warn.textContent = '';
         }
       }

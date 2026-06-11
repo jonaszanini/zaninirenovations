@@ -20,7 +20,7 @@
   <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;">
     <div>
       <h3 style="margin:0 0 0.25rem 0;">Quotations</h3>
-      <p class="admin-form-help" style="margin:0;">
+      <p class="admin-form-help cp-form-help-flush">
         Total of <strong>accepted</strong> quotations (excludes draft / sent / rejected):
         <strong>{{ \App\Models\ClientProject::formatMoney($acceptedGrand) }}</strong>
         @if ($quotationRows->isNotEmpty())
@@ -199,7 +199,7 @@
               @include('admin.client_projects._quotation_work_description', ['previewWorkDesc' => $previewWorkDesc])
 
               @if ($quotation->hasSubtotalOverrideActive())
-                <p class="admin-form-help" style="margin:0 0 10px;">
+                <p class="admin-form-help cp-breakdown-intro">
                   Subtotal below is overridden. Line items still reflect calculator totals (sum
                   {{ \App\Models\ClientProject::formatMoney($quotation->lineItemsSubtotal()) }}).
                 </p>
@@ -343,7 +343,7 @@
           @include('admin.client_projects._quotation_work_description', ['previewWorkDesc' => $previewWorkDesc])
 
           @if ($quotation->hasSubtotalOverrideActive())
-            <p class="admin-form-help" style="margin:0 0 10px;">
+            <p class="admin-form-help cp-breakdown-intro">
               Subtotal below is overridden. Line items still reflect calculator totals (sum
               {{ \App\Models\ClientProject::formatMoney($quotation->lineItemsSubtotal()) }}).
             </p>

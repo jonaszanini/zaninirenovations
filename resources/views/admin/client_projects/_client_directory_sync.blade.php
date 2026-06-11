@@ -1,5 +1,5 @@
 @if (!empty($clientFieldsLocked) && isset($project))
-  <div class="admin-flash admin-flash--info" style="margin-bottom:14px;" role="status">
+  <div class="admin-flash admin-flash--info" role="status">
     <i class="fa fa-lock" aria-hidden="true"></i>
     <strong>Client information as of completion</strong>
     @if ($project->clientSnapshotCapturedLabel())

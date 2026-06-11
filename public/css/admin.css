@@ -329,6 +329,18 @@ body.admin-body {
   border: 1px solid rgba(249, 115, 22, 0.35);
 }
 
+.admin-flash--danger {
+  background: var(--admin-danger-soft);
+  color: #8b1c1c;
+  border: 1px solid rgba(198, 40, 40, 0.35);
+}
+
+.admin-flash--info {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border: 1px solid var(--admin-primary-ring);
+}
+
 .admin-code {
   font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
   font-size: 0.85em;
@@ -395,6 +407,45 @@ body.admin-body {
   padding: 0.35rem 0.85rem;
   font-size: 0.8rem;
   min-height: 38px;
+}
+
+.admin-btn--lg {
+  padding: 0.7rem 1.5rem;
+  font-size: 1rem;
+  min-height: 48px;
+}
+
+.admin-btn--secondary {
+  background: var(--admin-surface);
+  color: var(--admin-primary);
+  border: 1px solid var(--admin-border-strong);
+}
+
+.admin-btn--secondary:hover {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+
+.admin-btn--gemini {
+  background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #d96570 100%);
+  color: #fff;
+  border: none;
+}
+
+.admin-btn--gemini:hover:not(:disabled) {
+  filter: brightness(1.05);
+  color: #fff;
+}
+
+.admin-btn--gemini:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-btn--gemini .admin-btn__icon {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
 .admin-btn:disabled {
@@ -555,6 +606,23 @@ body.admin-body {
   max-width: 720px;
 }
 
+.admin-card--wide {
+  max-width: 960px;
+}
+
+.admin-card--stacked {
+  margin-bottom: 1rem;
+}
+
+.admin-flash--js-hidden {
+  display: none !important;
+}
+
+.admin-flash--compact-top {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
 @media (min-width: 768px) {
   .admin-card {
     padding: 1.75rem 2rem;
@@ -660,16 +728,6 @@ select.is-invalid:focus,
 textarea.is-invalid:focus {
   border-color: #dc2626;
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
-}
-
-/* Inline validation message emitted by @error directives. Kept
-   small and red but not shouty — matches the admin UI's overall
-   tone. */
-.admin-form-error {
-  margin: 6px 0 0;
-  color: #dc2626;
-  font-size: 0.85rem;
-  line-height: 1.4;
 }
 
 /* Small helper copy under labels and in cards */
@@ -1045,9 +1103,19 @@ details[open] > summary.admin-chevron-summary::after {
 }
 
 .admin-form-hint {
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   color: var(--admin-muted);
-  margin-top: 0.35rem;
+  margin: 6px 0 0;
+  line-height: 1.45;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.cp-required,
+.admin-required {
+  color: var(--admin-danger);
 }
 
 /* Portfolio index — card grid */
@@ -1165,10 +1233,20 @@ details[open] > summary.admin-chevron-summary::after {
   margin-top: 1.5rem;
 }
 
-.admin-error {
-  color: var(--admin-danger);
+.admin-error,
+.admin-form-error {
+  margin: 6px 0 0;
+  color: #dc2626;
   font-size: 0.85rem;
-  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
+.admin-form-error--block {
+  margin: 0 0 12px;
+}
+
+.admin-form-help--tight {
+  margin: 4px 0 0;
 }
 
 /* Photo grid (edit) */

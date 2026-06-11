@@ -79,17 +79,17 @@
     </div>
 
     <div class="cp-contract-editor-heading">
-      <h3 style="margin:0;">
+      <h3 class="cp-heading-reset">
         Invoice editor — <span class="cp-quotation-number">{{ $invoice->invoice_number }}</span>
         @if ($invoice->isSent())
-          <span class="cp-badge" style="background:#3b82f620;color:#1e40af;margin-left:8px;">Sent</span>
+          <span class="cp-badge cp-badge--sent cp-badge--ml">Sent</span>
         @elseif ($invoice->isPaid())
-          <span class="cp-badge" style="background:#22c55e20;color:#15803d;margin-left:8px;">Paid</span>
+          <span class="cp-badge cp-badge--paid cp-badge--ml">Paid</span>
         @else
-          <span class="cp-badge" style="background:#f59e0b20;color:#b45309;margin-left:8px;">Draft</span>
+          <span class="cp-badge cp-badge--draft cp-badge--ml">Draft</span>
         @endif
       </h3>
-      <p class="admin-form-help" style="margin:4px 0 0;">
+      <p class="admin-form-help admin-form-help--tight">
         @if ($isFromTimeEntries)
           Hourly invoice — prefilled from {{ $invoice->timeEntries->count() }} unbilled time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}.
           You can edit the descriptions and amounts freely before sending. Deleting this draft will release the entries back to "unbilled".
@@ -111,7 +111,7 @@
       @method('PUT')
 
       @error('items')
-        <p class="admin-form-error" style="margin:0 0 12px;">{{ $message }}</p>
+        <p class="admin-form-error admin-form-error--block">{{ $message }}</p>
       @enderror
 
       <input type="hidden" name="intent" value="draft" id="cp-invoice-intent">
@@ -124,14 +124,14 @@
           </label>
           @if ($isFromTimeEntries)
             <div class="cp-invoice-locked-field">
-              <span class="cp-badge" style="background:#ecfdf5;color:#15803d;">
+              <span class="cp-badge cp-badge--hourly">
                 <i class="fa fa-clock-o"></i>
                 Hourly — {{ $invoice->timeEntries->count() }} time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}
               </span>
             </div>
           @elseif ($isManual)
             <div class="cp-invoice-locked-field">
-              <span class="cp-badge" style="background:#e5e7eb;color:#4b5563;">Manual — no installment</span>
+              <span class="cp-badge cp-badge--manual">Manual — no installment</span>
             </div>
           @else
             <div class="cp-invoice-locked-field">
@@ -141,13 +141,13 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="cp-invoice-due">Due date <span style="color:#ef4444;">*</span></label>
+          <label for="cp-invoice-due">Due date <span class="cp-required">*</span></label>
           <input type="date"
                  id="cp-invoice-due"
                  name="due_on"
                  class="admin-input"
                  value="{{ $dueOn }}">
-          <p class="admin-form-help" style="margin:4px 0 0;">Required before the invoice can be sent to the client.</p>
+          <p class="admin-form-help admin-form-help--tight">Required before the invoice can be sent to the client.</p>
         </div>
       </div>
 
@@ -180,13 +180,13 @@
                      autocomplete="off"
                      placeholder="0.00"
                      value="{{ $manualTotal }}">
-              <p class="admin-form-help" style="margin:4px 0 0;">
+              <p class="admin-form-help admin-form-help--tight">
                 If you itemise the work below, the sum of the line items will be used instead.
               </p>
             </div>
           @else
             <div class="admin-form-group">
-                <span class="admin-form-help" style="display:block;margin-top:22px;line-height:1.5;color:#374151;">
+                <span class="admin-form-help cp-invoice-help-block">
                   Mark each line as Labour (pre-tax), <strong>Labour credit</strong> (pre-tax deduction — enter a positive amount), or Materials (<strong>amount includes HST</strong>). Invoice HST applies to net labour only — materials pass through tax-included.
                 </span>
             </div>
@@ -205,7 +205,7 @@
             <div class="cp-invoice-locked-total-subtotal">
               Subtotal: <strong>{{ \App\Models\ClientProject::formatMoney($lockedSubtotal) }}</strong>
             </div>
-            <div class="cp-invoice-locked-total-subtotal" id="cp-invoice-locked-hst-row" @if ($hstExempt) style="display:none;" @endif>
+            <div class="cp-invoice-locked-total-subtotal @if ($hstExempt) is-hidden @endif" id="cp-invoice-locked-hst-row">
               HST (from quotation share): <strong id="cp-invoice-locked-hst">{{ \App\Models\ClientProject::formatMoney($lockedHstDisplay) }}</strong>
             </div>
             <div class="cp-invoice-locked-total-grand">
@@ -217,7 +217,7 @@
       @endif
 
       {{-- Line items ------------------------------------------------- --}}
-      <div class="cp-quotation-items-card" style="margin-top:18px;">
+      <div class="cp-quotation-items-card cp-section-spaced">
         <div class="cp-quotation-items-header">
           <h4>Line items</h4>
         </div>
@@ -265,7 +265,7 @@
                 @if ($isHourlyManual)
                   <td class="col-line-kind">
                     @if (!empty($expenseId))
-                      <span class="cp-badge" style="background:#ecfdf5;color:#047857;white-space:nowrap;">Materials (expense)</span>
+                      <span class="cp-badge cp-badge--materials">Materials (expense)</span>
                       <input type="hidden" name="items[{{ $i }}][line_kind]" value="materials">
                       <input type="hidden" name="items[{{ $i }}][expense_id]" value="{{ (int) $expenseId }}">
                     @else
@@ -350,13 +350,12 @@
               </div>
               <div class="cp-quotation-totals-row cp-invoice-discount-field-row">
                 <span><label for="cp-invoice-discount-pct">Discount (%)</label></span>
-                <span style="text-align:right;">
+                <span class="cp-discount-field-value">
                   <input type="text"
                          inputmode="decimal"
                          name="discount_percent"
                          id="cp-invoice-discount-pct"
-                         class="admin-input"
-                         style="max-width:110px;text-align:right;"
+                         class="admin-input cp-input-amount"
                          value="{{ $discountPercent }}"
                          placeholder="0"
                          autocomplete="off">
@@ -364,15 +363,14 @@
               </div>
               <div class="cp-quotation-totals-row cp-invoice-discount-field-row">
                 <span><label for="cp-invoice-discount-amt">Discount (CAD)</label></span>
-                <span style="text-align:right;">
+                <span class="cp-discount-field-value">
                   <input type="text"
                          inputmode="decimal"
                          name="discount_amount"
                          id="cp-invoice-discount-amt"
-                         class="admin-input cp-money-input"
+                         class="admin-input cp-money-input cp-input-amount"
                          data-cp-money-entry="direct"
                          data-cp-money-hybrid="1"
-                         style="max-width:110px;text-align:right;"
                          value="{{ $discountAmount }}"
                          placeholder="0.00"
                          autocomplete="off">
@@ -380,12 +378,11 @@
               </div>
               <div class="cp-quotation-totals-row cp-invoice-discount-field-row">
                 <span><label for="cp-invoice-discount-comment">Discount note</label> <span class="admin-form-help">(optional, PDF)</span></span>
-                <span style="text-align:right;">
+                <span class="cp-discount-field-value">
                   <input type="text"
                          name="discount_comment"
                          id="cp-invoice-discount-comment"
-                         class="admin-input"
-                         style="max-width:200px;text-align:right;"
+                         class="admin-input cp-input-note"
                          maxlength="120"
                          value="{{ $discountComment }}"
                          placeholder="e.g. Material"
@@ -419,7 +416,7 @@
               <span id="cp-invoice-grand">CA$0.00</span>
             </div>
             @unless ($isManual)
-              <div class="cp-quotation-totals-row cp-invoice-plan-diff" id="cp-invoice-plan-diff" style="display:none;">
+              <div class="cp-quotation-totals-row cp-invoice-plan-diff is-hidden" id="cp-invoice-plan-diff">
                 <span>
                   <i class="fa fa-info-circle"></i>
                   Net subtotal differs from the Financials installment ({{ \App\Models\ClientProject::formatMoney($lockedSubtotal) }}) by <span id="cp-invoice-diff">—</span>.
@@ -572,7 +569,7 @@
       function syncLockedPanel() {
         if (!lockedTotalEl) return;
         var exempt = isExempt();
-        if (lockedHstRow) lockedHstRow.style.display = exempt ? 'none' : '';
+        if (lockedHstRow) lockedHstRow.classList.toggle('is-hidden', exempt);
         if (lockedHstEl && LOCKED_HST_BASE !== null) {
           lockedHstEl.textContent = formatMoney(exempt ? 0 : LOCKED_HST_BASE);
         }
@@ -690,10 +687,10 @@
           if (LOCKED_SUBTOTAL !== null && planDiffEl && diffEl) {
             var diff = Math.round((net - LOCKED_SUBTOTAL) * 100) / 100;
             if (Math.abs(diff) > 0.01) {
-              planDiffEl.style.display = '';
+              planDiffEl.classList.remove('is-hidden');
               diffEl.textContent = (diff > 0 ? '+' : '') + formatMoney(diff);
             } else {
-              planDiffEl.style.display = 'none';
+              planDiffEl.classList.add('is-hidden');
             }
           }
           return;

@@ -111,7 +111,7 @@
   </p>
 
   @if ($errors->any())
-    <div class="admin-flash admin-flash--danger" style="margin-bottom:16px;">
+    <div class="admin-flash admin-flash--danger">
       <strong>Could not save.</strong>
       <ul style="margin:8px 0 0 18px;padding:0;">
         @foreach ($errors->all() as $err)

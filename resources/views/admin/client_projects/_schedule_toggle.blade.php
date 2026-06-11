@@ -33,7 +33,7 @@
   class="cp-visit-expandable @if ($slowExpand) cp-visit-expandable--slow @endif @if ($expandOpen) is-open @endif"
   aria-hidden="{{ $expandOpen ? 'false' : 'true' }}">
   <div class="cp-visit-expandable__inner">
-    <div id="{{ $warningId }}" class="admin-flash admin-flash--warning cp-schedule-date-warning" style="display:none;margin-top:12px;margin-bottom:0;" role="alert"></div>
+    <div id="{{ $warningId }}" class="admin-flash admin-flash--warning cp-schedule-date-warning admin-flash--js-hidden admin-flash--compact-top" role="alert"></div>
     <div class="admin-form-grid-2 cp-schedule-dates">
       <div class="admin-form-group">
         <label for="{{ $startDateId }}">Start date</label>

@@ -23,7 +23,7 @@
     @method('PUT')
     <div class="fq-config-header">
       <div>
-        <h3 style="margin:0;">Materials catalogue</h3>
+        <h3 class="cp-form-help-flush">Materials catalogue</h3>
         <p class="admin-form-help" style="margin:4px 0 0;">
           Link each fence line item to a row in the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">materials catalog</a>.
           Prices and product details are read live from the linked material.
@@ -154,7 +154,7 @@
     @method('PUT')
     <div class="fq-config-header">
       <div>
-        <h3 style="margin:0;">Formula parameters</h3>
+        <h3 class="cp-form-help-flush">Formula parameters</h3>
         <p class="admin-form-help" style="margin:4px 0 0;">
           Structural assumptions used by the calculator. Per-height labour rates are set on each fence quotation.
         </p>

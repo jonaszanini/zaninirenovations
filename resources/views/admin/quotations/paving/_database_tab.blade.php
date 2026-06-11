@@ -13,7 +13,7 @@
 
   <div id="pq-db-panel-stones" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-stones">
     <div class="admin-card">
-      <h4 style="margin:0 0 12px;">Stone types</h4>
+      <h4 class="cp-form-help-spaced">Stone types</h4>
       <p class="admin-form-help">Used by the main and marble stone dropdowns. Length × width (in) ÷ 144 = sq ft per stone — use the fill button or enter sq ft manually.</p>
       <div class="admin-table-scroll">
         <div class="pq-db-stone-list" style="margin-top:12px;">
@@ -78,7 +78,7 @@
       </div>
       <form method="post" action="{{ route('admin.quotations.paving.database.stones.store') }}" class="admin-card pq-db-add-stone" style="margin-top:16px;padding:16px;border:1px dashed #cbd5e1;">
         @csrf
-        <h5 style="margin:0 0 10px;">Add stone type</h5>
+        <h5 class="cp-breakdown-intro">Add stone type</h5>
         <div class="pq-db-stone-grid pq-db-stone-grid--add">
           <input type="text" name="name" placeholder="Name" class="admin-input" required maxlength="120" aria-label="New stone name">
           <input type="url" name="product_url" placeholder="Product link (https://…)" class="admin-input" maxlength="500" aria-label="Product link">
@@ -144,7 +144,7 @@
 
   <div id="pq-db-panel-tiers" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-tiers" hidden>
     <div class="admin-card pq-db-tiers">
-      <h4 style="margin:0 0 12px;">Pricing engine — $/sq ft by area</h4>
+      <h4 class="cp-form-help-spaced">Pricing engine — $/sq ft by area</h4>
       <p class="admin-form-help">Interpolated linearly between rows (matches Excel reference table). Keep rows sorted by area.</p>
       <form method="post" action="{{ route('admin.quotations.paving.database.tiers.sync') }}">
         @csrf
@@ -174,7 +174,7 @@
             </tbody>
           </table>
         </div>
-        <p class="admin-form-help" style="margin-top:10px;">
+        <p class="admin-form-help cp-form-group-spaced">
           Use <strong>Add row</strong> for extra breakpoints, then save. Areas should stay sorted ascending for clearest interpolation.
         </p>
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" style="margin-top:12px;">

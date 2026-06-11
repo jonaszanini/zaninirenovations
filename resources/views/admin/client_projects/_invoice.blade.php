@@ -34,7 +34,7 @@
       @endif
     </p>
     <p class="admin-form-help" style="margin:8px 0 0;">PDFs use this legal name/address. Emails and SMS still use the client contact on file ({{ $project->client_name ?: '—' }}).</p>
-    <a href="{{ route('admin.client-projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm" style="margin-top:10px;">Edit project</a>
+    <a href="{{ route('admin.client-projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-form-group-spaced">Edit project</a>
   </div>
 @endif
 
@@ -255,7 +255,7 @@
     </div>
 
     @if ($installments->isEmpty())
-      <p class="admin-form-help" style="margin-top:10px;">
+      <p class="admin-form-help cp-form-group-spaced">
         <i class="fa fa-info-circle"></i>
         No payment plan has been saved yet. Add the total amount and installments on the
         <a href="#financials" data-cp-jump-tab="financials">Financials</a> tab first, then come back here to invoice each installment.
@@ -382,7 +382,7 @@
          ================================================================ --}}
     @if ($manualInvoices->isNotEmpty())
       <h4 style="margin:24px 0 6px;">Manual invoices</h4>
-      <p class="admin-form-help" style="margin:0 0 6px;">
+      <p class="admin-form-help cp-heading-md">
         <i class="fa fa-info-circle"></i>
         HST (13%) is added to the manual invoice subtotal once — these invoices are not tied to the quotation, so the breakdown below is the only HST applied.
       </p>
@@ -528,7 +528,7 @@
             <p class="admin-form-help" style="margin:0 0 8px;">
               This is the <strong>first paid invoice</strong> on this project. Optionally move the project to a new workflow step now.
             </p>
-            <div class="admin-form-group" style="margin-bottom:0;">
+            <div class="admin-form-group cp-label-flush">
               <label for="cp-mark-paid-project-status">Set project status to</label>
               <select id="cp-mark-paid-project-status" name="project_status" class="admin-input">
                 <option value="">Keep current — {{ $project->statusLabel() }}</option>

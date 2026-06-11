@@ -72,11 +72,11 @@
 
       <div class="blog-admin-ai-metadata-wrap">
         <button type="button"
-                class="blog-admin-gemini-btn"
+                class="admin-btn admin-btn--gemini"
                 id="bp-ai-metadata-btn"
                 data-ai-url="{{ route('admin.blog.posts.ai-metadata') }}"
                 data-post-id="{{ (int) ($post->id ?? 0) }}">
-          <span class="blog-admin-gemini-btn__logo" aria-hidden="true">
+          <span class="admin-btn__icon" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2L13.9 8.3L20 10.2L13.9 12.1L12 18.4L10.1 12.1L4 10.2L10.1 8.3L12 2Z" fill="url(#bp-gemini-grad-a)"/>
               <path d="M19 14L19.8 16.6L22.4 17.4L19.8 18.2L19 20.8L18.2 18.2L15.6 17.4L18.2 16.6L19 14Z" fill="url(#bp-gemini-grad-b)"/>
@@ -94,10 +94,10 @@
               </defs>
             </svg>
           </span>
-          <span class="blog-admin-gemini-btn__text">Complete metadata with Gemini</span>
+          Complete metadata with Gemini
         </button>
         <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
-        <p class="admin-form-help" style="margin:0.35rem 0 0;">Uses title and content to fill metadata, generate a 16:9 featured image (WebP, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB), and preview it above.</p>
+        <p class="admin-form-help admin-form-help--tight">Uses title and content to fill metadata, generate a 16:9 featured image (WebP, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB), and preview it above.</p>
       </div>
 
       <div class="admin-form-group">

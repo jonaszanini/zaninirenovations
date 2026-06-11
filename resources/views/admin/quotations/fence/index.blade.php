@@ -22,7 +22,7 @@
 
   @if ($quotations->isEmpty())
     <div class="admin-card" style="text-align:center;padding:36px 24px;">
-      <p class="admin-form-help" style="margin:0;">
+      <p class="admin-form-help cp-form-help-flush">
         @if ($filterUnlinkedOnly ?? false)
           No unlinked fence quotations available. Click <strong>New fence quotation</strong> to open the calculator for this project.
         @else

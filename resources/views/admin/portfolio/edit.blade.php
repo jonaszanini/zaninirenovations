@@ -12,7 +12,7 @@
         <label for="title">Title</label>
         <input type="text" id="title" name="title" value="{{ old('title', $project->title) }}" required maxlength="255">
         @error('title')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
@@ -20,7 +20,7 @@
         <textarea id="description" name="description" required>{{ old('description', $project->description) }}</textarea>
         @include('admin.partials.portfolio_description_ai', ['hasExistingPhotos' => $project->photos->isNotEmpty()])
         @error('description')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       @php
@@ -33,7 +33,7 @@
             <i class="fa fa-cog" aria-hidden="true"></i> Configure
           </a>
         </div>
-        <p class="admin-form-hint" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
+        <p class="admin-form-help" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
         <div class="admin-category-checkboxes">
           @foreach ($categories as $cat)
             <label class="admin-checkbox admin-checkbox-tile">
@@ -44,25 +44,25 @@
           @endforeach
         </div>
         @error('project_category_ids')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
         @error('project_category_ids.*')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
         <label for="completed_on">Completed on</label>
         <input type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', optional($project->completed_on)->format('Y-m-d')) }}" required>
-        <p class="admin-form-hint">When the work was finished (used to order projects on the site — newest completion first).</p>
+        <p class="admin-form-help">When the work was finished (used to order projects on the site — newest completion first).</p>
         @error('completed_on')
-          <div class="admin-error">{{ $message }}</div>
+          <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
 
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group">
           <label>Photos — order &amp; remove</label>
-          <p class="admin-form-hint">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> on a photo to straighten, rotate, crop, or add a Before label (saved as WebP). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
+          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> on a photo to straighten, rotate, crop, or add a Before label (saved as WebP). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
@@ -91,7 +91,7 @@
           </ul>
           <div id="admin-photo-sequence-fields" aria-hidden="true"></div>
           @error('photo_sequence')
-            <div class="admin-error">{{ $message }}</div>
+            <div class="admin-form-error">{{ $message }}</div>
           @enderror
         </div>
       @endif
@@ -124,13 +124,13 @@
           ])
         </div>
       @else
-        <p class="admin-form-hint">Maximum of 15 photos reached. Remove one to add more.</p>
+        <p class="admin-form-help">Maximum of 15 photos reached. Remove one to add more.</p>
         @if (auth()->user()->googlePhotosToken)
           <div class="admin-google-photos-panel admin-google-photos-panel--compact">
             <div class="admin-google-photos-panel__head">
               <span class="admin-form-group-label">Google Photos</span>
             </div>
-            <p class="admin-form-hint admin-google-photos-panel__intro">
+            <p class="admin-form-help admin-google-photos-panel__intro">
               Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.
               <button
                 type="button"
