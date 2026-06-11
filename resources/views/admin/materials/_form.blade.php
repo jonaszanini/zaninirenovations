@@ -14,7 +14,12 @@
   $selectedVendorId = (int) old('vendor_id', $m?->vendor_id);
   $amazonVendorId = MaterialVendor::amazonId();
   $homeDepotVendorId = MaterialVendor::homeDepotId();
-  $imagePreview = old('image_url', $m?->image_url);
+  $imagePreview = session()->hasOldInput('image_url')
+    ? old('image_url')
+    : $m?->previewImageUrl();
+  $imageUrlFieldValue = session()->hasOldInput('image_url')
+    ? old('image_url')
+    : $m?->image_url;
   $hasImagePreview = filled($imagePreview);
 @endphp
 
@@ -27,7 +32,9 @@
       <span class="mat-form-hero__placeholder-hint">Filled when you sync or paste an image URL</span>
     </div>
     <img src="{{ $hasImagePreview ? $imagePreview : '' }}" alt="" id="mat-form-hero-img"
-         class="mat-form-hero__img" loading="lazy" @unless ($hasImagePreview) hidden @endunless>
+         class="mat-form-hero__img" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+         data-initial-src="{{ $hasImagePreview ? $imagePreview : '' }}"
+         @unless ($hasImagePreview) hidden @endunless>
   </div>
   <div class="mat-form-hero__fields">
     <div class="mat-form-grid-names">
@@ -48,13 +55,13 @@
 
     <div class="admin-form-group mat-form-hero__description">
       <label for="mat-description">Description</label>
-      <textarea @class(['admin-input', 'is-invalid' => $errors->has('description')]) id="mat-description" name="description" rows="4" maxlength="5000">{{ old('description', $m?->description) }}</textarea>
+      <textarea @class(['admin-input', 'is-invalid' => $errors->has('description')]) id="mat-description" name="description" rows="3" maxlength="5000">{{ old('description', $m?->description) }}</textarea>
       @error('description') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
   </div>
 </div>
 
-<div class="admin-form-grid-2">
+<div class="mat-form-grid-classify">
   <div class="admin-form-group">
     <label for="mat-category">Category</label>
     <select id="mat-category" name="category_id" class="admin-input @error('category_id') is-invalid @enderror">
@@ -88,26 +95,26 @@
   $currentUnit = old('unit', $m?->unit);
 @endphp
 
-<div class="mat-form-grid-pricing">
+<div class="mat-form-grid-identifiers">
   <div class="admin-form-group">
     <label for="mat-sku">Store SKU / ASIN</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('store_sku')]) type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
-           placeholder="Home Depot SKU or Amazon ASIN"
-           >
+           placeholder="Home Depot SKU or Amazon ASIN">
     <p class="admin-form-help">HD numeric SKU or Amazon ASIN (10 chars).</p>
     @error('store_sku') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="mat-model">Model / item #</label>
-    <input @class(['admin-input', 'is-invalid' => $errors->has('model')]) type="text" id="mat-model" name="model" value="{{ old('model', $m?->model) }}" maxlength="160"
-           >
+    <input @class(['admin-input', 'is-invalid' => $errors->has('model')]) type="text" id="mat-model" name="model" value="{{ old('model', $m?->model) }}" maxlength="160">
     @error('model') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
+</div>
+
+<div class="mat-form-grid-metrics">
   <div class="admin-form-group">
     <label for="mat-price">Price (CAD)</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('price_cad')]) type="number" id="mat-price" name="price_cad" value="{{ old('price_cad', $m?->price_cad ?? '0.00') }}"
-           min="0" step="0.01" max="999999.99"
-           >
+           min="0" step="0.01" max="999999.99">
     @error('price_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -127,22 +134,20 @@
     <label for="mat-qty-pkg">Qty per package</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('quantity_per_package')]) type="number" id="mat-qty-pkg" name="quantity_per_package"
            value="{{ old('quantity_per_package', $m?->quantity_per_package) }}"
-           min="1" max="999999" placeholder="Box/bag"
-           >
+           min="1" max="999999" placeholder="Box/bag">
+    <p class="admin-form-help">When store price is per box/bag, not per unit.</p>
     @error('quantity_per_package') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="mat-sort">Sort order</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('sort_order')]) type="number" id="mat-sort" name="sort_order" value="{{ old('sort_order', $m?->sort_order ?? 0) }}"
-           min="0" max="999999"
-           >
+           min="0" max="999999">
     @error('sort_order') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
-<p class="admin-form-help mat-qty-help">Optional qty per package — use when store price is per box/bag, not per single unit.</p>
 
 <div class="mat-url-fields">
-  <h3 class="mat-form-section-title">Store links</h3>
+  <h3 class="mat-form-section-title">Store links &amp; sync</h3>
   <div class="admin-form-group">
     <label for="mat-product-url">Product URL</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('product_url')]) type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
@@ -162,24 +167,23 @@
 
   <div class="admin-form-group mat-image-url-group">
     <label for="mat-image-url">Image URL</label>
-    <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
+    <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ $imageUrlFieldValue }}" maxlength="500"
            placeholder="https://images.homedepot.ca/productimages/…"
            autocomplete="off" spellcheck="false">
     <p class="admin-form-help">Preview updates at the top of the form. Usually filled automatically when you sync prices.</p>
     @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
-</div>
 
-<div class="mat-form-status">
-  <label class="admin-checkbox admin-checkbox--block">
-    <input type="hidden" name="is_active" value="0">
-    <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
-           @checked(old('is_active', $m?->is_active ?? true))>
-    <span class="admin-checkbox__mark" aria-hidden="true"></span>
-    <span class="admin-checkbox__text">Active (include in price sync)</span>
-  </label>
-  @error('is_active') <p class="admin-form-error">{{ $message }}</p> @enderror
-  <p class="admin-form-help mat-active-sync-help">
+  <div class="mat-form-status">
+    <label class="admin-checkbox admin-checkbox--block">
+      <input type="hidden" name="is_active" value="0">
+      <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
+             @checked(old('is_active', $m?->is_active ?? true))>
+      <span class="admin-checkbox__mark" aria-hidden="true"></span>
+      <span class="admin-checkbox__text">Active (include in price sync)</span>
+    </label>
+    @error('is_active') <p class="admin-form-error">{{ $message }}</p> @enderror
+    <p class="admin-form-help mat-active-sync-help">
     @if ($priceSyncChannel === 'amazon')
       Syncs via SerpApi Amazon Canada using the ASIN in Store SKU.
     @elseif ($priceSyncChannel === 'home_depot')
@@ -191,19 +195,20 @@
     @endif
   </p>
 
-  @if ($m && $m->last_scraped_at)
-    <div class="mat-form-status__sync">
-      <span class="mat-scrape-badge mat-scrape-badge--{{ $m->last_scrape_status ?? 'unknown' }}">
-        {{ $m->last_scrape_status ?? 'unknown' }}
-      </span>
-      <span class="mat-form-status__sync-date">
-        Last synced {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
-      </span>
-      @if ($m->last_scrape_error)
-        <p class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</p>
-      @endif
-    </div>
-  @endif
+    @if ($m && $m->last_scraped_at)
+      <div class="mat-form-status__sync">
+        <span class="mat-scrape-badge mat-scrape-badge--{{ $m->last_scrape_status ?? 'unknown' }}">
+          {{ $m->last_scrape_status ?? 'unknown' }}
+        </span>
+        <span class="mat-form-status__sync-date">
+          Last synced {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
+        </span>
+        @if ($m->last_scrape_error)
+          <p class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</p>
+        @endif
+      </div>
+    @endif
+  </div>
 </div>
 </div>
 
@@ -219,6 +224,9 @@
   function syncHeroImage() {
     var url = String(input.value || '').trim();
     if (url === '') {
+      url = String(img.getAttribute('data-initial-src') || '').trim();
+    }
+    if (url === '') {
       img.hidden = true;
       img.removeAttribute('src');
       placeholder.hidden = false;
@@ -232,11 +240,17 @@
       img.hidden = true;
       placeholder.hidden = false;
     };
-    img.src = url;
+    if (img.getAttribute('src') !== url) {
+      img.src = url;
+    } else if (img.complete && img.naturalWidth > 0) {
+      img.hidden = false;
+      placeholder.hidden = true;
+    }
   }
 
   input.addEventListener('input', syncHeroImage);
   input.addEventListener('change', syncHeroImage);
+  syncHeroImage();
 })();
 </script>
 @endpush

@@ -262,7 +262,10 @@
         <div class="sq-panel-head">
           <h3 class="cp-form-help-flush">Materials</h3>
         </div>
-        <p class="admin-form-help">Add lines <strong>manually</strong> or pick from the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">Materials</a> catalog (<strong>Material DB</strong>). Fields stay editable after a catalog pick. By default, unit price is <strong>before HST</strong> and <strong>Pre-tax + HST</strong> adds 13% on the line. Check <strong>HST-incl. price</strong> when the unit price already includes HST (subtotal is back-calculated).</p>
+        <p class="admin-form-help sq-materials-intro">
+          Each row: <strong>Type manually</strong> or <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>).
+          Unit price is before tax unless you check <strong>Price includes HST</strong>.
+        </p>
 
         {{-- Each material is rendered as a small two-line "form card" so
              the inputs stop getting squeezed on narrow viewports. Line 1
@@ -850,23 +853,45 @@
     }
   }
 
+  function rowHasMaterialContent(row) {
+    var shortEl = row.querySelector('.sq-mat-short-name');
+    var descEl = row.querySelector('.sq-mat-desc');
+    var selectEl = row.querySelector('.sq-mat-catalog-select');
+    var catalogVal = selectEl && selectEl.tomselect ? selectEl.tomselect.getValue() : (selectEl ? selectEl.value : '');
+    return !!(catalogVal && String(catalogVal) !== '0')
+      || (shortEl && String(shortEl.value || '').trim() !== '')
+      || (descEl && String(descEl.value || '').trim() !== '');
+  }
+
+  function syncMatDetailsVisibility(row) {
+    var checked = row.querySelector('.sq-mat-source-radio:checked');
+    var isCatalog = checked && checked.value === 'catalog';
+    var details = row.querySelector('.sq-mat-details-panel');
+    var emptyHint = row.querySelector('.sq-mat-catalog-empty');
+    var showDetails = !isCatalog || rowHasMaterialContent(row);
+    if (details) details.hidden = !showDetails;
+    if (emptyHint) emptyHint.hidden = !isCatalog || showDetails;
+  }
+
   function syncMatSourceUI(row) {
     var checked = row.querySelector('.sq-mat-source-radio:checked');
     var catalogWrap = row.querySelector('.sq-mat-catalog-wrap');
     var isCatalog = checked && checked.value === 'catalog';
-    if (catalogWrap) {
-      catalogWrap.hidden = !isCatalog;
-    }
+    if (catalogWrap) catalogWrap.hidden = !isCatalog;
     if (!isCatalog) {
-      var selectEl = row.querySelector('.sq-mat-catalog-select');
-      if (selectEl && selectEl.tomselect) {
-        selectEl.tomselect.clear(true);
-      }
+      destroyCatalogPicker(row);
+    } else {
+      initCatalogPicker(row);
     }
+    syncMatDetailsVisibility(row);
   }
 
   function applyCatalogToRow(row, item) {
-    if (!item) return;
+    if (!item) {
+      syncMatDetailsVisibility(row);
+      recalcMaterials();
+      return;
+    }
     var shortEl = row.querySelector('.sq-mat-short-name');
     var descEl = row.querySelector('.sq-mat-desc');
     var unitEl = row.querySelector('.sq-mat-unit');
@@ -883,25 +908,29 @@
     if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function' && unitEl) {
       window.cpMoneyMask.wire([unitEl]);
     }
+    syncMatDetailsVisibility(row);
     recalcMaterials();
   }
 
   function initCatalogPicker(row) {
     if (typeof TomSelect === 'undefined') return;
+    var checked = row.querySelector('.sq-mat-source-radio:checked');
+    if (!checked || checked.value !== 'catalog') return;
     var selectEl = row.querySelector('.sq-mat-catalog-select');
     if (!selectEl || selectEl.tomselect) return;
 
     var initial = selectEl.getAttribute('data-initial') || '';
     var ts = new TomSelect(selectEl, {
-      plugins: ['clear_button'],
       options: sqCatalogOptions,
       valueField: 'id',
       labelField: 'label',
       searchField: ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-      maxOptions: 80,
-      placeholder: 'Type name or SKU…',
+      maxOptions: 50,
+      maxItems: 1,
+      placeholder: 'Search by name or SKU…',
       allowEmptyOption: true,
       closeAfterSelect: true,
+      dropdownParent: 'body',
       render: {
         option: function (data, escape) {
           return '<div class="fq-catalog-picker__option">' +
@@ -926,7 +955,6 @@
 
   function initMaterialRow(row) {
     syncMatSourceUI(row);
-    initCatalogPicker(row);
     row.querySelectorAll('.sq-mat-source-radio').forEach(function (radio) {
       if (radio.dataset.sqSourceBound === '1') return;
       radio.dataset.sqSourceBound = '1';

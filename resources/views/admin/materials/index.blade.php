@@ -122,8 +122,8 @@
                 </label>
               </td>
               <td class="mat-col-image">
-                @if ($material->image_url)
-                  <img src="{{ $material->image_url }}" alt="" class="mat-thumb" loading="lazy" width="48" height="48">
+                @if ($material->previewImageUrl())
+                  <img src="{{ $material->previewImageUrl() }}" alt="" class="mat-thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="48" height="48">
                 @else
                   <span class="mat-thumb mat-thumb--empty" aria-hidden="true"><i class="fa fa-image"></i></span>
                 @endif

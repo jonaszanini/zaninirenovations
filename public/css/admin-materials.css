@@ -529,14 +529,24 @@
   box-sizing: border-box;
 }
 
+.mat-form-hero__img[hidden],
+.mat-form-hero__placeholder[hidden] {
+  display: none !important;
+}
+
+.mat-form-hero__img:not([hidden]) {
+  position: relative;
+  z-index: 1;
+}
+
 .mat-form-hero__placeholder {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  width: 100%;
-  height: 100%;
   padding: 0.75rem;
   box-sizing: border-box;
   text-align: center;
@@ -574,7 +584,7 @@
 
 .mat-form-grid-names {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 65%) minmax(0, 35%);
   gap: 0.75rem 1.25rem;
   margin-bottom: 0;
 }
@@ -583,29 +593,33 @@
   margin-bottom: 1rem;
 }
 
-.mat-form-grid-pricing {
+.mat-form-grid-classify,
+.mat-form-grid-identifiers {
   display: grid;
-  grid-template-columns: minmax(140px, 1.4fr) minmax(120px, 1fr) 7.5rem 9rem 7.5rem 6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem 1.25rem;
   margin-bottom: 0;
 }
 
-.mat-form-grid-pricing > .admin-form-group {
-  margin-bottom: 0;
+.mat-form-grid-classify > .admin-form-group,
+.mat-form-grid-identifiers > .admin-form-group {
+  margin-bottom: 1rem;
 }
 
-.mat-form .admin-form-grid-2 {
+.mat-form-grid-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem 1.25rem;
   margin-bottom: 0;
 }
 
-.mat-form .admin-form-grid-2 > .admin-form-group {
+.mat-form-grid-metrics > .admin-form-group {
   margin-bottom: 1rem;
 }
 
 @media (max-width: 1100px) {
-  .mat-form-grid-pricing {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .mat-form-grid-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -621,13 +635,11 @@
   }
 
   .mat-form-grid-names,
-  .mat-form-grid-pricing {
+  .mat-form-grid-classify,
+  .mat-form-grid-identifiers,
+  .mat-form-grid-metrics {
     grid-template-columns: 1fr;
   }
-}
-
-.mat-qty-help {
-  margin: 0.65rem 0 1rem;
 }
 
 .mat-active-sync-help {
@@ -653,13 +665,17 @@
   margin-bottom: 0;
 }
 
+.mat-url-fields .mat-form-status {
+  margin-top: 0.25rem;
+}
+
 .mat-form-status {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem 1.25rem;
-  margin: 1.25rem 0 0;
+  margin: 0;
   padding: 1rem 1.1rem;
   border-radius: 8px;
   border: 1px solid var(--admin-border, #d8dee4);

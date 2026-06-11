@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\MaterialScraping\AmazonCaUrls;
+use App\Services\MaterialScraping\HomeDepotCaUrls;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -106,6 +107,24 @@ class Material extends Model
     public function hasProductUrl(): bool
     {
         return filled($this->product_url);
+    }
+
+    /**
+     * URL for admin thumbnails and the edit-form hero image.
+     * Uses the stored image_url, or the canonical Home Depot image from SKU when empty.
+     */
+    public function previewImageUrl(): ?string
+    {
+        if (filled($this->image_url)) {
+            return (string) $this->image_url;
+        }
+
+        $sku = trim((string) ($this->store_sku ?? ''));
+        if ($sku !== '' && HomeDepotCaUrls::isValidSku($sku)) {
+            return HomeDepotCaUrls::imageUrl($sku);
+        }
+
+        return null;
     }
 
     public function isHomeDepotUrl(): bool

@@ -3998,10 +3998,10 @@ body.cp-modal-open {
    `.sq-material-card` inside `.sq-material-grid` for photo tiles; those must
    not get the numbered ::before badge or row grid layout from here. */
 .sq-materials-list > .sq-material-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
+  display: block;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
   /* Slightly more vertical padding so the numbered badge that floats
      out of the top-left corner doesn't crowd the SHORT NAME label. */
   padding: 18px 16px 16px;
@@ -4060,49 +4060,113 @@ body.cp-modal-open {
   gap: 12px;
   min-width: 0;
 }
-.sq-mat-row--source {
-  grid-template-columns: minmax(180px, auto) minmax(240px, 1fr);
-  align-items: end;
+.sq-mat-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
 }
-.sq-mat-source-label {
+.sq-mat-mode-segment {
+  display: inline-flex;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+.sq-mat-mode-segment__item {
+  margin: 0;
+  cursor: pointer;
+  position: relative;
+}
+.sq-mat-mode-segment__item input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.sq-mat-mode-segment__item span {
   display: block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
   color: #64748b;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+.sq-mat-mode-segment__item:has(input:checked) span {
+  background: #024768;
+  color: #fff;
+  font-weight: 600;
+}
+.sq-mat-mode-segment__item + .sq-mat-mode-segment__item {
+  border-left: 1px solid #cbd5e1;
+}
+.sq-mat-catalog-group {
+  margin: 0 0 0.5rem;
+}
+.sq-mat-catalog-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
   margin-bottom: 6px;
 }
-.sq-mat-source-toggle {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.sq-mat-catalog-hint {
+  margin: 0.5rem 0 0;
 }
-.sq-mat-source-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 6px 10px;
-  border: 1px solid #cbd5e1;
+.sq-mat-catalog-empty {
+  margin: 0.25rem 0 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+}
+.sq-mat-catalog-picker {
+  width: 100%;
+  max-width: 100%;
+}
+.sq-mat-catalog-picker .ts-wrapper {
+  width: 100%;
+}
+.sq-mat-catalog-picker .ts-control {
+  min-height: 38px;
   border-radius: 6px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  padding: 4px 10px;
   background: #fff;
-  font-size: 13px;
-  cursor: pointer;
-  user-select: none;
+  box-shadow: none;
 }
-.sq-mat-source-option:has(input:checked) {
+.sq-mat-catalog-picker .ts-control:focus-within {
   border-color: #024768;
+  box-shadow: 0 0 0 2px rgba(2, 71, 104, 0.12);
+}
+.sq-mat-catalog-picker .ts-dropdown {
+  z-index: 200;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  max-height: 280px;
+}
+.sq-mat-catalog-picker .ts-dropdown .option {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #e8edf2;
+}
+.sq-mat-catalog-picker .ts-dropdown .option:last-child {
+  border-bottom: 0;
+}
+.sq-mat-catalog-picker .ts-dropdown .option.active {
   background: #f0f9ff;
-  color: #024768;
-  font-weight: 600;
 }
-.sq-mat-source-option input {
-  margin: 0;
-}
-.sq-mat-field--catalog .fq-catalog-picker,
-.sq-mat-field--catalog.fq-catalog-picker {
-  min-width: 0;
+.sq-materials-intro {
+  margin-bottom: 0.75rem;
 }
 .sq-mat-row--inputs {
   /* Short name | Description (wider) | Unit price (narrower) | Qty (narrower) */
@@ -4147,11 +4211,9 @@ body.cp-modal-open {
   min-width: 0;
 }
 .sq-mat-field > label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #64748b;
+  color: #475569;
   margin: 0;
 }
 .sq-mat-field .admin-input { width: 100%; }
@@ -4178,21 +4240,14 @@ body.cp-modal-open {
   opacity: 0.85;
 }
 .sq-mat-field--apply .sq-mat-apply-label {
-  /* The checkbox label needs to line up with the other readouts on
-     the second row, so we mimic the readout's height + padding. */
-  min-height: 36px;
-  padding: 4px 8px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 6px;
+  min-height: 32px;
+  padding: 4px 0;
 }
 .sq-mat-hst-toggles-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  color: #475569;
+  margin-bottom: 6px;
   display: block;
 }
 .sq-mat-hst-toggles {
@@ -4203,14 +4258,8 @@ body.cp-modal-open {
 .sq-mat-hst-toggles .sq-mat-apply-label {
   min-height: 32px;
 }
-.sq-mat-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.sq-mat-actions .sq-remove-material {
-  /* Square-ish trash button so the icon sits centred regardless of
-     how tall the field stack grows. */
+.sq-mat-toolbar .sq-remove-material {
+  flex-shrink: 0;
   min-width: 38px;
   height: 38px;
   padding: 0 10px;
@@ -4226,15 +4275,18 @@ body.cp-modal-open {
 
 /* Phone: stack all fields one per line. */
 @media (max-width: 560px) {
-  .sq-materials-list > .sq-material-card {
-    grid-template-columns: 1fr;
-  }
   .sq-mat-row--inputs,
   .sq-mat-row--computed {
     grid-template-columns: 1fr;
   }
-  .sq-mat-actions {
-    justify-content: flex-end;
+  .sq-mat-toolbar {
+    flex-wrap: wrap;
+  }
+  .sq-mat-mode-segment {
+    flex: 1 1 100%;
+  }
+  .sq-mat-toolbar .sq-remove-material {
+    margin-left: auto;
   }
 }
 .sq-checkbox-label {
