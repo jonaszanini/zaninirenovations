@@ -9,6 +9,7 @@ use App\Models\BlogTag;
 use App\Services\BlogHtmlContentProcessor;
 use App\Services\BlogImageStorage;
 use App\Services\BlogPostMetadataAiService;
+use App\Support\Logging\AppLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -136,6 +137,10 @@ class BlogPostController extends Controller
 
             return response()->json($result);
         } catch (\Throwable $e) {
+            AppLogger::error('blog.ai_metadata.failed', [
+                'post_id' => $data['post_id'] ?? null,
+            ], $e);
+
             return response()->json([
                 'error' => $e->getMessage(),
             ], 502);
@@ -233,7 +238,10 @@ class BlogPostController extends Controller
             $path = $images->adoptPendingFeatured($pending, $post->id);
             $post->update(['featured_image_path' => $path]);
         } catch (\Throwable $e) {
-            // Pending path expired or invalid; manual upload still works.
+            AppLogger::warning('blog.featured_image.adopt_pending_failed', [
+                'post_id' => $post->id,
+                'pending_path' => $pending,
+            ], $e);
         }
     }
 

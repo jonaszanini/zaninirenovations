@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
-use Illuminate\Support\Facades\Log;
+use App\Support\Logging\AppLogger;
 
 /**
  * Single funnel for writing to client_communication_logs.
@@ -94,10 +94,11 @@ class ClientCommunicationLogger
         try {
             return ClientCommunicationLog::create($attrs);
         } catch (\Throwable $e) {
-            Log::error('Failed to persist client communication log', [
-                'attrs' => array_merge($attrs, ['error' => '[redacted]']),
-                'exception' => $e->getMessage(),
-            ]);
+            AppLogger::error('client_communication.log.persist_failed', [
+                'project_id' => $attrs['client_project_id'] ?? null,
+                'channel' => $attrs['channel'] ?? null,
+                'reason' => $attrs['reason'] ?? null,
+            ], $e);
 
             return null;
         }

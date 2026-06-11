@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Logging\AppLogger;
 use RuntimeException;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
@@ -71,7 +72,9 @@ class GeminiImageCropService
             $out = file_get_contents($tmpOut);
 
             return ($out !== false && $out !== '') ? $out : null;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            AppLogger::debug('image.crop.imagick_cli_failed', ['aspect_ratio' => $aspectRatio], $e);
+
             return null;
         } finally {
             @unlink($tmpIn);
@@ -120,7 +123,9 @@ class GeminiImageCropService
             $out = file_get_contents($tmpOut);
 
             return ($out !== false && $out !== '') ? $out : null;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            AppLogger::debug('image.crop.ffmpeg_failed', ['aspect_ratio' => $aspectRatio], $e);
+
             return null;
         } finally {
             @unlink($tmpIn);
@@ -181,7 +186,9 @@ class GeminiImageCropService
             $image->destroy();
 
             return ($out !== false && $out !== '') ? $out : null;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            AppLogger::debug('image.crop.imagick_ext_failed', ['aspect_ratio' => $aspectRatio], $e);
+
             return null;
         }
     }
@@ -332,7 +339,9 @@ class GeminiImageCropService
 
             return $process->isSuccessful()
                 && str_contains(strtolower($process->getOutput()), 'imagemagick');
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            AppLogger::debug('image.crop.imagemagick_probe_failed', [], $e);
+
             return false;
         }
     }

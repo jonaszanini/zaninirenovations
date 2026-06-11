@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Logging\AppLogger;
 use App\Models\AiInstruction;
 use App\Models\Project;
 use App\Models\User;
@@ -123,7 +124,9 @@ class PortfolioDescriptionAiService
                         @unlink($tmp);
                     }
                 }
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                AppLogger::debug('portfolio.description_ai.chunk_failed', [], $e);
+
                 continue;
             }
         }

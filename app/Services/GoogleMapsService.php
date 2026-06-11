@@ -4,7 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use App\Support\Logging\AppLogger;
 
 class GoogleMapsService
 {
@@ -155,7 +155,7 @@ class GoogleMapsService
                 'key' => $this->distanceMatrixApiKey(),
             ]);
         } catch (\Throwable $e) {
-            Log::warning('Google Distance Matrix request failed', ['message' => $e->getMessage()]);
+            AppLogger::warning('google.distance_matrix.request_failed', [], $e);
 
             return [
                 'ok' => false,
@@ -180,7 +180,10 @@ class GoogleMapsService
         $status = (string) ($payload['status'] ?? '');
 
         if ($status !== 'OK') {
-            Log::warning('Google Distance Matrix API error', ['status' => $status, 'body' => $payload]);
+            AppLogger::warning('google.distance_matrix.api_error', [
+                'status' => $status,
+                'error_message' => $payload['error_message'] ?? null,
+            ]);
 
             return [
                 'ok' => false,

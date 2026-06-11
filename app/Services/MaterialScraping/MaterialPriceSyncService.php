@@ -4,6 +4,7 @@ namespace App\Services\MaterialScraping;
 
 use App\Models\Material;
 use App\Models\MaterialVendor;
+use App\Support\Logging\AppLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -349,6 +350,14 @@ class MaterialPriceSyncService
         float $oldPrice,
     ): array {
         if (! $dryRun && $status !== Material::SCRAPE_OK) {
+            AppLogger::warning('materials.sync.failed', [
+                'material_id' => $material->id,
+                'store_sku' => $material->store_sku,
+                'vendor_id' => $material->vendor_id,
+                'status' => $status,
+                'error' => $error,
+            ]);
+
             $material->last_scraped_at = now();
             $material->last_scrape_status = $status;
             $material->last_scrape_error = $error;
@@ -363,4 +372,4 @@ class MaterialPriceSyncService
         ];
     }
 }
-
+

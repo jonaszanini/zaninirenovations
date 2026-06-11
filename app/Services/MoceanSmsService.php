@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\Logging\AppLogger;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Thin client for Mocean REST v2 outbound SMS (form POST + Bearer token).
@@ -21,7 +21,7 @@ class MoceanSmsService
      */
     public function send(string $toDigits, string $text): array
     {
-        if (!$this->isConfigured()) {
+        if (! $this->isConfigured()) {
             return ['ok' => false, 'detail' => 'Mocean is not configured (missing MOCEAN_API_TOKEN).'];
         }
 
@@ -30,21 +30,15 @@ class MoceanSmsService
             return ['ok' => false, 'detail' => 'Recipient phone has no digits.'];
         }
 
-        $token = (string) config('mocean.api_token');
         $from = (string) config('mocean.from', 'MOCEAN');
         $url = (string) config('mocean.send_url');
 
         try {
-            // connectTimeout: cap the TCP/TLS handshake (cURL error 28 fires here
-            // when Mocean is briefly unreachable). timeout: overall request budget.
-            // retry: transient connection/timeout blips auto-recover with backoff
-            // instead of failing the SMS outright (throw:false so we keep our own
-            // error handling below on the final failed response).
             $response = Http::connectTimeout(15)
                 ->timeout(30)
                 ->retry(3, 2000, throw: false)
                 ->withHeaders([
-                    'Authorization' => 'Bearer '.$token,
+                    'Authorization' => 'Bearer '.(string) config('mocean.api_token'),
                 ])
                 ->asForm()
                 ->post($url, [
@@ -54,32 +48,40 @@ class MoceanSmsService
                     'mocean-resp-format' => 'json',
                 ]);
         } catch (\Throwable $e) {
-            Log::error('Mocean SMS request failed', ['message' => $e->getMessage()]);
+            AppLogger::error('mocean.sms.request_failed', [
+                'to_last4' => substr($to, -4),
+            ], $e);
 
             return ['ok' => false, 'detail' => $e->getMessage()];
         }
 
-        if (!$response->successful()) {
-            Log::warning('Mocean SMS HTTP error', [
+        if (! $response->successful()) {
+            AppLogger::warning('mocean.sms.http_error', [
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'to_last4' => substr($to, -4),
             ]);
 
-            return ['ok' => false, 'detail' => 'HTTP '.$response->status().': '.$response->body()];
+            return ['ok' => false, 'detail' => 'HTTP '.$response->status()];
         }
 
         $data = $response->json();
-        if (!is_array($data)) {
-            Log::warning('Mocean SMS unexpected body', ['body' => $response->body()]);
+        if (! is_array($data)) {
+            AppLogger::warning('mocean.sms.invalid_response', [
+                'to_last4' => substr($to, -4),
+            ]);
 
             return ['ok' => false, 'detail' => 'Invalid Mocean response body.'];
         }
 
         $status = $data['messages'][0]['status'] ?? null;
         if ((int) $status !== 0) {
-            $err = $data['messages'][0]['err_msg'] ?? json_encode($data);
+            $err = $data['messages'][0]['err_msg'] ?? 'Mocean rejected the message';
 
-            Log::warning('Mocean SMS rejected', ['response' => $data]);
+            AppLogger::warning('mocean.sms.rejected', [
+                'mocean_status' => $status,
+                'to_last4' => substr($to, -4),
+                'detail' => $err,
+            ]);
 
             return ['ok' => false, 'detail' => $err];
         }

@@ -2,6 +2,7 @@
 
 namespace App\Services\MaterialScraping;
 
+use App\Support\Logging\AppLogger;
 use GuzzleHttp\Cookie\CookieJar;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -232,8 +233,10 @@ class HomeDepotCaFbtPriceFetcher
                 ->timeout(8)
                 ->connectTimeout(5)
                 ->get('https://www.homedepot.ca/');
-        } catch (\Throwable) {
-            // Homepage warmup is best-effort.
+        } catch (\Throwable $e) {
+            AppLogger::debug('materials.homedepot.warmup_failed', [
+                'product_url' => $productUrl,
+            ], $e);
         }
 
         Http::withOptions($this->httpClientOptions($jar))

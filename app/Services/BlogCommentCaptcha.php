@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Logging\AppLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -81,7 +82,9 @@ class BlogCommentCaptcha
                 'response' => $response,
                 'remoteip' => request()->ip(),
             ])->json();
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            AppLogger::warning('blog.captcha.verify_failed', [], $e);
+
             return false;
         }
 

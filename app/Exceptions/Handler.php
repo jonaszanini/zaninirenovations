@@ -43,9 +43,26 @@ class Handler extends ExceptionHandler
      */
     public function register()
     {
-        $this->reportable(function (Throwable $e) {
-            //
-        });
+        //
+    }
+
+    /**
+     * Context merged into Laravel's default exception log entry.
+     *
+     * @return array<string, mixed>
+     */
+    protected function context()
+    {
+        try {
+            $request = $this->container->make('request');
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return array_filter([
+            'user_id' => optional($request->user())->id,
+            'url' => $request->fullUrl(),
+            'route' => optional($request->route())->getName(),
+        ]);
     }
 }
-

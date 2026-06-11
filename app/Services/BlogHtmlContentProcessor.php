@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Logging\AppLogger;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -50,7 +51,11 @@ class BlogHtmlContentProcessor
                     $url = $this->images->publicUrl($relative);
 
                     return '<img'.$m[1].' src="'.e($url).'" loading="lazy"'.$m[4].'>';
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
+                    AppLogger::debug('blog.inline_image.import_failed', [
+                        'post_id' => $postId,
+                    ], $e);
+
                     return $m[0];
                 } finally {
                     @unlink($path);

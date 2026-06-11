@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Logging\AppLogger;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInvoice;
@@ -115,7 +116,9 @@ class AdminDashboardService
                     'updated_at' => $t->toIso8601String(),
                 ];
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            AppLogger::debug('admin.dashboard.fence_price_hint_failed', [], $e);
+
             return null;
         }
 

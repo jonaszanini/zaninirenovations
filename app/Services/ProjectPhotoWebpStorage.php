@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Logging\AppLogger;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -412,8 +413,8 @@ class ProjectPhotoWebpStorage
                 if (is_string($blob) && $blob !== '') {
                     return $blob;
                 }
-            } catch (Throwable) {
-                // fall through to GD
+            } catch (Throwable $e) {
+                AppLogger::debug('photo.webp.imagick_fallback_to_gd', [], $e);
             }
         }
 
