@@ -55,13 +55,13 @@
 
     <div class="admin-form-group mat-form-hero__description">
       <label for="mat-description">Description</label>
-      <textarea @class(['admin-input', 'is-invalid' => $errors->has('description')]) id="mat-description" name="description" rows="3" maxlength="5000">{{ old('description', $m?->description) }}</textarea>
+      <textarea @class(['admin-input', 'is-invalid' => $errors->has('description')]) id="mat-description" name="description" rows="1" maxlength="5000">{{ old('description', $m?->description) }}</textarea>
       @error('description') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
   </div>
 </div>
 
-<div class="mat-form-grid-classify">
+<div class="mat-form-grid-sourcing">
   <div class="admin-form-group">
     <label for="mat-category">Category</label>
     <select id="mat-category" name="category_id" class="admin-input @error('category_id') is-invalid @enderror">
@@ -88,14 +88,6 @@
     @error('vendor_id') <p class="admin-form-error">{{ $message }}</p> @enderror
     <p class="admin-form-help">Manage vendors on <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>.</p>
   </div>
-</div>
-
-@php
-  $unitOptions = Material::unitOptions();
-  $currentUnit = old('unit', $m?->unit);
-@endphp
-
-<div class="mat-form-grid-identifiers">
   <div class="admin-form-group">
     <label for="mat-sku">Store SKU / ASIN</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('store_sku')]) type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
@@ -109,6 +101,11 @@
     @error('model') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
+
+@php
+  $unitOptions = Material::unitOptions();
+  $currentUnit = old('unit', $m?->unit);
+@endphp
 
 <div class="mat-form-grid-metrics">
   <div class="admin-form-group">
@@ -148,30 +145,32 @@
 
 <div class="mat-url-fields">
   <h3 class="mat-form-section-title">Store links &amp; sync</h3>
-  <div class="admin-form-group">
-    <label for="mat-product-url">Product URL</label>
-    <input @class(['admin-input', 'is-invalid' => $errors->has('product_url')]) type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
-           placeholder="https://www.homedepot.ca/product/…"
-            autocomplete="off" spellcheck="false">
-    <p class="admin-form-help">
-      @if ($selectedVendorId && $amazonVendorId && $selectedVendorId === $amazonVendorId)
-        Amazon Canada product link (optional when a valid ASIN is in Store SKU).
-      @elseif ($selectedVendorId && $homeDepotVendorId && $selectedVendorId === $homeDepotVendorId)
-        Home Depot product link — used to fetch store price and details during sync.
-      @else
-        Home Depot or Amazon Canada product URL, depending on vendor.
-      @endif
-    </p>
-    @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
-  </div>
+  <div class="mat-form-grid-urls">
+    <div class="admin-form-group">
+      <label for="mat-product-url">Product URL</label>
+      <input @class(['admin-input', 'is-invalid' => $errors->has('product_url')]) type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
+             placeholder="https://www.homedepot.ca/product/…"
+             autocomplete="off" spellcheck="false">
+      <p class="admin-form-help">
+        @if ($selectedVendorId && $amazonVendorId && $selectedVendorId === $amazonVendorId)
+          Amazon Canada product link (optional when a valid ASIN is in Store SKU).
+        @elseif ($selectedVendorId && $homeDepotVendorId && $selectedVendorId === $homeDepotVendorId)
+          Home Depot product link — used to fetch store price and details during sync.
+        @else
+          Home Depot or Amazon Canada product URL, depending on vendor.
+        @endif
+      </p>
+      @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
+    </div>
 
-  <div class="admin-form-group mat-image-url-group">
-    <label for="mat-image-url">Image URL</label>
-    <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ $imageUrlFieldValue }}" maxlength="500"
-           placeholder="https://images.homedepot.ca/productimages/…"
-           autocomplete="off" spellcheck="false">
-    <p class="admin-form-help">Preview updates at the top of the form. Usually filled automatically when you sync prices.</p>
-    @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
+    <div class="admin-form-group mat-image-url-group">
+      <label for="mat-image-url">Image URL</label>
+      <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ $imageUrlFieldValue }}" maxlength="500"
+             placeholder="https://images.homedepot.ca/productimages/…"
+             autocomplete="off" spellcheck="false">
+      <p class="admin-form-help">Preview updates at the top of the form. Usually filled automatically when you sync prices.</p>
+      @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
+    </div>
   </div>
 
   <div class="mat-form-status">

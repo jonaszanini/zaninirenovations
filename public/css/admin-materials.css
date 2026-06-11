@@ -593,16 +593,14 @@
   margin-bottom: 1rem;
 }
 
-.mat-form-grid-classify,
-.mat-form-grid-identifiers {
+.mat-form-grid-sourcing {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem 1.25rem;
   margin-bottom: 0;
 }
 
-.mat-form-grid-classify > .admin-form-group,
-.mat-form-grid-identifiers > .admin-form-group {
+.mat-form-grid-sourcing > .admin-form-group {
   margin-bottom: 1rem;
 }
 
@@ -618,6 +616,7 @@
 }
 
 @media (max-width: 1100px) {
+  .mat-form-grid-sourcing,
   .mat-form-grid-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -635,9 +634,9 @@
   }
 
   .mat-form-grid-names,
-  .mat-form-grid-classify,
-  .mat-form-grid-identifiers,
-  .mat-form-grid-metrics {
+  .mat-form-grid-sourcing,
+  .mat-form-grid-metrics,
+  .mat-form-grid-urls {
     grid-template-columns: 1fr;
   }
 }
@@ -661,8 +660,15 @@
   border-top: 1px solid var(--admin-border, #d8dee4);
 }
 
-.mat-url-fields .admin-form-group:last-child {
+.mat-form-grid-urls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.25rem;
   margin-bottom: 0;
+}
+
+.mat-form-grid-urls > .admin-form-group {
+  margin-bottom: 1rem;
 }
 
 .mat-url-fields .mat-form-status {
