@@ -9,7 +9,7 @@
 @section('content')
   <div class="admin-toolbar mat-config-toolbar">
     <p class="admin-toolbar-lede mat-config-toolbar__lede">
-      Bulk import Home Depot SKUs and copy local sync commands for your PC.
+      Bulk import Home Depot SKUs, manage vendors, and copy local sync commands for your PC.
     </p>
     <div class="mat-config-toolbar__actions">
       <form method="post" action="{{ route('admin.materials.config.delete-failed') }}"
@@ -56,23 +56,27 @@
               Blank lines are ignored. If the same SKU appears more than once in your paste, only the first is imported; the rest are skipped. SKUs already in the catalog are updated.
             </p>
           </div>
-          <div class="admin-form-grid-2">
-            <div class="admin-form-group">
-              <label for="mat-bulk-category">Category</label>
-              <input type="text" id="mat-bulk-category" name="category" value="{{ old('category') }}" class="admin-input" list="mat-bulk-category-list" placeholder="e.g. Lumber">
-              @if ($categories->isNotEmpty())
-                <datalist id="mat-bulk-category-list">
-                  @foreach ($categories as $cat)
-                    <option value="{{ $cat }}">
-                  @endforeach
-                </datalist>
-              @endif
-            </div>
-            <div class="admin-form-group">
-              <label for="mat-bulk-vendor">Vendor</label>
-              <input type="text" id="mat-bulk-vendor" name="vendor" value="{{ old('vendor', 'Home Depot') }}" class="admin-input">
-            </div>
+          <div class="admin-form-group">
+            <label for="mat-bulk-category">Category</label>
+            <input type="text" id="mat-bulk-category" name="category" value="{{ old('category') }}" class="admin-input" list="mat-bulk-category-list" placeholder="e.g. Lumber">
+            @if ($categories->isNotEmpty())
+              <datalist id="mat-bulk-category-list">
+                @foreach ($categories as $cat)
+                  <option value="{{ $cat }}">
+                @endforeach
+              </datalist>
+            @endif
           </div>
+          <p class="admin-form-help mat-bulk-vendor-note">
+            Vendor:
+            @if ($homeDepotVendor)
+              <strong>{{ $homeDepotVendor->name }}</strong>
+              <code class="admin-code">{{ $homeDepotVendor->slug }}</code>
+              — applied automatically to every imported SKU.
+            @else
+              <span class="admin-form-error">Home Depot vendor missing. Add it under Vendors below.</span>
+            @endif
+          </p>
           <div class="admin-form-group">
             @include('admin.partials.checkbox', [
               'name' => 'sync_prices',
@@ -113,7 +117,17 @@
       </div>
     </details>
 
-    <details class="admin-accordion admin-card admin-card--narrow mat-local-sync" open>
+    <details class="admin-accordion admin-card admin-card--narrow mat-vendors" @if($errors->has('name') || $errors->has('slug')) open @endif>
+      <summary class="admin-accordion__summary">
+        <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+        <span class="admin-accordion__title">Vendors</span>
+      </summary>
+      <div class="admin-accordion__panel">
+        @include('admin.materials._config_vendors')
+      </div>
+    </details>
+
+    <details class="admin-accordion admin-card admin-card--narrow mat-local-sync">
       <summary class="admin-accordion__summary">
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
         <span class="admin-accordion__title">Local price sync (your PC)</span>
@@ -179,6 +193,9 @@
     @endif
     @if ($failedCount > 0)
       · {{ number_format($failedCount) }} failed sync
+    @endif
+    @if ($vendors->isNotEmpty())
+      · {{ number_format($vendors->count()) }} {{ $vendors->count() === 1 ? 'vendor' : 'vendors' }}
     @endif
   </p>
 @endsection

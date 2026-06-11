@@ -131,7 +131,7 @@
                 @endif
               </td>
               <td>{{ $material->category ?: '—' }}</td>
-              <td>{{ $material->vendor ?: '—' }}</td>
+              <td>{{ $material->vendorName() ?: '—' }}</td>
               <td>{{ $material->store_sku ?: '—' }}</td>
               <td class="mat-col-price">{{ $material->formattedPrice() }}</td>
               <td>

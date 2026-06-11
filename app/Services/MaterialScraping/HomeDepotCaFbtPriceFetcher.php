@@ -336,7 +336,6 @@ class HomeDepotCaFbtPriceFetcher
             model: filled($article['modelNumber'] ?? null) ? (string) $article['modelNumber'] : null,
             source: 'fbt-store',
             productUrl: $productUrl,
-            vendor: filled($article['manufacturer'] ?? null) ? (string) $article['manufacturer'] : null,
         ))->withTitlePackagingHints();
     }
 

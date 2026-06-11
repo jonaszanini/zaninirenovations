@@ -3,6 +3,8 @@
 namespace App\Services\MaterialScraping;
 
 use App\Models\Material;
+use App\Models\MaterialVendor;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class MaterialPriceSyncService
@@ -35,7 +37,10 @@ class MaterialPriceSyncService
             ->when($unsyncedOnly, fn ($q) => $q->needsPriceSync())
             ->when($id !== null, fn ($q) => $q->where('id', $id))
             ->when(filled($vendor), function ($q) use ($vendor) {
-                $q->where('vendor', 'like', '%'.$vendor.'%');
+                $q->whereHas('vendor', function (Builder $sub) use ($vendor) {
+                    $sub->where('slug', $vendor)
+                        ->orWhere('name', 'like', '%'.$vendor.'%');
+                });
             })
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -158,8 +163,12 @@ class MaterialPriceSyncService
             $material->product_url = $parsed->productUrl;
         }
 
-        if (filled($parsed->vendor)) {
-            $material->vendor = $parsed->vendor;
+        // Vendor is the supplier (catalog row), not SerpApi "brand" or FBT "manufacturer".
+        if ($material->isHomeDepotUrl()) {
+            $homeDepotId = MaterialVendor::homeDepotId();
+            if ($homeDepotId !== null) {
+                $material->vendor_id = $homeDepotId;
+            }
         }
 
         if (filled($parsed->unit)) {

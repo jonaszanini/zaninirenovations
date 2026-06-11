@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Standalone material catalog — not linked to fence_materials or paving_stone_types.
@@ -21,7 +22,7 @@ class Material extends Model
         'name',
         'description',
         'category',
-        'vendor',
+        'vendor_id',
         'store_sku',
         'model',
         'price_cad',
@@ -43,6 +44,16 @@ class Material extends Model
         'last_scraped_at' => 'datetime',
         'sort_order' => 'integer',
     ];
+
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(MaterialVendor::class, 'vendor_id');
+    }
+
+    public function vendorName(): ?string
+    {
+        return $this->vendor?->name;
+    }
 
     public function formattedPrice(): string
     {

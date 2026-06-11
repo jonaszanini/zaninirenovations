@@ -26,9 +26,10 @@ class FenceConfigController extends Controller
             ->get();
 
         $catalogMaterials = Material::query()
+            ->with('vendor')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor']);
+            ->get(['id', 'name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor_id']);
 
         $linkedSyncCount = $materials
             ->filter(fn (FenceMaterial $row) => $row->material_id !== null
@@ -168,7 +169,7 @@ class FenceConfigController extends Controller
                 'name' => $catalog->name,
                 'sku' => $sku,
                 'model' => trim((string) ($catalog->model ?? '')),
-                'vendor' => trim((string) ($catalog->vendor ?? '')),
+                'vendor' => trim((string) ($catalog->vendorName() ?? '')),
                 'price' => number_format((float) $catalog->price_cad, 2, '.', ''),
                 'price_label' => $priceLabel,
                 'url' => (string) ($catalog->product_url ?? ''),

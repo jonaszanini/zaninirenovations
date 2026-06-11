@@ -27,10 +27,16 @@
   </div>
   <div class="admin-form-group">
     <label for="mat-vendor">Vendor</label>
-    <input type="text" id="mat-vendor" name="vendor" value="{{ old('vendor', $m?->vendor) }}" maxlength="120"
-           placeholder="e.g. Home Depot"
-           class="@error('vendor') is-invalid @enderror">
-    @error('vendor') <p class="admin-form-error">{{ $message }}</p> @enderror
+    <select id="mat-vendor" name="vendor_id" class="admin-input @error('vendor_id') is-invalid @enderror">
+      <option value="">— Select vendor —</option>
+      @foreach (($vendors ?? collect()) as $vendor)
+        <option value="{{ $vendor->id }}" @selected((int) old('vendor_id', $m?->vendor_id) === (int) $vendor->id)>
+          {{ $vendor->name }}
+        </option>
+      @endforeach
+    </select>
+    @error('vendor_id') <p class="admin-form-error">{{ $message }}</p> @enderror
+    <p class="admin-form-help">Manage vendors on <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>.</p>
   </div>
 </div>
 

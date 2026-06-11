@@ -3,6 +3,7 @@
 namespace App\Services\MaterialScraping;
 
 use App\Models\Material;
+use App\Models\MaterialVendor;
 
 class MaterialSkuImportService
 {
@@ -75,15 +76,15 @@ class MaterialSkuImportService
      *     name: string
      * }
      */
-    public function importSku(string $sku, ?string $category = null, ?string $vendor = null): array
+    public function importSku(string $sku, ?string $category = null, ?int $vendorId = null): array
     {
         $category = filled($category) ? trim($category) : null;
-        $vendor = filled($vendor) ? trim($vendor) : self::DEFAULT_VENDOR;
+        $vendorId = $vendorId ?? MaterialVendor::defaultForHomeDepotImport()?->id;
 
         $attributes = [
             'product_url' => HomeDepotCaUrls::productUrl($sku),
             'image_url' => HomeDepotCaUrls::imageUrl($sku),
-            'vendor' => $vendor,
+            'vendor_id' => $vendorId,
             'is_active' => true,
         ];
 
@@ -129,7 +130,7 @@ class MaterialSkuImportService
      *     skip_reasons: list<string>
      * }
      */
-    public function import(string $rawInput, ?string $category = null, ?string $vendor = null): array
+    public function import(string $rawInput, ?string $category = null, ?int $vendorId = null): array
     {
         $plan = $this->buildPlan($rawInput);
         $created = 0;
@@ -137,7 +138,7 @@ class MaterialSkuImportService
         $materialIds = [];
 
         foreach ($plan['skus'] as $sku) {
-            $result = $this->importSku($sku, $category, $vendor);
+            $result = $this->importSku($sku, $category, $vendorId);
             $materialIds[] = $result['material_id'];
 
             if ($result['action'] === 'created') {

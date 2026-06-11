@@ -156,7 +156,6 @@ class HomeDepotCaSerpApiPriceFetcher
             model: filled($product['model_number'] ?? null) ? (string) $product['model_number'] : null,
             source: 'serpapi-hd',
             productUrl: filled($product['link'] ?? null) ? (string) $product['link'] : null,
-            vendor: filled($product['brand'] ?? null) ? (string) $product['brand'] : null,
             unit: $unit,
         );
     }
