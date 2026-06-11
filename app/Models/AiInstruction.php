@@ -16,6 +16,8 @@ class AiInstruction extends Model
 
     public const KEY_PORTFOLIO_DESCRIPTION = 'portfolio_description';
 
+    public const KEY_QUOTATION_WORK_DESCRIPTION = 'quotation_work_description';
+
     protected $fillable = [
         'key',
         'name',

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
+use App\Services\QuotationWorkDescriptionAiService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
@@ -33,5 +35,22 @@ class QuotationHubController extends Controller
             'hubProject' => $hubProject,
             'hubProjectError' => $hubProjectError,
         ]);
+    }
+
+    public function aiWorkDescription(Request $request, QuotationWorkDescriptionAiService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'contractor_notes' => ['required', 'string', 'max:5000'],
+        ]);
+
+        try {
+            return response()->json([
+                'description' => $service->suggest($data['contractor_notes']),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
+        }
     }
 }

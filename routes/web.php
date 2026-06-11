@@ -347,6 +347,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // -----------------------------------------------------------------
     Route::get('quotations', [\App\Http\Controllers\Admin\QuotationHubController::class, 'index'])
         ->name('quotations.index');
+    Route::post('quotations/work-description/ai', [\App\Http\Controllers\Admin\QuotationHubController::class, 'aiWorkDescription'])
+        ->name('quotations.work-description.ai');
 
     // Fence configuration (materials catalogue + formula parameters).
     Route::get('quotations/fence/config', [\App\Http\Controllers\Admin\FenceConfigController::class, 'index'])

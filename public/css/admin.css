@@ -1946,6 +1946,18 @@ body.admin-nav-open {
   margin-top: 0.65rem;
 }
 
+.quotation-work-description-ai {
+  margin-top: 0.5rem;
+}
+
+.quotation-work-description-ai__actions {
+  margin-top: 0;
+}
+
+.quotation-work-description-ai__status {
+  margin-top: 0.35rem;
+}
+
 .portfolio-description-ai__actions {
   margin-top: 0;
 }
