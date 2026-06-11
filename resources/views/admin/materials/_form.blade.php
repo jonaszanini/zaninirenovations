@@ -14,31 +14,44 @@
   $selectedVendorId = (int) old('vendor_id', $m?->vendor_id);
   $amazonVendorId = MaterialVendor::amazonId();
   $homeDepotVendorId = MaterialVendor::homeDepotId();
+  $imagePreview = old('image_url', $m?->image_url);
+  $hasImagePreview = filled($imagePreview);
 @endphp
 
 <div class="mat-form">
-<div class="mat-form-grid-names">
-  <div class="admin-form-group">
-    <label for="mat-name">Store name <span class="cp-required">*</span></label>
-    <input @class(['admin-input', 'is-invalid' => $errors->has('name')]) type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255"
-           >
-    <p class="admin-form-help">Full product title from the store — updated when you sync prices.</p>
-    @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
+<div class="mat-form-hero">
+  <div class="mat-form-hero__media" id="mat-form-hero-media">
+  <div class="mat-form-hero__placeholder" id="mat-form-hero-placeholder" @if ($hasImagePreview) hidden @endif>
+      <i class="fa fa-picture-o" aria-hidden="true"></i>
+      <span class="mat-form-hero__placeholder-text">Product image</span>
+      <span class="mat-form-hero__placeholder-hint">Filled when you sync or paste an image URL</span>
+    </div>
+    <img src="{{ $hasImagePreview ? $imagePreview : '' }}" alt="" id="mat-form-hero-img"
+         class="mat-form-hero__img" loading="lazy" @unless ($hasImagePreview) hidden @endunless>
   </div>
-  <div class="admin-form-group">
-    <label for="mat-short-name">Short name</label>
-    <input @class(['admin-input', 'is-invalid' => $errors->has('short_name')]) type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
-           placeholder="e.g. 2x4x8 Stud"
-           >
-    <p class="admin-form-help">Shown in lists and pickers. Leave blank to use the store name.</p>
-    @error('short_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-  </div>
-</div>
+  <div class="mat-form-hero__fields">
+    <div class="mat-form-grid-names">
+      <div class="admin-form-group">
+        <label for="mat-name">Store name <span class="cp-required">*</span></label>
+        <input @class(['admin-input', 'is-invalid' => $errors->has('name')]) type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255">
+        <p class="admin-form-help">Full product title from the store — updated when you sync prices.</p>
+        @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+      <div class="admin-form-group">
+        <label for="mat-short-name">Short name</label>
+        <input @class(['admin-input', 'is-invalid' => $errors->has('short_name')]) type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
+               placeholder="e.g. 2x4x8 Stud">
+        <p class="admin-form-help">Shown in lists and pickers. Leave blank to use the store name.</p>
+        @error('short_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+    </div>
 
-<div class="admin-form-group">
-  <label for="mat-description">Description</label>
-  <textarea @class(['admin-input', 'is-invalid' => $errors->has('description')]) id="mat-description" name="description" rows="3" maxlength="5000">{{ old('description', $m?->description) }}</textarea>
-  @error('description') <p class="admin-form-error">{{ $message }}</p> @enderror
+    <div class="admin-form-group mat-form-hero__description">
+      <label for="mat-description">Description</label>
+      <textarea @class(['admin-input', 'is-invalid' => $errors->has('description')]) id="mat-description" name="description" rows="4" maxlength="5000">{{ old('description', $m?->description) }}</textarea>
+      @error('description') <p class="admin-form-error">{{ $message }}</p> @enderror
+    </div>
+  </div>
 </div>
 
 <div class="admin-form-grid-2">
@@ -149,19 +162,10 @@
 
   <div class="admin-form-group mat-image-url-group">
     <label for="mat-image-url">Image URL</label>
-    <div class="mat-image-url-row">
-      <div class="mat-image-url-row__field">
-        <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
-               placeholder="https://images.homedepot.ca/productimages/…"
-                autocomplete="off" spellcheck="false">
-      </div>
-      @php $imagePreview = old('image_url', $m?->image_url); @endphp
-      @if (filled($imagePreview))
-        <div class="mat-image-preview" aria-hidden="true">
-          <img src="{{ $imagePreview }}" alt="" class="mat-image-preview__img" loading="lazy" width="72" height="72">
-        </div>
-      @endif
-    </div>
+    <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
+           placeholder="https://images.homedepot.ca/productimages/…"
+           autocomplete="off" spellcheck="false">
+    <p class="admin-form-help">Preview updates at the top of the form. Usually filled automatically when you sync prices.</p>
     @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
@@ -202,3 +206,37 @@
   @endif
 </div>
 </div>
+
+@push('scripts')
+<script>
+(function () {
+  'use strict';
+  var input = document.getElementById('mat-image-url');
+  var img = document.getElementById('mat-form-hero-img');
+  var placeholder = document.getElementById('mat-form-hero-placeholder');
+  if (!input || !img || !placeholder) return;
+
+  function syncHeroImage() {
+    var url = String(input.value || '').trim();
+    if (url === '') {
+      img.hidden = true;
+      img.removeAttribute('src');
+      placeholder.hidden = false;
+      return;
+    }
+    img.onload = function () {
+      img.hidden = false;
+      placeholder.hidden = true;
+    };
+    img.onerror = function () {
+      img.hidden = true;
+      placeholder.hidden = false;
+    };
+    img.src = url;
+  }
+
+  input.addEventListener('input', syncHeroImage);
+  input.addEventListener('change', syncHeroImage);
+})();
+</script>
+@endpush
