@@ -88,6 +88,7 @@
                      target="_blank" rel="noopener"
                      title="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}"
                      aria-label="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}"
+                     @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
                      @if (! filled($storeUrl)) hidden @endif>
                     @if ($linkVendor === 'amazon')
                       <i class="fa fa-amazon" aria-hidden="true"></i>
@@ -106,6 +107,7 @@
                               data-nails-per-box-target="fq-nails-per-box-{{ $i }}"
                             @endif
                             data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
+                            @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
                             aria-label="Catalog material for {{ $m->effectiveName() }}">
                       <option value="">— Search name or SKU —</option>
                     </select>
@@ -308,33 +310,74 @@
         return null;
       }
 
+      function resolveSelectValue(selectEl, value) {
+        if (value !== undefined && value !== null && String(value) !== '') {
+          return String(value);
+        }
+        if (selectEl.tomselect) {
+          var tsVal = selectEl.tomselect.getValue();
+          if (tsVal !== undefined && tsVal !== null && String(tsVal) !== '') {
+            return String(tsVal);
+          }
+        }
+        if (selectEl.dataset.tsReady === '1') {
+          return '';
+        }
+        var initial = selectEl.getAttribute('data-initial') || '';
+        return initial && initial !== '0' ? String(initial) : '';
+      }
+
+      function persistedStoreLink(selectEl, linkEl, resolvedValue) {
+        if (!resolvedValue) return { url: '', vendor: null };
+        var initial = selectEl.getAttribute('data-initial') || '';
+        if (initial && initial !== resolvedValue) return { url: '', vendor: null };
+
+        var url = selectEl.getAttribute('data-store-url') || linkEl.getAttribute('data-store-url') || '';
+        var vendor = selectEl.getAttribute('data-link-vendor') || linkEl.getAttribute('data-link-vendor') || null;
+        return { url: url, vendor: vendor || null };
+      }
+
       function updateProductLink(selectEl, value, optionMap) {
         var linkEl = document.getElementById(selectEl.getAttribute('data-url-target') || '');
         if (!linkEl) return;
 
-        var resolvedValue = value ? String(value) : '';
-        if (!resolvedValue && selectEl.tomselect) {
-          resolvedValue = String(selectEl.tomselect.getValue() || '');
-        }
-
+        var resolvedValue = resolveSelectValue(selectEl, value);
         if (!resolvedValue) {
           linkEl.hidden = true;
           linkEl.setAttribute('href', '#');
+          linkEl.removeAttribute('data-store-url');
+          linkEl.removeAttribute('data-link-vendor');
+          selectEl.removeAttribute('data-store-url');
+          selectEl.removeAttribute('data-link-vendor');
           setStoreLinkIcon(linkEl, null);
           return;
         }
 
         var item = optionMap[resolvedValue] || null;
         var url = resolveItemStoreUrl(item);
-        if (url) {
-          linkEl.setAttribute('href', url);
-          linkEl.hidden = false;
-          setStoreLinkIcon(linkEl, resolveLinkVendor(item, url));
-        } else {
+        var vendor = resolveLinkVendor(item, url);
+
+        if (!url) {
+          var persisted = persistedStoreLink(selectEl, linkEl, resolvedValue);
+          url = persisted.url;
+          vendor = vendor || persisted.vendor;
+        }
+
+        if (!url) {
           linkEl.hidden = true;
           linkEl.setAttribute('href', '#');
           setStoreLinkIcon(linkEl, null);
+          return;
         }
+
+        linkEl.setAttribute('href', url);
+        linkEl.removeAttribute('hidden');
+        linkEl.hidden = false;
+        linkEl.setAttribute('data-store-url', url);
+        linkEl.setAttribute('data-link-vendor', vendor || '');
+        selectEl.setAttribute('data-store-url', url);
+        selectEl.setAttribute('data-link-vendor', vendor || '');
+        setStoreLinkIcon(linkEl, vendor);
       }
 
       function updateNailsPerBox(selectEl, value, optionMap) {
@@ -357,20 +400,20 @@
 
         if (!previewEl) return;
 
-        if (!value) {
+        var resolved = resolveSelectValue(selectEl, value);
+
+        if (!resolved) {
           previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
           if (priceEl) priceEl.textContent = '—';
-          updateProductLink(selectEl, value, optionMap);
-          updateNailsPerBox(selectEl, value, optionMap);
+          updateProductLink(selectEl, '', optionMap);
+          updateNailsPerBox(selectEl, '', optionMap);
           return;
         }
 
-        var item = optionMap[String(value)] || null;
+        var item = optionMap[resolved] || null;
         if (!item) {
-          previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
-          if (priceEl) priceEl.textContent = '—';
-          updateProductLink(selectEl, value, optionMap);
-          updateNailsPerBox(selectEl, value, optionMap);
+          updateProductLink(selectEl, resolved, optionMap);
+          updateNailsPerBox(selectEl, resolved, optionMap);
           return;
         }
 
@@ -382,8 +425,8 @@
         if (priceEl) {
           priceEl.textContent = item.price_label || '—';
         }
-        updateProductLink(selectEl, value, optionMap);
-        updateNailsPerBox(selectEl, value, optionMap);
+        updateProductLink(selectEl, resolved, optionMap);
+        updateNailsPerBox(selectEl, resolved, optionMap);
       }
 
       if (typeof TomSelect === 'undefined') return;
@@ -418,15 +461,21 @@
             }
           },
           onChange: function (value) {
-            var resolved = value || this.getValue() || '';
-            updatePreview(selectEl, resolved, optionMap);
+            updatePreview(selectEl, value, optionMap);
           }
         });
 
         if (initial && initial !== '0') {
           ts.setValue(initial, true);
         }
-        updateProductLink(selectEl, ts.getValue() || initial, optionMap);
+        updatePreview(selectEl, initial, optionMap);
+        selectEl.dataset.tsReady = '1';
+      });
+
+      window.requestAnimationFrame(function () {
+        document.querySelectorAll('.fq-catalog-picker__select').forEach(function (selectEl) {
+          updateProductLink(selectEl, resolveSelectValue(selectEl), optionMap);
+        });
       });
     })();
   </script>
