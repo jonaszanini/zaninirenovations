@@ -54,8 +54,18 @@ class MaterialController extends Controller
             ->count();
 
         $usesSerpApi = (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi();
+        $needsSyncCount = app(MaterialPriceSyncService::class)->countNeedingSync();
 
-        return view('admin.materials.index', compact('materials', 'q', 'category', 'categories', 'totalMaterials', 'syncableCount', 'usesSerpApi'));
+        return view('admin.materials.index', compact(
+            'materials',
+            'q',
+            'category',
+            'categories',
+            'totalMaterials',
+            'syncableCount',
+            'needsSyncCount',
+            'usesSerpApi',
+        ));
     }
 
     public function create(): View

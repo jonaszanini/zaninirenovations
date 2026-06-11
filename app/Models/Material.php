@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -58,5 +59,17 @@ class Material extends Model
         $url = strtolower((string) $this->product_url);
 
         return str_contains($url, 'homedepot.ca');
+    }
+
+    /**
+     * Never synced, or last sync was not successful.
+     */
+    public function scopeNeedsPriceSync(Builder $query): Builder
+    {
+        return $query->where(function (Builder $sub) {
+            $sub->whereNull('last_scraped_at')
+                ->orWhereNull('last_scrape_status')
+                ->orWhere('last_scrape_status', '!=', self::SCRAPE_OK);
+        });
     }
 }

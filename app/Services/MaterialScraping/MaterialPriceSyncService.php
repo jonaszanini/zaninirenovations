@@ -26,12 +26,13 @@ class MaterialPriceSyncService
     /**
      * @return Collection<int, Material>
      */
-    public function materialsToSync(?int $id = null, ?string $vendor = null): Collection
+    public function materialsToSync(?int $id = null, ?string $vendor = null, bool $unsyncedOnly = false): Collection
     {
         return Material::query()
             ->where('is_active', true)
             ->whereNotNull('product_url')
             ->where('product_url', '!=', '')
+            ->when($unsyncedOnly, fn ($q) => $q->needsPriceSync())
             ->when($id !== null, fn ($q) => $q->where('id', $id))
             ->when(filled($vendor), function ($q) use ($vendor) {
                 $q->where('vendor', 'like', '%'.$vendor.'%');
@@ -39,6 +40,16 @@ class MaterialPriceSyncService
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
+    }
+
+    public function countNeedingSync(): int
+    {
+        return Material::query()
+            ->where('is_active', true)
+            ->whereNotNull('product_url')
+            ->where('product_url', '!=', '')
+            ->needsPriceSync()
+            ->count();
     }
 
     /**

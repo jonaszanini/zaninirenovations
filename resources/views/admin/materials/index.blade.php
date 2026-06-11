@@ -39,8 +39,9 @@
         @endif
         @if ($usesSerpApi)
           · admin sync via SerpApi
-        @else
-          · bulk sync on your PC: <code>php artisan materials:sync-prices</code>
+        @endif
+        @if ($needsSyncCount > 0)
+          · {{ number_format($needsSyncCount) }} need local sync
         @endif
       </p>
     </div>
@@ -68,6 +69,7 @@
     </div>
   </div>
 
+  <div class="mat-admin-panels">
   <details class="admin-accordion admin-card admin-card--narrow mat-bulk-import" @if(old('skus')) open @endif>
     <summary class="admin-accordion__summary">
       <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
@@ -143,6 +145,65 @@
       </form>
     </div>
   </details>
+
+  <details class="admin-accordion admin-card admin-card--narrow mat-local-sync">
+    <summary class="admin-accordion__summary">
+      <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+      <span class="admin-accordion__title">Local price sync (your PC)</span>
+    </summary>
+    <div class="admin-accordion__panel">
+      <p class="admin-form-help mat-local-sync__lede">
+        Run from your project root in PowerShell or Terminal.
+        @if ($usesSerpApi)
+          On your PC, leave <code>MATERIALS_SCRAPER_SERPAPI_KEY</code> unset so sync uses the free Home Depot store API instead of SerpApi credits.
+        @else
+          Uses the Home Depot store API (Carleton Place store <code>7263</code> when configured).
+        @endif
+        @if ($needsSyncCount > 0)
+          <strong>{{ number_format($needsSyncCount) }}</strong> material{{ $needsSyncCount === 1 ? '' : 's' }} never synced or last sync failed.
+        @endif
+      </p>
+      <ul class="mat-sync-commands__list">
+        <li class="mat-sync-commands__row">
+          <div class="mat-sync-commands__cmd-wrap">
+            <code class="mat-sync-commands__cmd" id="mat-sync-cmd-new-dry">php artisan materials:sync-new-prices --dry-run</code>
+            <span class="admin-form-help mat-sync-commands__label">New / failed only — preview</span>
+          </div>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-new-dry">
+            <i class="fa fa-copy"></i> Copy
+          </button>
+        </li>
+        <li class="mat-sync-commands__row">
+          <div class="mat-sync-commands__cmd-wrap">
+            <code class="mat-sync-commands__cmd" id="mat-sync-cmd-new">php artisan materials:sync-new-prices</code>
+            <span class="admin-form-help mat-sync-commands__label">New / failed only — update database</span>
+          </div>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-new">
+            <i class="fa fa-copy"></i> Copy
+          </button>
+        </li>
+        <li class="mat-sync-commands__row">
+          <div class="mat-sync-commands__cmd-wrap">
+            <code class="mat-sync-commands__cmd" id="mat-sync-cmd-dry">php artisan materials:sync-prices --dry-run</code>
+            <span class="admin-form-help mat-sync-commands__label">All materials — preview</span>
+          </div>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-dry">
+            <i class="fa fa-copy"></i> Copy
+          </button>
+        </li>
+        <li class="mat-sync-commands__row">
+          <div class="mat-sync-commands__cmd-wrap">
+            <code class="mat-sync-commands__cmd" id="mat-sync-cmd-live">php artisan materials:sync-prices</code>
+            <span class="admin-form-help mat-sync-commands__label">All materials — update database</span>
+          </div>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-live">
+            <i class="fa fa-copy"></i> Copy
+          </button>
+        </li>
+      </ul>
+    </div>
+  </details>
+  </div>
 
   <div class="admin-card">
     <form id="mat-bulk-delete-form" method="post" action="{{ route('admin.materials.bulk-destroy') }}"
@@ -592,6 +653,34 @@
 
         updateBulkActions();
       }
+
+      document.querySelectorAll('.mat-sync-commands__copy').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var targetId = btn.getAttribute('data-copy-target');
+          var codeEl = targetId ? document.getElementById(targetId) : null;
+          var text = codeEl ? codeEl.textContent.trim() : '';
+          if (!text) return;
+
+          function showCopied() {
+            btn.classList.add('is-copied');
+            var icon = btn.querySelector('i');
+            var prevClass = icon ? icon.className : '';
+            if (icon) icon.className = 'fa fa-check';
+            window.setTimeout(function () {
+              btn.classList.remove('is-copied');
+              if (icon) icon.className = prevClass;
+            }, 1600);
+          }
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(showCopied).catch(function () {
+              window.prompt('Copy command:', text);
+            });
+          } else {
+            window.prompt('Copy command:', text);
+          }
+        });
+      });
     })();
   </script>
 @endpush
