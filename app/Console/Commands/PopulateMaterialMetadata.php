@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Material;
-use App\Services\MaterialMetadataEnricher;
+use App\Services\MaterialMetadataPopulationService;
 use Illuminate\Console\Command;
 
 class PopulateMaterialMetadata extends Command
@@ -15,76 +15,32 @@ class PopulateMaterialMetadata extends Command
 
     protected $description = 'One-time helper: suggest short names, categories, and units from material store names';
 
-    public function handle(MaterialMetadataEnricher $enricher): int
+    public function handle(MaterialMetadataPopulationService $population): int
     {
         $dryRun = (bool) $this->option('dry-run');
         $forceShortName = (bool) $this->option('force-short-name');
         $skipCategory = (bool) $this->option('skip-category');
 
-        $updated = 0;
-        $skipped = 0;
+        $rows = $population->previewAll($forceShortName, $skipCategory);
 
-        $rows = [];
-
-        Material::query()->orderBy('id')->each(function (Material $material) use (
-            $enricher,
-            $dryRun,
-            $forceShortName,
-            $skipCategory,
-            &$updated,
-            &$skipped,
-            &$rows
-        ) {
-            $suggestions = $enricher->suggest($material);
-            $changes = [];
-
-            if ($suggestions['short_name'] !== null
-                && ($forceShortName || blank($material->short_name))) {
-                if ($forceShortName || $material->short_name !== $suggestions['short_name']) {
-                    $changes['short_name'] = $suggestions['short_name'];
-                }
-            }
-
-            if (! $skipCategory && $suggestions['category_id'] !== null) {
-                if ((int) $material->category_id !== (int) $suggestions['category_id']) {
-                    $changes['category_id'] = $suggestions['category_id'];
-                }
-            }
-
-            if ($suggestions['unit'] !== null && blank($material->unit)) {
-                $changes['unit'] = $suggestions['unit'];
-            }
-
-            if ($changes === []) {
-                $skipped++;
-
-                return;
-            }
-
-            $rows[] = [
-                $material->id,
-                $material->short_name ?: '—',
-                $changes['short_name'] ?? '—',
-                $material->category_id ?: '—',
-                $changes['category_id'] ?? '—',
-                $material->unit ?: '—',
-                $changes['unit'] ?? '—',
-                \Illuminate\Support\Str::limit($material->name, 50),
-            ];
-
-            if (! $dryRun) {
-                $material->fill($changes);
-                $material->save();
-            }
-
-            $updated++;
-        });
-
-        if ($rows !== []) {
+        if ($rows->isNotEmpty()) {
             $this->table(
                 ['ID', 'Old short', 'New short', 'Old cat', 'New cat', 'Old unit', 'New unit', 'Name'],
-                $rows
+                $rows->all()
             );
+        }
+
+        if (! $dryRun) {
+            $result = $population->applyToMaterials(
+                Material::query()->orderBy('id')->get(),
+                $forceShortName,
+                $skipCategory,
+            );
+            $updated = $result['updated'];
+            $skipped = $result['skipped'];
+        } else {
+            $updated = $rows->count();
+            $skipped = Material::count() - $updated;
         }
 
         $verb = $dryRun ? 'Would update' : 'Updated';

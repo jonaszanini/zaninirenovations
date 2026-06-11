@@ -4,6 +4,7 @@ namespace App\Services\MaterialScraping;
 
 use App\Models\Material;
 use App\Models\MaterialVendor;
+use App\Services\MaterialMetadataPopulationService;
 use App\Support\Logging\AppLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -18,16 +19,20 @@ class MaterialPriceSyncService
 
     private AmazonCaSerpApiProductFetcher $amazonFetcher;
 
+    private MaterialMetadataPopulationService $metadataPopulation;
+
     public function __construct(
         MaterialPageFetcher $fetcher,
         HomeDepotCaProductParser $homeDepotParser,
         HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher,
         ?AmazonCaSerpApiProductFetcher $amazonFetcher = null,
+        ?MaterialMetadataPopulationService $metadataPopulation = null,
     ) {
         $this->fetcher = $fetcher;
         $this->homeDepotParser = $homeDepotParser;
         $this->localizedPriceFetcher = $localizedPriceFetcher;
         $this->amazonFetcher = $amazonFetcher ?? new AmazonCaSerpApiProductFetcher;
+        $this->metadataPopulation = $metadataPopulation ?? app(MaterialMetadataPopulationService::class);
     }
 
     /**
@@ -159,6 +164,7 @@ class MaterialPriceSyncService
                 $material->last_scrape_status = Material::SCRAPE_OK;
                 $material->last_scrape_error = null;
                 $material->save();
+                $this->populateMetadataAfterSync($material);
             }
 
             return [
@@ -203,6 +209,7 @@ class MaterialPriceSyncService
                 $material->last_scrape_status = Material::SCRAPE_OK;
                 $material->last_scrape_error = null;
                 $material->save();
+                $this->populateMetadataAfterSync($material);
             }
 
             return [
@@ -213,6 +220,18 @@ class MaterialPriceSyncService
             ];
         } catch (\Throwable $e) {
             return $this->record($material, Material::SCRAPE_FAILED, null, $e->getMessage(), $dryRun, $oldPrice);
+        }
+    }
+
+    private function populateMetadataAfterSync(Material $material): void
+    {
+        try {
+            $this->metadataPopulation->applyToMaterial($material);
+        } catch (\Throwable $e) {
+            AppLogger::warning('materials.metadata_populate.failed', [
+                'material_id' => $material->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
