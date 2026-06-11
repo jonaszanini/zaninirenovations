@@ -64,13 +64,16 @@
     <p class="mat-table-meta">
       {{ number_format($totalMaterials) }} {{ $totalMaterials === 1 ? 'material' : 'materials' }} in database
       @if ($syncableCount > 0)
-        · {{ number_format($syncableCount) }} Home Depot syncable
+        · {{ number_format($syncableCount) }} syncable
+        @if (($homeDepotSyncableCount ?? 0) > 0 || ($amazonSyncableCount ?? 0) > 0)
+          ({{ number_format($homeDepotSyncableCount ?? 0) }} Home Depot{{ ($amazonSyncableCount ?? 0) > 0 ? ', '.number_format($amazonSyncableCount).' Amazon' : '' }})
+        @endif
       @endif
       @if ($usesSerpApi)
         · admin sync via SerpApi
       @endif
       @if ($needsSyncCount > 0)
-        · {{ number_format($needsSyncCount) }} need local sync
+        · {{ number_format($needsSyncCount) }} need sync
       @endif
     </p>
 
@@ -153,7 +156,8 @@
                   @if ($material->isSerpApiSyncable())
                     <form method="post" action="{{ route('admin.materials.sync-price', $material) }}" class="mat-sync-inline-form">
                       @csrf
-                      <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="Sync price from Home Depot">
+                      <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm"
+                              title="{{ $material->isAmazonSyncable() ? 'Sync price from Amazon Canada' : 'Sync price from Home Depot' }}">
                         <i class="fa fa-refresh"></i> Sync
                       </button>
                     </form>

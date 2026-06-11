@@ -126,6 +126,58 @@ class Material extends Model
     }
 
     /**
+     * Active price-sync channel when eligible, otherwise null.
+     */
+    public function priceSyncChannel(): ?string
+    {
+        if ($this->isAmazonSyncable()) {
+            return 'amazon';
+        }
+
+        if ($this->isHomeDepotSyncable()) {
+            return 'home_depot';
+        }
+
+        return null;
+    }
+
+    /**
+     * Why this material cannot be marked active for automated price sync.
+     */
+    public function priceSyncEligibilityError(): ?string
+    {
+        if ($this->isSerpApiSyncable()) {
+            return null;
+        }
+
+        $amazonId = MaterialVendor::amazonId();
+        $homeDepotId = MaterialVendor::homeDepotId();
+        $vendorId = $this->vendor_id !== null ? (int) $this->vendor_id : null;
+
+        if ($vendorId !== null && $amazonId !== null && $vendorId === $amazonId) {
+            return 'Amazon vendor selected: add a valid ASIN in Store SKU (10 characters).';
+        }
+
+        if ($vendorId !== null && $homeDepotId !== null && $vendorId === $homeDepotId) {
+            return 'Home Depot vendor selected: add a homedepot.ca product URL.';
+        }
+
+        if ($this->resolveAsin() !== null) {
+            return 'ASIN found — assign the Amazon vendor to include this material in price sync.';
+        }
+
+        if ($this->hasProductUrl() && $this->isHomeDepotUrl()) {
+            return 'Home Depot URL found — assign the Home Depot vendor to include this material in price sync.';
+        }
+
+        if ($this->hasProductUrl() && $this->isAmazonUrl()) {
+            return 'Amazon URL found — assign the Amazon vendor and a valid ASIN in Store SKU.';
+        }
+
+        return 'Select the Home Depot or Amazon vendor and provide the matching product URL or ASIN.';
+    }
+
+    /**
      * Active Home Depot vendor materials with a homedepot.ca product URL.
      */
     public function scopeHomeDepotSyncable(Builder $query): Builder

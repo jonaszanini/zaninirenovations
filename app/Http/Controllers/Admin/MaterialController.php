@@ -11,6 +11,7 @@ use App\Services\MaterialScraping\MaterialSkuImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MaterialController extends Controller
@@ -49,10 +50,13 @@ class MaterialController extends Controller
             ->pluck('category');
 
         $totalMaterials = Material::query()->count();
-        $syncableCount = Material::query()->homeDepotSyncable()->count();
+        $syncService = app(MaterialPriceSyncService::class);
+        $syncableCount = $syncService->countSerpApiSyncable();
+        $homeDepotSyncableCount = Material::query()->homeDepotSyncable()->count();
+        $amazonSyncableCount = Material::query()->amazonSyncable()->count();
 
         $usesSerpApi = (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi();
-        $needsSyncCount = app(MaterialPriceSyncService::class)->countNeedingSync();
+        $needsSyncCount = $syncService->countSerpApiNeedingSync();
 
         return view('admin.materials.index', compact(
             'materials',
@@ -61,6 +65,8 @@ class MaterialController extends Controller
             'categories',
             'totalMaterials',
             'syncableCount',
+            'homeDepotSyncableCount',
+            'amazonSyncableCount',
             'needsSyncCount',
             'usesSerpApi',
         ));
@@ -168,11 +174,11 @@ class MaterialController extends Controller
 
     public function syncAllStart(Request $request, MaterialPriceSyncService $syncService, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher): JsonResponse
     {
-        $materialIds = $syncService->materialsToSync()->pluck('id')->all();
+        $materialIds = $syncService->serpApiMaterialsToSync()->pluck('id')->all();
 
         if ($materialIds === []) {
             return response()->json([
-                'message' => 'No active Home Depot materials with a product URL to sync.',
+                'message' => 'No active Home Depot or Amazon materials eligible for price sync.',
             ], 422);
         }
 
@@ -564,7 +570,7 @@ class MaterialController extends Controller
             'homeDepotVendor' => MaterialVendor::homeDepot(),
             'usesSerpApi' => (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi(),
             'needsSyncCount' => app(MaterialPriceSyncService::class)->countNeedingSync(),
-            'syncableCount' => Material::query()->homeDepotSyncable()->count(),
+            'syncableCount' => app(MaterialPriceSyncService::class)->countSerpApiSyncable(),
             'totalMaterials' => Material::query()->count(),
             'failedCount' => Material::query()
                 ->where('last_scrape_status', Material::SCRAPE_FAILED)
@@ -609,6 +615,15 @@ class MaterialController extends Controller
 
         if (! filled($data['quantity_per_package'] ?? null)) {
             $data['quantity_per_package'] = null;
+        }
+
+        if ($data['is_active']) {
+            $probe = Material::make($data);
+            if (! $probe->isSerpApiSyncable()) {
+                throw ValidationException::withMessages([
+                    'is_active' => [$probe->priceSyncEligibilityError() ?? 'Material is not eligible for price sync.'],
+                ]);
+            }
         }
 
         return $data;

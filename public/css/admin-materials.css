@@ -432,6 +432,10 @@
   margin: 0.65rem 0 1rem;
 }
 
+.mat-active-sync-help {
+  margin: 0.5rem 0 0;
+}
+
 .mat-form-section-title {
   margin: 0 0 1rem;
   font-size: 0.8rem;

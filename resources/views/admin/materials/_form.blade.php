@@ -1,5 +1,19 @@
 @php
+  use App\Models\Material;
+  use App\Models\MaterialVendor;
+
   $m = $material ?? null;
+  $syncProbe = Material::make([
+    'vendor_id' => old('vendor_id', $m?->vendor_id),
+    'store_sku' => old('store_sku', $m?->store_sku),
+    'product_url' => old('product_url', $m?->product_url),
+    'is_active' => true,
+  ]);
+  $priceSyncChannel = $syncProbe->priceSyncChannel();
+  $priceSyncEligibilityError = $syncProbe->priceSyncEligibilityError();
+  $selectedVendorId = (int) old('vendor_id', $m?->vendor_id);
+  $amazonVendorId = MaterialVendor::amazonId();
+  $homeDepotVendorId = MaterialVendor::homeDepotId();
 @endphp
 
 <div class="mat-form">
@@ -100,7 +114,15 @@
     <input type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
            placeholder="https://www.homedepot.ca/product/…"
            class="@error('product_url') is-invalid @enderror" autocomplete="off" spellcheck="false">
-    <p class="admin-form-help">Home Depot product link — used to fetch store price and details during bulk import sync.</p>
+    <p class="admin-form-help">
+      @if ($selectedVendorId && $amazonVendorId && $selectedVendorId === $amazonVendorId)
+        Amazon Canada product link (optional when a valid ASIN is in Store SKU).
+      @elseif ($selectedVendorId && $homeDepotVendorId && $selectedVendorId === $homeDepotVendorId)
+        Home Depot product link — used to fetch store price and details during sync.
+      @else
+        Home Depot or Amazon Canada product URL, depending on vendor.
+      @endif
+    </p>
     @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 
@@ -131,6 +153,18 @@
     <span class="admin-checkbox__mark" aria-hidden="true"></span>
     <span class="admin-checkbox__text">Active (include in price sync)</span>
   </label>
+  @error('is_active') <p class="admin-form-error">{{ $message }}</p> @enderror
+  <p class="admin-form-help mat-active-sync-help">
+    @if ($priceSyncChannel === 'amazon')
+      Syncs via SerpApi Amazon Canada using the ASIN in Store SKU.
+    @elseif ($priceSyncChannel === 'home_depot')
+      Syncs via SerpApi or local Home Depot store API using the homedepot.ca product URL.
+    @elseif ($priceSyncEligibilityError)
+      To enable sync: {{ $priceSyncEligibilityError }}
+    @else
+      Choose Home Depot or Amazon vendor and add the matching product URL or ASIN.
+    @endif
+  </p>
 
   @if ($m && $m->last_scraped_at)
     <div class="mat-form-status__sync">
