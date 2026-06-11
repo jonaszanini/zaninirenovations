@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\EasternStandardTimeDisplay;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class ClientProject extends Model
 {
+    use HasFactory;
+
     // Canonical status keys (snake_case for DB, human labels in statusLabels()).
     /** Lead / intake: on-site visit agreed, quote not sent yet. */
     public const STATUS_VISIT_REQUIRED = 'visit_required';

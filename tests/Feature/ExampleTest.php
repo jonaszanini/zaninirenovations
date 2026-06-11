@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
+use Tests\IntegrationTestCase;
 
-class ExampleTest extends TestCase
+class ExampleTest extends IntegrationTestCase
 {
     public function test_the_application_returns_a_successful_response(): void
     {
