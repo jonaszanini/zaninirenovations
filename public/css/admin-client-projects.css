@@ -3715,6 +3715,10 @@ body.cp-modal-open {
   padding-right: 0.5rem;
 }
 
+.fq-catalog-picker__open[data-store-url] {
+  display: inline-flex !important;
+}
+
 .fq-catalog-picker__open--amazon {
   color: #c45500;
 }
