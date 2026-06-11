@@ -1,19 +1,7 @@
 @php
   use App\Models\Material;
-  use App\Models\MaterialVendor;
 
   $m = $material ?? null;
-  $syncProbe = Material::make([
-    'vendor_id' => old('vendor_id', $m?->vendor_id),
-    'store_sku' => old('store_sku', $m?->store_sku),
-    'product_url' => old('product_url', $m?->product_url),
-    'is_active' => true,
-  ]);
-  $priceSyncChannel = $syncProbe->priceSyncChannel();
-  $priceSyncEligibilityError = $syncProbe->priceSyncEligibilityError();
-  $selectedVendorId = (int) old('vendor_id', $m?->vendor_id);
-  $amazonVendorId = MaterialVendor::amazonId();
-  $homeDepotVendorId = MaterialVendor::homeDepotId();
   $imagePreview = session()->hasOldInput('image_url')
     ? old('image_url')
     : $m?->previewImageUrl();
@@ -141,34 +129,10 @@
 <div class="mat-url-fields">
   <h3 class="mat-form-section-title">Store links &amp; sync</h3>
   <div class="mat-form-url-row">
-    <div class="admin-form-group mat-form-url-row__field">
-      <label for="mat-product-url">Product URL</label>
-      <input @class(['admin-input', 'is-invalid' => $errors->has('product_url')]) type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
-             placeholder="https://www.homedepot.ca/product/…"
-             autocomplete="off" spellcheck="false">
-      <p class="admin-form-help">
-        @if ($selectedVendorId && $amazonVendorId && $selectedVendorId === $amazonVendorId)
-          Amazon Canada product link (optional when a valid ASIN is in Store SKU).
-        @elseif ($selectedVendorId && $homeDepotVendorId && $selectedVendorId === $homeDepotVendorId)
-          Home Depot product link — used to fetch store price and details during sync.
-        @else
-          Home Depot or Amazon Canada product URL, depending on vendor.
-        @endif
-      </p>
-      @error('product_url') <p class="admin-form-error">{{ $message }}</p> @enderror
-    </div>
-
-    <div class="admin-form-group mat-form-url-row__field">
-      <label for="mat-image-url">Image URL</label>
-      <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ $imageUrlFieldValue }}" maxlength="500"
-             placeholder="https://images.homedepot.ca/productimages/…"
-             autocomplete="off" spellcheck="false">
-      <p class="admin-form-help">Preview updates at the top of the form. Usually filled automatically when you sync prices.</p>
-      @error('image_url') <p class="admin-form-error">{{ $message }}</p> @enderror
-    </div>
-
-    <div class="admin-form-group mat-form-url-row__field mat-form-url-row__field--active">
-      <span class="mat-form-active-header__label">Active</span>
+    <label class="mat-form-url-row__label" for="mat-product-url">Product URL</label>
+    <label class="mat-form-url-row__label" for="mat-image-url">Image URL</label>
+    <div class="mat-form-url-row__active-head">
+      <span class="mat-form-url-row__label">Active</span>
       @if ($m && $m->last_scraped_at)
         <div class="mat-form-status__sync">
           <span class="mat-scrape-badge mat-scrape-badge--{{ $m->last_scrape_status ?? 'unknown' }}">
@@ -182,17 +146,27 @@
           @endif
         </div>
       @endif
-      <div class="mat-form-active-control">
-        <label class="admin-checkbox admin-checkbox--block">
-          <input type="hidden" name="is_active" value="0">
-          <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
-                 @checked(old('is_active', $m?->is_active ?? true))>
-          <span class="admin-checkbox__mark" aria-hidden="true"></span>
-          <span class="admin-checkbox__text">Include in price sync</span>
-        </label>
-      </div>
-      @error('is_active') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
+
+    <input @class(['admin-input', 'mat-form-url-row__control', 'is-invalid' => $errors->has('product_url')]) type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
+           placeholder="https://www.homedepot.ca/product/…"
+           autocomplete="off" spellcheck="false">
+    <input @class(['admin-input', 'mat-form-url-row__control', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ $imageUrlFieldValue }}" maxlength="500"
+           placeholder="https://images.homedepot.ca/productimages/…"
+           autocomplete="off" spellcheck="false">
+    <div class="mat-form-url-row__active-control">
+      <input type="hidden" name="is_active" value="0">
+      <label class="admin-checkbox admin-checkbox--block">
+        <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
+               @checked(old('is_active', $m?->is_active ?? true))>
+        <span class="admin-checkbox__mark" aria-hidden="true"></span>
+        <span class="admin-checkbox__text">Include in price sync</span>
+      </label>
+    </div>
+
+    @error('product_url') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
+    @error('image_url') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
+    @error('is_active') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
   </div>
 </div>
 </div>

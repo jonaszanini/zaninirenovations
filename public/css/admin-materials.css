@@ -512,8 +512,11 @@
 .mat-form-hero__media {
   width: 172px;
   height: 172px;
-  aspect-ratio: 1;
+  max-width: 172px;
+  max-height: 172px;
+  aspect-ratio: 1 / 1;
   flex-shrink: 0;
+  box-sizing: border-box;
   border-radius: 8px;
   border: 1px solid var(--admin-border, #d8dee4);
   background: #fff;
@@ -652,67 +655,79 @@
 
 .mat-form-url-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 300px);
-  gap: 0.75rem 1.25rem;
-  margin-bottom: 0;
-  align-items: start;
-}
-
-.mat-form-url-row__field {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(220px, 280px);
+  grid-template-rows: auto auto;
+  column-gap: 1.25rem;
+  row-gap: 0.4rem;
   margin-bottom: 1rem;
-  min-width: 0;
+  align-items: stretch;
 }
 
-.mat-form-url-row__field--active {
-  position: relative;
-}
-
-.mat-form-active-header__label {
+.mat-form-url-row__label {
   display: block;
-  margin: 0 0 0.4rem;
+  margin: 0;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--admin-muted, #5a6570);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  align-self: end;
 }
 
-.mat-form-url-row__field--active .mat-form-status__sync {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
-  max-width: calc(100% - 3.5rem);
+.mat-form-url-row__active-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  align-self: end;
 }
 
-.mat-form-active-control {
+.mat-form-url-row__control,
+.mat-form-url-row__active-control {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  box-sizing: border-box;
+}
+
+.mat-form-url-row__active-control {
   display: flex;
   align-items: center;
-  min-height: 44px;
   padding: 0 0.9rem;
-  box-sizing: border-box;
-  border-radius: 8px;
   border: 1px solid var(--admin-border, #d8dee4);
-  background: var(--admin-surface-hover, #f4f6f8);
+  border-radius: 8px;
+  background: #fff;
 }
 
-.mat-form-active-control .admin-checkbox--block {
+.mat-form-url-row__active-control .admin-checkbox--block {
   margin: 0;
+  width: 100%;
+  align-items: center;
+}
+
+.mat-form-url-row__error {
+  margin: 0.25rem 0 0;
+  grid-column: 1 / -1;
 }
 
 .mat-form-status__sync {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.15rem;
+  gap: 0.1rem;
   text-align: right;
   min-width: 0;
   flex-shrink: 0;
 }
 
 .mat-form-status__sync-date {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
   color: var(--admin-muted, #5a6570);
+  white-space: nowrap;
 }
 
 .mat-form-status__sync .mat-scrape-meta__error {
@@ -745,12 +760,6 @@
 
 .mat-sync-form {
   display: none;
-}
-
-.mat-sync-form-help {
-  margin: 0.35rem 0 0;
-  max-width: 36rem;
-  flex: 1 1 16rem;
 }
 
 .mat-delete-form {

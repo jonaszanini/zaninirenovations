@@ -26,17 +26,6 @@
             @endif
             <a href="{{ route('admin.materials.index') }}" class="admin-btn admin-btn--ghost">Back to list</a>
           </div>
-          @if ($material->isSerpApiSyncable())
-            <p class="admin-form-help mat-sync-form-help">
-              @if ($material->isAmazonSyncable())
-                Fetches name, price, and image from Amazon Canada via SerpApi using the ASIN in Store SKU.
-              @elseif (filled(config('materials.scraper.serpapi_key')))
-                Fetches the current name, price, and image via SerpApi (store-localized). Save any URL changes before syncing.
-              @else
-                Fetches the current name, price, and image from the Home Depot store API. For bulk sync on your PC, run <code>php artisan materials:sync-prices</code>.
-              @endif
-            </p>
-          @endif
         </div>
       </div>
     </form>
