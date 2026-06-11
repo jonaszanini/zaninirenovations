@@ -29,7 +29,7 @@ class FenceConfigController extends Controller
             ->with('vendor')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor_id']);
+            ->get(['id', 'name', 'short_name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor_id']);
 
         $linkedSyncCount = $materials
             ->filter(fn (FenceMaterial $row) => $row->material_id !== null
@@ -157,7 +157,7 @@ class FenceConfigController extends Controller
         return $catalogMaterials->map(function (Material $catalog) {
             $priceLabel = ClientProject::formatMoney((float) $catalog->price_cad);
             $sku = trim((string) ($catalog->store_sku ?? ''));
-            $label = $catalog->name;
+            $label = $catalog->displayName();
             if ($sku !== '') {
                 $label .= ' · '.$sku;
             }
@@ -166,7 +166,8 @@ class FenceConfigController extends Controller
             return [
                 'id' => $catalog->id,
                 'label' => $label,
-                'name' => $catalog->name,
+                'name' => $catalog->displayName(),
+                'store_name' => $catalog->name,
                 'sku' => $sku,
                 'model' => trim((string) ($catalog->model ?? '')),
                 'vendor' => trim((string) ($catalog->vendorName() ?? '')),

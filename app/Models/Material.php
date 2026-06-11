@@ -21,6 +21,7 @@ class Material extends Model
 
     protected $fillable = [
         'name',
+        'short_name',
         'description',
         'category',
         'vendor_id',
@@ -54,6 +55,14 @@ class Material extends Model
     public function vendorName(): ?string
     {
         return $this->vendor?->name;
+    }
+
+    /**
+     * Label for admin lists, pickers, and quotations — short name when set.
+     */
+    public function displayName(): string
+    {
+        return filled($this->short_name) ? (string) $this->short_name : (string) $this->name;
     }
 
     public function formattedPrice(): string

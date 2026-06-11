@@ -391,7 +391,7 @@ class FenceQuotationCalculator
 
         return [
             'key' => $key,
-            'name' => $mat ? $mat->name : $key,
+            'name' => $mat ? $mat->effectiveName() : $key,
             'long_name' => $mat?->effectiveLongName(),
             'model' => $mat?->effectiveModel(),
             'store_sku' => $mat?->effectiveStoreSku(),

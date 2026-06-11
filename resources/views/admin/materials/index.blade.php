@@ -82,7 +82,7 @@
       @csrf
       <div class="mat-bulk-actions" id="mat-bulk-actions" hidden>
         <span class="mat-bulk-actions__count" id="mat-selected-count">0 selected</span>
-        <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" id="mat-bulk-delete-btn" disabled>
+        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-bulk-delete-btn" disabled>
           <i class="fa fa-trash"></i> Delete selected
         </button>
       </div>
@@ -116,7 +116,7 @@
               <td class="mat-col-select">
                 <label class="admin-checkbox mat-row-select-label">
                   <input type="checkbox" form="mat-bulk-delete-form" name="ids[]" value="{{ $material->id }}" class="admin-checkbox__input mat-row-select"
-                         aria-label="Select {{ $material->name }}">
+                         aria-label="Select {{ $material->displayName() }}">
                   <span class="admin-checkbox__mark" aria-hidden="true"></span>
                 </label>
               </td>
@@ -128,7 +128,10 @@
                 @endif
               </td>
               <td>
-                <strong>{{ $material->name }}</strong>
+                <strong>{{ $material->displayName() }}</strong>
+                @if (filled($material->short_name))
+                  <br><small class="admin-form-help mat-store-name">{{ $material->name }}</small>
+                @endif
                 @if ($material->product_url)
                   <br><a href="{{ $material->product_url }}" target="_blank" rel="noopener" class="admin-text-link mat-product-link">Product page</a>
                 @endif

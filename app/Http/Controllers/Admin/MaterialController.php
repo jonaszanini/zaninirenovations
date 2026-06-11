@@ -30,6 +30,7 @@ class MaterialController extends Controller
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', '%'.$q.'%')
+                        ->orWhere('short_name', 'like', '%'.$q.'%')
                         ->orWhere('description', 'like', '%'.$q.'%')
                         ->orWhere('store_sku', 'like', '%'.$q.'%')
                         ->orWhere('model', 'like', '%'.$q.'%')
@@ -585,6 +586,7 @@ class MaterialController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'short_name' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:5000'],
             'category' => ['nullable', 'string', 'max:120'],
             'vendor_id' => ['nullable', 'integer', 'exists:material_vendors,id'],
@@ -603,7 +605,7 @@ class MaterialController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['sort_order'] = (int) ($data['sort_order'] ?? 0);
 
-        foreach (['description', 'category', 'store_sku', 'model', 'product_url', 'image_url', 'unit'] as $nullable) {
+        foreach (['short_name', 'description', 'category', 'store_sku', 'model', 'product_url', 'image_url', 'unit'] as $nullable) {
             if (array_key_exists($nullable, $data) && ! filled($data[$nullable])) {
                 $data[$nullable] = null;
             }

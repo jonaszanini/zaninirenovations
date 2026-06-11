@@ -18,10 +18,20 @@
 
 <div class="mat-form">
 <div class="admin-form-group">
-  <label for="mat-name">Name <span class="cp-required">*</span></label>
+  <label for="mat-name">Store name <span class="cp-required">*</span></label>
   <input type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255"
          class="@error('name') is-invalid @enderror">
+  <p class="admin-form-help">Full product title from the store — updated when you sync prices.</p>
   @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
+</div>
+
+<div class="admin-form-group">
+  <label for="mat-short-name">Short name</label>
+  <input type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
+         placeholder="e.g. Gate corner brace"
+         class="@error('short_name') is-invalid @enderror">
+  <p class="admin-form-help">Shown in lists and pickers. Leave blank to use the store name above.</p>
+  @error('short_name') <p class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 
 <div class="admin-form-group">

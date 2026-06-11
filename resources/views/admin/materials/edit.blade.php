@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Edit material — '.$material->name)
+@section('heading', 'Edit material — '.$material->displayName())
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-materials.css') }}?v={{ @filemtime(public_path('css/admin-materials.css')) ?: time() }}">

@@ -72,7 +72,7 @@
           @foreach ($materials as $i => $m)
             <tr class="fq-material-row" data-row="{{ $i }}">
               <td>
-                <strong>{{ $m->name }}</strong>
+                <strong>{{ $m->effectiveName() }}</strong>
                 <div class="admin-form-help" style="font-size:11px;">key: <code>{{ $m->key }}</code></div>
                 <input type="hidden" name="materials[{{ $i }}][id]" value="{{ $m->id }}">
               </td>
@@ -84,7 +84,7 @@
                           data-preview-target="fq-preview-{{ $i }}"
                           data-price-target="fq-price-{{ $i }}"
                           data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
-                          aria-label="Catalog material for {{ $m->name }}">
+                          aria-label="Catalog material for {{ $m->effectiveName() }}">
                     <option value="">— Search name or SKU —</option>
                   </select>
                 </div>
@@ -92,7 +92,7 @@
               <td>
                 <div id="fq-preview-{{ $i }}" class="fq-material-preview">
                   @if ($m->material_id && $m->material)
-                    <span class="fq-material-preview__name">{{ $m->material->name }}</span>
+                    <span class="fq-material-preview__name">{{ $m->material->displayName() }}</span>
                     @if ($m->material->store_sku)
                       <span class="admin-form-help">SKU {{ $m->material->store_sku }}</span>
                     @endif

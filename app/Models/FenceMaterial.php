@@ -79,6 +79,16 @@ class FenceMaterial extends Model
         return $this->belongsTo(Material::class);
     }
 
+    public function effectiveName(): string
+    {
+        $catalog = $this->material;
+        if ($catalog !== null) {
+            return $catalog->displayName();
+        }
+
+        return (string) $this->name;
+    }
+
     public function effectiveLongName(): ?string
     {
         $catalog = $this->material;
