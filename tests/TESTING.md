@@ -186,7 +186,24 @@ php artisan test --filter=FenceQuotationCalculatorTest
 php artisan test tests/Feature/Auth
 ```
 
-### Database for integration tests
+### Local `.env` points at production (no local MySQL)
+
+This project is often developed with `.env` aimed at the Hostinger database. **Tests do not use `.env` for DB credentials** — `phpunit.xml` overrides them to `127.0.0.1` / `zanini_renovations_test`.
+
+`IntegrationTestCase` also **refuses** to run if `DB_HOST` looks like production (`hstgr.io`, etc.) or if the database name does not end in `_test`.
+
+**Recommended local workflow (no local DB):**
+
+```bash
+composer test:blade
+# or: php artisan test tests/Unit/Views/BladeSyntaxTest.php
+```
+
+That catches Blade typos like the `/admin/materials/{id}/edit` 500 in ~0.2s.
+
+**Route smoke tests** (`tests/Feature/Smoke`) need MySQL. Without a local server they skip. They run automatically in GitHub Actions (`.github/workflows/tests.yml`) on every push/PR to `main`.
+
+### Database for integration tests (optional local setup)
 
 Feature tests extend `IntegrationTestCase` and require **MySQL** (migrations use MySQL-specific DDL; SQLite is not supported).
 
@@ -197,14 +214,18 @@ CREATE DATABASE zanini_renovations_test CHARACTER SET utf8mb4 COLLATE utf8mb4_un
 `phpunit.xml` points at `zanini_renovations_test` on `127.0.0.1` with user `root` and empty password (XAMPP defaults). Adjust credentials in `phpunit.xml` if needed.
 
 ```bash
-# Fast, no database — 32 unit tests
+# Fast, no database
+composer test:blade
 php artisan test --testsuite=Unit
 
-# Full suite (requires MySQL + migrated test DB)
+# Route smoke (local MySQL only, or use CI)
+composer test:smoke
+
+# Full suite (requires local MySQL + migrated test DB)
 php artisan test
 ```
 
-If MySQL is not running, integration tests are **skipped** rather than failed.
+If MySQL is not running locally, integration tests are **skipped** rather than failed.
 
 ---
 
