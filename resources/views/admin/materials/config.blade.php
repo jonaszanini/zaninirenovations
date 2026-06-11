@@ -16,7 +16,7 @@
             onsubmit="return confirm('Delete {{ number_format($failedCount) }} material{{ $failedCount === 1 ? '' : 's' }} with failed sync status? This cannot be undone.');">
         @csrf
         <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" @disabled($failedCount === 0)>
-          <i class="fa fa-trash"></i> Delete failed@if ($failedCount > 0) ({{ number_format($failedCount) }})@endif
+          <i class="fa fa-trash"></i> Delete failed{{ $failedCount > 0 ? ' ('.number_format($failedCount).')' : '' }}
         </button>
       </form>
       <a href="https://serpapi.com/dashboard" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener noreferrer">
