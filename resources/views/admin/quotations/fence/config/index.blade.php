@@ -287,22 +287,49 @@
         }
       }
 
+      function resolveItemStoreUrl(item) {
+        if (!item) return '';
+        if (item.url) return String(item.url);
+        var sku = String(item.sku || '').trim().toUpperCase().replace(/\s+/g, '');
+        if (/^[A-Z0-9]{10}$/.test(sku)) {
+          return 'https://www.amazon.ca/dp/' + encodeURIComponent(sku);
+        }
+        return '';
+      }
+
+      function resolveLinkVendor(item, url) {
+        if (item && item.link_vendor) return item.link_vendor;
+        var lower = String(url || '').toLowerCase();
+        if (lower.indexOf('amazon.') !== -1) return 'amazon';
+        if (lower.indexOf('homedepot.ca') !== -1) return 'home_depot';
+        if (item && item.sku && /^[A-Z0-9]{10}$/.test(String(item.sku).trim().toUpperCase())) {
+          return 'amazon';
+        }
+        return null;
+      }
+
       function updateProductLink(selectEl, value, optionMap) {
         var linkEl = document.getElementById(selectEl.getAttribute('data-url-target') || '');
         if (!linkEl) return;
 
-        if (!value) {
+        var resolvedValue = value ? String(value) : '';
+        if (!resolvedValue && selectEl.tomselect) {
+          resolvedValue = String(selectEl.tomselect.getValue() || '');
+        }
+
+        if (!resolvedValue) {
           linkEl.hidden = true;
           linkEl.setAttribute('href', '#');
           setStoreLinkIcon(linkEl, null);
           return;
         }
 
-        var item = optionMap[String(value)] || null;
-        if (item && item.url) {
-          linkEl.setAttribute('href', item.url);
+        var item = optionMap[resolvedValue] || null;
+        var url = resolveItemStoreUrl(item);
+        if (url) {
+          linkEl.setAttribute('href', url);
           linkEl.hidden = false;
-          setStoreLinkIcon(linkEl, item.link_vendor || null);
+          setStoreLinkIcon(linkEl, resolveLinkVendor(item, url));
         } else {
           linkEl.hidden = true;
           linkEl.setAttribute('href', '#');
@@ -391,13 +418,15 @@
             }
           },
           onChange: function (value) {
-            updatePreview(selectEl, value, optionMap);
+            var resolved = value || this.getValue() || '';
+            updatePreview(selectEl, resolved, optionMap);
           }
         });
 
         if (initial && initial !== '0') {
           ts.setValue(initial, true);
         }
+        updateProductLink(selectEl, ts.getValue() || initial, optionMap);
       });
     })();
   </script>
