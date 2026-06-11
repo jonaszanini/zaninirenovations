@@ -42,9 +42,11 @@
 
 <div class="admin-form-grid-2">
   <div class="admin-form-group">
-    <label for="mat-sku">Store SKU</label>
+    <label for="mat-sku">Store SKU / ASIN</label>
     <input type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
+           placeholder="Home Depot SKU or Amazon ASIN"
            class="@error('store_sku') is-invalid @enderror">
+    <p class="admin-form-help">Home Depot numeric SKU, or Amazon Canada ASIN (10 characters) when vendor is Amazon.</p>
     @error('store_sku') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">

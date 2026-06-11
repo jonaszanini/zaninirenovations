@@ -5,22 +5,22 @@
 
 <form method="post" action="{{ route('admin.materials.config.vendors.store') }}" class="mat-vendors__add">
   @csrf
-  <div class="admin-form-grid-2 mat-vendors__add-grid">
-    <div class="admin-form-group">
+  <div class="mat-vendors__add-row">
+    <div class="admin-form-group mat-vendors__add-name">
       <label for="mat-vendor-add-name">New vendor name</label>
       <input type="text" id="mat-vendor-add-name" name="name" value="{{ old('name') }}" maxlength="120" required
              class="admin-input @error('name') is-invalid @enderror" placeholder="e.g. Rona">
       @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
-    <div class="admin-form-group">
+    <div class="admin-form-group mat-vendors__add-sort">
       <label for="mat-vendor-add-sort">Sort order</label>
-      <div class="mat-vendors__add-actions">
-        <input type="number" id="mat-vendor-add-sort" name="sort_order" value="{{ old('sort_order', 0) }}"
-               min="0" max="32767" class="admin-input">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
-          <i class="fa fa-plus"></i> Add vendor
-        </button>
-      </div>
+      <input type="number" id="mat-vendor-add-sort" name="sort_order" value="{{ old('sort_order', 0) }}"
+             min="0" max="32767" class="admin-input">
+    </div>
+    <div class="mat-vendors__add-submit">
+      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-plus"></i> Add vendor
+      </button>
     </div>
   </div>
 </form>

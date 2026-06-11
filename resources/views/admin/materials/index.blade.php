@@ -64,7 +64,7 @@
     <p class="mat-table-meta">
       {{ number_format($totalMaterials) }} {{ $totalMaterials === 1 ? 'material' : 'materials' }} in database
       @if ($syncableCount > 0)
-        · {{ number_format($syncableCount) }} syncable
+        · {{ number_format($syncableCount) }} Home Depot syncable
       @endif
       @if ($usesSerpApi)
         · admin sync via SerpApi
@@ -150,7 +150,7 @@
                   <a href="{{ route('admin.materials.edit', $material) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
                     <i class="fa fa-pencil"></i> Edit
                   </a>
-                  @if ($material->hasProductUrl())
+                  @if ($material->isSerpApiSyncable())
                     <form method="post" action="{{ route('admin.materials.sync-price', $material) }}" class="mat-sync-inline-form">
                       @csrf
                       <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="Sync price from Home Depot">

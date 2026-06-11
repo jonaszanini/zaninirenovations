@@ -49,11 +49,7 @@ class MaterialController extends Controller
             ->pluck('category');
 
         $totalMaterials = Material::query()->count();
-        $syncableCount = Material::query()
-            ->where('is_active', true)
-            ->whereNotNull('product_url')
-            ->where('product_url', '!=', '')
-            ->count();
+        $syncableCount = Material::query()->homeDepotSyncable()->count();
 
         $usesSerpApi = (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi();
         $needsSyncCount = app(MaterialPriceSyncService::class)->countNeedingSync();
@@ -121,10 +117,10 @@ class MaterialController extends Controller
 
     public function syncPrice(Material $material, MaterialPriceSyncService $syncService, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher)
     {
-        if (! $material->hasProductUrl()) {
+        if (! $material->isSerpApiSyncable()) {
             return redirect()
                 ->back()
-                ->with('error', 'Add a product URL before syncing price.');
+                ->with('error', 'Sync requires Home Depot (vendor + homedepot.ca URL) or Amazon (vendor + ASIN in Store SKU).');
         }
 
         $result = $syncService->syncOne($material);
@@ -176,7 +172,7 @@ class MaterialController extends Controller
 
         if ($materialIds === []) {
             return response()->json([
-                'message' => 'No active materials with a product URL to sync.',
+                'message' => 'No active Home Depot materials with a product URL to sync.',
             ], 422);
         }
 
@@ -568,11 +564,7 @@ class MaterialController extends Controller
             'homeDepotVendor' => MaterialVendor::homeDepot(),
             'usesSerpApi' => (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi(),
             'needsSyncCount' => app(MaterialPriceSyncService::class)->countNeedingSync(),
-            'syncableCount' => Material::query()
-                ->where('is_active', true)
-                ->whereNotNull('product_url')
-                ->where('product_url', '!=', '')
-                ->count(),
+            'syncableCount' => Material::query()->homeDepotSyncable()->count(),
             'totalMaterials' => Material::query()->count(),
             'failedCount' => Material::query()
                 ->where('last_scrape_status', Material::SCRAPE_FAILED)

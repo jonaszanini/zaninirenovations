@@ -10,6 +10,8 @@ class MaterialVendor extends Model
 {
     public const SLUG_HOME_DEPOT = 'home-depot';
 
+    public const SLUG_AMAZON = 'amazon';
+
     protected $fillable = [
         'name',
         'slug',
@@ -35,6 +37,18 @@ class MaterialVendor extends Model
     public static function homeDepotId(): ?int
     {
         $id = static::query()->where('slug', self::SLUG_HOME_DEPOT)->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    public static function amazon(): ?self
+    {
+        return static::query()->where('slug', self::SLUG_AMAZON)->first();
+    }
+
+    public static function amazonId(): ?int
+    {
+        $id = static::query()->where('slug', self::SLUG_AMAZON)->value('id');
 
         return $id !== null ? (int) $id : null;
     }

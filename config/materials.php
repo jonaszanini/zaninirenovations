@@ -44,6 +44,10 @@ return [
         'delay_ms' => (int) env('MATERIALS_SCRAPER_DELAY_MS', 1500),
 
         'homedepot_store_id' => env('MATERIALS_SCRAPER_HD_STORE_ID'),
+
+        // SerpApi Amazon Product API (Canada) — ASIN in materials.store_sku.
+        'amazon_domain' => env('MATERIALS_SCRAPER_AMAZON_DOMAIN', 'amazon.ca'),
+        'amazon_language' => env('MATERIALS_SCRAPER_AMAZON_LANGUAGE', 'en_CA'),
     ],
 
 ];

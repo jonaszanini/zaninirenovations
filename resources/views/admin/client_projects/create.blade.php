@@ -62,7 +62,7 @@
 
           @include('admin.client_projects._client_directory_picker', [
             'clientsSearchUrl' => $clientsSearchUrl,
-            'initialClientForPicker' => null,
+            'initialClientForPicker' => $initialClientForPicker ?? null,
           ])
 
           @include('admin.client_projects._client_directory_sync')

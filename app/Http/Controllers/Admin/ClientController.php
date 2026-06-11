@@ -141,11 +141,7 @@ class ClientController extends Controller
     /** @return array<string, mixed> */
     private function pickerRow(Client $c): array
     {
-        $row = $c->toPickerArray();
-        $row['display'] = $c->searchLabel();
-        $row['phone_display'] = $c->phone ? \App\Models\ClientProject::formatPhone($c->phone) : '';
-
-        return $row;
+        return $c->toPickerOption();
     }
 
     private function normalisePhone(Request $request): void

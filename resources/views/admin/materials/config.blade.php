@@ -37,7 +37,7 @@
   @endif
 
   <div class="mat-admin-panels">
-    <details class="admin-accordion admin-card admin-card--narrow mat-bulk-import" @if(old('skus')) open @endif>
+    <details class="admin-accordion admin-card mat-config-accordion mat-bulk-import" @if(old('skus')) open @endif>
       <summary class="admin-accordion__summary">
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
         <span class="admin-accordion__title">Bulk import Home Depot SKUs</span>
@@ -117,7 +117,7 @@
       </div>
     </details>
 
-    <details class="admin-accordion admin-card admin-card--narrow mat-vendors" @if($errors->has('name') || $errors->has('slug')) open @endif>
+    <details class="admin-accordion admin-card mat-config-accordion mat-vendors" @if($errors->has('name') || $errors->has('slug')) open @endif>
       <summary class="admin-accordion__summary">
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
         <span class="admin-accordion__title">Vendors</span>
@@ -127,7 +127,7 @@
       </div>
     </details>
 
-    <details class="admin-accordion admin-card admin-card--narrow mat-local-sync">
+    <details class="admin-accordion admin-card mat-config-accordion mat-local-sync">
       <summary class="admin-accordion__summary">
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
         <span class="admin-accordion__title">Local price sync (your PC)</span>
@@ -189,7 +189,7 @@
   <p class="admin-form-help mat-config-footnote">
     {{ number_format($totalMaterials) }} {{ $totalMaterials === 1 ? 'material' : 'materials' }} in database
     @if ($syncableCount > 0)
-      · {{ number_format($syncableCount) }} syncable via admin
+      · {{ number_format($syncableCount) }} Home Depot syncable via admin
     @endif
     @if ($failedCount > 0)
       · {{ number_format($failedCount) }} failed sync

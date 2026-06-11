@@ -34,7 +34,7 @@ class FenceConfigController extends Controller
         $linkedSyncCount = $materials
             ->filter(fn (FenceMaterial $row) => $row->material_id !== null
                 && $row->material !== null
-                && $row->material->hasProductUrl())
+                && $row->material->isSerpApiSyncable())
             ->count();
 
         return view('admin.quotations.fence.config.index', [
@@ -117,9 +117,9 @@ class FenceConfigController extends Controller
                 continue;
             }
 
-            if (! $catalog->hasProductUrl()) {
+            if (! $catalog->isSerpApiSyncable()) {
                 $skipped++;
-                $errors[] = $catalog->name.': no product URL.';
+                $errors[] = $catalog->name.': not syncable (Home Depot + homedepot.ca URL, or Amazon vendor + ASIN in SKU).';
 
                 continue;
             }

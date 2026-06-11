@@ -441,26 +441,44 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   align-items: center;
   gap: 6px;
 }
-.cp-client-directory-picker__row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.cp-client-assign {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(200px, 1fr);
+  gap: 1rem;
+  align-items: start;
 }
-.cp-client-directory-picker__field {
-  flex: 1 1 auto;
+
+.cp-client-assign__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
   min-width: 0;
 }
+
+.cp-client-directory-picker__field {
+  width: 100%;
+}
+
 .cp-client-directory-picker__manage {
-  flex: 0 0 auto;
+  align-self: flex-start;
   white-space: nowrap;
 }
-@media (max-width: 640px) {
-  .cp-client-directory-picker__row {
-    flex-wrap: wrap;
-  }
-  .cp-client-directory-picker__manage {
-    width: 100%;
-    justify-content: center;
+
+.cp-client-assign__preview {
+  min-height: 44px;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--admin-border, #d8dee4);
+  border-radius: 8px;
+  background: var(--admin-surface-hover, #f4f6f8);
+}
+
+.cp-client-preview {
+  min-height: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .cp-client-assign {
+    grid-template-columns: 1fr;
   }
 }
 .cp-send-client-email-row {
@@ -4694,14 +4712,33 @@ body.cp-modal-open {
   text-align: right;
   white-space: nowrap;
 }
+.cp-client-directory-picker.fq-catalog-picker .ts-wrapper,
+.cp-client-directory-picker .fq-catalog-picker .ts-wrapper {
+  width: 100%;
+}
+
 .cp-client-directory-picker .ts-control {
   min-height: 44px;
   border-radius: 8px;
   border: 1px solid var(--admin-border, #d8dee4);
   padding: 6px 10px;
-}
-.cp-client-directory-picker .ts-wrapper.single .ts-control {
   background: #fff;
+}
+
+.cp-client-directory-picker .ts-dropdown {
+  z-index: 40;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.cp-client-directory-picker .ts-dropdown .option {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--admin-border, #e8edf2);
+}
+
+.cp-client-directory-picker .ts-dropdown .option:last-child {
+  border-bottom: 0;
 }
 
 /* Edit project — form + Save/Cancel column beside the narrow card */

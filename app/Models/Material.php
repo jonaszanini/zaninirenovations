@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\MaterialScraping\AmazonCaUrls;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -70,6 +71,109 @@ class Material extends Model
         $url = strtolower((string) $this->product_url);
 
         return str_contains($url, 'homedepot.ca');
+    }
+
+    public function isAmazonUrl(): bool
+    {
+        return AmazonCaUrls::isAmazonCaUrl((string) $this->product_url);
+    }
+
+    public function resolveAsin(): ?string
+    {
+        $fromSku = AmazonCaUrls::normalizeAsin((string) ($this->store_sku ?? ''));
+        if ($fromSku !== null) {
+            return $fromSku;
+        }
+
+        if ($this->hasProductUrl()) {
+            return AmazonCaUrls::asinFromUrl((string) $this->product_url);
+        }
+
+        return null;
+    }
+
+    public function isAmazonSyncable(): bool
+    {
+        if (! $this->is_active || $this->resolveAsin() === null) {
+            return false;
+        }
+
+        $amazonId = MaterialVendor::amazonId();
+        if ($amazonId !== null && (int) $this->vendor_id !== $amazonId) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function isHomeDepotSyncable(): bool
+    {
+        if (! $this->is_active || ! $this->hasProductUrl() || ! $this->isHomeDepotUrl()) {
+            return false;
+        }
+
+        $homeDepotId = MaterialVendor::homeDepotId();
+        if ($homeDepotId !== null && (int) $this->vendor_id !== $homeDepotId) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function isSerpApiSyncable(): bool
+    {
+        return $this->isHomeDepotSyncable() || $this->isAmazonSyncable();
+    }
+
+    /**
+     * Active Home Depot vendor materials with a homedepot.ca product URL.
+     */
+    public function scopeHomeDepotSyncable(Builder $query): Builder
+    {
+        $query->where('is_active', true)
+            ->whereNotNull('product_url')
+            ->where('product_url', '!=', '')
+            ->where('product_url', 'like', '%homedepot.ca%');
+
+        $homeDepotId = MaterialVendor::homeDepotId();
+        if ($homeDepotId !== null) {
+            $query->where('vendor_id', $homeDepotId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Active Amazon vendor materials with a valid ASIN in store SKU (or Amazon CA URL).
+     */
+    public function scopeAmazonSyncable(Builder $query): Builder
+    {
+        $query->where('is_active', true);
+
+        $amazonId = MaterialVendor::amazonId();
+        if ($amazonId !== null) {
+            $query->where('vendor_id', $amazonId);
+        }
+
+        return $query->where(function (Builder $sub) {
+            $sub->where(function (Builder $sku) {
+                $sku->whereNotNull('store_sku')->where('store_sku', '!=', '');
+            })->orWhere('product_url', 'like', '%amazon.ca%');
+        });
+    }
+
+    /**
+     * Home Depot (local/SerpApi HD) or Amazon (SerpApi product API) materials.
+     */
+    public function scopeSerpApiSyncable(Builder $query): Builder
+    {
+        return $query->where(function (Builder $sub) {
+            $sub->where(function (Builder $hd) {
+                $hd->homeDepotSyncable();
+            })->orWhere(function (Builder $amazon) {
+                $amazon->amazonSyncable();
+            });
+        });
     }
 
     /**

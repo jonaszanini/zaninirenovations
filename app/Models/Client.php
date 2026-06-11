@@ -92,4 +92,20 @@ class Client extends Model
             'address_longitude' => $this->address_longitude,
         ];
     }
+
+    /**
+     * Tom Select option row (project create/edit client picker).
+     *
+     * @return array<string, mixed>
+     */
+    public function toPickerOption(): array
+    {
+        $label = $this->searchLabel();
+
+        return array_merge($this->toPickerArray(), [
+            'label' => $label,
+            'display' => $label,
+            'phone_display' => $this->phone ? ClientProject::formatPhone($this->phone) : '',
+        ]);
+    }
 }

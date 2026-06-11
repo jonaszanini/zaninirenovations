@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectScheduleDatesClient;
 use App\Mail\ClientProjectServiceConfirmationClient;
 use App\Mail\ClientProjectTimeTrackingSummaryClient;
+use App\Models\Client;
 use App\Models\ClientCommunicationLog;
 use App\Models\AdminCalendarEvent;
 use App\Models\ClientProject;
@@ -119,6 +120,9 @@ class ClientProjectController extends Controller
     {
         return view('admin.client_projects.create', [
             'clientsSearchUrl' => route('admin.clients.search'),
+            'initialClientForPicker' => $this->initialClientForPicker(
+                (int) old('client_id', 0) ?: null
+            ),
         ]);
     }
 
@@ -384,19 +388,12 @@ class ClientProjectController extends Controller
     {
         $client_project->load(['client', 'photos']);
 
-        $initialClientForPicker = null;
-        if ($client_project->client) {
-            $c = $client_project->client;
-            $initialClientForPicker = array_merge($c->toPickerArray(), [
-                'display' => $c->searchLabel(),
-                'phone_display' => $c->phone ? ClientProject::formatPhone($c->phone) : '',
-            ]);
-        }
-
         return view('admin.client_projects.edit', [
             'project' => $client_project,
             'clientsSearchUrl' => route('admin.clients.search'),
-            'initialClientForPicker' => $initialClientForPicker,
+            'initialClientForPicker' => $this->initialClientForPicker(
+                (int) old('client_id', $client_project->client_id) ?: null
+            ),
         ]);
     }
 
@@ -1031,5 +1028,17 @@ class ClientProjectController extends Controller
             'personalEventUpdateUrlTemplate' => route('admin.calendar.personal-events.update', ['admin_calendar_event' => '__ID__']),
             'personalEventDestroyUrlTemplate' => route('admin.calendar.personal-events.destroy', ['admin_calendar_event' => '__ID__']),
         ]);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function initialClientForPicker(?int $clientId): ?array
+    {
+        if ($clientId === null || $clientId <= 0) {
+            return null;
+        }
+
+        $client = Client::query()->find($clientId);
+
+        return $client?->toPickerOption();
     }
 }

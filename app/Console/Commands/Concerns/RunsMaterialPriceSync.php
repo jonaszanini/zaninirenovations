@@ -19,8 +19,8 @@ trait RunsMaterialPriceSync
 
         if ($materials->isEmpty()) {
             $this->warn($unsyncedOnly
-                ? 'No active materials need a first-time or retry sync.'
-                : 'No active materials with a product URL found.');
+                ? 'No active Home Depot materials need a first-time or retry sync.'
+                : 'No active Home Depot materials with a product URL found.');
 
             return Command::SUCCESS;
         }

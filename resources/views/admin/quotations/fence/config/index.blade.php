@@ -46,7 +46,7 @@
 
     @if ($usesSerpApi)
       <p class="admin-form-help fq-sync-hint">
-        <strong>Sync fence prices</strong> updates linked catalog materials via SerpApi ({{ number_format($linkedSyncCount) }} linked with a product URL).
+        <strong>Sync fence prices</strong> updates linked catalog materials via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU) ({{ number_format($linkedSyncCount) }} syncable).
         <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
         · <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>
       </p>
