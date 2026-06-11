@@ -582,6 +582,12 @@
   margin-bottom: 0;
 }
 
+.mat-form-hero__description textarea.admin-input {
+  min-height: 44px;
+  resize: none;
+  overflow-y: auto;
+}
+
 .mat-form-grid-names {
   display: grid;
   grid-template-columns: minmax(0, 65%) minmax(0, 35%);
