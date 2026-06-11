@@ -9,10 +9,11 @@ Living design-system reference for **public site** and **admin panel**. All new 
 ## 1. Design principles
 
 1. **Consistency over novelty** — reuse existing classes before inventing new ones.
-2. **Mobile-first admin** — every table, form, and toolbar must work at ≤900px (drawer nav breakpoint).
-3. **No inline styles** — use CSS classes and design tokens; inline `style=""` is only allowed for one-off PDF/email templates.
-4. **Accessible by default** — visible labels, `aria-*` on icon-only controls, 44px minimum touch targets.
-5. **Brand alignment** — primary `#024768` on both public and admin surfaces.
+2. **Compact horizontal layout** — when creating new items, forms, or admin pages, **put related fields on the same row** whenever they fit at desktop width. Prefer multi-column grids over stacking full-width rows. Goal: shorter pages, less scrolling. Stack to one column only at breakpoints (see §5–6), not by default.
+3. **Mobile-first admin** — every table, form, and toolbar must work at ≤900px (drawer nav breakpoint).
+4. **No inline styles** — use CSS classes and design tokens; inline `style=""` is only allowed for one-off PDF/email templates.
+5. **Accessible by default** — visible labels, `aria-*` on icon-only controls, 44px minimum touch targets.
+6. **Brand alignment** — primary `#024768` on both public and admin surfaces.
 
 ---
 
@@ -251,6 +252,8 @@ Toolbar / filter (no label wrapper):
 
 ### Form grids
 
+**Default mindset:** group fields that belong together on **one line** (2–4+ columns) before adding another row. Full-width rows are for long text (URLs, descriptions, rich text), not for short dropdowns, numbers, SKUs, or toggles.
+
 ```html
 <div class="admin-form-grid-2">
   <div class="admin-form-group">...</div>
@@ -259,6 +262,23 @@ Toolbar / filter (no label wrapper):
 ```
 
 Three columns (vehicles): `.admin-form-grid-3` in `admin-vehicles.css`.
+
+**Patterns in production (copy before inventing):**
+
+| Pattern | Where | Use |
+|---------|--------|-----|
+| `.admin-form-grid-2` | `admin-client-projects.css` | Two equal columns (category + vendor, URLs side by side) |
+| `.mat-form-grid-details` | `admin-materials.css` | Eight compact fields on one row (material edit) |
+| `.mat-form-url-row` | `admin-materials.css` | Label row + control row: Product URL · Image URL · Active |
+| `.fq-catalog-picker-wrap` | `admin-client-projects.css` | Icon + Tom Select search on one line (fence config) |
+| `.fq-catalog-picker` | `admin-client-projects.css` | Single search/select combobox (materials DB picker) |
+
+**Rules:**
+
+- Align controls on a shared grid row (labels row 1, inputs row 2) when mixing text fields with checkboxes or status badges.
+- Move helper text **below** a grouped row, or omit it when the label is obvious — do not let help text push the next field to a new line.
+- Use `minmax(0, 1fr)` in CSS grid so columns shrink instead of wrapping prematurely.
+- Page-specific grid classes belong in the page CSS file (`admin-materials.css`, `admin-client-projects.css`), not scattered inline.
 
 ### Form actions
 
