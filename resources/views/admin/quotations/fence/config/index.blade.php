@@ -2,6 +2,10 @@
 
 @section('heading', 'Fence Configuration')
 
+@push('head')
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css">
+@endpush
+
 @section('content')
   <div class="admin-toolbar fq-list-toolbar">
     <div class="admin-toolbar-group">
@@ -73,28 +77,17 @@
                 <input type="hidden" name="materials[{{ $i }}][id]" value="{{ $m->id }}">
               </td>
               <td>
-                <select name="materials[{{ $i }}][material_id]"
-                        class="admin-input fq-material-select"
-                        data-preview-target="fq-preview-{{ $i }}"
-                        aria-label="Catalog material for {{ $m->name }}">
-                  <option value="">— Select material —</option>
-                  @foreach ($catalogMaterials as $catalog)
-                    <option value="{{ $catalog->id }}"
-                            @selected((int) old('materials.'.$i.'.material_id', $m->material_id) === (int) $catalog->id)
-                            data-name="{{ e($catalog->name) }}"
-                            data-sku="{{ e($catalog->store_sku ?? '') }}"
-                            data-model="{{ e($catalog->model ?? '') }}"
-                            data-price="{{ number_format((float) $catalog->price_cad, 2, '.', '') }}"
-                            data-url="{{ e($catalog->product_url ?? '') }}"
-                            data-vendor="{{ e($catalog->vendor ?? '') }}">
-                      {{ $catalog->name }}
-                      @if ($catalog->store_sku)
-                        · {{ $catalog->store_sku }}
-                      @endif
-                      · {{ \App\Models\ClientProject::formatMoney((float) $catalog->price_cad) }}
-                    </option>
-                  @endforeach
-                </select>
+                <div class="fq-catalog-picker">
+                  <select name="materials[{{ $i }}][material_id]"
+                          id="fq-catalog-picker-{{ $i }}"
+                          class="fq-catalog-picker__select"
+                          data-preview-target="fq-preview-{{ $i }}"
+                          data-price-target="fq-price-{{ $i }}"
+                          data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
+                          aria-label="Catalog material for {{ $m->name }}">
+                    <option value="">— Search name or SKU —</option>
+                  </select>
+                </div>
               </td>
               <td>
                 <div id="fq-preview-{{ $i }}" class="fq-material-preview">
@@ -250,55 +243,93 @@
 @endsection
 
 @push('scripts')
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   <script>
     (function () {
-      function formatMoney(amount) {
-        var n = parseFloat(amount);
-        if (isNaN(n)) return '—';
-        return '$' + n.toFixed(2);
+      var catalogOptions = @json($catalogPickerOptions);
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
       }
 
-      function updatePreview(select) {
-        var targetId = select.getAttribute('data-preview-target');
-        var previewEl = targetId ? document.getElementById(targetId) : null;
-        var row = select.closest('tr');
-        var priceEl = row ? row.querySelector('.fq-material-preview__price') : null;
-        var option = select.options[select.selectedIndex];
+      function updatePreview(selectEl, value, optionMap) {
+        var previewEl = document.getElementById(selectEl.getAttribute('data-preview-target') || '');
+        var priceEl = document.getElementById(selectEl.getAttribute('data-price-target') || '');
 
         if (!previewEl) return;
 
-        if (!option || !option.value) {
+        if (!value) {
           previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
           if (priceEl) priceEl.textContent = '—';
           return;
         }
 
-        var name = option.getAttribute('data-name') || '';
-        var sku = option.getAttribute('data-sku') || '';
-        var model = option.getAttribute('data-model') || '';
-        var url = option.getAttribute('data-url') || '';
-        var price = option.getAttribute('data-price') || '';
+        var item = optionMap[String(value)] || null;
+        if (!item) {
+          previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
+          if (priceEl) priceEl.textContent = '—';
+          return;
+        }
 
-        var html = '<span class="fq-material-preview__name">' + name + '</span>';
-        if (sku) {
-          html += '<span class="admin-form-help">SKU ' + sku + '</span>';
+        var html = '<span class="fq-material-preview__name">' + escapeHtml(item.name) + '</span>';
+        if (item.sku) {
+          html += '<span class="admin-form-help">SKU ' + escapeHtml(item.sku) + '</span>';
         }
-        if (model) {
-          html += '<span class="admin-form-help">Model ' + model + '</span>';
+        if (item.model) {
+          html += '<span class="admin-form-help">Model ' + escapeHtml(item.model) + '</span>';
         }
-        if (url) {
-          html += '<a href="' + url + '" target="_blank" rel="noopener" class="admin-text-link fq-material-preview__link">Product page</a>';
+        if (item.url) {
+          html += '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener" class="admin-text-link fq-material-preview__link">Product page</a>';
         }
         previewEl.innerHTML = html;
         if (priceEl) {
-          priceEl.textContent = formatMoney(price);
+          priceEl.textContent = item.price_label || '—';
         }
       }
 
-      document.querySelectorAll('.fq-material-select').forEach(function (select) {
-        select.addEventListener('change', function () {
-          updatePreview(select);
+      if (typeof TomSelect === 'undefined') return;
+
+      var optionMap = {};
+      catalogOptions.forEach(function (item) {
+        optionMap[String(item.id)] = item;
+      });
+
+      document.querySelectorAll('.fq-catalog-picker__select').forEach(function (selectEl) {
+        var initial = selectEl.getAttribute('data-initial') || '';
+        var ts = new TomSelect(selectEl, {
+          plugins: ['clear_button'],
+          options: catalogOptions,
+          valueField: 'id',
+          labelField: 'label',
+          searchField: ['label', 'name', 'sku', 'model', 'vendor'],
+          maxOptions: 80,
+          placeholder: 'Type to search name or SKU…',
+          allowEmptyOption: true,
+          closeAfterSelect: true,
+          render: {
+            option: function (data, escape) {
+              return '<div class="fq-catalog-picker__option">' +
+                '<span class="fq-catalog-picker__option-name">' + escape(data.name) + '</span>' +
+                (data.sku ? '<span class="fq-catalog-picker__option-meta">SKU ' + escape(data.sku) + '</span>' : '') +
+                '<span class="fq-catalog-picker__option-price">' + escape(data.price_label || '') + '</span>' +
+                '</div>';
+            },
+            item: function (data, escape) {
+              return '<div class="fq-catalog-picker__item">' + escape(data.label) + '</div>';
+            }
+          },
+          onChange: function (value) {
+            updatePreview(selectEl, value, optionMap);
+          }
         });
+
+        if (initial && initial !== '0') {
+          ts.setValue(initial, true);
+        }
       });
     })();
   </script>

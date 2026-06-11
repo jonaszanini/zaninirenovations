@@ -3625,9 +3625,59 @@ body.cp-modal-open {
   background: var(--admin-surface-hover, #f4f6f8);
 }
 
-.fq-material-select {
+.fq-catalog-picker {
+  min-width: 240px;
+}
+
+.fq-catalog-picker .ts-wrapper {
   width: 100%;
-  min-width: 200px;
+}
+
+.fq-catalog-picker .ts-control {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  padding: 6px 10px;
+  background: #fff;
+}
+
+.fq-catalog-picker .ts-dropdown {
+  z-index: 40;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.fq-catalog-picker .ts-dropdown .option {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--admin-border, #e8edf2);
+}
+
+.fq-catalog-picker .ts-dropdown .option:last-child {
+  border-bottom: 0;
+}
+
+.fq-catalog-picker__option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.fq-catalog-picker__option-name {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.fq-catalog-picker__option-meta,
+.fq-catalog-picker__option-price {
+  font-size: 0.82rem;
+  color: var(--admin-text-muted, #5c6b7a);
+}
+
+.fq-catalog-picker__item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fq-material-preview {

@@ -155,6 +155,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::resource('clients', ClientController::class)->except(['show']);
 
     Route::get('materials/config', [MaterialController::class, 'config'])->name('materials.config');
+    Route::post('materials/config/delete-failed', [MaterialController::class, 'destroyFailed'])
+        ->name('materials.config.delete-failed');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])
         ->name('materials.bulk-destroy');
     Route::post('materials/bulk-import/start', [MaterialController::class, 'bulkImportStart'])

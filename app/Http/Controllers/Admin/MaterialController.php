@@ -73,6 +73,25 @@ class MaterialController extends Controller
         return view('admin.materials.config', $this->materialsConfigData());
     }
 
+    public function destroyFailed()
+    {
+        $deleted = Material::query()
+            ->where('last_scrape_status', Material::SCRAPE_FAILED)
+            ->delete();
+
+        if ($deleted === 0) {
+            return redirect()
+                ->route('admin.materials.config')
+                ->with('error', 'No materials with a failed sync status to delete.');
+        }
+
+        return redirect()
+            ->route('admin.materials.config')
+            ->with('success', $deleted === 1
+                ? '1 failed material deleted.'
+                : $deleted.' failed materials deleted.');
+    }
+
     public function create(): View
     {
         return view('admin.materials.create');
@@ -544,6 +563,9 @@ class MaterialController extends Controller
                 ->where('product_url', '!=', '')
                 ->count(),
             'totalMaterials' => Material::query()->count(),
+            'failedCount' => Material::query()
+                ->where('last_scrape_status', Material::SCRAPE_FAILED)
+                ->count(),
         ];
     }
 
