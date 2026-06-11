@@ -61,7 +61,12 @@
   </div>
 </div>
 
-<div class="mat-form-grid-sourcing">
+@php
+  $unitOptions = Material::unitOptions();
+  $currentUnit = old('unit', $m?->unit);
+@endphp
+
+<div class="mat-form-grid-details">
   <div class="admin-form-group">
     <label for="mat-category">Category</label>
     <select id="mat-category" name="category_id" class="admin-input @error('category_id') is-invalid @enderror">
@@ -73,7 +78,7 @@
       @endforeach
     </select>
     @error('category_id') <p class="admin-form-error">{{ $message }}</p> @enderror
-    <p class="admin-form-help">Manage categories on <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>.</p>
+    <p class="admin-form-help"><a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a></p>
   </div>
   <div class="admin-form-group">
     <label for="mat-vendor">Vendor</label>
@@ -86,13 +91,12 @@
       @endforeach
     </select>
     @error('vendor_id') <p class="admin-form-error">{{ $message }}</p> @enderror
-    <p class="admin-form-help">Manage vendors on <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>.</p>
+    <p class="admin-form-help"><a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a></p>
   </div>
   <div class="admin-form-group">
     <label for="mat-sku">Store SKU / ASIN</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('store_sku')]) type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
            placeholder="Home Depot SKU or Amazon ASIN">
-    <p class="admin-form-help">HD numeric SKU or Amazon ASIN (10 chars).</p>
     @error('store_sku') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -100,14 +104,6 @@
     <input @class(['admin-input', 'is-invalid' => $errors->has('model')]) type="text" id="mat-model" name="model" value="{{ old('model', $m?->model) }}" maxlength="160">
     @error('model') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
-</div>
-
-@php
-  $unitOptions = Material::unitOptions();
-  $currentUnit = old('unit', $m?->unit);
-@endphp
-
-<div class="mat-form-grid-metrics">
   <div class="admin-form-group">
     <label for="mat-price">Price (CAD)</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('price_cad')]) type="number" id="mat-price" name="price_cad" value="{{ old('price_cad', $m?->price_cad ?? '0.00') }}"
@@ -132,7 +128,6 @@
     <input @class(['admin-input', 'is-invalid' => $errors->has('quantity_per_package')]) type="number" id="mat-qty-pkg" name="quantity_per_package"
            value="{{ old('quantity_per_package', $m?->quantity_per_package) }}"
            min="1" max="999999" placeholder="Box/bag">
-    <p class="admin-form-help">When store price is per box/bag, not per unit.</p>
     @error('quantity_per_package') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
