@@ -43,7 +43,8 @@ final class MaterialCatalogPickerOptions
                 'vendor' => trim((string) ($catalog->vendorName() ?? '')),
                 'price' => number_format((float) $catalog->price_cad, 2, '.', ''),
                 'price_label' => $priceLabel,
-                'url' => (string) ($catalog->product_url ?? ''),
+                'url' => $catalog->storeProductUrl() ?? '',
+                'link_vendor' => $catalog->storeLinkVendor(),
                 'quantity_per_package' => $catalog->quantity_per_package,
             ];
         }

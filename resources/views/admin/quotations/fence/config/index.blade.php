@@ -77,15 +77,23 @@
                 <input type="hidden" name="materials[{{ $i }}][id]" value="{{ $m->id }}">
               </td>
               <td>
+                @php
+                  $storeUrl = $m->material?->storeProductUrl();
+                  $linkVendor = $m->material?->storeLinkVendor();
+                @endphp
                 <div class="fq-catalog-picker-wrap">
-                  <a href="{{ $m->material?->product_url ?: '#' }}"
-                     class="admin-btn admin-btn--ghost admin-btn--sm fq-catalog-picker__open"
+                  <a href="{{ $storeUrl ?: '#' }}"
+                     class="admin-btn admin-btn--ghost admin-btn--sm fq-catalog-picker__open @if ($linkVendor) fq-catalog-picker__open--{{ $linkVendor }} @endif"
                      id="fq-link-{{ $i }}"
                      target="_blank" rel="noopener"
-                     title="Open product page"
-                     aria-label="Open product page"
-                     @if (! filled($m->material?->product_url)) hidden @endif>
-                    <i class="fa fa-external-link" aria-hidden="true"></i>
+                     title="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}"
+                     aria-label="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}"
+                     @if (! filled($storeUrl)) hidden @endif>
+                    @if ($linkVendor === 'amazon')
+                      <i class="fa fa-amazon" aria-hidden="true"></i>
+                    @else
+                      <i class="fa fa-external-link" aria-hidden="true"></i>
+                    @endif
                   </a>
                   <div class="fq-catalog-picker">
                     <select name="materials[{{ $i }}][material_id]"
@@ -262,6 +270,23 @@
           .replace(/"/g, '&quot;');
       }
 
+      function setStoreLinkIcon(linkEl, vendor) {
+        linkEl.classList.remove('fq-catalog-picker__open--amazon', 'fq-catalog-picker__open--home_depot');
+        if (vendor === 'amazon') {
+          linkEl.classList.add('fq-catalog-picker__open--amazon');
+          linkEl.innerHTML = '<i class="fa fa-amazon" aria-hidden="true"></i>';
+          linkEl.setAttribute('title', 'Open on Amazon Canada');
+          linkEl.setAttribute('aria-label', 'Open on Amazon Canada');
+        } else {
+          if (vendor === 'home_depot') {
+            linkEl.classList.add('fq-catalog-picker__open--home_depot');
+          }
+          linkEl.innerHTML = '<i class="fa fa-external-link" aria-hidden="true"></i>';
+          linkEl.setAttribute('title', vendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page');
+          linkEl.setAttribute('aria-label', vendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page');
+        }
+      }
+
       function updateProductLink(selectEl, value, optionMap) {
         var linkEl = document.getElementById(selectEl.getAttribute('data-url-target') || '');
         if (!linkEl) return;
@@ -269,6 +294,7 @@
         if (!value) {
           linkEl.hidden = true;
           linkEl.setAttribute('href', '#');
+          setStoreLinkIcon(linkEl, null);
           return;
         }
 
@@ -276,9 +302,11 @@
         if (item && item.url) {
           linkEl.setAttribute('href', item.url);
           linkEl.hidden = false;
+          setStoreLinkIcon(linkEl, item.link_vendor || null);
         } else {
           linkEl.hidden = true;
           linkEl.setAttribute('href', '#');
+          setStoreLinkIcon(linkEl, null);
         }
       }
 

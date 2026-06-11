@@ -110,6 +110,53 @@ class Material extends Model
     }
 
     /**
+     * Best product-page URL for admin links (stored URL, or derived from ASIN / Home Depot SKU).
+     */
+    public function storeProductUrl(): ?string
+    {
+        if (filled($this->product_url)) {
+            return (string) $this->product_url;
+        }
+
+        $asin = $this->resolveAsin();
+        if ($asin !== null) {
+            return AmazonCaUrls::productUrl($asin);
+        }
+
+        $sku = trim((string) ($this->store_sku ?? ''));
+        if ($sku !== '' && HomeDepotCaUrls::isValidSku($sku)) {
+            return HomeDepotCaUrls::productUrl($sku);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return 'amazon'|'home_depot'|null
+     */
+    public function storeLinkVendor(): ?string
+    {
+        $url = strtolower((string) ($this->storeProductUrl() ?? ''));
+        if ($url === '') {
+            return null;
+        }
+
+        if (str_contains($url, 'amazon.ca') || str_contains($url, 'amazon.com')) {
+            return 'amazon';
+        }
+
+        if (str_contains($url, 'homedepot.ca')) {
+            return 'home_depot';
+        }
+
+        if ($this->resolveAsin() !== null) {
+            return 'amazon';
+        }
+
+        return null;
+    }
+
+    /**
      * URL for admin thumbnails and the edit-form hero image.
      * Uses the stored image_url, or the canonical Home Depot image from SKU when empty.
      */

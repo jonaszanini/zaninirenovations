@@ -3715,6 +3715,14 @@ body.cp-modal-open {
   padding-right: 0.5rem;
 }
 
+.fq-catalog-picker__open--amazon {
+  color: #c45500;
+}
+
+.fq-catalog-picker__open--amazon:hover {
+  color: #9a4200;
+}
+
 .fq-catalog-picker {
   min-width: 240px;
 }
