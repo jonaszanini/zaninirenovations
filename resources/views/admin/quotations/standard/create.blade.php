@@ -26,7 +26,7 @@
       $matRows = is_array($quotation->materials) ? $quotation->materials : [];
   }
   if (!is_array($matRows) || count($matRows) === 0) {
-      $matRows = [['short_name' => '', 'description' => '', 'url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false]];
+      $matRows = [['short_name' => '', 'description' => '', 'url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false, 'catalog_material_id' => null]];
   }
 
   $labourMode = old('labour_mode', $isEdit ? $quotation->labour_mode : 'hours');
@@ -262,7 +262,7 @@
         <div class="sq-panel-head">
           <h3 class="cp-form-help-flush">Materials</h3>
         </div>
-        <p class="admin-form-help">By default, unit price is <strong>before HST</strong> and <strong>Pre-tax + HST</strong> adds 13% on the line. Check <strong>HST-incl. price</strong> when the unit price already includes HST (subtotal is back-calculated).</p>
+        <p class="admin-form-help">Add lines <strong>manually</strong> or pick from the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">Materials</a> catalog (<strong>Material DB</strong>). Fields stay editable after a catalog pick. By default, unit price is <strong>before HST</strong> and <strong>Pre-tax + HST</strong> adds 13% on the line. Check <strong>HST-incl. price</strong> when the unit price already includes HST (subtotal is back-calculated).</p>
 
         {{-- Each material is rendered as a small two-line "form card" so
              the inputs stop getting squeezed on narrow viewports. Line 1
@@ -273,104 +273,7 @@
              lines via grid alignment. --}}
         <div class="sq-materials-list" id="sq-materials-list">
           @foreach ($matRows as $i => $row)
-            @php
-              $hstInc = array_key_exists('hst_includes_unit', $row) ? filter_var($row['hst_includes_unit'], FILTER_VALIDATE_BOOLEAN) : false;
-              $apply = array_key_exists('apply_hst', $row) ? filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN) : true;
-              if ($hstInc) {
-                  $apply = true;
-              }
-            @endphp
-            <div class="sq-material-card sq-material-row">
-              <div class="sq-mat-fields">
-                <div class="sq-mat-row sq-mat-row--inputs">
-                  <div class="sq-mat-field sq-mat-field--short-name">
-                    <label>Short name</label>
-                    <input type="text" name="materials[{{ $i }}][short_name]" class="admin-input sq-mat-short-name"
-                           maxlength="60" placeholder="e.g. Paint, Primer"
-                           value="{{ $row['short_name'] ?? '' }}">
-                  </div>
-                  <div class="sq-mat-field sq-mat-field--description">
-                    <label>Description</label>
-                    <input type="text" name="materials[{{ $i }}][description]" class="admin-input sq-mat-desc"
-                           maxlength="500" placeholder="Material or item"
-                           value="{{ $row['description'] ?? '' }}">
-                  </div>
-                  <div class="sq-mat-field sq-mat-field--unit">
-                    <label>Unit price ($)</label>
-                    <input type="text" inputmode="decimal" autocomplete="off" name="materials[{{ $i }}][unit_price]"
-                           class="admin-input cp-money-input sq-mat-unit" placeholder="0.00"
-                           value="{{ isset($row['unit_price']) && $row['unit_price'] !== '' ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
-                  </div>
-                  <div class="sq-mat-field sq-mat-field--qty">
-                    <label>Qty</label>
-                    {{-- type=text with inputmode=decimal: numeric keyboard
-                         on mobile while letting JS strip non-numeric input.
-                         Allows decimals (e.g. 1.5). --}}
-                    <input type="text" inputmode="decimal" autocomplete="off"
-                           name="materials[{{ $i }}][quantity]"
-                           class="admin-input sq-mat-qty" placeholder="1"
-                           value="{{ $row['quantity'] ?? '' }}">
-                  </div>
-                </div>
-
-                <div class="sq-mat-row sq-mat-row--url">
-                  <div class="sq-mat-field sq-mat-field--url">
-                    <label>Product URL <span class="sq-mat-optional">(optional)</span></label>
-                    <div class="sq-mat-url-control">
-                      <input type="url" inputmode="url" autocomplete="off"
-                             name="materials[{{ $i }}][url]"
-                             class="admin-input sq-mat-url" maxlength="2000"
-                             placeholder="https://supplier.com/product"
-                             value="{{ $row['url'] ?? '' }}">
-                      <a href="{{ $row['url'] ?? '#' }}"
-                         class="admin-btn admin-btn--ghost admin-btn--sm sq-mat-url-open"
-                         target="_blank" rel="noopener" title="Open link in new tab"
-                         @if (empty($row['url'])) hidden @endif>
-                        <i class="fa fa-external-link"></i>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="sq-mat-row sq-mat-row--computed">
-                  <div class="sq-mat-field sq-mat-field--readonly">
-                    <label>Subtotal</label>
-                    <div class="sq-mat-readout"><span class="sq-mat-sub">—</span></div>
-                  </div>
-                  <div class="sq-mat-field sq-mat-field--readonly">
-                    <label>HST (13%)</label>
-                    <div class="sq-mat-readout"><span class="sq-mat-hst">—</span></div>
-                  </div>
-                  <div class="sq-mat-field sq-mat-field--readonly">
-                    <label>Total w/ HST</label>
-                    <div class="sq-mat-readout"><span class="sq-mat-total">—</span></div>
-                  </div>
-                  <div class="sq-mat-field sq-mat-field--apply">
-                    <label class="sq-mat-hst-toggles-label">HST</label>
-                    <div class="sq-mat-hst-toggles">
-                      <input type="hidden" name="materials[{{ $i }}][hst_includes_unit]" value="0">
-                      <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
-                        <input type="checkbox" name="materials[{{ $i }}][hst_includes_unit]" value="1" class="admin-checkbox__input sq-mat-hst-inclusive-cb" @checked($hstInc)>
-                        <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                        <span class="admin-checkbox__text">HST-incl. price</span>
-                      </label>
-                      <input type="hidden" name="materials[{{ $i }}][apply_hst]" value="0">
-                      <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
-                        <input type="checkbox" name="materials[{{ $i }}][apply_hst]" value="1" class="admin-checkbox__input sq-mat-hst-cb" @checked($apply)>
-                        <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                        <span class="admin-checkbox__text">Pre-tax + HST</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="sq-mat-actions">
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm sq-remove-material" aria-label="Remove row" title="Remove material">
-                  <i class="fa fa-trash"></i>
-                </button>
-              </div>
-            </div>
+            @include('admin.quotations.standard._material_row', ['i' => $i, 'row' => $row])
           @endforeach
         </div>
 
@@ -670,94 +573,38 @@
   @endif
 
   <template id="sq-material-template">
-    <div class="sq-material-card sq-material-row">
-      <div class="sq-mat-fields">
-        <div class="sq-mat-row sq-mat-row--inputs">
-          <div class="sq-mat-field sq-mat-field--short-name">
-            <label>Short name</label>
-            <input type="text" name="materials[__I__][short_name]" class="admin-input sq-mat-short-name"
-                   maxlength="60" placeholder="e.g. Paint, Primer">
-          </div>
-          <div class="sq-mat-field sq-mat-field--description">
-            <label>Description</label>
-            <input type="text" name="materials[__I__][description]" class="admin-input sq-mat-desc"
-                   maxlength="500" placeholder="Material or item">
-          </div>
-          <div class="sq-mat-field sq-mat-field--unit">
-            <label>Unit price ($)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" name="materials[__I__][unit_price]"
-                   class="admin-input cp-money-input sq-mat-unit" placeholder="0.00">
-          </div>
-          <div class="sq-mat-field sq-mat-field--qty">
-            <label>Qty</label>
-            <input type="text" inputmode="decimal" autocomplete="off" name="materials[__I__][quantity]"
-                   class="admin-input sq-mat-qty" placeholder="1" value="1">
-          </div>
-        </div>
-
-        <div class="sq-mat-row sq-mat-row--url">
-          <div class="sq-mat-field sq-mat-field--url">
-            <label>Product URL <span class="sq-mat-optional">(optional)</span></label>
-            <div class="sq-mat-url-control">
-              <input type="url" inputmode="url" autocomplete="off" name="materials[__I__][url]"
-                     class="admin-input sq-mat-url" maxlength="2000"
-                     placeholder="https://supplier.com/product">
-              <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm sq-mat-url-open"
-                 target="_blank" rel="noopener" title="Open link in new tab" hidden>
-                <i class="fa fa-external-link"></i>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="sq-mat-row sq-mat-row--computed">
-          <div class="sq-mat-field sq-mat-field--readonly">
-            <label>Subtotal</label>
-            <div class="sq-mat-readout"><span class="sq-mat-sub">—</span></div>
-          </div>
-          <div class="sq-mat-field sq-mat-field--readonly">
-            <label>HST (13%)</label>
-            <div class="sq-mat-readout"><span class="sq-mat-hst">—</span></div>
-          </div>
-          <div class="sq-mat-field sq-mat-field--readonly">
-            <label>Total w/ HST</label>
-            <div class="sq-mat-readout"><span class="sq-mat-total">—</span></div>
-          </div>
-          <div class="sq-mat-field sq-mat-field--apply">
-            <label class="sq-mat-hst-toggles-label">HST</label>
-            <div class="sq-mat-hst-toggles">
-              <input type="hidden" name="materials[__I__][hst_includes_unit]" value="0">
-              <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
-                <input type="checkbox" name="materials[__I__][hst_includes_unit]" value="1" class="admin-checkbox__input sq-mat-hst-inclusive-cb">
-                <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">HST-incl. price</span>
-              </label>
-              <input type="hidden" name="materials[__I__][apply_hst]" value="0">
-              <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
-                <input type="checkbox" name="materials[__I__][apply_hst]" value="1" class="admin-checkbox__input sq-mat-hst-cb" checked>
-                <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">Pre-tax + HST</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="sq-mat-actions">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm sq-remove-material" aria-label="Remove row" title="Remove material">
-          <i class="fa fa-trash"></i>
-        </button>
-      </div>
-    </div>
+    @include('admin.quotations.standard._material_row', [
+      'i' => '__I__',
+      'row' => [
+        'short_name' => '',
+        'description' => '',
+        'url' => '',
+        'unit_price' => '',
+        'quantity' => '1',
+        'apply_hst' => true,
+        'hst_includes_unit' => false,
+        'catalog_material_id' => null,
+      ],
+    ])
   </template>
 @endsection
 
+@push('styles')
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css">
+@endpush
+
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
 (function () {
   'use strict';
   var HST = 0.13;
   var HPD = 8;
+  var sqCatalogOptions = @json($catalogPickerOptions ?? []);
+  var sqCatalogOptionMap = {};
+  sqCatalogOptions.forEach(function (item) {
+    sqCatalogOptionMap[String(item.id)] = item;
+  });
 
   function money(n) {
     var v = Number(n || 0);
@@ -995,12 +842,109 @@
     }
   }
 
+  function destroyCatalogPicker(row) {
+    var selectEl = row.querySelector('.sq-mat-catalog-select');
+    if (!selectEl) return;
+    if (selectEl.tomselect) {
+      selectEl.tomselect.destroy();
+    }
+  }
+
+  function syncMatSourceUI(row) {
+    var checked = row.querySelector('.sq-mat-source-radio:checked');
+    var catalogWrap = row.querySelector('.sq-mat-catalog-wrap');
+    var isCatalog = checked && checked.value === 'catalog';
+    if (catalogWrap) {
+      catalogWrap.hidden = !isCatalog;
+    }
+    if (!isCatalog) {
+      var selectEl = row.querySelector('.sq-mat-catalog-select');
+      if (selectEl && selectEl.tomselect) {
+        selectEl.tomselect.clear(true);
+      }
+    }
+  }
+
+  function applyCatalogToRow(row, item) {
+    if (!item) return;
+    var shortEl = row.querySelector('.sq-mat-short-name');
+    var descEl = row.querySelector('.sq-mat-desc');
+    var unitEl = row.querySelector('.sq-mat-unit');
+    var urlEl = row.querySelector('.sq-mat-url');
+    if (shortEl) shortEl.value = item.name || '';
+    if (descEl) {
+      descEl.value = item.description || item.store_name || item.name || '';
+    }
+    if (unitEl) unitEl.value = item.price || '';
+    if (urlEl) {
+      urlEl.value = item.url || '';
+      syncUrlOpenLink(urlEl);
+    }
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function' && unitEl) {
+      window.cpMoneyMask.wire([unitEl]);
+    }
+    recalcMaterials();
+  }
+
+  function initCatalogPicker(row) {
+    if (typeof TomSelect === 'undefined') return;
+    var selectEl = row.querySelector('.sq-mat-catalog-select');
+    if (!selectEl || selectEl.tomselect) return;
+
+    var initial = selectEl.getAttribute('data-initial') || '';
+    var ts = new TomSelect(selectEl, {
+      plugins: ['clear_button'],
+      options: sqCatalogOptions,
+      valueField: 'id',
+      labelField: 'label',
+      searchField: ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
+      maxOptions: 80,
+      placeholder: 'Type name or SKU…',
+      allowEmptyOption: true,
+      closeAfterSelect: true,
+      render: {
+        option: function (data, escape) {
+          return '<div class="fq-catalog-picker__option">' +
+            '<span class="fq-catalog-picker__option-name">' + escape(data.name) + '</span>' +
+            (data.sku ? '<span class="fq-catalog-picker__option-meta">SKU ' + escape(data.sku) + '</span>' : '') +
+            '<span class="fq-catalog-picker__option-price">' + escape(data.price_label || '') + '</span>' +
+            '</div>';
+        },
+        item: function (data, escape) {
+          return '<div class="fq-catalog-picker__item">' + escape(data.label) + '</div>';
+        }
+      },
+      onChange: function (value) {
+        applyCatalogToRow(row, value ? sqCatalogOptionMap[String(value)] : null);
+      }
+    });
+
+    if (initial && initial !== '0') {
+      ts.setValue(initial, true);
+    }
+  }
+
+  function initMaterialRow(row) {
+    syncMatSourceUI(row);
+    initCatalogPicker(row);
+    row.querySelectorAll('.sq-mat-source-radio').forEach(function (radio) {
+      if (radio.dataset.sqSourceBound === '1') return;
+      radio.dataset.sqSourceBound = '1';
+      radio.addEventListener('change', function () {
+        syncMatSourceUI(row);
+      });
+    });
+  }
+
   function reindexMaterialNames() {
     var rows = list.querySelectorAll('.sq-material-row');
     rows.forEach(function (row, i) {
+      destroyCatalogPicker(row);
       row.querySelectorAll('[name]').forEach(function (el) {
         el.name = el.name.replace(/materials\[\d+]/, 'materials[' + i + ']');
+        el.name = el.name.replace(/materials\[__I__]/, 'materials[' + i + ']');
       });
+      initMaterialRow(row);
     });
   }
 
@@ -1023,6 +967,7 @@
     var row = rm.closest('.sq-material-row');
     if (!row) return;
     if (list.querySelectorAll('.sq-material-row').length <= 1) return;
+    destroyCatalogPicker(row);
     row.remove();
     reindexMaterialNames();
     recalcMaterials();
@@ -1110,6 +1055,8 @@
       });
     });
   }
+
+  list.querySelectorAll('.sq-material-row').forEach(initMaterialRow);
 
   syncFixedLabourUI();
   recalcMaterials();

@@ -147,6 +147,10 @@ class StandardQuotationCalculator
             $hstSum += $b['line_hst'];
             $withHstSum += $b['line_total_with_hst'];
 
+            $catalogId = isset($row['catalog_material_id']) && $row['catalog_material_id'] !== ''
+                ? (int) $row['catalog_material_id']
+                : null;
+
             $cleanMaterials[] = [
                 'short_name' => $shortName,
                 'description' => $desc,
@@ -155,6 +159,7 @@ class StandardQuotationCalculator
                 'quantity' => $qty,
                 'apply_hst' => $b['apply_hst'],
                 'hst_includes_unit' => $b['hst_includes_unit'],
+                'catalog_material_id' => $catalogId > 0 ? $catalogId : null,
                 'line_subtotal' => $b['line_subtotal'],
                 'line_hst' => $b['line_hst'],
                 'line_total_with_hst' => $b['line_total_with_hst'],

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClientProject;
 use App\Models\FenceFormulaSetting;
 use App\Models\FenceMaterial;
 use App\Models\Material;
+use App\Support\MaterialCatalogPickerOptions;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use Illuminate\Http\Request;
@@ -39,7 +39,7 @@ class FenceConfigController extends Controller
 
         return view('admin.quotations.fence.config.index', [
             'materials' => $materials,
-            'catalogPickerOptions' => $this->catalogPickerOptions($catalogMaterials),
+            'catalogPickerOptions' => MaterialCatalogPickerOptions::fromMaterials($catalogMaterials),
             'settings' => FenceFormulaSetting::current(),
             'usesSerpApi' => (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi(),
             'linkedSyncCount' => $linkedSyncCount,
@@ -139,37 +139,6 @@ class FenceConfigController extends Controller
         return redirect()
             ->route('admin.quotations.fence.config')
             ->with($failed > 0 ? 'error' : 'success', $message);
-    }
-
-    /**
-     * @param  \Illuminate\Support\Collection<int, Material>  $catalogMaterials
-     * @return list<array<string, mixed>>
-     */
-    private function catalogPickerOptions($catalogMaterials): array
-    {
-        return $catalogMaterials->map(function (Material $catalog) {
-            $priceLabel = ClientProject::formatMoney((float) $catalog->price_cad);
-            $sku = trim((string) ($catalog->store_sku ?? ''));
-            $label = $catalog->displayName();
-            if ($sku !== '') {
-                $label .= ' · '.$sku;
-            }
-            $label .= ' · '.$priceLabel;
-
-            return [
-                'id' => $catalog->id,
-                'label' => $label,
-                'name' => $catalog->displayName(),
-                'store_name' => $catalog->name,
-                'sku' => $sku,
-                'model' => trim((string) ($catalog->model ?? '')),
-                'vendor' => trim((string) ($catalog->vendorName() ?? '')),
-                'price' => number_format((float) $catalog->price_cad, 2, '.', ''),
-                'price_label' => $priceLabel,
-                'url' => (string) ($catalog->product_url ?? ''),
-                'quantity_per_package' => $catalog->quantity_per_package,
-            ];
-        })->values()->all();
     }
 
     public function updateFormula(Request $request)

@@ -4060,6 +4060,50 @@ body.cp-modal-open {
   gap: 12px;
   min-width: 0;
 }
+.sq-mat-row--source {
+  grid-template-columns: minmax(180px, auto) minmax(240px, 1fr);
+  align-items: end;
+}
+.sq-mat-source-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.sq-mat-source-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sq-mat-source-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+.sq-mat-source-option:has(input:checked) {
+  border-color: #024768;
+  background: #f0f9ff;
+  color: #024768;
+  font-weight: 600;
+}
+.sq-mat-source-option input {
+  margin: 0;
+}
+.sq-mat-field--catalog .fq-catalog-picker,
+.sq-mat-field--catalog.fq-catalog-picker {
+  min-width: 0;
+}
 .sq-mat-row--inputs {
   /* Short name | Description (wider) | Unit price (narrower) | Qty (narrower) */
   grid-template-columns: minmax(120px, 1fr) minmax(260px, 4fr) minmax(90px, 0.6fr) minmax(70px, 0.45fr);

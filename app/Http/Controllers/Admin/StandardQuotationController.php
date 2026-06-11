@@ -11,6 +11,7 @@ use App\Models\StandardQuotation;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\StandardQuotationCalculator;
+use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -50,6 +51,7 @@ class StandardQuotationController extends Controller
             'quotation' => null,
             'linkableProjects' => collect(),
             'linkProject' => $linkProject,
+            'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
         ]);
     }
 
@@ -111,6 +113,7 @@ class StandardQuotationController extends Controller
             'quotation' => $standard_quotation,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
+            'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
         ]);
     }
 
@@ -370,6 +373,7 @@ class StandardQuotationController extends Controller
             'materials.*.quantity' => ['nullable', 'numeric', 'min:0'],
             'materials.*.apply_hst' => ['nullable'],
             'materials.*.hst_includes_unit' => ['nullable'],
+            'materials.*.catalog_material_id' => ['nullable', 'integer', 'exists:materials,id'],
             'includes_material' => ['nullable'],
             'includes_labour' => ['nullable'],
             'labour_use_fixed' => ['nullable'],
@@ -452,6 +456,10 @@ class StandardQuotationController extends Controller
         $materialsForStorage = array_map(static function (array $m): array {
             $url = trim((string) ($m['url'] ?? ''));
 
+            $catalogId = isset($m['catalog_material_id']) && $m['catalog_material_id'] !== ''
+                ? (int) $m['catalog_material_id']
+                : null;
+
             return [
                 'short_name' => $m['short_name'] ?? '',
                 'description' => $m['description'],
@@ -460,6 +468,7 @@ class StandardQuotationController extends Controller
                 'quantity' => $m['quantity'],
                 'apply_hst' => $m['apply_hst'],
                 'hst_includes_unit' => (bool) ($m['hst_includes_unit'] ?? false),
+                'catalog_material_id' => $catalogId > 0 ? $catalogId : null,
             ];
         }, $computed['materials']);
 
