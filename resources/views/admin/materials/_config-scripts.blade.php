@@ -74,7 +74,7 @@
       function updateProgress(data) {
         var overallTotal = data.overall_total || 1;
         var overallCurrent = data.overall_current || 0;
-        var pct = overallTotal > 0 ? Math.round((overallCurrent / overallTotal) * 100) : 0;
+        var pct = overallTotal> 0 ? Math.round((overallCurrent / overallTotal) * 100) : 0;
 
         if (phaseLabel) {
           phaseLabel.textContent = data.phase_label || 'Working…';

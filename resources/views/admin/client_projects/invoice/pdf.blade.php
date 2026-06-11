@@ -20,7 +20,7 @@
     $discPdf = $invoice->effectiveDiscountAmount();
     $showDiscPdf = !$invoice->isManual()
       && $invoice->installment_number !== null
-      && $discPdf > 0.0001;
+      && $discPdf> 0.0001;
     $dateStr = \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($invoice->sent_at ?: now());
     $dueStr = $invoice->due_on
       ? \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on)
@@ -350,7 +350,7 @@
   <p class="section-intro">Invoice for the following:</p>
 
   @if (!empty($hourlyPdf))
-    @if (count($labourRows) > 0)
+    @if (count($labourRows)> 0)
       <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Labour (HST applies)</p>
       <table class="items" style="margin-bottom:16pt;">
         <thead>
@@ -387,7 +387,7 @@
       </table>
     @endif
 
-    @if (count($materialsRows) > 0)
+    @if (count($materialsRows)> 0)
       <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Materials (amounts include HST)</p>
       <p style="margin:0 0 8pt;font-size:9.5pt;color:#4b5563;font-style:italic;">No additional HST is charged on materials — amounts below are the final client prices (tax-included).</p>
       <table class="items" style="margin-bottom:12pt;">
@@ -436,7 +436,7 @@
             <td class="amount">{{ $fmt($hst) }}</td>
           </tr>
         @endif
-        @if (($hourlyMaterialsTotal ?? 0) > 0.0001)
+        @if (($hourlyMaterialsTotal ?? 0)> 0.0001)
           <tr>
             <td class="totals-label">Materials (tax-included)</td>
             <td class="amount">{{ $fmt($hourlyMaterialsTotal) }}</td>

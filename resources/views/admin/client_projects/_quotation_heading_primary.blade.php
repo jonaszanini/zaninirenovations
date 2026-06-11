@@ -8,7 +8,7 @@
   $isStd = $quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_STANDARD;
 @endphp
 @if ($isStd)
-  <h3 @class([
+  <h3 @class(['admin-input', 
       'cp-quotation-primary-heading',
       'cp-quotation-primary-heading--standard',
       $headingClass => filled($headingClass),
@@ -22,7 +22,7 @@
     </span>
   </h3>
 @else
-  <h3 @class([
+  <h3 @class(['admin-input', 
       'cp-quotation-primary-heading',
       $headingClass => filled($headingClass),
   ])>

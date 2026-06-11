@@ -113,7 +113,7 @@
                 <div class="cp-helper-time-form-grid">
                   <div class="admin-form-group col-3">
                     <label>Helper</label>
-                    <select name="helper_id" required>
+                    <select class="admin-input" name="helper_id" required>
                       @foreach ($editHelpers as $helper)
                         <option value="{{ $helper->id }}" @selected($entry->helper_id === $helper->id)>{{ $helper->name }}</option>
                       @endforeach
@@ -121,15 +121,15 @@
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Date</label>
-                    <input type="date" name="occurred_on" required value="{{ optional($entry->occurred_on)->toDateString() }}">
+                    <input class="admin-input" type="date" name="occurred_on" required value="{{ optional($entry->occurred_on)->toDateString() }}">
                   </div>
                   <div class="admin-form-group col-3">
                     <label>Reason</label>
-                    <input type="text" name="expense_description" maxlength="500" required value="{{ $entry->expense_description }}">
+                    <input class="admin-input" type="text" name="expense_description" maxlength="500" required value="{{ $entry->expense_description }}">
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Amount</label>
-                    <input type="text" name="expense_amount" class="cp-money-input" inputmode="decimal" autocomplete="off" required value="{{ $editExpenseAmount }}">
+                    <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required value="{{ $editExpenseAmount }}">
                   </div>
                 </div>
                 <div class="cp-time-submit cp-time-edit-actions">
@@ -144,7 +144,7 @@
                 <div class="cp-helper-time-form-grid">
                   <div class="admin-form-group col-3">
                     <label>Helper</label>
-                    <select name="helper_id" required>
+                    <select class="admin-input" name="helper_id" required>
                       @foreach ($editHelpers as $helper)
                         <option value="{{ $helper->id }}" @selected($entry->helper_id === $helper->id)>{{ $helper->name }}</option>
                       @endforeach
@@ -152,7 +152,7 @@
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Date</label>
-                    <input type="date" name="occurred_on" required value="{{ optional($entry->occurred_on)->toDateString() }}">
+                    <input class="admin-input" type="date" name="occurred_on" required value="{{ optional($entry->occurred_on)->toDateString() }}">
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Start time</label>
@@ -172,11 +172,11 @@
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Note</label>
-                    <input type="text" name="note" maxlength="500" value="{{ $entry->note }}">
+                    <input class="admin-input" type="text" name="note" maxlength="500" value="{{ $entry->note }}">
                   </div>
                   <div class="admin-form-group col-1">
                     <label>Hours</label>
-                    <input type="text" name="hours" class="cp-hours-input" inputmode="decimal" autocomplete="off" placeholder="auto"
+                    <input type="text" name="hours" class="admin-input cp-hours-input" inputmode="decimal" autocomplete="off" placeholder="auto"
                            value="{{ $entry->hours !== null ? rtrim(rtrim(number_format((float) $entry->hours, 2, '.', ''), '0'), '.') : '' }}"
                            data-cp-time-hours>
                   </div>
@@ -187,7 +187,7 @@
                         'text' => 'Defaults from the helper profile; change here for this day only.',
                       ])
                     </label>
-                    <input type="text" name="hourly_rate" class="cp-money-input" inputmode="decimal" autocomplete="off"
+                    <input type="text" name="hourly_rate" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
                            value="{{ $editHourlyRate }}" data-cp-money-entry="direct">
                   </div>
                 </div>

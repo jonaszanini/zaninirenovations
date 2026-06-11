@@ -340,7 +340,7 @@
         <div class="admin-form-group">
           <label for="fq-client-name">Client name <span class="admin-required">*</span></label>
           <input id="fq-client-name" type="text" name="client_name"
-                 class="admin-input @class(['is-invalid' => $errors->has('client_name')])"
+                 @class(['admin-input', 'is-invalid' => $errors->has('client_name')])
                  value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
                  maxlength="160" required>
         </div>
@@ -348,7 +348,7 @@
         <div class="admin-form-group">
           <label for="fq-work-description">Description of the work</label>
           <textarea id="fq-work-description" name="work_description" rows="5" maxlength="5000"
-                    class="admin-input @class(['is-invalid' => $errors->has('work_description')])"
+                    @class(['admin-input', 'is-invalid' => $errors->has('work_description')])
                     placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -367,7 +367,7 @@
             <div class="admin-form-group">
               <label for="fq-labour-rate-6">Labour rate 6&prime; fence (CAD$ / linear ft)</label>
               <input id="fq-labour-rate-6" type="text" name="labour_rate_per_ft"
-                     class="admin-input cp-money-input @class(['is-invalid' => $errors->has('labour_rate_per_ft')])"
+                     @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_per_ft')])
                      inputmode="decimal" autocomplete="off" required
                      value="{{ number_format((float) $initialLabour6, 2, '.', '') }}">
               @error('labour_rate_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -375,7 +375,7 @@
             <div class="admin-form-group">
               <label for="fq-labour-rate-8">Labour rate 8&prime; fence (CAD$ / linear ft)</label>
               <input id="fq-labour-rate-8" type="text" name="labour_rate_8ft_per_ft"
-                     class="admin-input cp-money-input @class(['is-invalid' => $errors->has('labour_rate_8ft_per_ft')])"
+                     @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_8ft_per_ft')])
                      inputmode="decimal" autocomplete="off" required
                      value="{{ number_format((float) $initialLabour8, 2, '.', '') }}">
               @error('labour_rate_8ft_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -581,7 +581,7 @@
           <span>HST on labour (13%)</span>
           <span id="fq-t-labour-hst">CA$0.00</span>
         </div>
-        <div class="fq-totals-row is-hidden" id="fq-t-commute-row" >
+        <div class="fq-totals-row is-hidden" id="fq-t-commute-row">
           <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
           <span id="fq-t-commute">CA$0.00</span>
         </div>
@@ -660,13 +660,13 @@
 
   function updateAddRemoveState() {
     var n = sidesEl.querySelectorAll('.fq-side-card').length;
-    addBtn.disabled = n >= MAX_SIDES;
+    addBtn.disabled = n>= MAX_SIDES;
     removeBtn.disabled = n <= 1;
   }
 
   addBtn.addEventListener('click', function () {
     var current = collectSides();
-    if (current.length >= MAX_SIDES) return;
+    if (current.length>= MAX_SIDES) return;
     current.push({ length_ft: null });
     renderSides(current);
     schedulePreview();
@@ -731,7 +731,7 @@
   function runPreview() {
     var payload = buildPayload();
     // If no valid sides yet, show a hint but don't hit the server.
-    var hasValidSide = payload.sides.some(function (s) { return s.length_ft && s.length_ft > 0; });
+    var hasValidSide = payload.sides.some(function (s) { return s.length_ft && s.length_ft> 0; });
     if (!hasValidSide) {
       renderIdle('Enter at least one side length to see the breakdown.');
       return;
@@ -827,7 +827,7 @@
     tLabour.textContent = money(t.labour_subtotal);
     tTotal.textContent = money(t.total);
     tLabourHst.textContent = money(t.labour_hst);
-    if (tCommuteRow) tCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount > 0));
+    if (tCommuteRow) tCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount> 0));
     if (tCommute) tCommute.textContent = money(lastCommuteAmount);
     tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount);
     if (t.labour_rate_per_ft) {

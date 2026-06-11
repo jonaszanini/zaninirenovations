@@ -4,8 +4,7 @@
 <article
   class="nb2-gallery-card"
   data-nb2-card
-  data-image-id="{{ $image->id }}"
->
+  data-image-id="{{ $image->id }}">
   <a href="{{ $image->imageUrl() }}" class="nb2-gallery-card__media" target="_blank" rel="noopener" title="Open WebP preview">
     <img src="{{ $image->imageUrl() }}" alt="" loading="lazy" decoding="async">
   </a>
@@ -29,8 +28,7 @@
         data-nb2-recreate
         data-prompt="{{ e($image->prompt) }}"
         data-aspect-ratio="{{ e($image->aspect_ratio ?: '16:9') }}"
-        data-image-size="{{ e($image->image_size ?: '1K') }}"
-      >
+        data-image-size="{{ e($image->image_size ?: '1K') }}">
         <i class="fa fa-refresh"></i> Recreate
       </button>
       <button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-nb2-delete data-delete-url="{{ route('admin.image-creation.destroy', $image) }}">

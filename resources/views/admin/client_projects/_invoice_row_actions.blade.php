@@ -29,7 +29,7 @@
   if ($invoice) {
       $completeItems = array_filter(
           $invoice->cleanItems(),
-          fn ($row) => trim((string) ($row['description'] ?? '')) !== '' && (float) ($row['amount'] ?? 0) > 0
+          fn ($row) => trim((string) ($row['description'] ?? '')) !== '' && (float) ($row['amount'] ?? 0)> 0
       );
       if (count($completeItems) === 0) {
           $contentBlockers[] = 'Add at least one line item with a description and amount.';
@@ -126,7 +126,7 @@
     @endunless
 
     {{-- PDF (always available if there's something to render) --}}
-    @if ($invoice->hasContent() || $invoice->total > 0)
+    @if ($invoice->hasContent() || $invoice->total> 0)
       <a href="{{ route('admin.client-projects.invoices.pdf', [$project, $invoice]) }}"
          target="_blank"
          rel="noopener"
@@ -206,7 +206,7 @@
          the receipt PDF has something meaningful to render. --}}
     @unless ($invoice->isPaid())
       @php
-        $canMarkPaid = $invoice->hasContent() && (float) $invoice->total > 0;
+        $canMarkPaid = $invoice->hasContent() && (float) $invoice->total> 0;
         $markPaidTitle = $canMarkPaid
           ? ($invoice->isSent()
               ? 'Mark as paid and generate a receipt.'

@@ -45,11 +45,11 @@
     <input type="hidden" name="list" value="{{ $filters['list'] ?? 'ongoing' }}">
     <div class="cp-filter">
       <label for="cp-filter-q">Search</label>
-      <input type="text" id="cp-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project or client name">
+      <input class="admin-input" type="text" id="cp-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project or client name">
     </div>
     <div class="cp-filter">
       <label for="cp-filter-status">Status</label>
-      <select id="cp-filter-status" name="status">
+      <select class="admin-input" id="cp-filter-status" name="status">
         <option value="">All statuses</option>
         @foreach ($statusLabels as $key => $label)
           <option value="{{ $key }}" @selected($filters['status'] === $key)>{{ $label }}</option>
@@ -58,11 +58,11 @@
     </div>
     <div class="cp-filter">
       <label for="cp-filter-from">From</label>
-      <input type="date" id="cp-filter-from" name="from" value="{{ $filters['from'] }}">
+      <input class="admin-input" type="date" id="cp-filter-from" name="from" value="{{ $filters['from'] }}">
     </div>
     <div class="cp-filter">
       <label for="cp-filter-to">To</label>
-      <input type="date" id="cp-filter-to" name="to" value="{{ $filters['to'] }}">
+      <input class="admin-input" type="date" id="cp-filter-to" name="to" value="{{ $filters['to'] }}">
     </div>
     <div class="cp-filter cp-filter--actions">
       <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>

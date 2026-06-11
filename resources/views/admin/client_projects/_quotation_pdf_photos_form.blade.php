@@ -39,7 +39,7 @@
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs" data-cp-q-pdf-photos-clear>
             Clear
           </button>
-          @if (count($selectedPdfPhotoIds) > 0)
+          @if (count($selectedPdfPhotoIds)> 0)
             <span class="cp-quotation-pdf-photos__count">{{ count($selectedPdfPhotoIds) }} selected for PDF</span>
           @endif
         </div>

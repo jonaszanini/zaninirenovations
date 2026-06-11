@@ -55,7 +55,7 @@
                   @if ($returnProjectId)
                     <input type="hidden" name="return_project" value="{{ $returnProjectId }}">
                   @endif
-                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" @if ($helper->time_entries_count > 0) disabled title="Has time entries — deactivate instead" @endif>Delete</button>
+                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" @if ($helper->time_entries_count> 0) disabled title="Has time entries — deactivate instead" @endif>Delete</button>
                 </form>
               </td>
             </tr>

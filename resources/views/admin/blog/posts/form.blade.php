@@ -22,12 +22,12 @@
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
           <label for="bp-title">Title <span class="cp-required">*</span></label>
-          <input type="text" id="bp-title" name="title" value="{{ old('title', $post->title) }}" required maxlength="255" class="admin-input">
+          <input class="admin-input" type="text" id="bp-title" name="title" value="{{ old('title', $post->title) }}" required maxlength="255" class="admin-input">
           @error('title') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
           <label for="bp-slug">Slug</label>
-          <input type="text" id="bp-slug" name="slug" value="{{ old('slug', $post->slug) }}" maxlength="255" class="admin-input" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="auto from title if empty">
+          <input class="admin-input" type="text" id="bp-slug" name="slug" value="{{ old('slug', $post->slug) }}" maxlength="255" class="admin-input" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="auto from title if empty">
           @error('slug') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
       </div>
@@ -66,7 +66,7 @@
 
       <div class="admin-form-group">
         <label for="bp-editor">Content</label>
-        <textarea id="bp-editor" name="html_content" rows="24">{{ old('html_content', $post->html_content) }}</textarea>
+        <textarea class="admin-input" id="bp-editor" name="html_content" rows="24">{{ old('html_content', $post->html_content) }}</textarea>
         @error('html_content') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
@@ -150,7 +150,7 @@
 
       <div class="admin-form-group">
         <label for="bp-author">Author</label>
-        <input type="text" id="bp-author" name="author_name" value="{{ old('author_name', $post->author_name) }}" maxlength="120" class="admin-input">
+        <input class="admin-input" type="text" id="bp-author" name="author_name" value="{{ old('author_name', $post->author_name) }}" maxlength="120" class="admin-input">
       </div>
 
       <div class="admin-form-actions">
@@ -335,7 +335,7 @@
 
       document.getElementById('blog-post-form').addEventListener('submit', function () {
         clearFeaturedCropFields();
-        var hasNewFile = fileInput && fileInput.files && fileInput.files.length > 0;
+        var hasNewFile = fileInput && fileInput.files && fileInput.files.length> 0;
         if (cropper && hasNewFile) {
           var d = cropper.getData(true);
           document.getElementById('bp-crop-x').value = Math.round(d.x);
@@ -363,7 +363,7 @@
         var meta = document.getElementById('bp-meta');
         var tags = document.getElementById('bp-tags');
         var imagePrompt = document.getElementById('bp-ai-image-prompt');
-        var hasCats = document.querySelectorAll('input[name="category_ids[]"]:checked').length > 0;
+        var hasCats = document.querySelectorAll('input[name="category_ids[]"]:checked').length> 0;
         return (excerpt && excerpt.value.trim() !== '')
           || (meta && meta.value.trim() !== '')
           || (tags && tags.value.trim() !== '')
@@ -395,7 +395,7 @@
         if (removeCb) removeCb.checked = false;
 
         if (pending) {
-          pending.value = (postId > 0) ? '' : (data.featured_image_path || '');
+          pending.value = (postId> 0) ? '' : (data.featured_image_path || '');
         }
       }
 
@@ -445,7 +445,7 @@
 
           var postId = parseInt(aiBtn.getAttribute('data-post-id') || '0', 10);
           var payload = { title: title, html_content: html };
-          if (postId > 0) payload.post_id = postId;
+          if (postId> 0) payload.post_id = postId;
 
           aiBtn.disabled = true;
           setAiStatus('Generating metadata and featured image with Gemini…', false);

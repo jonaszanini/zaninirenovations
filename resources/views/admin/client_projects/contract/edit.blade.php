@@ -70,7 +70,7 @@
       <input type="hidden" name="intent" value="draft" id="cp-contract-intent">
 
       <div class="admin-form-group">
-        <textarea id="cp-contract-editor"
+        <textarea class="admin-input" id="cp-contract-editor"
                   name="html_content"
                   rows="30">{{ old('html_content', $contract->html_content) }}</textarea>
       </div>
@@ -283,11 +283,11 @@
           var ed = tinymce.get('cp-contract-editor');
           if (ed) {
             var html = (ed.getContent({ format: 'text' }) || '').trim();
-            return html.length > 0;
+            return html.length> 0;
           }
         }
         var raw = document.getElementById('cp-contract-editor');
-        return raw && (raw.value || '').trim().length > 0;
+        return raw && (raw.value || '').trim().length> 0;
       }
 
       function applyDraftToEditor(html) {

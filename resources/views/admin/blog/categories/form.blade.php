@@ -9,11 +9,11 @@
       @if ($category->exists) @method('PUT') @endif
       <div class="admin-form-group">
         <label for="bc-name">Name</label>
-        <input type="text" id="bc-name" name="name" value="{{ old('name', $category->name) }}" required maxlength="120" class="admin-input">
+        <input class="admin-input" type="text" id="bc-name" name="name" value="{{ old('name', $category->name) }}" required maxlength="120" class="admin-input">
       </div>
       <div class="admin-form-group">
         <label for="bc-slug">Slug</label>
-        <input type="text" id="bc-slug" name="slug" value="{{ old('slug', $category->slug) }}" maxlength="120" class="admin-input" placeholder="auto from name if empty on create">
+        <input class="admin-input" type="text" id="bc-slug" name="slug" value="{{ old('slug', $category->slug) }}" maxlength="120" class="admin-input" placeholder="auto from name if empty on create">
       </div>
       <div class="admin-form-group">
         <label for="bc-desc">Description</label>

@@ -23,8 +23,7 @@
     data-save-url="{{ route('admin.utilities.calculations.store') }}"
     data-pdf-url="{{ route('admin.utilities.pillar-spindle.pdf') }}"
     data-destroy-template="{{ route('admin.utilities.calculations.destroy', ['utility_calculation' => '__ID__']) }}"
-    data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A')])) }}"
-  >
+    data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A')])) }}">
     <input type="hidden" id="util-ps-csrf" value="{{ csrf_token() }}">
 
     <div class="util-ps-grid">
@@ -43,11 +42,11 @@
         <div class="util-ps-field-row">
           <div class="admin-form-group">
             <label for="ps-length">Total length</label>
-            <input type="number" id="ps-length" min="0" step="any" inputmode="decimal" placeholder="e.g. 12">
+            <input class="admin-input" type="number" id="ps-length" min="0" step="any" inputmode="decimal" placeholder="e.g. 12">
           </div>
           <div class="admin-form-group util-ps-unit">
             <label for="ps-unit">Unit</label>
-            <select id="ps-unit">
+            <select class="admin-input" id="ps-unit">
               <option value="ft">Feet (ft)</option>
               <option value="m">Meters (m)</option>
               <option value="in">Inches (in)</option>
@@ -63,8 +62,8 @@
             </span>
           </label>
           <div class="util-ps-input-unit">
-            <input type="number" id="ps-thickness" min="0" step="any" inputmode="decimal" placeholder="e.g. 1.5">
-            <select id="ps-thickness-unit" aria-label="Thickness unit">
+            <input class="admin-input" type="number" id="ps-thickness" min="0" step="any" inputmode="decimal" placeholder="e.g. 1.5">
+            <select class="admin-input" id="ps-thickness-unit" aria-label="Thickness unit">
               <option value="ft">ft</option>
               <option value="m">m</option>
               <option value="in" selected>in</option>
@@ -80,8 +79,8 @@
             </span>
           </label>
           <div class="util-ps-input-unit">
-            <input type="number" id="ps-spacing" min="0" step="any" inputmode="decimal" placeholder="e.g. 4">
-            <select id="ps-gap-unit" aria-label="Gap unit">
+            <input class="admin-input" type="number" id="ps-spacing" min="0" step="any" inputmode="decimal" placeholder="e.g. 4">
+            <select class="admin-input" id="ps-gap-unit" aria-label="Gap unit">
               <option value="ft">ft</option>
               <option value="m">m</option>
               <option value="in" selected>in</option>
@@ -93,7 +92,7 @@
           <label for="ps-count">
             Number of pillars
           </label>
-          <input type="number" id="ps-count" min="1" step="1" inputmode="numeric" placeholder="e.g. 9">
+          <input class="admin-input" type="number" id="ps-count" min="1" step="1" inputmode="numeric" placeholder="e.g. 9">
         </div>
 
         <div class="admin-form-group">
@@ -103,7 +102,7 @@
               <i class="fa fa-info-circle"></i>
             </span>
           </label>
-          <select id="ps-placement">
+          <select class="admin-input" id="ps-placement">
             <option value="both">At both ends</option>
             <option value="start">Only at start</option>
             <option value="end">Only at end</option>
@@ -221,7 +220,7 @@
           <div class="util-ps-save-row">
             <div class="admin-form-group">
               <label for="ps-save-name" class="util-sr-only">Calculation name</label>
-              <input type="text" id="ps-save-name" maxlength="120" placeholder="e.g. Front porch railing">
+              <input class="admin-input" type="text" id="ps-save-name" maxlength="120" placeholder="e.g. Front porch railing">
             </div>
             <button type="button" class="admin-btn admin-btn--primary" data-ps-save>
               <i class="fa fa-save"></i> Save

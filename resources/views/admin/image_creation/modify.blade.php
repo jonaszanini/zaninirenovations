@@ -403,7 +403,7 @@
             var note = 'Prompt improved. Review the updated instructions, then apply changes when ready.';
             if (body.why_better) {
               var why = body.why_better;
-              if (why.length > 240) why = why.slice(0, 239) + '…';
+              if (why.length> 240) why = why.slice(0, 239) + '…';
               note += ' ' + why;
             }
             setStatus(note, false);
@@ -425,7 +425,7 @@
             if (fileInput) fileInput.click();
             return;
           }
-          if (total > maxSources) {
+          if (total> maxSources) {
             setStatus('Too many photos selected (max ' + maxSources + ').', true);
             return;
           }

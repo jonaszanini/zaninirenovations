@@ -4,8 +4,7 @@
 <article
   class="nb2-gallery-card"
   data-aim-card
-  data-image-id="{{ $image->id }}"
->
+  data-image-id="{{ $image->id }}">
   <a href="{{ $image->imageUrl() }}" class="nb2-gallery-card__media" target="_blank" rel="noopener" title="Open edited image">
     <img src="{{ $image->imageUrl() }}" alt="" loading="lazy" decoding="async">
   </a>
@@ -27,8 +26,7 @@
         type="button"
         class="admin-btn admin-btn--ghost admin-btn--sm"
         data-aim-reuse-prompt
-        data-prompt="{{ e($image->prompt) }}"
-      >
+        data-prompt="{{ e($image->prompt) }}">
         <i class="fa fa-refresh"></i> Reuse prompt
       </button>
       <button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-aim-delete data-delete-url="{{ route('admin.image-creation.destroy', $image) }}">

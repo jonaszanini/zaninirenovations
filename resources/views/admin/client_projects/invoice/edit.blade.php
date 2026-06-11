@@ -26,7 +26,7 @@
     $isHourlyManual = $project->isHourly() && $isManual;
     $isFromTimeEntries = $isManual && $invoice->isFromTimeEntries();
     $manualDescription = old('manual_description', $invoice->installment_description);
-    $manualTotal = old('manual_total', $invoice->subtotal > 0 ? number_format((float) $invoice->subtotal, 2, '.', '') : '');
+    $manualTotal = old('manual_total', $invoice->subtotal> 0 ? number_format((float) $invoice->subtotal, 2, '.', '') : '');
     $dueOn = old('due_on', $invoice->due_on ? $invoice->due_on->toDateString() : null);
     $hstExempt = (bool) old('hst_exempt', $invoice->isHstExempt());
 
@@ -661,9 +661,9 @@
             }
           }
           var discount = 0;
-          if (pct > 0.00001) {
+          if (pct> 0.00001) {
             discount = Math.round(Math.min(gross * pct / 100, gross) * 100) / 100;
-          } else if (amtRaw > 0.00001) {
+          } else if (amtRaw> 0.00001) {
             discount = Math.round(Math.min(amtRaw, gross) * 100) / 100;
           }
           var net = Math.round(Math.max(0, gross - discount) * 100) / 100;
@@ -671,7 +671,7 @@
           var hstInst;
           if (exempt) {
             hstInst = 0;
-          } else if (LOCKED_SUBTOTAL !== null && LOCKED_HST !== null && LOCKED_SUBTOTAL > 0.00001) {
+          } else if (LOCKED_SUBTOTAL !== null && LOCKED_HST !== null && LOCKED_SUBTOTAL> 0.00001) {
             hstInst = Math.round(LOCKED_HST * (net / LOCKED_SUBTOTAL) * 100) / 100;
           } else if (LOCKED_HST !== null) {
             hstInst = LOCKED_HST;
@@ -686,9 +686,9 @@
 
           if (LOCKED_SUBTOTAL !== null && planDiffEl && diffEl) {
             var diff = Math.round((net - LOCKED_SUBTOTAL) * 100) / 100;
-            if (Math.abs(diff) > 0.01) {
+            if (Math.abs(diff)> 0.01) {
               planDiffEl.classList.remove('is-hidden');
-              diffEl.textContent = (diff > 0 ? '+' : '') + formatMoney(diff);
+              diffEl.textContent = (diff> 0 ? '+' : '') + formatMoney(diff);
             } else {
               planDiffEl.classList.add('is-hidden');
             }

@@ -10,7 +10,7 @@
       <div class="admin-form-group">
         <label for="cl-name">Name <span class="cp-required">*</span></label>
         <input type="text" id="cl-name" name="name" value="{{ old('name') }}" required maxlength="255"
-               class="@error('name') is-invalid @enderror">
+               class="admin-input @error("name') is-invalid @enderror">
         @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
@@ -18,13 +18,13 @@
         <div class="admin-form-group">
           <label for="cl-email">Email</label>
           <input type="email" id="cl-email" name="email" value="{{ old('email') }}" maxlength="255"
-                 class="@error('email') is-invalid @enderror">
+                 class="admin-input @error("email') is-invalid @enderror">
           @error('email') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
           <label for="cl-phone">Phone</label>
           <input type="text" id="cl-phone" name="phone" value="{{ \App\Models\ClientProject::formatPhone(old('phone')) }}"
-                 class="cp-phone-input @error('phone') is-invalid @enderror"
+                 class="admin-input cp-phone-input @error("phone') is-invalid @enderror"
                  inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx">
           @error('phone') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
@@ -33,7 +33,7 @@
       <div class="admin-form-group">
         <label for="cl-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(optional)</small></label>
         <input type="email" id="cl-email-secondary" name="email_secondary" value="{{ old('email_secondary') }}" maxlength="255"
-               class="@error('email_secondary') is-invalid @enderror">
+               class="admin-input @error("email_secondary') is-invalid @enderror">
         @error('email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
@@ -52,7 +52,7 @@
 
       <div class="admin-form-group">
         <label for="cl-notes">Notes</label>
-        <textarea id="cl-notes" name="notes" rows="3" maxlength="5000">{{ old('notes') }}</textarea>
+        <textarea class="admin-input" id="cl-notes" name="notes" rows="3" maxlength="5000">{{ old('notes') }}</textarea>
         @error('notes') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 

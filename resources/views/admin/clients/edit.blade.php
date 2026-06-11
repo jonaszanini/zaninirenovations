@@ -10,21 +10,21 @@
 
       <div class="admin-form-group">
         <label for="cl-name">Name <span class="cp-required">*</span></label>
-        <input type="text" id="cl-name" name="name" value="{{ old('name', $client->name) }}" required maxlength="255"
-               class="@error('name') is-invalid @enderror">
+        <input @class(['admin-input', 'is-invalid' => $errors->has('name')]) type="text" id="cl-name" name="name" value="{{ old('name', $client->name) }}" required maxlength="255"
+               >
         @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
           <label for="cl-email">Email</label>
-          <input type="email" id="cl-email" name="email" value="{{ old('email', $client->email) }}" maxlength="255"
-                 class="@error('email') is-invalid @enderror">
+          <input @class(['admin-input', 'is-invalid' => $errors->has('email')]) type="email" id="cl-email" name="email" value="{{ old('email', $client->email) }}" maxlength="255"
+                 >
           @error('email') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
           <label for="cl-phone">Phone</label>
-          <input type="text" id="cl-phone" name="phone"
+          <input @class(['admin-input', 'is-invalid' => $errors->has('email_secondary')]) type="text" id="cl-phone" name="phone"
                  value="{{ \App\Models\ClientProject::formatPhone(old('phone', $client->phone)) }}"
                  class="cp-phone-input @error('phone') is-invalid @enderror"
                  inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx">
@@ -34,8 +34,8 @@
 
       <div class="admin-form-group">
         <label for="cl-email-secondary">Secondary email</label>
-        <input type="email" id="cl-email-secondary" name="email_secondary" value="{{ old('email_secondary', $client->email_secondary) }}" maxlength="255"
-               class="@error('email_secondary') is-invalid @enderror">
+        <input class="admin-input" type="email" id="cl-email-secondary" name="email_secondary" value="{{ old('email_secondary', $client->email_secondary) }}" maxlength="255"
+               >
         @error('email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
@@ -54,7 +54,7 @@
 
       <div class="admin-form-group">
         <label for="cl-notes">Notes</label>
-        <textarea id="cl-notes" name="notes" rows="3" maxlength="5000">{{ old('notes', $client->notes) }}</textarea>
+        <textarea class="admin-input" id="cl-notes" name="notes" rows="3" maxlength="5000">{{ old('notes', $client->notes) }}</textarea>
         @error('notes') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 

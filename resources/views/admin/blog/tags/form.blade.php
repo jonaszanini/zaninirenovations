@@ -9,11 +9,11 @@
       @if ($tag->exists) @method('PUT') @endif
       <div class="admin-form-group">
         <label for="bt-name">Name</label>
-        <input type="text" id="bt-name" name="name" value="{{ old('name', $tag->name) }}" required maxlength="80" class="admin-input">
+        <input class="admin-input" type="text" id="bt-name" name="name" value="{{ old('name', $tag->name) }}" required maxlength="80" class="admin-input">
       </div>
       <div class="admin-form-group">
         <label for="bt-slug">Slug</label>
-        <input type="text" id="bt-slug" name="slug" value="{{ old('slug', $tag->slug) }}" maxlength="80" class="admin-input">
+        <input class="admin-input" type="text" id="bt-slug" name="slug" value="{{ old('slug', $tag->slug) }}" maxlength="80" class="admin-input">
       </div>
       <div class="admin-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary">Save</button>

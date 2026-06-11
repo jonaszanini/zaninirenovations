@@ -33,9 +33,9 @@
                 @csrf
                 @method('PUT')
                 <div class="pq-db-stone-grid">
-                  <input type="text" name="name" value="{{ $st->name }}" class="admin-input" required maxlength="120" aria-label="Stone name">
+                  <input class="admin-input" type="text" name="name" value="{{ $st->name }}" class="admin-input" required maxlength="120" aria-label="Stone name">
                   <div class="pq-db-stone-link-wrap">
-                    <input type="url" name="product_url" value="{{ $st->product_url }}" class="admin-input" maxlength="500"
+                    <input class="admin-input" type="url" name="product_url" value="{{ $st->product_url }}" class="admin-input" maxlength="500"
                            placeholder="https://…" aria-label="Product link">
                     @if (filled($st->product_url))
                       <a href="{{ $st->product_url }}" class="pq-db-stone-open-link" target="_blank" rel="noopener noreferrer" title="Open product page">
@@ -43,29 +43,29 @@
                       </a>
                     @endif
                   </div>
-                  <input type="number" name="length_in" value="{{ $st->length_in }}" step="0.01" min="0.01" max="999"
+                  <input class="admin-input" type="number" name="length_in" value="{{ $st->length_in }}" step="0.01" min="0.01" max="999"
                          class="admin-input pq-db-stone-len" placeholder="—" aria-label="Length in inches">
-                  <input type="number" name="width_in" value="{{ $st->width_in }}" step="0.01" min="0.01" max="999"
+                  <input class="admin-input" type="number" name="width_in" value="{{ $st->width_in }}" step="0.01" min="0.01" max="999"
                          class="admin-input pq-db-stone-wid" placeholder="—" aria-label="Width in inches">
-                  <input type="number" name="height_in" value="{{ $st->height_in }}" step="0.01" min="0.01" max="999"
+                  <input class="admin-input" type="number" name="height_in" value="{{ $st->height_in }}" step="0.01" min="0.01" max="999"
                          class="admin-input pq-db-stone-hgt" placeholder="—" aria-label="Height in inches">
                   <div class="pq-db-stone-sq-wrap">
-                    <input type="number" name="sq_ft_per_stone" value="{{ $st->sq_ft_per_stone }}" step="0.0001" min="0.0001"
+                    <input class="admin-input" type="number" name="sq_ft_per_stone" value="{{ $st->sq_ft_per_stone }}" step="0.0001" min="0.0001"
                            class="admin-input pq-db-stone-sq" required aria-label="Sq ft per stone">
                     <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
                   </div>
-                  <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
+                  <input class="admin-input" type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
                          value="{{ number_format((float) $st->price_per_stone, 2, '.', '') }}"
                          class="admin-input cp-money-input" required aria-label="Price per stone CAD">
                   <div class="pq-db-stone-actions">
                     <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save</button>
-                    @if ($stoneTypes->count() > 1)
+                    @if ($stoneTypes->count()> 1)
                       <button type="submit" form="pq-del-stone-{{ $st->id }}" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
                     @endif
                   </div>
                 </div>
               </form>
-              @if ($stoneTypes->count() > 1)
+              @if ($stoneTypes->count()> 1)
                 <form id="pq-del-stone-{{ $st->id }}" method="post" action="{{ route('admin.quotations.paving.database.stones.destroy', $st) }}"
                       class="pq-db-hidden-form" onsubmit="return confirm('Delete this stone type?');">
                   @csrf
@@ -126,7 +126,7 @@
                     <div class="pq-db-rate-inline">
                       <label class="pq-db-rate-price-label">
                         <span class="pq-db-rate-price-label-text">CAD</span>
-                        <input type="text" name="price_before_tax" inputmode="decimal" autocomplete="off"
+                        <input class="admin-input" type="text" name="price_before_tax" inputmode="decimal" autocomplete="off"
                                value="{{ number_format((float) $rate->price_before_tax, 2, '.', '') }}"
                                class="admin-input cp-money-input pq-db-rate-input" required aria-label="Price {{ $rate->label }} before tax">
                       </label>
@@ -157,9 +157,9 @@
               @foreach ($pricingTiers as $idx => $tier)
                 <tr>
                   <td>{{ $idx + 1 }}</td>
-                  <td><input type="number" name="tiers[{{ $idx }}][area_sq_ft]" value="{{ $tier->area_sq_ft }}" step="0.01" min="1" class="admin-input" required aria-label="Tier area"></td>
+                  <td><input class="admin-input" type="number" name="tiers[{{ $idx }}][area_sq_ft]" value="{{ $tier->area_sq_ft }}" step="0.01" min="1" class="admin-input" required aria-label="Tier area"></td>
                   <td>
-                    <input type="text"
+                    <input class="admin-input" type="text"
                            name="tiers[{{ $idx }}][price_per_sq_ft]"
                            value="{{ number_format((float) $tier->price_per_sq_ft, 4, '.', '') }}"
                            class="admin-input cp-money-input"

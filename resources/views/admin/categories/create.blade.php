@@ -8,14 +8,14 @@
       @csrf
       <div class="admin-form-group">
         <label for="name">Name</label>
-        <input type="text" id="name" name="name" value="{{ old('name') }}" required maxlength="120" placeholder="e.g. Kitchen renovation">
+        <input class="admin-input" type="text" id="name" name="name" value="{{ old('name') }}" required maxlength="120" placeholder="e.g. Kitchen renovation">
         @error('name')
           <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
         <label for="sort_order">Sort order</label>
-        <input type="number" id="sort_order" name="sort_order" value="{{ old('sort_order', 0) }}" min="0" max="32767">
+        <input class="admin-input" type="number" id="sort_order" name="sort_order" value="{{ old('sort_order', 0) }}" min="0" max="32767">
         <p class="admin-form-help">Lower numbers appear first in dropdowns. Default 0.</p>
         @error('sort_order')
           <div class="admin-form-error">{{ $message }}</div>

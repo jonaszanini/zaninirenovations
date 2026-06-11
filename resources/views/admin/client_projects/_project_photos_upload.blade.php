@@ -15,8 +15,8 @@
 
 <div class="admin-form-group cp-project-photos-upload">
   <label for="{{ $inputId }}">Photos &amp; files <span class="admin-form-help cp-inline-help">(optional)</span></label>
-  @if ($canAdd > 0)
-    <input type="file"
+  @if ($canAdd> 0)
+    <input class="admin-input" type="file"
            id="{{ $inputId }}"
            name="photos[]"
            @if ($formId) form="{{ $formId }}" @endif
@@ -26,7 +26,7 @@
       <strong>Images</strong> — JPEG, PNG, or WebP ({{ ClientProjectPhotoStorage::MAX_IMAGE_KB / 1024 }} MB max each). Converted to WebP at {{ $webpQuality }}% quality, scaled to at most {{ $maxEdge }}px, and compressed to about {{ $webpMaxKb }}&nbsp;KB or less.
       <strong>Videos</strong> — MP4, WebM, or MOV ({{ ClientProjectPhotoStorage::MAX_VIDEO_KB / 1024 }} MB max each).
       <strong>PDFs</strong> — {{ ClientProjectPhotoStorage::MAX_PDF_KB / 1024 }} MB max each.
-      @if ($existingCount > 0)
+      @if ($existingCount> 0)
         You can add up to {{ $canAdd }} more ({{ $existingCount }} / {{ $maxFiles }} already saved).
       @else
         Up to {{ $maxFiles }} files per project.
@@ -44,7 +44,7 @@
   @enderror
 </div>
 
-@if ($canAdd > 0)
+@if ($canAdd> 0)
   @push('scripts')
     <script>
       (function () {

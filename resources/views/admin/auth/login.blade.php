@@ -28,14 +28,14 @@
             @csrf
             <div class="admin-form-group">
               <label for="email">Email</label>
-              <input type="email" id="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username">
+              <input class="admin-input" type="email" id="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username">
               @error('email')
                 <div class="admin-form-error">{{ $message }}</div>
               @enderror
             </div>
             <div class="admin-form-group">
               <label for="password">Password</label>
-              <input type="password" id="password" name="password" required autocomplete="current-password">
+              <input class="admin-input" type="password" id="password" name="password" required autocomplete="current-password">
             </div>
             <div class="admin-form-group">
               <label class="admin-login-remember">

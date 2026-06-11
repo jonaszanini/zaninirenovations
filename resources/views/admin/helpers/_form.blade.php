@@ -4,17 +4,17 @@
 
 <div class="admin-form-group">
   <label for="name">Name</label>
-  <input type="text" id="name" name="name" value="{{ old('name', $helper?->name) }}" required maxlength="160">
+  <input class="admin-input" type="text" id="name" name="name" value="{{ old('name', $helper?->name) }}" required maxlength="160">
   @error('name') <div class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 <div class="admin-form-group">
   <label for="email">Email</label>
-  <input type="email" id="email" name="email" value="{{ old('email', $helper?->email) }}" required maxlength="255">
+  <input class="admin-input" type="email" id="email" name="email" value="{{ old('email', $helper?->email) }}" required maxlength="255">
   @error('email') <div class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 <div class="admin-form-group">
   <label for="phone">Phone (optional)</label>
-  <input type="text" id="phone" name="phone" value="{{ old('phone', $helper?->phone) }}" maxlength="20">
+  <input class="admin-input" type="text" id="phone" name="phone" value="{{ old('phone', $helper?->phone) }}" maxlength="20">
   @error('phone') <div class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 <div class="admin-form-group">
@@ -22,7 +22,7 @@
   <input type="text"
          id="hourly_rate"
          name="hourly_rate"
-         class="cp-money-input"
+         class="admin-input cp-money-input"
          inputmode="decimal"
          autocomplete="off"
          placeholder="0.00"

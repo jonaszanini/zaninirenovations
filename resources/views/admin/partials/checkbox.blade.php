@@ -8,7 +8,7 @@
   @param bool         $checked
   @param string|null  $label           Label HTML (right of checkbox)
   @param string       $class           Extra classes on <label>
-  @param string       $inputClass      Extra classes on <input>
+  @param string       $inputClass      Extra classes on <input> (default: admin-checkbox__input)
   @param bool         $hiddenFallback  Emit hidden 0 before checkbox (for Laravel boolean fields)
   @param array        $attrs           Extra HTML attributes on input
 --}}

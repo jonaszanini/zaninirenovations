@@ -13,7 +13,7 @@
     <div class="cp-time-form-grid">
       <div class="admin-form-group">
         <label>Date</label>
-        <input type="date" name="occurred_on" required value="{{ now()->toDateString() }}">
+        <input class="admin-input" type="date" name="occurred_on" required value="{{ now()->toDateString() }}">
       </div>
       <div class="admin-form-group">
         <label>Start time</label>
@@ -28,7 +28,7 @@
           <span class="cp-hint" title="Optional. Filled automatically when you pick start + end. Leave empty + leave end blank to start an open entry.">?</span>
         </label>
         <input type="text" name="hours"
-               class="cp-hours-input"
+               class="admin-input cp-hours-input"
                inputmode="decimal"
                autocomplete="off"
                placeholder="auto"
@@ -36,7 +36,7 @@
       </div>
       <div class="admin-form-group">
         <label>Note (optional)</label>
-        <input type="text" name="note" maxlength="500">
+        <input class="admin-input" type="text" name="note" maxlength="500">
       </div>
     </div>
     <p class="admin-form-help cp-time-help">
@@ -96,7 +96,7 @@
                 <div class="cp-time-form-grid">
                   <div class="admin-form-group">
                     <label>Date</label>
-                    <input type="date" name="occurred_on" required value="{{ optional($entry->occurred_on)->toDateString() }}">
+                    <input class="admin-input" type="date" name="occurred_on" required value="{{ optional($entry->occurred_on)->toDateString() }}">
                   </div>
                   <div class="admin-form-group">
                     <label>Start time</label>
@@ -117,7 +117,7 @@
                   <div class="admin-form-group">
                     <label>Hours</label>
                     <input type="text" name="hours"
-                           class="cp-hours-input"
+                           class="admin-input cp-hours-input"
                            inputmode="decimal"
                            autocomplete="off"
                            placeholder="auto"
@@ -126,7 +126,7 @@
                   </div>
                   <div class="admin-form-group">
                     <label>Note</label>
-                    <input type="text" name="note" maxlength="500" value="{{ $entry->note }}">
+                    <input class="admin-input" type="text" name="note" maxlength="500" value="{{ $entry->note }}">
                   </div>
                 </div>
                 <div class="cp-time-submit cp-time-edit-actions">
@@ -155,7 +155,7 @@
       <div class="cp-profit-tile">
         <div class="cp-profit-label">Configured rate</div>
         <div class="cp-profit-value">
-          {{ $configuredRate > 0 ? \App\Models\ClientProject::formatMoney($configuredRate).' / h' : 'Not set' }}
+          {{ $configuredRate> 0 ? \App\Models\ClientProject::formatMoney($configuredRate).' / h' : 'Not set' }}
         </div>
       </div>
       <div class="cp-profit-tile cp-profit-tile--highlight">
@@ -166,14 +166,14 @@
     @if ($isHourly)
       <div class="cp-profit-tile">
         <div class="cp-profit-label">Final amount after HST</div>
-        <div class="cp-profit-value {{ $project->hourlyFinalAmountAfterHst() >= 0 ? 'is-positive' : 'is-negative' }}">
+        <div class="cp-profit-value {{ $project->hourlyFinalAmountAfterHst()>= 0 ? 'is-positive' : 'is-negative' }}">
           {{ \App\Models\ClientProject::formatMoney($project->hourlyFinalAmountAfterHst()) }}
         </div>
       </div>
     @else
       <div class="cp-profit-tile">
         <div class="cp-profit-label">Net profit after HST</div>
-        <div class="cp-profit-value {{ $netAfterHst >= 0 ? 'is-positive' : 'is-negative' }}">
+        <div class="cp-profit-value {{ $netAfterHst>= 0 ? 'is-positive' : 'is-negative' }}">
           {{ \App\Models\ClientProject::formatMoney($netAfterHst) }}
         </div>
       </div>
@@ -193,7 +193,7 @@
       $closedForSummary = $project->timeEntries->filter(fn ($e) => $e->hours !== null)->count();
       $hasClientEmail = filled($project->client_email);
       $hasClientName = filled($project->client_name);
-      $canSendTimeSummary = $closedForSummary > 0 && $hasClientEmail && $hasClientName;
+      $canSendTimeSummary = $closedForSummary> 0 && $hasClientEmail && $hasClientName;
     @endphp
     <div class="cp-time-summary-email" style="margin-top:20px;padding-top:20px;border-top:1px solid #e5e7eb;">
       <h4 class="cp-time-saved-heading" style="margin-top:0;">Send summary to client</h4>

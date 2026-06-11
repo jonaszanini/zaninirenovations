@@ -80,7 +80,7 @@
                 <div class="fq-catalog-picker">
                   <select name="materials[{{ $i }}][material_id]"
                           id="fq-catalog-picker-{{ $i }}"
-                          class="fq-catalog-picker__select"
+                          class="admin-input fq-catalog-picker__select"
                           data-preview-target="fq-preview-{{ $i }}"
                           data-price-target="fq-price-{{ $i }}"
                           @if ($m->key === \App\Models\FenceMaterial::KEY_NAILS)
@@ -119,7 +119,7 @@
                 <span class="fq-material-preview__price" id="fq-price-{{ $i }}">
                   @if ($m->material_id && $m->material)
                     {{ $m->material->formattedPrice() }}
-                  @elseif ($m->effectivePriceCad() > 0)
+                  @elseif ($m->effectivePriceCad()> 0)
                     {{ \App\Models\ClientProject::formatMoney($m->effectivePriceCad()) }}
                   @else
                     —
@@ -267,7 +267,7 @@
 
         var item = optionMap[String(value)] || null;
         var qty = item && item.quantity_per_package ? parseInt(item.quantity_per_package, 10) : 0;
-        nailsPerBoxEl.textContent = qty > 0 ? String(qty) : '—';
+        nailsPerBoxEl.textContent = qty> 0 ? String(qty) : '—';
       }
 
       function updatePreview(selectEl, value, optionMap) {

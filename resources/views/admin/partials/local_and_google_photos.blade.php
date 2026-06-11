@@ -23,14 +23,13 @@
 <div class="admin-portfolio-upload-section">
   <div class="admin-form-group admin-portfolio-upload-files">
     <label for="{{ $fileInputId }}">{{ $fileLabel }}</label>
-    <input
+    <input class="admin-input"
       type="file"
       id="{{ $fileInputId }}"
       name="{{ $fileInputName }}"
       accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png"
       multiple
-      @if($showPreviewGrid) data-admin-local-preview-target="{{ $previewGridId }}" @endif
-    >
+      @if($showPreviewGrid) data-admin-local-preview-target="{{ $previewGridId }}" @endif>
     <p class="admin-form-help">{{ $fileHint }}</p>
     @if ($showPreviewGrid)
       <div class="admin-local-photo-preview-grid" id="{{ $previewGridId }}" hidden aria-live="polite"></div>

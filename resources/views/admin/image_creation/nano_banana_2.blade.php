@@ -32,8 +32,7 @@
             data-nb2-ar="{{ $aspectRatio }}"
             data-ar-w="{{ $arW }}"
             data-ar-h="{{ $arH }}"
-            aria-pressed="{{ $aspectRatio === $nb2Options['defaults']['aspectRatio'] ? 'true' : 'false' }}"
-          >
+            aria-pressed="{{ $aspectRatio === $nb2Options['defaults']['aspectRatio'] ? 'true' : 'false' }}">
             <span class="nb2-ar-btn__shape" aria-hidden="true"></span>
             <span class="nb2-ar-btn__label">{{ $aspectRatio }}</span>
           </button>

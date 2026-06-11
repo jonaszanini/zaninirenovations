@@ -15,7 +15,7 @@
       <div class="fq-catalog-picker cp-client-directory-picker__field">
         <select id="cp-client-directory"
                 name="client_id"
-                class="fq-catalog-picker__select"
+                class="admin-input fq-catalog-picker__select"
                 data-preview-target="cp-client-preview"
                 data-search-url="{{ $clientsSearchUrl }}"
                 data-initial="{{ (int) old('client_id', ($initialClientForPicker ?? [])['id'] ?? 0) }}"
@@ -140,7 +140,7 @@
       }
 
       function fetchClientById(id, callback) {
-        var url = searchUrl + (searchUrl.indexOf('?') >= 0 ? '&' : '?') + 'id=' + encodeURIComponent(id);
+        var url = searchUrl + (searchUrl.indexOf('?')>= 0 ? '&' : '?') + 'id=' + encodeURIComponent(id);
         fetch(url, {
           headers: {
             'Accept': 'application/json',
@@ -209,7 +209,7 @@
           }
         },
         load: function (query, callback) {
-          var url = searchUrl + (searchUrl.indexOf('?') >= 0 ? '&' : '?') + 'q=' + encodeURIComponent(query || '');
+          var url = searchUrl + (searchUrl.indexOf('?')>= 0 ? '&' : '?') + 'q=' + encodeURIComponent(query || '');
           fetch(url, {
             headers: {
               'Accept': 'application/json',

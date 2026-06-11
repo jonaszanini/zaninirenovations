@@ -16,7 +16,7 @@
             onsubmit="return confirm('Delete {{ number_format($failedCount) }} material{{ $failedCount === 1 ? '' : 's' }} with failed sync status? This cannot be undone.');">
         @csrf
         <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" @disabled($failedCount === 0)>
-          <i class="fa fa-trash"></i> Delete failed{{ $failedCount > 0 ? ' ('.number_format($failedCount).')' : '' }}
+          <i class="fa fa-trash"></i> Delete failed{{ $failedCount> 0 ? ' ('.number_format($failedCount).')' : '' }}
         </button>
       </form>
       <a href="https://serpapi.com/dashboard" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener noreferrer">
@@ -148,7 +148,7 @@
           @else
             Uses the Home Depot store API (Carleton Place store <code>7263</code> when configured).
           @endif
-          @if ($needsSyncCount > 0)
+          @if ($needsSyncCount> 0)
             <strong>{{ number_format($needsSyncCount) }}</strong> material{{ $needsSyncCount === 1 ? '' : 's' }} never synced or last sync failed.
           @endif
         </p>
@@ -196,10 +196,10 @@
 
   <p class="admin-form-help mat-config-footnote">
     {{ number_format($totalMaterials) }} {{ $totalMaterials === 1 ? 'material' : 'materials' }} in database
-    @if ($syncableCount > 0)
+    @if ($syncableCount> 0)
       · {{ number_format($syncableCount) }} Home Depot syncable via admin
     @endif
-    @if ($failedCount > 0)
+    @if ($failedCount> 0)
       · {{ number_format($failedCount) }} failed sync
     @endif
     @if ($materialCategories->isNotEmpty())

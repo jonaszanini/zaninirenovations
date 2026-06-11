@@ -28,8 +28,7 @@
     data-project-destroy-template="{{ route('admin.utilities.measurement-conversion.projects.destroy', ['measurement_project' => '__ID__']) }}"
     data-row-store-template="{{ route('admin.utilities.measurement-conversion.rows.store', ['measurement_project' => '__ID__']) }}"
     data-row-destroy-template="{{ route('admin.utilities.measurement-conversion.rows.destroy', ['measurement_row' => '__ID__']) }}"
-    data-unit-labels="{{ json_encode($unitLabels) }}"
-  >
+    data-unit-labels="{{ json_encode($unitLabels) }}">
     <input type="hidden" id="util-mc-csrf" value="{{ csrf_token() }}">
 
     {{-- Project picker --}}
@@ -37,7 +36,7 @@
       <div class="util-mc-project-bar__row">
         <div class="admin-form-group util-mc-project-select">
           <label for="mc-project-select">Project</label>
-          <select id="mc-project-select" data-mc-project-select>
+          <select class="admin-input" id="mc-project-select" data-mc-project-select>
             <option value="">— Select a project —</option>
           </select>
         </div>
@@ -55,11 +54,11 @@
         <div class="util-mc-new-project__grid">
           <div class="admin-form-group">
             <label for="mc-new-project-name">Project name</label>
-            <input type="text" id="mc-new-project-name" maxlength="120" placeholder="e.g. Scott Bullen Deck">
+            <input class="admin-input" type="text" id="mc-new-project-name" maxlength="120" placeholder="e.g. Scott Bullen Deck">
           </div>
           <div class="admin-form-group">
             <label for="mc-new-client-project">Link to client project <span class="util-mc-optional">(optional)</span></label>
-            <select id="mc-new-client-project" data-mc-new-client-project>
+            <select class="admin-input" id="mc-new-client-project" data-mc-new-client-project>
               <option value="">— None —</option>
               @foreach ($clientProjects as $cp)
                 <option value="{{ $cp->id }}">{{ $cp->name }}</option>
@@ -77,7 +76,7 @@
         <a href="#" data-mc-linked-link class="util-mc-linked__name"></a>
         <div class="admin-form-group util-mc-link-edit">
           <label for="mc-link-client-project" class="util-sr-only">Link to client project</label>
-          <select id="mc-link-client-project" data-mc-link-client-project>
+          <select class="admin-input" id="mc-link-client-project" data-mc-link-client-project>
             <option value="">— None —</option>
             @foreach ($clientProjects as $cp)
               <option value="{{ $cp->id }}">{{ $cp->name }}</option>
@@ -102,11 +101,11 @@
         <div class="util-mc-input-grid">
           <div class="admin-form-group">
             <label for="mc-value">Value</label>
-            <input type="text" id="mc-value" inputmode="decimal" placeholder="e.g. 47.25 or 3' 11 1/4&quot;" data-mc-value>
+            <input class="admin-input" type="text" id="mc-value" inputmode="decimal" placeholder="e.g. 47.25 or 3' 11 1/4&quot;" data-mc-value>
           </div>
           <div class="admin-form-group">
             <label for="mc-unit">Source unit</label>
-            <select id="mc-unit" data-mc-unit>
+            <select class="admin-input" id="mc-unit" data-mc-unit>
               @foreach ($unitLabels as $key => $label)
                 <option value="{{ $key }}" @selected($key === 'in_dec')>{{ $label }}</option>
               @endforeach
@@ -114,7 +113,7 @@
           </div>
           <div class="admin-form-group">
             <label for="mc-label">Label <span class="util-mc-optional">(optional)</span></label>
-            <input type="text" id="mc-label" maxlength="120" placeholder="e.g. Post height" data-mc-label>
+            <input class="admin-input" type="text" id="mc-label" maxlength="120" placeholder="e.g. Post height" data-mc-label>
           </div>
           <div class="admin-form-group util-mc-add-cell">
             <label class="util-mc-label-spacer" aria-hidden="true">Add</label>

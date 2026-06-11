@@ -60,7 +60,7 @@
     $unbilledSubtotal = round($unbilledHours * $hourlyRate, 2);
     $unbilledTotal = round($unbilledSubtotal * (1 + \App\Models\ClientProjectInvoice::HST_RATE), 2);
 
-    $canCreateFromHours = $unbilledEntries->isNotEmpty() && $hourlyRate > 0;
+    $canCreateFromHours = $unbilledEntries->isNotEmpty() && $hourlyRate> 0;
   @endphp
 
   <div class="admin-card cp-contract-card">
@@ -110,7 +110,7 @@
       <div class="cp-hourly-summary-tile">
         <div class="cp-hourly-summary-label">Hours logged</div>
         <div class="cp-hourly-summary-value">{{ number_format($totalHours, 2) }} h</div>
-        @if ($hourlyRate > 0)
+        @if ($hourlyRate> 0)
           <div class="cp-hourly-summary-sub">@ {{ \App\Models\ClientProject::formatMoney($hourlyRate) }}/h</div>
         @endif
       </div>
@@ -121,7 +121,7 @@
       <div class="cp-hourly-summary-tile cp-hourly-summary-tile--highlight">
         <div class="cp-hourly-summary-label">Unbilled</div>
         <div class="cp-hourly-summary-value">{{ number_format($unbilledHours, 2) }} h</div>
-        @if ($unbilledHours > 0 && $hourlyRate > 0)
+        @if ($unbilledHours> 0 && $hourlyRate> 0)
           <div class="cp-hourly-summary-sub">
             {{ \App\Models\ClientProject::formatMoney($unbilledSubtotal) }} + HST =
             <strong>{{ \App\Models\ClientProject::formatMoney($unbilledTotal) }}</strong>
@@ -165,7 +165,7 @@
               <tr>
                 <td>
                   {{ $invoice->installment_description ?: 'Hourly work' }}
-                  @if ($entryCount > 0)
+                  @if ($entryCount> 0)
                     <div class="admin-form-help" style="margin-top:2px;">
                       <i class="fa fa-clock-o"></i>
                       {{ $entryCount }} time entr{{ $entryCount === 1 ? 'y' : 'ies' }} snapshotted
@@ -316,7 +316,7 @@
                 // an old invoice predates the HST fix). Admin should
                 // delete + recreate to bring it in line.
                 $expectedTotal = $inst->effectiveTotal();
-                $hasMismatch = $invoice && abs($rowTotal - $expectedTotal) > 0.01;
+                $hasMismatch = $invoice && abs($rowTotal - $expectedTotal)> 0.01;
 
                 $status = $invoice?->status;
                 $statusLabel = \App\Models\ClientProjectInvoice::statusLabel($status);
@@ -491,14 +491,14 @@
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
               <label for="cp-mark-paid-date">Payment date</label>
-              <input type="date" id="cp-mark-paid-date" name="paid_on" required value="{{ now()->toDateString() }}">
+              <input class="admin-input" type="date" id="cp-mark-paid-date" name="paid_on" required value="{{ now()->toDateString() }}">
             </div>
             <div class="admin-form-group">
               <label for="cp-mark-paid-amount">Amount received (CAD)</label>
               <input type="text"
                      id="cp-mark-paid-amount"
                      name="paid_amount"
-                     class="cp-money-input"
+                     class="admin-input cp-money-input"
                      inputmode="decimal"
                      autocomplete="off"
                      placeholder="0.00"

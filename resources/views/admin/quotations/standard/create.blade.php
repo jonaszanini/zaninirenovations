@@ -555,7 +555,7 @@
           </div>
         </section>
 
-        <div class="sq-grand-row sq-grand-row--commute is-hidden" id="sq-g-commute-row" >
+        <div class="sq-grand-row sq-grand-row--commute is-hidden" id="sq-g-commute-row">
           <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
           <span id="sq-g-commute">CA$0.00</span>
         </div>
@@ -777,7 +777,7 @@
 
   function parseQty(raw) {
     var v = parseFloat(raw);
-    return isFinite(v) && v >= 0 ? v : 0;
+    return isFinite(v) && v>= 0 ? v : 0;
   }
 
   var list = document.getElementById('sq-materials-list');
@@ -843,7 +843,7 @@
     var raw = contPercent ? contPercent.value : '';
     var v = parseFloat(String(raw).replace(/[^0-9.]/g, ''));
     if (!isFinite(v) || v < 0) return 0;
-    if (v > 100) return 100;
+    if (v> 100) return 100;
     return v;
   }
 
@@ -919,9 +919,9 @@
     var contPct = contingencyPctValue();
     var contAmt = 0;
     var contHst = 0;
-    if (contOn && subSum > 0 && contPct > 0) {
+    if (contOn && subSum> 0 && contPct> 0) {
       contAmt = Math.round(subSum * (contPct / 100) * 100) / 100;
-      var effRate = subSum > 0 ? (hstSum / subSum) : 0;
+      var effRate = subSum> 0 ? (hstSum / subSum) : 0;
       contHst = Math.round(contAmt * effRate * 100) / 100;
     }
 
@@ -975,7 +975,7 @@
     gLab.textContent = money(lab);
     if (gLabHst) gLabHst.textContent = money(labHst);
     if (gLabTot) gLabTot.textContent = money(labWithHst);
-    if (gCommuteRow) gCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount > 0));
+    if (gCommuteRow) gCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount> 0));
     if (gCommute) gCommute.textContent = money(lastCommuteAmount);
     gGrand.textContent = money(withSumWithCont + labWithHst + lastCommuteAmount);
 
@@ -986,11 +986,11 @@
     if (labourMode() === 'days') {
       qtyLabel.textContent = 'Estimated days';
       var hrsFromDays = lq * HPD;
-      equivEl.textContent = lq > 0 ? ('≈ ' + (Math.round(hrsFromDays * 100) / 100) + ' hours') : '';
+      equivEl.textContent = lq> 0 ? ('≈ ' + (Math.round(hrsFromDays * 100) / 100) + ' hours') : '';
     } else {
       qtyLabel.textContent = 'Estimated hours';
       var daysFromHrs = lq / HPD;
-      equivEl.textContent = lq > 0 ? ('≈ ' + (Math.round(daysFromHrs * 1000) / 1000) + ' days (8 h/day)') : '';
+      equivEl.textContent = lq> 0 ? ('≈ ' + (Math.round(daysFromHrs * 1000) / 1000) + ' days (8 h/day)') : '';
     }
     }
   }

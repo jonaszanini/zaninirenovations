@@ -9,14 +9,14 @@
       @csrf
       <div class="admin-form-group">
         <label for="title">Title</label>
-        <input type="text" id="title" name="title" value="{{ old('title') }}" required maxlength="255">
+        <input class="admin-input" type="text" id="title" name="title" value="{{ old('title') }}" required maxlength="255">
         @error('title')
           <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
         <label for="description">Description</label>
-        <textarea id="description" name="description" required>{{ old('description') }}</textarea>
+        <textarea class="admin-input" id="description" name="description" required>{{ old('description') }}</textarea>
         @include('admin.partials.portfolio_description_ai')
         @error('description')
           <div class="admin-form-error">{{ $message }}</div>
@@ -51,7 +51,7 @@
       </div>
       <div class="admin-form-group">
         <label for="completed_on">Completed on</label>
-        <input type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', now()->toDateString()) }}" required>
+        <input class="admin-input" type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', now()->toDateString()) }}" required>
         <p class="admin-form-help">When the work was finished (used to order projects on the site — newest completion first).</p>
         @error('completed_on')
           <div class="admin-form-error">{{ $message }}</div>

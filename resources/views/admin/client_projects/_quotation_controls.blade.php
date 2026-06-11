@@ -7,7 +7,7 @@
             class="cp-quotation-control__form">
         @csrf
         <label for="cp-q-status-{{ $quotation->id }}" class="cp-quotation-control__label">Workflow status</label>
-        <select id="cp-q-status-{{ $quotation->id }}"
+        <select class="admin-input" id="cp-q-status-{{ $quotation->id }}"
                 name="status"
                 class="admin-input cp-quotation-control__select"
                 onchange="this.form.submit()">
@@ -27,7 +27,7 @@
           @csrf
           <label for="cp-q-sub-override-{{ $quotation->id }}" class="cp-quotation-control__label">Subtotal override (pre-tax)</label>
           <div class="cp-quotation-control__field-row">
-            <input type="text"
+            <input class="admin-input" type="text"
                    id="cp-q-sub-override-{{ $quotation->id }}"
                    name="subtotal_override"
                    class="admin-input cp-money-input cp-quotation-control__input"

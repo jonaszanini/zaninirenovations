@@ -206,11 +206,14 @@ Icon-only buttons **must** have `aria-label`.
 
 ### Forms
 
+**Every** `input`, `select`, and `textarea` must have **`class="admin-input"`** (or `@class(['admin-input', ...])`).  
+Styling is defined once in `public/css/admin.css`. Do not add field CSS in page-specific stylesheets.
+
 ```html
 <div class="admin-form-group">
   <label for="field_id">Field label <span class="cp-required">*</span></label>
   <input type="text" id="field_id" name="field" value="{{ old('field') }}"
-         class="@error('field') is-invalid @enderror">
+         @class(['admin-input', 'is-invalid' => $errors->has('field')])>
   @error('field')
     <p class="admin-form-error">{{ $message }}</p>
   @enderror
@@ -218,14 +221,33 @@ Icon-only buttons **must** have `aria-label`.
 </div>
 ```
 
+Toolbar / filter (no label wrapper):
+
+```html
+<input type="search" name="q" class="admin-input" placeholder="Search…">
+<select name="category" class="admin-input">…</select>
+```
+
+**Shortcut partial** for new labeled fields:
+
+```blade
+@include('admin.partials.form_field', [
+    'label' => 'Project name',
+    'name' => 'name',
+    'required' => true,
+    'value' => old('name'),
+])
+```
+
 **Rules:**
 
-- Always use `<label for="...">` matching input `id`.
-- Validation errors: **`.admin-form-error`** (not `.admin-error`).
-- Help text: **`.admin-form-help`** (not `.admin-form-hint`).
-- Inputs inside `.admin-form-group` inherit styling automatically; use `.admin-input` only for fields **outside** groups (search bars, filters).
-- Checkboxes: `@include('admin.partials.checkbox', [...])` or `.admin-checkbox` pattern.
+- Always use `<label for="...">` matching input `id` (except toolbar-only controls).
+- Always **`admin-input`** on the control — never rely on bare tags inside `.admin-form-group`.
+- Validation errors: **`.admin-form-error`**.
+- Help text: **`.admin-form-help`**.
+- Checkboxes: `@include('admin.partials.checkbox', [...])` — do **not** use `admin-input` on checkboxes.
 - Required fields: `<span class="cp-required">*</span>`.
+- Compact toolbars may override height via context (e.g. `.mat-toolbar-search .admin-input` at 38px).
 
 ### Form grids
 
@@ -431,7 +453,7 @@ Copy from `tests/Templates/` for backend; for UI, copy nearest neighbor Blade fi
 ```
 Admin shell:     admin-body → admin-app → admin-sidebar + admin-main
 Surfaces:        admin-card | admin-card--narrow | admin-card--wide
-Forms:           admin-form-group → label + input + admin-form-error
+Forms:           admin-form-group → label + .admin-input + admin-form-error
 Grids:           admin-form-grid-2 | admin-form-grid-3
 Actions:         admin-btn + --primary|--secondary|--ghost|--danger|--sm|--lg
 Data:            admin-table-scroll → admin-table

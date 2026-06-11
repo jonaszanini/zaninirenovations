@@ -66,7 +66,7 @@
       $selMaterial = (int) $materialTypes->first()->id;
   }
   $vinylWithoutNosingId = (int) ($materialTypes->firstWhere('key', StairsMaterialType::KEY_VINYL_WITHOUT_NOSING)?->id ?? 0);
-  if ($vinylWithoutNosingId > 0 && $selMaterial === $vinylWithoutNosingId && is_array($segRows)) {
+  if ($vinylWithoutNosingId> 0 && $selMaterial === $vinylWithoutNosingId && is_array($segRows)) {
       foreach ($segRows as $i => $row) {
           if (is_array($segRows[$i])) {
               $segRows[$i]['open_sides'] = StairsQuotationCalculator::OPEN_NONE;
@@ -98,7 +98,7 @@
     }
     @media (max-width: 720px) {
       .fq-form-toolbar { flex-direction: column; align-items: stretch; }
-      .fq-form-toolbar > a:first-child { width: fit-content; }
+      .fq-form-toolbar> a:first-child { width: fit-content; }
       .fq-form-toolbar-right { justify-content: flex-start; }
     }
     .fq-linked-banner {
@@ -476,12 +476,12 @@
           o.textContent = TYPE_LABEL[t] || t;
           typeSel.appendChild(o);
         });
-        typeSel.value = al.indexOf(v) >= 0 ? v : al[0];
+        typeSel.value = al.indexOf(v)>= 0 ? v : al[0];
       }
 
       function fillOpenSidesSelect(sel, selected) {
         var allowed = openSideSelectOptions().map(function (o) { return o[0]; });
-        var val = allowed.indexOf(selected) >= 0 ? selected : OPEN_NONE;
+        var val = allowed.indexOf(selected)>= 0 ? selected : OPEN_NONE;
         sel.innerHTML = '';
         openSideSelectOptions().forEach(function (opt) {
           var o = document.createElement('option');
@@ -539,7 +539,7 @@
         var openSel = buildOpenSidesSelect(openVal);
         openWrap.appendChild(openSel);
         var al = allowedTypesForOpen(openVal);
-        var st = stairType && al.indexOf(stairType) >= 0 ? stairType : al[0];
+        var st = stairType && al.indexOf(stairType)>= 0 ? stairType : al[0];
         var typeSel = buildStairTypeSelect(st, openVal);
         var qtyIn = document.createElement('input');
         qtyIn.type = 'number';
@@ -596,7 +596,7 @@
         });
         var el = document.getElementById('sq-step-sum');
         if (!el) return;
-        if (sum === total && total > 0) {
+        if (sum === total && total> 0) {
           el.textContent = 'Step quantities match total (' + sum + ').';
           el.className = 'sq-step-hint ok';
         } else {
@@ -648,7 +648,7 @@
         });
         html += '<div class="pq-row"><span>Subtotal (pre-tax)</span><strong>' + fmt(s.subtotal_pre_hst) + '</strong></div>';
         html += '<div class="pq-row"><span>HST (' + Math.round((s.hst_rate || 0.13) * 100) + '%)</span><strong>' + fmt(s.hst) + '</strong></div>';
-        if (lastCommuteAmount > 0) {
+        if (lastCommuteAmount> 0) {
           html += '<div class="pq-row"><span>Commute expense (incl. HST)</span><strong>' + fmt(lastCommuteAmount) + '</strong></div>';
         }
         html += '<div class="pq-row pq-row--hl"><span>Grand total</span><strong>' + fmt(grandTotal) + '</strong></div>';

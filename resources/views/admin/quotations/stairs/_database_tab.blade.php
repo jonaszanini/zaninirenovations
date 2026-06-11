@@ -96,7 +96,7 @@
                 included in material rates
               @endif
             </p>
-            <input type="file" name="material_photo_{{ $mat->id }}" class="admin-input" accept="image/*">
+            <input class="admin-input" type="file" name="material_photo_{{ $mat->id }}" class="admin-input" accept="image/*">
             <p class="pq-hint" style="margin-top:6px;">Choose a new image to replace the current one. Leave empty to keep the existing photo.</p>
           </div>
         </div>
@@ -107,7 +107,7 @@
             @foreach ($stairTypeLabels as $st => $lbl)
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $lbl }}</span>
-                <input type="text" name="materials[{{ $mat->id }}][no_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
+                <input class="admin-input" type="text" name="materials[{{ $mat->id }}][no_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
                        value="{{ old('materials.'.$mat->id.'.no_open_'.$st, number_format((float) ($p['no_open'][$st] ?? 0), 2, '.', '')) }}">
               </div>
             @endforeach
@@ -121,7 +121,7 @@
             @foreach ($stairTypeLabels as $st => $lbl)
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $lbl }}</span>
-                <input type="text" name="materials[{{ $mat->id }}][one_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
+                <input class="admin-input" type="text" name="materials[{{ $mat->id }}][one_open_{{ $st }}]" class="admin-input cp-money-input" inputmode="decimal"
                        value="{{ old('materials.'.$mat->id.'.one_open_'.$st, number_format((float) ($p['one_open'][$st] ?? 0), 2, '.', '')) }}">
               </div>
             @endforeach
@@ -133,7 +133,7 @@
           <div class="sq-db-rate-grid" style="grid-template-columns: 1fr;">
             <div class="admin-form-group">
               <span class="sq-db-rate-label">Standard stairs only</span>
-              <input type="text" name="materials[{{ $mat->id }}][two_open_standard]" class="admin-input cp-money-input" inputmode="decimal"
+              <input class="admin-input" type="text" name="materials[{{ $mat->id }}][two_open_standard]" class="admin-input cp-money-input" inputmode="decimal"
                      value="{{ old('materials.'.$mat->id.'.two_open_standard', number_format((float) ($p['two_open']['standard'] ?? 0), 2, '.', '')) }}">
             </div>
           </div>
@@ -147,7 +147,7 @@
             @foreach (\App\Models\StairsMaterialType::nosingChoiceLabels() as $nk => $nLabel)
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $nLabel }}</span>
-                <input type="text" name="materials[{{ $mat->id }}][nosing_{{ $nk }}]" class="admin-input cp-money-input" inputmode="decimal"
+                <input class="admin-input" type="text" name="materials[{{ $mat->id }}][nosing_{{ $nk }}]" class="admin-input cp-money-input" inputmode="decimal"
                        value="{{ old('materials.'.$mat->id.'.nosing_'.$nk, number_format((float) ($p['nosing_prices'][$nk] ?? 0), 2, '.', '')) }}">
               </div>
             @endforeach

@@ -41,7 +41,7 @@
     </div>
     <div class="cp-profit-tile">
       <div class="cp-profit-label">Gross profit</div>
-      <div class="cp-profit-value {{ $gross >= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($gross) }}</div>
+      <div class="cp-profit-value {{ $gross>= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($gross) }}</div>
     </div>
     <div class="cp-profit-tile">
       <div class="cp-profit-label">HST to save (13%)</div>
@@ -49,7 +49,7 @@
     </div>
     <div class="cp-profit-tile cp-profit-tile--highlight">
       <div class="cp-profit-label">Net profit after HST</div>
-      <div class="cp-profit-value {{ $netAfterHst >= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($netAfterHst) }}</div>
+      <div class="cp-profit-value {{ $netAfterHst>= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($netAfterHst) }}</div>
     </div>
     <div class="cp-profit-tile">
       <div class="cp-profit-label">Total hours</div>

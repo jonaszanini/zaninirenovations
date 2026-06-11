@@ -63,16 +63,16 @@
   <div class="admin-card">
     <p class="mat-table-meta">
       {{ number_format($totalMaterials) }} {{ $totalMaterials === 1 ? 'material' : 'materials' }} in database
-      @if ($syncableCount > 0)
+      @if ($syncableCount> 0)
         · {{ number_format($syncableCount) }} syncable
-        @if (($homeDepotSyncableCount ?? 0) > 0 || ($amazonSyncableCount ?? 0) > 0)
-          ({{ number_format($homeDepotSyncableCount ?? 0) }} Home Depot{{ ($amazonSyncableCount ?? 0) > 0 ? ', '.number_format($amazonSyncableCount).' Amazon' : '' }})
+        @if (($homeDepotSyncableCount ?? 0)> 0 || ($amazonSyncableCount ?? 0)> 0)
+          ({{ number_format($homeDepotSyncableCount ?? 0) }} Home Depot{{ ($amazonSyncableCount ?? 0)> 0 ? ', '.number_format($amazonSyncableCount).' Amazon' : '' }})
         @endif
       @endif
       @if ($usesSerpApi)
         · admin sync via SerpApi
       @endif
-      @if ($needsSyncCount > 0)
+      @if ($needsSyncCount> 0)
         · {{ number_format($needsSyncCount) }} need sync
       @endif
     </p>
@@ -235,7 +235,7 @@
         function updateSyncAllProgress(data) {
           var total = data.phase_total || 1;
           var current = data.current || 0;
-          var pct = total > 0 ? Math.round((current / total) * 100) : 0;
+          var pct = total> 0 ? Math.round((current / total) * 100) : 0;
 
           if (syncPhaseLabel) {
             syncPhaseLabel.textContent = data.phase_label || 'Syncing…';
@@ -353,9 +353,9 @@
           if (deleteBtn) {
             deleteBtn.disabled = n === 0;
           }
-          if (selectAll && rowChecks.length > 0) {
-            selectAll.checked = n > 0 && n === rowChecks.length;
-            selectAll.indeterminate = n > 0 && n < rowChecks.length;
+          if (selectAll && rowChecks.length> 0) {
+            selectAll.checked = n> 0 && n === rowChecks.length;
+            selectAll.indeterminate = n> 0 && n < rowChecks.length;
           }
         }
 

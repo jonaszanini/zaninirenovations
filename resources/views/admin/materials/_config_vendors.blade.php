@@ -51,17 +51,17 @@
                 <div class="mat-vendors__edit-grid">
                   <div class="admin-form-group">
                     <label class="admin-sr-only" for="mat-vendor-sort-{{ $vendor->id }}">Sort order</label>
-                    <input type="number" id="mat-vendor-sort-{{ $vendor->id }}" name="sort_order"
+                    <input class="admin-input" type="number" id="mat-vendor-sort-{{ $vendor->id }}" name="sort_order"
                            value="{{ old('sort_order', $vendor->sort_order) }}" min="0" max="32767" class="admin-input">
                   </div>
                   <div class="admin-form-group">
                     <label class="admin-sr-only" for="mat-vendor-name-{{ $vendor->id }}">Name</label>
-                    <input type="text" id="mat-vendor-name-{{ $vendor->id }}" name="name"
+                    <input class="admin-input" type="text" id="mat-vendor-name-{{ $vendor->id }}" name="name"
                            value="{{ old('name', $vendor->name) }}" maxlength="120" required class="admin-input">
                   </div>
                   <div class="admin-form-group">
                     <label class="admin-sr-only" for="mat-vendor-slug-{{ $vendor->id }}">Slug</label>
-                    <input type="text" id="mat-vendor-slug-{{ $vendor->id }}" name="slug"
+                    <input class="admin-input" type="text" id="mat-vendor-slug-{{ $vendor->id }}" name="slug"
                            value="{{ old('slug', $vendor->slug) }}" maxlength="80" required
                            pattern="[a-z0-9]+(?:-[a-z0-9]+)*" class="admin-input admin-code">
                   </div>
@@ -88,7 +88,7 @@
                   @csrf
                   @method('DELETE')
                   <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm"
-                          @disabled($vendor->materials_count > 0) title="{{ $vendor->materials_count > 0 ? 'Reassign materials first' : 'Delete vendor' }}">
+                          @disabled($vendor->materials_count> 0) title="{{ $vendor->materials_count> 0 ? 'Reassign materials first' : 'Delete vendor' }}">
                     <i class="fa fa-trash"></i>
                   </button>
                 </form>

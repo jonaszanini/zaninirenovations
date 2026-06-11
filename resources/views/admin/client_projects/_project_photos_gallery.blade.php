@@ -132,7 +132,7 @@
             captionEl.textContent = (item.name ? item.name + ' — ' : '') + (current + 1) + ' / ' + items.length;
           }
           if (prevBtn) prevBtn.disabled = current <= 0;
-          if (nextBtn) nextBtn.disabled = current >= items.length - 1;
+          if (nextBtn) nextBtn.disabled = current>= items.length - 1;
         }
 
         function openAt(index) {
@@ -162,7 +162,7 @@
 
         if (prevBtn) {
           prevBtn.addEventListener('click', function () {
-            if (current > 0) {
+            if (current> 0) {
               current -= 1;
               render();
             }
@@ -182,7 +182,7 @@
           if (lightbox.hidden) return;
           if (e.key === 'Escape') {
             close();
-          } else if (e.key === 'ArrowLeft' && current > 0) {
+          } else if (e.key === 'ArrowLeft' && current> 0) {
             current -= 1;
             render();
           } else if (e.key === 'ArrowRight' && current < items.length - 1) {

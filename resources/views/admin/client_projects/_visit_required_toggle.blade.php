@@ -36,7 +36,7 @@
     </p>
     <div class="admin-form-group cp-visit-date">
       <label for="{{ $visitDateId }}">Visit date</label>
-      <input type="date" id="{{ $visitDateId }}" name="visit_date" value="{{ $visitDateValue }}">
+      <input class="admin-input" type="date" id="{{ $visitDateId }}" name="visit_date" value="{{ $visitDateValue }}">
       @error('visit_date') <p class="admin-form-error">{{ $message }}</p> @enderror
     </div>
     @if ($showVisitDone)

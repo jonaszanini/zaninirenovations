@@ -26,7 +26,7 @@
         <div class="admin-form-group">
           <label for="cp-name">Project name <span class="cp-required">*</span></label>
           <input type="text" id="cp-name" name="name" value="{{ old('name') }}" required maxlength="255"
-                 @class(['is-invalid' => $errors->has('name')])>
+                 @class(['admin-input', 'is-invalid' => $errors->has('name')])>
           @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -70,7 +70,7 @@
           <div class="admin-form-group">
             <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
             <input type="text" id="cp-client-name" name="client_name" value="{{ old('client_name') }}" required maxlength="255"
-                   @class(['is-invalid' => $errors->has('client_name')])>
+                   @class(['admin-input', 'is-invalid' => $errors->has('client_name')])>
             @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
 
@@ -78,7 +78,7 @@
             <div class="admin-form-group">
               <label for="cp-client-email">Email</label>
               <input type="email" id="cp-client-email" name="client_email" value="{{ old('client_email') }}" maxlength="255"
-                     @class(['is-invalid' => $errors->has('client_email')])>
+                     @class(['admin-input', 'is-invalid' => $errors->has('client_email')])>
               @error('client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group">
@@ -86,7 +86,7 @@
               <input type="text"
                      id="cp-client-phone"
                      name="client_phone"
-                     @class(['cp-phone-input', 'is-invalid' => $errors->has('client_phone')])
+                     @class(['admin-input', 'cp-phone-input', 'is-invalid' => $errors->has('client_phone')])
                      inputmode="tel"
                      autocomplete="tel"
                      maxlength="14"
@@ -115,7 +115,7 @@
             <input type="email" id="cp-client-email-secondary" name="client_email_secondary"
                    value="{{ old('client_email_secondary') }}" maxlength="255"
                    placeholder="spouse@example.com"
-                   @class(['is-invalid' => $errors->has('client_email_secondary')])>
+                   @class(['admin-input', 'is-invalid' => $errors->has('client_email_secondary')])>
             @error('client_email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
 
@@ -145,7 +145,7 @@
               <input type="text" id="cp-invoice-billing-name" name="invoice_billing_name"
                      value="{{ old('invoice_billing_name') }}" maxlength="255"
                      placeholder="e.g. ABC Renovations Inc."
-                     @class(['is-invalid' => $errors->has('invoice_billing_name')])>
+                     @class(['admin-input', 'is-invalid' => $errors->has('invoice_billing_name')])>
               @error('invoice_billing_name') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group">
@@ -213,7 +213,7 @@
                style="{{ $billingType === \App\Models\ClientProject::BILLING_HOURLY ? '' : 'display:none;' }}">
             <label for="cp-hourly-rate">Hourly rate (CAD / hour) <span class="cp-required">*</span></label>
             <input type="text" id="cp-hourly-rate" name="hourly_rate"
-                   class="cp-money-input"
+                   class="admin-input cp-money-input"
                    inputmode="decimal"
                    autocomplete="off"
                    placeholder="0.00"
@@ -224,7 +224,7 @@
 
         <div class="admin-form-group">
           <label for="cp-notes">Notes</label>
-          <textarea id="cp-notes" name="notes" rows="4" maxlength="5000">{{ old('notes') }}</textarea>
+          <textarea class="admin-input" id="cp-notes" name="notes" rows="4" maxlength="5000">{{ old('notes') }}</textarea>
           @error('notes') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 

@@ -674,11 +674,18 @@ body.admin-body {
   margin-bottom: 0;
 }
 
-.admin-form-group input[type="text"],
+/* Canonical field styling — always use class="admin-input" on controls.
+   Legacy bare inputs inside .admin-form-group remain supported. */
+.admin-input,
+.admin-form-group input[type="text"]:not(.admin-checkbox__input),
 .admin-form-group input[type="email"],
 .admin-form-group input[type="url"],
 .admin-form-group input[type="password"],
 .admin-form-group input[type="date"],
+.admin-form-group input[type="datetime-local"],
+.admin-form-group input[type="time"],
+.admin-form-group input[type="search"],
+.admin-form-group input[type="tel"],
 .admin-form-group input[type="number"],
 .admin-form-group input[type="file"],
 .admin-form-group select,
@@ -692,15 +699,23 @@ body.admin-body {
   font-family: inherit;
   font-size: 0.95rem;
   min-height: 44px;
+  box-sizing: border-box;
 }
 
+textarea.admin-input,
 .admin-form-group textarea {
-  min-height: 120px;
-  resize: vertical;
   min-height: 8rem;
+  line-height: 1.4;
+  resize: vertical;
 }
 
-.admin-form-group input:focus,
+select.admin-input,
+.admin-form-group select {
+  padding-right: 2.5rem;
+}
+
+.admin-input:focus,
+.admin-form-group input:focus:not(.admin-checkbox__input),
 .admin-form-group select:focus,
 .admin-form-group textarea:focus {
   outline: none;
@@ -708,22 +723,22 @@ body.admin-body {
   box-shadow: 0 0 0 3px var(--admin-primary-ring);
 }
 
-/* Invalid field state (applied via @class with $errors->has(...)).
-   Red border + soft red focus ring so the error is unmistakable
-   without looking aggressive. Works on inputs, textareas and selects. */
-.admin-form-group input.is-invalid,
+/* Invalid field state */
+.admin-input.is-invalid,
+.admin-form-group input.is-invalid:not(.admin-checkbox__input),
 .admin-form-group select.is-invalid,
 .admin-form-group textarea.is-invalid,
-input.is-invalid,
+input.is-invalid:not(.admin-checkbox__input),
 select.is-invalid,
 textarea.is-invalid {
   border-color: #dc2626;
   background: #fef2f2;
 }
-.admin-form-group input.is-invalid:focus,
+.admin-input.is-invalid:focus,
+.admin-form-group input.is-invalid:focus:not(.admin-checkbox__input),
 .admin-form-group select.is-invalid:focus,
 .admin-form-group textarea.is-invalid:focus,
-input.is-invalid:focus,
+input.is-invalid:focus:not(.admin-checkbox__input),
 select.is-invalid:focus,
 textarea.is-invalid:focus {
   border-color: #dc2626;

@@ -7,8 +7,7 @@
 <div
   class="admin-form-group admin-portfolio-draft-photos"
   id="portfolio-draft-photos-root"
-  @if ($draftPhotos === []) hidden @endif
->
+  @if ($draftPhotos === []) hidden @endif>
   <span class="admin-form-group-label">Saved photos (kept if the form needs fixing)</span>
   <p class="admin-form-help" style="margin-top:0;margin-bottom:0.65rem;">
     These are stored on the server while you finish the form. They stay here if a required field is missing.

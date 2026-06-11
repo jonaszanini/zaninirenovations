@@ -4,16 +4,16 @@
   $totalAmount = (float) ($project->total_amount ?? 0);
   $paymentPlan = (int) ($project->payment_plan ?? 1);
   $paidInstallmentCount = $installments->where('is_paid', true)->count();
-  $planIsLocked = $paidInstallmentCount > 0;
+  $planIsLocked = $paidInstallmentCount> 0;
   $hourlyRateConfigured = (float) ($project->hourly_rate ?? 0);
   $quotSub = $project->quotationSubtotalForFinancials();
   $quotGrand = $project->quotationGrandTotalForFinancials();
-  $hasQuot = $quotSub !== null && $quotSub >= 0.01;
+  $hasQuot = $quotSub !== null && $quotSub>= 0.01;
   // Pre-tax basis for installment % (matches DB total_amount when in sync).
-  $hiddenPreTax = $paidInstallmentCount > 0
+  $hiddenPreTax = $paidInstallmentCount> 0
       ? $totalAmount
       : ($quotSub ?? $totalAmount);
-  $canSavePaymentPlan = $paidInstallmentCount > 0 || $hasQuot;
+  $canSavePaymentPlan = $paidInstallmentCount> 0 || $hasQuot;
 
   // The stored `total_amount` and each installment's `amount` are
   // pre-tax (profit / HST set-aside calculations depend on that).
@@ -24,7 +24,7 @@
   // (e.g. supplied material vs labour). The effective rate is the
   // quotation's HST ÷ subtotal, so it equals 13% only when every line
   // had HST applied. See ClientProjectInstallment::effectiveHst().
-  $effectiveHstRate = $hasQuot && $quotSub > 0
+  $effectiveHstRate = $hasQuot && $quotSub> 0
       ? (float) $project->acceptedQuotationsFinancialAggregateHst() / (float) $quotSub
       : \App\Models\ClientProject::HST_RATE;
 @endphp
@@ -53,11 +53,11 @@
         <div class="admin-form-group">
           <label for="cp-hourly-rate-edit">Rate (CAD / hour) <span class="cp-required">*</span></label>
           <input type="text" id="cp-hourly-rate-edit" name="hourly_rate" required
-                 class="cp-money-input"
+                 class="admin-input cp-money-input"
                  inputmode="decimal"
                  autocomplete="off"
                  placeholder="0.00"
-                 value="{{ $hourlyRateConfigured > 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}">
+                 value="{{ $hourlyRateConfigured> 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}">
           @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
@@ -88,7 +88,7 @@
           data-hst-rate="{{ $effectiveHstRate }}">
       @csrf
 
-      <input type="hidden" name="total_amount" id="cp-total" value="{{ $hiddenPreTax > 0 ? number_format($hiddenPreTax, 2, '.', '') : '' }}">
+      <input type="hidden" name="total_amount" id="cp-total" value="{{ $hiddenPreTax> 0 ? number_format($hiddenPreTax, 2, '.', '') : '' }}">
 
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
@@ -98,14 +98,14 @@
             <p class="admin-form-help">Pre-tax subtotal (used for installment %): {{ \App\Models\ClientProject::formatMoney($quotSub) }}. Manage quotations on the <a href="{{ route('admin.client-projects.show', $project) }}#quotation">Quotation tab</a>.</p>
           @else
             <p class="cp-financials-locked-total">—</p>
-            <p class="admin-form-help">Add a quotation with line items first. @if ($paidInstallmentCount > 0) Payment totals stay fixed while installments are paid. @endif</p>
+            <p class="admin-form-help">Add a quotation with line items first. @if ($paidInstallmentCount> 0) Payment totals stay fixed while installments are paid. @endif</p>
           @endif
         </div>
         <div class="admin-form-group">
           <label for="cp-plan">Payment schedule
             <span class="cp-hint" title="Choose how the client will pay. With 2/3/4 installments, each row below takes a percentage — the dollar amount is calculated for you.">?</span>
           </label>
-          <select id="cp-plan" name="payment_plan" @disabled($planIsLocked)>
+          <select class="admin-input" id="cp-plan" name="payment_plan" @disabled($planIsLocked)>
             <option value="1" @selected($paymentPlan === 1)>Pay in full at the end</option>
             <option value="2" @selected($paymentPlan === 2)>2 installments</option>
             <option value="3" @selected($paymentPlan === 3)>3 installments</option>
@@ -134,7 +134,7 @@
               </div>
               <div class="cp-installment-pct">
                 <label>Percentage</label>
-                <input type="number" class="cp-pct-input" name="percentages[]" step="0.01" min="0" max="100"
+                <input type="number" class="admin-input cp-pct-input" name="percentages[]" step="0.01" min="0" max="100"
                        value="{{ number_format((float) $inst->percentage, 2, '.', '') }}"
                        @readonly($inst->is_paid)
                        @if ($inst->is_paid) title="Locked — this installment is already paid." @endif>
@@ -197,7 +197,7 @@
                     <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Mark unpaid</button>
                   @else
                     <input type="hidden" name="is_paid" value="1">
-                    <input type="date" name="paid_on" value="{{ now()->toDateString() }}" class="cp-paid-date">
+                    <input class="admin-input" type="date" name="paid_on" value="{{ now()->toDateString() }}" class="cp-paid-date">
                     <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Mark paid</button>
                   @endif
                 </form>
@@ -233,16 +233,16 @@
     <div class="cp-finance-form-grid">
       <div class="admin-form-group">
         <label>Date</label>
-        <input type="date" name="occurred_on" required value="{{ now()->toDateString() }}">
+        <input class="admin-input" type="date" name="occurred_on" required value="{{ now()->toDateString() }}">
       </div>
       <div class="admin-form-group">
         <label>Description</label>
-        <input type="text" name="description" required maxlength="500" value="{{ old('description') }}">
+        <input class="admin-input" type="text" name="description" required maxlength="500" value="{{ old('description') }}">
       </div>
       <div class="admin-form-group">
         <label>Amount (CAD)</label>
         <input type="text" name="amount" required
-               class="cp-money-input"
+               class="admin-input cp-money-input"
                inputmode="decimal"
                autocomplete="off"
                placeholder="0.00"
@@ -254,7 +254,7 @@
     </div>
     <div class="admin-form-group cp-expense-receipt-field">
       <label for="cp-expense-receipt">Receipt (optional)</label>
-      <input type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf">
+      <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf">
       <p class="admin-form-help">Image (JPEG, PNG, WebP) — stored as WebP at {{ (int) config('webp.quality', 75) }}% quality, max {{ (int) config('webp.max_edge_px', 1280) }}px, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB; or <strong>PDF</strong> — stored as-is. Filename <strong>Receipt-#</strong> matches the # column for the client. On a phone you can take a photo, pick from gallery, or choose a PDF.</p>
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -316,15 +316,15 @@
                     <div class="cp-finance-form-grid">
                       <div class="admin-form-group">
                         <label for="cp-expense-edit-date-{{ $expense->id }}">Date</label>
-                        <input type="date" id="cp-expense-edit-date-{{ $expense->id }}" name="occurred_on" required value="{{ old('occurred_on', $expense->occurred_on->toDateString()) }}">
+                        <input class="admin-input" type="date" id="cp-expense-edit-date-{{ $expense->id }}" name="occurred_on" required value="{{ old('occurred_on', $expense->occurred_on->toDateString()) }}">
                       </div>
                       <div class="admin-form-group">
                         <label for="cp-expense-edit-desc-{{ $expense->id }}">Description</label>
-                        <input type="text" id="cp-expense-edit-desc-{{ $expense->id }}" name="description" required maxlength="500" value="{{ old('description', $expense->description) }}">
+                        <input class="admin-input" type="text" id="cp-expense-edit-desc-{{ $expense->id }}" name="description" required maxlength="500" value="{{ old('description', $expense->description) }}">
                       </div>
                       <div class="admin-form-group">
                         <label for="cp-expense-edit-amt-{{ $expense->id }}">Amount (CAD)</label>
-                        <input type="text" id="cp-expense-edit-amt-{{ $expense->id }}" name="amount" required
+                        <input class="admin-input" type="text" id="cp-expense-edit-amt-{{ $expense->id }}" name="amount" required
                                class="cp-money-input"
                                inputmode="decimal"
                                autocomplete="off"
@@ -340,7 +340,7 @@
                         Receipt <span class="cp-hint">(optional)</span>
                       @endif
                     </label>
-                    <input type="file" id="cp-expense-edit-receipt-{{ $expense->id }}" name="receipt" accept="image/*,application/pdf" @if ($expenseOnInvoice) required @endif>
+                    <input class="admin-input" type="file" id="cp-expense-edit-receipt-{{ $expense->id }}" name="receipt" accept="image/*,application/pdf" @if ($expenseOnInvoice) required @endif>
                     @if (! $expenseOnInvoice)
                       <p class="admin-form-help">Leave blank to keep the current receipt. Add or replace with an image (stored as WebP) or a PDF — filename <strong>Receipt-{{ $expense->expense_ref }}</strong> with the matching extension.</p>
                     @else
@@ -411,16 +411,16 @@
     <div class="cp-finance-form-grid">
       <div class="admin-form-group">
         <label>Date</label>
-        <input type="date" name="occurred_on" required value="{{ now()->toDateString() }}">
+        <input class="admin-input" type="date" name="occurred_on" required value="{{ now()->toDateString() }}">
       </div>
       <div class="admin-form-group">
         <label>Description</label>
-        <input type="text" name="description" required maxlength="500">
+        <input class="admin-input" type="text" name="description" required maxlength="500">
       </div>
       <div class="admin-form-group">
         <label>Amount (CAD)</label>
         <input type="text" name="amount" required
-               class="cp-money-input"
+               class="admin-input cp-money-input"
                inputmode="decimal"
                autocomplete="off"
                placeholder="0.00">
@@ -498,7 +498,7 @@
     </div>
     <div class="cp-profit-tile">
       <div class="cp-profit-label">Gross profit</div>
-      <div class="cp-profit-value {{ $gross >= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($gross) }}</div>
+      <div class="cp-profit-value {{ $gross>= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($gross) }}</div>
     </div>
     <div class="cp-profit-tile">
       <div class="cp-profit-label">HST to save (13%)</div>
@@ -506,12 +506,12 @@
     </div>
     <div class="cp-profit-tile cp-profit-tile--highlight">
       <div class="cp-profit-label">Net profit after HST</div>
-      <div class="cp-profit-value {{ $netAfterHst >= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($netAfterHst) }}</div>
+      <div class="cp-profit-value {{ $netAfterHst>= 0 ? 'is-positive' : 'is-negative' }}">{{ \App\Models\ClientProject::formatMoney($netAfterHst) }}</div>
     </div>
     @if ($effectiveHourlyFromTime !== null)
       <div class="cp-profit-tile">
         <div class="cp-profit-label">Effective hourly rate</div>
-        <div class="cp-profit-value {{ $effectiveHourlyFromTime >= 0 ? 'is-positive' : 'is-negative' }}">
+        <div class="cp-profit-value {{ $effectiveHourlyFromTime>= 0 ? 'is-positive' : 'is-negative' }}">
           {{ \App\Models\ClientProject::formatMoney($effectiveHourlyFromTime) }} / h
         </div>
         <p class="admin-form-help" style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#6b7280;">

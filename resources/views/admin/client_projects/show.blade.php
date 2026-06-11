@@ -326,12 +326,12 @@
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="cp-start">Start date</label>
-            <input type="date" id="cp-start" name="start_date" value="{{ old('start_date', optional($project->start_date)->toDateString()) }}">
+            <input class="admin-input" type="date" id="cp-start" name="start_date" value="{{ old('start_date', optional($project->start_date)->toDateString()) }}">
             @error('start_date') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
             <label for="cp-end">End date</label>
-            <input type="date" id="cp-end" name="end_date" value="{{ old('end_date', optional($project->end_date)->toDateString()) }}">
+            <input class="admin-input" type="date" id="cp-end" name="end_date" value="{{ old('end_date', optional($project->end_date)->toDateString()) }}">
             @error('end_date') <p class="admin-form-error">{{ $message }}</p> @enderror
             <p class="admin-form-help">Same-day start &amp; end is allowed.</p>
           </div>
@@ -661,7 +661,7 @@
           warn.textContent = '';
           return true;
         }
-        if (start.value > end.value) {
+        if (start.value> end.value) {
           warn.textContent = 'The start date is after the end date. Choose an end date on or after the start date (same day is fine), then save.';
           warn.classList.remove('admin-flash--js-hidden');
           return false;
@@ -747,7 +747,7 @@
           var evStart = parseIso(ev.start).getTime();
           // Stored end is exclusive (FullCalendar all-day), make it inclusive.
           var evEnd = parseIso(addDaysIso(ev.end, -1)).getTime();
-          if (startMs <= evEnd && endMs >= evStart) {
+          if (startMs <= evEnd && endMs>= evStart) {
             return ev;
           }
         }
@@ -791,7 +791,7 @@
       }
 
       function setSelection(startIso, endIso) {
-        if (startIso && endIso && startIso > endIso) {
+        if (startIso && endIso && startIso> endIso) {
           var tmp = startIso; startIso = endIso; endIso = tmp;
         }
         selection.start = startIso || null;

@@ -27,7 +27,7 @@
           <span class="cp-contract-version">· {{ $quotationRows->count() }} document{{ $quotationRows->count() === 1 ? '' : 's' }}</span>
         @endif
       </p>
-      @if ($quotationRows->count() > 1)
+      @if ($quotationRows->count()> 1)
         <p class="admin-form-help" style="margin:8px 0 0;">
           Each quotation is collapsed to a short summary — expand one to view the full PDF-style preview and workflow status.
         </p>
@@ -56,7 +56,7 @@
   </div>
 @else
   @php
-    $useQuotationAccordion = $quotationRows->count() > 1;
+    $useQuotationAccordion = $quotationRows->count()> 1;
   @endphp
   @foreach ($quotationRows as $quotation)
     @php
@@ -74,7 +74,7 @@
       $hst = $hasContent ? $quotation->hst() : 0.0;
       $grand = $hasContent ? $quotation->grandTotal() : 0.0;
       $summDesc = $title;
-      if ($hasContent && count($items) > 0) {
+      if ($hasContent && count($items)> 0) {
           $firstDesc = trim((string) ($items[0]['description'] ?? ''));
           if ($firstDesc !== '') {
               $summDesc = \Illuminate\Support\Str::limit($firstDesc, 160);

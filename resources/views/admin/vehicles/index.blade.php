@@ -66,7 +66,7 @@
         <div class="admin-form-group admin-vehicles-gas-field">
           <label for="company-gas-price">Current gas price (CAD / L)</label>
           <div class="admin-vehicles-gas-row">
-            <input type="text"
+            <input class="admin-input" type="text"
                    id="company-gas-price"
                    name="gas_price_per_liter"
                    value="{{ old('gas_price_per_liter', $settings->gas_price_per_liter) }}"

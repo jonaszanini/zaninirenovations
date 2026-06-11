@@ -20,16 +20,16 @@
 <div class="mat-form-grid-names">
   <div class="admin-form-group">
     <label for="mat-name">Store name <span class="cp-required">*</span></label>
-    <input type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255"
-           class="@error('name') is-invalid @enderror">
+    <input @class(['admin-input', 'is-invalid' => $errors->has('name')]) type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255"
+           >
     <p class="admin-form-help">Full product title from the store — updated when you sync prices.</p>
     @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="mat-short-name">Short name</label>
-    <input type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
+    <input @class(['admin-input', 'is-invalid' => $errors->has('short_name')]) type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
            placeholder="e.g. 2x4x8 Stud"
-           class="@error('short_name') is-invalid @enderror">
+           >
     <p class="admin-form-help">Shown in lists and pickers. Leave blank to use the store name.</p>
     @error('short_name') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
@@ -38,7 +38,7 @@
 <div class="admin-form-group">
   <label for="mat-description">Description</label>
   <textarea id="mat-description" name="description" rows="3" maxlength="5000"
-            class="@error('description') is-invalid @enderror">{{ old('description', $m?->description) }}</textarea>
+            class="admin-input @error("description') is-invalid @enderror">{{ old('description', $m?->description) }}</textarea>
   @error('description') <p class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 
@@ -79,23 +79,23 @@
 <div class="mat-form-grid-pricing">
   <div class="admin-form-group">
     <label for="mat-sku">Store SKU / ASIN</label>
-    <input type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
+    <input @class(['admin-input', 'is-invalid' => $errors->has('store_sku')]) type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
            placeholder="Home Depot SKU or Amazon ASIN"
-           class="@error('store_sku') is-invalid @enderror">
+           >
     <p class="admin-form-help">HD numeric SKU or Amazon ASIN (10 chars).</p>
     @error('store_sku') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="mat-model">Model / item #</label>
-    <input type="text" id="mat-model" name="model" value="{{ old('model', $m?->model) }}" maxlength="160"
-           class="@error('model') is-invalid @enderror">
+    <input @class(['admin-input', 'is-invalid' => $errors->has('model')]) type="text" id="mat-model" name="model" value="{{ old('model', $m?->model) }}" maxlength="160"
+           >
     @error('model') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="mat-price">Price (CAD)</label>
-    <input type="number" id="mat-price" name="price_cad" value="{{ old('price_cad', $m?->price_cad ?? '0.00') }}"
+    <input @class(['admin-input', 'is-invalid' => $errors->has('price_cad')]) type="number" id="mat-price" name="price_cad" value="{{ old('price_cad', $m?->price_cad ?? '0.00') }}"
            min="0" step="0.01" max="999999.99"
-           class="@error('price_cad') is-invalid @enderror">
+           >
     @error('price_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -113,17 +113,17 @@
   </div>
   <div class="admin-form-group">
     <label for="mat-qty-pkg">Qty per package</label>
-    <input type="number" id="mat-qty-pkg" name="quantity_per_package"
+    <input @class(['admin-input', 'is-invalid' => $errors->has('quantity_per_package')]) type="number" id="mat-qty-pkg" name="quantity_per_package"
            value="{{ old('quantity_per_package', $m?->quantity_per_package) }}"
            min="1" max="999999" placeholder="Box/bag"
-           class="@error('quantity_per_package') is-invalid @enderror">
+           >
     @error('quantity_per_package') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="mat-sort">Sort order</label>
-    <input type="number" id="mat-sort" name="sort_order" value="{{ old('sort_order', $m?->sort_order ?? 0) }}"
+    <input @class(['admin-input', 'is-invalid' => $errors->has('sort_order')]) type="number" id="mat-sort" name="sort_order" value="{{ old('sort_order', $m?->sort_order ?? 0) }}"
            min="0" max="999999"
-           class="@error('sort_order') is-invalid @enderror">
+           >
     @error('sort_order') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
@@ -133,9 +133,9 @@
   <h3 class="mat-form-section-title">Store links</h3>
   <div class="admin-form-group">
     <label for="mat-product-url">Product URL</label>
-    <input type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
+    <input @class(['admin-input', 'is-invalid' => $errors->has('product_url')]) type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
            placeholder="https://www.homedepot.ca/product/…"
-           class="@error('product_url') is-invalid @enderror" autocomplete="off" spellcheck="false">
+            autocomplete="off" spellcheck="false">
     <p class="admin-form-help">
       @if ($selectedVendorId && $amazonVendorId && $selectedVendorId === $amazonVendorId)
         Amazon Canada product link (optional when a valid ASIN is in Store SKU).
@@ -152,9 +152,9 @@
     <label for="mat-image-url">Image URL</label>
     <div class="mat-image-url-row">
       <div class="mat-image-url-row__field">
-        <input type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
+        <input @class(['admin-input', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ old('image_url', $m?->image_url) }}" maxlength="500"
                placeholder="https://images.homedepot.ca/productimages/…"
-               class="@error('image_url') is-invalid @enderror" autocomplete="off" spellcheck="false">
+                autocomplete="off" spellcheck="false">
       </div>
       @php $imagePreview = old('image_url', $m?->image_url); @endphp
       @if (filled($imagePreview))

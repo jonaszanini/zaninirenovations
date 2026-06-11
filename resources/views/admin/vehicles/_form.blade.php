@@ -5,24 +5,24 @@
 
 <div class="admin-form-group">
   <label for="vehicle-name">Name <span class="cp-required">*</span></label>
-  <input type="text" id="vehicle-name" name="name" value="{{ old('name', $vehicle?->name) }}" required maxlength="160" placeholder="e.g. White Ford F-150">
+  <input class="admin-input" type="text" id="vehicle-name" name="name" value="{{ old('name', $vehicle?->name) }}" required maxlength="160" placeholder="e.g. White Ford F-150">
   @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 
 <div class="admin-form-grid-3">
   <div class="admin-form-group">
     <label for="vehicle-make">Make</label>
-    <input type="text" id="vehicle-make" name="make" value="{{ old('make', $vehicle?->make) }}" maxlength="80" placeholder="Ford">
+    <input class="admin-input" type="text" id="vehicle-make" name="make" value="{{ old('make', $vehicle?->make) }}" maxlength="80" placeholder="Ford">
     @error('make') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="vehicle-model">Model</label>
-    <input type="text" id="vehicle-model" name="model" value="{{ old('model', $vehicle?->model) }}" maxlength="80" placeholder="F-150">
+    <input class="admin-input" type="text" id="vehicle-model" name="model" value="{{ old('model', $vehicle?->model) }}" maxlength="80" placeholder="F-150">
     @error('model') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="vehicle-year">Year</label>
-    <input type="text"
+    <input class="admin-input" type="text"
            id="vehicle-year"
            name="year"
            value="{{ old('year', $vehicle?->year) }}"
@@ -38,12 +38,12 @@
 <div class="admin-form-grid-2">
   <div class="admin-form-group">
     <label for="vehicle-plate">License plate</label>
-    <input type="text" id="vehicle-plate" name="license_plate" value="{{ old('license_plate', $vehicle?->license_plate) }}" maxlength="32">
+    <input class="admin-input" type="text" id="vehicle-plate" name="license_plate" value="{{ old('license_plate', $vehicle?->license_plate) }}" maxlength="32">
     @error('license_plate') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="vehicle-odometer">Odometer (km)</label>
-    <input type="text"
+    <input class="admin-input" type="text"
            id="vehicle-odometer"
            name="odometer_reading"
            value="{{ old('odometer_reading', $vehicle?->odometer_reading) }}"
@@ -57,7 +57,7 @@
 
 <div class="admin-form-group">
   <label for="vehicle-consumption">Fuel consumption (L/100 km)</label>
-  <input type="text"
+  <input class="admin-input" type="text"
          id="vehicle-consumption"
          name="fuel_consumption_l100km"
          value="{{ old('fuel_consumption_l100km', $vehicle?->fuel_consumption_l100km) }}"

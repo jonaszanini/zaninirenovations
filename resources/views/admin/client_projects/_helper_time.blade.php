@@ -13,7 +13,7 @@
       ->filter(fn ($e) => ! $e->isExpense() && $e->hours !== null && ! $e->isOpen());
 
   $expenseEntries = $project->helperTimeEntries
-      ->filter(fn ($e) => $e->isExpense() && (float) ($e->expense_amount ?? 0) >= 0.01);
+      ->filter(fn ($e) => $e->isExpense() && (float) ($e->expense_amount ?? 0)>= 0.01);
 
   $helperTotalHours = round((float) $closedTimeEntries->sum(fn ($e) => (float) $e->hours), 2);
   $helperTotalLabour = round((float) $closedTimeEntries->sum(fn ($e) => $e->lineAmount()), 2);
@@ -90,7 +90,7 @@
         <div class="cp-helper-time-form-grid">
           <div class="admin-form-group col-3">
             <label>Helper</label>
-            <select name="helper_id" required>
+            <select class="admin-input" name="helper_id" required>
               @foreach ($assignedHelpers as $helper)
                 <option value="{{ $helper->id }}" @selected(old('helper_id') == $helper->id)>{{ $helper->name }}</option>
               @endforeach
@@ -99,7 +99,7 @@
           </div>
           <div class="admin-form-group col-2">
             <label>Date</label>
-            <input type="date" name="occurred_on" required value="{{ old('occurred_on', now()->toDateString()) }}">
+            <input class="admin-input" type="date" name="occurred_on" required value="{{ old('occurred_on', now()->toDateString()) }}">
           </div>
           <div class="admin-form-group col-2">
             <label>Start time</label>
@@ -111,11 +111,11 @@
           </div>
           <div class="admin-form-group col-2">
             <label>Note (optional)</label>
-            <input type="text" name="note" maxlength="500" value="{{ old('note') }}">
+            <input class="admin-input" type="text" name="note" maxlength="500" value="{{ old('note') }}">
           </div>
           <div class="admin-form-group col-1">
             <label>Hours</label>
-            <input type="text" name="hours" class="cp-hours-input" inputmode="decimal" autocomplete="off" placeholder="auto" data-cp-time-hours>
+            <input type="text" name="hours" class="admin-input cp-hours-input" inputmode="decimal" autocomplete="off" placeholder="auto" data-cp-time-hours>
           </div>
         </div>
         @error('hours') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -135,7 +135,7 @@
         <div class="cp-helper-time-form-grid">
           <div class="admin-form-group col-3">
             <label>Helper</label>
-            <select name="helper_id" required>
+            <select class="admin-input" name="helper_id" required>
               @foreach ($assignedHelpers as $helper)
                 <option value="{{ $helper->id }}" @selected(old('helper_id') == $helper->id)>{{ $helper->name }}</option>
               @endforeach
@@ -144,18 +144,18 @@
           </div>
           <div class="admin-form-group col-2">
             <label>Date</label>
-            <input type="date" name="occurred_on" required value="{{ old('occurred_on', now()->toDateString()) }}">
+            <input class="admin-input" type="date" name="occurred_on" required value="{{ old('occurred_on', now()->toDateString()) }}">
           </div>
           <div class="admin-form-group col-3">
             <label>Reason</label>
-            <input type="text" name="expense_description" maxlength="500" required
+            <input class="admin-input" type="text" name="expense_description" maxlength="500" required
                    value="{{ old('expense_description') }}"
                    placeholder="e.g. Lunch, screws &amp; anchors, Uber to site">
             @error('expense_description') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group col-2">
             <label>Amount</label>
-            <input type="text" name="expense_amount" class="cp-money-input" inputmode="decimal" autocomplete="off" required
+            <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required
                    value="{{ old('expense_amount') }}" placeholder="0.00">
             @error('expense_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
@@ -192,7 +192,7 @@
           <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($helperAmountToBePaid) }}</div>
         </div>
       </div>
-      @if ($helperOpenCount > 0)
+      @if ($helperOpenCount> 0)
         <p class="admin-form-help cp-helper-summary__note">
           {{ $helperOpenCount }} in-progress {{ \Illuminate\Support\Str::plural('entry', $helperOpenCount) }} not included — close them with an end time to count toward totals.
         </p>
@@ -235,7 +235,7 @@
         <div class="cp-helper-pay-toolbar cp-helper-panel">
           <div class="admin-form-group">
             <label>Payment method</label>
-            <select name="payment_method" required>
+            <select class="admin-input" name="payment_method" required>
               @foreach ($paymentMethods as $value => $label)
                 <option value="{{ $value }}">{{ $label }}</option>
               @endforeach
@@ -243,7 +243,7 @@
           </div>
           <div class="admin-form-group">
             <label>Paid on</label>
-            <input type="date" name="paid_on" value="{{ now()->toDateString() }}">
+            <input class="admin-input" type="date" name="paid_on" value="{{ now()->toDateString() }}">
           </div>
           <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" data-cp-helper-pay-submit disabled>
             Mark selected as paid

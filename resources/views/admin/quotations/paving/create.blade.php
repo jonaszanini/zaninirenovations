@@ -43,7 +43,7 @@
         flex-direction: column;
         align-items: stretch;
       }
-      .fq-form-toolbar > a:first-child {
+      .fq-form-toolbar> a:first-child {
         width: fit-content;
       }
       .fq-form-toolbar-right {
@@ -69,7 +69,7 @@
       gap: 20px;
       align-items: start;
     }
-    .pq-layout > div:first-child { min-width: 0; }
+    .pq-layout> div:first-child { min-width: 0; }
     .pq-nav-tabs {
       list-style: none;
       margin: 0 0 1.1rem;
@@ -132,7 +132,7 @@
     @media (max-width: 1100px) {
       .pq-layout { grid-template-columns: 1fr; }
       /* Actions + summary first; static positioning so nothing covers inputs while scrolling. */
-      .pq-layout > aside { order: -1; }
+      .pq-layout> aside { order: -1; }
       .pq-sticky {
         position: static;
         top: auto;
@@ -867,10 +867,10 @@
         var parts = [];
         var sqN = parseFloat(opt.getAttribute('data-sq'));
         var prN = parseFloat(opt.getAttribute('data-pr'));
-        if (isFinite(sqN) && sqN > 0) {
+        if (isFinite(sqN) && sqN> 0) {
           parts.push(sqN.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' sq ft per stone');
         }
-        if (isFinite(prN) && prN >= 0) {
+        if (isFinite(prN) && prN>= 0) {
           parts.push(formatMoney(prN) + ' per stone (before tax)');
         }
         var dims = formatStoneDims(
@@ -983,7 +983,7 @@
       }
       function row(label, value, cls, valueCls) {
         var valueClass = valueCls ? ' class="' + valueCls + ' pq-row' + (cls ? ' ' + cls : '') + '"' : '';
-        return '<div ><span>' + label + '</span><strong' + valueClass + '>' + value + '</strong></div>';
+        return '<div><span>' + label + '</span><strong' + valueClass + '>' + value + '</strong></div>';
       }
       function render(c) {
         if (!c || !c.summary) return;
@@ -995,7 +995,7 @@
         var quoteBeforeCommute = Number(s.final_quote_total || 0);
         var clientTotal = quoteBeforeCommute + lastCommuteAmount;
         var calculatedTotal = Number(s.built_up_grand_total || 0);
-        var hasManual = s.manual_price_override != null && Number(s.manual_price_override) > 0;
+        var hasManual = s.manual_price_override != null && Number(s.manual_price_override)> 0;
         var subtotal = Number(s.total_with_tax_mats_fixed_plus_labour || 0);
         var profitAmt = Number(s.profit_margin_amount || 0);
         var profitRate = fmtPct(s.profit_margin_rate);
@@ -1018,13 +1018,13 @@
         } else {
           quoteRows.push(row('Calculated total', fmt(calculatedTotal), 'pq-row--hl'));
         }
-        if (lastCommuteAmount > 0) {
+        if (lastCommuteAmount> 0) {
           quoteRows.push(row('Commute expense <span class="admin-form-help">(incl. HST)</span>', fmt(lastCommuteAmount)));
         }
         quoteRows.push(row('Total quote', fmt(clientTotal), 'pq-row--total'));
         html += section('Quote', quoteRows.join(''));
 
-        if (s.market_reference_total && Math.abs(Number(s.market_reference_total) - calculatedTotal) > 0.01) {
+        if (s.market_reference_total && Math.abs(Number(s.market_reference_total) - calculatedTotal)> 0.01) {
           html += section('Reference', [
             row('Market tier estimate', fmt(s.market_reference_total), 'pq-row--muted'),
             '<div class="pq-row pq-row--note"><span>From pricing table — not added to the quote.</span></div>',
@@ -1033,7 +1033,7 @@
 
         var gp = Number(s.gross_profit || 0);
         html += section('Profitability', [
-          row('Gross profit', fmt(gp), '', gp >= 0 ? 'pq-profit-pos' : 'pq-profit-neg'),
+          row('Gross profit', fmt(gp), '', gp>= 0 ? 'pq-profit-pos' : 'pq-profit-neg'),
           row('Margin', fmtPct(s.margin_percent)),
           row('Est. working days', String(s.working_days) + ' days'),
         ].join(''));

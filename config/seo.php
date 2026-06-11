@@ -89,7 +89,7 @@ return [
     | Short, quotable homepage summary (WebPage + visible intro for AI/SEO)
     |--------------------------------------------------------------------------
     */
-    'home_summary' => 'Zanini Renovations is a licensed carpenter and home renovation contractor based in Carleton Place, serving Ottawa and surrounding Ontario communities. We provide finish carpentry, rough carpentry, custom millwork, decks, basement framing, trim, fencing, flooring, drywall, and staircase work—with WSIB clearance, liability insurance, and O.Reg. 332/12 compliant practices.',
+    'home_summary' => 'Zanini Renovations is a licensed carpenter and home renovation contractor based in Carleton Place, serving Ottawa and surrounding Ontario communities. We provide finish carpentry, rough carpentry, custom millwork, decks, basement framing, trim, fencing, flooring, drywall, and staircase work—with liability insurance and O.Reg. 332/12 compliant practices.',
 
     'google_business_url' => env('SEO_GOOGLE_BUSINESS_URL', 'https://www.google.com/maps/place/Zanini+Renovations/@45.120446,-76.0081985,17z'),
 

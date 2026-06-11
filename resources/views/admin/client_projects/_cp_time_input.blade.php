@@ -1,7 +1,7 @@
 {{-- Numeric HH:MM entry — wired by admin-client-projects.js (data-cp-time-start / data-cp-time-end). --}}
 <input type="text"
        name="{{ $name }}"
-       class="cp-time-input"
+       class="admin-input cp-time-input"
        inputmode="numeric"
        autocomplete="off"
        placeholder="HH:MM"

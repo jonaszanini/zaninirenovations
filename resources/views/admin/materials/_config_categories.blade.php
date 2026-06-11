@@ -49,12 +49,12 @@
                 <div class="mat-categories__edit-grid">
                   <div class="admin-form-group">
                     <label class="admin-sr-only" for="mat-category-sort-{{ $materialCategory->id }}">Sort order</label>
-                    <input type="number" id="mat-category-sort-{{ $materialCategory->id }}" name="sort_order"
+                    <input class="admin-input" type="number" id="mat-category-sort-{{ $materialCategory->id }}" name="sort_order"
                            value="{{ old('sort_order', $materialCategory->sort_order) }}" min="0" max="32767" class="admin-input">
                   </div>
                   <div class="admin-form-group">
                     <label class="admin-sr-only" for="mat-category-name-{{ $materialCategory->id }}">Name</label>
-                    <input type="text" id="mat-category-name-{{ $materialCategory->id }}" name="name"
+                    <input class="admin-input" type="text" id="mat-category-name-{{ $materialCategory->id }}" name="name"
                            value="{{ old('name', $materialCategory->name) }}" maxlength="120" required class="admin-input">
                   </div>
                   <div class="mat-categories__edit-meta">
@@ -71,7 +71,7 @@
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm"
-                        @disabled($materialCategory->materials_count > 0) title="{{ $materialCategory->materials_count > 0 ? 'Reassign materials first' : 'Delete category' }}">
+                        @disabled($materialCategory->materials_count> 0) title="{{ $materialCategory->materials_count> 0 ? 'Reassign materials first' : 'Delete category' }}">
                   <i class="fa fa-trash"></i>
                 </button>
               </form>

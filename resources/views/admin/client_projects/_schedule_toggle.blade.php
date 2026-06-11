@@ -37,12 +37,12 @@
     <div class="admin-form-grid-2 cp-schedule-dates">
       <div class="admin-form-group">
         <label for="{{ $startDateId }}">Start date</label>
-        <input type="date" id="{{ $startDateId }}" name="start_date" value="{{ $startDateValue }}">
+        <input class="admin-input" type="date" id="{{ $startDateId }}" name="start_date" value="{{ $startDateValue }}">
         @error('start_date') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
       <div class="admin-form-group">
         <label for="{{ $endDateId }}">End date</label>
-        <input type="date" id="{{ $endDateId }}" name="end_date" value="{{ $endDateValue }}">
+        <input class="admin-input" type="date" id="{{ $endDateId }}" name="end_date" value="{{ $endDateValue }}">
         @error('end_date') <p class="admin-form-error">{{ $message }}</p> @enderror
         <p class="admin-form-help">Same-day start &amp; end is allowed for small projects.</p>
       </div>

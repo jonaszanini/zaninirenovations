@@ -21,11 +21,11 @@
   <form method="get" action="{{ route('admin.portfolio.index') }}" class="cp-filters portfolio-admin-filters">
     <div class="cp-filter">
       <label for="portfolio-filter-q">Search</label>
-      <input type="search" id="portfolio-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project title or description">
+      <input class="admin-input" type="search" id="portfolio-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project title or description">
     </div>
     <div class="cp-filter">
       <label for="portfolio-filter-category">Category</label>
-      <select id="portfolio-filter-category" name="category">
+      <select class="admin-input" id="portfolio-filter-category" name="category">
         <option value="">All categories</option>
         @foreach ($categories as $cat)
           <option value="{{ $cat->slug }}" @selected($filters['category'] === $cat->slug)>{{ $cat->name }}</option>

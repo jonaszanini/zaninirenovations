@@ -46,7 +46,7 @@
                 <form action="{{ route('admin.categories.destroy', $category) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this category? This cannot be undone.');">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" @if ($category->projects_count > 0) disabled title="Reassign projects first" @endif>Delete</button>
+                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" @if ($category->projects_count> 0) disabled title="Reassign projects first" @endif>Delete</button>
                 </form>
               </td>
             </tr>

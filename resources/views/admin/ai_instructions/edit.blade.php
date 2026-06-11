@@ -9,12 +9,12 @@
       @method('PUT')
       <div class="admin-form-group">
         <label for="ai-key">Key</label>
-        <input type="text" id="ai-key" value="{{ $instruction->key }}" class="admin-input" disabled>
+        <input class="admin-input" type="text" id="ai-key" value="{{ $instruction->key }}" class="admin-input" disabled>
         <p class="admin-form-help">Internal identifier. Cannot be changed.</p>
       </div>
       <div class="admin-form-group">
         <label for="ai-name">Name</label>
-        <input type="text" id="ai-name" name="name" value="{{ old('name', $instruction->name) }}" required maxlength="120" class="admin-input">
+        <input class="admin-input" type="text" id="ai-name" name="name" value="{{ old('name', $instruction->name) }}" required maxlength="120" class="admin-input">
         @error('name')
           <div class="admin-form-error">{{ $message }}</div>
         @enderror

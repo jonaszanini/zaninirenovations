@@ -26,8 +26,7 @@
     data-destroy-template="{{ route('admin.utilities.calculations.destroy', ['utility_calculation' => '__ID__']) }}"
     data-project-url-template="{{ route('admin.client-projects.show', ['client_project' => '__ID__']) }}"
     data-link-project-id="{{ $linkProject?->id }}"
-    data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'client_project_id' => $c->client_project_id, 'client_project_name' => $c->clientProject?->linkSelectLabel(), 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A'), 'saved_label' => optional($c->updated_at)->format('M j, Y g:i A')])) }}"
-  >
+    data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'client_project_id' => $c->client_project_id, 'client_project_name' => $c->clientProject?->linkSelectLabel(), 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A'), 'saved_label' => optional($c->updated_at)->format('M j, Y g:i A')])) }}">
     <input type="hidden" id="util-lb-csrf" value="{{ csrf_token() }}">
 
     <div class="util-lb-grid">
@@ -107,7 +106,7 @@
           <div class="util-lb-save-form">
             <div class="admin-form-group">
               <label for="lb-link-project">Link to client project <span class="util-lb-optional">(optional)</span></label>
-              <select id="lb-link-project" data-lb-link-project>
+              <select class="admin-input" id="lb-link-project" data-lb-link-project>
                 <option value="">— None —</option>
                 @foreach ($clientProjects as $cp)
                   <option value="{{ $cp->id }}" @selected($linkProject && (int) $linkProject->id === (int) $cp->id)>{{ $cp->linkSelectLabel() }}</option>
@@ -117,7 +116,7 @@
             <div class="util-lb-save-row">
               <div class="admin-form-group">
                 <label for="lb-save-name" class="util-sr-only">Calculation name</label>
-                <input type="text" id="lb-save-name" maxlength="120" placeholder="e.g. Scott deck — all lumber">
+                <input class="admin-input" type="text" id="lb-save-name" maxlength="120" placeholder="e.g. Scott deck — all lumber">
               </div>
               <button type="button" class="admin-btn admin-btn--primary" data-lb-save>
                 <i class="fa fa-save"></i> Save

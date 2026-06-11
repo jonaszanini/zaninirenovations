@@ -10,14 +10,14 @@
       @method('PUT')
       <div class="admin-form-group">
         <label for="title">Title</label>
-        <input type="text" id="title" name="title" value="{{ old('title', $project->title) }}" required maxlength="255">
+        <input class="admin-input" type="text" id="title" name="title" value="{{ old('title', $project->title) }}" required maxlength="255">
         @error('title')
           <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
       <div class="admin-form-group">
         <label for="description">Description</label>
-        <textarea id="description" name="description" required>{{ old('description', $project->description) }}</textarea>
+        <textarea class="admin-input" id="description" name="description" required>{{ old('description', $project->description) }}</textarea>
         @include('admin.partials.portfolio_description_ai', ['hasExistingPhotos' => $project->photos->isNotEmpty()])
         @error('description')
           <div class="admin-form-error">{{ $message }}</div>
@@ -52,7 +52,7 @@
       </div>
       <div class="admin-form-group">
         <label for="completed_on">Completed on</label>
-        <input type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', optional($project->completed_on)->format('Y-m-d')) }}" required>
+        <input class="admin-input" type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', optional($project->completed_on)->format('Y-m-d')) }}" required>
         <p class="admin-form-help">When the work was finished (used to order projects on the site — newest completion first).</p>
         @error('completed_on')
           <div class="admin-form-error">{{ $message }}</div>
@@ -99,7 +99,7 @@
       @php
         $canAdd = 15 - $project->photos->count();
       @endphp
-      @if ($canAdd > 0)
+      @if ($canAdd> 0)
         @php
           $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
         @endphp
@@ -136,8 +136,7 @@
                 type="button"
                 class="admin-btn admin-btn--ghost admin-btn--sm"
                 data-admin-google-disconnect
-                data-disconnect-url="{{ route('admin.google-photos.disconnect') }}"
-              >Disconnect</button>
+                data-disconnect-url="{{ route('admin.google-photos.disconnect') }}">Disconnect</button>
             </p>
           </div>
         @endif
@@ -172,7 +171,7 @@
               <i class="fa fa-undo" aria-hidden="true"></i>
             </button>
             <div class="admin-crop-straighten">
-              <input type="range" id="admin-photo-edit-straighten" class="admin-crop-straighten__slider" min="-15" max="15" step="0.1" value="0" disabled aria-label="Straighten tilt">
+              <input type="range" id="admin-photo-edit-straighten" class="admin-input admin-crop-straighten__slider" min="-15" max="15" step="0.1" value="0" disabled aria-label="Straighten tilt">
               <span id="admin-photo-edit-rotate-value" class="admin-crop-straighten__value" aria-live="polite">0.0°</span>
             </div>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="admin-photo-edit-rotate-cw" disabled title="Rotate 90° clockwise" aria-label="Rotate 90 degrees right">
@@ -190,8 +189,7 @@
               disabled
               title="Free crop — drag corners freely"
               aria-label="Free aspect ratio"
-              aria-pressed="true"
-            >
+              aria-pressed="true">
               <span class="nb2-ar-btn__shape admin-crop-ar-free__shape" aria-hidden="true"></span>
               <span class="nb2-ar-btn__label">Free</span>
             </button>
@@ -239,7 +237,7 @@
 
 @push('scripts')
   <script>
-    @if ($canAdd > 0)
+    @if ($canAdd> 0)
     window.portfolioAiImproveConfig = {
       fileInputId: 'photos',
       maxTotal: {{ (int) $canAdd }},
@@ -388,7 +386,7 @@
           var vh = window.innerHeight || 640;
           var h = Math.floor(vh * 0.42);
           if (h < 240) h = 240;
-          if (h > 440) h = 440;
+          if (h> 440) h = 440;
           stage.style.height = h + 'px';
           stage.style.minHeight = h + 'px';
           stage.style.maxHeight = h + 'px';

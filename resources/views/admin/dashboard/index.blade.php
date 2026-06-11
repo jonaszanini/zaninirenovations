@@ -203,7 +203,7 @@
             @endforeach
           </ul>
         @endif
-        @if (count($d['attention']['high_value']) > 0)
+        @if (count($d['attention']['high_value'])> 0)
           <h3 class="dash-attention-subheading">Top contract values</h3>
           <ul class="dash-attention-list dash-attention-list--compact">
             @foreach ($d['attention']['high_value'] as $row)
