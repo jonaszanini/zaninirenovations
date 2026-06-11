@@ -17,21 +17,22 @@
 @endphp
 
 <div class="mat-form">
-<div class="admin-form-group">
-  <label for="mat-name">Store name <span class="cp-required">*</span></label>
-  <input type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255"
-         class="@error('name') is-invalid @enderror">
-  <p class="admin-form-help">Full product title from the store — updated when you sync prices.</p>
-  @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
-</div>
-
-<div class="admin-form-group">
-  <label for="mat-short-name">Short name</label>
-  <input type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
-         placeholder="e.g. Gate corner brace"
-         class="@error('short_name') is-invalid @enderror">
-  <p class="admin-form-help">Shown in lists and pickers. Leave blank to use the store name above.</p>
-  @error('short_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+<div class="mat-form-grid-names">
+  <div class="admin-form-group">
+    <label for="mat-name">Store name <span class="cp-required">*</span></label>
+    <input type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255"
+           class="@error('name') is-invalid @enderror">
+    <p class="admin-form-help">Full product title from the store — updated when you sync prices.</p>
+    @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
+  </div>
+  <div class="admin-form-group">
+    <label for="mat-short-name">Short name</label>
+    <input type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
+           placeholder="e.g. 2x4x8 Stud"
+           class="@error('short_name') is-invalid @enderror">
+    <p class="admin-form-help">Shown in lists and pickers. Leave blank to use the store name.</p>
+    @error('short_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+  </div>
 </div>
 
 <div class="admin-form-group">
@@ -70,13 +71,18 @@
   </div>
 </div>
 
-<div class="admin-form-grid-2">
+@php
+  $unitOptions = Material::unitOptions();
+  $currentUnit = old('unit', $m?->unit);
+@endphp
+
+<div class="mat-form-grid-pricing">
   <div class="admin-form-group">
     <label for="mat-sku">Store SKU / ASIN</label>
     <input type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
            placeholder="Home Depot SKU or Amazon ASIN"
            class="@error('store_sku') is-invalid @enderror">
-    <p class="admin-form-help">Home Depot numeric SKU, or Amazon Canada ASIN (10 characters) when vendor is Amazon.</p>
+    <p class="admin-form-help">HD numeric SKU or Amazon ASIN (10 chars).</p>
     @error('store_sku') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -85,9 +91,6 @@
            class="@error('model') is-invalid @enderror">
     @error('model') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
-</div>
-
-<div class="admin-form-grid-2">
   <div class="admin-form-group">
     <label for="mat-price">Price (CAD)</label>
     <input type="number" id="mat-price" name="price_cad" value="{{ old('price_cad', $m?->price_cad ?? '0.00') }}"
@@ -97,10 +100,6 @@
   </div>
   <div class="admin-form-group">
     <label for="mat-unit">Unit</label>
-    @php
-      $unitOptions = Material::unitOptions();
-      $currentUnit = old('unit', $m?->unit);
-    @endphp
     <select id="mat-unit" name="unit" class="admin-input @error('unit') is-invalid @enderror">
       <option value="">— Select unit —</option>
       @foreach ($unitOptions as $value => $label)
@@ -112,14 +111,11 @@
     </select>
     @error('unit') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
-</div>
-
-<div class="admin-form-grid-2">
   <div class="admin-form-group">
-    <label for="mat-qty-pkg">Quantity per package</label>
+    <label for="mat-qty-pkg">Qty per package</label>
     <input type="number" id="mat-qty-pkg" name="quantity_per_package"
            value="{{ old('quantity_per_package', $m?->quantity_per_package) }}"
-           min="1" max="999999" placeholder="For box/bag pricing"
+           min="1" max="999999" placeholder="Box/bag"
            class="@error('quantity_per_package') is-invalid @enderror">
     @error('quantity_per_package') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
@@ -131,7 +127,7 @@
     @error('sort_order') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
 </div>
-<p class="admin-form-help mat-qty-help">Optional. Use when the store price is per box/bag, not per single unit.</p>
+<p class="admin-form-help mat-qty-help">Optional qty per package — use when store price is per box/bag, not per single unit.</p>
 
 <div class="mat-url-fields">
   <h3 class="mat-form-section-title">Store links</h3>

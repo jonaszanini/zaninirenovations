@@ -112,7 +112,8 @@
         </thead>
         <tbody>
           @forelse ($materials as $material)
-            <tr class="{{ $material->is_active ? '' : 'mat-row--inactive' }}">
+            <tr class="mat-row--clickable{{ $material->is_active ? '' : ' mat-row--inactive' }}"
+                data-edit-url="{{ route('admin.materials.edit', $material) }}">
               <td class="mat-col-select">
                 <label class="admin-checkbox mat-row-select-label">
                   <input type="checkbox" form="mat-bulk-delete-form" name="ids[]" value="{{ $material->id }}" class="admin-checkbox__input mat-row-select"
@@ -373,6 +374,18 @@
 
         updateBulkActions();
       }
+
+      document.querySelectorAll('.mat-row--clickable').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+          if (e.target.closest('a, button, input, label, form, .mat-col-select, .mat-col-actions')) {
+            return;
+          }
+          var url = row.getAttribute('data-edit-url');
+          if (url) {
+            window.location.href = url;
+          }
+        });
+      });
     })();
   </script>
 @endpush
