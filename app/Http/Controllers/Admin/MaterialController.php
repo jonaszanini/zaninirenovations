@@ -68,6 +68,11 @@ class MaterialController extends Controller
         ));
     }
 
+    public function config(): View
+    {
+        return view('admin.materials.config', $this->materialsConfigData());
+    }
+
     public function create(): View
     {
         return view('admin.materials.create');
@@ -434,7 +439,7 @@ class MaterialController extends Controller
 
         if (! $importer->hasImportableSku($data['skus'])) {
             return redirect()
-                ->route('admin.materials.index')
+                ->route('admin.materials.config')
                 ->withErrors([
                     'skus' => 'Paste at least one valid Home Depot SKU or product URL. Blank lines are ignored; duplicate lines in the same paste are skipped.',
                 ])
@@ -454,7 +459,7 @@ class MaterialController extends Controller
             ])->filter()->implode(', ');
 
             return redirect()
-                ->route('admin.materials.index')
+                ->route('admin.materials.config')
                 ->withErrors([
                     'skus' => $detail !== ''
                         ? 'No materials imported — '.$detail.' skipped.'
@@ -512,9 +517,34 @@ class MaterialController extends Controller
         }
 
         return redirect()
-            ->route('admin.materials.index')
+            ->route('admin.materials.config')
             ->with('success', $message)
             ->withInput($request->only(['skus', 'category', 'vendor']));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function materialsConfigData(): array
+    {
+        $categories = Material::query()
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category');
+
+        return [
+            'categories' => $categories,
+            'usesSerpApi' => (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi(),
+            'needsSyncCount' => app(MaterialPriceSyncService::class)->countNeedingSync(),
+            'syncableCount' => Material::query()
+                ->where('is_active', true)
+                ->whereNotNull('product_url')
+                ->where('product_url', '!=', '')
+                ->count(),
+            'totalMaterials' => Material::query()->count(),
+        ];
     }
 
     /**

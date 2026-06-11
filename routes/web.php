@@ -154,6 +154,7 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class)->except(['show']);
 
+    Route::get('materials/config', [MaterialController::class, 'config'])->name('materials.config');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])
         ->name('materials.bulk-destroy');
     Route::post('materials/bulk-import/start', [MaterialController::class, 'bulkImportStart'])
@@ -338,6 +339,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.fence.config');
     Route::put('quotations/fence/config/materials', [\App\Http\Controllers\Admin\FenceConfigController::class, 'updateMaterials'])
         ->name('quotations.fence.config.materials.update');
+    Route::post('quotations/fence/config/materials/sync', [\App\Http\Controllers\Admin\FenceConfigController::class, 'syncMaterials'])
+        ->name('quotations.fence.config.materials.sync');
     Route::put('quotations/fence/config/formula', [\App\Http\Controllers\Admin\FenceConfigController::class, 'updateFormula'])
         ->name('quotations.fence.config.formula.update');
 

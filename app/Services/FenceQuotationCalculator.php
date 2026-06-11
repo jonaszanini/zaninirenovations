@@ -384,7 +384,7 @@ class FenceQuotationCalculator
         // internally, so flip back for display. Nails are the only box
         // case today.
         $displayUnitPrice = ($mat && $mat->soldByBox())
-            ? round((float) $mat->price_cad, 2)
+            ? $mat->effectivePriceCad()
             : round($unitPrice, 2);
 
         $subtotal = round($quantity * $displayUnitPrice, 2);
@@ -392,10 +392,10 @@ class FenceQuotationCalculator
         return [
             'key' => $key,
             'name' => $mat ? $mat->name : $key,
-            'long_name' => $mat?->long_name,
-            'model' => $mat?->model,
-            'store_sku' => $mat?->store_sku,
-            'url' => $mat ? $mat->url : null,
+            'long_name' => $mat?->effectiveLongName(),
+            'model' => $mat?->effectiveModel(),
+            'store_sku' => $mat?->effectiveStoreSku(),
+            'url' => $mat?->effectiveUrl(),
             'quantity' => $quantity,
             'unit' => $unit,
             'unit_price' => $displayUnitPrice,

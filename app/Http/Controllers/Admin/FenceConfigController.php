@@ -5,24 +5,42 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FenceFormulaSetting;
 use App\Models\FenceMaterial;
+use App\Models\Material;
+use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
+use App\Services\MaterialScraping\MaterialPriceSyncService;
 use Illuminate\Http\Request;
 
 /**
- * Handles the Fence module's configuration pages — the materials
- * catalogue (product fields, price, URL, nail box size) and the formula settings
- * (labour rates per fence height, concrete-per-post, rails-per-section, etc).
- *
- * Materials are never created or deleted through the UI; catalogue
- * fields (including product metadata) are writeable. This keeps the
- * lookups by `key` safe from accidental renames.
+ * Handles the Fence module's configuration pages — linking fence catalogue
+ * rows to the materials catalog, and formula settings (labour rates,
+ * concrete-per-post, rails-per-section, etc).
  */
 class FenceConfigController extends Controller
 {
     public function index()
     {
+        $materials = FenceMaterial::query()
+            ->with('material')
+            ->orderBy('sort_order')
+            ->get();
+
+        $catalogMaterials = Material::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor']);
+
+        $linkedSyncCount = $materials
+            ->filter(fn (FenceMaterial $row) => $row->material_id !== null
+                && $row->material !== null
+                && $row->material->hasProductUrl())
+            ->count();
+
         return view('admin.quotations.fence.config.index', [
-            'materials' => FenceMaterial::query()->orderBy('sort_order')->get(),
+            'materials' => $materials,
+            'catalogMaterials' => $catalogMaterials,
             'settings' => FenceFormulaSetting::current(),
+            'usesSerpApi' => (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi(),
+            'linkedSyncCount' => $linkedSyncCount,
         ]);
     }
 
@@ -31,29 +49,19 @@ class FenceConfigController extends Controller
         $data = $request->validate([
             'materials' => ['required', 'array'],
             'materials.*.id' => ['required', 'integer', 'exists:fence_materials,id'],
-            'materials.*.long_name' => ['nullable', 'string', 'max:500'],
-            'materials.*.model' => ['nullable', 'string', 'max:160'],
-            'materials.*.store_sku' => ['nullable', 'string', 'max:160'],
-            'materials.*.price_cad' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            'materials.*.url' => ['nullable', 'url', 'max:500'],
+            'materials.*.material_id' => ['nullable', 'integer', 'exists:materials,id'],
             'materials.*.quantity_per_box' => ['nullable', 'integer', 'min:1', 'max:999999'],
         ]);
 
         foreach ($data['materials'] as $row) {
             $material = FenceMaterial::find($row['id']);
-            if (!$material) {
+            if ($material === null) {
                 continue;
             }
 
-            $material->long_name = filled($row['long_name'] ?? null) ? $row['long_name'] : null;
-            $material->model = filled($row['model'] ?? null) ? $row['model'] : null;
-            $material->store_sku = filled($row['store_sku'] ?? null) ? $row['store_sku'] : null;
-            $material->price_cad = (float) ($row['price_cad'] ?? 0);
-            $material->url = $row['url'] ?? null;
+            $catalogId = filled($row['material_id'] ?? null) ? (int) $row['material_id'] : null;
+            $material->material_id = $catalogId;
 
-            // Only the nails row exposes quantity_per_box — keep the
-            // other rows' column at NULL so the calculator's soldByBox()
-            // helper stays deterministic.
             if ($material->key === FenceMaterial::KEY_NAILS) {
                 $material->quantity_per_box = $row['quantity_per_box'] ?? null;
             }
@@ -63,7 +71,79 @@ class FenceConfigController extends Controller
 
         return redirect()
             ->route('admin.quotations.fence.config')
-            ->with('success', 'Materials catalogue updated.');
+            ->with('success', 'Fence materials linked to the catalog.');
+    }
+
+    public function syncMaterials(
+        MaterialPriceSyncService $syncService,
+        HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher,
+    ) {
+        if (! $localizedPriceFetcher->usesSerpApi()) {
+            return redirect()
+                ->route('admin.quotations.fence.config')
+                ->with('error', 'SerpApi is not configured. Set MATERIALS_SCRAPER_SERPAPI_KEY on the server to sync fence material prices online.');
+        }
+
+        $fenceRows = FenceMaterial::query()
+            ->whereNotNull('material_id')
+            ->with('material')
+            ->orderBy('sort_order')
+            ->get();
+
+        if ($fenceRows->isEmpty()) {
+            return redirect()
+                ->route('admin.quotations.fence.config')
+                ->with('error', 'No fence materials are linked to the catalog yet. Select a material for each row and save.');
+        }
+
+        $ok = 0;
+        $failed = 0;
+        $skipped = 0;
+        $errors = [];
+        $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
+
+        foreach ($fenceRows as $index => $fenceRow) {
+            if ($index > 0 && $delayMs > 0) {
+                usleep($delayMs * 1000);
+            }
+
+            $catalog = $fenceRow->material;
+            if ($catalog === null) {
+                $skipped++;
+                $errors[] = $fenceRow->name.': linked catalog material not found.';
+
+                continue;
+            }
+
+            if (! $catalog->hasProductUrl()) {
+                $skipped++;
+                $errors[] = $catalog->name.': no product URL.';
+
+                continue;
+            }
+
+            $result = $syncService->syncOne($catalog);
+            if ($result['status'] === Material::SCRAPE_OK) {
+                $ok++;
+            } elseif ($result['status'] === Material::SCRAPE_SKIPPED) {
+                $skipped++;
+            } else {
+                $failed++;
+                $errors[] = $catalog->name.': '.($result['error'] ?? 'Sync failed.');
+            }
+        }
+
+        $message = sprintf('Fence sync: %d ok, %d failed, %d skipped.', $ok, $failed, $skipped);
+        if ($errors !== []) {
+            $message .= ' '.implode(' ', array_slice($errors, 0, 3));
+            if (count($errors) > 3) {
+                $message .= ' …';
+            }
+        }
+
+        return redirect()
+            ->route('admin.quotations.fence.config')
+            ->with($failed > 0 ? 'error' : 'success', $message);
     }
 
     public function updateFormula(Request $request)

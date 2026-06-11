@@ -8,14 +8,12 @@
       <a href="{{ route('admin.quotations.fence.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Back to fence quotations
       </a>
+      <a href="{{ route('admin.materials.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-cubes"></i> Materials catalog
+      </a>
     </div>
   </div>
 
-  {{-- ==============================================================
-       Materials catalogue
-       Fixed list, seeded at migration time. Admins edit product
-       details, price, URL, and (for nails) quantity-per-box.
-       ============================================================== --}}
   <form method="post" action="{{ route('admin.quotations.fence.config.materials.update') }}" class="admin-card fq-config-card">
     @csrf
     @method('PUT')
@@ -23,67 +21,114 @@
       <div>
         <h3 style="margin:0;">Materials catalogue</h3>
         <p class="admin-form-help" style="margin:4px 0 0;">
-          Enter store product details, the current price (before tax, in CAD$), and optionally a link to the product page.
-          The calculator pulls these values live when generating an estimate.
+          Link each fence line item to a row in the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">materials catalog</a>.
+          Prices and product details are read live from the linked material.
         </p>
       </div>
-      <button type="submit" class="admin-btn admin-btn--primary">
-        <i class="fa fa-save"></i> Save catalogue
-      </button>
+      <div class="fq-config-header__actions">
+        @if ($usesSerpApi)
+          <button type="submit"
+                  form="fq-sync-materials-form"
+                  class="admin-btn admin-btn--ghost"
+                  @disabled($linkedSyncCount === 0)>
+            <i class="fa fa-refresh"></i> Sync fence prices
+          </button>
+        @endif
+        <button type="submit" class="admin-btn admin-btn--primary">
+          <i class="fa fa-save"></i> Save links
+        </button>
+      </div>
     </div>
+
+    @if ($usesSerpApi)
+      <p class="admin-form-help fq-sync-hint">
+        <strong>Sync fence prices</strong> updates linked catalog materials via SerpApi ({{ number_format($linkedSyncCount) }} linked with a product URL).
+        <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
+        · <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>
+      </p>
+    @else
+      <p class="admin-form-help fq-sync-hint">
+        Online sync requires SerpApi on the server. Update linked materials from your PC with
+        <code>php artisan materials:sync-prices</code> (see <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>).
+      </p>
+    @endif
 
     <div class="admin-table-scroll">
       <table class="admin-table fq-materials-table">
         <thead>
           <tr>
-            <th>Material</th>
-            <th style="min-width:200px;">Long name</th>
-            <th style="min-width:120px;">Model</th>
-            <th style="min-width:120px;">Store SKU</th>
-            <th style="width:170px;">Price (CAD$, pre-tax)</th>
+            <th>Fence item</th>
+            <th style="min-width:220px;">Catalog material</th>
+            <th style="min-width:200px;">Product details</th>
+            <th style="width:130px;">Price (CAD$)</th>
             <th style="width:130px;">Quantity / box</th>
-            <th style="min-width:180px;">Product URL</th>
           </tr>
         </thead>
         <tbody>
           @foreach ($materials as $i => $m)
-            <tr>
+            <tr class="fq-material-row" data-row="{{ $i }}">
               <td>
                 <strong>{{ $m->name }}</strong>
                 <div class="admin-form-help" style="font-size:11px;">key: <code>{{ $m->key }}</code></div>
                 <input type="hidden" name="materials[{{ $i }}][id]" value="{{ $m->id }}">
               </td>
               <td>
-                <input type="text"
-                       name="materials[{{ $i }}][long_name]"
-                       class="admin-input"
-                       maxlength="500"
-                       placeholder="Full product title…"
-                       value="{{ old('materials.'.$i.'.long_name', $m->long_name) }}">
+                <select name="materials[{{ $i }}][material_id]"
+                        class="admin-input fq-material-select"
+                        data-preview-target="fq-preview-{{ $i }}"
+                        aria-label="Catalog material for {{ $m->name }}">
+                  <option value="">— Select material —</option>
+                  @foreach ($catalogMaterials as $catalog)
+                    <option value="{{ $catalog->id }}"
+                            @selected((int) old('materials.'.$i.'.material_id', $m->material_id) === (int) $catalog->id)
+                            data-name="{{ e($catalog->name) }}"
+                            data-sku="{{ e($catalog->store_sku ?? '') }}"
+                            data-model="{{ e($catalog->model ?? '') }}"
+                            data-price="{{ number_format((float) $catalog->price_cad, 2, '.', '') }}"
+                            data-url="{{ e($catalog->product_url ?? '') }}"
+                            data-vendor="{{ e($catalog->vendor ?? '') }}">
+                      {{ $catalog->name }}
+                      @if ($catalog->store_sku)
+                        · {{ $catalog->store_sku }}
+                      @endif
+                      · {{ \App\Models\ClientProject::formatMoney((float) $catalog->price_cad) }}
+                    </option>
+                  @endforeach
+                </select>
               </td>
               <td>
-                <input type="text"
-                       name="materials[{{ $i }}][model]"
-                       class="admin-input"
-                       maxlength="160"
-                       placeholder="Model #"
-                       value="{{ old('materials.'.$i.'.model', $m->model) }}">
+                <div id="fq-preview-{{ $i }}" class="fq-material-preview">
+                  @if ($m->material_id && $m->material)
+                    <span class="fq-material-preview__name">{{ $m->material->name }}</span>
+                    @if ($m->material->store_sku)
+                      <span class="admin-form-help">SKU {{ $m->material->store_sku }}</span>
+                    @endif
+                    @if ($m->material->model)
+                      <span class="admin-form-help">Model {{ $m->material->model }}</span>
+                    @endif
+                    @if ($m->material->product_url)
+                      <a href="{{ $m->material->product_url }}" target="_blank" rel="noopener" class="admin-text-link fq-material-preview__link">Product page</a>
+                    @endif
+                  @elseif ($m->effectiveLongName() || $m->effectiveStoreSku())
+                    <span class="fq-material-preview__name">{{ $m->effectiveLongName() }}</span>
+                    @if ($m->effectiveStoreSku())
+                      <span class="admin-form-help">SKU {{ $m->effectiveStoreSku() }}</span>
+                    @endif
+                  @else
+                    <span class="admin-form-help">Select a catalog material.</span>
+                  @endif
+                </div>
               </td>
               <td>
-                <input type="text"
-                       name="materials[{{ $i }}][store_sku]"
-                       class="admin-input"
-                       maxlength="160"
-                       placeholder="SKU"
-                       value="{{ old('materials.'.$i.'.store_sku', $m->store_sku) }}">
-              </td>
-              <td>
-                <input type="text"
-                       name="materials[{{ $i }}][price_cad]"
-                       class="admin-input cp-money-input"
-                       inputmode="decimal"
-                       autocomplete="off"
-                       value="{{ old('materials.'.$i.'.price_cad', number_format((float) $m->price_cad, 2, '.', '')) }}">
+                <span class="fq-material-preview__price" id="fq-price-{{ $i }}">
+                  @if ($m->material_id && $m->material)
+                    {{ $m->material->formattedPrice() }}
+                  @elseif ($m->effectivePriceCad() > 0)
+                    {{ \App\Models\ClientProject::formatMoney($m->effectivePriceCad()) }}
+                  @else
+                    —
+                  @endif
+                </span>
               </td>
               <td>
                 @if ($m->key === \App\Models\FenceMaterial::KEY_NAILS)
@@ -93,28 +138,10 @@
                          name="materials[{{ $i }}][quantity_per_box]"
                          class="admin-input"
                          value="{{ old('materials.'.$i.'.quantity_per_box', $m->quantity_per_box) }}">
+                  <p class="admin-form-help">Nails per box (for per-nail pricing).</p>
                 @else
                   <span class="admin-form-help">—</span>
                 @endif
-              </td>
-              <td>
-                <div class="fq-url-field">
-                  <input type="url"
-                         name="materials[{{ $i }}][url]"
-                         class="admin-input"
-                         placeholder="https://..."
-                         value="{{ old('materials.'.$i.'.url', $m->url) }}">
-                  @if ($m->url)
-                    <a href="{{ $m->url }}"
-                       target="_blank"
-                       rel="noopener"
-                       class="fq-url-open"
-                       aria-label="Open product URL in new tab"
-                       title="Open product URL">
-                      <i class="fa fa-external-link"></i>
-                    </a>
-                  @endif
-                </div>
               </td>
             </tr>
           @endforeach
@@ -123,9 +150,12 @@
     </div>
   </form>
 
-  {{-- ==============================================================
-       Formula parameters
-       ============================================================== --}}
+  @if ($usesSerpApi)
+    <form id="fq-sync-materials-form" method="post" action="{{ route('admin.quotations.fence.config.materials.sync') }}" class="fq-sync-form">
+      @csrf
+    </form>
+  @endif
+
   <form method="post" action="{{ route('admin.quotations.fence.config.formula.update') }}" class="admin-card fq-config-card" style="margin-top:16px;">
     @csrf
     @method('PUT')
@@ -219,3 +249,57 @@
   </form>
 @endsection
 
+@push('scripts')
+  <script>
+    (function () {
+      function formatMoney(amount) {
+        var n = parseFloat(amount);
+        if (isNaN(n)) return '—';
+        return '$' + n.toFixed(2);
+      }
+
+      function updatePreview(select) {
+        var targetId = select.getAttribute('data-preview-target');
+        var previewEl = targetId ? document.getElementById(targetId) : null;
+        var row = select.closest('tr');
+        var priceEl = row ? row.querySelector('.fq-material-preview__price') : null;
+        var option = select.options[select.selectedIndex];
+
+        if (!previewEl) return;
+
+        if (!option || !option.value) {
+          previewEl.innerHTML = '<span class="admin-form-help">Select a catalog material.</span>';
+          if (priceEl) priceEl.textContent = '—';
+          return;
+        }
+
+        var name = option.getAttribute('data-name') || '';
+        var sku = option.getAttribute('data-sku') || '';
+        var model = option.getAttribute('data-model') || '';
+        var url = option.getAttribute('data-url') || '';
+        var price = option.getAttribute('data-price') || '';
+
+        var html = '<span class="fq-material-preview__name">' + name + '</span>';
+        if (sku) {
+          html += '<span class="admin-form-help">SKU ' + sku + '</span>';
+        }
+        if (model) {
+          html += '<span class="admin-form-help">Model ' + model + '</span>';
+        }
+        if (url) {
+          html += '<a href="' + url + '" target="_blank" rel="noopener" class="admin-text-link fq-material-preview__link">Product page</a>';
+        }
+        previewEl.innerHTML = html;
+        if (priceEl) {
+          priceEl.textContent = formatMoney(price);
+        }
+      }
+
+      document.querySelectorAll('.fq-material-select').forEach(function (select) {
+        select.addEventListener('change', function () {
+          updatePreview(select);
+        });
+      });
+    })();
+  </script>
+@endpush

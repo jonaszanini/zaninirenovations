@@ -3610,6 +3610,45 @@ body.cp-modal-open {
 
 /* Config page ------------------------------------------------------- */
 .fq-config-card { padding: 18px 20px; }
+.fq-config-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fq-sync-hint {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  background: var(--admin-surface-hover, #f4f6f8);
+}
+
+.fq-material-select {
+  width: 100%;
+  min-width: 200px;
+}
+
+.fq-material-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.fq-material-preview__name {
+  font-weight: 600;
+}
+
+.fq-material-preview__price {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fq-sync-form {
+  display: none;
+}
+
 .fq-config-header {
   display: flex;
   justify-content: space-between;

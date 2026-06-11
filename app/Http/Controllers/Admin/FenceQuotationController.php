@@ -53,13 +53,13 @@ class FenceQuotationController extends Controller
     public function create(Request $request)
     {
         $settings = FenceFormulaSetting::current();
-        $materials = FenceMaterial::query()->orderBy('sort_order')->get();
+        $materials = FenceMaterial::query()->with('material')->orderBy('sort_order')->get();
 
         // A handful of catalogue prices must be > 0 for the calculator to
         // produce a usable estimate. Warn the admin up front instead of
         // letting them fill the form and then discover a $0 grand total.
         $zeroPricedKeys = $materials
-            ->filter(fn (FenceMaterial $m) => (float) $m->price_cad <= 0)
+            ->filter(fn (FenceMaterial $m) => $m->effectivePriceCad() <= 0)
             ->pluck('name')
             ->values()
             ->all();
@@ -116,10 +116,10 @@ class FenceQuotationController extends Controller
     public function edit(Request $request, FenceQuotation $fence_quotation)
     {
         $settings = FenceFormulaSetting::current();
-        $materials = FenceMaterial::query()->orderBy('sort_order')->get();
+        $materials = FenceMaterial::query()->with('material')->orderBy('sort_order')->get();
 
         $zeroPricedKeys = $materials
-            ->filter(fn (FenceMaterial $m) => (float) $m->price_cad <= 0)
+            ->filter(fn (FenceMaterial $m) => $m->effectivePriceCad() <= 0)
             ->pluck('name')
             ->values()
             ->all();
@@ -506,16 +506,16 @@ class FenceQuotationController extends Controller
                 $mat = $catalogue->get($key);
                 $qtyPart = $this->formatPurchaseQuantityLabel($quantity);
 
-                $longName = $mat && filled($mat->long_name)
-                    ? $mat->long_name
+                $longName = $mat && filled($mat->effectiveLongName())
+                    ? $mat->effectiveLongName()
                     : (filled($line['long_name'] ?? null) ? (string) $line['long_name'] : (string) ($mat?->name ?? $line['name'] ?? $key));
 
-                $storeSku = $mat && filled($mat->store_sku)
-                    ? $mat->store_sku
+                $storeSku = $mat && filled($mat->effectiveStoreSku())
+                    ? $mat->effectiveStoreSku()
                     : (filled($line['store_sku'] ?? null) ? (string) $line['store_sku'] : null);
 
-                $model = $mat && filled($mat->model)
-                    ? $mat->model
+                $model = $mat && filled($mat->effectiveModel())
+                    ? $mat->effectiveModel()
                     : (filled($line['model'] ?? null) ? (string) $line['model'] : null);
 
                 $rows[] = [

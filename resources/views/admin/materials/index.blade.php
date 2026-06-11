@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-  <div class="admin-toolbar">
+  <div class="admin-toolbar mat-toolbar">
     <form method="get" action="{{ route('admin.materials.index') }}" class="mat-toolbar-search">
       <input type="search" name="q" value="{{ $q }}" placeholder="Search name, SKU, vendor…" class="admin-input mat-toolbar-search__input">
       @if ($categories->isNotEmpty())
@@ -23,6 +23,9 @@
       </button>
     </form>
     <div class="mat-toolbar-actions">
+      <a href="{{ route('admin.materials.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-cog"></i> Config
+      </a>
       <button type="button" id="mat-sync-all-btn" class="admin-btn admin-btn--ghost admin-btn--sm"
               data-start-url="{{ route('admin.materials.sync-all.start') }}"
               data-step-url="{{ route('admin.materials.sync-all.step') }}"
@@ -32,18 +35,6 @@
       <a href="{{ route('admin.materials.create') }}" class="admin-btn admin-btn--primary admin-btn--sm">
         <i class="fa fa-plus"></i> Add material
       </a>
-      <p class="admin-form-help mat-toolbar-total">
-        {{ number_format($totalMaterials) }} {{ $totalMaterials === 1 ? 'material' : 'materials' }} in database
-        @if ($syncableCount > 0)
-          · {{ number_format($syncableCount) }} syncable
-        @endif
-        @if ($usesSerpApi)
-          · admin sync via SerpApi
-        @endif
-        @if ($needsSyncCount > 0)
-          · {{ number_format($needsSyncCount) }} need local sync
-        @endif
-      </p>
     </div>
   </div>
 
@@ -69,143 +60,20 @@
     </div>
   </div>
 
-  <div class="mat-admin-panels">
-  <details class="admin-accordion admin-card admin-card--narrow mat-bulk-import" @if(old('skus')) open @endif>
-    <summary class="admin-accordion__summary">
-      <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
-      <span class="admin-accordion__title">Bulk import Home Depot SKUs</span>
-    </summary>
-    <div class="admin-accordion__panel">
-      <form id="mat-bulk-form" method="post" action="{{ route('admin.materials.bulk-import') }}"
-            data-start-url="{{ route('admin.materials.bulk-import.start') }}"
-            data-step-url="{{ route('admin.materials.bulk-import.step') }}">
-        @csrf
-        <div class="admin-form-group">
-          <label for="mat-bulk-skus">SKUs or product URLs</label>
-          <textarea id="mat-bulk-skus" name="skus" rows="8" class="admin-input @error('skus') is-invalid @enderror" aria-label="SKU list, one per line" placeholder="Paste one SKU or product URL per line…">{{ old('skus') }}</textarea>
-          @error('skus') <p class="admin-form-error">{{ $message }}</p> @enderror
-          <p class="admin-form-help">
-            One SKU (e.g. <code>1000108771</code>) or full Home Depot product URL per line.
-            Blank lines are ignored. If the same SKU appears more than once in your paste, only the first is imported; the rest are skipped. SKUs already in the catalog are updated.
-          </p>
-        </div>
-        <div class="admin-form-grid-2">
-          <div class="admin-form-group">
-            <label for="mat-bulk-category">Category</label>
-            <input type="text" id="mat-bulk-category" name="category" value="{{ old('category') }}" class="admin-input" list="mat-bulk-category-list" placeholder="e.g. Lumber">
-            @if ($categories->isNotEmpty())
-              <datalist id="mat-bulk-category-list">
-                @foreach ($categories as $cat)
-                  <option value="{{ $cat }}">
-                @endforeach
-              </datalist>
-            @endif
-          </div>
-          <div class="admin-form-group">
-            <label for="mat-bulk-vendor">Vendor</label>
-            <input type="text" id="mat-bulk-vendor" name="vendor" value="{{ old('vendor', 'Home Depot') }}" class="admin-input">
-          </div>
-        </div>
-        <div class="admin-form-group">
-          @include('admin.partials.checkbox', [
-            'name' => 'sync_prices',
-            'id' => 'mat-bulk-sync',
-            'checked' => old('sync_prices'),
-            'label' => 'Sync prices after import',
-          ])
-          <p class="admin-form-help">
-            When checked, fetches name and price via SerpApi (online admin) or the local store API for each imported item (~2&nbsp;s each).
-            For large lists (30+ SKUs), leave unchecked and use <strong>Sync all</strong> on the list page afterward.
-          </p>
-        </div>
-        <div id="mat-bulk-progress" class="mat-bulk-progress" hidden aria-live="polite">
-          <div class="mat-bulk-progress__head">
-            <h3 class="mat-bulk-progress__title" id="mat-bulk-phase-label">Import in progress</h3>
-            <span class="mat-bulk-progress__counter" id="mat-bulk-counter">0 / 0</span>
-          </div>
-          <div class="mat-bulk-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="mat-bulk-progressbar">
-            <div class="mat-bulk-progress__bar" id="mat-bulk-bar" style="width:0%"></div>
-          </div>
-          <p class="mat-bulk-progress__message" id="mat-bulk-message">Preparing…</p>
-          <dl class="mat-bulk-progress__stats" id="mat-bulk-stats">
-            <div><dt>Created</dt><dd id="mat-stat-created">0</dd></div>
-            <div><dt>Updated</dt><dd id="mat-stat-updated">0</dd></div>
-            <div><dt>Synced</dt><dd id="mat-stat-sync-ok">0</dd></div>
-            <div><dt>Sync failed</dt><dd id="mat-stat-sync-failed">0</dd></div>
-          </dl>
-          <ul class="mat-bulk-progress__log" id="mat-bulk-log"></ul>
-          <div class="mat-bulk-progress__done" id="mat-bulk-done" hidden>
-            <p class="mat-bulk-progress__summary" id="mat-bulk-summary"></p>
-            <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-bulk-reload">Reload page</button>
-          </div>
-        </div>
-        <div class="admin-form-actions">
-          <button type="submit" class="admin-btn admin-btn--primary" id="mat-bulk-submit">Import SKUs</button>
-        </div>
-      </form>
-    </div>
-  </details>
-
-  <details class="admin-accordion admin-card admin-card--narrow mat-local-sync">
-    <summary class="admin-accordion__summary">
-      <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
-      <span class="admin-accordion__title">Local price sync (your PC)</span>
-    </summary>
-    <div class="admin-accordion__panel">
-      <p class="admin-form-help mat-local-sync__lede">
-        Run from your project root in PowerShell or Terminal.
-        @if ($usesSerpApi)
-          On your PC, leave <code>MATERIALS_SCRAPER_SERPAPI_KEY</code> unset so sync uses the free Home Depot store API instead of SerpApi credits.
-        @else
-          Uses the Home Depot store API (Carleton Place store <code>7263</code> when configured).
-        @endif
-        @if ($needsSyncCount > 0)
-          <strong>{{ number_format($needsSyncCount) }}</strong> material{{ $needsSyncCount === 1 ? '' : 's' }} never synced or last sync failed.
-        @endif
-      </p>
-      <ul class="mat-sync-commands__list">
-        <li class="mat-sync-commands__row">
-          <div class="mat-sync-commands__cmd-wrap">
-            <code class="mat-sync-commands__cmd" id="mat-sync-cmd-new-dry">php artisan materials:sync-new-prices --dry-run</code>
-            <span class="admin-form-help mat-sync-commands__label">New / failed only — preview</span>
-          </div>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-new-dry">
-            <i class="fa fa-copy"></i> Copy
-          </button>
-        </li>
-        <li class="mat-sync-commands__row">
-          <div class="mat-sync-commands__cmd-wrap">
-            <code class="mat-sync-commands__cmd" id="mat-sync-cmd-new">php artisan materials:sync-new-prices</code>
-            <span class="admin-form-help mat-sync-commands__label">New / failed only — update database</span>
-          </div>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-new">
-            <i class="fa fa-copy"></i> Copy
-          </button>
-        </li>
-        <li class="mat-sync-commands__row">
-          <div class="mat-sync-commands__cmd-wrap">
-            <code class="mat-sync-commands__cmd" id="mat-sync-cmd-dry">php artisan materials:sync-prices --dry-run</code>
-            <span class="admin-form-help mat-sync-commands__label">All materials — preview</span>
-          </div>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-dry">
-            <i class="fa fa-copy"></i> Copy
-          </button>
-        </li>
-        <li class="mat-sync-commands__row">
-          <div class="mat-sync-commands__cmd-wrap">
-            <code class="mat-sync-commands__cmd" id="mat-sync-cmd-live">php artisan materials:sync-prices</code>
-            <span class="admin-form-help mat-sync-commands__label">All materials — update database</span>
-          </div>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-live">
-            <i class="fa fa-copy"></i> Copy
-          </button>
-        </li>
-      </ul>
-    </div>
-  </details>
-  </div>
-
   <div class="admin-card">
+    <p class="mat-table-meta">
+      {{ number_format($totalMaterials) }} {{ $totalMaterials === 1 ? 'material' : 'materials' }} in database
+      @if ($syncableCount > 0)
+        · {{ number_format($syncableCount) }} syncable
+      @endif
+      @if ($usesSerpApi)
+        · admin sync via SerpApi
+      @endif
+      @if ($needsSyncCount > 0)
+        · {{ number_format($needsSyncCount) }} need local sync
+      @endif
+    </p>
+
     <form id="mat-bulk-delete-form" method="post" action="{{ route('admin.materials.bulk-destroy') }}"
           onsubmit="return confirm('Delete the selected materials permanently? This cannot be undone.');">
       @csrf
@@ -216,7 +84,7 @@
         </button>
       </div>
     </form>
-      <div class="admin-table-scroll">
+    <div class="admin-table-scroll">
       <table class="admin-table mat-table">
         <thead>
           <tr>
@@ -295,12 +163,12 @@
             </tr>
           @empty
             <tr>
-              <td colspan="10" class="admin-form-help">No materials yet. Add your first item or bulk-import Home Depot SKUs above.</td>
+              <td colspan="10" class="admin-form-help">No materials yet. <a href="{{ route('admin.materials.create') }}">Add your first item</a> or use <a href="{{ route('admin.materials.config') }}">Config</a> to bulk-import Home Depot SKUs.</td>
             </tr>
           @endforelse
         </tbody>
       </table>
-      </div>
+    </div>
     @if ($materials->hasPages())
       <div style="margin-top:16px;">{{ $materials->links('pagination.admin') }}</div>
     @endif
@@ -311,8 +179,7 @@
   <script>
     (function () {
       function getCsrfToken() {
-        var el = document.querySelector('#mat-bulk-delete-form input[name="_token"]')
-          || document.querySelector('#mat-bulk-form input[name="_token"]');
+        var el = document.querySelector('#mat-bulk-delete-form input[name="_token"]');
         return el ? el.value : '';
       }
 
@@ -326,29 +193,6 @@
             'X-Requested-With': 'XMLHttpRequest'
           },
           body: JSON.stringify(body),
-          credentials: 'same-origin'
-        }).then(function (res) {
-          return res.json().then(function (data) {
-            if (!res.ok) {
-              var err = new Error(data.message || 'Request failed');
-              err.data = data;
-              err.status = res.status;
-              throw err;
-            }
-            return data;
-          });
-        });
-      }
-
-      function postForm(url, formData, csrf) {
-        return fetch(url, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrf,
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: formData,
           credentials: 'same-origin'
         }).then(function (res) {
           return res.json().then(function (data) {
@@ -474,137 +318,6 @@
         }
       }
 
-      var bulkForm = document.getElementById('mat-bulk-form');
-      if (bulkForm) {
-        var csrf = getCsrfToken();
-        var progressEl = document.getElementById('mat-bulk-progress');
-        var submitBtn = document.getElementById('mat-bulk-submit');
-        var phaseLabel = document.getElementById('mat-bulk-phase-label');
-        var counterEl = document.getElementById('mat-bulk-counter');
-        var barEl = document.getElementById('mat-bulk-bar');
-        var progressbarEl = document.getElementById('mat-bulk-progressbar');
-        var messageEl = document.getElementById('mat-bulk-message');
-        var logEl = document.getElementById('mat-bulk-log');
-        var doneEl = document.getElementById('mat-bulk-done');
-        var summaryEl = document.getElementById('mat-bulk-summary');
-        var reloadBtn = document.getElementById('mat-bulk-reload');
-        var statCreated = document.getElementById('mat-stat-created');
-        var statUpdated = document.getElementById('mat-stat-updated');
-        var statSyncOk = document.getElementById('mat-stat-sync-ok');
-        var statSyncFailed = document.getElementById('mat-stat-sync-failed');
-
-        function updateProgress(data) {
-          var overallTotal = data.overall_total || 1;
-          var overallCurrent = data.overall_current || 0;
-          var pct = overallTotal > 0 ? Math.round((overallCurrent / overallTotal) * 100) : 0;
-
-          if (phaseLabel) {
-            phaseLabel.textContent = data.phase_label || 'Working…';
-          }
-          if (counterEl) {
-            if (data.phase === 'import') {
-              counterEl.textContent = 'Import ' + (data.current || 0) + ' / ' + (data.phase_total || 0);
-            } else if (data.phase === 'sync') {
-              counterEl.textContent = 'Sync ' + (data.current || 0) + ' / ' + (data.phase_total || 0);
-            } else if (data.phase === 'done') {
-              counterEl.textContent = 'Complete';
-            } else {
-              counterEl.textContent = (data.overall_current || 0) + ' / ' + (data.overall_total || 0);
-            }
-          }
-          if (barEl) {
-            barEl.style.width = pct + '%';
-          }
-          if (progressbarEl) {
-            progressbarEl.setAttribute('aria-valuenow', String(pct));
-          }
-          if (messageEl) {
-            messageEl.textContent = data.message || '';
-          }
-          if (data.stats) {
-            if (statCreated) statCreated.textContent = String(data.stats.created || 0);
-            if (statUpdated) statUpdated.textContent = String(data.stats.updated || 0);
-            if (statSyncOk) statSyncOk.textContent = String(data.stats.sync_ok || 0);
-            if (statSyncFailed) statSyncFailed.textContent = String(data.stats.sync_failed || 0);
-          }
-          if (logEl && Array.isArray(data.log)) {
-            logEl.innerHTML = '';
-            data.log.slice().reverse().forEach(function (line) {
-              var li = document.createElement('li');
-              li.textContent = line;
-              logEl.appendChild(li);
-            });
-          }
-        }
-
-        function setRunning(running) {
-          if (submitBtn) {
-            submitBtn.disabled = running;
-            submitBtn.textContent = running ? 'Importing…' : 'Import SKUs';
-          }
-        }
-
-        function showError(msg) {
-          if (messageEl) {
-            messageEl.textContent = msg;
-            messageEl.classList.add('mat-bulk-progress__message--error');
-          }
-          setRunning(false);
-        }
-
-        bulkForm.addEventListener('submit', function (e) {
-          e.preventDefault();
-          if (!progressEl) return;
-
-          var startUrl = bulkForm.getAttribute('data-start-url');
-          var stepUrl = bulkForm.getAttribute('data-step-url');
-          if (!startUrl || !stepUrl) return;
-
-          progressEl.hidden = false;
-          if (doneEl) doneEl.hidden = true;
-          if (messageEl) messageEl.classList.remove('mat-bulk-progress__message--error');
-          if (logEl) logEl.innerHTML = '';
-          setRunning(true);
-
-          var formData = new FormData(bulkForm);
-          if (!formData.has('sync_prices')) {
-            formData.append('sync_prices', '0');
-          }
-
-          postForm(startUrl, formData, csrf)
-            .then(function (startData) {
-              updateProgress(startData);
-              if (startData.skip_note && messageEl) {
-                messageEl.textContent = startData.message + ' ' + startData.skip_note;
-              }
-
-              function runStep(token) {
-                return postJson(stepUrl, { token: token }, csrf).then(function (stepData) {
-                  updateProgress(stepData);
-                  if (stepData.done) {
-                    setRunning(false);
-                    if (doneEl) doneEl.hidden = false;
-                    if (summaryEl) summaryEl.textContent = stepData.summary || stepData.message || 'Done.';
-                    return stepData;
-                  }
-                  return runStep(token);
-                });
-              }
-
-              return runStep(startData.token);
-            })
-            .catch(function (err) {
-              showError(err.message || 'Import failed.');
-            });
-        });
-
-        if (reloadBtn) {
-          reloadBtn.addEventListener('click', function () {
-            window.location.reload();
-          });
-        }
-      }
-
       var deleteForm = document.getElementById('mat-bulk-delete-form');
       if (deleteForm) {
         var selectAll = document.getElementById('mat-select-all');
@@ -653,34 +366,6 @@
 
         updateBulkActions();
       }
-
-      document.querySelectorAll('.mat-sync-commands__copy').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var targetId = btn.getAttribute('data-copy-target');
-          var codeEl = targetId ? document.getElementById(targetId) : null;
-          var text = codeEl ? codeEl.textContent.trim() : '';
-          if (!text) return;
-
-          function showCopied() {
-            btn.classList.add('is-copied');
-            var icon = btn.querySelector('i');
-            var prevClass = icon ? icon.className : '';
-            if (icon) icon.className = 'fa fa-check';
-            window.setTimeout(function () {
-              btn.classList.remove('is-copied');
-              if (icon) icon.className = prevClass;
-            }, 1600);
-          }
-
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(showCopied).catch(function () {
-              window.prompt('Copy command:', text);
-            });
-          } else {
-            window.prompt('Copy command:', text);
-          }
-        });
-      });
     })();
   </script>
 @endpush
