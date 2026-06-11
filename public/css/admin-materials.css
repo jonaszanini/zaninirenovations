@@ -713,6 +713,17 @@
   grid-column: 1 / -1;
 }
 
+.mat-form-sync-error {
+  margin: 0.5rem 0 0;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
 .mat-form-status__sync {
   display: flex;
   flex-direction: column;
@@ -728,14 +739,6 @@
   line-height: 1.2;
   color: var(--admin-muted, #5a6570);
   white-space: nowrap;
-}
-
-.mat-form-status__sync .mat-scrape-meta__error {
-  margin: 0;
-  max-width: 28rem;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  text-align: right;
 }
 
 .mat-edit-footer {

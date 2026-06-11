@@ -141,9 +141,6 @@
           <span class="mat-form-status__sync-date">
             Last synced {{ \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($m->last_scraped_at) }}
           </span>
-          @if ($m->last_scrape_error)
-            <p class="mat-scrape-meta__error">{{ $m->last_scrape_error }}</p>
-          @endif
         </div>
       @endif
     </div>
@@ -168,6 +165,10 @@
     @error('image_url') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
     @error('is_active') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
   </div>
+
+  @if ($m && filled($m->last_scrape_error))
+    <p class="mat-form-sync-error mat-scrape-meta__error" role="alert">{{ $m->last_scrape_error }}</p>
+  @endif
 </div>
 </div>
 
