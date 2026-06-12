@@ -3729,18 +3729,19 @@ body.cp-modal-open {
 }
 
 .fq-catalog-picker__open--amazon {
-  color: #c45500;
+  color: #0474fa;
 }
 
 .fq-catalog-picker__open--amazon:hover {
-  color: #9a4200;
+  color: #0360d4;
 }
 
-.fq-catalog-picker__vendor-logo {
-  display: block;
-  width: 1.25rem;
-  height: 1.25rem;
-  object-fit: contain;
+.fq-catalog-picker__open--home_depot {
+  color: #f96302;
+}
+
+.fq-catalog-picker__open--home_depot:hover {
+  color: #e05500;
 }
 
 .fq-catalog-picker {

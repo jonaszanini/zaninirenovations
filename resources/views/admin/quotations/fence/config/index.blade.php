@@ -8,7 +8,7 @@
 
 @section('content')
   @php
-    $homeDepotLogoUrl = asset('images/vendors/homedepot-logo.svg').'?v='.(@filemtime(public_path('images/vendors/homedepot-logo.svg')) ?: time());
+    $amazonVendorLinkTemplate = route('admin.materials.vendor-link.amazon', ['asin' => 'PLACEHOLDER']);
   @endphp
   <div class="admin-toolbar fq-list-toolbar">
     <div class="admin-toolbar-group">
@@ -96,22 +96,20 @@
                   $storeAsin = \App\Services\MaterialScraping\AmazonCaUrls::normalizeAsin(
                     (string) ($m->material?->store_sku ?? $m->effectiveStoreSku() ?? '')
                   );
+                  $pickerUrl = $storeUrl;
+                  if ($linkVendor === 'amazon' && filled($storeAsin)) {
+                      $pickerUrl = route('admin.materials.vendor-link.amazon', ['asin' => $storeAsin]);
+                  }
                 @endphp
                 <div class="fq-catalog-picker-wrap fq-catalog-picker">
-                  <a href="{{ $storeUrl ?: '#' }}"
-                     class="admin-btn admin-btn--ghost admin-btn--sm fq-catalog-picker__open @if ($linkVendor) fq-catalog-picker__open--{{ $linkVendor }} @endif @if (! filled($storeUrl)) fq-catalog-picker__open--disabled @endif"
+                  <a href="{{ $pickerUrl ?: '#' }}"
+                     class="admin-btn admin-btn--ghost admin-btn--sm fq-catalog-picker__open @if ($linkVendor) fq-catalog-picker__open--{{ $linkVendor }} @endif @if (! filled($pickerUrl)) fq-catalog-picker__open--disabled @endif"
                      id="fq-link-{{ $i }}"
                      target="_blank" rel="noopener"
                      title="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}"
-                     aria-label="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}"
-                     @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif>
-                    @if ($linkVendor === 'amazon')
-                      <i class="fa fa-amazon" aria-hidden="true"></i>
-                    @elseif ($linkVendor === 'home_depot')
-                      <img src="{{ $homeDepotLogoUrl }}" alt="" class="fq-catalog-picker__vendor-logo" width="20" height="20">
-                    @else
-                      <i class="fa fa-external-link" aria-hidden="true"></i>
-                    @endif
+                     aria-label="Open product page"
+                     @if (filled($pickerUrl)) data-store-url="{{ $pickerUrl }}" data-link-vendor="{{ $linkVendor }}" @endif>
+                    <i class="fa fa-external-link" aria-hidden="true"></i>
                   </a>
                   <select name="materials[{{ $i }}][material_id]"
                             id="fq-catalog-picker-{{ $i }}"
@@ -123,7 +121,7 @@
                               data-nails-per-box-target="fq-nails-per-box-{{ $i }}"
                             @endif
                             data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
-                            @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
+                            @if (filled($pickerUrl)) data-store-url="{{ $pickerUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
                             @if ($storeAsin) data-store-asin="{{ $storeAsin }}" @endif
                             aria-label="Catalog material for {{ $m->effectiveName() }}">
                     <option value="">— Search name or SKU —</option>
@@ -278,7 +276,7 @@
   <script>
     (function () {
       var catalogOptions = @json($catalogPickerOptions);
-      var homeDepotLogoUrl = @json($homeDepotLogoUrl);
+      var amazonVendorLinkTemplate = @json($amazonVendorLinkTemplate);
 
       function escapeHtml(text) {
         return String(text)
@@ -288,27 +286,23 @@
           .replace(/"/g, '&quot;');
       }
 
-      function homeDepotIconHtml() {
-        return '<img src="' + escapeHtml(homeDepotLogoUrl) + '" alt="" class="fq-catalog-picker__vendor-logo" width="20" height="20">';
+      function amazonPickerUrl(asin) {
+        return amazonVendorLinkTemplate.replace('PLACEHOLDER', encodeURIComponent(asin));
       }
 
       function setStoreLinkIcon(linkEl, vendor) {
         linkEl.classList.remove('fq-catalog-picker__open--amazon', 'fq-catalog-picker__open--home_depot');
         if (vendor === 'amazon') {
           linkEl.classList.add('fq-catalog-picker__open--amazon');
-          linkEl.innerHTML = '<i class="fa fa-amazon" aria-hidden="true"></i>';
           linkEl.setAttribute('title', 'Open on Amazon Canada');
-          linkEl.setAttribute('aria-label', 'Open on Amazon Canada');
         } else if (vendor === 'home_depot') {
           linkEl.classList.add('fq-catalog-picker__open--home_depot');
-          linkEl.innerHTML = homeDepotIconHtml();
           linkEl.setAttribute('title', 'Open on Home Depot');
-          linkEl.setAttribute('aria-label', 'Open on Home Depot');
         } else {
-          linkEl.innerHTML = '<i class="fa fa-external-link" aria-hidden="true"></i>';
           linkEl.setAttribute('title', 'Open product page');
-          linkEl.setAttribute('aria-label', 'Open product page');
         }
+        linkEl.setAttribute('aria-label', 'Open product page');
+        linkEl.innerHTML = '<i class="fa fa-external-link" aria-hidden="true"></i>';
       }
 
       function normalizeAsin(value) {
@@ -316,10 +310,6 @@
         if (!/^[A-Z0-9]{10}$/.test(candidate)) return '';
         if (!/[A-Z]/.test(candidate)) return '';
         return candidate;
-      }
-
-      function amazonProductUrl(asin) {
-        return 'https://www.amazon.ca/dp/' + encodeURIComponent(asin);
       }
 
       function selectStoreUrl(selectEl) {
@@ -339,7 +329,7 @@
           asin = normalizeAsin(selectEl.getAttribute('data-store-asin') || '');
         }
         if (asin) {
-          return amazonProductUrl(asin);
+          return amazonPickerUrl(asin);
         }
 
         var url = item && item.url ? String(item.url).trim() : '';

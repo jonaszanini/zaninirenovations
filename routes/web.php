@@ -154,6 +154,9 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class)->except(['show']);
 
+    Route::get('materials/vendor-link/amazon/{asin}', [\App\Http\Controllers\Admin\MaterialVendorLinkController::class, 'amazon'])
+        ->name('materials.vendor-link.amazon')
+        ->where('asin', '[A-Za-z0-9]{10}');
     Route::get('materials/config', [MaterialController::class, 'config'])->name('materials.config');
     Route::post('materials/config/delete-failed', [MaterialController::class, 'destroyFailed'])
         ->name('materials.config.delete-failed');
