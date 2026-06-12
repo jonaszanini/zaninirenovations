@@ -150,6 +150,7 @@
                   class="admin-input"
                   style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;line-height:1.45;resize:vertical;">{{ $contractDraftingContext }}</textarea>
         <div class="cp-contract-gemini-wrap">
+          <div class="admin-ai-action-group">
           <button type="button"
                   class="cp-contract-gemini-btn"
                   id="cp-contract-gemini-draft"
@@ -177,6 +178,11 @@
             </span>
             <span class="cp-contract-gemini-btn__text">Generate contract with Gemini</span>
           </button>
+          @include('admin.partials.ai_instruction_edit_link', [
+            'instructionKey' => \App\Models\AiInstruction::KEY_CONTRACT,
+            'instructionLabel' => 'Edit contract generation prompt',
+          ])
+          </div>
           <span id="cp-contract-gemini-status" class="cp-contract-gemini-status" aria-live="polite"></span>
         </div>
       </div>

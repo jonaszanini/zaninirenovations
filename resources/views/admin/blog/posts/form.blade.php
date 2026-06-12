@@ -71,6 +71,7 @@
       </div>
 
       <div class="blog-admin-ai-metadata-wrap">
+        <div class="admin-ai-action-group">
         <button type="button"
                 class="admin-btn admin-btn--gemini"
                 id="bp-ai-metadata-btn"
@@ -96,6 +97,11 @@
           </span>
           Complete metadata with Gemini
         </button>
+        @include('admin.partials.ai_instruction_edit_link', [
+          'instructionKey' => \App\Models\AiInstruction::KEY_BLOG_POST,
+          'instructionLabel' => 'Edit blog post metadata prompt',
+        ])
+        </div>
         <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
         <p class="admin-form-help admin-form-help--tight">Uses title and content to fill metadata, generate a 16:9 featured image (WebP, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB), and preview it above.</p>
       </div>

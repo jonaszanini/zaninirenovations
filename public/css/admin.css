@@ -2526,6 +2526,34 @@ a.ic-model-card:hover {
   margin-top: 0.25rem;
 }
 
+.admin-ai-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.admin-ai-instruction-edit-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background: #fff;
+  color: var(--admin-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.admin-ai-instruction-edit-link:hover {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
 .aim-prompt-group {
   margin-top: 1.75rem;
 }

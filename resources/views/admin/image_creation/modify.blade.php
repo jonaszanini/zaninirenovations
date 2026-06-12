@@ -38,10 +38,16 @@
         <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
         <span>Apply changes</span>
       </button>
-      <button type="button" id="aim-improve-btn" class="admin-btn admin-btn--ghost admin-btn--lg">
-        <i class="fa fa-magic" aria-hidden="true"></i>
-        <span>Improve prompt</span>
-      </button>
+      <div class="admin-ai-action-group">
+        <button type="button" id="aim-improve-btn" class="admin-btn admin-btn--ghost admin-btn--lg">
+          <i class="fa fa-magic" aria-hidden="true"></i>
+          <span>Improve prompt</span>
+        </button>
+        @include('admin.partials.ai_instruction_edit_link', [
+          'instructionKey' => \App\Models\AiInstruction::KEY_IMAGE_MODIFY_PROMPT,
+          'instructionLabel' => 'Edit image modify prompt improvement',
+        ])
+      </div>
       <div id="aim-loading" class="nb2-loading" hidden aria-live="polite">
         <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
         <span id="aim-loading-text">Editing with Gemini…</span>
