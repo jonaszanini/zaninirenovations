@@ -3,7 +3,7 @@
 @section('heading', 'New category')
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
+  <div class="admin-card">
     <form action="{{ route('admin.categories.store') }}" method="post">
       @csrf
       <div class="admin-form-group">

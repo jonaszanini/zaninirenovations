@@ -10,7 +10,7 @@
     </a>
   </div>
 
-  <div class="admin-card admin-card--wide nb2-prompt-card">
+  <div class="admin-card nb2-prompt-card">
     <h2 class="nb2-card-title">Nano Banana 2</h2>
     <p class="admin-form-help nb2-card-lede">Describe the image you want. The API returns a full-resolution original; a compressed WebP copy is saved for fast gallery preview ({{ (int) config('webp.quality', 75) }}% quality, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB).</p>
 

@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
+  <div class="admin-card">
     <form action="{{ route('admin.vehicles.store') }}" method="post">
       @csrf
       @include('admin.vehicles._form')

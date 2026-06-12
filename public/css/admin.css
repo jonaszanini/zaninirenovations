@@ -586,9 +586,8 @@ body.admin-body {
    Default: fill the full width of the .admin-content area (block-level
    <div> naturally takes 100% of its container — no explicit width needed,
    which keeps things well-behaved inside flex/overflow contexts on mobile).
-   Use the .admin-card--narrow modifier on short forms (project create/edit,
-   category create/edit, portfolio create/edit, etc.) where a narrower
-   card keeps inputs and labels readable on wide screens. */
+   Use .admin-card--narrow only inside multi-column layouts (e.g. client
+   project create/edit) where the grid constrains the main column. */
 .admin-card {
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);

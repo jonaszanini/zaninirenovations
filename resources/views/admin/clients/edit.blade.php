@@ -3,7 +3,7 @@
 @section('heading', 'Edit client — '.$client->name)
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
+  <div class="admin-card">
     <form action="{{ route('admin.clients.update', $client) }}" method="post">
       @csrf
       @method('PUT')

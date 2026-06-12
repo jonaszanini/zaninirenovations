@@ -3,7 +3,7 @@
 @section('heading', $tag->exists ? 'Edit tag' : 'New tag')
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
+  <div class="admin-card">
     <form method="post" action="{{ $tag->exists ? route('admin.blog.tags.update', $tag) : route('admin.blog.tags.store') }}">
       @csrf
       @if ($tag->exists) @method('PUT') @endif

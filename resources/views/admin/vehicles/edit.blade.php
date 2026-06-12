@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
+  <div class="admin-card">
     <form action="{{ route('admin.vehicles.update', $vehicle) }}" method="post">
       @csrf
       @method('PUT')

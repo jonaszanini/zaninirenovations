@@ -3,7 +3,7 @@
 @section('heading', 'New helper')
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
+  <div class="admin-card">
     <form action="{{ route('admin.helpers.store') }}" method="post">
       @csrf
       @if ($returnProjectId)

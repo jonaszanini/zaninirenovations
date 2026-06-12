@@ -3,7 +3,7 @@
 @section('heading', $category->exists ? 'Edit category' : 'New category')
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
+  <div class="admin-card">
     <form method="post" action="{{ $category->exists ? route('admin.blog.categories.update', $category) : route('admin.blog.categories.store') }}">
       @csrf
       @if ($category->exists) @method('PUT') @endif

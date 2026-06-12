@@ -11,7 +11,7 @@
     'createRoute' => route('admin.blog.tags.create'),
     'createLabel' => 'New tag',
   ])
-  <details class="admin-accordion admin-card admin-card--narrow" @if(old('names')) open @endif>
+  <details class="admin-accordion admin-card" @if(old('names')) open @endif>
     <summary class="admin-accordion__summary">
       <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
       <span class="admin-accordion__title">Bulk add tags</span>

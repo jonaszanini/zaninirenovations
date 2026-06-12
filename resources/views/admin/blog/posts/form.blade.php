@@ -14,7 +14,7 @@
 @endpush
 
 @section('content')
-  <div class="admin-card admin-card--wide">
+  <div class="admin-card">
     <form action="{{ $formAction }}" method="post" enctype="multipart/form-data" id="blog-post-form">
       @csrf
       @if ($isEdit) @method('PUT') @endif

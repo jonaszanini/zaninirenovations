@@ -3,7 +3,7 @@
 @section('heading', 'Edit AI instruction')
 
 @section('content')
-  <div class="admin-card admin-card--narrow">
+  <div class="admin-card">
     <form action="{{ route('admin.ai-instructions.update', $instruction) }}" method="post">
       @csrf
       @method('PUT')
