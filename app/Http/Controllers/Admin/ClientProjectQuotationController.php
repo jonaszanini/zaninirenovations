@@ -9,6 +9,7 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectPhoto;
 use App\Models\ClientProjectQuotation;
 use App\Models\FenceQuotation;
+use App\Models\PaintingQuotation;
 use App\Models\PavingQuotation;
 use App\Models\StairsQuotation;
 use App\Models\StandardQuotation;
@@ -82,6 +83,12 @@ class ClientProjectQuotationController extends Controller
             $st = StairsQuotation::find($quotation->source_id);
             if ($st) {
                 return redirect()->route('admin.quotations.stairs.edit', [$st, 'return' => 'project']);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_PAINTING && $quotation->source_id) {
+            $pt = PaintingQuotation::find($quotation->source_id);
+            if ($pt) {
+                return redirect()->route('admin.quotations.painting.edit', [$pt, 'return' => 'project']);
             }
         }
 

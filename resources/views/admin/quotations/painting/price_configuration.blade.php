@@ -1,0 +1,108 @@
+@extends('admin.layouts.app')
+
+@section('heading', 'Painting price configuration')
+
+@push('head')
+  <style>
+    .pq-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .pq-form-grid { grid-template-columns: 1fr; } }
+    .pq-hint { color: #64748b; font-size: 11px; margin-top: 2px; }
+    .pt-paint-line-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 90px 80px auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 700px) {
+      .pt-paint-line-row { grid-template-columns: 1fr; }
+    }
+  </style>
+@endpush
+
+@section('content')
+  @php $qparam = $qpid ? ['project' => $qpid] : []; @endphp
+  <div class="admin-toolbar fq-list-toolbar">
+    <div class="admin-toolbar-group">
+      <a href="{{ route('admin.quotations.painting.index', $qparam) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-arrow-left"></i> Back to list
+      </a>
+    </div>
+  </div>
+
+  <form method="post" action="{{ route('admin.quotations.painting.database.update', $qparam) }}" class="admin-card">
+    @csrf
+    @if ($qpid)
+      <input type="hidden" name="project" value="{{ $qpid }}">
+    @endif
+
+    <h3 style="margin:0 0 12px;">Baseline pricing</h3>
+    <p class="admin-form-help" style="margin:0 0 16px;">
+      These rates feed the live painting calculator (labor per sq ft, paint per gallon, expendables, and coverage).
+    </p>
+
+    <div class="pq-form-grid">
+      <div class="admin-form-group">
+        <label for="labor_per_sqf">Base labor price per sq ft (CAD$)</label>
+        <input type="number" step="0.0001" min="0" class="admin-input" id="labor_per_sqf" name="labor_per_sqf"
+               value="{{ old('labor_per_sqf', $settings->labor_per_sqf) }}" required>
+        <p class="pq-hint">Default $2.51 / sq ft</p>
+      </div>
+      <div class="admin-form-group">
+        <label for="paint_per_gallon">Paint price per gallon (CAD$)</label>
+        <input type="number" step="0.01" min="0" class="admin-input" id="paint_per_gallon" name="paint_per_gallon"
+               value="{{ old('paint_per_gallon', $settings->paint_per_gallon) }}" required>
+        <p class="pq-hint">Premium paint e.g. Dulux Lifemaster</p>
+      </div>
+      <div class="admin-form-group">
+        <label for="material_addon_fee">Material add-on fixed fee (CAD$)</label>
+        <input type="number" step="0.01" min="0" class="admin-input" id="material_addon_fee" name="material_addon_fee"
+               value="{{ old('material_addon_fee', $settings->material_addon_fee) }}" required>
+        <p class="pq-hint">Brushes, sleeves, masking, etc.</p>
+      </div>
+      <div class="admin-form-group">
+        <label for="sqf_per_gallon">Sq ft floor coverage per gallon (2 top coats)</label>
+        <input type="number" step="0.01" min="0.01" class="admin-input" id="sqf_per_gallon" name="sqf_per_gallon"
+               value="{{ old('sqf_per_gallon', $settings->sqf_per_gallon) }}" required>
+        <p class="pq-hint">Default 70 sq ft per gallon</p>
+      </div>
+    </div>
+
+    <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
+
+    <h3 style="margin:0 0 12px;">Paint brands / lines</h3>
+    <p class="admin-form-help" style="margin:0 0 16px;">Shown in the quotation form dropdown. Pricing uses the per-gallon rate above.</p>
+
+    @foreach ($paintLines as $i => $line)
+      <div class="pt-paint-line-row">
+        <input type="hidden" name="paint_lines[{{ $i }}][id]" value="{{ $line->id }}">
+        <div class="admin-form-group" style="margin:0;">
+          <label>Name</label>
+          <input type="text" class="admin-input" name="paint_lines[{{ $i }}][name]" value="{{ old('paint_lines.'.$i.'.name', $line->name) }}" required maxlength="160">
+        </div>
+        <div class="admin-form-group" style="margin:0;">
+          <label>Sort</label>
+          <input type="number" class="admin-input" name="paint_lines[{{ $i }}][sort_order]" value="{{ old('paint_lines.'.$i.'.sort_order', $line->sort_order) }}" min="0">
+        </div>
+        <div class="admin-form-group" style="margin:0;">
+          <label class="admin-checkbox">
+            <input type="hidden" name="paint_lines[{{ $i }}][is_active]" value="0">
+            <input type="checkbox" name="paint_lines[{{ $i }}][is_active]" value="1" @checked(old('paint_lines.'.$i.'.is_active', $line->is_active))>
+            <span class="admin-checkbox__text">Active</span>
+          </label>
+        </div>
+      </div>
+    @endforeach
+
+    <div class="admin-form-group" style="margin-top:16px;">
+      <label>Add paint line</label>
+      <input type="text" class="admin-input" name="new_paint_lines[0][name]" maxlength="160" placeholder="e.g. Sherwin-Williams Emerald">
+    </div>
+
+    <div style="margin-top:20px;">
+      <button type="submit" class="admin-btn admin-btn--primary">
+        <i class="fa fa-save"></i> Save configuration
+      </button>
+    </div>
+  </form>
+@endsection

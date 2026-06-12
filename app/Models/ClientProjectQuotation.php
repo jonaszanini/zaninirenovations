@@ -41,6 +41,8 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_STAIRS = 'stairs';
 
+    public const SOURCE_PAINTING = 'painting';
+
     protected $fillable = [
         'client_project_id',
         'title',
@@ -223,6 +225,13 @@ class ClientProjectQuotation extends Model
             }
         }
 
+        if ($this->source_type === self::SOURCE_PAINTING && $this->source_id) {
+            $painting = PaintingQuotation::query()->find($this->source_id);
+            if ($painting) {
+                return $painting->displayTitle();
+            }
+        }
+
         $stored = trim((string) ($this->title ?? ''));
 
         return $stored !== '' ? $stored : $this->typeLabel();
@@ -251,6 +260,13 @@ class ClientProjectQuotation extends Model
             $fq = FenceQuotation::query()->find($this->source_id);
             if ($fq) {
                 return trim((string) ($fq->work_description ?? ''));
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_PAINTING && $this->source_id) {
+            $pq = PaintingQuotation::query()->find($this->source_id);
+            if ($pq) {
+                return $pq->scopeDescriptionForPdf();
             }
         }
 
@@ -699,6 +715,7 @@ class ClientProjectQuotation extends Model
                     self::SOURCE_STANDARD => StandardQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_PAVING => PavingQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_STAIRS => StairsQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_PAINTING => PaintingQuotation::query()->whereKey($sourceId)->delete(),
                     default => null,
                 };
             }
@@ -766,6 +783,10 @@ class ClientProjectQuotation extends Model
                     ? 'To supply material and labour of the following:'
                     : 'For the labour of the following:';
             }
+        }
+
+        if ($this->source_type === self::SOURCE_PAINTING && $this->source_id) {
+            return 'To supply material and labour of the following:';
         }
 
         if ($this->labour && $this->material) {

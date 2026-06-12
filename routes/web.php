@@ -468,6 +468,30 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::delete('quotations/stairs/{stairs_quotation}', [StairsQuotationController::class, 'destroy'])
         ->name('quotations.stairs.destroy');
 
+    // Painting services quotations (residential interior painting calculator).
+    Route::get('quotations/painting', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'index'])
+        ->name('quotations.painting.index');
+    Route::get('quotations/painting/create', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'create'])
+        ->name('quotations.painting.create');
+    Route::get('quotations/painting/price-configuration', [\App\Http\Controllers\Admin\PaintingDatabaseController::class, 'edit'])
+        ->name('quotations.painting.price-configuration');
+    Route::post('quotations/painting/database', [\App\Http\Controllers\Admin\PaintingDatabaseController::class, 'update'])
+        ->name('quotations.painting.database.update');
+    Route::post('quotations/painting', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'store'])
+        ->name('quotations.painting.store');
+    Route::post('quotations/painting/preview', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'preview'])
+        ->name('quotations.painting.preview');
+    Route::get('quotations/painting/{painting_quotation}/edit', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'edit'])
+        ->name('quotations.painting.edit');
+    Route::put('quotations/painting/{painting_quotation}', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'update'])
+        ->name('quotations.painting.update');
+    Route::post('quotations/painting/{painting_quotation}/link', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'linkToProject'])
+        ->name('quotations.painting.link');
+    Route::post('quotations/painting/{painting_quotation}/create-project', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.painting.create-project');
+    Route::delete('quotations/painting/{painting_quotation}', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'destroy'])
+        ->name('quotations.painting.destroy');
+
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
 
