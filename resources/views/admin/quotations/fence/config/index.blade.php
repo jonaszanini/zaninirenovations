@@ -81,25 +81,23 @@
                   $storeUrl = $m->material?->storeProductUrl();
                   $linkVendor = $m->material?->storeLinkVendor();
                 @endphp
-                <div class="fq-catalog-picker-wrap">
+                <div class="fq-catalog-picker-wrap fq-catalog-picker">
                   <a href="{{ $storeUrl ?: '#' }}"
-                     class="admin-btn admin-btn--ghost admin-btn--sm fq-catalog-picker__open @if ($linkVendor) fq-catalog-picker__open--{{ $linkVendor }} @endif"
+                     class="admin-btn admin-btn--ghost admin-btn--sm fq-catalog-picker__open @if ($linkVendor) fq-catalog-picker__open--{{ $linkVendor }} @endif @if (! filled($storeUrl)) fq-catalog-picker__open--disabled @endif"
                      id="fq-link-{{ $i }}"
                      target="_blank" rel="noopener"
                      title="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}"
                      aria-label="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}"
-                     @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
-                     @if (! filled($storeUrl)) hidden @endif>
+                     @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif>
                     @if ($linkVendor === 'amazon')
                       <i class="fa fa-amazon" aria-hidden="true"></i>
                     @else
                       <i class="fa fa-external-link" aria-hidden="true"></i>
                     @endif
                   </a>
-                  <div class="fq-catalog-picker">
-                    <select name="materials[{{ $i }}][material_id]"
+                  <select name="materials[{{ $i }}][material_id]"
                             id="fq-catalog-picker-{{ $i }}"
-                            class="admin-input fq-catalog-picker__select"
+                            class="fq-catalog-picker__select"
                             data-preview-target="fq-preview-{{ $i }}"
                             data-price-target="fq-price-{{ $i }}"
                             data-url-target="fq-link-{{ $i }}"
@@ -109,17 +107,41 @@
                             data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
                             @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
                             aria-label="Catalog material for {{ $m->effectiveName() }}">
-                      <option value="">— Search name or SKU —</option>
-                    </select>
-                  </div>
+                    <option value="">— Search name or SKU —</option>
+                  </select>
                 </div>
               </td>
               <td>
-                <div id="fq-preview-{{ $i }}" class="fq-material-preview">
+                <div id="fq-preview-{{ $i }}" class="fq-material-preview" data-store-link-target="fq-preview-link-{{ $i }}">
                   @if ($m->material_id && $m->material)
                     <span class="fq-material-preview__name">{{ $m->material->displayName() }}</span>
                     @if ($m->material->store_sku)
-                      <span class="admin-form-help">SKU {{ $m->material->store_sku }}</span>
+                      <span class="admin-form-help fq-material-preview__sku-row">
+                        <span>SKU {{ $m->material->store_sku }}</span>
+                        @if (filled($storeUrl))
+                          <a href="{{ $storeUrl }}"
+                             class="fq-material-preview__store-link fq-material-preview__store-link--{{ $linkVendor }}"
+                             target="_blank" rel="noopener"
+                             title="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}">
+                            @if ($linkVendor === 'amazon')
+                              <i class="fa fa-amazon" aria-hidden="true"></i><span>Amazon</span>
+                            @else
+                              <i class="fa fa-external-link" aria-hidden="true"></i><span>Store</span>
+                            @endif
+                          </a>
+                        @endif
+                      </span>
+                    @elseif (filled($storeUrl))
+                      <a href="{{ $storeUrl }}"
+                         class="fq-material-preview__store-link fq-material-preview__store-link--{{ $linkVendor }}"
+                         target="_blank" rel="noopener"
+                         title="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}">
+                        @if ($linkVendor === 'amazon')
+                          <i class="fa fa-amazon" aria-hidden="true"></i><span>Amazon</span>
+                        @else
+                          <i class="fa fa-external-link" aria-hidden="true"></i><span>Store</span>
+                        @endif
+                      </a>
                     @endif
                   @elseif ($m->effectiveLongName() || $m->effectiveStoreSku())
                     <span class="fq-material-preview__name">{{ $m->effectiveLongName() }}</span>
@@ -309,18 +331,55 @@
         return null;
       }
 
+      function previewStoreLinkHtml(url, vendor) {
+        if (!url) return '';
+        if (vendor === 'amazon') {
+          return '<a href="' + escapeHtml(url) + '" class="fq-material-preview__store-link fq-material-preview__store-link--amazon" target="_blank" rel="noopener" title="Open on Amazon Canada"><i class="fa fa-amazon" aria-hidden="true"></i><span>Amazon</span></a>';
+        }
+        var title = vendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page';
+        return '<a href="' + escapeHtml(url) + '" class="fq-material-preview__store-link fq-material-preview__store-link--' + escapeHtml(vendor || 'store') + '" target="_blank" rel="noopener" title="' + escapeHtml(title) + '"><i class="fa fa-external-link" aria-hidden="true"></i><span>Store</span></a>';
+      }
+
+      function setProductLink(linkEl, url, vendor) {
+        if (!linkEl) return;
+
+        if (!url) {
+          linkEl.setAttribute('href', '#');
+          linkEl.classList.add('fq-catalog-picker__open--disabled');
+          linkEl.removeAttribute('data-store-url');
+          linkEl.removeAttribute('data-link-vendor');
+          return;
+        }
+
+        linkEl.setAttribute('href', url);
+        linkEl.classList.remove('fq-catalog-picker__open--disabled');
+        linkEl.setAttribute('data-store-url', url);
+        if (vendor) {
+          linkEl.setAttribute('data-link-vendor', vendor);
+        } else {
+          linkEl.removeAttribute('data-link-vendor');
+        }
+        setStoreLinkIcon(linkEl, vendor);
+      }
+
       function applyProductLinkIfPresent(selectEl, value, optionMap) {
-        if (!value) return;
         var linkEl = document.getElementById(selectEl.getAttribute('data-url-target') || '');
         if (!linkEl) return;
 
+        if (!value) {
+          setProductLink(linkEl, '', null);
+          return;
+        }
+
         var item = optionMap[String(value)] || null;
         var url = resolveItemStoreUrl(item);
-        if (!url) return;
+        if (!url) {
+          setProductLink(linkEl, '', null);
+          return;
+        }
 
-        linkEl.setAttribute('href', url);
         var vendor = resolveLinkVendor(item, url);
-        setStoreLinkIcon(linkEl, vendor);
+        setProductLink(linkEl, url, vendor);
       }
 
       function updateNailsPerBox(selectEl, value, optionMap) {
@@ -356,9 +415,13 @@
           return;
         }
 
+        var url = resolveItemStoreUrl(item);
+        var vendor = resolveLinkVendor(item, url);
         var html = '<span class="fq-material-preview__name">' + escapeHtml(item.name) + '</span>';
         if (item.sku) {
-          html += '<span class="admin-form-help">SKU ' + escapeHtml(item.sku) + '</span>';
+          html += '<span class="admin-form-help fq-material-preview__sku-row"><span>SKU ' + escapeHtml(item.sku) + '</span>';
+          html += previewStoreLinkHtml(url, vendor);
+          html += '</span>';
         }
         previewEl.innerHTML = html;
         if (priceEl) {
@@ -408,6 +471,9 @@
         if (initial && initial !== '0') {
           ts.setValue(initial, true);
           updatePreview(selectEl, initial, optionMap);
+          applyProductLinkIfPresent(selectEl, initial, optionMap);
+        } else {
+          applyProductLinkIfPresent(selectEl, '', optionMap);
         }
       });
     })();

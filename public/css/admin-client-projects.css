@@ -3703,6 +3703,11 @@ body.cp-modal-open {
   min-width: 0;
 }
 
+.fq-catalog-picker-wrap.fq-catalog-picker {
+  flex: 1;
+  min-width: 240px;
+}
+
 .fq-catalog-picker-wrap .fq-catalog-picker {
   flex: 1;
   min-width: 0;
@@ -3719,6 +3724,10 @@ body.cp-modal-open {
   display: inline-flex !important;
 }
 
+.fq-catalog-picker__open--disabled {
+  display: none !important;
+}
+
 .fq-catalog-picker__open--amazon {
   color: #c45500;
 }
@@ -3731,24 +3740,40 @@ body.cp-modal-open {
   min-width: 240px;
 }
 
-.fq-catalog-picker .ts-wrapper {
+.fq-catalog-picker .ts-wrapper,
+.fq-catalog-picker-wrap.fq-catalog-picker .ts-wrapper {
+  flex: 1;
+  min-width: 0;
   width: 100%;
+  border: 1px solid var(--admin-border, #d8dee4);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
 }
 
-.fq-catalog-picker > select.tomselected {
+.fq-catalog-picker > select.tomselected,
+.fq-catalog-picker-wrap > select.tomselected {
   display: none !important;
 }
 
-.fq-catalog-picker .ts-control {
+.fq-catalog-picker .ts-control,
+.fq-catalog-picker-wrap.fq-catalog-picker .ts-control {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 4px;
-  min-height: 44px;
+  min-height: 42px;
+  border: none;
   border-radius: 8px;
-  border: 1px solid var(--admin-border, #d8dee4);
   padding: 6px 10px;
-  background: #fff;
+  background: transparent;
+  box-shadow: none;
+}
+
+.fq-catalog-picker .ts-wrapper.focus,
+.fq-catalog-picker-wrap.fq-catalog-picker .ts-wrapper.focus {
+  border-color: var(--admin-primary, #1e5a8a);
+  box-shadow: 0 0 0 3px var(--admin-primary-ring, rgba(30, 90, 138, 0.2));
 }
 
 .fq-catalog-picker .ts-control .item {
@@ -3809,6 +3834,39 @@ body.cp-modal-open {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+}
+
+.fq-material-preview__sku-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.fq-material-preview__store-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--admin-primary, #1e5a8a);
+}
+
+.fq-material-preview__store-link:hover {
+  text-decoration: underline;
+}
+
+.fq-material-preview__store-link--amazon {
+  color: #c45500;
+}
+
+.fq-material-preview__store-link--amazon:hover {
+  color: #9a4200;
+}
+
+.fq-material-preview__store-link--disabled {
+  display: none !important;
 }
 
 .fq-material-preview__name {
