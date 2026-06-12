@@ -60,13 +60,54 @@
     .pt-step-card h4 { margin: 0 0 12px; color: #024768; }
     .pt-excluded-row {
       display: grid;
-      grid-template-columns: minmax(120px, 1fr) 110px minmax(70px, 90px) minmax(70px, 90px) minmax(70px, 90px) auto;
+      grid-template-columns: minmax(120px, 1fr) 110px minmax(70px, 90px) minmax(70px, 90px) minmax(70px, 90px) 2.25rem;
       gap: 8px;
       align-items: end;
       margin-bottom: 10px;
     }
-    .pt-excluded-row--sqf { grid-template-columns: minmax(120px, 1fr) 110px minmax(90px, 120px) auto; }
+    .pt-excluded-row--sqf { grid-template-columns: minmax(120px, 1fr) 110px minmax(90px, 120px) 2.25rem; }
+    .pt-excluded-row__actions {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .pt-remove-excluded {
+      width: 2.25rem;
+      height: 2.25rem;
+      min-width: 2.25rem;
+      max-width: 2.25rem;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
     @media (max-width: 800px) { .pt-excluded-row, .pt-excluded-row--sqf { grid-template-columns: 1fr; } }
+    .fq-link-project-card {
+      border: 1px dashed #c9d3e0;
+      background: #fbfcfd;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-top: 20px;
+    }
+    .fq-link-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-top: 14px;
+      align-items: start;
+    }
+    @media (min-width: 900px) {
+      .fq-link-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .fq-link-col h5 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #024768; }
+    .fq-link-existing-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+    }
+    .fq-create-project-form .admin-form-group { margin-bottom: 12px; }
     .pt-net-banner {
       margin-top: 12px;
       padding: 10px 12px;
@@ -170,9 +211,11 @@
                   <input type="number" step="0.01" min="0" class="admin-input pt-recalc" name="excluded_areas[{{ $i }}][sqf]"
                          value="{{ old('excluded_areas.'.$i.'.sqf', $row['sqf'] ?? '') }}">
                 </div>
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm pt-remove-excluded" title="Remove row">
-                  <i class="fa fa-times"></i>
-                </button>
+                <div class="pt-excluded-row__actions">
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm pt-remove-excluded" title="Remove row" aria-label="Remove excluded area">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                  </button>
+                </div>
               </div>
             @endforeach
           </div>
@@ -220,9 +263,25 @@
         @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
       </form>
 
-      @if ($isEdit && ! $quotation->isLinked())
-        <div class="fq-link-project-card">
+      @if (! $isEdit)
+        <div class="admin-card fq-link-project-card">
           <h4 style="margin:0 0 8px;">Link to project</h4>
+          <p class="admin-form-help" style="margin:0;">
+            <strong>Save the quotation first</strong> (use <em>Save quotation</em>, not draft) with a total greater than zero.
+            Then this page will show options to link an existing project or create a new one.
+            @if ($linkProject)
+              <span class="cp-form-help-flush" style="display:block;margin-top:8px;">
+                You opened this from <strong>{{ $linkProject->name }}</strong> — a published save will attach automatically when possible.
+              </span>
+            @endif
+          </p>
+        </div>
+      @elseif (! $quotation->isLinked())
+        <div class="admin-card fq-link-project-card">
+          <h4 style="margin:0 0 8px;">Link to project</h4>
+          <p class="admin-form-help cp-form-help-flush" style="margin:0 0 12px;">
+            Add this painting estimate as a line on the project <strong>Quotation</strong> tab (pre-tax labour + materials — HST is added on the client PDF).
+          </p>
           <div class="fq-link-grid">
             <div>
               <h5>Existing project</h5>
@@ -381,7 +440,7 @@
           + '<input type="number" step="0.1" min="0" class="admin-input pt-recalc" name="excluded_areas[' + idx + '][width_ft]"></div>'
           + '<div class="admin-form-group pt-excluded-sqf" style="margin:0;display:none;"><label>Sq ft</label>'
           + '<input type="number" step="0.01" min="0" class="admin-input pt-recalc" name="excluded_areas[' + idx + '][sqf]"></div>'
-          + '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm pt-remove-excluded" title="Remove row"><i class="fa fa-times"></i></button>';
+          + '<div class="pt-excluded-row__actions"><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm pt-remove-excluded" title="Remove row" aria-label="Remove excluded area"><i class="fa fa-times" aria-hidden="true"></i></button></div>';
         excludedRoot.appendChild(row);
         bindExcludedRow(row);
         row.querySelectorAll('.pt-recalc').forEach(function (el) {
