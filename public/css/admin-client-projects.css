@@ -3736,6 +3736,13 @@ body.cp-modal-open {
   color: #9a4200;
 }
 
+.fq-catalog-picker__vendor-logo {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+}
+
 .fq-catalog-picker {
   min-width: 240px;
 }

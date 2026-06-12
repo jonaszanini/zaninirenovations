@@ -23,7 +23,10 @@ class AmazonCaUrls
             return false;
         }
 
-        return (bool) preg_match('/^[A-Z0-9]{10}$/', strtoupper(trim($asin)));
+        $normalized = strtoupper(trim($asin));
+
+        // Home Depot SKUs are numeric-only; real Amazon ASINs include a letter.
+        return (bool) preg_match('/^(?=.*[A-Z])[A-Z0-9]{10}$/', $normalized);
     }
 
     public static function normalizeAsin(string $line): ?string
@@ -49,11 +52,15 @@ class AmazonCaUrls
     public static function asinFromUrl(string $url): ?string
     {
         if (preg_match('~/(?:dp|gp/product|product)/([A-Z0-9]{10})(?:[/?]|$)~i', $url, $match)) {
-            return strtoupper($match[1]);
+            $asin = strtoupper($match[1]);
+
+            return self::isValidAsin($asin) ? $asin : null;
         }
 
         if (preg_match('~[?&]asin=([A-Z0-9]{10})(?:&|$)~i', $url, $match)) {
-            return strtoupper($match[1]);
+            $asin = strtoupper($match[1]);
+
+            return self::isValidAsin($asin) ? $asin : null;
         }
 
         return null;

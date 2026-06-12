@@ -7,6 +7,9 @@
 @endpush
 
 @section('content')
+  @php
+    $homeDepotLogoUrl = asset('images/vendors/homedepot-logo.svg').'?v='.(@filemtime(public_path('images/vendors/homedepot-logo.svg')) ?: time());
+  @endphp
   <div class="admin-toolbar fq-list-toolbar">
     <div class="admin-toolbar-group">
       <a href="{{ route('admin.quotations.fence.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
@@ -104,6 +107,8 @@
                      @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif>
                     @if ($linkVendor === 'amazon')
                       <i class="fa fa-amazon" aria-hidden="true"></i>
+                    @elseif ($linkVendor === 'home_depot')
+                      <img src="{{ $homeDepotLogoUrl }}" alt="" class="fq-catalog-picker__vendor-logo" width="20" height="20">
                     @else
                       <i class="fa fa-external-link" aria-hidden="true"></i>
                     @endif
@@ -130,32 +135,7 @@
                   @if ($m->material_id && $m->material)
                     <span class="fq-material-preview__name">{{ $m->material->displayName() }}</span>
                     @if ($m->material->store_sku)
-                      <span class="admin-form-help fq-material-preview__sku-row">
-                        <span>SKU {{ $m->material->store_sku }}</span>
-                        @if (filled($storeUrl))
-                          <a href="{{ $storeUrl }}"
-                             class="fq-material-preview__store-link fq-material-preview__store-link--{{ $linkVendor }}"
-                             target="_blank" rel="noopener"
-                             title="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}">
-                            @if ($linkVendor === 'amazon')
-                              <i class="fa fa-amazon" aria-hidden="true"></i><span>Amazon</span>
-                            @else
-                              <i class="fa fa-external-link" aria-hidden="true"></i><span>Store</span>
-                            @endif
-                          </a>
-                        @endif
-                      </span>
-                    @elseif (filled($storeUrl))
-                      <a href="{{ $storeUrl }}"
-                         class="fq-material-preview__store-link fq-material-preview__store-link--{{ $linkVendor }}"
-                         target="_blank" rel="noopener"
-                         title="{{ $linkVendor === 'amazon' ? 'Open on Amazon Canada' : ($linkVendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page') }}">
-                        @if ($linkVendor === 'amazon')
-                          <i class="fa fa-amazon" aria-hidden="true"></i><span>Amazon</span>
-                        @else
-                          <i class="fa fa-external-link" aria-hidden="true"></i><span>Store</span>
-                        @endif
-                      </a>
+                      <span class="admin-form-help fq-material-preview__sku-row">SKU {{ $m->material->store_sku }}</span>
                     @endif
                   @elseif ($m->effectiveLongName() || $m->effectiveStoreSku())
                     <span class="fq-material-preview__name">{{ $m->effectiveLongName() }}</span>
@@ -298,6 +278,7 @@
   <script>
     (function () {
       var catalogOptions = @json($catalogPickerOptions);
+      var homeDepotLogoUrl = @json($homeDepotLogoUrl);
 
       function escapeHtml(text) {
         return String(text)
@@ -307,6 +288,10 @@
           .replace(/"/g, '&quot;');
       }
 
+      function homeDepotIconHtml() {
+        return '<img src="' + escapeHtml(homeDepotLogoUrl) + '" alt="" class="fq-catalog-picker__vendor-logo" width="20" height="20">';
+      }
+
       function setStoreLinkIcon(linkEl, vendor) {
         linkEl.classList.remove('fq-catalog-picker__open--amazon', 'fq-catalog-picker__open--home_depot');
         if (vendor === 'amazon') {
@@ -314,23 +299,38 @@
           linkEl.innerHTML = '<i class="fa fa-amazon" aria-hidden="true"></i>';
           linkEl.setAttribute('title', 'Open on Amazon Canada');
           linkEl.setAttribute('aria-label', 'Open on Amazon Canada');
+        } else if (vendor === 'home_depot') {
+          linkEl.classList.add('fq-catalog-picker__open--home_depot');
+          linkEl.innerHTML = homeDepotIconHtml();
+          linkEl.setAttribute('title', 'Open on Home Depot');
+          linkEl.setAttribute('aria-label', 'Open on Home Depot');
         } else {
-          if (vendor === 'home_depot') {
-            linkEl.classList.add('fq-catalog-picker__open--home_depot');
-          }
           linkEl.innerHTML = '<i class="fa fa-external-link" aria-hidden="true"></i>';
-          linkEl.setAttribute('title', vendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page');
-          linkEl.setAttribute('aria-label', vendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page');
+          linkEl.setAttribute('title', 'Open product page');
+          linkEl.setAttribute('aria-label', 'Open product page');
         }
       }
 
       function normalizeAsin(value) {
         var candidate = String(value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-        return /^[A-Z0-9]{10}$/.test(candidate) ? candidate : '';
+        if (!/^[A-Z0-9]{10}$/.test(candidate)) return '';
+        if (!/[A-Z]/.test(candidate)) return '';
+        return candidate;
       }
 
       function amazonProductUrl(asin) {
         return 'https://www.amazon.ca/dp/' + encodeURIComponent(asin);
+      }
+
+      function selectStoreUrl(selectEl) {
+        if (!selectEl) return '';
+        return String(selectEl.getAttribute('data-store-url') || '').trim();
+      }
+
+      function selectLinkVendor(selectEl) {
+        if (!selectEl) return null;
+        var vendor = String(selectEl.getAttribute('data-link-vendor') || '').trim();
+        return vendor || null;
       }
 
       function resolveItemStoreUrl(item, selectEl) {
@@ -342,9 +342,10 @@
           return amazonProductUrl(asin);
         }
 
-        if (!item) return '';
-
-        var url = item.url ? String(item.url).trim() : '';
+        var url = item && item.url ? String(item.url).trim() : '';
+        if (!url) {
+          url = selectStoreUrl(selectEl);
+        }
         return url;
       }
 
@@ -353,19 +354,12 @@
           return 'amazon';
         }
         if (item && item.link_vendor) return item.link_vendor;
+        var fromSelect = selectLinkVendor(selectEl);
+        if (fromSelect) return fromSelect;
         var lower = String(url || '').toLowerCase();
         if (lower.indexOf('amazon.') !== -1) return 'amazon';
         if (lower.indexOf('homedepot.ca') !== -1) return 'home_depot';
         return null;
-      }
-
-      function previewStoreLinkHtml(url, vendor) {
-        if (!url) return '';
-        if (vendor === 'amazon') {
-          return '<a href="' + escapeHtml(url) + '" class="fq-material-preview__store-link fq-material-preview__store-link--amazon" target="_blank" rel="noopener" title="Open on Amazon Canada"><i class="fa fa-amazon" aria-hidden="true"></i><span>Amazon</span></a>';
-        }
-        var title = vendor === 'home_depot' ? 'Open on Home Depot' : 'Open product page';
-        return '<a href="' + escapeHtml(url) + '" class="fq-material-preview__store-link fq-material-preview__store-link--' + escapeHtml(vendor || 'store') + '" target="_blank" rel="noopener" title="' + escapeHtml(title) + '"><i class="fa fa-external-link" aria-hidden="true"></i><span>Store</span></a>';
       }
 
       function setProductLink(linkEl, url, vendor) {
@@ -392,13 +386,24 @@
         setStoreLinkIcon(linkEl, vendor);
       }
 
-      function syncSelectStoreAsin(selectEl, item) {
+      function syncSelectStoreMeta(selectEl, item, url, vendor) {
         if (!selectEl) return;
         var asin = normalizeAsin(item && item.sku);
         if (asin) {
           selectEl.setAttribute('data-store-asin', asin);
         } else {
           selectEl.removeAttribute('data-store-asin');
+        }
+        if (url) {
+          selectEl.setAttribute('data-store-url', url);
+          if (vendor) {
+            selectEl.setAttribute('data-link-vendor', vendor);
+          } else {
+            selectEl.removeAttribute('data-link-vendor');
+          }
+        } else {
+          selectEl.removeAttribute('data-store-url');
+          selectEl.removeAttribute('data-link-vendor');
         }
       }
 
@@ -407,20 +412,20 @@
         if (!linkEl) return;
 
         if (!value) {
-          syncSelectStoreAsin(selectEl, null);
+          syncSelectStoreMeta(selectEl, null, '', null);
           setProductLink(linkEl, '', null);
           return;
         }
 
         var item = optionMap[String(value)] || null;
-        syncSelectStoreAsin(selectEl, item);
         var url = resolveItemStoreUrl(item, selectEl);
+        var vendor = resolveLinkVendor(item, url, selectEl);
+        syncSelectStoreMeta(selectEl, item, url, vendor);
         if (!url) {
           setProductLink(linkEl, '', null);
           return;
         }
 
-        var vendor = resolveLinkVendor(item, url, selectEl);
         setProductLink(linkEl, url, vendor);
       }
 
@@ -457,15 +462,9 @@
           return;
         }
 
-        var url = resolveItemStoreUrl(item, selectEl);
-        var vendor = resolveLinkVendor(item, url, selectEl);
         var html = '<span class="fq-material-preview__name">' + escapeHtml(item.name) + '</span>';
         if (item.sku) {
-          html += '<span class="admin-form-help fq-material-preview__sku-row"><span>SKU ' + escapeHtml(item.sku) + '</span>';
-          html += previewStoreLinkHtml(url, vendor);
-          html += '</span>';
-        } else if (url) {
-          html += previewStoreLinkHtml(url, vendor);
+          html += '<span class="admin-form-help fq-material-preview__sku-row">SKU ' + escapeHtml(item.sku) + '</span>';
         }
         previewEl.innerHTML = html;
         if (priceEl) {

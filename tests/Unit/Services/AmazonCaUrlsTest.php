@@ -36,6 +36,7 @@ class AmazonCaUrlsTest extends TestCase
         $this->assertNull(AmazonCaUrls::normalizeAsin(''));
         $this->assertNull(AmazonCaUrls::normalizeAsin('too-short'));
         $this->assertNull(AmazonCaUrls::normalizeAsin('NOTAN-ASIN'));
+        $this->assertNull(AmazonCaUrls::normalizeAsin('1000790080'));
     }
 
     public function test_is_amazon_ca_url(): void
