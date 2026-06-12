@@ -9,6 +9,7 @@
   $items = $projects->map(fn ($p) => [
       'id' => (int) $p->id,
       'label' => $p->client_name . ' — ' . $p->name,
+      'client_name' => (string) $p->client_name,
   ])->values();
 @endphp
 <div class="fq-project-picker" id="{{ $pickerId }}" data-fq-project-picker data-projects='@json($items)'>

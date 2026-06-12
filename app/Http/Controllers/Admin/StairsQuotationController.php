@@ -153,12 +153,6 @@ class StairsQuotationController extends Controller
         if ($stairs_quotation->isLinked()) {
             return back()->with('error', 'This stairs quotation is already linked to a project.');
         }
-        if ($stairs_quotation->is_draft) {
-            return back()->with('error', 'Publish the quotation (save without draft) before linking.');
-        }
-        if ((float) $stairs_quotation->final_quote_total <= 0) {
-            return back()->with('error', 'Set a final quote total greater than zero before linking.');
-        }
 
         $data = $request->validate([
             'client_project_id' => ['required', 'integer', 'exists:client_projects,id'],
@@ -166,6 +160,14 @@ class StairsQuotationController extends Controller
         ]);
 
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
+        $this->prepareQuotationForProjectLink($stairs_quotation, $project);
+
+        if ($stairs_quotation->is_draft) {
+            return back()->with('error', 'Publish the quotation (click Save quotation, not Save as draft) before linking.');
+        }
+        if ((float) $stairs_quotation->final_quote_total <= 0) {
+            return back()->with('error', 'Set a final quote total greater than zero before linking.');
+        }
         if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
             return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
         }
@@ -585,10 +587,10 @@ class StairsQuotationController extends Controller
     ): void {
         $this->syncStairsLineToProjectQuotation($project, $stairsQuotation);
 
-        $stairsQuotation->update([
+        $stairsQuotation->update(array_merge([
             'client_project_id' => $project->id,
             'linked_at' => now(),
-        ]);
+        ], $this->quotationLinkClientNameAttributes($project)));
     }
 
     protected function normalisePhoneOnRequest(Request $request): void

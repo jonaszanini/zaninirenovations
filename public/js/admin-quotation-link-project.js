@@ -6,6 +6,41 @@
     return String(s || '').toLowerCase().trim();
   }
 
+  function findQuotationClientNameInput() {
+    var inputs = document.querySelectorAll('input[name="client_name"]');
+    for (var i = 0; i < inputs.length; i++) {
+      var inp = inputs[i];
+      if (inp.closest('.fq-create-project-form')) {
+        continue;
+      }
+      return inp;
+    }
+    return null;
+  }
+
+  function fillQuotationClientName(clientName, force) {
+    var name = String(clientName || '').trim();
+    if (!name) {
+      return;
+    }
+    var input = findQuotationClientNameInput();
+    if (!input) {
+      return;
+    }
+    if (!force && String(input.value || '').trim() !== '') {
+      return;
+    }
+    input.value = name;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function projectById(projects, id) {
+    return projects.find(function (p) {
+      return String(p.id) === String(id);
+    }) || null;
+  }
+
   function initPicker(root) {
     if (!root || root.getAttribute('data-fq-picker-init') === '1') {
       return;
@@ -117,6 +152,7 @@
       setExpanded(false);
       activeIndex = -1;
       search.setAttribute('aria-activedescendant', '');
+      fillQuotationClientName(project.client_name, false);
     }
 
     function clearChoice() {
@@ -190,6 +226,11 @@
           e.preventDefault();
           search.focus();
           openList();
+          return;
+        }
+        var picked = projectById(projects, select.value);
+        if (picked) {
+          fillQuotationClientName(picked.client_name, true);
         }
       });
     }

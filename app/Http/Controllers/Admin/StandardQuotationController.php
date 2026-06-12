@@ -197,6 +197,7 @@ class StandardQuotationController extends Controller
 
         /** @var ClientProject $project */
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
+        $this->prepareQuotationForProjectLink($standard_quotation, $project);
 
         if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
             return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
@@ -526,6 +527,9 @@ class StandardQuotationController extends Controller
     ): void {
         $standardQuotation->client_project_id = $project->id;
         $standardQuotation->linked_at = now();
+        foreach ($this->quotationLinkClientNameAttributes($project) as $key => $value) {
+            $standardQuotation->{$key} = $value;
+        }
         $standardQuotation->save();
 
         $this->syncStandardLinesIntoProjectQuotation(

@@ -60,4 +60,49 @@ trait ResolvesQuotationProjectLink
         return $query;
     }
 
+    /** @return array<string, mixed> */
+    protected function quotationLinkClientNameAttributes(ClientProject $project): array
+    {
+        $name = trim((string) $project->client_name);
+
+        return $name !== '' ? ['client_name' => $name] : [];
+    }
+
+    /**
+     * Before linking, copy the project's client name onto the quotation and
+     * auto-publish calculator quotes that already have a total (common when
+     * client name was filled via the link picker but not saved on the main form).
+     */
+    protected function prepareQuotationForProjectLink(object $quotation, ClientProject $project): void
+    {
+        $updates = $this->quotationLinkClientNameAttributes($project);
+
+        if (($quotation->is_draft ?? false)) {
+            $clientName = $updates['client_name'] ?? trim((string) ($quotation->client_name ?? ''));
+            if ($clientName !== '' && $this->quotationLinkGrandTotal($quotation) > 0) {
+                $updates['is_draft'] = false;
+            }
+        }
+
+        if ($updates === []) {
+            return;
+        }
+
+        $quotation->update($updates);
+        $quotation->refresh();
+    }
+
+    protected function quotationLinkGrandTotal(object $quotation): float
+    {
+        if (isset($quotation->final_quote_total)) {
+            return (float) $quotation->final_quote_total;
+        }
+
+        if (isset($quotation->grand_total)) {
+            return (float) $quotation->grand_total;
+        }
+
+        return 0.0;
+    }
+
 }

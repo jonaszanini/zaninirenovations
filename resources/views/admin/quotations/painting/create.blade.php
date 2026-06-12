@@ -723,17 +723,27 @@
         el.addEventListener('change', schedulePreview);
       });
 
+      var savingAsDraft = false;
       var draftBtn = document.getElementById('pt-btn-draft');
-      if (draftBtn) {
+      if (draftBtn && form) {
         draftBtn.addEventListener('click', function () {
+          savingAsDraft = true;
           if (intent) intent.value = 'draft';
           form.submit();
         });
       }
       var pubBtn = document.getElementById('pt-btn-publish');
-      if (pubBtn) {
+      if (pubBtn && intent) {
         pubBtn.addEventListener('click', function () {
-          if (intent) intent.value = 'publish';
+          intent.value = 'publish';
+        });
+      }
+      if (form && intent) {
+        form.addEventListener('submit', function () {
+          if (!savingAsDraft) {
+            intent.value = 'publish';
+          }
+          savingAsDraft = false;
         });
       }
 

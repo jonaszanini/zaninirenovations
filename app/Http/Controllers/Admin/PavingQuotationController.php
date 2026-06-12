@@ -179,12 +179,6 @@ class PavingQuotationController extends Controller
         if ($paving_quotation->isLinked()) {
             return back()->with('error', 'This paving quotation is already linked to a project.');
         }
-        if ($paving_quotation->is_draft) {
-            return back()->with('error', 'Publish the quotation (save without draft) before linking.');
-        }
-        if ((float) $paving_quotation->final_quote_total <= 0) {
-            return back()->with('error', 'Set a final quote total greater than zero before linking.');
-        }
 
         $data = $request->validate([
             'client_project_id' => ['required', 'integer', 'exists:client_projects,id'],
@@ -192,6 +186,14 @@ class PavingQuotationController extends Controller
         ]);
 
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
+        $this->prepareQuotationForProjectLink($paving_quotation, $project);
+
+        if ($paving_quotation->is_draft) {
+            return back()->with('error', 'Publish the quotation (click Save quotation, not Save as draft) before linking.');
+        }
+        if ((float) $paving_quotation->final_quote_total <= 0) {
+            return back()->with('error', 'Set a final quote total greater than zero before linking.');
+        }
         if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
             return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
         }
@@ -602,10 +604,10 @@ class PavingQuotationController extends Controller
         $project->refresh();
         $project->syncFixedContractTotalsFromQuotation();
 
-        $pavingQuotation->update([
+        $pavingQuotation->update(array_merge([
             'client_project_id' => $project->id,
             'linked_at' => $pavingQuotation->linked_at ?? now(),
-        ]);
+        ], $this->quotationLinkClientNameAttributes($project)));
     }
 
     /**

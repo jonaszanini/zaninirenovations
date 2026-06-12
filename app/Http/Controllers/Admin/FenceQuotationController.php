@@ -241,6 +241,7 @@ class FenceQuotationController extends Controller
 
         /** @var ClientProject $project */
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
+        $this->prepareQuotationForProjectLink($fence_quotation, $project);
 
         if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
             return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
@@ -434,10 +435,10 @@ class FenceQuotationController extends Controller
     {
         $this->syncFenceLineToProjectQuotation($project, $fence_quotation);
 
-        $fence_quotation->update([
+        $fence_quotation->update(array_merge([
             'client_project_id' => $project->id,
             'linked_at' => now(),
-        ]);
+        ], $this->quotationLinkClientNameAttributes($project)));
     }
 
     /**

@@ -153,12 +153,6 @@ class PaintingQuotationController extends Controller
         if ($painting_quotation->isLinked()) {
             return back()->with('error', 'This painting quotation is already linked to a project.');
         }
-        if ($painting_quotation->is_draft) {
-            return back()->with('error', 'Publish the quotation (save without draft) before linking.');
-        }
-        if ((float) $painting_quotation->final_quote_total <= 0) {
-            return back()->with('error', 'Set a final quote total greater than zero before linking.');
-        }
 
         $data = $request->validate([
             'client_project_id' => ['required', 'integer', 'exists:client_projects,id'],
@@ -166,6 +160,14 @@ class PaintingQuotationController extends Controller
         ]);
 
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
+        $this->prepareQuotationForProjectLink($painting_quotation, $project);
+
+        if ($painting_quotation->is_draft) {
+            return back()->with('error', 'Publish the quotation (click Save quotation, not Save as draft) before linking.');
+        }
+        if ((float) $painting_quotation->final_quote_total <= 0) {
+            return back()->with('error', 'Set a final quote total greater than zero before linking.');
+        }
         if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
             return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
         }
@@ -555,10 +557,10 @@ class PaintingQuotationController extends Controller
     ): void {
         $this->syncPaintingLineToProjectQuotation($project, $paintingQuotation);
 
-        $paintingQuotation->update([
+        $paintingQuotation->update(array_merge([
             'client_project_id' => $project->id,
             'linked_at' => now(),
-        ]);
+        ], $this->quotationLinkClientNameAttributes($project)));
     }
 
     protected function normalisePhoneOnRequest(Request $request): void
