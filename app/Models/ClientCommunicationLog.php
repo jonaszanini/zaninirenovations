@@ -35,6 +35,8 @@ class ClientCommunicationLog extends Model
      * a label in REASON_LABELS below.
      */
     public const REASON_QUOTATION_SENT = 'quotation_sent';
+    /** SMS with signed link to open/download quotation PDF — no attachment. */
+    public const REASON_QUOTATION_SMS_LINK = 'quotation_sms_link';
     public const REASON_CONTRACT_SENT = 'contract_sent';
     public const REASON_INVOICE_SENT = 'invoice_sent';
     public const REASON_INVOICE_REMINDER = 'invoice_reminder';
@@ -61,6 +63,7 @@ class ClientCommunicationLog extends Model
 
     public const REASON_LABELS = [
         self::REASON_QUOTATION_SENT => 'Quotation',
+        self::REASON_QUOTATION_SMS_LINK => 'Quotation (SMS link)',
         self::REASON_CONTRACT_SENT => 'Contract',
         self::REASON_INVOICE_SENT => 'Invoice',
         self::REASON_INVOICE_REMINDER => 'Invoice reminder',
@@ -159,6 +162,7 @@ class ClientCommunicationLog extends Model
     {
         return match ($this->reason) {
             self::REASON_QUOTATION_SENT,
+            self::REASON_QUOTATION_SMS_LINK,
             self::REASON_QUOTE_RECEIVED_AUTO => '#3b82f6',          // blue
             self::REASON_CONTRACT_SENT => '#8b5cf6',                 // violet
             self::REASON_INVOICE_SENT,

@@ -1064,9 +1064,64 @@
     syncAckState();
   }
 
+  function initQuotationCopyLink() {
+    document.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-cp-copy-quotation-link]');
+      if (!btn) return;
+
+      var url = btn.getAttribute('data-copy-url');
+      if (!url) return;
+
+      var originalHtml = btn.innerHTML;
+      var originalTitle = btn.getAttribute('title') || '';
+
+      function showCopied() {
+        btn.innerHTML = '<i class="fa fa-check"></i> Copied';
+        btn.setAttribute('title', 'Link copied to clipboard');
+        window.setTimeout(function () {
+          btn.innerHTML = originalHtml;
+          btn.setAttribute('title', originalTitle);
+        }, 2000);
+      }
+
+      function showErr() {
+        window.alert('Could not copy to clipboard. Open the PDF and share the browser URL, or paste the link manually.');
+      }
+
+      function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          if (document.execCommand('copy')) {
+            showCopied();
+          } else {
+            showErr();
+          }
+        } catch (err) {
+          showErr();
+        }
+        document.body.removeChild(ta);
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(showCopied).catch(function () {
+          fallbackCopy(url);
+        });
+      } else {
+        fallbackCopy(url);
+      }
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initMoneyMask();
     initPhoneMask();
+    initQuotationCopyLink();
     initTimeForms();
     initTimeEditToggles();
     initExpenseEditToggles();

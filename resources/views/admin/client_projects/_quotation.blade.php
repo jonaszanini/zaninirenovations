@@ -7,12 +7,15 @@
 
 @php
   use App\Models\ClientProjectQuotation;
+  use App\Services\MoceanSmsService;
+  use Illuminate\Support\Facades\URL;
 
   $quotationRows = $project->quotations->sortBy('id');
   $acceptedGrand = \App\Models\ClientProjectQuotation::acceptedGrandTotalForProject($project);
   $missingDelivery = $project->missingQuotationDeliveryChannels();
   $canDeliverByEmail = filled(trim((string) $project->client_email));
   $canDeliverBySms = \App\Models\ClientProject::phoneDigitsForSms($project->client_phone) !== null;
+  $moceanReady = app(MoceanSmsService::class)->isConfigured();
   $quotationHub = route('admin.quotations.index', ['project' => $project->id]);
 @endphp
 
@@ -61,13 +64,32 @@
   @foreach ($quotationRows as $quotation)
     @php
       $hasContent = $quotation->hasContent();
-      $canSend = $hasContent && ($canDeliverByEmail || $canDeliverBySms);
-      $sendConfirmMessage = $canDeliverByEmail
-          ? 'Email this document to '.$project->clientEmailRecipientsLabel().'?'
-          : 'Send an SMS with a secure PDF link to '.\App\Models\ClientProject::formatPhone($project->client_phone).'?';
+      $legacy = $quotation->isLegacyManualSource();
+      $canSend = $hasContent && $canDeliverByEmail;
+      $sendConfirmMessage = 'Email this document to '.$project->clientEmailRecipientsLabel().'?';
+      $smsBlockers = [];
+      if (! $hasContent) {
+          $smsBlockers[] = 'Add at least one line item first.';
+      }
+      if (! $moceanReady) {
+          $smsBlockers[] = 'SMS gateway is not configured on the server (MOCEAN_API_TOKEN).';
+      }
+      if (! $canDeliverBySms) {
+          $smsBlockers[] = "Add the client's mobile phone number.";
+      }
+      $canSms = empty($smsBlockers) && ! $legacy;
+      $smsTitle = $canSms
+          ? 'Text the client a secure link to open this quotation PDF in the browser.'
+          : implode(' ', $smsBlockers);
+      $shareLinkUrl = $hasContent
+          ? URL::temporarySignedRoute(
+              'public.client-project.quotation-pdf',
+              now()->addYear(),
+              ['client_project' => $project, 'quotation' => $quotation],
+          )
+          : null;
       $typeLabel = $quotation->typeLabel();
       $title = $quotation->resolvedTitle();
-      $legacy = $quotation->isLegacyManualSource();
       $deleteConfirm = 'Delete '.$title.' ('.$quotation->quotation_number.') from this project? This also removes the calculator quotation from the Quotations hub.';
       $items = $hasContent ? $quotation->pdfLineItems() : [];
       $subtotal = $hasContent ? $quotation->subtotal() : 0.0;
@@ -136,6 +158,9 @@
               'legacy' => $legacy,
               'hasContent' => $hasContent,
               'canSend' => $canSend,
+              'canSms' => $canSms,
+              'smsTitle' => $smsTitle,
+              'shareLinkUrl' => $shareLinkUrl,
               'sendConfirmMessage' => $sendConfirmMessage,
               'deleteConfirm' => $deleteConfirm,
               'canDeliverByEmail' => $canDeliverByEmail,
@@ -290,6 +315,9 @@
             'legacy' => $legacy,
             'hasContent' => $hasContent,
             'canSend' => $canSend,
+            'canSms' => $canSms,
+            'smsTitle' => $smsTitle,
+            'shareLinkUrl' => $shareLinkUrl,
             'sendConfirmMessage' => $sendConfirmMessage,
             'deleteConfirm' => $deleteConfirm,
             'canDeliverByEmail' => $canDeliverByEmail,
