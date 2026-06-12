@@ -106,14 +106,19 @@
         </a>
       @endif
     </div>
-    @if ($isEdit && $quotation->isLinked() && !$returnToProject)
-      <div class="admin-toolbar-group">
+    <div class="admin-toolbar-group">
+      @if ($isEdit && $quotation->isLinked() && !$returnToProject)
         <a href="{{ route('admin.client-projects.show', $quotation->client_project_id) }}#quotation"
            class="admin-btn admin-btn--primary admin-btn--sm">
           <i class="fa fa-briefcase"></i> Open linked project
         </a>
-      </div>
-    @endif
+      @endif
+      <button type="submit"
+              form="sq-standard-form"
+              class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-save"></i> Save
+      </button>
+    </div>
   </div>
 
   @if ($returnToProject && $projectForReturn)

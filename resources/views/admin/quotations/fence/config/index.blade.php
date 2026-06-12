@@ -80,6 +80,19 @@
                 @php
                   $storeUrl = $m->material?->storeProductUrl();
                   $linkVendor = $m->material?->storeLinkVendor();
+                  if (! filled($storeUrl) && filled($m->effectiveStoreSku())) {
+                    $fallbackAsin = \App\Services\MaterialScraping\AmazonCaUrls::normalizeAsin($m->effectiveStoreSku());
+                    if ($fallbackAsin !== null) {
+                      $storeUrl = \App\Services\MaterialScraping\AmazonCaUrls::productUrl($fallbackAsin);
+                      $linkVendor = 'amazon';
+                    } elseif (\App\Services\MaterialScraping\HomeDepotCaUrls::isValidSku($m->effectiveStoreSku())) {
+                      $storeUrl = \App\Services\MaterialScraping\HomeDepotCaUrls::productUrl($m->effectiveStoreSku());
+                      $linkVendor = 'home_depot';
+                    }
+                  }
+                  $storeAsin = \App\Services\MaterialScraping\AmazonCaUrls::normalizeAsin(
+                    (string) ($m->material?->store_sku ?? $m->effectiveStoreSku() ?? '')
+                  );
                 @endphp
                 <div class="fq-catalog-picker-wrap fq-catalog-picker">
                   <a href="{{ $storeUrl ?: '#' }}"
@@ -106,6 +119,7 @@
                             @endif
                             data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
                             @if (filled($storeUrl)) data-store-url="{{ $storeUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
+                            @if ($storeAsin) data-store-asin="{{ $storeAsin }}" @endif
                             aria-label="Catalog material for {{ $m->effectiveName() }}">
                     <option value="">— Search name or SKU —</option>
                   </select>
@@ -310,24 +324,38 @@
         }
       }
 
-      function resolveItemStoreUrl(item) {
-        if (!item) return '';
-        if (item.url) return String(item.url);
-        var sku = String(item.sku || '').trim().toUpperCase().replace(/\s+/g, '');
-        if (/^[A-Z0-9]{10}$/.test(sku)) {
-          return 'https://www.amazon.ca/dp/' + encodeURIComponent(sku);
-        }
-        return '';
+      function normalizeAsin(value) {
+        var candidate = String(value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        return /^[A-Z0-9]{10}$/.test(candidate) ? candidate : '';
       }
 
-      function resolveLinkVendor(item, url) {
+      function amazonProductUrl(asin) {
+        return 'https://www.amazon.ca/dp/' + encodeURIComponent(asin);
+      }
+
+      function resolveItemStoreUrl(item, selectEl) {
+        var asin = normalizeAsin(item && item.sku);
+        if (!asin && selectEl) {
+          asin = normalizeAsin(selectEl.getAttribute('data-store-asin') || '');
+        }
+        if (asin) {
+          return amazonProductUrl(asin);
+        }
+
+        if (!item) return '';
+
+        var url = item.url ? String(item.url).trim() : '';
+        return url;
+      }
+
+      function resolveLinkVendor(item, url, selectEl) {
+        if (normalizeAsin(item && item.sku) || (selectEl && normalizeAsin(selectEl.getAttribute('data-store-asin') || ''))) {
+          return 'amazon';
+        }
         if (item && item.link_vendor) return item.link_vendor;
         var lower = String(url || '').toLowerCase();
         if (lower.indexOf('amazon.') !== -1) return 'amazon';
         if (lower.indexOf('homedepot.ca') !== -1) return 'home_depot';
-        if (item && item.sku && /^[A-Z0-9]{10}$/.test(String(item.sku).trim().toUpperCase())) {
-          return 'amazon';
-        }
         return null;
       }
 
@@ -348,11 +376,13 @@
           linkEl.classList.add('fq-catalog-picker__open--disabled');
           linkEl.removeAttribute('data-store-url');
           linkEl.removeAttribute('data-link-vendor');
+          linkEl.removeAttribute('hidden');
           return;
         }
 
         linkEl.setAttribute('href', url);
         linkEl.classList.remove('fq-catalog-picker__open--disabled');
+        linkEl.removeAttribute('hidden');
         linkEl.setAttribute('data-store-url', url);
         if (vendor) {
           linkEl.setAttribute('data-link-vendor', vendor);
@@ -362,23 +392,35 @@
         setStoreLinkIcon(linkEl, vendor);
       }
 
+      function syncSelectStoreAsin(selectEl, item) {
+        if (!selectEl) return;
+        var asin = normalizeAsin(item && item.sku);
+        if (asin) {
+          selectEl.setAttribute('data-store-asin', asin);
+        } else {
+          selectEl.removeAttribute('data-store-asin');
+        }
+      }
+
       function applyProductLinkIfPresent(selectEl, value, optionMap) {
         var linkEl = document.getElementById(selectEl.getAttribute('data-url-target') || '');
         if (!linkEl) return;
 
         if (!value) {
+          syncSelectStoreAsin(selectEl, null);
           setProductLink(linkEl, '', null);
           return;
         }
 
         var item = optionMap[String(value)] || null;
-        var url = resolveItemStoreUrl(item);
+        syncSelectStoreAsin(selectEl, item);
+        var url = resolveItemStoreUrl(item, selectEl);
         if (!url) {
           setProductLink(linkEl, '', null);
           return;
         }
 
-        var vendor = resolveLinkVendor(item, url);
+        var vendor = resolveLinkVendor(item, url, selectEl);
         setProductLink(linkEl, url, vendor);
       }
 
@@ -415,13 +457,15 @@
           return;
         }
 
-        var url = resolveItemStoreUrl(item);
-        var vendor = resolveLinkVendor(item, url);
+        var url = resolveItemStoreUrl(item, selectEl);
+        var vendor = resolveLinkVendor(item, url, selectEl);
         var html = '<span class="fq-material-preview__name">' + escapeHtml(item.name) + '</span>';
         if (item.sku) {
           html += '<span class="admin-form-help fq-material-preview__sku-row"><span>SKU ' + escapeHtml(item.sku) + '</span>';
           html += previewStoreLinkHtml(url, vendor);
           html += '</span>';
+        } else if (url) {
+          html += previewStoreLinkHtml(url, vendor);
         }
         previewEl.innerHTML = html;
         if (priceEl) {
@@ -439,6 +483,7 @@
 
       document.querySelectorAll('.fq-catalog-picker__select').forEach(function (selectEl) {
         var initial = selectEl.getAttribute('data-initial') || '';
+        var syncingInitial = true;
         var ts = new TomSelect(selectEl, {
           plugins: ['clear_button'],
           options: catalogOptions,
@@ -462,6 +507,7 @@
             }
           },
           onChange: function (value) {
+            if (syncingInitial) return;
             var resolved = value || this.getValue() || '';
             updatePreview(selectEl, resolved, optionMap);
             applyProductLinkIfPresent(selectEl, resolved, optionMap);
@@ -470,11 +516,10 @@
 
         if (initial && initial !== '0') {
           ts.setValue(initial, true);
-          updatePreview(selectEl, initial, optionMap);
-          applyProductLinkIfPresent(selectEl, initial, optionMap);
-        } else {
-          applyProductLinkIfPresent(selectEl, '', optionMap);
         }
+        updatePreview(selectEl, initial && initial !== '0' ? initial : '', optionMap);
+        applyProductLinkIfPresent(selectEl, initial && initial !== '0' ? initial : '', optionMap);
+        syncingInitial = false;
       });
     })();
   </script>

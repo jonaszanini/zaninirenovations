@@ -114,13 +114,13 @@ class Material extends Model
      */
     public function storeProductUrl(): ?string
     {
-        if (filled($this->product_url)) {
-            return (string) $this->product_url;
-        }
-
         $asin = $this->resolveAsin();
         if ($asin !== null) {
             return AmazonCaUrls::productUrl($asin);
+        }
+
+        if (filled($this->product_url)) {
+            return (string) $this->product_url;
         }
 
         $sku = trim((string) ($this->store_sku ?? ''));

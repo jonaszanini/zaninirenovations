@@ -41,7 +41,7 @@ class AmazonCaUrls
             return self::asinFromUrl($line);
         }
 
-        $candidate = strtoupper(preg_replace('/\s+/', '', $line) ?? $line);
+        $candidate = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $line) ?? $line);
 
         return self::isValidAsin($candidate) ? $candidate : null;
     }
