@@ -120,6 +120,60 @@
     .pt-net-banner strong { color: #024768; }
     .pq-sidebar-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
     .pq-sidebar-actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pt-readiness {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .pt-readiness-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px 10px;
+      margin-bottom: 8px;
+    }
+    .pt-readiness-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .pt-readiness-summary { font-size: 12px; font-weight: 600; color: #15803d; }
+    .pt-readiness-summary.is-incomplete { color: #b45309; }
+    .pt-readiness-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .pt-readiness-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #475569;
+    }
+    .pt-readiness-item.is-done { color: #166534; }
+    .pt-readiness-item__icon {
+      flex-shrink: 0;
+      width: 14px;
+      margin-top: 1px;
+      text-align: center;
+      color: #94a3b8;
+    }
+    .pt-readiness-item.is-done .pt-readiness-item__icon { color: #16a34a; }
+    .pt-readiness-item.is-pending .pt-readiness-item__icon { color: #d97706; }
+    .pt-readiness-item.is-optional { color: #64748b; }
+    .pt-readiness-item.is-optional .pt-readiness-item__icon { color: #94a3b8; }
+    .pt-breakdown { border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 4px; }
+    .pt-breakdown.is-empty { border-top: 0; padding-top: 0; margin-top: 0; }
   </style>
 @endpush
 
@@ -357,7 +411,8 @@
       <div class="pq-summary-card">
         <h4 class="cp-form-help-spaced">Live breakdown</h4>
         <div id="pt-live-root">
-          <p class="admin-form-help">Adjust inputs to refresh totals…</p>
+          <div id="pt-readiness-root" aria-live="polite"></div>
+          <div id="pt-breakdown-root" class="pt-breakdown is-empty"></div>
         </div>
       </div>
       <p class="pq-hint" style="margin-top:10px;">
@@ -456,41 +511,195 @@
       var addBtn = document.getElementById('pt-add-excluded');
       if (addBtn) addBtn.addEventListener('click', addExcludedRow);
 
-      function renderPreview(data) {
-        var root = document.getElementById('pt-live-root');
+      function escHtml(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function collectReadiness() {
+        var items = [];
+        var totalEl = form ? form.querySelector('[name="total_property_sqf"]') : null;
+        var total = totalEl ? parseFloat(totalEl.value) : NaN;
+        if (!isFinite(total) || total <= 0) {
+          items.push({ key: 'total', label: 'Enter total property size (sq ft)', done: false });
+        } else {
+          items.push({ key: 'total', label: 'Total property size (sq ft)', done: true });
+        }
+
+        var paintEl = form ? form.querySelector('[name="paint_line_id"]') : null;
+        var paintId = paintEl ? parseInt(paintEl.value, 10) : 0;
+        items.push({
+          key: 'paint',
+          label: paintId > 0 ? 'Paint brand / line' : 'Select paint brand / line',
+          done: paintId > 0
+        });
+
+        var excludedSum = 0;
+        if (excludedRoot) {
+          excludedRoot.querySelectorAll('[data-excluded-row]').forEach(function (row, idx) {
+            var nameInp = row.querySelector('[name*="[name]"]');
+            var name = nameInp ? String(nameInp.value || '').trim() : '';
+            if (name === '') return;
+            var modeSel = row.querySelector('.pt-excluded-mode');
+            var mode = modeSel ? modeSel.value : MODE_DIM;
+            if (mode === MODE_SQF) {
+              var sqfInp = row.querySelector('[name*="[sqf]"]');
+              var sqf = sqfInp ? parseFloat(sqfInp.value) : NaN;
+              if (isFinite(sqf) && sqf > 0) {
+                excludedSum += sqf;
+              } else {
+                items.push({
+                  key: 'excluded-sqf-' + idx,
+                  label: 'Finish sq ft for “' + name + '” or clear the label',
+                  done: false,
+                  optional: true
+                });
+              }
+            } else {
+              var lenInp = row.querySelector('[name*="[length_ft]"]');
+              var widInp = row.querySelector('[name*="[width_ft]"]');
+              var len = lenInp ? parseFloat(lenInp.value) : NaN;
+              var wid = widInp ? parseFloat(widInp.value) : NaN;
+              if (isFinite(len) && len > 0 && isFinite(wid) && wid > 0) {
+                excludedSum += len * wid;
+              } else {
+                items.push({
+                  key: 'excluded-dim-' + idx,
+                  label: 'Finish length × width for “' + name + '” or clear the label',
+                  done: false,
+                  optional: true
+                });
+              }
+            }
+          });
+        }
+
+        var net = isFinite(total) && total > 0 ? Math.max(0, total - excludedSum) : 0;
+        if (isFinite(total) && total > 0) {
+          if (net <= 0) {
+            items.push({
+              key: 'net',
+              label: 'Net painting area must be greater than zero',
+              done: false,
+              hint: 'Excluded area exceeds total property size'
+            });
+          } else {
+            items.push({ key: 'net', label: 'Net painting area greater than zero', done: true });
+          }
+        }
+
+        var required = items.filter(function (it) { return !it.optional; });
+        var doneCount = required.filter(function (it) { return it.done; }).length;
+        return {
+          items: items,
+          doneCount: doneCount,
+          totalCount: required.length,
+          ready: required.length > 0 && doneCount === required.length,
+          net: net
+        };
+      }
+
+      function renderReadiness(state) {
+        var root = document.getElementById('pt-readiness-root');
         var netEl = document.getElementById('pt-net-value');
+        if (!root) return;
+        if (netEl) {
+          netEl.textContent = state.net > 0
+            ? state.net.toLocaleString('en-CA') + ' sq ft'
+            : '—';
+        }
+        var summaryClass = state.ready ? '' : ' is-incomplete';
+        var html = '<div class="pt-readiness">'
+          + '<div class="pt-readiness-head">'
+          + '<span class="pt-readiness-title">To show prices</span>'
+          + '<span class="pt-readiness-summary' + summaryClass + '">'
+          + state.doneCount + ' / ' + state.totalCount + ' complete'
+          + '</span></div><ul class="pt-readiness-list" aria-label="Fields required for price breakdown">';
+        state.items.forEach(function (item) {
+          var cls = item.done ? 'is-done' : (item.optional ? 'is-optional' : 'is-pending');
+          var icon = item.done ? 'fa-check' : (item.optional ? 'fa-minus' : 'fa-circle-o');
+          html += '<li class="pt-readiness-item ' + cls + '">'
+            + '<span class="pt-readiness-item__icon" aria-hidden="true"><i class="fa ' + icon + '"></i></span>'
+            + '<span>' + escHtml(item.label)
+            + (item.optional && !item.done ? '<br><span class="pq-hint">Optional — does not block totals until filled</span>' : '')
+            + (item.hint ? '<br><span class="pq-hint">' + escHtml(item.hint) + '</span>' : '')
+            + '</span></li>';
+        });
+        html += '</ul></div>';
+        root.innerHTML = html;
+      }
+
+      function renderBreakdown(data) {
+        var root = document.getElementById('pt-breakdown-root');
         if (!root || !data || !data.summary) return;
         var scope = data.scope || {};
-        var net = parseFloat(scope.net_painting_area_sqf || 0);
-        if (netEl) {
-          netEl.textContent = isFinite(net) ? net.toLocaleString('en-CA') + ' sq ft' : '—';
-        }
         var html = '';
         (data.breakdown || []).forEach(function (row) {
-          html += '<div class="pq-row"><span>' + (row.label || '') + '<br><span class="pq-hint">' + (row.detail || '') + '</span></span><span>' + money(row.amount) + '</span></div>';
+          html += '<div class="pq-row"><span>' + escHtml(row.label || '')
+            + '<br><span class="pq-hint">' + escHtml(row.detail || '') + '</span></span><span>'
+            + money(row.amount) + '</span></div>';
         });
         html += '<div class="pq-row"><span>Subtotal (before HST)</span><span>' + money(data.summary.subtotal_pre_hst) + '</span></div>';
         html += '<div class="pq-row"><span>HST (13%)</span><span>' + money(data.summary.hst) + '</span></div>';
         html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + money(data.summary.grand_total) + '</span></div>';
         if (scope.gallons_needed > 0) {
-          html += '<p class="pq-hint" style="margin-top:8px;">' + scope.gallons_needed + ' gallon(s) @ ' + (scope.sqf_per_gallon || 70) + ' sq ft/gal (2 coats)</p>';
+          html += '<p class="pq-hint" style="margin-top:8px;">' + scope.gallons_needed
+            + ' gallon(s) @ ' + (scope.sqf_per_gallon || 70) + ' sq ft/gal (2 coats)</p>';
         }
         root.innerHTML = html;
+        root.classList.remove('is-empty');
       }
 
-      function runPreview() {
+      function clearBreakdown(message) {
+        var root = document.getElementById('pt-breakdown-root');
+        if (!root) return;
+        root.innerHTML = message
+          ? '<p class="admin-form-help pq-hint" style="margin:0;">' + escHtml(message) + '</p>'
+          : '';
+        root.classList.toggle('is-empty', !message);
+      }
+
+      function refreshSidebar() {
+        var state = collectReadiness();
+        renderReadiness(state);
+        if (!state.ready) {
+          clearBreakdown('Complete the checklist above to see labor, materials, and totals.');
+          return;
+        }
+        clearBreakdown('Calculating…');
         if (!form) return;
         var body = new FormData(form);
         fetch(previewUrl, {
           method: 'POST',
           headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json' },
           body: body
-        }).then(function (r) { return r.json(); }).then(renderPreview).catch(function () {});
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var latest = collectReadiness();
+            if (!latest.ready) {
+              refreshSidebar();
+              return;
+            }
+            renderBreakdown(data);
+            var netEl = document.getElementById('pt-net-value');
+            var scope = data.scope || {};
+            var net = parseFloat(scope.net_painting_area_sqf || 0);
+            if (netEl && isFinite(net) && net > 0) {
+              netEl.textContent = net.toLocaleString('en-CA') + ' sq ft';
+            }
+          })
+          .catch(function () {
+            clearBreakdown('Could not refresh preview. Try again.');
+          });
       }
 
       function schedulePreview() {
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(runPreview, 280);
+        debounceTimer = setTimeout(refreshSidebar, 280);
       }
 
       document.querySelectorAll('.pt-recalc').forEach(function (el) {
@@ -512,7 +721,7 @@
         });
       }
 
-      runPreview();
+      refreshSidebar();
     })();
   </script>
 @endsection
