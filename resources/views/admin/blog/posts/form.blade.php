@@ -101,6 +101,7 @@
           'instructionKey' => \App\Models\AiInstruction::KEY_BLOG_POST,
           'instructionLabel' => 'Edit blog post metadata prompt',
         ])
+        <span class="admin-ai-text-history-mount" data-history-mount data-history-key="blog-post-{{ (int) ($post->id ?? 0) }}"></span>
         </div>
         <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
         <p class="admin-form-help admin-form-help--tight">Uses title and content to fill metadata, generate a 16:9 featured image (WebP, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB), and preview it above.</p>
@@ -169,6 +170,8 @@
     </form>
   </div>
 @endsection
+
+@include('admin.partials.ai_text_history_assets')
 
 @push('scripts')
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js" crossorigin="anonymous"></script>
@@ -405,6 +408,37 @@
         }
       }
 
+      function metadataSnapshot() {
+        var excerpt = document.getElementById('bp-excerpt');
+        var meta = document.getElementById('bp-meta');
+        var tags = document.getElementById('bp-tags');
+        var imagePrompt = document.getElementById('bp-ai-image-prompt');
+        var previewImg = document.getElementById('bp-featured-preview-img');
+        var pending = document.getElementById('bp-pending-featured-path');
+        return JSON.stringify({
+          excerpt: excerpt ? excerpt.value : '',
+          meta_description: meta ? meta.value : '',
+          tags: tags ? tags.value : '',
+          image_prompt: imagePrompt ? imagePrompt.value : '',
+          category_ids: Array.prototype.map.call(
+            document.querySelectorAll('input[name="category_ids[]"]:checked'),
+            function (cb) { return cb.value; }
+          ),
+          featured_image_url: previewImg ? (previewImg.getAttribute('src') || '') : '',
+          featured_image_path: pending ? pending.value : '',
+        });
+      }
+
+      function applyMetadataSnapshot(json) {
+        var data;
+        try {
+          data = JSON.parse(json);
+        } catch (e) {
+          return;
+        }
+        applyAiMetadata(data);
+      }
+
       function applyAiMetadata(data) {
         var excerpt = document.getElementById('bp-excerpt');
         var meta = document.getElementById('bp-meta');
@@ -421,6 +455,30 @@
         });
 
         applyFeaturedPreview(data);
+      }
+
+      var blogHistoryMount = document.querySelector('.blog-admin-ai-metadata-wrap [data-history-mount]');
+      var blogHistory = null;
+      if (blogHistoryMount && window.AdminAiTextHistory) {
+        blogHistory = window.AdminAiTextHistory.create({
+          storageKey: 'blog-metadata:' + (blogHistoryMount.getAttribute('data-history-key') || 'new'),
+          mountEl: blogHistoryMount,
+          title: 'Blog metadata versions',
+          getText: metadataSnapshot,
+          setText: applyMetadataSnapshot,
+          formatPreview: function (json) {
+            try {
+              var data = JSON.parse(json);
+              var parts = [];
+              if (data.excerpt) parts.push('Excerpt: ' + data.excerpt);
+              if (data.meta_description) parts.push('Meta: ' + data.meta_description);
+              if (data.tags) parts.push('Tags: ' + data.tags);
+              return window.AdminAiTextHistory.defaultPreview(parts.join(' · '));
+            } catch (e) {
+              return window.AdminAiTextHistory.defaultPreview(json);
+            }
+          },
+        });
       }
 
       if (aiBtn) {
@@ -453,6 +511,10 @@
           var payload = { title: title, html_content: html };
           if (postId> 0) payload.post_id = postId;
 
+          if (blogHistory) {
+            blogHistory.captureOriginalIfNeeded();
+          }
+
           aiBtn.disabled = true;
           setAiStatus('Generating metadata and featured image with Gemini…', false);
 
@@ -475,6 +537,9 @@
             });
           }).then(function (body) {
             applyAiMetadata(body);
+            if (blogHistory) {
+              blogHistory.addVersion(metadataSnapshot());
+            }
             var msg = 'Metadata filled in. Review before saving.';
             if (body.featured_image_url) {
               msg = 'Metadata and featured image ready. Review before saving.';
@@ -485,6 +550,7 @@
               window.setTimeout(function () { setAiStatus('', false); }, 12000);
               return;
             }
+            msg += ' Use the history icon to restore earlier versions.';
             setAiStatus(msg, false);
             window.setTimeout(function () { setAiStatus('', false); }, 8000);
           }).catch(function (err) {

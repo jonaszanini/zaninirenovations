@@ -27,8 +27,20 @@
     var btn = root.querySelector('.quotation-work-description-ai__btn');
     var loadingEl = root.querySelector('.quotation-work-description-ai__loading');
     var statusEl = root.querySelector('.quotation-work-description-ai__status');
+    var historyMount = root.querySelector('[data-history-mount]');
 
     if (!btn || !textarea || !improveUrl) return;
+
+    var history = null;
+    if (historyMount && window.AdminAiTextHistory) {
+      history = global.AdminAiTextHistory.create({
+        storageKey: 'quotation-work-desc:' + textareaId,
+        mountEl: historyMount,
+        title: 'Work description versions',
+        getText: function () { return textarea.value; },
+        setText: function (text) { textarea.value = text; },
+      });
+    }
 
     function setStatus(message, isError) {
       if (!statusEl) return;
@@ -47,6 +59,10 @@
         setStatus('Enter a brief description first, then click Improve description with AI.', true);
         textarea.focus();
         return;
+      }
+
+      if (history) {
+        history.captureOriginalIfNeeded();
       }
 
       setLoading(true);
@@ -84,9 +100,13 @@
           throw new Error('Gemini did not return a description.');
         }
 
+        if (history) {
+          history.addVersion(description);
+        }
+
         textarea.value = description;
         textarea.focus();
-        setStatus('Description updated.', false);
+        setStatus('Description updated. Use the history icon to restore earlier versions.', false);
       } catch (err) {
         setStatus(err.message || 'Could not improve description.', true);
       } finally {

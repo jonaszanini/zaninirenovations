@@ -15,6 +15,7 @@
         'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION,
         'instructionLabel' => 'Edit quotation work description prompt',
       ])
+      <span class="admin-ai-text-history-mount" data-history-mount></span>
     </div>
     <div class="nb2-loading quotation-work-description-ai__loading" hidden aria-live="polite">
       <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
@@ -24,6 +25,7 @@
   <p class="nb2-status quotation-work-description-ai__status" role="status"></p>
 </div>
 
+@include('admin.partials.ai_text_history_assets')
 @once
   @push('scripts')
     <script src="{{ asset('js/admin-quotation-work-description-ai.js') }}?v={{ @filemtime(public_path('js/admin-quotation-work-description-ai.js')) ?: time() }}"></script>

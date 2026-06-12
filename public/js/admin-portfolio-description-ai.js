@@ -26,15 +26,27 @@
     var googleRoot = document.querySelector('.admin-google-photos');
     var btn = document.getElementById('portfolio-desc-ai-btn');
     var loadingEl = document.getElementById('portfolio-desc-ai-loading');
-    var optionsEl = document.getElementById('portfolio-desc-ai-options');
     var statusEl = document.getElementById('portfolio-desc-ai-status');
+    var historyMount = root.querySelector('[data-history-mount]');
     var csrfToken = config.csrfToken || '';
     var improveUrl = config.improveUrl || '';
+    var storageKey = 'portfolio-desc:' + (config.descriptionInputId || 'description');
 
     if (!btn || !descriptionEl || !improveUrl) return;
 
-    var storedOptions = { option_1: '', option_2: '' };
-    var activeOption = 1;
+    var history = null;
+    if (historyMount && window.AdminAiTextHistory) {
+      history = window.AdminAiTextHistory.create({
+        storageKey: storageKey,
+        mountEl: historyMount,
+        title: 'Portfolio description versions',
+        getText: function () { return descriptionEl.value; },
+        setText: function (text) {
+          descriptionEl.value = text;
+          descriptionEl.focus();
+        },
+      });
+    }
 
     function setStatus(message, isError) {
       if (!statusEl) return;
@@ -52,38 +64,16 @@
       return googleRoot.googlePhotosPicker.getCheckedPayloads();
     }
 
-    function updateOptionButtons() {
-      if (!optionsEl) return;
-      optionsEl.querySelectorAll('[data-portfolio-desc-option]').forEach(function (button) {
-        var num = parseInt(button.getAttribute('data-portfolio-desc-option') || '1', 10);
-        button.classList.toggle('is-active', num === activeOption);
-      });
-    }
-
-    function applyOption(num) {
-      activeOption = num;
-      var text = num === 2 ? storedOptions.option_2 : storedOptions.option_1;
-      if (text) {
-        descriptionEl.value = text;
-        descriptionEl.focus();
-      }
-      updateOptionButtons();
-    }
-
-    if (optionsEl) {
-      optionsEl.querySelectorAll('[data-portfolio-desc-option]').forEach(function (button) {
-        button.addEventListener('click', function () {
-          applyOption(parseInt(button.getAttribute('data-portfolio-desc-option') || '1', 10));
-        });
-      });
-    }
-
     btn.addEventListener('click', async function () {
       var brief = descriptionEl.value.trim();
       if (!brief) {
         setStatus('Enter a brief description first, then click Improve description with AI.', true);
         descriptionEl.focus();
         return;
+      }
+
+      if (history) {
+        history.captureOriginalIfNeeded();
       }
 
       var formData = new FormData();
@@ -101,7 +91,6 @@
 
       setLoading(true);
       setStatus('Analyzing your description and photos with Gemini…', false);
-      if (optionsEl) optionsEl.hidden = true;
 
       try {
         var res = await fetch(improveUrl, {
@@ -129,22 +118,31 @@
           throw new Error(errorFromBody(body, res.status));
         }
 
-        storedOptions.option_1 = body.option_1 || body.description || '';
-        storedOptions.option_2 = body.option_2 || storedOptions.option_1;
-        activeOption = 1;
-        applyOption(1);
+        var option1 = body.option_1 || body.description || '';
+        var option2 = body.option_2 || option1;
 
-        if (optionsEl && storedOptions.option_1 !== storedOptions.option_2) {
-          optionsEl.hidden = false;
+        if (history) {
+          if (option1) {
+            history.addVersion(option1, option2 !== option1 ? 'Craftsmanship' : undefined);
+            descriptionEl.value = option1;
+          }
+          if (option2 && option2 !== option1) {
+            history.addVersion(option2, 'Technical');
+          }
+          descriptionEl.focus();
+        } else {
+          descriptionEl.value = option1;
+          descriptionEl.focus();
         }
 
-        var note = 'Description updated (Option 1).';
+        var note = 'Description updated.';
         if (typeof body.image_count === 'number') {
           note += ' Used ' + body.image_count + ' photo' + (body.image_count === 1 ? '' : 's') + '.';
         }
-        if (storedOptions.option_1 !== storedOptions.option_2) {
-          note += ' Switch to Option 2 if you prefer the technical version.';
+        if (option2 && option2 !== option1) {
+          note += ' Both options are in version history.';
         }
+        note += ' Use the history icon to restore earlier versions.';
         setStatus(note, false);
       } catch (err) {
         setStatus(err.message || 'Could not improve description.', true);

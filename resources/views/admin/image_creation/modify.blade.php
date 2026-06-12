@@ -47,6 +47,7 @@
           'instructionKey' => \App\Models\AiInstruction::KEY_IMAGE_MODIFY_PROMPT,
           'instructionLabel' => 'Edit image modify prompt improvement',
         ])
+        <span class="admin-ai-text-history-mount" data-history-mount></span>
       </div>
       <div id="aim-loading" class="nb2-loading" hidden aria-live="polite">
         <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
@@ -111,6 +112,8 @@
   </template>
 @endsection
 
+@include('admin.partials.ai_text_history_assets')
+
 @push('scripts')
   <script>
     (function () {
@@ -132,6 +135,20 @@
       var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
       var galleryCount = {{ (int) $images->total() }};
       var maxSources = {{ (int) $maxSources }};
+      var promptHistoryMount = document.querySelector('.admin-ai-action-group [data-history-mount]');
+      var promptHistory = null;
+      if (promptHistoryMount && window.AdminAiTextHistory && promptEl) {
+        promptHistory = window.AdminAiTextHistory.create({
+          storageKey: 'image-modify-prompt',
+          mountEl: promptHistoryMount,
+          title: 'Edit prompt versions',
+          getText: function () { return promptEl.value; },
+          setText: function (text) {
+            promptEl.value = text;
+            promptEl.focus();
+          },
+        });
+      }
 
       function setStatus(message, isError) {
         if (!statusEl) return;
@@ -381,6 +398,10 @@
             return;
           }
 
+          if (promptHistory) {
+            promptHistory.captureOriginalIfNeeded();
+          }
+
           setLoading(true, 'Improving prompt with Gemini…');
           setStatus('', false);
 
@@ -403,10 +424,13 @@
             });
           }).then(function (body) {
             if (promptEl && body.prompt) {
+              if (promptHistory) {
+                promptHistory.addVersion(body.prompt);
+              }
               promptEl.value = body.prompt;
               promptEl.focus();
             }
-            var note = 'Prompt improved. Review the updated instructions, then apply changes when ready.';
+            var note = 'Prompt improved. Use the history icon to restore earlier versions.';
             if (body.why_better) {
               var why = body.why_better;
               if (why.length> 240) why = why.slice(0, 239) + '…';

@@ -182,6 +182,7 @@
             'instructionKey' => \App\Models\AiInstruction::KEY_CONTRACT,
             'instructionLabel' => 'Edit contract generation prompt',
           ])
+          <span class="admin-ai-text-history-mount" data-history-mount data-history-key="contract-{{ $project->id }}"></span>
           </div>
           <span id="cp-contract-gemini-status" class="cp-contract-gemini-status" aria-live="polite"></span>
         </div>
@@ -191,6 +192,8 @@
       </div>
     </div>
   </div>
+
+  @include('admin.partials.ai_text_history_assets')
 
   <script>
     (function () {
@@ -296,6 +299,17 @@
         return raw && (raw.value || '').trim().length> 0;
       }
 
+      function getEditorHtml() {
+        if (typeof tinymce !== 'undefined') {
+          var ed = tinymce.get('cp-contract-editor');
+          if (ed) {
+            return ed.getContent() || '';
+          }
+        }
+        var raw = document.getElementById('cp-contract-editor');
+        return raw ? (raw.value || '') : '';
+      }
+
       function applyDraftToEditor(html) {
         if (typeof tinymce !== 'undefined') {
           var ed = tinymce.get('cp-contract-editor');
@@ -311,6 +325,22 @@
         }
       }
 
+      var contractHistoryMount = document.querySelector('.cp-contract-gemini-wrap [data-history-mount]');
+      var contractHistory = null;
+      if (contractHistoryMount && window.AdminAiTextHistory) {
+        contractHistory = window.AdminAiTextHistory.create({
+          storageKey: 'contract-ai:' + (contractHistoryMount.getAttribute('data-history-key') || 'default'),
+          mountEl: contractHistoryMount,
+          title: 'Contract draft versions',
+          getText: getEditorHtml,
+          setText: applyDraftToEditor,
+          formatPreview: function (html) {
+            var text = String(html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            return window.AdminAiTextHistory.defaultPreview(text);
+          },
+        });
+      }
+
       if (geminiBtn && ta) {
         geminiBtn.addEventListener('click', function () {
           var url = geminiBtn.getAttribute('data-ai-url');
@@ -323,6 +353,10 @@
             if (!window.confirm('Replace the current contract editor content with the AI draft?')) {
               return;
             }
+          }
+
+          if (contractHistory && editorHasContent()) {
+            contractHistory.captureOriginalIfNeeded();
           }
 
           geminiBtn.disabled = true;
@@ -346,9 +380,13 @@
               return body;
             });
           }).then(function (body) {
-            applyDraftToEditor(body.html || '');
+            var html = body.html || '';
+            if (contractHistory && html) {
+              contractHistory.addVersion(html);
+            }
+            applyDraftToEditor(html);
             closeModal();
-            setGeminiStatus('Draft inserted into the contract editor.', false);
+            setGeminiStatus('Draft inserted. Use the history icon to restore earlier versions.', false);
             window.setTimeout(function () { setGeminiStatus('', false); }, 4000);
           }).catch(function (err) {
             setGeminiStatus(err && err.message ? err.message : 'Could not generate contract.', true);
