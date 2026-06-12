@@ -717,15 +717,14 @@
                 <h5>Existing project</h5>
                 <form method="post" action="{{ route('admin.quotations.paving.link', $quotation) }}">
                   @csrf
+                  @if ($linkableProjects->isNotEmpty())
                   <div class="fq-link-existing-row">
-                    <select name="client_project_id" class="admin-input" required>
-                      <option value="">Select project…</option>
-                      @foreach ($linkableProjects as $p)
-                        <option value="{{ $p->id }}">{{ $p->name }} — {{ $p->client_name }}</option>
-                      @endforeach
-                    </select>
+                    @include('admin.quotations._link_project_picker', ['projects' => $linkableProjects])
                     <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
                   </div>
+                  @else
+                  <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below.</p>
+                  @endif
                   <div class="admin-form-group cp-form-group-spaced">
                     <label>Line description (optional)</label>
                     <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">

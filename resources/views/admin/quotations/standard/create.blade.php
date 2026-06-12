@@ -513,22 +513,11 @@
           @if ($linkable->isNotEmpty())
             <form method="post" action="{{ route('admin.quotations.standard.link', $quotation) }}" class="fq-link-existing-form" id="sq-link-existing-form">
               @csrf
-              <div class="admin-form-group cp-geometry-hint">
-                <label for="sq-project-filter">Search projects</label>
-                <input type="search" id="sq-project-filter" class="admin-input" placeholder="Type client or project name…" autocomplete="off">
-              </div>
               <div class="fq-link-existing-row">
-                <div class="admin-form-group" style="margin:0;flex:1;">
-                  <label for="sq-link-project">Project</label>
-                  <select id="sq-link-project" name="client_project_id" class="admin-input" required>
-                    <option value="" disabled selected>Choose a project…</option>
-                    @foreach ($linkable as $p)
-                      <option value="{{ $p->id }}" data-label="{{ e($p->client_name.' — '.$p->name) }}">
-                        {{ $p->client_name }} — {{ $p->name }}
-                      </option>
-                    @endforeach
-                  </select>
-                </div>
+                @include('admin.quotations._link_project_picker', [
+                    'projects' => $linkable,
+                    'id' => 'sq-link-project',
+                ])
                 <button type="submit" class="admin-btn admin-btn--primary">
                   <i class="fa fa-link"></i> Link to project
                 </button>
@@ -1080,19 +1069,6 @@
   modeRadios.forEach(function (r) {
     r.addEventListener('change', recalcMaterials);
   });
-
-  var projFilter = document.getElementById('sq-project-filter');
-  var projSelect = document.getElementById('sq-link-project');
-  if (projFilter && projSelect) {
-    projFilter.addEventListener('input', function () {
-      var q = projFilter.value.toLowerCase().trim();
-      projSelect.querySelectorAll('option').forEach(function (opt) {
-        if (!opt.value) return;
-        var lab = (opt.getAttribute('data-label') || opt.textContent || '').toLowerCase();
-        opt.hidden = q !== '' && lab.indexOf(q) === -1;
-      });
-    });
-  }
 
   list.querySelectorAll('.sq-material-row').forEach(initMaterialRow);
 

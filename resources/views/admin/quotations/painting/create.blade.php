@@ -341,15 +341,14 @@
               <h5>Existing project</h5>
               <form method="post" action="{{ route('admin.quotations.painting.link', $quotation) }}">
                 @csrf
+                @if ($linkableProjects->isNotEmpty())
                 <div class="fq-link-existing-row">
-                  <select name="client_project_id" class="admin-input" required>
-                    <option value="">Select project…</option>
-                    @foreach ($linkableProjects as $p)
-                      <option value="{{ $p->id }}">{{ $p->name }} — {{ $p->client_name }}</option>
-                    @endforeach
-                  </select>
+                  @include('admin.quotations._link_project_picker', ['projects' => $linkableProjects])
                   <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
                 </div>
+                @else
+                <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below.</p>
+                @endif
                 <div class="admin-form-group cp-form-group-spaced">
                   <label>Line description (optional)</label>
                   <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
@@ -672,16 +671,33 @@
         clearBreakdown('Calculating…');
         if (!form) return;
         var body = new FormData(form);
+        body.delete('_method');
         fetch(previewUrl, {
           method: 'POST',
-          headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json' },
+          headers: {
+            'X-CSRF-TOKEN': tokenV,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
           body: body
         })
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) {
+                var msg = (data && data.message) ? data.message : 'Could not refresh preview (HTTP ' + r.status + ').';
+                throw new Error(msg);
+              }
+              return data;
+            });
+          })
           .then(function (data) {
             var latest = collectReadiness();
             if (!latest.ready) {
               refreshSidebar();
+              return;
+            }
+            if (!data || !data.summary) {
+              clearBreakdown('Unexpected preview response. Try saving the quotation.');
               return;
             }
             renderBreakdown(data);
@@ -692,8 +708,8 @@
               netEl.textContent = net.toLocaleString('en-CA') + ' sq ft';
             }
           })
-          .catch(function () {
-            clearBreakdown('Could not refresh preview. Try again.');
+          .catch(function (err) {
+            clearBreakdown(err && err.message ? err.message : 'Could not refresh preview. Try again.');
           });
       }
 

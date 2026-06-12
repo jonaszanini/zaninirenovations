@@ -471,15 +471,10 @@
                 <form method="post" action="{{ route('admin.quotations.fence.link', $quotation) }}" class="fq-link-existing-form">
                   @csrf
                   <div class="fq-link-existing-row">
-                    <div class="admin-form-group cp-form-group-flush">
-                      <label for="fq-link-project">Project</label>
-                      <select id="fq-link-project" name="client_project_id" class="admin-input" required>
-                        <option value="" disabled selected>Choose a project…</option>
-                        @foreach ($linkable as $p)
-                          <option value="{{ $p->id }}">{{ $p->client_name }} — {{ $p->name }}</option>
-                        @endforeach
-                      </select>
-                    </div>
+                    @include('admin.quotations._link_project_picker', [
+                        'projects' => $linkable,
+                        'id' => 'fq-link-project',
+                    ])
                     <button type="submit" class="admin-btn admin-btn--primary">
                       <i class="fa fa-link"></i> Link
                     </button>
