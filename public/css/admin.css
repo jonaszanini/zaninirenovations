@@ -2529,6 +2529,13 @@ a.ic-model-card:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  overflow: visible;
+}
+
+.admin-ai-text-history-mount {
+  display: inline-flex;
+  overflow: visible;
+  margin-right: 0.35rem;
 }
 
 .admin-ai-instruction-edit-link {
@@ -2554,10 +2561,10 @@ a.ic-model-card:hover {
 }
 
 .admin-ai-text-history-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
   width: 2.1rem;
   height: 2.1rem;
   flex-shrink: 0;
@@ -2578,14 +2585,24 @@ a.ic-model-card:hover {
 }
 
 .admin-ai-text-history-btn__count {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: var(--admin-primary);
+  color: #fff;
   font-size: 0.62rem;
   font-weight: 700;
   line-height: 1;
-  min-width: 0.95rem;
-  padding: 0.1rem 0.2rem;
-  border-radius: 999px;
-  background: var(--admin-primary);
-  color: #fff;
+  box-shadow: 0 0 0 1px var(--admin-border);
+  pointer-events: none;
 }
 
 .admin-ai-text-history-btn__count[hidden] {
