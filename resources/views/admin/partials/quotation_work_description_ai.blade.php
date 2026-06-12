@@ -1,10 +1,14 @@
 @php
   $workDescriptionTextareaId = $workDescriptionTextareaId ?? 'work-description';
+  $aiContextFormId = $aiContextFormId ?? '';
+  $aiQuotationType = $aiQuotationType ?? '';
 @endphp
 <div class="quotation-work-description-ai"
      data-textarea-id="{{ $workDescriptionTextareaId }}"
      data-improve-url="{{ route('admin.quotations.work-description.ai') }}"
-     data-csrf="{{ csrf_token() }}">
+     data-csrf="{{ csrf_token() }}"
+     @if ($aiContextFormId) data-context-form="{{ $aiContextFormId }}" @endif
+     @if ($aiQuotationType) data-quotation-type="{{ $aiQuotationType }}" @endif>
   <div class="nb2-generate-row quotation-work-description-ai__actions">
     <div class="admin-ai-action-group">
       <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm quotation-work-description-ai__btn">

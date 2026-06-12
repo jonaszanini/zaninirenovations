@@ -254,7 +254,11 @@
             <textarea id="sq-work-description" name="work_description" rows="5" maxlength="5000"
                       class="admin-input @error('work_description') is-invalid @enderror"
                       placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? $quotation->work_description : '') }}</textarea>
-            @include('admin.partials.quotation_work_description_ai', ['workDescriptionTextareaId' => 'sq-work-description'])
+            @include('admin.partials.quotation_work_description_ai', [
+                'workDescriptionTextareaId' => 'sq-work-description',
+                'aiContextFormId' => 'sq-standard-form',
+                'aiQuotationType' => 'standard',
+            ])
             <p class="admin-form-help sq-intro-option-help">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
             @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>

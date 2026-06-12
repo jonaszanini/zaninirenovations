@@ -16,6 +16,202 @@
     return 'HTTP ' + status;
   }
 
+  function formValue(form, name) {
+    if (!form || !name) return '';
+    var el = form.elements[name];
+    if (!el) return '';
+    if (el.type === 'radio') {
+      var checked = form.querySelector('input[name="' + name.replace(/"/g, '\\"') + '"]:checked');
+      return checked ? checked.value : '';
+    }
+    if (el.type === 'select-one') {
+      var opt = el.options[el.selectedIndex];
+      return opt ? (opt.text || opt.value || '') : '';
+    }
+    return el.value != null ? String(el.value).trim() : '';
+  }
+
+  function formSelectValue(form, name) {
+    if (!form || !name) return '';
+    var el = form.elements[name];
+    if (!el || el.type !== 'select-one') return formValue(form, name);
+    return el.value != null ? String(el.value).trim() : '';
+  }
+
+  function panelText(id) {
+    var el = document.getElementById(id);
+    if (!el) return '';
+    return el.innerText.replace(/\s+/g, ' ').trim();
+  }
+
+  function collectPaintingContext(form) {
+    var excluded = [];
+    form.querySelectorAll('[data-excluded-row]').forEach(function (row) {
+      var nameEl = row.querySelector('input[name*="[name]"]');
+      var modeEl = row.querySelector('select[name*="[mode]"]');
+      var lengthEl = row.querySelector('input[name*="[length_ft]"]');
+      var widthEl = row.querySelector('input[name*="[width_ft]"]');
+      var sqfEl = row.querySelector('input[name*="[sqf]"]');
+      excluded.push({
+        name: nameEl ? nameEl.value.trim() : '',
+        mode: modeEl ? modeEl.value : 'dimensions',
+        length_ft: lengthEl ? lengthEl.value : '',
+        width_ft: widthEl ? widthEl.value : '',
+        sqf: sqfEl ? sqfEl.value : '',
+      });
+    });
+
+    var paintSelect = form.elements['paint_line_id'];
+    var paintLineName = '';
+    if (paintSelect && paintSelect.type === 'select-one' && paintSelect.selectedIndex >= 0) {
+      paintLineName = paintSelect.options[paintSelect.selectedIndex].text || '';
+    }
+
+    return {
+      client_name: formValue(form, 'client_name'),
+      total_property_sqf: formValue(form, 'total_property_sqf'),
+      paint_line_id: formSelectValue(form, 'paint_line_id'),
+      paint_line_name: paintLineName,
+      surface_prep_description: formValue(form, 'surface_prep_description'),
+      excluded_areas: excluded,
+      breakdown_summary: panelText('pt-live-root'),
+    };
+  }
+
+  function collectFenceContext(form) {
+    var sides = [];
+    form.querySelectorAll('.fq-side-length').forEach(function (input) {
+      sides.push({ length_ft: input.value });
+    });
+
+    var materials = [];
+    document.querySelectorAll('#fq-materials tbody tr').forEach(function (tr) {
+      var cells = tr.querySelectorAll('td');
+      if (cells.length < 2) return;
+      var label = cells[0].innerText.replace(/\s+/g, ' ').trim();
+      var amount = cells[cells.length - 1].innerText.replace(/\s+/g, ' ').trim();
+      if (label) materials.push(label + (amount ? ' — ' + amount : ''));
+    });
+
+    var totals = [
+      panelText('fq-t-materials') ? 'Materials: ' + panelText('fq-t-materials') : '',
+      panelText('fq-t-labour') ? 'Labour: ' + panelText('fq-t-labour') : '',
+      panelText('fq-t-grand') ? 'Grand total: ' + panelText('fq-t-grand') : '',
+    ].filter(Boolean).join('; ');
+
+    return {
+      client_name: formValue(form, 'client_name'),
+      fence_height_ft: formSelectValue(form, 'fence_height_ft') || formValue(form, 'fence_height_ft'),
+      board_style: formValue(form, 'board_style'),
+      gates: formValue(form, 'gates'),
+      overlap_in: formValue(form, 'overlap_in'),
+      sides: sides,
+      geometry_summary: panelText('fq-geometry'),
+      materials_summary: materials.join('\n'),
+      totals_summary: totals,
+    };
+  }
+
+  function collectPavingContext(form) {
+    var areaMode = form.querySelector('input[name="area_input_mode"]:checked');
+    var areaSummary = '';
+    if (areaMode && areaMode.value === 'dimensions') {
+      var len = formValue(form, 'area_length_ft');
+      var wid = formValue(form, 'area_width_ft');
+      var computed = panelText('pq-area-computed');
+      areaSummary = (len && wid ? len + ' ft × ' + wid + ' ft' : '') + (computed ? ' (' + computed + ')' : '');
+    } else {
+      areaSummary = formValue(form, 'total_area_sq_ft') ? formValue(form, 'total_area_sq_ft') + ' sq ft' : '';
+    }
+
+    return {
+      client_name: formValue(form, 'client_name'),
+      total_area_sq_ft: areaSummary,
+      stone_type: formValue(form, 'paving_stone_type_id'),
+      waste_factor: formValue(form, 'waste_factor') ? formValue(form, 'waste_factor') + '%' : '',
+      excavation_depth_in: formValue(form, 'excavation_depth_in') ? formValue(form, 'excavation_depth_in') + ' in' : '',
+      profit_margin: formValue(form, 'profit_margin') ? formValue(form, 'profit_margin') + '%' : '',
+      mini_skid_days: formValue(form, 'mini_skid_days'),
+      plate_compactor_days: formValue(form, 'plate_compactor_days'),
+      helper_hourly_rate: formValue(form, 'helper_hourly_rate'),
+      owner_hourly_rate: formValue(form, 'owner_hourly_rate'),
+      stone_meta: panelText('pq-stone-meta'),
+      breakdown_summary: panelText('pq-live-root'),
+    };
+  }
+
+  function collectStandardContext(form) {
+    var materials = [];
+    form.querySelectorAll('.sq-material-row').forEach(function (row) {
+      var shortName = row.querySelector('input[name*="[short_name]"]');
+      var desc = row.querySelector('input[name*="[description]"], textarea[name*="[description]"]');
+      var qty = row.querySelector('input[name*="[quantity]"]');
+      var unit = row.querySelector('input[name*="[unit_price]"]');
+      materials.push({
+        short_name: shortName ? shortName.value.trim() : '',
+        description: desc ? desc.value.trim() : '',
+        quantity: qty ? qty.value.trim() : '',
+        unit_price: unit ? unit.value.trim() : '',
+      });
+    });
+
+    var docTypeEl = form.querySelector('input[name="document_type"]:checked');
+    var pdfModeEl = form.querySelector('input[name="pdf_detail_mode"]:checked');
+
+    var totals = [
+      panelText('sq-mat-with-hst') ? 'Materials w/ HST: ' + panelText('sq-mat-with-hst') : '',
+      panelText('sq-labour-with-hst') ? 'Labour w/ HST: ' + panelText('sq-labour-with-hst') : '',
+      panelText('sq-g-grand') ? 'Grand total: ' + panelText('sq-g-grand') : '',
+    ].filter(Boolean).join('; ');
+
+    return {
+      client_name: formValue(form, 'client_name'),
+      display_title: formValue(form, 'display_title'),
+      document_type: docTypeEl ? docTypeEl.value : '',
+      pdf_detail_mode: pdfModeEl ? pdfModeEl.value : '',
+      includes_material: form.elements['includes_material'] && form.elements['includes_material'].checked,
+      includes_labour: form.elements['includes_labour'] && form.elements['includes_labour'].checked,
+      contingency_enabled: form.elements['contingency_enabled'] && form.elements['contingency_enabled'].checked,
+      contingency_percent: formValue(form, 'contingency_percent'),
+      labour_use_fixed: form.elements['sq-labour-use-fixed'] && form.elements['sq-labour-use-fixed'].checked,
+      labour_fixed_amount: formValue(form, 'labour_fixed_amount'),
+      labour_hourly_rate: formValue(form, 'labour_hourly_rate'),
+      labour_quantity: formValue(form, 'labour_quantity'),
+      materials: materials,
+      totals_summary: totals,
+    };
+  }
+
+  var collectors = {
+    painting: collectPaintingContext,
+    fence: collectFenceContext,
+    paving: collectPavingContext,
+    standard: collectStandardContext,
+  };
+
+  function collectQuotationContext(formId, quotationType) {
+    if (!formId || !quotationType || !collectors[quotationType]) return null;
+    var form = document.getElementById(formId);
+    if (!form) return null;
+    return collectors[quotationType](form);
+  }
+
+  function contextHasData(context) {
+    if (!context || typeof context !== 'object') return false;
+    return Object.keys(context).some(function (key) {
+      var val = context[key];
+      if (val == null || val === '') return false;
+      if (Array.isArray(val)) return val.some(function (row) {
+        if (!row || typeof row !== 'object') return !!row;
+        return Object.keys(row).some(function (k) {
+          return String(row[k] || '').trim() !== '';
+        });
+      });
+      if (typeof val === 'boolean') return val;
+      return String(val).trim() !== '';
+    });
+  }
+
   function init(root) {
     if (!root || root.getAttribute('data-quotation-work-desc-ai-init') === '1') return;
     root.setAttribute('data-quotation-work-desc-ai-init', '1');
@@ -23,6 +219,8 @@
     var textareaId = root.getAttribute('data-textarea-id') || '';
     var improveUrl = root.getAttribute('data-improve-url') || '';
     var csrfToken = root.getAttribute('data-csrf') || '';
+    var contextFormId = root.getAttribute('data-context-form') || '';
+    var quotationType = root.getAttribute('data-quotation-type') || '';
     var textarea = document.getElementById(textareaId);
     var btn = root.querySelector('.quotation-work-description-ai__btn');
     var loadingEl = root.querySelector('.quotation-work-description-ai__loading');
@@ -55,8 +253,11 @@
 
     btn.addEventListener('click', async function () {
       var notes = textarea.value.trim();
-      if (!notes) {
-        setStatus('Enter a brief description first, then click Improve description with AI.', true);
+      var context = collectQuotationContext(contextFormId, quotationType);
+      var hasContext = contextHasData(context);
+
+      if (!notes && !hasContext) {
+        setStatus('Enter a brief description or fill in quotation details first, then click Improve description with AI.', true);
         textarea.focus();
         return;
       }
@@ -69,6 +270,14 @@
       setStatus('Rewriting your description with Gemini…', false);
 
       try {
+        var payload = {
+          contractor_notes: notes,
+        };
+        if (quotationType && hasContext) {
+          payload.quotation_type = quotationType;
+          payload.context = context;
+        }
+
         var res = await fetch(improveUrl, {
           method: 'POST',
           credentials: 'same-origin',
@@ -78,7 +287,7 @@
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRF-TOKEN': csrfToken,
           },
-          body: JSON.stringify({ contractor_notes: notes }),
+          body: JSON.stringify(payload),
         });
 
         var text = await res.text();

@@ -10,7 +10,7 @@
         <i class="fa fa-arrow-left"></i> All quotation types
       </a>
       <a href="{{ route('admin.quotations.painting.price-configuration', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        Price configuration
+        <i class="fa fa-cog"></i> Price configuration
       </a>
     </div>
     <a href="{{ route('admin.quotations.painting.create', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--primary">

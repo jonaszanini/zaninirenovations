@@ -89,7 +89,7 @@
     </a>
     <div class="fq-form-toolbar-right">
       <a href="{{ route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        Price configuration
+        <i class="fa fa-cog"></i> Price configuration
       </a>
       @if ($returnToProject && $projectForReturn)
         <a href="{{ route('admin.client-projects.show', $projectForReturn) }}#quotation" class="admin-btn admin-btn--ghost admin-btn--sm">
@@ -208,7 +208,11 @@
           </div>
           <div class="admin-form-group">
             <label for="work-description">Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
-            @include('admin.partials.quotation_work_description_ai', ['workDescriptionTextareaId' => 'work-description'])
+            @include('admin.partials.quotation_work_description_ai', [
+                'workDescriptionTextareaId' => 'work-description',
+                'aiContextFormId' => 'pt-main-form',
+                'aiQuotationType' => 'painting',
+            ])
             <textarea class="admin-input" id="work-description" name="work_description" rows="5" maxlength="5000">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           </div>
         </div>

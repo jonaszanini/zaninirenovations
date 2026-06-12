@@ -9,9 +9,13 @@ class QuotationWorkDescriptionAiService
 {
     public function __construct(
         protected GeminiService $gemini,
+        protected QuotationWorkDescriptionContextBuilder $contextBuilder,
     ) {}
 
-    public function suggest(string $contractorNotes): string
+    /**
+     * @param  array<string, mixed>|null  $contextPayload
+     */
+    public function suggest(string $contractorNotes, ?string $quotationType = null, ?array $contextPayload = null): string
     {
         $instruction = AiInstruction::forKey(AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION);
         if (! $instruction) {
@@ -19,8 +23,14 @@ class QuotationWorkDescriptionAiService
         }
 
         $contractorNotes = trim($contractorNotes);
+        $quotationContext = $this->contextBuilder->build($quotationType, $contextPayload);
+
+        if ($contractorNotes === '' && $quotationContext === '') {
+            throw new RuntimeException('Enter a brief description or fill in quotation details first.');
+        }
+
         if ($contractorNotes === '') {
-            throw new RuntimeException('Enter a brief description first.');
+            $contractorNotes = 'Draft a professional description of the work using the quotation parameters below.';
         }
 
         $systemInstruction = str_replace(
@@ -28,6 +38,17 @@ class QuotationWorkDescriptionAiService
             $contractorNotes,
             $instruction->instruction,
         );
+
+        if (str_contains($systemInstruction, '{{ quotation_context }}')) {
+            $systemInstruction = str_replace(
+                '{{ quotation_context }}',
+                $quotationContext !== '' ? $quotationContext : '(No additional quotation parameters provided.)',
+                $systemInstruction,
+            );
+        } elseif ($quotationContext !== '') {
+            $systemInstruction .= "\n\n### Quotation parameters (use to make the description complete; do not invent facts beyond this):\n"
+                .$quotationContext;
+        }
 
         $text = trim($this->gemini->generate(
             $systemInstruction,

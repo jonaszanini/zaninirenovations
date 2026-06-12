@@ -40,12 +40,18 @@ class QuotationHubController extends Controller
     public function aiWorkDescription(Request $request, QuotationWorkDescriptionAiService $service): JsonResponse
     {
         $data = $request->validate([
-            'contractor_notes' => ['required', 'string', 'max:5000'],
+            'contractor_notes' => ['nullable', 'string', 'max:5000'],
+            'quotation_type' => ['nullable', 'string', 'max:32'],
+            'context' => ['nullable', 'array'],
         ]);
 
         try {
             return response()->json([
-                'description' => $service->suggest($data['contractor_notes']),
+                'description' => $service->suggest(
+                    (string) ($data['contractor_notes'] ?? ''),
+                    $data['quotation_type'] ?? null,
+                    $data['context'] ?? null,
+                ),
             ]);
         } catch (\Throwable $e) {
             return response()->json([

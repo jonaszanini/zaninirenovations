@@ -18,6 +18,9 @@ You are an expert assistant integrated into the custom quotation backend for Zan
 ### Output Requirement:
 Respond ONLY with the final rewritten paragraph. Do not include introductory text, explanations, or closing remarks.
 
-### Input Data to Transform:
+### Quotation parameters (dimensions, materials, surface prep, scope — use to enrich the description; do not invent facts beyond this):
+{{ quotation_context }}
+
+### Contractor notes to transform:
 {{ contractor_notes }}
 INSTRUCTION;

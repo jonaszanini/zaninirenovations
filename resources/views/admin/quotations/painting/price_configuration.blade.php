@@ -85,11 +85,12 @@
           <input type="number" class="admin-input" name="paint_lines[{{ $i }}][sort_order]" value="{{ old('paint_lines.'.$i.'.sort_order', $line->sort_order) }}" min="0">
         </div>
         <div class="admin-form-group" style="margin:0;">
-          <label class="admin-checkbox">
-            <input type="hidden" name="paint_lines[{{ $i }}][is_active]" value="0">
-            <input type="checkbox" name="paint_lines[{{ $i }}][is_active]" value="1" @checked(old('paint_lines.'.$i.'.is_active', $line->is_active))>
-            <span class="admin-checkbox__text">Active</span>
-          </label>
+          @include('admin.partials.checkbox', [
+              'name' => 'paint_lines['.$i.'][is_active]',
+              'checked' => (bool) old('paint_lines.'.$i.'.is_active', $line->is_active),
+              'label' => 'Active',
+              'hiddenFallback' => true,
+          ])
         </div>
       </div>
     @endforeach
