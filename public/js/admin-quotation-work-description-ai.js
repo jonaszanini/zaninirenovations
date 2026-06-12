@@ -33,7 +33,7 @@
 
     var history = null;
     if (historyMount && window.AdminAiTextHistory) {
-      history = global.AdminAiTextHistory.create({
+      history = window.AdminAiTextHistory.create({
         storageKey: 'quotation-work-desc:' + textareaId,
         mountEl: historyMount,
         title: 'Work description versions',
