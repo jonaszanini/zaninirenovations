@@ -19,60 +19,66 @@
   {{-- HEADER / STATUS BAR -------------------------------------------------- --}}
   <div class="admin-card cp-header-card">
     <div class="cp-header-layout">
-      <div class="cp-header-row cp-header-row--top">
-        <div class="cp-header-eyebrow">
-          <span class="cp-project-ref" title="Project reference">{{ $project->referenceCode() }}</span>
-          <span class="cp-billing-type" title="How this project is billed">
-            @if ($project->isHourly())
-              <i class="fa fa-clock-o" aria-hidden="true"></i> Hourly rate
-            @else
-              <i class="fa fa-tag" aria-hidden="true"></i> Fixed price
-            @endif
-          </span>
-          @if (filled($project->notes))
-            @php
-              $notesPreview = \Illuminate\Support\Str::limit(trim((string) $project->notes), 800);
-            @endphp
-            <span class="cp-notes-popover-wrap">
-              <button type="button"
-                      class="cp-notes-indicator cp-notes-indicator--btn"
-                      id="cp-notes-toggle"
-                      aria-expanded="false"
-                      aria-controls="cp-notes-popover">
-                <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Notes
-              </button>
-              <div class="cp-notes-popover" id="cp-notes-popover" role="dialog" aria-label="Project notes preview" hidden>
-                <div class="cp-notes-popover-body">{{ $notesPreview }}</div>
-              </div>
+      <div class="cp-header-row cp-header-row--title">
+        <div class="cp-header-title-block">
+          <h2 class="cp-header-name">
+            <span class="cp-header-ref" title="Project reference">{{ $project->referenceCode() }}</span>
+            <span class="cp-header-ref-sep" aria-hidden="true"> — </span>
+            <span class="cp-header-project-name">{{ $project->name }}</span>
+          </h2>
+
+          <div class="cp-header-badges">
+            <span class="cp-billing-type" title="How this project is billed">
+              @if ($project->isHourly())
+                <i class="fa fa-clock-o" aria-hidden="true"></i> Hourly rate
+              @else
+                <i class="fa fa-tag" aria-hidden="true"></i> Fixed price
+              @endif
             </span>
-          @endif
+            @if (filled($project->notes))
+              @php
+                $notesPreview = \Illuminate\Support\Str::limit(trim((string) $project->notes), 800);
+              @endphp
+              <span class="cp-notes-popover-wrap">
+                <button type="button"
+                        class="cp-notes-indicator cp-notes-indicator--btn"
+                        id="cp-notes-toggle"
+                        aria-expanded="false"
+                        aria-controls="cp-notes-popover">
+                  <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Notes
+                </button>
+                <div class="cp-notes-popover" id="cp-notes-popover" role="dialog" aria-label="Project notes preview" hidden>
+                  <div class="cp-notes-popover-body">{{ $notesPreview }}</div>
+                </div>
+              </span>
+            @endif
+          </div>
+
+          <div class="cp-header-client-row">
+            <span class="cp-header-client">{{ $project->client_name }}</span>
+            @if ($project->usesClientSnapshot())
+              <span class="cp-header-snapshot admin-form-help">
+                <i class="fa fa-lock" aria-hidden="true"></i>
+                Snapshot as of completion
+                @if ($project->clientSnapshotCapturedLabel())
+                  ({{ $project->clientSnapshotCapturedLabel() }})
+                @endif
+              </span>
+            @endif
+            @include('admin.client_projects._contacted_via_display', [
+              'project' => $project,
+              'lineClass' => 'cp-contacted-via-line',
+              'compact' => true,
+            ])
+          </div>
         </div>
+
         <div class="cp-header-status">
           <span class="cp-badge cp-badge--lg" style="background: {{ $project->statusColor() }}20; color: {{ $project->statusColor() }};">
             {{ $project->statusLabel() }}
           </span>
           <div class="cp-updated">Updated {{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</div>
         </div>
-      </div>
-
-      <h2 class="cp-header-name">{{ $project->name }}</h2>
-
-      <div class="cp-header-client-row">
-        <span class="cp-header-client">{{ $project->client_name }}</span>
-        @if ($project->usesClientSnapshot())
-          <span class="cp-header-snapshot admin-form-help">
-            <i class="fa fa-lock" aria-hidden="true"></i>
-            Snapshot as of completion
-            @if ($project->clientSnapshotCapturedLabel())
-              ({{ $project->clientSnapshotCapturedLabel() }})
-            @endif
-          </span>
-        @endif
-        @include('admin.client_projects._contacted_via_display', [
-          'project' => $project,
-          'lineClass' => 'cp-contacted-via-line',
-          'compact' => true,
-        ])
       </div>
 
       @if ($project->client_phone || $project->client_email || $project->secondaryClientEmail() || $project->client_address)

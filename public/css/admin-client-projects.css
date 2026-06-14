@@ -289,15 +289,16 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   gap: 16px;
   flex-wrap: wrap;
 }
-.cp-header-row--top {
+.cp-header-row--title {
   gap: 12px 20px;
+  align-items: flex-start;
 }
-.cp-header-eyebrow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
+.cp-header-title-block {
+  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .cp-header-status {
   flex-shrink: 0;
@@ -306,7 +307,29 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-header-name {
   margin: 0;
   font-size: 22px;
-  line-height: 1.25;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #111827;
+}
+.cp-header-ref {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--admin-primary, #024768);
+}
+.cp-header-ref-sep {
+  font-weight: 400;
+  color: #9ca3af;
+}
+.cp-header-project-name {
+  font-weight: 700;
+}
+.cp-header-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
 }
 .cp-header-client-row {
   display: flex;
@@ -390,7 +413,7 @@ a.cp-header-detail__value:hover {
   text-decoration: underline;
 }
 @media (max-width: 640px) {
-  .cp-header-row--top {
+  .cp-header-row--title {
     flex-direction: column;
   }
   .cp-header-status {
