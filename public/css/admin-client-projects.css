@@ -1300,6 +1300,23 @@ a:hover .cp-expense-receipt-pdf {
   padding: 16px;
 }
 
+/* Today cell — light brand blue (replaces FullCalendar default yellow). */
+.cp-calendar-card .fc .fc-daygrid-day.fc-day-today,
+.cp-calendar-card .fc .fc-timegrid-col.fc-day-today,
+.cp-calendar-card .fc .fc-list-day.fc-day-today {
+  background: rgba(2, 71, 104, 0.1);
+}
+
+.cp-calendar-card .fc .fc-day-today .fc-daygrid-day-number {
+  background: var(--admin-primary, #024768);
+  color: #fff;
+  border-radius: 50%;
+  width: 1.75em;
+  height: 1.75em;
+  line-height: 1.75em;
+  margin: 4px;
+}
+
 /* FullCalendar toolbar — match admin-btn--primary (arrows, active view) and admin-btn--ghost (today, inactive views). */
 .cp-calendar-card .fc .fc-toolbar.fc-header-toolbar {
   gap: 10px;
@@ -5047,6 +5064,18 @@ body.cp-modal-open {
 }
 .cp-date-picker-calendar .fc-daygrid-day:hover {
   background: #eff6ff;
+}
+.cp-date-picker-calendar .fc .fc-daygrid-day.fc-day-today {
+  background: rgba(2, 71, 104, 0.1);
+}
+.cp-date-picker-calendar .fc .fc-day-today .fc-daygrid-day-number {
+  background: var(--admin-primary, #024768);
+  color: #fff;
+  border-radius: 50%;
+  width: 1.75em;
+  height: 1.75em;
+  line-height: 1.75em;
+  margin: 4px;
 }
 
 @media (max-width: 700px) {
