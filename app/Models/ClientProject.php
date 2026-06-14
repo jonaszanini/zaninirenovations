@@ -695,6 +695,15 @@ class ClientProject extends Model
         return self::statusLabels()[$this->status] ?? ucfirst(str_replace('_', ' ', (string) $this->status));
     }
 
+    /**
+     * Human-friendly project reference derived from the primary key (no extra DB column).
+     * Examples: PRJ00001, PRJ00142, PRJ100000.
+     */
+    public function referenceCode(): string
+    {
+        return 'PRJ'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
+    }
+
     public function statusColor(): string
     {
         return self::statusColors()[$this->status] ?? '#6b7280';

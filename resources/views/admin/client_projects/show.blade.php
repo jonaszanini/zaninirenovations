@@ -20,6 +20,7 @@
   <div class="admin-card cp-header-card">
     <div class="cp-header-row">
       <div class="cp-header-title">
+        <div class="cp-project-ref" title="Project reference">{{ $project->referenceCode() }}</div>
         <div class="cp-client">{{ $project->client_name }}</div>
         @if ($project->usesClientSnapshot())
           <p class="admin-form-help" style="margin:4px 0 0;">
