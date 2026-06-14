@@ -5,6 +5,7 @@ namespace App\Console\Commands\Concerns;
 use App\Models\Material;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 trait RunsMaterialPriceSync
 {
@@ -32,9 +33,10 @@ trait RunsMaterialPriceSync
             : 'Home Depot FBT store API (local PC)';
 
         $scope = $unsyncedOnly ? ' (unsynced / failed only)' : '';
+        $total = $materials->count();
         $this->info(sprintf(
             'Syncing %d material(s)%s. Backend: %s. Fetcher: %s. HD store: %s. %s',
-            $materials->count(),
+            $total,
             $scope,
             $via,
             $fetcher,
@@ -50,6 +52,8 @@ trait RunsMaterialPriceSync
             $this->warn('SerpApi key is set — each SKU uses one SerpApi search credit. Omit MATERIALS_SCRAPER_SERPAPI_KEY on your PC to use free local FBT sync.');
         }
 
+        $this->newLine();
+
         $rows = [];
         $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
 
@@ -58,9 +62,32 @@ trait RunsMaterialPriceSync
                 usleep($delayMs * 1000);
             }
 
+            $current = $index + 1;
+            $this->output->write(sprintf(
+                "\r[%d/%d] Syncing: %s",
+                $current,
+                $total,
+                Str::limit((string) $material->name, 55)
+            ));
+
             $result = $syncService->syncOne($material, $dryRun);
             $parsed = $result['parsed'];
             $newPrice = $parsed?->priceCad;
+
+            $progress = sprintf(
+                '[%d/%d] %s — %s',
+                $current,
+                $total,
+                Str::limit((string) $material->name, 42),
+                $result['status']
+            );
+            if ($newPrice !== null) {
+                $progress .= ' ($'.number_format($newPrice, 2).')';
+            }
+            if (filled($result['error'] ?? null)) {
+                $progress .= ' — '.Str::limit((string) $result['error'], 70);
+            }
+            $this->output->writeln($progress);
 
             $rows[] = [
                 $material->id,
@@ -73,6 +100,7 @@ trait RunsMaterialPriceSync
             ];
         }
 
+        $this->newLine();
         $this->table(
             ['ID', 'Name', 'Old CAD', 'New CAD', 'Status', 'Parser', 'Error'],
             $rows
@@ -83,7 +111,7 @@ trait RunsMaterialPriceSync
         $skipped = collect($rows)->where(4, Material::SCRAPE_SKIPPED)->count();
 
         $this->newLine();
-        $this->info("Done: {$ok} ok, {$failed} failed, {$skipped} skipped.");
+        $this->info("Done: {$ok} ok, {$failed} failed, {$skipped} skipped ({$total} total).");
 
         return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
     }
