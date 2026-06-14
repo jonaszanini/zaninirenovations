@@ -119,9 +119,10 @@
     {{-- Edit (hidden on paid invoices; view a read-only version via PDF) --}}
     @unless ($invoice->isPaid())
       <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}"
-         class="admin-btn admin-btn--ghost admin-btn--sm"
+         class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn"
          title="Open the invoice editor">
-        <i class="fa fa-pencil"></i> Edit
+        <i class="fa fa-pencil" aria-hidden="true"></i>
+        <span class="cp-action-tooltip">Edit</span>
       </a>
     @endunless
 
@@ -130,9 +131,10 @@
       <a href="{{ route('admin.client-projects.invoices.pdf', [$project, $invoice]) }}"
          target="_blank"
          rel="noopener"
-         class="admin-btn admin-btn--ghost admin-btn--sm"
+         class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn"
          title="Open the invoice PDF">
-        <i class="fa fa-file-pdf-o"></i> PDF
+        <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
+        <span class="cp-action-tooltip">PDF</span>
       </a>
     @endif
 
@@ -144,17 +146,18 @@
               class="cp-inline-form"
               onsubmit="return confirm('This will generate a new PDF, email it to the client, and save it on the server. Continue?');">
           @csrf
-          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" title="{{ $sendTitle }}">
-            <i class="fa fa-paper-plane"></i>
-            {{ $invoice->wasEverSent() ? 'Resend' : 'Send' }}
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm cp-action-icon-btn" title="{{ $sendTitle }}">
+            <i class="fa fa-paper-plane" aria-hidden="true"></i>
+            <span class="cp-action-tooltip">{{ $invoice->wasEverSent() ? 'Resend' : 'Send' }}</span>
           </button>
         </form>
       @else
         <button type="button"
-                class="admin-btn admin-btn--primary admin-btn--sm"
+                class="admin-btn admin-btn--primary admin-btn--sm cp-action-icon-btn"
                 disabled
                 title="{{ $sendTitle }}">
-          <i class="fa fa-paper-plane"></i> Send
+          <i class="fa fa-paper-plane" aria-hidden="true"></i>
+          <span class="cp-action-tooltip">Send</span>
         </button>
       @endif
 
@@ -164,16 +167,18 @@
               class="cp-inline-form"
               onsubmit="return confirm('Send an SMS to the client with a secure link to view or download this invoice PDF?');">
           @csrf
-          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="{{ $smsTitle }}">
-            <i class="fa fa-comment"></i> SMS
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn" title="{{ $smsTitle }}">
+            <i class="fa fa-comment" aria-hidden="true"></i>
+            <span class="cp-action-tooltip">SMS</span>
           </button>
         </form>
       @else
         <button type="button"
-                class="admin-btn admin-btn--ghost admin-btn--sm"
+                class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn"
                 disabled
                 title="{{ $smsTitle }}">
-          <i class="fa fa-comment"></i> SMS
+          <i class="fa fa-comment" aria-hidden="true"></i>
+          <span class="cp-action-tooltip">SMS</span>
         </button>
       @endif
     @endunless
@@ -186,16 +191,18 @@
               class="cp-inline-form"
               onsubmit="return confirm('Email a payment reminder to the client now?');">
           @csrf
-          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="Email a payment reminder to the client.">
-            <i class="fa fa-bell-o"></i> Reminder
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn" title="Email a payment reminder to the client.">
+            <i class="fa fa-bell-o" aria-hidden="true"></i>
+            <span class="cp-action-tooltip">Reminder</span>
           </button>
         </form>
       @else
         <button type="button"
-                class="admin-btn admin-btn--ghost admin-btn--sm"
+                class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn"
                 disabled
                 title="{{ $sendTitle }}">
-          <i class="fa fa-bell-o"></i> Reminder
+          <i class="fa fa-bell-o" aria-hidden="true"></i>
+          <span class="cp-action-tooltip">Reminder</span>
         </button>
       @endif
     @endif
@@ -215,20 +222,22 @@
       @endphp
       @if ($canMarkPaid)
         <button type="button"
-                class="admin-btn admin-btn--success admin-btn--sm"
+                class="admin-btn admin-btn--success admin-btn--sm cp-action-icon-btn"
                 data-cp-markpaid-url="{{ route('admin.client-projects.invoices.mark-paid', [$project, $invoice]) }}"
                 data-cp-markpaid-amount="{{ number_format((float) $invoice->total, 2, '.', '') }}"
                 data-cp-markpaid-label="Invoice #{{ $invoice->invoice_number }}"
                 data-cp-markpaid-first-paid="{{ $showMarkPaidStatusPicker ? '1' : '0' }}"
                 title="{{ $markPaidTitle }}">
-          <i class="fa fa-check"></i> Mark paid
+          <i class="fa fa-check" aria-hidden="true"></i>
+          <span class="cp-action-tooltip">Mark paid</span>
         </button>
       @else
         <button type="button"
-                class="admin-btn admin-btn--success admin-btn--sm"
+                class="admin-btn admin-btn--success admin-btn--sm cp-action-icon-btn"
                 disabled
                 title="{{ $markPaidTitle }}">
-          <i class="fa fa-check"></i> Mark paid
+          <i class="fa fa-check" aria-hidden="true"></i>
+          <span class="cp-action-tooltip">Mark paid</span>
         </button>
       @endif
     @endunless
@@ -238,9 +247,10 @@
       <a href="{{ route('admin.client-projects.invoices.receipt', [$project, $invoice]) }}"
          target="_blank"
          rel="noopener"
-         class="admin-btn admin-btn--success admin-btn--sm"
+         class="admin-btn admin-btn--success admin-btn--sm cp-action-icon-btn"
          title="Open the receipt PDF.">
-        <i class="fa fa-download"></i> Receipt
+        <i class="fa fa-download" aria-hidden="true"></i>
+        <span class="cp-action-tooltip">Receipt</span>
       </a>
     @endif
 
@@ -264,8 +274,9 @@
             onsubmit="return confirm({{ json_encode($deleteConfirm) }});">
         @csrf
         @method('DELETE')
-        <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" title="{{ $deleteTitle }}">
-          <i class="fa fa-trash"></i>
+        <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm cp-action-icon-btn" title="{{ $deleteTitle }}">
+          <i class="fa fa-trash" aria-hidden="true"></i>
+          <span class="cp-action-tooltip">Delete</span>
         </button>
       </form>
     @endunless
