@@ -704,6 +704,26 @@ class ClientProject extends Model
         return 'PRJ'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Parse a search string into a project id when it looks like a reference code.
+     * Accepts PRJ00047, PRJ-47, prj 00047, etc.
+     */
+    public static function idFromReferenceSearch(string $query): ?int
+    {
+        $trimmed = trim($query);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (! preg_match('/^prj[-\s]?(\d+)$/i', $trimmed, $matches)) {
+            return null;
+        }
+
+        $id = (int) $matches[1];
+
+        return $id > 0 ? $id : null;
+    }
+
     public function statusColor(): string
     {
         return self::statusColors()[$this->status] ?? '#6b7280';

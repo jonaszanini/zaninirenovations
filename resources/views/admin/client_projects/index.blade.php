@@ -45,7 +45,7 @@
     <input type="hidden" name="list" value="{{ $filters['list'] ?? 'ongoing' }}">
     <div class="cp-filter">
       <label for="cp-filter-q">Search</label>
-      <input class="admin-input" type="text" id="cp-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project or client name">
+      <input class="admin-input" type="text" id="cp-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project #, name, or client">
     </div>
     <div class="cp-filter">
       <label for="cp-filter-status">Status</label>
@@ -110,8 +110,11 @@
                 @endif
               </td>
               <td>
-                {{ $project->name }}
-                @include('admin.client_projects._contacted_via_display', ['project' => $project])
+                <div class="cp-table-project-cell">
+                  <div class="cp-table-project-ref">{{ $project->referenceCode() }}</div>
+                  <strong class="cp-table-project-name">{{ $project->name }}</strong>
+                  @include('admin.client_projects._contacted_via_display', ['project' => $project, 'compact' => true])
+                </div>
               </td>
               <td>
                 <span class="cp-badge" style="background: {{ $statusColors[$project->status] ?? '#6b7280' }}20; color: {{ $statusColors[$project->status] ?? '#6b7280' }};">

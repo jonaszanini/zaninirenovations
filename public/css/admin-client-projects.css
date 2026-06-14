@@ -221,6 +221,29 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 .cp-table th {
   vertical-align: top;
 }
+.cp-table-project-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cp-table-project-ref {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.04em;
+  color: var(--admin-primary, #024768);
+  line-height: 1.3;
+}
+.cp-table-project-name {
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.35;
+}
+.cp-contact-line .cp-contact-line-sep {
+  color: #9ca3af;
+  font-weight: 400;
+}
 
 /* Whole-row is a link to the project detail page (the "Open" button was
    removed in favour of clicking anywhere on the row). */

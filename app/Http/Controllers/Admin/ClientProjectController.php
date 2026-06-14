@@ -49,6 +49,10 @@ class ClientProjectController extends Controller
                 : 'ongoing',
         ];
 
+        $referenceId = $filters['q'] !== ''
+            ? ClientProject::idFromReferenceSearch($filters['q'])
+            : null;
+
         $query = ClientProject::query()
             ->withCount('installments')
             ->withSum('installments as paid_amount_sum', 'amount')
@@ -66,18 +70,23 @@ class ClientProjectController extends Controller
 
         if ($filters['status'] !== '') {
             $query->where('status', $filters['status']);
-        } elseif ($filters['list'] === 'ongoing') {
-            // Emphasise active pipeline: exclude terminal states unless viewing "All".
+        } elseif ($filters['list'] === 'ongoing' && $referenceId === null) {
+            // Emphasise active pipeline: exclude terminal states unless viewing "All"
+            // or searching by an explicit project reference (PRJ00047).
             $query->whereNotIn('status', ClientProject::statusesHiddenFromOngoingList());
         }
 
         if ($filters['q'] !== '') {
             $q = $filters['q'];
-            $query->where(function ($sub) use ($q) {
+            $query->where(function ($sub) use ($q, $referenceId) {
                 $sub->where('name', 'like', "%{$q}%")
                     ->orWhere('client_name', 'like', "%{$q}%")
                     ->orWhere('client_email', 'like', "%{$q}%")
                     ->orWhere('client_phone', 'like', "%{$q}%");
+
+                if ($referenceId !== null) {
+                    $sub->orWhere('id', $referenceId);
+                }
             });
         }
 
