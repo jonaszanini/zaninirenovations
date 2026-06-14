@@ -17,14 +17,14 @@ class MaterialMetadataPopulationService
      */
     public function applyToMaterials(
         iterable $materials,
-        bool $forceShortName = false,
         bool $skipCategory = false,
+        bool $onlyShortName = false,
     ): array {
         $updated = 0;
         $skipped = 0;
 
         foreach ($materials as $material) {
-            if ($this->applyToMaterial($material, $forceShortName, $skipCategory)) {
+            if ($this->applyToMaterial($material, $skipCategory, $onlyShortName)) {
                 $updated++;
             } else {
                 $skipped++;
@@ -36,10 +36,10 @@ class MaterialMetadataPopulationService
 
     public function applyToMaterial(
         Material $material,
-        bool $forceShortName = false,
         bool $skipCategory = false,
+        bool $onlyShortName = false,
     ): bool {
-        $changes = $this->suggestedChanges($material, $forceShortName, $skipCategory);
+        $changes = $this->suggestedChanges($material, $skipCategory, $onlyShortName);
 
         if ($changes === []) {
             return false;
@@ -56,26 +56,27 @@ class MaterialMetadataPopulationService
      */
     public function suggestedChanges(
         Material $material,
-        bool $forceShortName = false,
         bool $skipCategory = false,
+        bool $onlyShortName = false,
     ): array {
+        if ($onlyShortName && filled($material->short_name)) {
+            return [];
+        }
+
         $suggestions = $this->enricher->suggest($material);
         $changes = [];
 
-        if ($suggestions['short_name'] !== null
-            && ($forceShortName || blank($material->short_name))) {
-            if ($forceShortName || $material->short_name !== $suggestions['short_name']) {
-                $changes['short_name'] = $suggestions['short_name'];
-            }
+        if ($suggestions['short_name'] !== null && blank($material->short_name)) {
+            $changes['short_name'] = $suggestions['short_name'];
         }
 
-        if (! $skipCategory && $suggestions['category_id'] !== null) {
+        if (! $onlyShortName && ! $skipCategory && $suggestions['category_id'] !== null) {
             if ((int) $material->category_id !== (int) $suggestions['category_id']) {
                 $changes['category_id'] = $suggestions['category_id'];
             }
         }
 
-        if ($suggestions['unit'] !== null && blank($material->unit)) {
+        if (! $onlyShortName && $suggestions['unit'] !== null && blank($material->unit)) {
             $changes['unit'] = $suggestions['unit'];
         }
 
@@ -85,12 +86,12 @@ class MaterialMetadataPopulationService
     /**
      * @return Collection<int, array<int, string|int|null>>
      */
-    public function previewAll(bool $forceShortName = false, bool $skipCategory = false): Collection
+    public function previewAll(bool $skipCategory = false, bool $onlyShortName = false): Collection
     {
         $rows = collect();
 
-        Material::query()->orderBy('id')->each(function (Material $material) use ($forceShortName, $skipCategory, $rows) {
-            $changes = $this->suggestedChanges($material, $forceShortName, $skipCategory);
+        $this->materialsQuery($onlyShortName)->orderBy('id')->each(function (Material $material) use ($skipCategory, $onlyShortName, $rows) {
+            $changes = $this->suggestedChanges($material, $skipCategory, $onlyShortName);
 
             if ($changes === []) {
                 return;
@@ -109,5 +110,21 @@ class MaterialMetadataPopulationService
         });
 
         return $rows;
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<Material>
+     */
+    public function materialsQuery(bool $onlyShortName = false): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = Material::query();
+
+        if ($onlyShortName) {
+            $query->where(function ($q) {
+                $q->whereNull('short_name')->orWhere('short_name', '');
+            });
+        }
+
+        return $query;
     }
 }

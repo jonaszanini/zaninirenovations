@@ -35,4 +35,31 @@ class MaterialMetadataPopulationServiceTest extends TestCase
 
         $this->assertArrayNotHasKey('short_name', $changes);
     }
+
+    public function test_only_short_name_mode_skips_category_and_unit(): void
+    {
+        $material = new Material([
+            'name' => "1 x 6 x 8' Premium Wood Fence Board (Above Ground Use Only)",
+        ]);
+
+        $service = new MaterialMetadataPopulationService(new MaterialMetadataEnricher);
+        $changes = $service->suggestedChanges($material, onlyShortName: true);
+
+        $this->assertSame("8' Fence Board", $changes['short_name']);
+        $this->assertArrayNotHasKey('category_id', $changes);
+        $this->assertArrayNotHasKey('unit', $changes);
+    }
+
+    public function test_only_short_name_mode_skips_materials_that_already_have_short_name(): void
+    {
+        $material = new Material([
+            'name' => "1 x 6 x 8' Premium Wood Fence Board (Above Ground Use Only)",
+            'short_name' => 'Custom label',
+        ]);
+
+        $service = new MaterialMetadataPopulationService(new MaterialMetadataEnricher);
+        $changes = $service->suggestedChanges($material, onlyShortName: true);
+
+        $this->assertSame([], $changes);
+    }
 }

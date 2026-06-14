@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Material;
 use App\Services\MaterialMetadataPopulationService;
 use Illuminate\Console\Command;
 
@@ -10,7 +9,7 @@ class PopulateMaterialMetadata extends Command
 {
     protected $signature = 'materials:populate-metadata
                             {--dry-run : Preview changes without saving}
-                            {--force-short-name : Overwrite existing short names}
+                            {--only-short-name : Create short names only for materials missing one}
                             {--skip-category : Do not update categories}';
 
     protected $description = 'One-time helper: suggest short names, categories, and units from material store names';
@@ -18,10 +17,10 @@ class PopulateMaterialMetadata extends Command
     public function handle(MaterialMetadataPopulationService $population): int
     {
         $dryRun = (bool) $this->option('dry-run');
-        $forceShortName = (bool) $this->option('force-short-name');
+        $onlyShortName = (bool) $this->option('only-short-name');
         $skipCategory = (bool) $this->option('skip-category');
 
-        $rows = $population->previewAll($forceShortName, $skipCategory);
+        $rows = $population->previewAll($skipCategory, $onlyShortName);
 
         if ($rows->isNotEmpty()) {
             $this->table(
@@ -32,15 +31,15 @@ class PopulateMaterialMetadata extends Command
 
         if (! $dryRun) {
             $result = $population->applyToMaterials(
-                Material::query()->orderBy('id')->get(),
-                $forceShortName,
+                $population->materialsQuery($onlyShortName)->orderBy('id')->get(),
                 $skipCategory,
+                $onlyShortName,
             );
             $updated = $result['updated'];
             $skipped = $result['skipped'];
         } else {
             $updated = $rows->count();
-            $skipped = Material::count() - $updated;
+            $skipped = $population->materialsQuery($onlyShortName)->count() - $updated;
         }
 
         $verb = $dryRun ? 'Would update' : 'Updated';
