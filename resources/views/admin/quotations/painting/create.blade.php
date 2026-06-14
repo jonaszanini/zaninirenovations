@@ -394,8 +394,11 @@
           <i class="fa fa-save"></i> Save quotation
         </button>
         @if ($isEdit && $linkedCpq && $quotation->project && ! $quotation->is_draft)
+          @php
+            $paintingSendConfirm = 'This will generate a new PDF and email it to '.$quotation->project->clientEmailRecipientsLabel().'. Continue?';
+          @endphp
           <form method="post" action="{{ route('admin.client-projects.quotation.send', [$quotation->project, $linkedCpq]) }}"
-                onsubmit="return confirm('Email this quotation PDF to the client?');">
+                onsubmit="return confirm(@json($paintingSendConfirm));">
             @csrf
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" style="width:100%;">
               <i class="fa fa-paper-plane"></i> Send to client

@@ -66,7 +66,8 @@
       $hasContent = $quotation->hasContent();
       $legacy = $quotation->isLegacyManualSource();
       $canSend = $hasContent && $canDeliverByEmail;
-      $sendConfirmMessage = 'Email this document to '.$project->clientEmailRecipientsLabel().'?';
+      $sendConfirmMessage = 'This will generate a new PDF and email it to '.$project->clientEmailRecipientsLabel().'. Continue?';
+      $smsConfirmMessage = 'Send an SMS to '.$project->clientSmsRecipientsLabel().' with a secure link to view or download this quotation PDF?';
       $smsBlockers = [];
       if (! $hasContent) {
           $smsBlockers[] = 'Add at least one line item first.';
@@ -162,6 +163,7 @@
               'smsTitle' => $smsTitle,
               'shareLinkUrl' => $shareLinkUrl,
               'sendConfirmMessage' => $sendConfirmMessage,
+              'smsConfirmMessage' => $smsConfirmMessage,
               'deleteConfirm' => $deleteConfirm,
               'canDeliverByEmail' => $canDeliverByEmail,
               'canDeliverBySms' => $canDeliverBySms,
@@ -319,6 +321,7 @@
             'smsTitle' => $smsTitle,
             'shareLinkUrl' => $shareLinkUrl,
             'sendConfirmMessage' => $sendConfirmMessage,
+            'smsConfirmMessage' => $smsConfirmMessage,
             'deleteConfirm' => $deleteConfirm,
             'canDeliverByEmail' => $canDeliverByEmail,
             'canDeliverBySms' => $canDeliverBySms,

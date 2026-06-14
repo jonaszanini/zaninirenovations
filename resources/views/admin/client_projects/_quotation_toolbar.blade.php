@@ -1,7 +1,7 @@
 {{--
   Quotation action buttons (Edit, PDF, Send, SMS, Copy link, Delete).
   Expects: $project, $quotation, $legacy, $hasContent, $canSend, $canSms,
-  $smsTitle, $shareLinkUrl, $sendConfirmMessage, $deleteConfirm,
+  $smsTitle, $shareLinkUrl, $sendConfirmMessage, $smsConfirmMessage, $deleteConfirm,
   $missingDelivery (optional), $canDeliverByEmail, $canDeliverBySms
 --}}
 <div class="cp-quotation-toolbar">
@@ -57,7 +57,7 @@
     @if ($canSms)
       <form action="{{ route('admin.client-projects.quotation.sms', [$project, $quotation]) }}"
             method="post" class="cp-inline-form"
-            onsubmit="return confirm('Send an SMS to the client with a secure link to view or download this quotation PDF?');">
+            onsubmit='return confirm(@json($smsConfirmMessage));'>
         @csrf
         <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="{{ $smsTitle }}">
           <i class="fa fa-comment"></i> SMS

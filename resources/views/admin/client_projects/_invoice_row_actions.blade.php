@@ -72,6 +72,12 @@
       $actionBlockers,
       fn (string $hint) => ! str_contains(strtolower($hint), 'payment due date')
   ));
+
+  $clientEmail = $project->clientEmailRecipientsLabel();
+  $clientSms = $project->clientSmsRecipientsLabel();
+  $sendConfirm = "This will generate a new PDF, email it to {$clientEmail}, and save it on the server. Continue?";
+  $smsConfirm = "Send an SMS to {$clientSms} with a secure link to view or download this invoice PDF?";
+  $reminderConfirm = "Email a payment reminder to {$clientEmail} now?";
 @endphp
 @if (!$invoice)
   {{-- No invoice yet for this installment → offer to create one. --}}
@@ -144,7 +150,7 @@
         <form action="{{ route('admin.client-projects.invoices.send', [$project, $invoice]) }}"
               method="post"
               class="cp-inline-form"
-              onsubmit="return confirm('This will generate a new PDF, email it to the client, and save it on the server. Continue?');">
+              onsubmit="return confirm({{ json_encode($sendConfirm) }});">
           @csrf
           <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm cp-action-icon-btn" aria-label="{{ $invoice->wasEverSent() ? 'Resend' : 'Send' }}">
             <i class="fa fa-paper-plane" aria-hidden="true"></i>
@@ -165,7 +171,7 @@
         <form action="{{ route('admin.client-projects.invoices.sms', [$project, $invoice]) }}"
               method="post"
               class="cp-inline-form"
-              onsubmit="return confirm('Send an SMS to the client with a secure link to view or download this invoice PDF?');">
+              onsubmit="return confirm({{ json_encode($smsConfirm) }});">
           @csrf
           <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn" aria-label="SMS">
             <i class="fa fa-comment" aria-hidden="true"></i>
@@ -189,7 +195,7 @@
         <form action="{{ route('admin.client-projects.invoices.reminder', [$project, $invoice]) }}"
               method="post"
               class="cp-inline-form"
-              onsubmit="return confirm('Email a payment reminder to the client now?');">
+              onsubmit="return confirm({{ json_encode($reminderConfirm) }});">
           @csrf
           <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn" aria-label="Reminder">
             <i class="fa fa-bell-o" aria-hidden="true"></i>
@@ -261,7 +267,7 @@
     @unless ($invoice->isPaid())
       @php
         if ($invoice->wasEverSent()) {
-            $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to the client. Deleting it here will REMOVE it from our records and let you create a fresh invoice for this installment, but the client will still have the old PDF in their inbox. You should let them know to disregard the old one. Continue?";
+            $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to {$clientEmail}. Deleting it here will REMOVE it from our records and let you create a fresh invoice for this installment, but the client will still have the old PDF in their inbox. You should let them know to disregard the old one. Continue?";
         } else {
             $deleteConfirm = 'Delete this draft invoice? This cannot be undone.';
         }

@@ -16,6 +16,7 @@
   $hasContent = $contract && $contract->hasContent();
   $missing = $project->missingContactFieldsForContract();
   $canSend = empty($missing) && $hasContent;
+  $contractSendConfirm = 'This will generate a new PDF, email it to '.$project->clientEmailRecipientsLabel().', and save the PDF on the server. Continue?';
 @endphp
 
 @if (!$contract || !$hasContent)
@@ -72,7 +73,7 @@
           <form action="{{ route('admin.client-projects.contract.send', $project) }}"
                 method="post"
                 class="cp-inline-form"
-                onsubmit="return confirm('This will generate a new PDF, email it to the client, and save the PDF on the server. Continue?');">
+                onsubmit="return confirm({{ json_encode($contractSendConfirm) }});">
             @csrf
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
               <i class="fa fa-paper-plane"></i>

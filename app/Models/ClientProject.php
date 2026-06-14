@@ -492,6 +492,15 @@ class ClientProject extends Model
         return $cc ? "{$primary} (cc {$cc})" : $primary;
     }
 
+    /**
+     * Human-friendly SMS destination for confirm dialogs and History copy.
+     * Example: "(647) 834-7570"
+     */
+    public function clientSmsRecipientsLabel(): string
+    {
+        return self::formatPhone($this->client_phone);
+    }
+
     // --- Status helpers ----------------------------------------------------
 
     /**

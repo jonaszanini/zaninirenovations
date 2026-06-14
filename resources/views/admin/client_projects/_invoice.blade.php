@@ -550,7 +550,7 @@
                        value="1"
                        @checked($markPaidDefaultEmail)>
                 <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">Email receipt to client now</span>
+                <span class="admin-checkbox__text">Email receipt to {{ $project->clientEmailRecipientsLabel() }} now</span>
               </label>
             @else
               <input type="hidden" name="also_email_receipt" value="0">
@@ -566,7 +566,7 @@
                        value="1"
                        @checked($markPaidDefaultSms)>
                 <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">SMS receipt to client</span>
+                <span class="admin-checkbox__text">SMS receipt to {{ $project->clientSmsRecipientsLabel() }}</span>
               </label>
             @else
               <input type="hidden" name="also_sms_receipt" value="0">
