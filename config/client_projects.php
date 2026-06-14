@@ -28,6 +28,12 @@ return [
     // Admin email for the automated "day before work begins" notice (runs via scheduler).
     'commencement_eve_email_to' => env('CLIENT_PROJECTS_COMMENCEMENT_EVE_TO', ''),
 
+    // Daily past-due invoice payment reminders to clients (email preferred, else SMS).
+    'past_due_invoice_reminders_enabled' => filter_var(
+        env('CLIENT_PROJECTS_PAST_DUE_INVOICE_REMINDERS', true),
+        FILTER_VALIDATE_BOOLEAN
+    ),
+
     // Google review URL used in the thank-you email to the client.
     'review_url' => env(
         'CLIENT_PROJECTS_REVIEW_URL',

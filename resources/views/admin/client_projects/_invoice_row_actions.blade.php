@@ -77,7 +77,10 @@
   $clientSms = $project->clientSmsRecipientsLabel();
   $sendConfirm = "This will generate a new PDF, email it to {$clientEmail}, and save it on the server. Continue?";
   $smsConfirm = "Send an SMS to {$clientSms} with a secure link to view or download this invoice PDF?";
-  $reminderConfirm = "Email a payment reminder to {$clientEmail} now?";
+  $canReminder = filled(trim((string) $project->client_email)) || $canSms;
+  $reminderConfirm = filled(trim((string) $project->client_email))
+    ? "Email a payment reminder to {$clientEmail} now?"
+    : "Send a payment reminder SMS to {$clientSms} now?";
 @endphp
 @if (!$invoice)
   {{-- No invoice yet for this installment → offer to create one. --}}
@@ -191,7 +194,7 @@
 
     {{-- Reminder (only once sent, and not paid) --}}
     @if ($invoice->isSent())
-      @if ($hasContactInfo)
+      @if ($canReminder)
         <form action="{{ route('admin.client-projects.invoices.reminder', [$project, $invoice]) }}"
               method="post"
               class="cp-inline-form"

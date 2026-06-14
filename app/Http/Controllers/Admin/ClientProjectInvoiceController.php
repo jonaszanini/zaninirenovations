@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectInvoiceClient;
 use App\Mail\ClientProjectInvoiceReceiptClient;
-use App\Mail\ClientProjectInvoiceReminderClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
@@ -13,6 +12,7 @@ use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectQuotation;
 use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
+use App\Services\ClientProjectInvoiceReminderService;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientSmsService;
 use App\Services\MoceanSmsService;
@@ -528,96 +528,34 @@ class ClientProjectInvoiceController extends Controller
      * same file that was originally emailed is re-attached so the client
      * can't accuse us of changing the amount between sends.
      */
-    public function sendReminder(ClientProject $client_project, ClientProjectInvoice $invoice, ClientProjectStatusService $statusService)
-    {
+    public function sendReminder(
+        ClientProject $client_project,
+        ClientProjectInvoice $invoice,
+        ClientProjectInvoiceReminderService $reminderService,
+    ) {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
-        if (!$invoice->isSent()) {
+        if (! $invoice->isSent()) {
             return back()->with('error', 'Reminders can only be sent after the invoice has been emailed at least once.');
         }
 
-        if (blank(trim((string) $client_project->client_email))) {
-            return back()->with('error', "Cannot send reminder — add the client's email address first.");
-        }
+        $result = $reminderService->sendPaymentReminder($client_project, $invoice);
 
-        $disk = Storage::disk('local');
-        $bytes = null;
-        if (filled($invoice->invoice_pdf_path) && $disk->exists($invoice->invoice_pdf_path)) {
-            $bytes = $disk->get($invoice->invoice_pdf_path);
-        } else {
-            // Fallback: regenerate a fresh copy so the reminder isn't
-            // blocked just because the stored file has been pruned.
-            $bytes = $this->renderInvoicePdf($client_project, $invoice)->output();
-        }
-
-        $cc = $client_project->secondaryClientEmail();
-        $reminderSubject = "Payment reminder — invoice {$invoice->invoice_number}";
-        $reminderDescription = "Payment reminder for invoice {$invoice->invoice_number} — outstanding "
-            .ClientProject::formatMoney((float) $invoice->total)
-            .($invoice->due_on ? ', due '.\Carbon\Carbon::parse($invoice->due_on)->format('M j, Y') : '');
-
-        try {
-            $mailer = Mail::to($client_project->client_email);
-            if ($cc) {
-                $mailer->cc($cc);
-            }
-            $mailer->send(new ClientProjectInvoiceReminderClient(
-                $client_project,
-                $invoice,
-                $bytes,
-                $this->invoicePdfFilename($client_project, $invoice)
-            ));
-
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_INVOICE_REMINDER,
-                $client_project->client_email,
-                $cc,
-                $reminderSubject,
-                $reminderDescription,
-            );
-        } catch (\Throwable $e) {
-            Log::error('Failed to email invoice reminder', [
-                'project_id' => $client_project->id,
-                'invoice_id' => $invoice->id,
-                'exception' => $e->getMessage(),
-            ]);
-
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_INVOICE_REMINDER,
-                $client_project->client_email,
-                $cc,
-                $reminderSubject,
-                $reminderDescription,
-                ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                false,
-                $e->getMessage(),
-            );
-
+        if (! $result['ok']) {
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
                 ->withFragment('invoice')
-                ->with('error', 'The reminder email could not be sent: '.$e->getMessage());
+                ->with('error', 'The payment reminder could not be sent: '.$result['detail']);
         }
 
-        try {
-            $statusService->recordEvent(
-                $client_project,
-                "Payment reminder for invoice {$invoice->invoice_number} emailed to {$client_project->clientEmailRecipientsLabel()}."
-            );
-        } catch (\Throwable $e) {
-            Log::warning('Failed to record invoice-reminder history entry', [
-                'project_id' => $client_project->id,
-                'invoice_id' => $invoice->id,
-                'exception' => $e->getMessage(),
-            ]);
-        }
+        $success = $result['channel'] === 'sms'
+            ? "Payment reminder sent via SMS to {$result['detail']}."
+            : "Payment reminder emailed to {$result['detail']}.";
 
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('invoice')
-            ->with('success', "Payment reminder emailed to {$client_project->clientEmailRecipientsLabel()}.");
+            ->with('success', $success);
     }
 
     /**

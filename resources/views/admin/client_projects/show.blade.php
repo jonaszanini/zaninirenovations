@@ -18,21 +18,17 @@
 
   {{-- HEADER / STATUS BAR -------------------------------------------------- --}}
   <div class="admin-card cp-header-card">
-    <div class="cp-header-row">
-      <div class="cp-header-title">
-        <div class="cp-project-ref" title="Project reference">{{ $project->referenceCode() }}</div>
-        <div class="cp-client">{{ $project->client_name }}</div>
-        @if ($project->usesClientSnapshot())
-          <p class="admin-form-help" style="margin:4px 0 0;">
-            <i class="fa fa-lock" aria-hidden="true"></i>
-            Client information as of completion
-            @if ($project->clientSnapshotCapturedLabel())
-              ({{ $project->clientSnapshotCapturedLabel() }})
+    <div class="cp-header-layout">
+      <div class="cp-header-row cp-header-row--top">
+        <div class="cp-header-eyebrow">
+          <span class="cp-project-ref" title="Project reference">{{ $project->referenceCode() }}</span>
+          <span class="cp-billing-type" title="How this project is billed">
+            @if ($project->isHourly())
+              <i class="fa fa-clock-o" aria-hidden="true"></i> Hourly rate
+            @else
+              <i class="fa fa-tag" aria-hidden="true"></i> Fixed price
             @endif
-          </p>
-        @endif
-        <h2>{{ $project->name }}</h2>
-        <div class="cp-header-contact-block">
+          </span>
           @if (filled($project->notes))
             @php
               $notesPreview = \Illuminate\Support\Str::limit(trim((string) $project->notes), 800);
@@ -50,44 +46,79 @@
               </div>
             </span>
           @endif
-          <div class="cp-header-contact-via-block">
-            @include('admin.client_projects._contacted_via_display', ['project' => $project, 'lineClass' => 'cp-contacted-via-line'])
-          </div>
         </div>
-        <div class="cp-header-meta">
-          <span class="cp-billing-type" title="How this project is billed">
-            @if ($project->isHourly())
-              <i class="fa fa-clock-o" aria-hidden="true"></i> Hourly rate
-            @else
-              <i class="fa fa-tag" aria-hidden="true"></i> Fixed price
+        <div class="cp-header-status">
+          <span class="cp-badge cp-badge--lg" style="background: {{ $project->statusColor() }}20; color: {{ $project->statusColor() }};">
+            {{ $project->statusLabel() }}
+          </span>
+          <div class="cp-updated">Updated {{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</div>
+        </div>
+      </div>
+
+      <h2 class="cp-header-name">{{ $project->name }}</h2>
+
+      <div class="cp-header-client-row">
+        <span class="cp-header-client">{{ $project->client_name }}</span>
+        @if ($project->usesClientSnapshot())
+          <span class="cp-header-snapshot admin-form-help">
+            <i class="fa fa-lock" aria-hidden="true"></i>
+            Snapshot as of completion
+            @if ($project->clientSnapshotCapturedLabel())
+              ({{ $project->clientSnapshotCapturedLabel() }})
             @endif
           </span>
+        @endif
+        @include('admin.client_projects._contacted_via_display', [
+          'project' => $project,
+          'lineClass' => 'cp-contacted-via-line',
+          'compact' => true,
+        ])
+      </div>
+
+      @if ($project->client_phone || $project->client_email || $project->secondaryClientEmail() || $project->client_address)
+        <div class="cp-header-details">
           @if ($project->client_phone)
-            <span><i class="fa fa-phone"></i> {{ \App\Models\ClientProject::formatPhone($project->client_phone) }}</span>
+            <div class="cp-header-detail">
+              <span class="cp-header-detail__icon" aria-hidden="true"><i class="fa fa-phone"></i></span>
+              <span class="cp-header-detail__body">
+                <span class="cp-header-detail__label">Phone</span>
+                <span class="cp-header-detail__value">{{ \App\Models\ClientProject::formatPhone($project->client_phone) }}</span>
+              </span>
+            </div>
           @endif
           @if ($project->client_email)
-            <span><i class="fa fa-envelope"></i> <a href="mailto:{{ $project->client_email }}">{{ $project->client_email }}</a></span>
+            <div class="cp-header-detail">
+              <span class="cp-header-detail__icon" aria-hidden="true"><i class="fa fa-envelope"></i></span>
+              <span class="cp-header-detail__body">
+                <span class="cp-header-detail__label">Email</span>
+                <a class="cp-header-detail__value" href="mailto:{{ $project->client_email }}">{{ $project->client_email }}</a>
+              </span>
+            </div>
           @endif
           @if ($project->secondaryClientEmail())
-            <span title="Secondary email — CC'd on every client email"><i class="fa fa-envelope-o"></i> <a href="mailto:{{ $project->secondaryClientEmail() }}">{{ $project->secondaryClientEmail() }}</a></span>
+            <div class="cp-header-detail">
+              <span class="cp-header-detail__icon" aria-hidden="true"><i class="fa fa-envelope-o"></i></span>
+              <span class="cp-header-detail__body">
+                <span class="cp-header-detail__label">CC email</span>
+                <a class="cp-header-detail__value" href="mailto:{{ $project->secondaryClientEmail() }}" title="Secondary email — CC'd on every client email">{{ $project->secondaryClientEmail() }}</a>
+              </span>
+            </div>
           @endif
           @if ($project->client_address)
-            <span>
-              <i class="fa fa-map-marker"></i>
-              <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($project->client_address) }}"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 title="Open in Google Maps">{{ $project->client_address }}</a>
-            </span>
+            <div class="cp-header-detail cp-header-detail--wide">
+              <span class="cp-header-detail__icon" aria-hidden="true"><i class="fa fa-map-marker"></i></span>
+              <span class="cp-header-detail__body">
+                <span class="cp-header-detail__label">Address</span>
+                <a class="cp-header-detail__value"
+                   href="https://www.google.com/maps/search/?api=1&query={{ urlencode($project->client_address) }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   title="Open in Google Maps">{{ $project->client_address }}</a>
+              </span>
+            </div>
           @endif
         </div>
-      </div>
-      <div class="cp-header-status">
-        <span class="cp-badge cp-badge--lg" style="background: {{ $project->statusColor() }}20; color: {{ $project->statusColor() }};">
-          {{ $project->statusLabel() }}
-        </span>
-        <div class="cp-updated">Updated {{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</div>
-      </div>
+      @endif
     </div>
 
     @if ($project->photos->isNotEmpty())

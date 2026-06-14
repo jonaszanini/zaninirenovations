@@ -31,6 +31,7 @@ class RunDailyAutomations extends Command
      */
     private const DAILY_AUTOMATIONS = [
         'client-projects:send-reminders',
+        'client-projects:send-past-due-invoice-reminders',
         'client-projects:notify-commencement-eve',
         'client-projects:start-due-today',
     ];
