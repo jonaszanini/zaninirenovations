@@ -291,7 +291,7 @@ class ClientProjectController extends Controller
     {
         $projects = ClientProject::query()
             ->where('id', '!=', $current->id)
-            ->where('status', '!=', ClientProject::STATUS_REJECTED)
+            ->whereNotIn('status', ClientProject::terminalStatuses())
             ->where(function ($q) {
                 $q->where(function ($sub) {
                     $sub->whereNotNull('start_date')->whereNotNull('end_date');
@@ -829,6 +829,7 @@ class ClientProjectController extends Controller
             ClientProject::STATUS_IN_PROGRESS,
             ClientProject::STATUS_AWAITING_FINAL_PAYMENT,
             ClientProject::STATUS_COMPLETED,
+            ClientProject::STATUS_CANCELLED,
             ClientProject::STATUS_REJECTED,
         ];
 
@@ -957,7 +958,7 @@ class ClientProjectController extends Controller
     public function calendar()
     {
         $projects = ClientProject::query()
-            ->where('status', '!=', ClientProject::STATUS_REJECTED)
+            ->whereNotIn('status', ClientProject::terminalStatuses())
             ->where(function ($q) {
                 $q->where(function ($sub) {
                     $sub->whereNotNull('start_date')->whereNotNull('end_date');

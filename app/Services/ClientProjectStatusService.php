@@ -38,6 +38,12 @@ class ClientProjectStatusService
                 $project->status = $toStatus;
                 $project->status_changed_at = now();
 
+                if ($toStatus === ClientProject::STATUS_CANCELLED) {
+                    $project->cancelled_reason = $note;
+                } elseif ($fromStatus === ClientProject::STATUS_CANCELLED) {
+                    $project->cancelled_reason = null;
+                }
+
                 // Reset bookkeeping that only makes sense for the pre-quote-sent stages.
                 if (!in_array($toStatus, ClientProject::preQuoteSentStatuses(), true)) {
                     $project->last_quote_reminder_sent_at = null;

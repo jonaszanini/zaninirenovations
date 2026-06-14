@@ -19,14 +19,21 @@ class ClientProjectStatusController extends Controller
         ClientProject $client_project,
         ClientProjectStatusService $service
     ) {
+        if ($client_project->isClosed()) {
+            $label = $client_project->isCancelled() ? 'Cancelled' : 'Rejected';
+
+            return back()->with('error', "This project has been marked as {$label} and is final.");
+        }
+
         $data = $request->validate([
             'status' => ['required', Rule::in(ClientProject::statuses())],
-            'note' => ['nullable', 'string', 'max:2000'],
+            'note' => [
+                Rule::requiredIf(fn () => $request->input('status') === ClientProject::STATUS_CANCELLED),
+                'nullable',
+                'string',
+                'max:2000',
+            ],
         ]);
-
-        if ($client_project->isRejected()) {
-            return back()->with('error', 'This project has been marked as Rejected and is final.');
-        }
 
         $service->transition($client_project, $data['status'], $data['note'] ?? null);
 

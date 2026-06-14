@@ -684,12 +684,14 @@
 
     card.querySelector('[data-lb-bt-remove]').addEventListener('click', function () {
       if (getBoardTypeCards().length <= 1) {
-        window.alert('Keep at least one board type.');
+        window.AdminDialog.alert('Keep at least one board type.');
         return;
       }
-      if (!window.confirm('Remove this board type?')) return;
-      card.remove();
-      scheduleRender();
+      window.AdminDialog.confirm('Remove this board type?', { title: 'Remove board type', danger: true }).then(function (ok) {
+        if (!ok) return;
+        card.remove();
+        scheduleRender();
+      });
     });
 
     card.querySelector('[data-lb-bt-duplicate]').addEventListener('click', function () {
@@ -1286,6 +1288,8 @@
     var text = lines.join('\n');
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text);
+    } else if (window.AdminDialog && window.AdminDialog.copyFallback) {
+      window.AdminDialog.copyFallback(text);
     } else {
       window.prompt('Copy:', text);
     }
@@ -1375,7 +1379,7 @@
     var html = buildPrintHtml();
     var w = window.open('', 'lb_material_print', 'noopener,width=820,height=900');
     if (!w) {
-      window.alert('Pop-up blocked. Allow pop-ups for this site to print the material list.');
+      window.AdminDialog.alert('Pop-up blocked. Allow pop-ups for this site to print the material list.');
       return;
     }
     w.document.open();
@@ -1515,7 +1519,8 @@
   }
 
   function deleteSaved(id, li) {
-    if (!window.confirm('Delete this saved calculation?')) return;
+    window.AdminDialog.confirm('Delete this saved calculation?', { title: 'Delete calculation', danger: true }).then(function (ok) {
+      if (!ok) return;
     var url = root.getAttribute('data-destroy-template').replace('__ID__', id);
     fetch(url, { method: 'DELETE', credentials: 'same-origin', headers: { 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
       .then(function (res) { return res.ok ? res.json() : Promise.reject(res); })
@@ -1527,7 +1532,8 @@
         li.remove();
         refreshSavedEmpty();
       })
-      .catch(function () { window.alert('Could not delete. Please try again.'); });
+      .catch(function () { window.AdminDialog.alert('Could not delete. Please try again.'); });
+    });
   }
 
   function loadBoardTypes(boardTypes) {
@@ -1580,8 +1586,10 @@
   });
 
   root.querySelector('[data-lb-reset]').addEventListener('click', function () {
-    if (!window.confirm('Reset all board types and start over?')) return;
-    resetAll();
+    window.AdminDialog.confirm('Reset all board types and start over?', { title: 'Reset calculator', danger: true }).then(function (ok) {
+      if (!ok) return;
+      resetAll();
+    });
   });
 
   if (els.roundUp) els.roundUp.addEventListener('change', scheduleRender);

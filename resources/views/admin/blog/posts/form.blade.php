@@ -497,28 +497,23 @@
           }
 
           if (!title || !html.replace(/<[^>]*>/g, '').trim()) {
-            window.alert('Enter a title and blog content before generating metadata.');
+            window.AdminDialog.alert('Enter a title and blog content before generating metadata.');
             return;
           }
 
-          if (metadataFieldsHaveValues()) {
-            if (!window.confirm('Replace excerpt, categories, tags, meta description, AI image prompt, and featured image with AI suggestions?')) {
-              return;
+          function runAi() {
+            var postId = parseInt(aiBtn.getAttribute('data-post-id') || '0', 10);
+            var payload = { title: title, html_content: html };
+            if (postId> 0) payload.post_id = postId;
+
+            if (blogHistory) {
+              blogHistory.captureOriginalIfNeeded();
             }
-          }
 
-          var postId = parseInt(aiBtn.getAttribute('data-post-id') || '0', 10);
-          var payload = { title: title, html_content: html };
-          if (postId> 0) payload.post_id = postId;
+            aiBtn.disabled = true;
+            setAiStatus('Generating metadata and featured image with Gemini…', false);
 
-          if (blogHistory) {
-            blogHistory.captureOriginalIfNeeded();
-          }
-
-          aiBtn.disabled = true;
-          setAiStatus('Generating metadata and featured image with Gemini…', false);
-
-          fetch(url, {
+            fetch(url, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
@@ -558,6 +553,17 @@
           }).finally(function () {
             aiBtn.disabled = false;
           });
+          }
+
+          if (metadataFieldsHaveValues()) {
+            window.AdminDialog.confirm('Replace excerpt, categories, tags, meta description, AI image prompt, and featured image with AI suggestions?', { title: 'Replace metadata' }).then(function (ok) {
+              if (!ok) return;
+              runAi();
+            });
+            return;
+          }
+
+          runAi();
         });
       }
     })();

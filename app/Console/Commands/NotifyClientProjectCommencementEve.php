@@ -53,6 +53,7 @@ class NotifyClientProjectCommencementEve extends Command
         $projects = ClientProject::query()
             ->whereDate('start_date', $tomorrow)
             ->whereNotIn('status', [
+                ClientProject::STATUS_CANCELLED,
                 ClientProject::STATUS_REJECTED,
                 ClientProject::STATUS_COMPLETED,
             ])

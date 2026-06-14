@@ -482,6 +482,89 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   border-radius: 6px;
   font-size: 14px;
 }
+.cp-final-note--cancelled {
+  background: #faf5ff;
+  color: #6b21a8;
+}
+.cp-final-note-reason {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: inherit;
+  opacity: 0.9;
+}
+
+/* Cancel-project modal */
+#cp-cancel-modal[hidden] {
+  display: none !important;
+}
+#cp-cancel-modal:not([hidden]) {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10050 !important;
+  width: 100% !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 !important;
+  padding: 0.75rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+#cp-cancel-modal .cp-status-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(55, 52, 53, 0.5);
+  cursor: pointer;
+}
+#cp-cancel-modal .cp-status-modal-panel {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px 22px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+#cp-cancel-modal .cp-status-modal-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+#cp-cancel-modal .cp-status-modal-hint {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.45;
+}
+#cp-cancel-modal .cp-status-modal-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+#cp-cancel-modal .cp-status-modal-textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  margin-bottom: 16px;
+}
+#cp-cancel-modal .cp-status-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+html.cp-cancel-modal-open {
+  overflow: hidden;
+}
 .cp-header-actions {
   display: flex;
   align-items: center;

@@ -353,7 +353,8 @@
           btn.addEventListener('click', function () {
             var deleteUrl = btn.getAttribute('data-delete-url');
             if (!deleteUrl) return;
-            if (!window.confirm('Delete this image from storage and history?')) return;
+            window.AdminDialog.confirm('Delete this image from storage and history?', { title: 'Delete image', danger: true }).then(function (ok) {
+              if (!ok) return;
 
             btn.disabled = true;
             fetch(deleteUrl, {
@@ -384,6 +385,7 @@
             }).catch(function (err) {
               btn.disabled = false;
               setStatus(err.message || 'Could not delete image.', true);
+            });
             });
           });
         });

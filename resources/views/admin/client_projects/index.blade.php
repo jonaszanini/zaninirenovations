@@ -78,7 +78,7 @@
           : 'No projects match these filters.' }}</p>
         <p class="admin-form-help" style="margin-top:12px;">
           @if (($filters['list'] ?? 'ongoing') === 'ongoing' && ($filters['status'] ?? '') === '')
-            Completed and rejected are hidden in the default view.&nbsp;<a href="{{ route('admin.client-projects.index', $toggleQueryBase('all')) }}">Show all projects</a>
+            Completed, cancelled, and rejected are hidden in the default view.&nbsp;<a href="{{ route('admin.client-projects.index', $toggleQueryBase('all')) }}">Show all projects</a>
             &nbsp;
           @endif
           <a href="{{ route('admin.client-projects.create') }}">Create a new project</a>

@@ -642,7 +642,7 @@ class ClientProjectInvoiceController extends Controller
 
         $allowedStatusesOnFirstPaid = array_values(array_filter(
             ClientProject::statuses(),
-            fn (string $s) => $s !== ClientProject::STATUS_REJECTED
+            fn (string $s) => ! in_array($s, ClientProject::terminalStatuses(), true)
         ));
 
         $isFirstPaidInvoice = ! $client_project->invoices()
@@ -818,7 +818,7 @@ class ClientProjectInvoiceController extends Controller
         }
 
         $targetStatus = isset($data['project_status']) ? trim((string) $data['project_status']) : '';
-        if ($isFirstPaidInvoice && ! $client_project->isRejected() && $targetStatus !== '') {
+        if ($isFirstPaidInvoice && ! $client_project->isClosed() && $targetStatus !== '') {
             $proj = $client_project->fresh();
             if ($proj && $targetStatus !== $proj->status) {
                 try {

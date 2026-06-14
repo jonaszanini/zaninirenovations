@@ -37,6 +37,7 @@ class ClientProject extends Model
     /** Work finished; waiting on the client's final balance / last installment. */
     public const STATUS_AWAITING_FINAL_PAYMENT = 'awaiting_final_payment';
     public const STATUS_COMPLETED = 'completed';
+    public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_REJECTED = 'rejected';
 
     // Canadian HST rate applied to revenue for set-aside calculation.
@@ -76,6 +77,7 @@ class ClientProject extends Model
         'notes',
         'status',
         'status_changed_at',
+        'cancelled_reason',
         'start_date',
         'day_before_start_sent_for_date',
         'end_date',
@@ -541,6 +543,20 @@ class ClientProject extends Model
             self::STATUS_IN_PROGRESS,
             self::STATUS_AWAITING_FINAL_PAYMENT,
             self::STATUS_COMPLETED,
+            self::STATUS_CANCELLED,
+            self::STATUS_REJECTED,
+        ];
+    }
+
+    /**
+     * Terminal statuses — no further workflow changes allowed.
+     *
+     * @return list<string>
+     */
+    public static function terminalStatuses(): array
+    {
+        return [
+            self::STATUS_CANCELLED,
             self::STATUS_REJECTED,
         ];
     }
@@ -555,6 +571,7 @@ class ClientProject extends Model
         return [
             self::STATUS_AWAITING_FINAL_PAYMENT,
             self::STATUS_COMPLETED,
+            self::STATUS_CANCELLED,
             self::STATUS_REJECTED,
         ];
     }
@@ -568,6 +585,7 @@ class ClientProject extends Model
     {
         return [
             self::STATUS_COMPLETED,
+            self::STATUS_CANCELLED,
             self::STATUS_REJECTED,
         ];
     }
@@ -648,6 +666,7 @@ class ClientProject extends Model
             self::STATUS_IN_PROGRESS => 'In Progress',
             self::STATUS_AWAITING_FINAL_PAYMENT => 'Awaiting Final Payment',
             self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_CANCELLED => 'Cancelled',
             self::STATUS_REJECTED => 'Rejected',
         ];
     }
@@ -666,6 +685,7 @@ class ClientProject extends Model
             self::STATUS_IN_PROGRESS => '#6366f1',           // indigo
             self::STATUS_AWAITING_FINAL_PAYMENT => '#0d9488', // teal — work done, payment outstanding
             self::STATUS_COMPLETED => '#22c55e',             // bright green
+            self::STATUS_CANCELLED => '#a855f7',             // purple
             self::STATUS_REJECTED => '#ef4444',              // red
         ];
     }
@@ -688,6 +708,17 @@ class ClientProject extends Model
     public function isRejected(): bool
     {
         return $this->status === self::STATUS_REJECTED;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === self::STATUS_CANCELLED;
+    }
+
+    /** True when the project is rejected or cancelled (no further status changes). */
+    public function isClosed(): bool
+    {
+        return in_array($this->status, self::terminalStatuses(), true);
     }
 
     /** True once the proposal has been accepted (unlocks financials/time). */

@@ -34,6 +34,7 @@ class StartDueClientProjects extends Command
                 ClientProject::STATUS_IN_PROGRESS,
                 ClientProject::STATUS_AWAITING_FINAL_PAYMENT,
                 ClientProject::STATUS_COMPLETED,
+                ClientProject::STATUS_CANCELLED,
                 ClientProject::STATUS_REJECTED,
             ])
             ->orderBy('id')

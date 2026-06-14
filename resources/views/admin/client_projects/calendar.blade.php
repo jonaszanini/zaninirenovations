@@ -25,7 +25,7 @@
       Personal
     </span>
     @foreach ($statusLabels as $key => $label)
-      @if ($key !== \App\Models\ClientProject::STATUS_REJECTED)
+      @if (! in_array($key, \App\Models\ClientProject::terminalStatuses(), true))
         <span class="cp-legend-item">
           <span class="cp-legend-swatch" style="background: {{ $statusColors[$key] }};"></span>
           {{ $label }}
@@ -229,8 +229,9 @@
 
       deleteBtn.addEventListener('click', function () {
         if (!editingId) return;
-        if (!confirm('Delete this personal event?')) return;
-        fetch(eventUrl(destroyUrlTemplate, editingId), {
+        window.AdminDialog.confirm('Delete this personal event?', { title: 'Delete event', danger: true }).then(function (ok) {
+          if (!ok) return;
+          fetch(eventUrl(destroyUrlTemplate, editingId), {
           method: 'DELETE',
           headers: {
             'Accept': 'application/json',
@@ -246,6 +247,7 @@
           .catch(function () {
             showError('Could not delete this event.');
           });
+        });
       });
 
       var calendarToolbar = {

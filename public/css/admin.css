@@ -1420,6 +1420,118 @@ details[open] > summary.admin-chevron-summary::after {
   margin: 0;
 }
 
+/* Global admin dialog (replaces native alert / confirm) */
+#admin-dialog[hidden] {
+  display: none !important;
+}
+
+#admin-dialog:not([hidden]) {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10100 !important;
+  width: 100% !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 !important;
+  padding: 0.75rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+#admin-dialog .admin-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(55, 52, 53, 0.5);
+  cursor: pointer;
+}
+
+#admin-dialog .admin-dialog-panel {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 420px;
+  background: var(--admin-surface, #fff);
+  border-radius: 10px;
+  padding: 22px 22px 18px;
+  box-shadow: var(--admin-shadow-md, 0 12px 40px rgba(0, 0, 0, 0.18));
+  border: 1px solid var(--admin-border, #e5e7eb);
+  text-align: center;
+}
+
+#admin-dialog .admin-dialog-panel--danger .admin-dialog-title {
+  color: #991b1b;
+}
+
+#admin-dialog .admin-dialog-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  background: rgba(2, 71, 104, 0.1);
+  color: var(--admin-primary, #024768);
+}
+
+#admin-dialog .admin-dialog-icon-wrap--info {
+  background: rgba(2, 71, 104, 0.1);
+  color: var(--admin-primary, #024768);
+}
+
+#admin-dialog .admin-dialog-icon-wrap--confirm {
+  background: rgba(2, 71, 104, 0.1);
+  color: var(--admin-primary, #024768);
+}
+
+#admin-dialog .admin-dialog-icon-wrap--danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+#admin-dialog .admin-dialog-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+#admin-dialog .admin-dialog-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--admin-text, #1e293b);
+}
+
+#admin-dialog .admin-dialog-message {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--admin-muted, #64748b);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#admin-dialog .admin-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+#admin-dialog .admin-dialog-copy-field {
+  width: 100%;
+  margin-top: 10px;
+  min-height: 120px;
+  resize: vertical;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+}
+
 /* Edit photo modal (project photos) — id-scoped: fixed overlay + bounded crop stage */
 #admin-photo-edit-modal[hidden] {
   display: none !important;

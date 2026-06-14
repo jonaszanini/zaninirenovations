@@ -12,7 +12,7 @@
     $statusLabels = \App\Models\ClientProject::statusLabels();
     $statusColors = \App\Models\ClientProject::statusColors();
     $isCompleted = $project->isCompleted();
-    $isRejected = $project->isRejected();
+    $isClosed = $project->isClosed();
     $isAccepted = $project->isAccepted();
   @endphp
 
@@ -97,15 +97,16 @@
       ])
     @endif
 
-    @unless ($isRejected)
+    @unless ($isClosed)
       {{-- Status form: label + help icon on one line, then a row of
            controls (select | save). The Save button remains in markup
            for no-JS fallback and is hidden when auto-submit is active. --}}
       <form action="{{ route('admin.client-projects.status.update', $project) }}" method="post" class="cp-status-form" id="cp-status-form" data-current-status="{{ $project->status }}">
         @csrf
+        <input type="hidden" name="note" id="cp-status-note" value="">
         <div class="cp-status-form-head">
           <label for="cp-status-select" class="cp-status-form-label">Change status</label>
-          <span class="cp-hint" title="Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
+          <span class="cp-hint" title="Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled and Rejected are final. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
           <span class="cp-status-form-help">Pick a status to save it instantly.</span>
         </div>
         <div class="cp-status-controls">
@@ -122,6 +123,21 @@
           </button>
         </div>
       </form>
+
+      <div id="cp-cancel-modal" class="cp-status-modal" hidden>
+        <div class="cp-status-modal-backdrop" data-cancel-modal-dismiss tabindex="-1" aria-hidden="true"></div>
+        <div class="cp-status-modal-panel" role="dialog" aria-modal="true" aria-labelledby="cp-cancel-modal-title">
+          <h2 id="cp-cancel-modal-title" class="cp-status-modal-title">Cancel project</h2>
+          <p class="cp-status-modal-hint">This will mark the project as <strong>Cancelled</strong>. Please provide a reason — it will be saved in the project history.</p>
+          <label for="cp-cancel-reason" class="cp-status-modal-label">Reason for cancelling</label>
+          <textarea id="cp-cancel-reason" class="admin-input cp-status-modal-textarea" rows="4" maxlength="2000" required placeholder="e.g. Client went with another contractor"></textarea>
+          <div class="cp-status-modal-actions">
+            <button type="button" class="admin-btn admin-btn--ghost" data-cancel-modal-dismiss>Keep project active</button>
+            <button type="button" class="admin-btn admin-btn--primary" id="cp-cancel-confirm">Confirm cancellation</button>
+          </div>
+        </div>
+      </div>
+
       <script>
         (function () {
           var form = document.getElementById('cp-status-form');
@@ -129,23 +145,89 @@
           var select = form.querySelector('#cp-status-select');
           if (!select) return;
 
-          // Hide the Save button now that we know JS is on.
+          var cancelledStatus = @json(\App\Models\ClientProject::STATUS_CANCELLED);
+          var currentStatus = form.getAttribute('data-current-status');
+          var noteInput = document.getElementById('cp-status-note');
+          var modal = document.getElementById('cp-cancel-modal');
+          var cancelReason = document.getElementById('cp-cancel-reason');
+          var confirmBtn = document.getElementById('cp-cancel-confirm');
+
           form.classList.add('cp-status-form--auto');
 
           var submitting = false;
-          select.addEventListener('change', function () {
-            if (submitting) return;
-            if (select.value === form.getAttribute('data-current-status')) return;
 
+          function submitStatus() {
+            if (submitting) return;
             submitting = true;
             select.disabled = true;
-            // Re-add the disabled select's value so it still posts.
             var hidden = document.createElement('input');
             hidden.type = 'hidden';
             hidden.name = 'status';
             hidden.value = select.value;
             form.appendChild(hidden);
             form.submit();
+          }
+
+          function openCancelModal() {
+            if (!modal || !cancelReason) return;
+            cancelReason.value = '';
+            modal.hidden = false;
+            document.documentElement.classList.add('cp-cancel-modal-open');
+            cancelReason.focus();
+          }
+
+          function closeCancelModal(revertSelect) {
+            if (!modal) return;
+            modal.hidden = true;
+            document.documentElement.classList.remove('cp-cancel-modal-open');
+            if (revertSelect) {
+              select.value = currentStatus;
+            }
+          }
+
+          select.addEventListener('change', function () {
+            if (submitting) return;
+            if (select.value === currentStatus) return;
+
+            if (select.value === cancelledStatus) {
+              openCancelModal();
+              return;
+            }
+
+            if (noteInput) {
+              noteInput.value = '';
+            }
+            submitStatus();
+          });
+
+          if (confirmBtn) {
+            confirmBtn.addEventListener('click', function () {
+              if (!cancelReason) return;
+              var reason = cancelReason.value.trim();
+              if (!reason) {
+                cancelReason.setCustomValidity('Please enter a reason for cancelling.');
+                cancelReason.reportValidity();
+                cancelReason.setCustomValidity('');
+                return;
+              }
+              if (noteInput) {
+                noteInput.value = reason;
+              }
+              closeCancelModal(false);
+              submitStatus();
+            });
+          }
+
+          document.querySelectorAll('[data-cancel-modal-dismiss]').forEach(function (el) {
+            el.addEventListener('click', function () {
+              closeCancelModal(true);
+            });
+          });
+
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal && !modal.hidden) {
+              closeCancelModal(true);
+            }
           });
         })();
       </script>
@@ -188,7 +270,17 @@
         </script>
       @endif
     @else
-      <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>
+      @if ($project->isCancelled())
+        <p class="cp-final-note cp-final-note--cancelled">
+          <i class="fa fa-times-circle"></i>
+          This project is marked as <strong>Cancelled</strong>.
+          @if (filled($project->cancelled_reason))
+            <span class="cp-final-note-reason">Reason: {{ $project->cancelled_reason }}</span>
+          @endif
+        </p>
+      @else
+        <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>
+      @endif
     @endunless
 
     <div class="cp-header-actions">
@@ -264,7 +356,7 @@
     @php
       $datesSet = $project->start_date && $project->end_date;
       $hasContact = $project->hasClientContactInfo();
-      $canSendDates = !$isRejected && $datesSet && $hasContact;
+      $canSendDates = !$isClosed && $datesSet && $hasContact;
       $lastSentDates = \App\Models\ClientCommunicationLog::query()
         ->where('client_project_id', $project->id)
         ->where('reason', \App\Models\ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL)
@@ -354,7 +446,7 @@
           </div>
         @endif
 
-        @unless ($isRejected)
+        @unless ($isClosed)
           @if (!$datesSet)
             <p class="admin-form-help cp-send-dates-note cp-send-dates-note--warn">
               <i class="fa fa-exclamation-triangle"></i>
@@ -380,7 +472,7 @@
 
         <div class="cp-schedule-actions">
           <button type="submit" class="admin-btn admin-btn--primary">Save dates</button>
-          @unless ($isRejected)
+          @unless ($isClosed)
             {{-- This button lives in the dates card but submits the small
                  #cp-send-dates-form below via the HTML5 `form=` attribute. --}}
             <button type="submit"
@@ -400,7 +492,7 @@
          the dates card above (referenced via `form="cp-send-dates-form"`).
          Kept separate so its POST doesn't piggyback on the project-update
          payload. --}}
-    @unless ($isRejected)
+    @unless ($isClosed)
       <form id="cp-send-dates-form"
             action="{{ route('admin.client-projects.schedule-dates.send', $project) }}"
             method="post"
@@ -414,7 +506,7 @@
          agreed verbally up front, so the client doesn't get the automatic
          pre-quote acknowledgement — instead Jonas sends this confirmation once
          the dates are locked in. --}}
-    @if ($project->billing_type === \App\Models\ClientProject::BILLING_HOURLY && !$isRejected)
+    @if ($project->billing_type === \App\Models\ClientProject::BILLING_HOURLY && !$isClosed)
       <div class="admin-card cp-service-confirmation-card">
         <h3>Service confirmation</h3>
         <p class="admin-form-help">

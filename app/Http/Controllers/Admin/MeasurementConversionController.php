@@ -23,7 +23,7 @@ class MeasurementConversionController extends Controller
             ->get();
 
         $clientProjects = ClientProject::query()
-            ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED])
+            ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_CANCELLED, ClientProject::STATUS_COMPLETED])
             ->orderBy('name')
             ->get(['id', 'name']);
 

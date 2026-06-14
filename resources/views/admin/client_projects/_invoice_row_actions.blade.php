@@ -20,7 +20,7 @@
 
   /** First paid invoice on this project prompts for a project status in the mark-paid modal. */
   $showMarkPaidStatusPicker = $project->invoices->where('status', ClientProjectInvoice::STATUS_PAID)->isEmpty()
-      && ! $project->isRejected();
+      && ! $project->isClosed();
   $moceanReady = $moceanSms->isConfigured();
 
   // Content/readiness checks shared — email also needs full contact card.

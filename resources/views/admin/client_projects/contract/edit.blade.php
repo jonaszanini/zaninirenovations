@@ -346,53 +346,60 @@
           var url = geminiBtn.getAttribute('data-ai-url');
           var context = ta.value || '';
           if (!url || !context.trim()) {
-            window.alert('Project details are empty. Fill in the project and quotations first.');
+            window.AdminDialog.alert('Project details are empty. Fill in the project and quotations first.');
             return;
           }
-          if (editorHasContent()) {
-            if (!window.confirm('Replace the current contract editor content with the AI draft?')) {
-              return;
+
+          function runGenerate() {
+            if (contractHistory && editorHasContent()) {
+              contractHistory.captureOriginalIfNeeded();
             }
-          }
 
-          if (contractHistory && editorHasContent()) {
-            contractHistory.captureOriginalIfNeeded();
-          }
+            geminiBtn.disabled = true;
+            setGeminiStatus('Generating with Gemini…', false);
 
-          geminiBtn.disabled = true;
-          setGeminiStatus('Generating with Gemini…', false);
-
-          fetch(url, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest',
-              'X-CSRF-TOKEN': csrfToken,
-            },
-            body: JSON.stringify({ context: context }),
-          }).then(function (res) {
-            return res.json().then(function (body) {
-              if (!res.ok) {
-                throw new Error((body && body.error) ? body.error : ('HTTP ' + res.status));
+            fetch(url, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
+              },
+              body: JSON.stringify({ context: context }),
+            }).then(function (res) {
+              return res.json().then(function (body) {
+                if (!res.ok) {
+                  throw new Error((body && body.error) ? body.error : ('HTTP ' + res.status));
+                }
+                return body;
+              });
+            }).then(function (body) {
+              var html = body.html || '';
+              if (contractHistory && html) {
+                contractHistory.addVersion(html);
               }
-              return body;
+              applyDraftToEditor(html);
+              closeModal();
+              setGeminiStatus('Draft inserted. Use the history icon to restore earlier versions.', false);
+              window.setTimeout(function () { setGeminiStatus('', false); }, 4000);
+            }).catch(function (err) {
+              setGeminiStatus(err && err.message ? err.message : 'Could not generate contract.', true);
+            }).finally(function () {
+              geminiBtn.disabled = false;
             });
-          }).then(function (body) {
-            var html = body.html || '';
-            if (contractHistory && html) {
-              contractHistory.addVersion(html);
-            }
-            applyDraftToEditor(html);
-            closeModal();
-            setGeminiStatus('Draft inserted. Use the history icon to restore earlier versions.', false);
-            window.setTimeout(function () { setGeminiStatus('', false); }, 4000);
-          }).catch(function (err) {
-            setGeminiStatus(err && err.message ? err.message : 'Could not generate contract.', true);
-          }).finally(function () {
-            geminiBtn.disabled = false;
-          });
+          }
+
+          if (editorHasContent()) {
+            window.AdminDialog.confirm('Replace the current contract editor content with the AI draft?', { title: 'Replace content' }).then(function (ok) {
+              if (!ok) return;
+              runGenerate();
+            });
+            return;
+          }
+
+          runGenerate();
         });
       }
 
@@ -412,7 +419,7 @@
           }
 
           function showErr() {
-            window.alert('Could not copy to clipboard. Select the text in the box and copy manually (Ctrl+C).');
+            window.AdminDialog.alert('Could not copy to clipboard. Select the text in the box and copy manually (Ctrl+C).');
           }
 
           if (navigator.clipboard && navigator.clipboard.writeText) {

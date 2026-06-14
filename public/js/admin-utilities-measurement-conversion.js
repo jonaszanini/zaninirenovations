@@ -354,7 +354,8 @@
   function deleteProject() {
     var project = activeProject();
     if (!project) return;
-    if (!window.confirm('Delete "' + project.name + '" and all its measurements?')) return;
+    window.AdminDialog.confirm('Delete "' + project.name + '" and all its measurements?', { title: 'Delete project', danger: true }).then(function (ok) {
+      if (!ok) return;
 
     fetch(urlFromTemplate(root.getAttribute('data-project-destroy-template'), project.id), {
       method: 'DELETE',
@@ -373,6 +374,7 @@
         refreshProjectSelect();
         renderWorkspace();
       });
+    });
   }
 
   function addRow() {

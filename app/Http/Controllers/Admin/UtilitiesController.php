@@ -72,7 +72,7 @@ class UtilitiesController extends Controller
             ->get(['id', 'name', 'client_project_id', 'payload', 'created_at']);
 
         $clientProjects = ClientProject::query()
-            ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_COMPLETED])
+            ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_CANCELLED, ClientProject::STATUS_COMPLETED])
             ->orderBy('client_name')
             ->orderBy('name')
             ->get(['id', 'name', 'client_name']);

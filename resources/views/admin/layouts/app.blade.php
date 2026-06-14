@@ -268,6 +268,20 @@
       </main>
     </div>
   </div>
+
+  <div id="admin-dialog" class="admin-dialog" hidden aria-hidden="true">
+    <div class="admin-dialog-backdrop" data-admin-dialog-dismiss tabindex="-1" aria-hidden="true"></div>
+    <div class="admin-dialog-panel" role="alertdialog" aria-modal="true" aria-labelledby="admin-dialog-title" aria-describedby="admin-dialog-message">
+      <div class="admin-dialog-icon-wrap admin-dialog-icon-wrap--confirm" aria-hidden="true">
+        <i class="fa fa-question-circle admin-dialog-icon" aria-hidden="true"></i>
+      </div>
+      <h2 id="admin-dialog-title" class="admin-dialog-title">Confirm</h2>
+      <p id="admin-dialog-message" class="admin-dialog-message"></p>
+      <div class="admin-dialog-actions"></div>
+    </div>
+  </div>
+
+  <script src="{{ asset('js/admin-dialog.js') }}?v={{ @filemtime(public_path('js/admin-dialog.js')) ?: time() }}"></script>
   <script>
     (function () {
       var app = document.getElementById('admin-app');
@@ -343,12 +357,12 @@
           }
           btn.disabled = false;
           btn.removeAttribute('aria-busy');
-          window.alert('Could not disconnect Google Photos. Try again.');
+          window.AdminDialog.alert('Could not disconnect Google Photos. Try again.');
         })
         .catch(function () {
           btn.disabled = false;
           btn.removeAttribute('aria-busy');
-          window.alert('Could not disconnect Google Photos. Try again.');
+          window.AdminDialog.alert('Could not disconnect Google Photos. Try again.');
         });
     });
   </script>

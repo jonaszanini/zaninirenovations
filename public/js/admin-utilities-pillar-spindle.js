@@ -518,7 +518,7 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    }).catch(function () { window.alert('Could not generate the image.'); });
+    }).catch(function () { window.AdminDialog.alert('Could not generate the image.'); });
   }
 
   function exportPdf() {
@@ -661,7 +661,8 @@
   }
 
   function deleteSaved(id, li) {
-    if (!window.confirm('Delete this saved calculation?')) return;
+    window.AdminDialog.confirm('Delete this saved calculation?', { title: 'Delete calculation', danger: true }).then(function (ok) {
+      if (!ok) return;
     var url = root.getAttribute('data-destroy-template').replace('__ID__', id);
     fetch(url, {
       method: 'DELETE',
@@ -674,7 +675,8 @@
     })
       .then(function (res) { return res.ok ? res.json() : Promise.reject(res); })
       .then(function () { li.remove(); refreshSavedEmpty(); })
-      .catch(function () { window.alert('Could not delete. Please try again.'); });
+      .catch(function () { window.AdminDialog.alert('Could not delete. Please try again.'); });
+    });
   }
 
   function loadPayload(p) {

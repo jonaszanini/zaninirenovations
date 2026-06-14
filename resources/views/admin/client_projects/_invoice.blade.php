@@ -521,7 +521,7 @@
 
           @php
             $markPaidStatusLabels = collect(\App\Models\ClientProject::statusLabels())
-              ->reject(fn ($label, $key) => $key === \App\Models\ClientProject::STATUS_REJECTED);
+              ->reject(fn ($label, $key) => in_array($key, \App\Models\ClientProject::terminalStatuses(), true));
           @endphp
           <fieldset id="cp-mark-paid-status-fieldset" class="cp-mark-paid-project-status" disabled>
             <legend class="cp-mark-paid-project-status-legend">Project status</legend>

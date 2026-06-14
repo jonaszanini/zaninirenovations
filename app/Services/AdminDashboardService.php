@@ -52,7 +52,7 @@ class AdminDashboardService
                 'invoices',
                 'quotations',
             ])
-            ->where('status', '!=', ClientProject::STATUS_REJECTED)
+            ->whereNotIn('status', ClientProject::terminalStatuses())
             ->get();
 
         $projection = $this->buildSixMonthProjection($projects, $projectionMonths, $rangeStart, $rangeEnd);
@@ -454,6 +454,7 @@ class AdminDashboardService
     private function isActiveProject(ClientProject $p): bool
     {
         return !in_array($p->status, [
+            ClientProject::STATUS_CANCELLED,
             ClientProject::STATUS_REJECTED,
             ClientProject::STATUS_COMPLETED,
         ], true);
@@ -467,7 +468,7 @@ class AdminDashboardService
         $rows = [];
 
         foreach ($projects as $p) {
-            if ($p->status === ClientProject::STATUS_REJECTED) {
+            if (in_array($p->status, ClientProject::terminalStatuses(), true)) {
                 continue;
             }
             if ($p->start_date) {
@@ -603,7 +604,7 @@ class AdminDashboardService
         $items = [];
 
         foreach ($projects as $p) {
-            if ($p->status === ClientProject::STATUS_REJECTED) {
+            if (in_array($p->status, ClientProject::terminalStatuses(), true)) {
                 continue;
             }
             $reasons = [];
@@ -634,7 +635,7 @@ class AdminDashboardService
         }
 
         $high = $projects
-            ->filter(fn (ClientProject $p) => $p->status !== ClientProject::STATUS_REJECTED)
+            ->filter(fn (ClientProject $p) => ! in_array($p->status, ClientProject::terminalStatuses(), true))
             ->sortByDesc(fn (ClientProject $p) => (float) ($p->total_amount ?? 0))
             ->take(3)
             ->map(fn (ClientProject $p) => [
