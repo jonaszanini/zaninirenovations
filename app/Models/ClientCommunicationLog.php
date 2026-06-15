@@ -56,6 +56,7 @@ class ClientCommunicationLog extends Model
     public const REASON_HELPER_PAYMENT = 'helper_payment';
     public const REASON_THANK_YOU = 'thank_you';
     public const REASON_COMMENCEMENT_EVE_SMS = 'commencement_eve_sms';
+    public const REASON_COMMENCEMENT_EVE_CLIENT = 'commencement_eve_client';
     public const REASON_COMMENCEMENT_EVE_ADMIN = 'commencement_eve_admin';
     public const REASON_CALENDAR_EVENT_ADMIN = 'calendar_event_admin';
     public const REASON_QUOTE_PENDING_REMINDER_ADMIN = 'quote_pending_reminder_admin';
@@ -80,6 +81,7 @@ class ClientCommunicationLog extends Model
         self::REASON_HELPER_PAYMENT => 'Helper payment',
         self::REASON_THANK_YOU => 'Thank you / review',
         self::REASON_COMMENCEMENT_EVE_SMS => 'Save the date (day before)',
+        self::REASON_COMMENCEMENT_EVE_CLIENT => 'Save the date (day before, email)',
         self::REASON_COMMENCEMENT_EVE_ADMIN => 'Day-before (admin)',
         self::REASON_CALENDAR_EVENT_ADMIN => 'Calendar event (admin)',
         self::REASON_QUOTE_PENDING_REMINDER_ADMIN => 'Daily quote reminder (admin)',
@@ -175,6 +177,7 @@ class ClientCommunicationLog extends Model
             self::REASON_FIXED_SCHEDULE_CONFIRMATION,
             self::REASON_SCHEDULE_DATES_MANUAL => '#10b981',         // emerald
             self::REASON_COMMENCEMENT_EVE_SMS,
+            self::REASON_COMMENCEMENT_EVE_CLIENT,
             self::REASON_COMMENCEMENT_EVE_ADMIN => '#0891b2',        // cyan
             self::REASON_THANK_YOU => '#ec4899',                     // pink
             self::REASON_TIME_TRACKING_SUMMARY => '#6366f1',         // indigo

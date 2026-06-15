@@ -26,6 +26,7 @@ return [
     'calendar_email_to' => env('CLIENT_PROJECTS_CALENDAR_TO', ''),
 
     // Admin email for the automated "day before work begins" notice (runs via scheduler).
+    // Client email + SMS are sent automatically when client_email / client_phone are set.
     'commencement_eve_email_to' => env('CLIENT_PROJECTS_COMMENCEMENT_EVE_TO', ''),
 
     // Daily past-due invoice payment reminders to clients (email preferred, else SMS).
