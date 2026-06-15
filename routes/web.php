@@ -559,4 +559,25 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('utilities.measurement-conversion.rows.store');
     Route::delete('utilities/measurement-conversion/rows/{measurement_row}', [\App\Http\Controllers\Admin\MeasurementConversionController::class, 'destroyRow'])
         ->name('utilities.measurement-conversion.rows.destroy');
+
+    Route::get('utilities/room-area', [\App\Http\Controllers\Admin\RoomAreaController::class, 'index'])
+        ->name('utilities.room-area');
+    Route::post('utilities/room-area/validate', [\App\Http\Controllers\Admin\RoomAreaController::class, 'validateRoom'])
+        ->name('utilities.room-area.validate');
+    Route::post('utilities/room-area/projects', [\App\Http\Controllers\Admin\RoomAreaController::class, 'storeProject'])
+        ->name('utilities.room-area.projects.store');
+    Route::put('utilities/room-area/projects/{room_area_project}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'updateProject'])
+        ->name('utilities.room-area.projects.update');
+    Route::delete('utilities/room-area/projects/{room_area_project}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyProject'])
+        ->name('utilities.room-area.projects.destroy');
+    Route::post('utilities/room-area/projects/{room_area_project}/rooms', [\App\Http\Controllers\Admin\RoomAreaController::class, 'storeRoom'])
+        ->name('utilities.room-area.rooms.store');
+    Route::delete('utilities/room-area/rooms/{room_area_room}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyRoom'])
+        ->name('utilities.room-area.rooms.destroy');
+    Route::post('utilities/room-area/projects/{room_area_project}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'uploadBackground'])
+        ->name('utilities.room-area.background.upload');
+    Route::get('utilities/room-area/projects/{room_area_project}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'background'])
+        ->name('utilities.room-area.background');
+    Route::delete('utilities/room-area/projects/{room_area_project}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyBackground'])
+        ->name('utilities.room-area.background.destroy');
 });

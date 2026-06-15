@@ -36,6 +36,12 @@ class UtilitiesController extends Controller
                 'route' => route('admin.utilities.lumber-board'),
                 'available' => true,
             ],
+            [
+                'name' => 'Room Area',
+                'icon' => 'room_area',
+                'route' => route('admin.utilities.room-area'),
+                'available' => true,
+            ],
         ];
 
         return view('admin.utilities.index', [
