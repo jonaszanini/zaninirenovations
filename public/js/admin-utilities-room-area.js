@@ -3192,6 +3192,16 @@
     bindEvents();
     bindViewportEvents();
     refreshProjectSelect();
+    var raProject = (function () {
+      try { return new URLSearchParams(window.location.search).get('ra_project'); } catch (e) { return null; }
+    })();
+    if (raProject) {
+      var raId = parseInt(raProject, 10);
+      if (state.projects.some(function (p) { return p.id === raId; })) {
+        state.activeProjectId = raId;
+        refreshProjectSelect();
+      }
+    }
     renderWorkspace();
   }
 

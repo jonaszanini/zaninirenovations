@@ -484,6 +484,15 @@
   // Init
   state.projects = parseJson('data-projects', []);
   if (state.projects.length) state.activeProjectId = state.projects[0].id;
+  var mcProject = (function () {
+    try { return new URLSearchParams(window.location.search).get('mc_project'); } catch (e) { return null; }
+  })();
+  if (mcProject) {
+    var mcId = parseInt(mcProject, 10);
+    if (state.projects.some(function (p) { return p.id === mcId; })) {
+      state.activeProjectId = mcId;
+    }
+  }
   refreshProjectSelect();
   updateUnitHint();
   renderWorkspace();

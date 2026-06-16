@@ -15,12 +15,21 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // NOTE: The daily project automations (reminders, commencement-eve,
-        // start-due-today, etc.) are NOT scheduled by time here. They run via
-        // App\Console\Commands\RunDailyAutomations (`automations:run-daily`),
-        // which the HTTP cron endpoint (GET /cron/run) invokes once a day at
-        // 9am EST so every automation fires unconditionally on each hit. Add new
-        // daily automations to that command's list, not here.
+        // One schedule entry per daily automation. Hostinger runs `schedule:run`
+        // every minute; Laravel fires each command when its time matches.
+        // HTTP GET /cron/run is a fallback when system cron fails — it calls
+        // `automations:run-daily` directly (see CronController), not these lines.
+        $dailyAt = static function (Schedule $schedule, string $command) {
+            $schedule->command($command)
+                ->dailyAt('09:00')
+                ->timezone('America/Toronto')
+                ->withoutOverlapping(120);
+        };
+
+        $dailyAt($schedule, 'client-projects:send-reminders');
+        $dailyAt($schedule, 'client-projects:send-past-due-invoice-reminders');
+        $dailyAt($schedule, 'client-projects:notify-commencement-eve');
+        $dailyAt($schedule, 'client-projects:start-due-today');
 
         // TEMPORARY cron smoke test: when SMS_CRON_TEST=true the scheduler texts
         // the owner every minute, proving cron is invoking `schedule:run`. Set

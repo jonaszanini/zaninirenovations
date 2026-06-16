@@ -343,6 +343,12 @@
     <button type="button" class="cp-tab" data-tab="contract" role="tab">Contract</button>
     <button type="button" class="cp-tab" data-tab="invoice" role="tab">Invoice</button>
     <button type="button" class="cp-tab" data-tab="financials" role="tab">Financials</button>
+    <button type="button" class="cp-tab" data-tab="utilities" role="tab">
+      Utilities
+      @if (($linkedUtilities['total_count'] ?? 0) > 0)
+        <span class="cp-tab-count">{{ $linkedUtilities['total_count'] }}</span>
+      @endif
+    </button>
     <button type="button" class="cp-tab" data-tab="history" role="tab">History</button>
   </div>
 
@@ -353,6 +359,20 @@
     @endif
 
     @include('admin.client_projects._travel_cost', ['project' => $project])
+
+    @if ($linkedUtilities['has_any'] ?? false)
+      <div class="admin-card cp-utilities-teaser">
+        <div class="cp-utilities-teaser__text">
+          <h3>Linked utilities</h3>
+          <p class="admin-form-help">
+            {{ $linkedUtilities['total_count'] }}
+            {{ \Illuminate\Support\Str::plural('saved item', $linkedUtilities['total_count']) }}
+            from admin calculators are linked to this project.
+          </p>
+        </div>
+        <a href="#utilities" class="admin-btn admin-btn--ghost admin-btn--sm">View utilities</a>
+      </div>
+    @endif
 
     <div class="admin-card">
       <h3>Details</h3>
@@ -673,6 +693,11 @@
     @endif
   </section>
 
+  {{-- UTILITIES TAB ------------------------------------------------------- --}}
+  <section class="cp-tab-panel" data-panel="utilities" id="utilities">
+    @include('admin.client_projects._utilities', ['project' => $project, 'linkedUtilities' => $linkedUtilities])
+  </section>
+
   {{-- HISTORY TAB --------------------------------------------------------- --}}
   <section class="cp-tab-panel" data-panel="history">
     <div class="admin-card">
@@ -748,6 +773,13 @@
           if (saved) show(saved);
         } catch (e) {}
       }
+
+      window.addEventListener('hashchange', function () {
+        var tab = (window.location.hash || '').replace('#', '');
+        if (tab && document.querySelector('.cp-tab[data-tab="' + tab + '"]')) {
+          show(tab);
+        }
+      });
     })();
   </script>
   <script>

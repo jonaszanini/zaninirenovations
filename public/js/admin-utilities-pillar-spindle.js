@@ -757,6 +757,15 @@
     refreshSavedEmpty();
   })();
 
+  (function loadFromQuery() {
+    var calcId;
+    try { calcId = new URLSearchParams(window.location.search).get('calculation'); } catch (e) { calcId = null; }
+    if (!calcId) return;
+    var li = els.savedList.querySelector('[data-id="' + calcId + '"]');
+    var btn = li && li.querySelector('[data-ps-load]');
+    if (btn) btn.click();
+  })();
+
   // ── Init ────────────────────────────────────────────────────────────
   setMode('spacing');
   render();

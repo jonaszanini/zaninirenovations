@@ -371,6 +371,21 @@ class ClientProject extends Model
         return $this->hasMany(ClientProjectPhoto::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function roomAreaProjects(): HasMany
+    {
+        return $this->hasMany(RoomAreaProject::class)->orderBy('name');
+    }
+
+    public function measurementProjects(): HasMany
+    {
+        return $this->hasMany(MeasurementProject::class)->orderBy('name');
+    }
+
+    public function utilityCalculations(): HasMany
+    {
+        return $this->hasMany(UtilityCalculation::class)->orderByDesc('updated_at');
+    }
+
     /**
      * True iff the project has all the client info required to email a
      * client-facing document (contract or quotation): name, phone, email,

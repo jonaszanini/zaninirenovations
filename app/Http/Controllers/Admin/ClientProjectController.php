@@ -15,6 +15,7 @@ use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectPhotoStorage;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientProjectContactService;
+use App\Services\ClientProjectLinkedUtilitiesService;
 use App\Support\EasternStandardTimeDisplay;
 use App\Services\GoogleCalendarLink;
 use Illuminate\Http\Request;
@@ -283,11 +284,14 @@ class ClientProjectController extends Controller
         // own dates don't show up as "conflicts".
         $scheduleEvents = $this->buildSchedulePickerEvents($client_project);
 
+        $linkedUtilities = app(ClientProjectLinkedUtilitiesService::class)->forProject($client_project);
+
         return view('admin.client_projects.show', [
             'project' => $client_project,
             'calendarLink' => $calendarLink,
             'scheduleEvents' => $scheduleEvents,
             'activeHelpers' => \App\Models\Helper::query()->active()->orderBy('name')->get(),
+            'linkedUtilities' => $linkedUtilities,
         ]);
     }
 

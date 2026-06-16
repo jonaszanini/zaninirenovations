@@ -5610,3 +5610,147 @@ body.cp-modal-open {
     width: 100%;
   }
 }
+
+/* =================================================================
+   Utilities tab
+   ================================================================= */
+.cp-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+.cp-tab.is-active .cp-tab-count {
+  background: #024768;
+  color: #fff;
+}
+.cp-utilities-teaser {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.cp-utilities-teaser h3 {
+  margin: 0 0 4px;
+}
+.cp-utilities-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.cp-utilities-intro h3 {
+  margin: 0 0 4px;
+}
+.cp-utilities-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.cp-utilities-section {
+  margin-bottom: 14px;
+}
+.cp-utilities-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.cp-utilities-section__head h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+}
+.cp-utilities-section__head h3 .fa {
+  color: #024768;
+}
+.cp-utilities-section__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+}
+.cp-utilities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cp-utilities-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.cp-utilities-item__name {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.cp-utilities-item__meta {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+.cp-utilities-item__rooms {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.cp-utilities-item__rooms li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-top: 1px solid #eceff3;
+}
+.cp-utilities-item__rooms li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.cp-utilities-item__room-area {
+  color: #374151;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cp-utilities-item__actions {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .cp-utilities-teaser,
+  .cp-utilities-intro,
+  .cp-utilities-section__head,
+  .cp-utilities-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cp-utilities-item__actions .admin-btn {
+    width: 100%;
+  }
+}
