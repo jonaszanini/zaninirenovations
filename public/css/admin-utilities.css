@@ -2146,10 +2146,33 @@
   box-shadow: 0 0 0 3px var(--admin-primary-ring);
 }
 
-[data-ra-calibrate-toggle].is-active {
+[data-ra-calibrate-toggle].is-active,
+[data-ra-ruler-toggle].is-active {
   background: var(--admin-primary-soft);
   border-color: var(--admin-primary);
   color: var(--admin-primary);
+}
+
+.util-ra-ruler-edit {
+  border-color: #6a1b9a;
+  background: rgba(106, 27, 154, 0.08);
+}
+
+.util-ra-ruler-edit .util-ra-wall-edit__label {
+  color: #6a1b9a;
+}
+
+.util-ra-ruler-length {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--admin-text);
+  align-self: center;
+  min-width: 4rem;
+}
+
+.util-ra-canvas-wrap.is-ruler-edit {
+  outline: 2px solid rgba(106, 27, 154, 0.35);
+  outline-offset: -2px;
 }
 
 @media (max-width: 1100px) {

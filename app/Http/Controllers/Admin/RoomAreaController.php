@@ -81,6 +81,10 @@ class RoomAreaController extends Controller
             Storage::disk('local')->delete($room_area_project->background_path);
         }
 
+        foreach ($room_area_project->rooms as $room) {
+            $this->deleteRoomBackgroundFile($room);
+        }
+
         $room_area_project->delete();
 
         return response()->json(['ok' => true]);
@@ -95,9 +99,10 @@ class RoomAreaController extends Controller
             'vertices.*.y' => ['required', 'numeric'],
             'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
+            'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
         ]);
 
-        $scale = (float) ($room_area_project->scale_pixels_per_foot ?? 0);
+        $scale = (float) ($data['scale_pixels_per_foot'] ?? $room_area_project->scale_pixels_per_foot ?? 0);
         $validation = $areaService->validateRoom($data['vertices'], $scale);
 
         if (! $validation['valid']) {
@@ -109,6 +114,7 @@ class RoomAreaController extends Controller
             'vertices' => $data['vertices'],
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
+            'scale_pixels_per_foot' => $data['scale_pixels_per_foot'] ?? null,
             'area_sqft' => $validation['area_sqft'],
         ]);
 
@@ -129,9 +135,10 @@ class RoomAreaController extends Controller
             'vertices.*.y' => ['required', 'numeric'],
             'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
+            'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
         ]);
 
-        $scale = (float) ($room_area_room->project->scale_pixels_per_foot ?? 0);
+        $scale = (float) ($data['scale_pixels_per_foot'] ?? $room_area_room->scale_pixels_per_foot ?? $room_area_room->project->scale_pixels_per_foot ?? 0);
         $validation = $areaService->validateRoom($data['vertices'], $scale);
 
         if (! $validation['valid']) {
@@ -143,6 +150,7 @@ class RoomAreaController extends Controller
             'vertices' => $data['vertices'],
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
+            'scale_pixels_per_foot' => $data['scale_pixels_per_foot'] ?? $room_area_room->scale_pixels_per_foot,
             'area_sqft' => $validation['area_sqft'],
         ]);
 
@@ -156,6 +164,7 @@ class RoomAreaController extends Controller
 
     public function destroyRoom(RoomAreaRoom $room_area_room)
     {
+        $this->deleteRoomBackgroundFile($room_area_room);
         $room_area_room->delete();
 
         return response()->json(['ok' => true]);
@@ -186,42 +195,37 @@ class RoomAreaController extends Controller
         ]);
     }
 
-    public function uploadBackground(Request $request, RoomAreaProject $room_area_project)
+    public function uploadBackground(Request $request, RoomAreaRoom $room_area_room)
     {
         $data = $request->validate([
             'background' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
         ]);
 
-        if ($room_area_project->background_path) {
-            Storage::disk('local')->delete($room_area_project->background_path);
-        }
+        $this->deleteRoomBackgroundFile($room_area_room);
 
         $path = $data['background']->store('room-plans', 'local');
-        $room_area_project->background_path = $path;
-        $room_area_project->save();
+        $room_area_room->background_path = $path;
+        $room_area_room->save();
 
         return response()->json([
             'ok' => true,
-            'background_url' => route('admin.utilities.room-area.background', $room_area_project),
+            'background_url' => route('admin.utilities.room-area.rooms.background', $room_area_room),
         ]);
     }
 
-    public function background(RoomAreaProject $room_area_project): Response
+    public function background(RoomAreaRoom $room_area_room): Response
     {
-        if (! $room_area_project->background_path || ! Storage::disk('local')->exists($room_area_project->background_path)) {
+        if (! $room_area_room->background_path || ! Storage::disk('local')->exists($room_area_room->background_path)) {
             abort(404);
         }
 
-        return Storage::disk('local')->response($room_area_project->background_path);
+        return Storage::disk('local')->response($room_area_room->background_path);
     }
 
-    public function destroyBackground(RoomAreaProject $room_area_project)
+    public function destroyBackground(RoomAreaRoom $room_area_room)
     {
-        if ($room_area_project->background_path) {
-            Storage::disk('local')->delete($room_area_project->background_path);
-            $room_area_project->background_path = null;
-            $room_area_project->save();
-        }
+        $this->deleteRoomBackgroundFile($room_area_room);
+        $room_area_room->save();
 
         return response()->json(['ok' => true]);
     }
@@ -236,9 +240,6 @@ class RoomAreaController extends Controller
             'scale_pixels_per_foot' => $project->scale_pixels_per_foot,
             'canvas_width' => $project->canvas_width,
             'canvas_height' => $project->canvas_height,
-            'background_url' => $project->background_path
-                ? route('admin.utilities.room-area.background', $project)
-                : null,
             'rooms' => $project->rooms->map(fn (RoomAreaRoom $room) => $this->roomPayload($room))->values(),
         ];
     }
@@ -251,8 +252,22 @@ class RoomAreaController extends Controller
             'vertices' => $room->vertices,
             'canvas_width' => $room->canvas_width,
             'canvas_height' => $room->canvas_height,
+            'scale_pixels_per_foot' => $room->scale_pixels_per_foot,
+            'background_url' => $room->background_path
+                ? route('admin.utilities.room-area.rooms.background', $room)
+                : null,
             'area_sqft' => (float) $room->area_sqft,
         ];
+    }
+
+    private function deleteRoomBackgroundFile(RoomAreaRoom $room): void
+    {
+        if (! $room->background_path) {
+            return;
+        }
+
+        Storage::disk('local')->delete($room->background_path);
+        $room->background_path = null;
     }
 
     private function syncProjectCanvasDimensions(RoomAreaProject $project, array $data): void

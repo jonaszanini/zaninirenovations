@@ -11,6 +11,8 @@ class RoomAreaRoom extends Model
         'room_area_project_id',
         'name',
         'vertices',
+        'background_path',
+        'scale_pixels_per_foot',
         'canvas_width',
         'canvas_height',
         'area_sqft',
@@ -19,6 +21,7 @@ class RoomAreaRoom extends Model
     protected $casts = [
         'vertices' => 'array',
         'area_sqft' => 'float',
+        'scale_pixels_per_foot' => 'float',
     ];
 
     public function project(): BelongsTo

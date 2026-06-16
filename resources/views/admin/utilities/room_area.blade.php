@@ -29,8 +29,8 @@
     data-room-store-template="{{ route('admin.utilities.room-area.rooms.store', ['room_area_project' => '__ID__']) }}"
     data-room-update-template="{{ route('admin.utilities.room-area.rooms.update', ['room_area_room' => '__ID__']) }}"
     data-room-destroy-template="{{ route('admin.utilities.room-area.rooms.destroy', ['room_area_room' => '__ID__']) }}"
-    data-background-upload-template="{{ route('admin.utilities.room-area.background.upload', ['room_area_project' => '__ID__']) }}"
-    data-background-destroy-template="{{ route('admin.utilities.room-area.background.destroy', ['room_area_project' => '__ID__']) }}">
+    data-room-background-upload-template="{{ route('admin.utilities.room-area.rooms.background.upload', ['room_area_room' => '__ID__']) }}"
+    data-room-background-destroy-template="{{ route('admin.utilities.room-area.rooms.background.destroy', ['room_area_room' => '__ID__']) }}">
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
 
     <section class="admin-card util-ra-project-bar">
@@ -111,7 +111,7 @@
             </div>
           </div>
           <div class="util-ra-controls__block util-ra-controls__bg">
-            <span class="util-ra-controls__heading">Floor plan <span class="util-ra-optional">(optional)</span></span>
+            <span class="util-ra-controls__heading">Floor plan <span class="util-ra-optional">(per room)</span></span>
             <div class="util-ra-bg-actions">
               <label class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-file-label">
                 <i class="fa fa-upload"></i> Upload
@@ -163,6 +163,9 @@
             <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-clear-shape>
               <i class="fa fa-eraser"></i> Clear
             </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-toggle title="Measure distances on the floor plan">
+              <i class="fa fa-arrows-alt"></i> Ruler
+            </button>
             <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-bg-delete-canvas hidden title="Remove floor plan image from canvas">
               <i class="fa fa-trash"></i> Delete image
             </button>
@@ -184,6 +187,19 @@
                 <i class="fa fa-compress"></i> Fit
               </button>
             </div>
+          </div>
+        </div>
+
+        <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
+          <div class="util-ra-wall-edit__inner">
+            <span class="util-ra-wall-edit__label">Ruler</span>
+            <span class="util-ra-ruler-length" data-ra-ruler-length>—</span>
+            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-ruler>
+              <i class="fa fa-trash"></i> Delete ruler
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-cancel aria-label="Deselect ruler">
+              <i class="fa fa-times"></i>
+            </button>
           </div>
         </div>
 
@@ -209,7 +225,7 @@
         </div>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Hold Shift while clicking to snap walls to 45°/90°. Drag corners to move; Shift while dragging magnetically snaps. Shift + scroll to zoom; Space + drag to pan.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Hold Shift while clicking to snap walls to 45°/90°. Use <strong>Ruler</strong> to measure distances (calibrate scale first). Shift + scroll to zoom; Space + drag to pan.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <span class="util-ra-live-area__label">Current shape:</span>
             <strong data-ra-live-sqft>—</strong> sq ft
@@ -224,7 +240,7 @@
         <div class="util-ra-rooms-head">
           <div class="util-ra-rooms-head__intro">
             <h3 class="util-ra-card-title">Saved rooms</h3>
-            <p class="util-ra-rooms-hint">Each project can have multiple rooms. Draw an outline, save it, then start another.</p>
+            <p class="util-ra-rooms-hint">Each room has its own floor plan and outline. Draw, save, then start another room.</p>
           </div>
           <div class="util-ra-rooms-head__actions">
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm util-ra-action-btn" data-ra-new-room-secondary>

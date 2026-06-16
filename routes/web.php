@@ -576,10 +576,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('utilities.room-area.rooms.update');
     Route::delete('utilities/room-area/rooms/{room_area_room}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyRoom'])
         ->name('utilities.room-area.rooms.destroy');
-    Route::post('utilities/room-area/projects/{room_area_project}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'uploadBackground'])
-        ->name('utilities.room-area.background.upload');
-    Route::get('utilities/room-area/projects/{room_area_project}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'background'])
-        ->name('utilities.room-area.background');
-    Route::delete('utilities/room-area/projects/{room_area_project}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyBackground'])
-        ->name('utilities.room-area.background.destroy');
+    Route::post('utilities/room-area/rooms/{room_area_room}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'uploadBackground'])
+        ->name('utilities.room-area.rooms.background.upload');
+    Route::get('utilities/room-area/rooms/{room_area_room}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'background'])
+        ->name('utilities.room-area.rooms.background');
+    Route::delete('utilities/room-area/rooms/{room_area_room}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyBackground'])
+        ->name('utilities.room-area.rooms.background.destroy');
 });

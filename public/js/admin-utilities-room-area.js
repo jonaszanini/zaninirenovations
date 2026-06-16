@@ -16,6 +16,7 @@
   var VERTEX_HIT = 14;
   var CLOSE_HIT = 16;
   var WALL_HIT = 14;
+  var RULER_HIT = 12;
   var MIN_ZOOM = 0.35;
   var MAX_ZOOM = 5;
   var ZOOM_FACTOR = 1.12;
@@ -47,6 +48,11 @@
     closeShape: root.querySelector('[data-ra-close-shape]'),
     clearShape: root.querySelector('[data-ra-clear-shape]'),
     deleteWall: root.querySelector('[data-ra-delete-wall]'),
+    rulerToggle: root.querySelector('[data-ra-ruler-toggle]'),
+    rulerEdit: root.querySelector('[data-ra-ruler-edit]'),
+    rulerLength: root.querySelector('[data-ra-ruler-length]'),
+    deleteRuler: root.querySelector('[data-ra-delete-ruler]'),
+    rulerCancel: root.querySelector('[data-ra-ruler-cancel]'),
     canvasWrap: root.querySelector('[data-ra-canvas-wrap]'),
     liveArea: root.querySelector('[data-ra-live-area]'),
     liveSqft: root.querySelector('[data-ra-live-sqft]'),
@@ -82,6 +88,14 @@
     closed: false,
     calibrating: false,
     calibPoints: [],
+    rulerMode: false,
+    rulerDraft: [],
+    selectedRulerId: null,
+    nextRulerId: 1,
+    rulerPreview: null,
+    activeBackgroundUrl: null,
+    draftBackground: null,
+    draftScale: null,
     stage: null,
     worldGroup: null,
     viewport: { scale: 1, x: 0, y: 0 },
@@ -98,6 +112,7 @@
     lastUiScale: 1,
     selectedWallIndex: null,
     draggingVertex: false,
+    draggingRuler: false,
     editingRoomId: null,
     editorToken: 0,
     canvasW: 900,
@@ -143,6 +158,40 @@
     return Math.sqrt((toW / fromW) * (toH / fromH));
   }
 
+  function activeRoom() {
+    var project = activeProject();
+    if (!project || !state.editingRoomId) return null;
+    return project.rooms.find(function (r) { return r.id === state.editingRoomId; }) || null;
+  }
+
+  function revokeDraftBackground() {
+    if (state.draftBackground && state.draftBackground.url) {
+      URL.revokeObjectURL(state.draftBackground.url);
+    }
+    state.draftBackground = null;
+  }
+
+  function currentBackgroundUrl() {
+    if (state.draftBackground && state.draftBackground.url) return state.draftBackground.url;
+    var room = activeRoom();
+    if (room && room.background_url) return room.background_url;
+    return null;
+  }
+
+  function scaleActivePixelsPerFoot(factor) {
+    if (Math.abs(factor - 1) < 0.0005) return;
+    var room = activeRoom();
+    if (room && room.scale_pixels_per_foot) {
+      room.scale_pixels_per_foot = parseFloat(room.scale_pixels_per_foot) * factor;
+      return;
+    }
+    if (!state.editingRoomId && state.draftScale) {
+      state.draftScale *= factor;
+      return;
+    }
+    scaleProjectPixelsPerFoot(factor);
+  }
+
   function scaleProjectPixelsPerFoot(factor) {
     var project = activeProject();
     if (!project || !project.scale_pixels_per_foot || Math.abs(factor - 1) < 0.0005) return;
@@ -184,6 +233,65 @@
 
   function activeProject() {
     return state.projects.find(function (p) { return p.id === state.activeProjectId; }) || null;
+  }
+
+  function projectRulers() {
+    var project = activeProject();
+    if (!project) return [];
+    if (!project.rulers) project.rulers = [];
+    return project.rulers;
+  }
+
+  function findRulerById(id) {
+    var rulers = projectRulers();
+    for (var i = 0; i < rulers.length; i++) {
+      if (rulers[i].id === id) return rulers[i];
+    }
+    return null;
+  }
+
+  function rulerLengthFeet(ruler) {
+    var ppf = pixelsPerFoot();
+    if (!ppf || !ruler) return null;
+    return dist(ruler.p1, ruler.p2) / ppf;
+  }
+
+  function rulerLengthLabel(ruler) {
+    var feet = rulerLengthFeet(ruler);
+    if (feet === null) return 'Scale not set';
+    return fmtFeetInches(feet);
+  }
+
+  function findRulerAtPoint(pos) {
+    if (!pos) return null;
+    var rulers = projectRulers();
+    var hit = hitTolerance(RULER_HIT);
+    var best = null;
+    var bestDist = hit + 1;
+    for (var i = rulers.length - 1; i >= 0; i--) {
+      var ruler = rulers[i];
+      var d = pointToSegmentDistance(pos, ruler.p1, ruler.p2);
+      if (d <= hit && d < bestDist) {
+        best = ruler;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
+  function scaleProjectRulers(oldW, oldH, newW, newH) {
+    var rulers = projectRulers();
+    if (!rulers.length && !state.rulerDraft.length && !state.rulerPreview) return;
+    rulers.forEach(function (ruler) {
+      ruler.p1 = scalePoints([ruler.p1], oldW, oldH, newW, newH)[0];
+      ruler.p2 = scalePoints([ruler.p2], oldW, oldH, newW, newH)[0];
+    });
+    if (state.rulerDraft.length) {
+      state.rulerDraft = scalePoints(state.rulerDraft, oldW, oldH, newW, newH);
+    }
+    if (state.rulerPreview) {
+      state.rulerPreview = scalePoints([state.rulerPreview], oldW, oldH, newW, newH)[0];
+    }
   }
 
   function setFeedback(msg, isError) {
@@ -309,8 +417,15 @@
   }
 
   function pixelsPerFoot() {
-    var p = activeProject();
-    return p && p.scale_pixels_per_foot ? parseFloat(p.scale_pixels_per_foot) : 0;
+    var room = activeRoom();
+    if (room && room.scale_pixels_per_foot) {
+      return parseFloat(room.scale_pixels_per_foot);
+    }
+    if (!state.editingRoomId && state.draftScale) {
+      return parseFloat(state.draftScale);
+    }
+    var project = activeProject();
+    return project && project.scale_pixels_per_foot ? parseFloat(project.scale_pixels_per_foot) : 0;
   }
 
   function areaSqFt(vertices) {
@@ -559,8 +674,119 @@
     }
   }
 
+  function clearRulerSelection() {
+    if (state.selectedRulerId === null && els.rulerEdit && els.rulerEdit.hasAttribute('hidden')) return;
+    state.selectedRulerId = null;
+    show(els.rulerEdit, false);
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-ruler-edit');
+    if (els.rulerLength) els.rulerLength.textContent = '—';
+    redrawRulers();
+    updateToolbar();
+  }
+
+  function selectRuler(rulerId) {
+    var ruler = findRulerById(rulerId);
+    if (!ruler) return;
+    clearWallSelection();
+    state.selectedRulerId = rulerId;
+    show(els.rulerEdit, true);
+    if (els.canvasWrap) els.canvasWrap.classList.add('is-ruler-edit');
+    if (els.rulerLength) els.rulerLength.textContent = rulerLengthLabel(ruler);
+    redrawRulers();
+    updateToolbar();
+  }
+
+  function deleteSelectedRuler() {
+    if (state.selectedRulerId === null) return;
+    var rulers = projectRulers();
+    var idx = rulers.findIndex(function (r) { return r.id === state.selectedRulerId; });
+    if (idx < 0) {
+      clearRulerSelection();
+      return;
+    }
+    rulers.splice(idx, 1);
+    clearRulerSelection();
+    redrawRulers();
+    setFeedback('Ruler deleted.', false);
+  }
+
+  function stopRulerMode() {
+    state.rulerMode = false;
+    state.rulerDraft = [];
+    state.rulerPreview = null;
+    if (els.rulerToggle) els.rulerToggle.classList.remove('is-active');
+    redrawRulers();
+    redrawWalls();
+    redrawLabels();
+    redrawVertices();
+  }
+
+  function toggleRulerMode() {
+    if (state.rulerMode) {
+      stopRulerMode();
+      setFeedback('Ruler mode off. Click a ruler to select it; drag its corners to adjust.', false);
+      return;
+    }
+
+    if (state.calibrating) stopCalibrationMode();
+    clearRulerSelection();
+    clearWallSelection();
+    state.rulerMode = true;
+    state.rulerDraft = [];
+    state.rulerPreview = null;
+    if (els.rulerToggle) els.rulerToggle.classList.add('is-active');
+    redrawAll();
+    var ppf = pixelsPerFoot();
+    if (ppf > 0) {
+      setFeedback('Click two points to place a ruler. Create as many as you need. Turn Ruler off to select and delete.', false);
+    } else {
+      setFeedback('Scale is not set — rulers will show lengths after you calibrate.', false);
+    }
+  }
+
+  function placeRulerPoint(pos, shiftSnap) {
+    if (state.rulerDraft.length >= 2) {
+      state.rulerDraft = [];
+    }
+
+    var point = pos;
+    if (state.rulerDraft.length === 1) {
+      var prev = state.rulerDraft[0];
+      if (shiftSnap) point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
+      else point = snapPoint(pos, prev);
+    }
+    point = clampToCanvas(point);
+    state.rulerDraft.push(point);
+    state.rulerPreview = null;
+
+    if (state.rulerDraft.length < 2) {
+      redrawRulers();
+      return;
+    }
+
+    var rulers = projectRulers();
+    var ruler = {
+      id: state.nextRulerId++,
+      p1: { x: state.rulerDraft[0].x, y: state.rulerDraft[0].y },
+      p2: { x: state.rulerDraft[1].x, y: state.rulerDraft[1].y }
+    };
+    rulers.push(ruler);
+    state.rulerDraft = [];
+    redrawRulers();
+    setFeedback('Ruler placed: ' + rulerLengthLabel(ruler) + '. Click two more points for another.', false);
+  }
+
+  function cancelRulerDraft() {
+    if (!state.rulerMode || state.rulerDraft.length === 0) return false;
+    state.rulerDraft = [];
+    state.rulerPreview = null;
+    redrawRulers();
+    return true;
+  }
+
   function selectWall(wallIndex) {
     if (wallIndex < 0 || wallIndex >= wallCount()) return;
+    clearRulerSelection();
     state.selectedWallIndex = wallIndex;
     show(els.wallEdit, true);
     if (els.canvasWrap) els.canvasWrap.classList.add('is-wall-edit');
@@ -650,6 +876,8 @@
     state.editingRoomId = null;
     state.selectedWallIndex = null;
     state.draggingVertex = false;
+    state.draftScale = null;
+    revokeDraftBackground();
     resetCalibrationUI();
     clearWallSelection();
     if (els.roomName) els.roomName.value = '';
@@ -680,6 +908,8 @@
     } else if (state.spaceHeld) {
       el.style.cursor = 'grab';
     } else if (state.draggingVertex) {
+      el.style.cursor = 'grabbing';
+    } else if (state.draggingRuler) {
       el.style.cursor = 'grabbing';
     } else {
       el.style.cursor = '';
@@ -850,8 +1080,9 @@
       if (state.calibPoints.length) {
         state.calibPoints = scalePoints(state.calibPoints, oldW, oldH, dims.w, dims.h);
       }
+      scaleProjectRulers(oldW, oldH, dims.w, dims.h);
       if (Math.abs(factor - 1) > 0.0005) {
-        scaleProjectPixelsPerFoot(factor);
+        scaleActivePixelsPerFoot(factor);
         state.viewport.x *= dims.w / oldW;
         state.viewport.y *= dims.h / oldH;
         applyViewport();
@@ -908,6 +1139,7 @@
     state.layers.walls = new Konva.Group();
     state.layers.labels = new Konva.Group();
     state.layers.calib = new Konva.Group();
+    state.layers.rulers = new Konva.Group();
 
     state.worldGroup.add(state.layers.bg);
     state.worldGroup.add(state.layers.grid);
@@ -916,6 +1148,7 @@
     state.worldGroup.add(state.layers.vertices);
     state.worldGroup.add(state.layers.labels);
     state.worldGroup.add(state.layers.calib);
+    state.worldGroup.add(state.layers.rulers);
 
     resetViewport();
 
@@ -943,6 +1176,23 @@
       state.viewport.y += dy;
       state.lastPanScreen = pos;
       applyViewport();
+    });
+
+    state.stage.on('mousemove touchmove', function () {
+      if (state.panning || !state.rulerMode || state.rulerDraft.length !== 1) {
+        if (!state.rulerMode && state.rulerPreview) {
+          state.rulerPreview = null;
+          redrawRulers();
+        }
+        return;
+      }
+      var pos = getPointerPos();
+      if (!pos) return;
+      var preview = pos;
+      if (state.shiftHeld) preview = snapPoint(pos, state.rulerDraft[0], SHIFT_SNAP_STEP);
+      else preview = snapPoint(pos, state.rulerDraft[0]);
+      state.rulerPreview = clampToCanvas(preview);
+      redrawRulers();
     });
 
     state.stage.on('mouseup touchend mouseleave', function () {
@@ -989,8 +1239,7 @@
   }
 
   function syncBackgroundUI() {
-    var project = activeProject();
-    var hasBg = !!(project && project.background_url) || !!state.bgImage;
+    var hasBg = !!state.activeBackgroundUrl || !!state.bgImage;
     show(els.bgRemove, hasBg);
     show(els.bgDeleteCanvas, hasBg);
   }
@@ -1033,18 +1282,20 @@
     state.bgImage = null;
     state.bgNaturalW = 0;
     state.bgNaturalH = 0;
+    state.activeBackgroundUrl = null;
     if (!url) {
       flushKonva();
       syncBackgroundUI();
       return;
     }
 
+    state.activeBackgroundUrl = url;
+
     var img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = function () {
       if (token !== state.editorToken) return;
-      var project = activeProject();
-      if (!project || project.background_url !== url) return;
+      if (state.activeBackgroundUrl !== url) return;
       if (!state.layers.bg) return;
       state.bgNaturalW = img.naturalWidth || img.width;
       state.bgNaturalH = img.naturalHeight || img.height;
@@ -1074,6 +1325,7 @@
     redrawLabels();
     redrawWalls();
     redrawCalib();
+    redrawRulers();
     updateLiveArea();
     updateToolbar();
   }
@@ -1138,12 +1390,12 @@
           fill: isFirst ? '#c62828' : '#024768',
           stroke: '#fff',
           strokeWidth: uiSize(2),
-          draggable: !state.spaceHeld,
-          listening: !state.spaceHeld,
+          draggable: !state.spaceHeld && !state.rulerMode,
+          listening: !state.spaceHeld && !state.rulerMode,
           dragDistance: uiSize(3)
         });
         circle.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.spaceHeld) {
+          if (state.stage && !state.draggingVertex && !state.spaceHeld && !state.rulerMode) {
             state.stage.container().style.cursor = 'move';
           }
         });
@@ -1161,6 +1413,7 @@
         });
         circle.on('click tap', function (e) {
           e.cancelBubble = true;
+          if (state.rulerMode) return;
           if (vertexIndex === 0 && !state.closed && state.vertices.length >= 3 && !state.draggingVertex) {
             closeShape();
           }
@@ -1225,10 +1478,10 @@
         var kLabel = new Konva.Label({
           x: midX,
           y: midY,
-          listening: true
+          listening: !state.rulerMode && !state.spaceHeld
         });
         kLabel.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.spaceHeld) {
+          if (state.stage && !state.draggingVertex && !state.spaceHeld && !state.rulerMode) {
             state.stage.container().style.cursor = 'pointer';
           }
         });
@@ -1237,6 +1490,7 @@
         });
         kLabel.on('click tap', function (e) {
           e.cancelBubble = true;
+          if (state.rulerMode) return;
           selectWall(wallIndex);
         });
         kLabel.add(new Konva.Tag({
@@ -1292,10 +1546,10 @@
           stroke: 'rgba(0,0,0,0.001)',
           strokeWidth: uiSize(WALL_HIT * 2),
           lineCap: 'round',
-          listening: !state.spaceHeld
+          listening: !state.spaceHeld && !state.rulerMode
         });
         hitLine.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.spaceHeld) {
+          if (state.stage && !state.draggingVertex && !state.spaceHeld && !state.rulerMode) {
             state.stage.container().style.cursor = 'pointer';
           }
         });
@@ -1304,6 +1558,7 @@
         });
         hitLine.on('click tap', function (e) {
           e.cancelBubble = true;
+          if (state.rulerMode) return;
           selectWall(wallIndex);
         });
         wallLayer.add(hitLine);
@@ -1350,6 +1605,276 @@
     flushKonva();
   }
 
+  function drawRulerSegment(layer, p1, p2, label, isSelected, rulerId, listening) {
+    var stroke = isSelected ? '#f57f17' : '#6a1b9a';
+    var line = new Konva.Line({
+      points: [p1.x, p1.y, p2.x, p2.y],
+      stroke: stroke,
+      strokeWidth: uiSize(isSelected ? 3 : 2),
+      dash: [uiSize(6), uiSize(4)],
+      listening: !!listening,
+      hitStrokeWidth: uiSize(Math.max(RULER_HIT, 12))
+    });
+
+    if (listening && rulerId !== null) {
+      line.on('click tap', function (e) {
+        e.cancelBubble = true;
+        if (state.rulerMode) return;
+        selectRuler(rulerId);
+      });
+      line.on('mouseenter', function () {
+        if (state.stage && !state.rulerMode && !state.spaceHeld) {
+          state.stage.container().style.cursor = 'pointer';
+        }
+      });
+      line.on('mouseleave', function () {
+        if (state.stage) updateCanvasCursor();
+      });
+    }
+    layer.add(line);
+
+    [p1, p2].forEach(function (p, idx) {
+      layer.add(new Konva.Circle({
+        x: p.x,
+        y: p.y,
+        radius: uiSize(5),
+        fill: idx === 0 ? '#8e24aa' : '#6a1b9a',
+        stroke: '#fff',
+        strokeWidth: uiSize(1.5),
+        listening: false
+      }));
+    });
+
+    if (!label) return;
+
+    var midX = (p1.x + p2.x) / 2;
+    var midY = (p1.y + p2.y) / 2;
+    var kLabel = new Konva.Label({
+      x: midX,
+      y: midY,
+      listening: !!listening && rulerId !== null
+    });
+    if (listening && rulerId !== null) {
+      kLabel.on('click tap', function (e) {
+        e.cancelBubble = true;
+        if (state.rulerMode) return;
+        selectRuler(rulerId);
+      });
+      kLabel.on('mouseenter', function () {
+        if (state.stage && !state.rulerMode && !state.spaceHeld) {
+          state.stage.container().style.cursor = 'pointer';
+        }
+      });
+      kLabel.on('mouseleave', function () {
+        if (state.stage) updateCanvasCursor();
+      });
+    }
+    kLabel.add(new Konva.Tag({
+      fill: isSelected ? 'rgba(249, 168, 37, 0.95)' : 'rgba(255, 255, 255, 0.94)',
+      stroke: isSelected ? '#f57f17' : '#6a1b9a',
+      strokeWidth: uiSize(1),
+      cornerRadius: uiSize(4),
+      pointerDirection: 'none',
+      pointerWidth: 0,
+      pointerHeight: 0,
+      lineJoin: 'round'
+    }));
+    kLabel.add(new Konva.Text({
+      text: label,
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: uiSize(12),
+      fontStyle: 'bold',
+      fill: isSelected ? '#5d4037' : '#4a148c',
+      padding: uiSize(5)
+    }));
+    layer.add(kLabel);
+  }
+
+  function addSavedRuler(layer, ruler) {
+    var rulerId = ruler.id;
+    var isSelected = state.selectedRulerId === rulerId;
+    var listening = !state.rulerMode;
+    var stroke = isSelected ? '#f57f17' : '#6a1b9a';
+    var line = new Konva.Line({
+      points: [ruler.p1.x, ruler.p1.y, ruler.p2.x, ruler.p2.y],
+      stroke: stroke,
+      strokeWidth: uiSize(isSelected ? 3 : 2),
+      dash: [uiSize(6), uiSize(4)],
+      listening: !!listening,
+      hitStrokeWidth: uiSize(Math.max(RULER_HIT, 12))
+    });
+
+    if (listening) {
+      line.on('click tap', function (e) {
+        e.cancelBubble = true;
+        if (state.rulerMode) return;
+        selectRuler(rulerId);
+      });
+      line.on('mouseenter', function () {
+        if (state.stage && !state.rulerMode && !state.spaceHeld && !state.draggingRuler) {
+          state.stage.container().style.cursor = 'pointer';
+        }
+      });
+      line.on('mouseleave', function () {
+        if (state.stage && !state.draggingRuler) updateCanvasCursor();
+      });
+    }
+    layer.add(line);
+
+    var label = new Konva.Label({
+      x: (ruler.p1.x + ruler.p2.x) / 2,
+      y: (ruler.p1.y + ruler.p2.y) / 2,
+      listening: !!listening
+    });
+    if (listening) {
+      label.on('click tap', function (e) {
+        e.cancelBubble = true;
+        if (state.rulerMode) return;
+        selectRuler(rulerId);
+      });
+      label.on('mouseenter', function () {
+        if (state.stage && !state.rulerMode && !state.spaceHeld && !state.draggingRuler) {
+          state.stage.container().style.cursor = 'pointer';
+        }
+      });
+      label.on('mouseleave', function () {
+        if (state.stage && !state.draggingRuler) updateCanvasCursor();
+      });
+    }
+    label.add(new Konva.Tag({
+      fill: isSelected ? 'rgba(249, 168, 37, 0.95)' : 'rgba(255, 255, 255, 0.94)',
+      stroke: isSelected ? '#f57f17' : '#6a1b9a',
+      strokeWidth: uiSize(1),
+      cornerRadius: uiSize(4),
+      pointerDirection: 'none',
+      pointerWidth: 0,
+      pointerHeight: 0,
+      lineJoin: 'round'
+    }));
+    var labelText = new Konva.Text({
+      text: rulerLengthLabel(ruler),
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: uiSize(12),
+      fontStyle: 'bold',
+      fill: isSelected ? '#5d4037' : '#4a148c',
+      padding: uiSize(5)
+    });
+    label.add(labelText);
+    layer.add(label);
+
+    function syncRulerGraphics() {
+      line.points([ruler.p1.x, ruler.p1.y, ruler.p2.x, ruler.p2.y]);
+      label.position({
+        x: (ruler.p1.x + ruler.p2.x) / 2,
+        y: (ruler.p1.y + ruler.p2.y) / 2
+      });
+      labelText.text(rulerLengthLabel(ruler));
+      if (isSelected && state.selectedRulerId === rulerId && els.rulerLength) {
+        els.rulerLength.textContent = rulerLengthLabel(ruler);
+      }
+      flushKonva();
+    }
+
+    ['p1', 'p2'].forEach(function (key, idx) {
+      var canDrag = isSelected && listening && !state.spaceHeld;
+      var circle = new Konva.Circle({
+        x: ruler[key].x,
+        y: ruler[key].y,
+        radius: uiSize(canDrag ? 8 : 5),
+        fill: idx === 0 ? '#8e24aa' : '#6a1b9a',
+        stroke: '#fff',
+        strokeWidth: uiSize(canDrag ? 2 : 1.5),
+        draggable: canDrag,
+        listening: canDrag,
+        dragDistance: uiSize(3)
+      });
+
+      if (canDrag) {
+        circle.on('dragstart', function (e) {
+          if (state.spaceHeld || state.rulerMode) {
+            e.target.stopDrag();
+            return;
+          }
+          e.cancelBubble = true;
+          state.draggingRuler = true;
+          if (state.selectedRulerId !== rulerId) selectRuler(rulerId);
+          updateCanvasCursor();
+        });
+        circle.on('dragmove', function (e) {
+          e.cancelBubble = true;
+          var pos = clampToCanvas({ x: circle.x(), y: circle.y() });
+          var anchor = key === 'p1' ? ruler.p2 : ruler.p1;
+          if (state.shiftHeld) {
+            pos = clampToCanvas(snapPoint(pos, anchor, SHIFT_SNAP_STEP));
+          }
+          circle.position(pos);
+          ruler[key] = { x: pos.x, y: pos.y };
+          syncRulerGraphics();
+        });
+        circle.on('dragend', function (e) {
+          e.cancelBubble = true;
+          state.draggingRuler = false;
+          updateCanvasCursor();
+        });
+        circle.on('mouseenter', function () {
+          if (state.stage && !state.draggingRuler && !state.spaceHeld && !state.rulerMode) {
+            state.stage.container().style.cursor = 'move';
+          }
+        });
+        circle.on('mouseleave', function () {
+          if (state.stage && !state.draggingRuler) updateCanvasCursor();
+        });
+      }
+
+      layer.add(circle);
+    });
+  }
+
+  function redrawRulers() {
+    var layer = state.layers.rulers;
+    if (!layer) return;
+    layer.destroyChildren();
+
+    projectRulers().forEach(function (ruler) {
+      addSavedRuler(layer, ruler);
+    });
+
+    if (state.rulerDraft.length === 1) {
+      layer.add(new Konva.Circle({
+        x: state.rulerDraft[0].x,
+        y: state.rulerDraft[0].y,
+        radius: uiSize(7),
+        fill: '#8e24aa',
+        stroke: '#fff',
+        strokeWidth: uiSize(2),
+        listening: false
+      }));
+      if (state.rulerPreview) {
+        drawRulerSegment(
+          layer,
+          state.rulerDraft[0],
+          state.rulerPreview,
+          rulerLengthLabel({ p1: state.rulerDraft[0], p2: state.rulerPreview }),
+          false,
+          null,
+          false
+        );
+      }
+    } else if (state.rulerDraft.length === 2) {
+      drawRulerSegment(
+        layer,
+        state.rulerDraft[0],
+        state.rulerDraft[1],
+        rulerLengthLabel({ p1: state.rulerDraft[0], p2: state.rulerDraft[1] }),
+        false,
+        null,
+        false
+      );
+    }
+
+    flushKonva();
+  }
+
   function getPointerPos() {
     var pos = state.stage.getPointerPosition();
     if (!pos) return null;
@@ -1364,7 +1889,7 @@
       state.didPan = false;
       return;
     }
-    if (state.draggingVertex) return;
+    if (state.draggingVertex || state.draggingRuler) return;
 
     if (state.calibrating) {
       if (state.calibPoints.length >= 2) {
@@ -1377,6 +1902,22 @@
       els.applyScale.disabled = !ready;
       if (ready) els.knownLength.focus();
       return;
+    }
+
+    if (state.rulerMode) {
+      var rulerShiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+      placeRulerPoint(pos, rulerShiftSnap);
+      return;
+    }
+
+    var clickedRuler = findRulerAtPoint(pos);
+    if (clickedRuler) {
+      selectRuler(clickedRuler.id);
+      return;
+    }
+
+    if (state.selectedRulerId !== null) {
+      clearRulerSelection();
     }
 
     if (findVertexAtPoint(pos) >= 0) return;
@@ -1462,10 +2003,13 @@
 
   function beginNewRoom() {
     resetDraftCanvas();
+    revokeDraftBackground();
+    state.draftScale = null;
+    loadBackground(null);
     if (els.roomName) {
       els.roomName.focus();
     }
-    setFeedback('Draw a new room outline, enter a name, and click Save room.', false);
+    setFeedback('Draw a new room outline, upload its floor plan, enter a name, and click Save room.', false);
   }
 
   function startNewRoom() {
@@ -1507,6 +2051,9 @@
     if (els.deleteWall) {
       els.deleteWall.disabled = state.selectedWallIndex === null;
     }
+    if (els.deleteRuler) {
+      els.deleteRuler.disabled = state.selectedRulerId === null;
+    }
     if (els.wallApply) {
       els.wallApply.disabled = state.selectedWallIndex === null || !pixelsPerFoot();
     }
@@ -1526,6 +2073,11 @@
     redrawVertices();
     redrawLabels();
     redrawWalls();
+    redrawRulers();
+    if (state.selectedRulerId !== null && els.rulerLength) {
+      var selectedRuler = findRulerById(state.selectedRulerId);
+      if (selectedRuler) els.rulerLength.textContent = rulerLengthLabel(selectedRuler);
+    }
     updateLiveArea();
   }
 
@@ -1549,6 +2101,9 @@
       return;
     }
 
+    if (state.rulerMode) stopRulerMode();
+    clearRulerSelection();
+
     state.calibrating = true;
     state.calibPoints = [];
     if (els.calibrateToggle) els.calibrateToggle.classList.add('is-active');
@@ -1571,37 +2126,46 @@
       var project = activeProject();
       if (!project) return;
 
-      project.scale_pixels_per_foot = ppf;
       stopCalibrationMode();
       updateScaleUI();
 
-      fetch(urlFromTemplate(root.getAttribute('data-project-update-template'), project.id), {
-        method: 'PUT',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': csrf(),
-          'X-Requested-With': 'XMLHttpRequest',
-          Accept: 'application/json'
-        },
-        body: JSON.stringify({
-          scale_pixels_per_foot: ppf,
-          canvas_width: state.canvasW,
-          canvas_height: state.canvasH
+      if (state.editingRoomId) {
+        var room = activeRoom();
+        if (!room) return;
+        room.scale_pixels_per_foot = ppf;
+        fetch(urlFromTemplate(root.getAttribute('data-room-update-template'), room.id), {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf(),
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({
+            name: room.name,
+            vertices: state.vertices,
+            scale_pixels_per_foot: ppf,
+            canvas_width: state.canvasW,
+            canvas_height: state.canvasH
+          })
         })
-      })
-        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-        .then(function (result) {
-          if (!result.ok) throw new Error(result.data.message || 'Could not save scale.');
-          project.scale_pixels_per_foot = result.data.project.scale_pixels_per_foot;
-          project.canvas_width = result.data.project.canvas_width;
-          project.canvas_height = result.data.project.canvas_height;
-          updateScaleUI();
-          setFeedback('Scale calibrated. Click the canvas to start drawing.', false);
-        })
-        .catch(function (e) {
-          setFeedback(e.message, true);
-        });
+          .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+          .then(function (result) {
+            if (!result.ok) throw new Error(result.data.message || 'Could not save scale.');
+            var idx = project.rooms.findIndex(function (r) { return r.id === room.id; });
+            if (idx >= 0) project.rooms[idx] = result.data.room;
+            updateScaleUI();
+            setFeedback('Scale calibrated for this room.', false);
+          })
+          .catch(function (e) {
+            setFeedback(e.message, true);
+          });
+        return;
+      }
+
+      state.draftScale = ppf;
+      setFeedback('Scale calibrated. Save the room to keep this scale with it.', false);
     } catch (err) {
       setFeedback(err.message, true);
     }
@@ -1667,6 +2231,7 @@
 
     var token = bumpEditorToken();
     clearWallSelection();
+    clearRulerSelection();
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
     updateEditUI();
@@ -1685,11 +2250,12 @@
       }
 
       resizeStage();
+      loadBackground(currentRoom.background_url || null);
 
       var source = roomSourceCanvas(currentRoom, currentProject);
       var factor = canvasScaleFactor(source.w, source.h, state.canvasW, state.canvasH);
       if (Math.abs(factor - 1) > 0.0005) {
-        scaleProjectPixelsPerFoot(factor);
+        scaleActivePixelsPerFoot(factor);
       }
 
       state.vertices = scalePoints(currentRoom.vertices, source.w, source.h, state.canvasW, state.canvasH);
@@ -1703,6 +2269,7 @@
   function cancelEdit() {
     if (!state.editingRoomId) return;
     clearShape();
+    loadBackground(null);
     setFeedback('Edit cancelled.', false);
   }
 
@@ -1801,10 +2368,12 @@
     }
 
     var projectId = project.id;
+    stopRulerMode();
+    clearRulerSelection();
     clearShape();
     var token = state.editorToken;
     ensureStage();
-    loadBackground(project.background_url);
+    loadBackground(null);
     scheduleStageResize();
     setTimeout(function () {
       if (token !== state.editorToken) return;
@@ -1819,11 +2388,11 @@
         state.canvasH
       );
       if (Math.abs(factor - 1) > 0.0005) {
-        scaleProjectPixelsPerFoot(factor);
+        scaleActivePixelsPerFoot(factor);
         currentProject.canvas_width = state.canvasW;
         currentProject.canvas_height = state.canvasH;
       }
-      loadBackground(currentProject.background_url);
+      loadBackground(null);
       updateScaleUI();
     }, 0);
   }
@@ -1931,6 +2500,12 @@
       : urlFromTemplate(root.getAttribute('data-room-store-template'), project.id);
     var method = isUpdate ? 'PUT' : 'POST';
 
+    var scale = pixelsPerFoot();
+    if (!scale) {
+      els.saveRoom.disabled = true;
+      return;
+    }
+
     els.saveRoom.disabled = true;
     fetch(url, {
       method: method,
@@ -1945,13 +2520,24 @@
         name: name,
         vertices: state.vertices,
         canvas_width: state.canvasW,
-        canvas_height: state.canvasH
+        canvas_height: state.canvasH,
+        scale_pixels_per_foot: scale
       })
     })
       .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
       .then(function (result) {
-        els.saveRoom.disabled = false;
         if (!result.ok) throw new Error(result.data.message || (isUpdate ? 'Could not update room.' : 'Could not save room.'));
+        var savedRoom = result.data.room;
+        if (!isUpdate && state.draftBackground && state.draftBackground.file) {
+          return uploadRoomBackgroundFile(savedRoom.id, state.draftBackground.file).then(function (bgResult) {
+            savedRoom.background_url = bgResult.background_url;
+            return { ok: true, data: { room: savedRoom } };
+          });
+        }
+        return result;
+      })
+      .then(function (result) {
+        els.saveRoom.disabled = false;
         if (isUpdate) {
           var idx = project.rooms.findIndex(function (r) { return r.id === result.data.room.id; });
           if (idx >= 0) project.rooms[idx] = result.data.room;
@@ -1960,6 +2546,8 @@
         }
         project.canvas_width = state.canvasW;
         project.canvas_height = state.canvasH;
+        revokeDraftBackground();
+        state.draftScale = null;
         resetDraftCanvas();
         renderRooms();
         setFeedback(
@@ -1994,7 +2582,10 @@
           var project = activeProject();
           if (project) {
             project.rooms = project.rooms.filter(function (r) { return r.id !== roomId; });
-            clearShape();
+            if (state.editingRoomId === roomId) {
+              clearShape();
+              loadBackground(null);
+            }
             renderRooms();
             setFeedback('Room deleted.', false);
           }
@@ -2002,14 +2593,11 @@
     });
   }
 
-  function uploadBackground(file) {
-    var project = activeProject();
-    if (!project || !file) return;
-
+  function uploadRoomBackgroundFile(roomId, file) {
     var fd = new FormData();
     fd.append('background', file);
 
-    fetch(urlFromTemplate(root.getAttribute('data-background-upload-template'), project.id), {
+    return fetch(urlFromTemplate(root.getAttribute('data-room-background-upload-template'), roomId), {
       method: 'POST',
       credentials: 'same-origin',
       headers: {
@@ -2022,41 +2610,77 @@
       .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
       .then(function (result) {
         if (!result.ok) throw new Error(result.data.message || 'Upload failed.');
-        project.background_url = result.data.background_url;
-        ensureStage();
-        loadBackground(project.background_url);
-        setFeedback('Floor plan uploaded.', false);
-      })
-      .catch(function (e) { setFeedback(e.message, true); });
+        return result.data;
+      });
+  }
+
+  function uploadBackground(file) {
+    if (!file) return;
+
+    if (state.editingRoomId) {
+      var room = activeRoom();
+      if (!room) return;
+
+      uploadRoomBackgroundFile(room.id, file)
+        .then(function (data) {
+          room.background_url = data.background_url;
+          loadBackground(room.background_url);
+          setFeedback('Floor plan uploaded for this room.', false);
+        })
+        .catch(function (e) { setFeedback(e.message, true); });
+      return;
+    }
+
+    revokeDraftBackground();
+    state.draftBackground = {
+      file: file,
+      url: URL.createObjectURL(file)
+    };
+    loadBackground(state.draftBackground.url);
+    setFeedback('Floor plan ready for this new room. Save the room to keep it.', false);
   }
 
   function removeBackground() {
-    var project = activeProject();
-    if (!project || !project.background_url) return;
+    if (state.editingRoomId) {
+      var room = activeRoom();
+      if (!room || !room.background_url) return;
+
+      confirmAction(
+        'Delete the floor plan image for this room? The room outline will stay.',
+        { title: 'Delete floor plan', danger: true }
+      ).then(function (ok) {
+        if (!ok) return;
+
+        fetch(urlFromTemplate(root.getAttribute('data-room-background-destroy-template'), room.id), {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: {
+            'X-CSRF-TOKEN': csrf(),
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json'
+          }
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (!data.ok) return;
+            room.background_url = null;
+            loadBackground(null);
+            setFeedback('Floor plan image deleted for this room.', false);
+          });
+      });
+      return;
+    }
+
+    if (!state.draftBackground) return;
 
     confirmAction(
-      'Delete the floor plan image? Your room outlines and saved rooms will stay.',
+      'Remove the floor plan image for this new room?',
       { title: 'Delete floor plan', danger: true }
     ).then(function (ok) {
       if (!ok) return;
-
-      fetch(urlFromTemplate(root.getAttribute('data-background-destroy-template'), project.id), {
-        method: 'DELETE',
-        credentials: 'same-origin',
-        headers: {
-          'X-CSRF-TOKEN': csrf(),
-          'X-Requested-With': 'XMLHttpRequest',
-          Accept: 'application/json'
-        }
-      })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
-          project.background_url = null;
-          ensureStage();
-          loadBackground(null);
-          setFeedback('Floor plan image deleted.', false);
-        });
+      revokeDraftBackground();
+      loadBackground(null);
+      setFeedback('Floor plan image removed.', false);
     });
   }
 
@@ -2068,6 +2692,8 @@
       els.calibrateToggle.classList.remove('is-active');
       els.knownLength.disabled = true;
       els.applyScale.disabled = true;
+      stopRulerMode();
+      clearRulerSelection();
       renderWorkspace();
     });
 
@@ -2108,6 +2734,25 @@
     if (els.wallApply) els.wallApply.addEventListener('click', applyWallLength);
     if (els.wallCancel) els.wallCancel.addEventListener('click', clearWallSelection);
     if (els.deleteWall) els.deleteWall.addEventListener('click', deleteSelectedWall);
+    if (els.rulerToggle) els.rulerToggle.addEventListener('click', toggleRulerMode);
+    if (els.deleteRuler) els.deleteRuler.addEventListener('click', deleteSelectedRuler);
+    if (els.rulerCancel) els.rulerCancel.addEventListener('click', clearRulerSelection);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.target && e.target.closest('input, textarea, select')) return;
+
+      if (e.key === 'Escape' && cancelRulerDraft()) {
+        e.preventDefault();
+        return;
+      }
+
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      if (state.selectedRulerId !== null && !state.rulerMode) {
+        e.preventDefault();
+        deleteSelectedRuler();
+      }
+    });
+
     if (els.wallLength) {
       els.wallLength.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
