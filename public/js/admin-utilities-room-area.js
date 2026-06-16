@@ -43,7 +43,6 @@
     bgFile: root.querySelector('[data-ra-bg-file]'),
     bgRemove: root.querySelector('[data-ra-bg-remove]'),
     bgDeleteCanvas: root.querySelector('[data-ra-bg-delete-canvas]'),
-    snapGroup: root.querySelector('[data-ra-snap-group]'),
     undoVertex: root.querySelector('[data-ra-undo-vertex]'),
     closeShape: root.querySelector('[data-ra-close-shape]'),
     clearShape: root.querySelector('[data-ra-clear-shape]'),
@@ -83,7 +82,6 @@
   var state = {
     projects: [],
     activeProjectId: null,
-    snapMode: 'off',
     vertices: [],
     closed: false,
     calibrating: false,
@@ -446,21 +444,13 @@
     return d > Math.PI ? Math.PI * 2 - d : d;
   }
 
-  function snapPoint(raw, prev, stepOverride) {
-    if (!prev) return raw;
+  function snapPoint(raw, prev, step) {
+    if (!prev || step === undefined) return raw;
     var dx = raw.x - prev.x;
     var dy = raw.y - prev.y;
     var len = Math.hypot(dx, dy);
     if (len < 1e-6) return raw;
     var angle = Math.atan2(dy, dx);
-    var step;
-    if (stepOverride !== undefined) {
-      step = stepOverride;
-    } else if (state.snapMode === 'off') {
-      return raw;
-    } else {
-      step = state.snapMode === '45' ? Math.PI / 4 : Math.PI / 2;
-    }
     var snapped = Math.round(angle / step) * step;
     return {
       x: prev.x + Math.cos(snapped) * len,
@@ -616,11 +606,7 @@
     if (state.shiftHeld) {
       return snapVertexPositionShift(idx, raw);
     }
-
-    if (state.snapMode === 'off') return clampToCanvas(raw);
-    var prev = getVertexPrev(idx);
-    if (!prev) return clampToCanvas(raw);
-    return clampToCanvas(snapPoint(raw, prev));
+    return clampToCanvas(raw);
   }
 
   function deleteSelectedWall() {
@@ -753,7 +739,7 @@
     if (state.rulerDraft.length === 1) {
       var prev = state.rulerDraft[0];
       if (shiftSnap) point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
-      else point = snapPoint(pos, prev);
+      else point = pos;
     }
     point = clampToCanvas(point);
     state.rulerDraft.push(point);
@@ -1190,7 +1176,7 @@
       if (!pos) return;
       var preview = pos;
       if (state.shiftHeld) preview = snapPoint(pos, state.rulerDraft[0], SHIFT_SNAP_STEP);
-      else preview = snapPoint(pos, state.rulerDraft[0]);
+      else preview = pos;
       state.rulerPreview = clampToCanvas(preview);
       redrawRulers();
     });
@@ -1292,7 +1278,9 @@
     state.activeBackgroundUrl = url;
 
     var img = new Image();
-    img.crossOrigin = 'anonymous';
+    if (url.indexOf('blob:') !== 0 && url.indexOf('data:') !== 0) {
+      img.crossOrigin = 'anonymous';
+    }
     img.onload = function () {
       if (token !== state.editorToken) return;
       if (state.activeBackgroundUrl !== url) return;
@@ -1315,7 +1303,9 @@
       setFeedback('Could not load floor plan image.', true);
       syncBackgroundUI();
     };
-    img.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+    img.src = url.indexOf('blob:') === 0 || url.indexOf('data:') === 0
+      ? url
+      : url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
     syncBackgroundUI();
   }
 
@@ -1950,7 +1940,7 @@
       if (shiftSnap) {
         point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
       } else {
-        point = snapPoint(pos, prev);
+        point = pos;
       }
     }
     state.vertices.push(clampToCanvas(point));
@@ -2712,15 +2702,6 @@
       e.preventDefault();
       e.stopPropagation();
       applyScale();
-    });
-
-    els.snapGroup.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-ra-snap]');
-      if (!btn) return;
-      state.snapMode = btn.getAttribute('data-ra-snap');
-      els.snapGroup.querySelectorAll('.util-segmented__btn').forEach(function (b) {
-        b.classList.toggle('is-active', b === btn);
-      });
     });
 
     els.undoVertex.addEventListener('click', undoVertex);

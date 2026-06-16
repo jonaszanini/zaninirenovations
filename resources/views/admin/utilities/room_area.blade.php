@@ -148,12 +148,6 @@
       <section class="admin-card util-ra-canvas-card">
         <div class="util-ra-canvas-toolbar">
           <div class="util-ra-canvas-tools">
-            <span class="util-ra-tool-label">Snap</span>
-            <div class="util-segmented util-segmented--compact" data-ra-snap-group>
-              <button type="button" class="util-segmented__btn is-active" data-ra-snap="off">Off</button>
-              <button type="button" class="util-segmented__btn" data-ra-snap="90">90°</button>
-              <button type="button" class="util-segmented__btn" data-ra-snap="45">45°</button>
-            </div>
             <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-undo-vertex disabled>
               <i class="fa fa-undo"></i> Undo
             </button>
