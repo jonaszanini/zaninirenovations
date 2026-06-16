@@ -572,6 +572,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('utilities.room-area.projects.destroy');
     Route::post('utilities/room-area/projects/{room_area_project}/rooms', [\App\Http\Controllers\Admin\RoomAreaController::class, 'storeRoom'])
         ->name('utilities.room-area.rooms.store');
+    Route::put('utilities/room-area/rooms/{room_area_room}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'updateRoom'])
+        ->name('utilities.room-area.rooms.update');
     Route::delete('utilities/room-area/rooms/{room_area_room}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyRoom'])
         ->name('utilities.room-area.rooms.destroy');
     Route::post('utilities/room-area/projects/{room_area_project}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'uploadBackground'])

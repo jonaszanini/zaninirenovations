@@ -27,12 +27,12 @@
     data-project-update-template="{{ route('admin.utilities.room-area.projects.update', ['room_area_project' => '__ID__']) }}"
     data-project-destroy-template="{{ route('admin.utilities.room-area.projects.destroy', ['room_area_project' => '__ID__']) }}"
     data-room-store-template="{{ route('admin.utilities.room-area.rooms.store', ['room_area_project' => '__ID__']) }}"
+    data-room-update-template="{{ route('admin.utilities.room-area.rooms.update', ['room_area_room' => '__ID__']) }}"
     data-room-destroy-template="{{ route('admin.utilities.room-area.rooms.destroy', ['room_area_room' => '__ID__']) }}"
     data-background-upload-template="{{ route('admin.utilities.room-area.background.upload', ['room_area_project' => '__ID__']) }}"
     data-background-destroy-template="{{ route('admin.utilities.room-area.background.destroy', ['room_area_project' => '__ID__']) }}">
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
 
-    {{-- Project picker --}}
     <section class="admin-card util-ra-project-bar">
       <div class="util-ra-project-bar__row">
         <div class="admin-form-group util-ra-project-select">
@@ -40,6 +40,18 @@
           <select class="admin-input" id="ra-project-select" data-ra-project-select>
             <option value="">— Select a project —</option>
           </select>
+        </div>
+        <div class="util-ra-linked" data-ra-linked hidden>
+          <div class="admin-form-group util-ra-link-edit">
+            <label for="ra-link-client-project">Link to client project</label>
+            <select class="admin-input" id="ra-link-client-project" data-ra-link-client-project>
+              <option value="">— None —</option>
+              @foreach ($clientProjects as $cp)
+                <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+              @endforeach
+            </select>
+          </div>
+          <a href="#" data-ra-linked-link class="util-ra-linked__name" hidden></a>
         </div>
         <div class="util-ra-project-bar__actions">
           <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-project-toggle>
@@ -71,103 +83,47 @@
           <i class="fa fa-check"></i> Create project
         </button>
       </div>
-
-      <div class="util-ra-linked" data-ra-linked hidden>
-        <span class="util-ra-linked__label">Linked to:</span>
-        <a href="#" data-ra-linked-link class="util-ra-linked__name"></a>
-        <div class="admin-form-group util-ra-link-edit">
-          <label for="ra-link-client-project" class="util-sr-only">Link to client project</label>
-          <select class="admin-input" id="ra-link-client-project" data-ra-link-client-project>
-            <option value="">— None —</option>
-            @foreach ($clientProjects as $cp)
-              <option value="{{ $cp->id }}">{{ $cp->name }}</option>
-            @endforeach
-          </select>
-        </div>
-      </div>
     </section>
 
     <section class="admin-card util-ra-empty" data-ra-empty>
       <span class="util-ra-empty__icon"><i class="fa fa-object-group"></i></span>
       <p class="util-ra-empty__title">Select or create a project</p>
-      <p class="util-ra-empty__hint">Choose an existing room area project above, or click <strong>New project</strong> to start drawing rooms.</p>
+      <p class="util-ra-empty__hint">Choose an existing room area project above, or click <strong>New project</strong> to start drawing rooms. You can save multiple rooms per project.</p>
     </section>
 
     <div class="util-ra-workspace" data-ra-workspace hidden>
-      <div class="util-ra-grid">
-        <div class="util-ra-main">
-          {{-- Scale & background --}}
-          <section class="admin-card util-ra-setup-card">
-            <h3 class="util-ra-card-title">Scale &amp; background</h3>
-            <div class="util-ra-setup-grid">
-              <div class="util-ra-scale-block">
-                <p class="util-ra-hint">Click <strong>Calibrate</strong>, then pick two points on a known wall and enter its real length.</p>
-                <div class="util-ra-scale-row">
-                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-calibrate-toggle>
-                    <i class="fa fa-arrows-h"></i> Calibrate
-                  </button>
-                  <div class="admin-form-group util-ra-scale-input">
-                    <label for="ra-known-length">Known length (ft)</label>
-                    <input class="admin-input" type="text" id="ra-known-length" inputmode="decimal" placeholder="e.g. 12.5 or 10' 6&quot;" data-ra-known-length disabled>
-                  </div>
-                  <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-apply-scale disabled>
-                    Apply scale
-                  </button>
-                </div>
-                <p class="util-ra-scale-status" data-ra-scale-status>Scale not set — calibrate before saving rooms.</p>
+      {{-- Compact setup + save row --}}
+      <section class="admin-card util-ra-controls">
+        <div class="util-ra-controls__grid">
+          <div class="util-ra-controls__block util-ra-controls__scale">
+            <span class="util-ra-controls__heading">Scale</span>
+            <div class="util-ra-scale-row">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-calibrate-toggle>
+                <i class="fa fa-arrows-h"></i> Calibrate
+              </button>
+              <div class="admin-form-group util-ra-scale-input">
+                <label for="ra-known-length">Known length (ft)</label>
+                <input class="admin-input" type="text" id="ra-known-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-known-length disabled>
               </div>
-              <div class="util-ra-bg-block">
-                <label class="util-ra-bg-label">Floor plan image <span class="util-ra-optional">(optional)</span></label>
-                <div class="util-ra-bg-actions">
-                  <label class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-file-label">
-                    <i class="fa fa-upload"></i> Upload image
-                    <input type="file" accept="image/jpeg,image/png,image/webp" data-ra-bg-file hidden>
-                  </label>
-                  <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-bg-remove hidden>
-                    <i class="fa fa-times"></i> Remove
-                  </button>
-                </div>
-              </div>
+              <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-apply-scale disabled>
+                Apply
+              </button>
             </div>
-          </section>
-
-          {{-- Canvas toolbar --}}
-          <section class="admin-card util-ra-canvas-card">
-            <div class="util-ra-canvas-head">
-              <h3 class="util-ra-card-title">Draw room</h3>
-              <div class="util-ra-canvas-tools">
-                <span class="util-ra-tool-label">Snap</span>
-                <div class="util-segmented util-segmented--compact" data-ra-snap-group>
-                  <button type="button" class="util-segmented__btn is-active" data-ra-snap="off">Off</button>
-                  <button type="button" class="util-segmented__btn" data-ra-snap="90">90°</button>
-                  <button type="button" class="util-segmented__btn" data-ra-snap="45">45°</button>
-                </div>
-                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-undo-vertex disabled>
-                  <i class="fa fa-undo"></i> Undo
-                </button>
-                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-close-shape disabled>
-                  <i class="fa fa-check-circle"></i> Close shape
-                </button>
-                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-clear-shape>
-                  <i class="fa fa-eraser"></i> Clear
-                </button>
-              </div>
+          </div>
+          <div class="util-ra-controls__block util-ra-controls__bg">
+            <span class="util-ra-controls__heading">Floor plan <span class="util-ra-optional">(optional)</span></span>
+            <div class="util-ra-bg-actions">
+              <label class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-file-label">
+                <i class="fa fa-upload"></i> Upload
+                <input type="file" accept="image/jpeg,image/png,image/webp" data-ra-bg-file hidden>
+              </label>
+              <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-bg-remove hidden>
+                <i class="fa fa-trash"></i> Delete image
+              </button>
             </div>
-            <p class="util-ra-hint">Click each corner. Double-click the first point or use <strong>Close shape</strong> when done (minimum 3 corners).</p>
-            <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
-              <div id="ra-konva-container" class="util-ra-konva"></div>
-            </div>
-            <div class="util-ra-live-area" data-ra-live-area hidden>
-              <span class="util-ra-live-area__label">Current shape:</span>
-              <strong data-ra-live-sqft>—</strong> sq ft
-              <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m²)</span>
-            </div>
-            <p class="util-ra-feedback" data-ra-feedback hidden></p>
-          </section>
-
-          {{-- Save current room --}}
-          <section class="admin-card util-ra-save-card">
-            <h3 class="util-ra-card-title">Save room</h3>
+          </div>
+          <div class="util-ra-controls__block util-ra-controls__save">
+            <span class="util-ra-controls__heading" data-ra-save-card-title>Save room</span>
             <div class="util-ra-save-row">
               <div class="admin-form-group">
                 <label for="ra-room-name">Room name</label>
@@ -176,25 +132,116 @@
               <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-save-room disabled>
                 <i class="fa fa-save"></i> Save room
               </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-cancel-edit hidden>
+                Cancel edit
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-room>
+                <i class="fa fa-plus"></i> New room
+              </button>
             </div>
-          </section>
+          </div>
+        </div>
+        <p class="util-ra-scale-status" data-ra-scale-status>Scale not set — calibrate before saving rooms.</p>
+      </section>
+
+      {{-- Full-width drawing area --}}
+      <section class="admin-card util-ra-canvas-card">
+        <div class="util-ra-canvas-toolbar">
+          <div class="util-ra-canvas-tools">
+            <span class="util-ra-tool-label">Snap</span>
+            <div class="util-segmented util-segmented--compact" data-ra-snap-group>
+              <button type="button" class="util-segmented__btn is-active" data-ra-snap="off">Off</button>
+              <button type="button" class="util-segmented__btn" data-ra-snap="90">90°</button>
+              <button type="button" class="util-segmented__btn" data-ra-snap="45">45°</button>
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-undo-vertex disabled>
+              <i class="fa fa-undo"></i> Undo
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-close-shape disabled>
+              <i class="fa fa-check-circle"></i> Close
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-clear-shape>
+              <i class="fa fa-eraser"></i> Clear
+            </button>
+            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-bg-delete-canvas hidden title="Remove floor plan image from canvas">
+              <i class="fa fa-trash"></i> Delete image
+            </button>
+          </div>
+          <div class="util-ra-canvas-tools util-ra-canvas-tools--zoom">
+            <span class="util-ra-tool-label">Zoom</span>
+            <div class="util-ra-zoom-controls">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-zoom-btn" data-ra-zoom-out title="Zoom out" aria-label="Zoom out">
+                <i class="fa fa-minus"></i>
+              </button>
+              <span class="util-ra-zoom-label" data-ra-zoom-label>100%</span>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-zoom-btn" data-ra-zoom-in title="Zoom in" aria-label="Zoom in">
+                <i class="fa fa-plus"></i>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-zoom-btn util-ra-zoom-btn--text" data-ra-zoom-100 title="Reset zoom to 100%">
+                100%
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-zoom-reset title="Fit drawing in view">
+                <i class="fa fa-compress"></i> Fit
+              </button>
+            </div>
+          </div>
         </div>
 
-        <aside class="util-ra-sidebar">
-          <section class="admin-card util-ra-rooms-card">
+        <div class="util-ra-wall-edit" data-ra-wall-edit hidden>
+          <div class="util-ra-wall-edit__inner">
+            <span class="util-ra-wall-edit__label">Edit wall length</span>
+            <div class="admin-form-group util-ra-wall-edit__input">
+              <label for="ra-wall-length" class="util-sr-only">Wall length in feet</label>
+              <input class="admin-input" type="text" id="ra-wall-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-wall-length>
+            </div>
+            <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
+            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-wall>
+              <i class="fa fa-trash"></i> Delete wall
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-wall-cancel aria-label="Cancel wall edit">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
+          <div id="ra-konva-container" class="util-ra-konva"></div>
+        </div>
+
+        <div class="util-ra-canvas-footer">
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag to move. Hold Shift while dragging a corner to magnetically snap to 45°/90°. Scroll to zoom; Space + drag to pan.</p>
+          <div class="util-ra-live-area" data-ra-live-area hidden>
+            <span class="util-ra-live-area__label">Current shape:</span>
+            <strong data-ra-live-sqft>—</strong> sq ft
+            <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m²)</span>
+          </div>
+        </div>
+        <p class="util-ra-feedback" data-ra-feedback hidden></p>
+      </section>
+
+      {{-- Saved rooms — full width below canvas --}}
+      <section class="admin-card util-ra-rooms-card">
+        <div class="util-ra-rooms-head">
+          <div class="util-ra-rooms-head__intro">
             <h3 class="util-ra-card-title">Saved rooms</h3>
-            <p class="util-ra-rooms-empty" data-ra-rooms-empty>No rooms saved yet.</p>
-            <ul class="util-ra-rooms-list" data-ra-rooms-list hidden></ul>
+            <p class="util-ra-rooms-hint">Each project can have multiple rooms. Draw an outline, save it, then start another.</p>
+          </div>
+          <div class="util-ra-rooms-head__actions">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm util-ra-action-btn" data-ra-new-room-secondary>
+              <i class="fa fa-plus"></i> New room
+            </button>
             <div class="util-ra-total" data-ra-total hidden>
-              <span class="util-ra-total__label">Total area</span>
+              <span class="util-ra-total__label">Total</span>
               <span class="util-ra-total__value"><strong data-ra-total-sqft>0</strong> sq ft</span>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-copy-total>
                 <i class="fa fa-copy"></i> Copy
               </button>
             </div>
-          </section>
-        </aside>
-      </div>
+          </div>
+        </div>
+        <p class="util-ra-rooms-empty" data-ra-rooms-empty>No rooms saved yet. Draw a room on the floor plan above, then click Save room.</p>
+        <ul class="util-ra-rooms-list" data-ra-rooms-list hidden></ul>
+      </section>
     </div>
   </div>
 @endsection

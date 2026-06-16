@@ -13,6 +13,8 @@ class RoomAreaProject extends Model
         'client_project_id',
         'scale_pixels_per_foot',
         'background_path',
+        'canvas_width',
+        'canvas_height',
     ];
 
     protected $casts = [

@@ -11,6 +11,8 @@ class RoomAreaRoom extends Model
         'room_area_project_id',
         'name',
         'vertices',
+        'canvas_width',
+        'canvas_height',
         'area_sqft',
     ];
 

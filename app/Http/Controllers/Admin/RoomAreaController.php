@@ -61,6 +61,8 @@ class RoomAreaController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:120'],
             'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
+            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
+            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
         ]);
 
         $room_area_project->fill($data);
@@ -91,6 +93,8 @@ class RoomAreaController extends Controller
             'vertices' => ['required', 'array', 'min:3'],
             'vertices.*.x' => ['required', 'numeric'],
             'vertices.*.y' => ['required', 'numeric'],
+            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
+            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
         ]);
 
         $scale = (float) ($room_area_project->scale_pixels_per_foot ?? 0);
@@ -103,12 +107,50 @@ class RoomAreaController extends Controller
         $room = $room_area_project->rooms()->create([
             'name' => $data['name'],
             'vertices' => $data['vertices'],
+            'canvas_width' => $data['canvas_width'] ?? null,
+            'canvas_height' => $data['canvas_height'] ?? null,
             'area_sqft' => $validation['area_sqft'],
         ]);
+
+        $this->syncProjectCanvasDimensions($room_area_project, $data);
 
         return response()->json([
             'ok' => true,
             'room' => $this->roomPayload($room),
+        ]);
+    }
+
+    public function updateRoom(Request $request, RoomAreaRoom $room_area_room, PolygonAreaService $areaService)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'vertices' => ['required', 'array', 'min:3'],
+            'vertices.*.x' => ['required', 'numeric'],
+            'vertices.*.y' => ['required', 'numeric'],
+            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
+            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
+        ]);
+
+        $scale = (float) ($room_area_room->project->scale_pixels_per_foot ?? 0);
+        $validation = $areaService->validateRoom($data['vertices'], $scale);
+
+        if (! $validation['valid']) {
+            return response()->json(['ok' => false, 'message' => $validation['message']], 422);
+        }
+
+        $room_area_room->update([
+            'name' => $data['name'],
+            'vertices' => $data['vertices'],
+            'canvas_width' => $data['canvas_width'] ?? null,
+            'canvas_height' => $data['canvas_height'] ?? null,
+            'area_sqft' => $validation['area_sqft'],
+        ]);
+
+        $this->syncProjectCanvasDimensions($room_area_room->project, $data);
+
+        return response()->json([
+            'ok' => true,
+            'room' => $this->roomPayload($room_area_room->fresh()),
         ]);
     }
 
@@ -192,6 +234,8 @@ class RoomAreaController extends Controller
             'client_project_id' => $project->client_project_id,
             'client_project_name' => $project->clientProject?->name,
             'scale_pixels_per_foot' => $project->scale_pixels_per_foot,
+            'canvas_width' => $project->canvas_width,
+            'canvas_height' => $project->canvas_height,
             'background_url' => $project->background_path
                 ? route('admin.utilities.room-area.background', $project)
                 : null,
@@ -205,7 +249,21 @@ class RoomAreaController extends Controller
             'id' => $room->id,
             'name' => $room->name,
             'vertices' => $room->vertices,
+            'canvas_width' => $room->canvas_width,
+            'canvas_height' => $room->canvas_height,
             'area_sqft' => (float) $room->area_sqft,
         ];
+    }
+
+    private function syncProjectCanvasDimensions(RoomAreaProject $project, array $data): void
+    {
+        if (empty($data['canvas_width']) || empty($data['canvas_height'])) {
+            return;
+        }
+
+        $project->update([
+            'canvas_width' => $data['canvas_width'],
+            'canvas_height' => $data['canvas_height'],
+        ]);
     }
 }
