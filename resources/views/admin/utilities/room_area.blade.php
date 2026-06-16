@@ -209,7 +209,7 @@
         </div>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag to move. Hold Shift while dragging a corner to magnetically snap to 45°/90°. Scroll to zoom; Space + drag to pan.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Hold Shift while clicking to snap walls to 45°/90°. Drag corners to move; Shift while dragging magnetically snaps. Shift + scroll to zoom; Space + drag to pan.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <span class="util-ra-live-area__label">Current shape:</span>
             <strong data-ra-live-sqft>—</strong> sq ft

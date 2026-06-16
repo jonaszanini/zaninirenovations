@@ -1704,14 +1704,17 @@
 }
 
 .util-ra-project-bar + .util-ra-empty,
-.util-ra-project-bar + .util-ra-workspace {
+.util-ra-empty + .util-ra-workspace {
   margin-top: 1.25rem;
 }
 
 .util-ra-workspace {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+}
+
+.util-ra-workspace .admin-card + .admin-card {
+  margin-top: 1.25rem;
 }
 
 .util-ra-card-title {

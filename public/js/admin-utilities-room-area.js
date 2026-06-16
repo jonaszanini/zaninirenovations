@@ -93,6 +93,8 @@
     layers: {},
     konvaLayer: null,
     bgImage: null,
+    bgNaturalW: 0,
+    bgNaturalH: 0,
     lastUiScale: 1,
     selectedWallIndex: null,
     draggingVertex: false,
@@ -329,14 +331,22 @@
     return d > Math.PI ? Math.PI * 2 - d : d;
   }
 
-  function snapPoint(raw, prev) {
-    if (state.snapMode === 'off' || !prev) return raw;
+  function snapPoint(raw, prev, stepOverride) {
+    if (!prev) return raw;
     var dx = raw.x - prev.x;
     var dy = raw.y - prev.y;
-    var angle = Math.atan2(dy, dx);
-    var step = state.snapMode === '45' ? Math.PI / 4 : Math.PI / 2;
-    var snapped = Math.round(angle / step) * step;
     var len = Math.hypot(dx, dy);
+    if (len < 1e-6) return raw;
+    var angle = Math.atan2(dy, dx);
+    var step;
+    if (stepOverride !== undefined) {
+      step = stepOverride;
+    } else if (state.snapMode === 'off') {
+      return raw;
+    } else {
+      step = state.snapMode === '45' ? Math.PI / 4 : Math.PI / 2;
+    }
+    var snapped = Math.round(angle / step) * step;
     return {
       x: prev.x + Math.cos(snapped) * len,
       y: prev.y + Math.sin(snapped) * len
@@ -777,7 +787,7 @@
     els.canvasWrap._raViewportBound = true;
 
     els.canvasWrap.addEventListener('wheel', function (e) {
-      if (!state.stage) return;
+      if (!state.stage || !e.shiftKey) return;
       e.preventDefault();
       var rect = state.stage.container().getBoundingClientRect();
       var x = e.clientX - rect.left;
@@ -853,8 +863,11 @@
     state.stage.width(dims.w);
     state.stage.height(dims.h);
     if (state.bgImage) {
-      state.bgImage.width(dims.w);
-      state.bgImage.height(dims.h);
+      if (oldW > 0 && oldH > 0) {
+        scaleBackgroundLayout(oldW, oldH, dims.w, dims.h);
+      } else {
+        layoutBackgroundImage();
+      }
     }
     drawGrid();
     redrawAll();
@@ -982,6 +995,28 @@
     show(els.bgDeleteCanvas, hasBg);
   }
 
+  function layoutBackgroundImage() {
+    if (!state.bgImage || !state.bgNaturalW || !state.bgNaturalH) return;
+    var cw = canvasW();
+    var ch = canvasH();
+    var scale = Math.min(cw / state.bgNaturalW, ch / state.bgNaturalH);
+    var w = state.bgNaturalW * scale;
+    var h = state.bgNaturalH * scale;
+    state.bgImage.position({ x: (cw - w) / 2, y: (ch - h) / 2 });
+    state.bgImage.width(w);
+    state.bgImage.height(h);
+  }
+
+  function scaleBackgroundLayout(fromW, fromH, toW, toH) {
+    if (!state.bgImage || !fromW || !fromH || fromW < 1 || fromH < 1) return;
+    var sx = toW / fromW;
+    var sy = toH / fromH;
+    state.bgImage.x(state.bgImage.x() * sx);
+    state.bgImage.y(state.bgImage.y() * sy);
+    state.bgImage.width(state.bgImage.width() * sx);
+    state.bgImage.height(state.bgImage.height() * sy);
+  }
+
   function ensureStage() {
     if (!state.stage || !state.konvaLayer || !state.konvaLayer.getStage()) {
       initStage();
@@ -996,6 +1031,8 @@
     var token = bumpEditorToken();
     layer.destroyChildren();
     state.bgImage = null;
+    state.bgNaturalW = 0;
+    state.bgNaturalH = 0;
     if (!url) {
       flushKonva();
       syncBackgroundUI();
@@ -1009,17 +1046,16 @@
       var project = activeProject();
       if (!project || project.background_url !== url) return;
       if (!state.layers.bg) return;
+      state.bgNaturalW = img.naturalWidth || img.width;
+      state.bgNaturalH = img.naturalHeight || img.height;
       var kImg = new Konva.Image({
         image: img,
-        x: 0,
-        y: 0,
-        width: canvasW(),
-        height: canvasH(),
         listening: false,
         opacity: 0.85
       });
       state.layers.bg.add(kImg);
       state.bgImage = kImg;
+      layoutBackgroundImage();
       flushKonva();
       syncBackgroundUI();
     };
@@ -1320,7 +1356,7 @@
     return stageToWorld(pos);
   }
 
-  function onStageClick() {
+  function onStageClick(e) {
     if (state.spaceHeld || state.panning) return;
     var pos = getPointerPos();
     if (!pos) return;
@@ -1366,11 +1402,17 @@
       }
     }
 
+    var shiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
     var point = pos;
     if (state.vertices.length > 0) {
-      point = snapPoint(pos, state.vertices[state.vertices.length - 1]);
+      var prev = state.vertices[state.vertices.length - 1];
+      if (shiftSnap) {
+        point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
+      } else {
+        point = snapPoint(pos, prev);
+      }
     }
-    state.vertices.push(point);
+    state.vertices.push(clampToCanvas(point));
     redrawAll();
   }
 
