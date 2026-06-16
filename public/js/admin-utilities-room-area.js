@@ -95,6 +95,7 @@
     selectedRulerId: null,
     nextRulerId: 1,
     rulerPreview: null,
+    draftRulers: [],
     activeBackgroundUrl: null,
     draftBackground: null,
     draftScale: null,
@@ -247,10 +248,13 @@
   }
 
   function projectRulers() {
-    var project = activeProject();
-    if (!project) return [];
-    if (!project.rulers) project.rulers = [];
-    return project.rulers;
+    var room = activeRoom();
+    if (room) {
+      if (!room.rulers) room.rulers = [];
+      return room.rulers;
+    }
+    if (!state.draftRulers) state.draftRulers = [];
+    return state.draftRulers;
   }
 
   function findRulerById(id) {
@@ -1178,10 +1182,12 @@
     state.didWallDrag = false;
     state.vertexDragFrom = null;
     state.draftScale = null;
+    state.draftRulers = [];
     revokeDraftBackground();
     resetCalibrationUI();
     clearWallSelection();
     clearVertexSelection();
+    clearRulerSelection();
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     show(els.liveArea, false);
@@ -2357,8 +2363,10 @@
     state.wallDragOrigB = null;
     state.didWallDrag = false;
     stopCalibrationMode();
+    state.draftRulers = [];
     clearWallSelection();
     clearVertexSelection();
+    clearRulerSelection();
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     show(els.liveArea, false);
@@ -2921,9 +2929,24 @@
         els.saveRoom.disabled = false;
         if (isUpdate) {
           var idx = project.rooms.findIndex(function (r) { return r.id === result.data.room.id; });
-          if (idx >= 0) project.rooms[idx] = result.data.room;
+          if (idx >= 0) {
+            var oldRoom = project.rooms[idx];
+            var newRoom = result.data.room;
+            if (oldRoom && oldRoom.rulers) newRoom.rulers = oldRoom.rulers;
+            project.rooms[idx] = newRoom;
+          }
         } else {
-          project.rooms.push(result.data.room);
+          var newRoom = result.data.room;
+          if (state.draftRulers && state.draftRulers.length) {
+            newRoom.rulers = state.draftRulers.map(function (r) {
+              return {
+                id: r.id,
+                p1: { x: r.p1.x, y: r.p1.y },
+                p2: { x: r.p2.x, y: r.p2.y }
+              };
+            });
+          }
+          project.rooms.push(newRoom);
         }
         project.canvas_width = state.canvasW;
         project.canvas_height = state.canvasH;
