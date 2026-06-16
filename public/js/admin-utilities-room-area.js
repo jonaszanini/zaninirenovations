@@ -110,6 +110,12 @@
     lastUiScale: 1,
     selectedWallIndex: null,
     draggingVertex: false,
+    draggingWall: false,
+    wallDragIndex: null,
+    wallDragPointerStart: null,
+    wallDragOrigA: null,
+    wallDragOrigB: null,
+    didWallDrag: false,
     draggingRuler: false,
     editingRoomId: null,
     editorToken: 0,
@@ -647,6 +653,194 @@
     return best;
   }
 
+  function wallPerpendicularNormal(a, b) {
+    var dx = b.x - a.x;
+    var dy = b.y - a.y;
+    var len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-9) return { x: 0, y: -1 };
+    return { x: -dy / len, y: dx / len };
+  }
+
+  function wallDragCursorFor(wallIndex) {
+    var a = state.vertices[wallIndex];
+    var b = state.vertices[wallEndIndex(wallIndex)];
+    var dx = Math.abs(b.x - a.x);
+    var dy = Math.abs(b.y - a.y);
+    if (dx >= dy) return 'ns-resize';
+    return 'ew-resize';
+  }
+
+  function canDragWalls() {
+    return wallCount() > 0 && !state.spaceHeld && !state.rulerMode && !state.calibrating;
+  }
+
+  function refreshSelectedWallLengthInput() {
+    if (state.selectedWallIndex !== null && els.wallLength && pixelsPerFoot()) {
+      var lenFt = wallLengthFeet(state.selectedWallIndex);
+      if (lenFt !== null) els.wallLength.value = fmtFeetInches(lenFt);
+    }
+  }
+
+  function startWallDrag(wallIndex) {
+    if (!canDragWalls() || wallIndex < 0 || wallIndex >= wallCount()) return;
+    var pos = getPointerPos();
+    if (!pos) return;
+    clearRulerSelection();
+    state.draggingWall = true;
+    state.didWallDrag = false;
+    state.wallDragIndex = wallIndex;
+    state.wallDragPointerStart = { x: pos.x, y: pos.y };
+    var a = state.vertices[wallIndex];
+    var b = state.vertices[wallEndIndex(wallIndex)];
+    state.wallDragOrigA = { x: a.x, y: a.y };
+    state.wallDragOrigB = { x: b.x, y: b.y };
+    selectWall(wallIndex);
+    updateCanvasCursor();
+  }
+
+  function moveWallDrag(pos) {
+    if (!state.draggingWall || state.wallDragIndex === null || !pos || !state.wallDragPointerStart) return;
+    if (!state.wallDragOrigA || !state.wallDragOrigB) return;
+    var n = wallPerpendicularNormal(state.wallDragOrigA, state.wallDragOrigB);
+    var dx = pos.x - state.wallDragPointerStart.x;
+    var dy = pos.y - state.wallDragPointerStart.y;
+    var amount = dx * n.x + dy * n.y;
+    if (state.shiftHeld && pixelsPerFoot() > 0) {
+      var step = pixelsPerFoot();
+      amount = Math.round(amount / step) * step;
+    }
+    if (Math.abs(amount) > 0.5 / uiScale()) state.didWallDrag = true;
+    var ox = n.x * amount;
+    var oy = n.y * amount;
+    var wallIndex = state.wallDragIndex;
+    var endIdx = wallEndIndex(wallIndex);
+    state.vertices[wallIndex] = clampToCanvas({
+      x: state.wallDragOrigA.x + ox,
+      y: state.wallDragOrigA.y + oy
+    });
+    state.vertices[endIdx] = clampToCanvas({
+      x: state.wallDragOrigB.x + ox,
+      y: state.wallDragOrigB.y + oy
+    });
+    redrawPolygonLine();
+    redrawLabels();
+    redrawWalls();
+    redrawVertices();
+    updateLiveArea();
+    refreshSelectedWallLengthInput();
+  }
+
+  function finishWallDrag(pos) {
+    if (!state.draggingWall) return;
+    if (pos) moveWallDrag(pos);
+    var wallIndex = state.wallDragIndex;
+    var endIdx = wallEndIndex(wallIndex);
+    var origA = state.wallDragOrigA;
+    var origB = state.wallDragOrigB;
+    if (origA && origB && !isValidShape(state.vertices, state.closed)) {
+      state.vertices[wallIndex] = origA;
+      state.vertices[endIdx] = origB;
+      state.didWallDrag = false;
+      setFeedback('That wall position would make the shape cross itself.', true);
+    }
+    state.draggingWall = false;
+    state.wallDragIndex = null;
+    state.wallDragPointerStart = null;
+    state.wallDragOrigA = null;
+    state.wallDragOrigB = null;
+    updateCanvasCursor();
+    redrawAll();
+  }
+
+  function bindWallDrag(node, wallIndex) {
+    node.on('mousedown touchstart', function (e) {
+      if (!canDragWalls()) return;
+      if (e.evt && e.evt.button !== undefined && e.evt.button !== 0) return;
+      e.cancelBubble = true;
+      startWallDrag(wallIndex);
+    });
+  }
+
+  function wallInsertIndex(wallIndex) {
+    var n = state.vertices.length;
+    if (!state.closed) return wallIndex + 1;
+    return wallIndex === n - 1 ? n : wallIndex + 1;
+  }
+
+  function projectPointOnSegment(p, a, b) {
+    var dx = b.x - a.x;
+    var dy = b.y - a.y;
+    var lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-9) return null;
+    var len = Math.sqrt(lenSq);
+    var minT = hitTolerance(VERTEX_HIT) / len;
+    if (minT >= 0.5) return null;
+    var maxT = 1 - minT;
+    var t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+    t = Math.max(minT, Math.min(maxT, t));
+    return { x: a.x + t * dx, y: a.y + t * dy };
+  }
+
+  function insertVertexOnWall(wallIndex, rawPos) {
+    if (wallIndex < 0 || wallIndex >= wallCount()) return -1;
+    var a = state.vertices[wallIndex];
+    var b = state.vertices[wallEndIndex(wallIndex)];
+    var projected = projectPointOnSegment(rawPos, a, b);
+    if (!projected) {
+      setFeedback('Wall is too short to add a corner here.', true);
+      return -1;
+    }
+    var point = clampToCanvas(projected);
+    var insertIdx = wallInsertIndex(wallIndex);
+    state.vertices.splice(insertIdx, 0, point);
+    if (!isValidShape(state.vertices, state.closed)) {
+      state.vertices.splice(insertIdx, 1);
+      setFeedback('That corner would make the shape cross itself.', true);
+      return -1;
+    }
+    return insertIdx;
+  }
+
+  function startVertexDragAt(vertexIndex) {
+    var layer = state.layers.vertices;
+    if (!layer) return;
+    var circles = layer.getChildren();
+    if (vertexIndex < 0 || vertexIndex >= circles.length) return;
+    var circle = circles[vertexIndex];
+    if (circle && typeof circle.startDrag === 'function') {
+      circle.startDrag();
+    }
+  }
+
+  function splitWallAtPointer(wallIndex) {
+    if (!canDragWalls()) return;
+    if (state.draggingWall) {
+      finishWallDrag(getPointerPos());
+      state.didWallDrag = false;
+    }
+    var pos = getPointerPos();
+    if (!pos) return;
+    var newIdx = insertVertexOnWall(wallIndex, pos);
+    if (newIdx < 0) return;
+    clearWallSelection();
+    redrawAll();
+    setFeedback('Corner added — drag to shape the wall.', false);
+    requestAnimationFrame(function () {
+      startVertexDragAt(newIdx);
+    });
+  }
+
+  function bindWallSplit(node, wallIndex) {
+    node.on('dblclick dbltap', function (e) {
+      if (!canDragWalls()) return;
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+      e.cancelBubble = true;
+      splitWallAtPointer(wallIndex);
+    });
+  }
+
   function clearWallSelection() {
     if (state.selectedWallIndex === null && els.wallEdit && els.wallEdit.hasAttribute('hidden')) return;
     state.selectedWallIndex = null;
@@ -862,6 +1056,12 @@
     state.editingRoomId = null;
     state.selectedWallIndex = null;
     state.draggingVertex = false;
+    state.draggingWall = false;
+    state.wallDragIndex = null;
+    state.wallDragPointerStart = null;
+    state.wallDragOrigA = null;
+    state.wallDragOrigB = null;
+    state.didWallDrag = false;
     state.draftScale = null;
     revokeDraftBackground();
     resetCalibrationUI();
@@ -895,6 +1095,8 @@
       el.style.cursor = 'grab';
     } else if (state.draggingVertex) {
       el.style.cursor = 'grabbing';
+    } else if (state.draggingWall && state.wallDragIndex !== null) {
+      el.style.cursor = wallDragCursorFor(state.wallDragIndex);
     } else if (state.draggingRuler) {
       el.style.cursor = 'grabbing';
     } else {
@@ -1152,6 +1354,10 @@
     });
 
     state.stage.on('mousemove touchmove', function () {
+      if (state.draggingWall) {
+        moveWallDrag(getPointerPos());
+        return;
+      }
       if (!state.panning || !state.lastPanScreen) return;
       var pos = state.stage.getPointerPosition();
       if (!pos) return;
@@ -1182,6 +1388,10 @@
     });
 
     state.stage.on('mouseup touchend mouseleave', function () {
+      if (state.draggingWall) {
+        finishWallDrag(getPointerPos());
+        return;
+      }
       if (!state.panning) return;
       state.panning = false;
       state.lastPanScreen = null;
@@ -1385,12 +1595,12 @@
           dragDistance: uiSize(3)
         });
         circle.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.spaceHeld && !state.rulerMode) {
+          if (state.stage && !state.draggingVertex && !state.draggingWall && !state.spaceHeld && !state.rulerMode) {
             state.stage.container().style.cursor = 'move';
           }
         });
         circle.on('mouseleave', function () {
-          if (state.stage && !state.draggingVertex) updateCanvasCursor();
+          if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
         });
         circle.on('dragstart', function (e) {
           if (state.spaceHeld) {
@@ -1471,16 +1681,18 @@
           listening: !state.rulerMode && !state.spaceHeld
         });
         kLabel.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.spaceHeld && !state.rulerMode) {
-            state.stage.container().style.cursor = 'pointer';
+          if (state.stage && !state.draggingVertex && !state.draggingWall && !state.spaceHeld && !state.rulerMode) {
+            state.stage.container().style.cursor = wallDragCursorFor(wallIndex);
           }
         });
         kLabel.on('mouseleave', function () {
-          if (state.stage && !state.draggingVertex) updateCanvasCursor();
+          if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
         });
+        bindWallDrag(kLabel, wallIndex);
+        bindWallSplit(kLabel, wallIndex);
         kLabel.on('click tap', function (e) {
           e.cancelBubble = true;
-          if (state.rulerMode) return;
+          if (state.rulerMode || state.didWallDrag) return;
           selectWall(wallIndex);
         });
         kLabel.add(new Konva.Tag({
@@ -1539,16 +1751,18 @@
           listening: !state.spaceHeld && !state.rulerMode
         });
         hitLine.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.spaceHeld && !state.rulerMode) {
-            state.stage.container().style.cursor = 'pointer';
+          if (state.stage && !state.draggingVertex && !state.draggingWall && !state.spaceHeld && !state.rulerMode) {
+            state.stage.container().style.cursor = wallDragCursorFor(wallIndex);
           }
         });
         hitLine.on('mouseleave', function () {
-          if (state.stage && !state.draggingVertex) updateCanvasCursor();
+          if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
         });
+        bindWallDrag(hitLine, wallIndex);
+        bindWallSplit(hitLine, wallIndex);
         hitLine.on('click tap', function (e) {
           e.cancelBubble = true;
-          if (state.rulerMode) return;
+          if (state.rulerMode || state.didWallDrag) return;
           selectWall(wallIndex);
         });
         wallLayer.add(hitLine);
@@ -1879,7 +2093,10 @@
       state.didPan = false;
       return;
     }
-    if (state.draggingVertex || state.draggingRuler) return;
+    if (state.draggingVertex || state.draggingWall || state.draggingRuler || state.didWallDrag) {
+      if (state.didWallDrag) state.didWallDrag = false;
+      return;
+    }
 
     if (state.calibrating) {
       if (state.calibPoints.length >= 2) {
@@ -1949,6 +2166,24 @@
 
   function onStageDblClick(e) {
     if (e && e.evt) e.evt.preventDefault();
+    if (state.spaceHeld || state.panning || state.calibrating || state.rulerMode) return;
+    if (state.draggingWall) {
+      finishWallDrag(getPointerPos());
+      state.didWallDrag = false;
+    }
+    var pos = getPointerPos();
+    if (!pos) return;
+
+    if (findVertexAtPoint(pos) >= 0) return;
+
+    if (wallCount() > 0) {
+      var wallIdx = findWallAtPoint(pos);
+      if (wallIdx >= 0) {
+        splitWallAtPointer(wallIdx);
+        return;
+      }
+    }
+
     if (!state.closed && state.vertices.length >= 3) {
       closeShape();
     }
@@ -1977,6 +2212,12 @@
     state.closed = false;
     state.editingRoomId = null;
     state.draggingVertex = false;
+    state.draggingWall = false;
+    state.wallDragIndex = null;
+    state.wallDragPointerStart = null;
+    state.wallDragOrigA = null;
+    state.wallDragOrigB = null;
+    state.didWallDrag = false;
     stopCalibrationMode();
     clearWallSelection();
     if (els.roomName) els.roomName.value = '';

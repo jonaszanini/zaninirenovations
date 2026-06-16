@@ -219,7 +219,7 @@
         </div>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Hold Shift while clicking to snap walls to 45°/90°. Use <strong>Ruler</strong> to measure distances (calibrate scale first). Shift + scroll to zoom; Space + drag to pan.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Double-click a wall to add a corner. Drag a wall to move it perpendicular (hold Shift to snap). Hold Shift while clicking to snap walls to 45°/90°. Use <strong>Ruler</strong> to measure distances (calibrate scale first). Shift + scroll to zoom; Space + drag to pan.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <span class="util-ra-live-area__label">Current shape:</span>
             <strong data-ra-live-sqft>—</strong> sq ft
