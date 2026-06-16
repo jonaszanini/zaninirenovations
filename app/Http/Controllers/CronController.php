@@ -6,15 +6,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 
 /**
- * HTTP entry point for the daily automations, used because the host's system
- * cron is unreliable (e.g. Hostinger shared plans where hPanel cron jobs
- * silently never execute).
+ * HTTP entry point for daily automations on production.
  *
- * An external scheduler hits GET /cron/run?token=SECRET once a day at 9am EST.
- * Each hit runs `automations:run-daily`, which fires EVERY daily automation
- * unconditionally (see App\Console\Commands\RunDailyAutomations). This is a
- * fallback when system cron does not run `schedule:run`; when Hostinger cron
- * works, the individual entries in App\Console\Kernel handle timing instead.
+ * Hostinger hPanel cron does not run `schedule:run` reliably, so cron-job.org
+ * hits GET /cron/run?token=SECRET once a day at 9am Eastern. Each hit runs
+ * `automations:run-daily`, which fires every command in
+ * App\Console\Commands\RunDailyAutomations unconditionally.
  */
 class CronController extends Controller
 {

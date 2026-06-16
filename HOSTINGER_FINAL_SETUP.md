@@ -114,7 +114,16 @@ The root `.htaccess` file will:
 
 3. Delete `public/test.php` file
 
-4. Your site should now be live! 🎉
+4. **Set up daily automations (cron-job.org)** — hPanel cron does not work on
+   this host. In `.env` set `CRON_HTTP_TOKEN` to a long random secret. On
+   [cron-job.org](https://cron-job.org), create a job:
+   - URL: `https://zaninirenovations.ca/cron/run?token=YOUR_TOKEN`
+   - Schedule: daily at 9:00 AM (Eastern / America/Toronto)
+   - Method: GET
+
+   A successful hit returns plain text like `automations:run-daily completed`.
+
+5. Your site should now be live!
 
 
 

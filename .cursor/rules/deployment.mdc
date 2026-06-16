@@ -12,15 +12,36 @@ alwaysApply: true
   - This is the Laravel root (contains `artisan`, `app/`, `public/`, etc.).
   - Always `cd` here before running any `php artisan ...` command on prod.
 
-## Laravel scheduler (automated emails)
+## Laravel scheduler (automated emails & daily automations)
 
-The app uses **one system cron entry** that runs every minute; Laravel decides when each job actually fires:
+**hPanel system cron does not work on this host.** Production relies on
+[cron-job.org](https://cron-job.org) hitting the HTTP trigger once per day.
+
+### cron-job.org (required)
+
+1. Set `CRON_HTTP_TOKEN` in production `.env` (long random string).
+2. Create a cron-job.org job:
+   - **URL:** `https://zaninirenovations.ca/cron/run?token=YOUR_CRON_HTTP_TOKEN`
+   - **Schedule:** once daily at **9:00 AM** (America/Toronto / Eastern).
+   - **Method:** GET
+3. Each hit runs `automations:run-daily`, which executes every daily command
+   listed in `app/Console/Commands/RunDailyAutomations.php` (quote reminders,
+   past-due invoice reminders, commencement-eve notice, start-due-today, etc.).
+
+To add a new daily job: create the artisan command, add it to
+`RunDailyAutomations::DAILY_AUTOMATIONS`, and add a matching entry in
+`app/Console/Kernel.php` (for local/dev or if hPanel cron is fixed later).
+
+### hPanel cron (not used — broken on Hostinger)
+
+The Laravel-standard entry below is **not reliable** on this shared plan; do
+not depend on it for production:
 
 ```bash
 * * * * * cd /home/u372714627/domains/zaninirenovations.ca/public_html && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Configured tasks live in `app/Console/Kernel.php` (quote reminders, day-before commencement notice, etc.). Without this cron, scheduled commands never run on production.
+`Kernel.php` schedule entries only fire when `schedule:run` actually runs.
 
 ## Common prod commands
 

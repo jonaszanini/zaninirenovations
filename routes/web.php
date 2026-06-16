@@ -23,9 +23,9 @@ Route::post('/contact-email', [ContactFormController::class, 'submit'])
     ->name('contact.submit');
 
 /**
- * External HTTP cron trigger — fallback for unreliable host cron. Protected by
- * CRON_HTTP_TOKEN (404s when the token is missing or wrong). Point a free
- * external scheduler at /cron/run?token=THE_TOKEN every few minutes.
+ * Production HTTP cron trigger (cron-job.org). Protected by CRON_HTTP_TOKEN
+ * (404s when the token is missing or wrong). Schedule once daily at 9am
+ * Eastern — each hit runs all daily automations via automations:run-daily.
  */
 Route::get('/cron/run', [\App\Http\Controllers\CronController::class, 'run'])
     ->middleware('throttle:12,1')

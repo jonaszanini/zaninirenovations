@@ -6,18 +6,16 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Single entry point for every daily automated activity (HTTP cron fallback).
+ * Single entry point for every daily automated activity.
  *
- * Production timing uses individual schedule entries in App\Console\Kernel,
- * driven by Hostinger's per-minute `schedule:run` cron.
+ * **Production:** cron-job.org hits GET /cron/run once daily at 9am Eastern;
+ * CronController runs this command. Hostinger hPanel cron is not used.
  *
- * When system cron is unreliable, an external scheduler hits GET /cron/run
- * once a day; that endpoint runs THIS command so each automation below fires
- * unconditionally on every hit — independent of Laravel's time matching.
+ * **Local / dev:** individual entries in App\Console\Kernel also schedule the
+ * same commands when `schedule:run` runs every minute.
  *
- * To add a new daily automation: build its own artisan command, register it
- * in Kernel.php, and add its signature to {@see self::DAILY_AUTOMATIONS}
- * so the HTTP fallback still runs it.
+ * To add a new daily automation: build its artisan command, add it to
+ * {@see self::DAILY_AUTOMATIONS} and register it in Kernel.php.
  */
 class RunDailyAutomations extends Command
 {

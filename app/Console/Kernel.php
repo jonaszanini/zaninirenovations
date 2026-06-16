@@ -15,10 +15,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // One schedule entry per daily automation. Hostinger runs `schedule:run`
-        // every minute; Laravel fires each command when its time matches.
-        // HTTP GET /cron/run is a fallback when system cron fails — it calls
-        // `automations:run-daily` directly (see CronController), not these lines.
+        // One schedule entry per daily automation (Laravel standard). These
+        // only fire when `php artisan schedule:run` runs every minute — hPanel
+        // cron does not work on production; cron-job.org → /cron/run instead.
         $dailyAt = static function (Schedule $schedule, string $command) {
             $schedule->command($command)
                 ->dailyAt('09:00')
