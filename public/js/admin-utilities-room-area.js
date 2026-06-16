@@ -22,6 +22,7 @@
   var ZOOM_FACTOR = 1.12;
   var SHIFT_SNAP_THRESHOLD_DEG = 10;
   var SHIFT_SNAP_STEP = Math.PI / 4;
+  var UNDO_MAX = 50;
 
   var els = {
     projectSelect: root.querySelector('[data-ra-project-select]'),
@@ -47,6 +48,9 @@
     closeShape: root.querySelector('[data-ra-close-shape]'),
     clearShape: root.querySelector('[data-ra-clear-shape]'),
     deleteWall: root.querySelector('[data-ra-delete-wall]'),
+    vertexEdit: root.querySelector('[data-ra-vertex-edit]'),
+    deleteVertex: root.querySelector('[data-ra-delete-vertex]'),
+    vertexCancel: root.querySelector('[data-ra-vertex-cancel]'),
     rulerToggle: root.querySelector('[data-ra-ruler-toggle]'),
     rulerEdit: root.querySelector('[data-ra-ruler-edit]'),
     rulerLength: root.querySelector('[data-ra-ruler-length]'),
@@ -109,6 +113,7 @@
     bgNaturalH: 0,
     lastUiScale: 1,
     selectedWallIndex: null,
+    selectedVertexIndex: null,
     draggingVertex: false,
     draggingWall: false,
     wallDragIndex: null,
@@ -116,6 +121,8 @@
     wallDragOrigA: null,
     wallDragOrigB: null,
     didWallDrag: false,
+    vertexDragFrom: null,
+    undoStack: [],
     draggingRuler: false,
     editingRoomId: null,
     editorToken: 0,
@@ -420,6 +427,46 @@
     return isSimplePolyline(vertices);
   }
 
+  function snapshotState() {
+    return {
+      vertices: state.vertices.map(function (v) { return { x: v.x, y: v.y }; }),
+      closed: state.closed
+    };
+  }
+
+  function pushUndoSnapshot() {
+    state.undoStack.push(snapshotState());
+    if (state.undoStack.length > UNDO_MAX) state.undoStack.shift();
+    updateToolbar();
+  }
+
+  function discardLastUndoSnapshot() {
+    if (!state.undoStack.length) return;
+    state.undoStack.pop();
+    updateToolbar();
+  }
+
+  function clearUndoStack() {
+    state.undoStack = [];
+    updateToolbar();
+  }
+
+  function restoreUndoSnapshot(snap) {
+    state.vertices = snap.vertices.map(function (v) { return { x: v.x, y: v.y }; });
+    state.closed = snap.closed;
+    state.draggingVertex = false;
+    state.draggingWall = false;
+    state.wallDragIndex = null;
+    state.wallDragPointerStart = null;
+    state.wallDragOrigA = null;
+    state.wallDragOrigB = null;
+    state.didWallDrag = false;
+    state.vertexDragFrom = null;
+    state.selectedVertexIndex = null;
+    clearWallSelection();
+    clearVertexSelection();
+  }
+
   function pixelsPerFoot() {
     var room = activeRoom();
     if (room && room.scale_pixels_per_foot) {
@@ -620,6 +667,7 @@
     var n = state.vertices.length;
     if (wallCount() === 0) return;
 
+    pushUndoSnapshot();
     var wallIndex = state.selectedWallIndex;
     var removeIdx = wallEndIndex(wallIndex);
 
@@ -635,6 +683,58 @@
 
     redrawAll();
     setFeedback('Wall removed.', false);
+  }
+
+  function clearVertexSelection() {
+    if (state.selectedVertexIndex === null && els.vertexEdit && els.vertexEdit.hasAttribute('hidden')) return;
+    state.selectedVertexIndex = null;
+    show(els.vertexEdit, false);
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-vertex-edit');
+    if (state.layers.vertices) {
+      redrawVertices();
+      updateToolbar();
+    }
+  }
+
+  function selectVertex(vertexIndex) {
+    if (vertexIndex < 0 || vertexIndex >= state.vertices.length) return;
+    clearRulerSelection();
+    clearWallSelection();
+    state.selectedVertexIndex = vertexIndex;
+    show(els.vertexEdit, true);
+    if (els.canvasWrap) els.canvasWrap.classList.add('is-vertex-edit');
+    redrawVertices();
+    updateToolbar();
+  }
+
+  function deleteSelectedVertex() {
+    if (state.selectedVertexIndex === null) return;
+    var idx = state.selectedVertexIndex;
+    if (state.vertices.length < 2) {
+      setFeedback('Need at least two points to keep a wall segment.', true);
+      return;
+    }
+
+    var copy = state.vertices.map(function (v) { return { x: v.x, y: v.y }; });
+    copy.splice(idx, 1);
+    var closed = state.closed;
+    if (closed && copy.length < 3) closed = false;
+    if (!isValidShape(copy, closed)) {
+      setFeedback('Removing this corner would make the shape cross itself.', true);
+      return;
+    }
+
+    pushUndoSnapshot();
+    state.vertices.splice(idx, 1);
+    if (state.closed && state.vertices.length < 3) {
+      state.closed = false;
+    }
+    if (state.vertices.length === 0) {
+      state.closed = false;
+    }
+    clearVertexSelection();
+    redrawAll();
+    setFeedback('Corner removed.', false);
   }
 
   function findWallAtPoint(pos) {
@@ -709,7 +809,10 @@
       var step = pixelsPerFoot();
       amount = Math.round(amount / step) * step;
     }
-    if (Math.abs(amount) > 0.5 / uiScale()) state.didWallDrag = true;
+    if (Math.abs(amount) > 0.5 / uiScale()) {
+      if (!state.didWallDrag) pushUndoSnapshot();
+      state.didWallDrag = true;
+    }
     var ox = n.x * amount;
     var oy = n.y * amount;
     var wallIndex = state.wallDragIndex;
@@ -737,9 +840,11 @@
     var endIdx = wallEndIndex(wallIndex);
     var origA = state.wallDragOrigA;
     var origB = state.wallDragOrigB;
+    var hadWallDrag = state.didWallDrag;
     if (origA && origB && !isValidShape(state.vertices, state.closed)) {
       state.vertices[wallIndex] = origA;
       state.vertices[endIdx] = origB;
+      if (hadWallDrag) discardLastUndoSnapshot();
       state.didWallDrag = false;
       setFeedback('That wall position would make the shape cross itself.', true);
     }
@@ -820,8 +925,12 @@
     }
     var pos = getPointerPos();
     if (!pos) return;
+    pushUndoSnapshot();
     var newIdx = insertVertexOnWall(wallIndex, pos);
-    if (newIdx < 0) return;
+    if (newIdx < 0) {
+      discardLastUndoSnapshot();
+      return;
+    }
     clearWallSelection();
     redrawAll();
     setFeedback('Corner added — drag to shape the wall.', false);
@@ -868,6 +977,7 @@
     var ruler = findRulerById(rulerId);
     if (!ruler) return;
     clearWallSelection();
+    clearVertexSelection();
     state.selectedRulerId = rulerId;
     show(els.rulerEdit, true);
     if (els.canvasWrap) els.canvasWrap.classList.add('is-ruler-edit');
@@ -967,6 +1077,7 @@
   function selectWall(wallIndex) {
     if (wallIndex < 0 || wallIndex >= wallCount()) return;
     clearRulerSelection();
+    clearVertexSelection();
     state.selectedWallIndex = wallIndex;
     show(els.wallEdit, true);
     if (els.canvasWrap) els.canvasWrap.classList.add('is-wall-edit');
@@ -1019,9 +1130,11 @@
     var oldEnd = { x: end.x, y: end.y };
     var newEnd = { x: start.x + ux * newPx, y: start.y + uy * newPx };
 
+    pushUndoSnapshot();
     state.vertices[endIdx] = newEnd;
     if (!isValidShape(state.vertices, state.closed)) {
       state.vertices[endIdx] = oldEnd;
+      discardLastUndoSnapshot();
       setFeedback('That length would make the shape cross itself.', true);
       return;
     }
@@ -1055,6 +1168,7 @@
     state.closed = false;
     state.editingRoomId = null;
     state.selectedWallIndex = null;
+    state.selectedVertexIndex = null;
     state.draggingVertex = false;
     state.draggingWall = false;
     state.wallDragIndex = null;
@@ -1062,10 +1176,13 @@
     state.wallDragOrigA = null;
     state.wallDragOrigB = null;
     state.didWallDrag = false;
+    state.vertexDragFrom = null;
     state.draftScale = null;
     revokeDraftBackground();
     resetCalibrationUI();
     clearWallSelection();
+    clearVertexSelection();
+    clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     show(els.liveArea, false);
     if (state.stage) {
@@ -1264,6 +1381,7 @@
       var factor = canvasScaleFactor(oldW, oldH, dims.w, dims.h);
       if (state.vertices.length) {
         state.vertices = scalePoints(state.vertices, oldW, oldH, dims.w, dims.h);
+        clearUndoStack();
       }
       if (state.calibPoints.length) {
         state.calibPoints = scalePoints(state.calibPoints, oldW, oldH, dims.w, dims.h);
@@ -1581,15 +1699,16 @@
     var verts = state.vertices;
     verts.forEach(function (v, idx) {
       var isFirst = idx === 0;
+      var isSelected = state.selectedVertexIndex === idx;
       var showCloseTarget = isFirst && !state.closed && verts.length >= 3;
       (function (vertexIndex) {
         var circle = new Konva.Circle({
           x: v.x,
           y: v.y,
-          radius: uiSize(showCloseTarget ? CLOSE_HIT / 2 : 8),
-          fill: isFirst ? '#c62828' : '#024768',
-          stroke: '#fff',
-          strokeWidth: uiSize(2),
+          radius: uiSize(isSelected ? 10 : (showCloseTarget ? CLOSE_HIT / 2 : 8)),
+          fill: isSelected ? '#f9a825' : (isFirst ? '#c62828' : '#024768'),
+          stroke: isSelected ? '#f57f17' : '#fff',
+          strokeWidth: uiSize(isSelected ? 3 : 2),
           draggable: !state.spaceHeld && !state.rulerMode,
           listening: !state.spaceHeld && !state.rulerMode,
           dragDistance: uiSize(3)
@@ -1609,6 +1728,11 @@
           }
           e.cancelBubble = true;
           state.draggingVertex = true;
+          state.vertexDragFrom = {
+            x: state.vertices[vertexIndex].x,
+            y: state.vertices[vertexIndex].y
+          };
+          pushUndoSnapshot();
           updateCanvasCursor();
         });
         circle.on('click tap', function (e) {
@@ -1616,6 +1740,10 @@
           if (state.rulerMode) return;
           if (vertexIndex === 0 && !state.closed && state.vertices.length >= 3 && !state.draggingVertex) {
             closeShape();
+            return;
+          }
+          if (!state.draggingVertex) {
+            selectVertex(vertexIndex);
           }
         });
         circle.on('dragmove', function (e) {
@@ -1637,12 +1765,17 @@
           state.draggingVertex = false;
           updateCanvasCursor();
           var pos = snapVertexPosition(vertexIndex, { x: circle.x(), y: circle.y() });
+          var dragFrom = state.vertexDragFrom;
+          state.vertexDragFrom = null;
           var old = state.vertices[vertexIndex];
           state.vertices[vertexIndex] = pos;
           if (!isValidShape(state.vertices, state.closed)) {
             state.vertices[vertexIndex] = old;
             circle.position(old);
+            discardLastUndoSnapshot();
             setFeedback('That corner position would make the shape cross itself.', true);
+          } else if (dragFrom && dist(dragFrom, pos) < 1e-6) {
+            discardLastUndoSnapshot();
           }
           redrawAll();
         });
@@ -2137,6 +2270,8 @@
       }
     }
 
+    clearVertexSelection();
+
     if (state.closed) {
       clearWallSelection();
       return;
@@ -2160,6 +2295,7 @@
         point = pos;
       }
     }
+    pushUndoSnapshot();
     state.vertices.push(clampToCanvas(point));
     redrawAll();
   }
@@ -2195,6 +2331,7 @@
       setFeedback('Shape crosses itself — adjust corners before closing.', true);
       return;
     }
+    pushUndoSnapshot();
     state.closed = true;
     redrawAll();
   }
@@ -2211,6 +2348,7 @@
     state.vertices = [];
     state.closed = false;
     state.editingRoomId = null;
+    state.selectedVertexIndex = null;
     state.draggingVertex = false;
     state.draggingWall = false;
     state.wallDragIndex = null;
@@ -2220,6 +2358,8 @@
     state.didWallDrag = false;
     stopCalibrationMode();
     clearWallSelection();
+    clearVertexSelection();
+    clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     show(els.liveArea, false);
     clearDraftLayers();
@@ -2258,9 +2398,15 @@
   }
 
   function undoVertex() {
-    if (state.closed) state.closed = false;
-    else if (state.vertices.length) state.vertices.pop();
+    if (!state.undoStack.length) return;
+    if (state.draggingWall) finishWallDrag(getPointerPos());
+    state.draggingVertex = false;
+    state.vertexDragFrom = null;
+    var snap = state.undoStack.pop();
+    restoreUndoSnapshot(snap);
     redrawAll();
+    updateToolbar();
+    setFeedback('Undone.', false);
   }
 
   function updateLiveArea() {
@@ -2277,10 +2423,13 @@
   }
 
   function updateToolbar() {
-    els.undoVertex.disabled = state.vertices.length === 0;
+    els.undoVertex.disabled = state.undoStack.length === 0;
     els.closeShape.disabled = state.vertices.length < 3 || state.closed;
     if (els.deleteWall) {
       els.deleteWall.disabled = state.selectedWallIndex === null;
+    }
+    if (els.deleteVertex) {
+      els.deleteVertex.disabled = state.selectedVertexIndex === null || state.vertices.length < 2;
     }
     if (els.deleteRuler) {
       els.deleteRuler.disabled = state.selectedRulerId === null;
@@ -2491,6 +2640,7 @@
 
       state.vertices = scalePoints(currentRoom.vertices, source.w, source.h, state.canvasW, state.canvasH);
       state.closed = true;
+      clearUndoStack();
       applyViewport();
       redrawAll();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Update room.', false);
@@ -2956,6 +3106,8 @@
     if (els.wallApply) els.wallApply.addEventListener('click', applyWallLength);
     if (els.wallCancel) els.wallCancel.addEventListener('click', clearWallSelection);
     if (els.deleteWall) els.deleteWall.addEventListener('click', deleteSelectedWall);
+    if (els.deleteVertex) els.deleteVertex.addEventListener('click', deleteSelectedVertex);
+    if (els.vertexCancel) els.vertexCancel.addEventListener('click', clearVertexSelection);
     if (els.rulerToggle) els.rulerToggle.addEventListener('click', toggleRulerMode);
     if (els.deleteRuler) els.deleteRuler.addEventListener('click', deleteSelectedRuler);
     if (els.rulerCancel) els.rulerCancel.addEventListener('click', clearRulerSelection);
@@ -2969,7 +3121,13 @@
       }
 
       if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-      if (state.selectedRulerId !== null && !state.rulerMode) {
+      if (state.selectedVertexIndex !== null) {
+        e.preventDefault();
+        deleteSelectedVertex();
+      } else if (state.selectedWallIndex !== null) {
+        e.preventDefault();
+        deleteSelectedWall();
+      } else if (state.selectedRulerId !== null && !state.rulerMode) {
         e.preventDefault();
         deleteSelectedRuler();
       }
@@ -2982,10 +3140,6 @@
           applyWallLength();
         }
         if (e.key === 'Escape') clearWallSelection();
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-          e.preventDefault();
-          deleteSelectedWall();
-        }
       });
     }
 
