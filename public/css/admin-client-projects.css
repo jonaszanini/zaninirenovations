@@ -3954,6 +3954,16 @@ body.cp-modal-open {
   display: block;
   object-fit: contain;
 }
+.fq-hub-card-image-wrap--svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef4f8 100%);
+}
+.fq-hub-card-svg {
+  width: 88px;
+  height: 88px;
+}
 .fq-hub-card-body { flex: 1; min-width: 0; }
 .fq-hub-card-body h4 {
   margin: 0;

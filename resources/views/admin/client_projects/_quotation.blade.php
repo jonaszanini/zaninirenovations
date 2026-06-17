@@ -47,7 +47,7 @@
   <div class="admin-card cp-contract-empty">
     <h3>Quotation</h3>
     <p class="admin-form-help">
-      Create a quotation or estimate from the Fence, Standard, Paving, Painting, or Stairs calculators.
+      Create a quotation or estimate from the Fence, Standard, Paving, Painting, Stairs, or Flooring calculators.
       The first time you save, it attaches to this project automatically.
     </p>
     <div class="cp-contract-empty-action">

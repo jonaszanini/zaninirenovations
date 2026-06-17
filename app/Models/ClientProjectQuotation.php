@@ -43,6 +43,8 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_PAINTING = 'painting';
 
+    public const SOURCE_FLOORING = 'flooring';
+
     protected $fillable = [
         'client_project_id',
         'title',
@@ -232,6 +234,13 @@ class ClientProjectQuotation extends Model
             }
         }
 
+        if ($this->source_type === self::SOURCE_FLOORING && $this->source_id) {
+            $flooring = FlooringQuotation::query()->find($this->source_id);
+            if ($flooring) {
+                return $flooring->displayTitle();
+            }
+        }
+
         $stored = trim((string) ($this->title ?? ''));
 
         return $stored !== '' ? $stored : $this->typeLabel();
@@ -267,6 +276,13 @@ class ClientProjectQuotation extends Model
             $pq = PaintingQuotation::query()->find($this->source_id);
             if ($pq) {
                 return $pq->scopeDescriptionForPdf();
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_FLOORING && $this->source_id) {
+            $fq = FlooringQuotation::query()->find($this->source_id);
+            if ($fq) {
+                return $fq->scopeDescriptionForPdf();
             }
         }
 
@@ -716,6 +732,7 @@ class ClientProjectQuotation extends Model
                     self::SOURCE_PAVING => PavingQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_STAIRS => StairsQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_PAINTING => PaintingQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_FLOORING => FlooringQuotation::query()->whereKey($sourceId)->delete(),
                     default => null,
                 };
             }
@@ -789,6 +806,15 @@ class ClientProjectQuotation extends Model
             return 'To supply material and labour of the following:';
         }
 
+        if ($this->source_type === self::SOURCE_FLOORING && $this->source_id) {
+            $flooring = FlooringQuotation::query()->find($this->source_id);
+            if ($flooring) {
+                return $flooring->includesMaterialCharge()
+                    ? 'To supply material and labour of the following:'
+                    : 'For the labour of the following:';
+            }
+        }
+
         if ($this->labour && $this->material) {
             return 'To supply material and labour of the following:';
         }
@@ -800,6 +826,22 @@ class ClientProjectQuotation extends Model
         }
 
         return 'For the following scope of work:';
+    }
+
+    /**
+     * Client material selection block for flooring PDFs.
+     *
+     * @return array{name: string, color: string, url: string, cost_per_sqft: float}|null
+     */
+    public function flooringMaterialSelectionForPdf(): ?array
+    {
+        if ($this->source_type !== self::SOURCE_FLOORING || ! $this->source_id) {
+            return null;
+        }
+
+        $flooring = FlooringQuotation::query()->find($this->source_id);
+
+        return $flooring?->materialSelectionForPdf();
     }
 
     /**

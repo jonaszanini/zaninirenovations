@@ -212,6 +212,37 @@
       line-height: 1.45;
     }
 
+    .quote-material-selection {
+      margin: 0 0 14pt;
+      padding: 10pt 12pt;
+      background: #fffbeb;
+      border: 1pt solid #fcd34d;
+      border-radius: 4pt;
+    }
+    .quote-material-selection-title {
+      margin: 0 0 6pt;
+      font-size: 9.5pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #92400e;
+    }
+    .quote-material-selection-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5pt;
+    }
+    .quote-material-selection-table td {
+      padding: 3pt 0;
+      vertical-align: top;
+    }
+    .quote-material-selection-table td.label {
+      width: 28%;
+      font-weight: 700;
+      color: #78350f;
+      padding-right: 8pt;
+    }
+
     .quote-payment-schedule {
       margin: 14pt 0 16pt;
       padding: 10pt 12pt;
@@ -450,11 +481,44 @@
        the client sees the scope before the priced lines. --}}
   @php
     $quoteWorkDesc = $quotation->workDescriptionForPdf();
+    $flooringMaterial = $quotation->flooringMaterialSelectionForPdf();
   @endphp
   @if ($quoteWorkDesc !== '')
     <div class="quote-work-description">
       <p class="quote-work-description-title">Description of the work</p>
       <p class="quote-work-description-body">{!! nl2br(e($quoteWorkDesc)) !!}</p>
+    </div>
+  @endif
+
+  @if ($flooringMaterial)
+    <div class="quote-material-selection">
+      <p class="quote-material-selection-title">Client material selection</p>
+      <table class="quote-material-selection-table" role="presentation">
+        @if ($flooringMaterial['name'] !== '')
+          <tr>
+            <td class="label">Material</td>
+            <td>{{ $flooringMaterial['name'] }}</td>
+          </tr>
+        @endif
+        @if ($flooringMaterial['color'] !== '')
+          <tr>
+            <td class="label">Colour</td>
+            <td>{{ $flooringMaterial['color'] }}</td>
+          </tr>
+        @endif
+        @if ($flooringMaterial['cost_per_sqft'] > 0)
+          <tr>
+            <td class="label">Material cost</td>
+            <td>{{ $fmt($flooringMaterial['cost_per_sqft']) }} / sq ft (pre-HST)</td>
+          </tr>
+        @endif
+        @if ($flooringMaterial['url'] !== '')
+          <tr>
+            <td class="label">Store link</td>
+            <td><a href="{{ $flooringMaterial['url'] }}" style="color:#024768;text-decoration:underline;">{{ $flooringMaterial['url'] }}</a></td>
+          </tr>
+        @endif
+      </table>
     </div>
   @endif
 

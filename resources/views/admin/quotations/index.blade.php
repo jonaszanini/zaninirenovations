@@ -55,6 +55,23 @@
     </a>
 
     {{-- Placeholders: calculators not built yet; replace href when routes exist. --}}
+    <a href="{{ route('admin.quotations.flooring.index', $pq) }}" class="fq-hub-card">
+      <div class="fq-hub-card-image-wrap fq-hub-card-image-wrap--svg" aria-hidden="true">
+        <svg class="fq-hub-card-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
+          <rect x="4" y="36" width="56" height="8" rx="1" fill="#c4a574"/>
+          <rect x="4" y="28" width="56" height="8" rx="1" fill="#d4b896"/>
+          <rect x="4" y="20" width="56" height="8" rx="1" fill="#e8d4b8"/>
+          <rect x="4" y="12" width="56" height="8" rx="1" fill="#f0e6d6"/>
+          <line x1="4" y1="12" x2="60" y2="12" stroke="#024768" stroke-width="1.5"/>
+          <line x1="20" y1="12" x2="20" y2="44" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 2"/>
+          <line x1="44" y1="12" x2="44" y2="44" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 2"/>
+        </svg>
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Flooring</h4>
+      </div>
+    </a>
+
     <a href="#" class="fq-hub-card fq-hub-card--placeholder" onclick="event.preventDefault();" aria-label="Tile quotation (coming soon)">
       <div class="fq-hub-card-image-wrap" aria-hidden="true">
         <img src="{{ asset('images/quotations/tile.webp') }}" alt="" class="fq-hub-card-image">

@@ -492,6 +492,30 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::delete('quotations/painting/{painting_quotation}', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'destroy'])
         ->name('quotations.painting.destroy');
 
+    // Flooring quotations (installation calculator + optional client material).
+    Route::get('quotations/flooring', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'index'])
+        ->name('quotations.flooring.index');
+    Route::get('quotations/flooring/create', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'create'])
+        ->name('quotations.flooring.create');
+    Route::get('quotations/flooring/price-configuration', [\App\Http\Controllers\Admin\FlooringDatabaseController::class, 'edit'])
+        ->name('quotations.flooring.price-configuration');
+    Route::post('quotations/flooring/database', [\App\Http\Controllers\Admin\FlooringDatabaseController::class, 'update'])
+        ->name('quotations.flooring.database.update');
+    Route::post('quotations/flooring', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'store'])
+        ->name('quotations.flooring.store');
+    Route::post('quotations/flooring/preview', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'preview'])
+        ->name('quotations.flooring.preview');
+    Route::get('quotations/flooring/{flooring_quotation}/edit', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'edit'])
+        ->name('quotations.flooring.edit');
+    Route::put('quotations/flooring/{flooring_quotation}', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'update'])
+        ->name('quotations.flooring.update');
+    Route::post('quotations/flooring/{flooring_quotation}/link', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'linkToProject'])
+        ->name('quotations.flooring.link');
+    Route::post('quotations/flooring/{flooring_quotation}/create-project', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.flooring.create-project');
+    Route::delete('quotations/flooring/{flooring_quotation}', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'destroy'])
+        ->name('quotations.flooring.destroy');
+
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
 
