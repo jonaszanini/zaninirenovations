@@ -361,7 +361,7 @@ class FlooringQuotationController extends Controller
                         try {
                             $response = \Illuminate\Support\Facades\Http::withoutVerifying()->withHeaders([
                                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                            ])->timeout(10)->get($url);
+                            ])->timeout(30)->get($url);
                             if ($response->successful() && str_starts_with((string) $response->header('Content-Type', ''), 'image/')) {
                                 \Illuminate\Support\Facades\Storage::disk('local')->put($filename, $response->body());
                                 $newLocalImages[] = $absolutePath;
