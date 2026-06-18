@@ -447,6 +447,7 @@
     (function () {
       var form = document.getElementById('fl-main-form');
       var previewUrl = @json(route('admin.quotations.flooring.preview'));
+      var initialPreview = @json($initialPreview ?? null);
       var tokenEl = document.querySelector('meta[name="csrf-token"]');
       var token = tokenEl ? tokenEl.getAttribute('content') : '';
       var debounceTimer = null;
@@ -503,8 +504,18 @@
         fetch(previewUrl, {
           method: 'POST',
           headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
-          body: fd
-        }).then(function (r) { return r.json(); }).then(renderPreview).catch(function () {});
+          body: fd,
+          credentials: 'same-origin'
+        }).then(function (r) {
+          if (!r.ok) {
+            return null;
+          }
+          return r.json();
+        }).then(function (data) {
+          if (data) {
+            renderPreview(data);
+          }
+        }).catch(function () {});
       }
 
       function renderPreview(data) {
@@ -583,7 +594,13 @@
         el.addEventListener('input', schedulePreview);
         el.addEventListener('change', schedulePreview);
       });
-      form.querySelector('input[name="include_material_details"]').addEventListener('change', schedulePreview);
+      var includeMaterialCb = form.querySelector('input[name="include_material_details"]');
+      if (includeMaterialCb) {
+        includeMaterialCb.addEventListener('change', schedulePreview);
+      }
+      if (initialPreview) {
+        renderPreview(initialPreview);
+      }
       schedulePreview();
     })();
   </script>

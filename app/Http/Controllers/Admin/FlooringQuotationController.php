@@ -283,6 +283,18 @@ class FlooringQuotationController extends Controller
                 ->first();
         }
 
+        $previewInputs = FlooringQuotationCalculator::defaultInputs();
+        if ($quotation && is_array($quotation->inputs)) {
+            foreach ($quotation->inputs as $key => $value) {
+                $previewInputs[$key] = $value;
+            }
+        }
+        $initialPreview = (new FlooringQuotationCalculator)->calculate(
+            $previewInputs,
+            $settings,
+            $flooringTypes
+        );
+
         return view('admin.quotations.flooring.create', [
             'quotation' => $quotation,
             'settings' => $settings,
@@ -290,6 +302,7 @@ class FlooringQuotationController extends Controller
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
             'linkedCpq' => $linkedCpq,
+            'initialPreview' => $initialPreview,
         ]);
     }
 
