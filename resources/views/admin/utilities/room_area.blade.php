@@ -50,8 +50,8 @@
                 <option value="{{ $cp->id }}">{{ $cp->name }}</option>
               @endforeach
             </select>
+            <a href="#" data-ra-linked-link class="util-ra-linked__go" hidden>Go to project</a>
           </div>
-          <a href="#" data-ra-linked-link class="util-ra-linked__name" hidden></a>
         </div>
         <div class="util-ra-project-bar__actions">
           <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-project-toggle>

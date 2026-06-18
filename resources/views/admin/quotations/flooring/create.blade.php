@@ -75,9 +75,9 @@
         <div class="admin-form-group">
           <label for="fl-client-name">Client name</label>
           <input type="text" class="admin-input" id="fl-client-name" name="client_name" maxlength="160"
-                 value="{{ old('client_name', $quotation->client_name ?? optional($linkProject)->client_name) }}" required>
+                 value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
         </div>
-        @include('admin.partials.quotation_work_description_ai', ['quotationType' => 'flooring', 'workDescription' => old('work_description', $quotation->work_description ?? '')])
+        @include('admin.partials.quotation_work_description_ai', ['quotationType' => 'flooring', 'workDescription' => old('work_description', $isEdit ? ($quotation->work_description ?? '') : '')])
       </div>
 
       <div class="admin-card fl-step-card">

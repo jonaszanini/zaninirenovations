@@ -2726,7 +2726,6 @@
     }
     show(els.linked, true);
     if (project.client_project_id && project.client_project_name) {
-      els.linkedLink.textContent = project.client_project_name;
       els.linkedLink.href = '/admin/client-projects/' + project.client_project_id;
       els.linkedLink.removeAttribute('hidden');
     } else {
