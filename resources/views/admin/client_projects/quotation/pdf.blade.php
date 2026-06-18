@@ -509,7 +509,25 @@
         @if ($flooringMaterial['cost_per_sqft'] > 0)
           <tr>
             <td class="label">Material cost</td>
-            <td>{{ $fmt($flooringMaterial['cost_per_sqft']) }} / sq ft (pre-HST)</td>
+            <td>{{ $fmt($flooringMaterial['cost_per_sqft']) }} / sq ft (before tax)</td>
+          </tr>
+        @endif
+        @if (($flooringMaterial['waste_percent'] ?? 0) > 0)
+          <tr>
+            <td class="label">Waste allowance</td>
+            <td>{{ number_format($flooringMaterial['waste_percent'], 1) }}%</td>
+          </tr>
+        @endif
+        @if (($flooringMaterial['delivery_fee'] ?? 0) > 0)
+          <tr>
+            <td class="label">Delivery</td>
+            <td>{{ $fmt($flooringMaterial['delivery_fee']) }} (before tax)</td>
+          </tr>
+        @endif
+        @if (($flooringMaterial['total_pre_tax'] ?? 0) > 0)
+          <tr>
+            <td class="label">Estimated material total</td>
+            <td><strong>{{ $fmt($flooringMaterial['total_pre_tax']) }} (before tax)</strong></td>
           </tr>
         @endif
         @if ($flooringMaterial['url'] !== '')

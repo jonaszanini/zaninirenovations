@@ -25,11 +25,12 @@ class FlooringQuotationCalculator
             'install_shoe_moulding' => false,
             'shoe_moulding_linear_ft' => 0,
             'caulk_paint_shoe_moulding' => false,
-            'caulk_paint_linear_ft' => 0,
             'closet_doors' => false,
             'closet_door_qty' => 0,
             'include_material_details' => false,
             'material_cost_per_sqft' => 0,
+            'material_waste_percent' => 5,
+            'material_delivery_fee' => 60,
             'material_name' => '',
             'material_color' => '',
             'material_url' => '',
@@ -57,12 +58,11 @@ class FlooringQuotationCalculator
             $hints[] = 'Select a flooring type.';
         }
 
-        if (! empty($inputs['install_shoe_moulding']) && max(0, (float) ($inputs['shoe_moulding_linear_ft'] ?? 0)) <= 0) {
-            $hints[] = 'Enter linear feet for shoe moulding installation.';
-        }
-
-        if (! empty($inputs['caulk_paint_shoe_moulding']) && max(0, (float) ($inputs['caulk_paint_linear_ft'] ?? 0)) <= 0) {
-            $hints[] = 'Enter linear feet for caulking and painting shoe moulding.';
+        if (
+            (! empty($inputs['install_shoe_moulding']) || ! empty($inputs['caulk_paint_shoe_moulding']))
+            && $this->shoeMouldingLinearFeet($inputs) <= 0
+        ) {
+            $hints[] = 'Enter shoe moulding linear feet in Core measurements when install or caulk & paint is selected.';
         }
 
         if (! empty($inputs['closet_doors']) && max(0, (int) ($inputs['closet_door_qty'] ?? 0)) <= 0) {
@@ -139,7 +139,7 @@ class FlooringQuotationCalculator
         }
 
         if (! empty($inputs['install_shoe_moulding'])) {
-            $lf = round(max(0, (float) ($inputs['shoe_moulding_linear_ft'] ?? 0)), 2);
+            $lf = $this->shoeMouldingLinearFeet($inputs);
             $rate = max(0, (float) $settings->install_shoe_moulding_rate);
             $amount = round($lf * $rate, 2);
             $laborBreakdown[] = [
@@ -153,7 +153,7 @@ class FlooringQuotationCalculator
         }
 
         if (! empty($inputs['caulk_paint_shoe_moulding'])) {
-            $lf = round(max(0, (float) ($inputs['caulk_paint_linear_ft'] ?? 0)), 2);
+            $lf = $this->shoeMouldingLinearFeet($inputs);
             $rate = max(0, (float) $settings->caulk_paint_shoe_moulding_rate);
             $amount = round($lf * $rate, 2);
             $laborBreakdown[] = [
@@ -184,10 +184,15 @@ class FlooringQuotationCalculator
 
         $materialBreakdown = [];
         $materialsTotal = 0.0;
+        $materialSelection = null;
         if ($sqft > 0 && ! empty($inputs['include_material_details'])) {
             $materialRate = max(0, (float) ($inputs['material_cost_per_sqft'] ?? 0));
+            $wastePercent = max(0, (float) ($inputs['material_waste_percent'] ?? 5));
+            $deliveryFee = round(max(0, (float) ($inputs['material_delivery_fee'] ?? 60)), 2);
             if ($materialRate > 0) {
-                $materialAmount = round($sqft * $materialRate, 2);
+                $baseAmount = round($sqft * $materialRate, 2);
+                $wasteAmount = round($baseAmount * ($wastePercent / 100), 2);
+                $materialAmount = round($baseAmount + $wasteAmount + $deliveryFee, 2);
                 $materialName = trim((string) ($inputs['material_name'] ?? ''));
                 $label = $materialName !== '' ? "Client material — {$materialName}" : 'Client-selected flooring material';
                 $materialBreakdown[] = [
@@ -195,9 +200,36 @@ class FlooringQuotationCalculator
                     'section' => 'materials',
                     'label' => $label,
                     'detail' => number_format($sqft, 0).' sq ft × '.ClientProject::formatMoney($materialRate).'/sq ft',
-                    'amount' => $materialAmount,
+                    'amount' => $baseAmount,
                 ];
+                if ($wasteAmount > 0) {
+                    $materialBreakdown[] = [
+                        'key' => 'client_material_waste',
+                        'section' => 'materials',
+                        'label' => 'Material waste allowance',
+                        'detail' => number_format($wastePercent, 1).'% of material subtotal',
+                        'amount' => $wasteAmount,
+                    ];
+                }
+                if ($deliveryFee > 0) {
+                    $materialBreakdown[] = [
+                        'key' => 'client_material_delivery',
+                        'section' => 'materials',
+                        'label' => 'Material delivery',
+                        'detail' => 'Flat delivery fee',
+                        'amount' => $deliveryFee,
+                    ];
+                }
                 $materialsTotal = $materialAmount;
+                $materialSelection = [
+                    'square_footage' => $sqft,
+                    'cost_per_sqft' => $materialRate,
+                    'waste_percent' => $wastePercent,
+                    'base_amount' => $baseAmount,
+                    'waste_amount' => $wasteAmount,
+                    'delivery_fee' => $deliveryFee,
+                    'total_pre_tax' => $materialAmount,
+                ];
             }
         }
 
@@ -213,6 +245,7 @@ class FlooringQuotationCalculator
                 'installation_rate_per_sqft' => $installRate,
             ],
             'breakdown' => array_merge($laborBreakdown, $materialBreakdown),
+            'material_selection' => $materialSelection,
             'summary' => [
                 'labor_pre_hst' => $laborTotal,
                 'materials_pre_hst' => $materialsTotal,
@@ -222,5 +255,18 @@ class FlooringQuotationCalculator
                 'final_quote_total' => $grandTotal,
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    private function shoeMouldingLinearFeet(array $inputs): float
+    {
+        $lf = round(max(0, (float) ($inputs['shoe_moulding_linear_ft'] ?? 0)), 2);
+        if ($lf <= 0) {
+            $lf = round(max(0, (float) ($inputs['caulk_paint_linear_ft'] ?? 0)), 2);
+        }
+
+        return $lf;
     }
 }

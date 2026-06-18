@@ -33,11 +33,12 @@ class FlooringQuotationCalculatorTest extends TestCase
             'install_shoe_moulding' => false,
             'shoe_moulding_linear_ft' => 0,
             'caulk_paint_shoe_moulding' => false,
-            'caulk_paint_linear_ft' => 0,
             'closet_doors' => false,
             'closet_door_qty' => 0,
             'include_material_details' => true,
             'material_cost_per_sqft' => 2.50,
+            'material_waste_percent' => 5,
+            'material_delivery_fee' => 60,
             'material_name' => 'Test Brand',
             'material_color' => 'Oak',
             'material_url' => 'https://example.com/floor',
@@ -47,9 +48,10 @@ class FlooringQuotationCalculatorTest extends TestCase
         $result = $calc->calculate($inputs, $settings, collect([$type]));
 
         $this->assertSame(1150.0, $result['summary']['labor_pre_hst']);
-        $this->assertSame(500.0, $result['summary']['materials_pre_hst']);
-        $this->assertSame(1650.0, $result['summary']['subtotal_pre_hst']);
-        $this->assertSame(214.5, $result['summary']['hst']);
-        $this->assertSame(1864.5, $result['summary']['grand_total']);
+        $this->assertSame(585.0, $result['summary']['materials_pre_hst']);
+        $this->assertSame(1735.0, $result['summary']['subtotal_pre_hst']);
+        $this->assertSame(225.55, $result['summary']['hst']);
+        $this->assertSame(1960.55, $result['summary']['grand_total']);
+        $this->assertSame(585.0, $result['material_selection']['total_pre_tax']);
     }
 }

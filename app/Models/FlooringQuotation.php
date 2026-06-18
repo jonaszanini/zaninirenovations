@@ -97,7 +97,16 @@ class FlooringQuotation extends Model
     }
 
     /**
-     * @return array{name: string, color: string, url: string, cost_per_sqft: float}|null
+     * @return array{
+     *   name: string,
+     *   color: string,
+     *   url: string,
+     *   cost_per_sqft: float,
+     *   waste_percent: float,
+     *   delivery_fee: float,
+     *   total_pre_tax: float,
+     *   square_footage: float
+     * }|null
      */
     public function materialSelectionForPdf(): ?array
     {
@@ -110,6 +119,12 @@ class FlooringQuotation extends Model
         $color = trim((string) ($inputs['material_color'] ?? ''));
         $url = trim((string) ($inputs['material_url'] ?? ''));
         $cost = round(max(0, (float) ($inputs['material_cost_per_sqft'] ?? 0)), 4);
+        $wastePercent = round(max(0, (float) ($inputs['material_waste_percent'] ?? 5)), 2);
+        $deliveryFee = round(max(0, (float) ($inputs['material_delivery_fee'] ?? 60)), 2);
+        $sqft = round(max(0, (float) ($inputs['square_footage'] ?? 0)), 2);
+        $baseAmount = round($sqft * $cost, 2);
+        $wasteAmount = round($baseAmount * ($wastePercent / 100), 2);
+        $totalPreTax = round($baseAmount + $wasteAmount + $deliveryFee, 2);
 
         if ($name === '' && $color === '' && $url === '' && $cost <= 0) {
             return null;
@@ -120,6 +135,10 @@ class FlooringQuotation extends Model
             'color' => $color,
             'url' => $url,
             'cost_per_sqft' => $cost,
+            'waste_percent' => $wastePercent,
+            'delivery_fee' => $deliveryFee,
+            'total_pre_tax' => $totalPreTax,
+            'square_footage' => $sqft,
         ];
     }
 

@@ -182,12 +182,24 @@ class FlooringQuotationController extends Controller
 
         $this->normalisePhoneOnRequest($request);
 
+        if (! filled(trim((string) $request->input('fp_client_address', '')))) {
+            $request->merge([
+                'fp_client_address' => null,
+                'fp_client_address_place_id' => null,
+                'fp_client_address_latitude' => null,
+                'fp_client_address_longitude' => null,
+            ]);
+        }
+
         $data = $request->validate([
             'fp_project_name' => ['nullable', 'string', 'max:255'],
             'fp_client_name' => ['required', 'string', 'max:255'],
             'fp_client_email' => ['nullable', 'email', 'max:255'],
             'fp_client_phone' => ['nullable', 'digits:10'],
             'fp_client_address' => ['nullable', 'string', 'max:500'],
+            'fp_client_address_place_id' => ['nullable', 'string', 'max:255'],
+            'fp_client_address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'fp_client_address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ], [
             'fp_client_phone.digits' => 'Phone number must have exactly 10 digits.',
         ]);
@@ -206,6 +218,9 @@ class FlooringQuotationController extends Controller
                 'client_email' => $data['fp_client_email'] ?: null,
                 'client_phone' => $data['fp_client_phone'] ?: null,
                 'client_address' => $data['fp_client_address'] ?: null,
+                'client_address_place_id' => $data['fp_client_address_place_id'] ?: null,
+                'client_address_latitude' => $data['fp_client_address_latitude'] ?? null,
+                'client_address_longitude' => $data['fp_client_address_longitude'] ?? null,
                 'billing_type' => ClientProject::BILLING_FIXED,
                 'hourly_rate' => null,
                 'status' => ClientProject::STATUS_VISIT_SCHEDULED,
@@ -331,9 +346,10 @@ class FlooringQuotationController extends Controller
                 'flooring_type_id' => ['nullable', 'integer', 'exists:flooring_types,id'],
                 'square_footage' => ['nullable', 'numeric', 'min:0'],
                 'shoe_moulding_linear_ft' => ['nullable', 'numeric', 'min:0'],
-                'caulk_paint_linear_ft' => ['nullable', 'numeric', 'min:0'],
                 'closet_door_qty' => ['nullable', 'integer', 'min:0'],
                 'material_cost_per_sqft' => ['nullable', 'numeric', 'min:0'],
+                'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+                'material_delivery_fee' => ['nullable', 'numeric', 'min:0'],
                 'material_name' => ['nullable', 'string', 'max:160'],
                 'material_color' => ['nullable', 'string', 'max:120'],
                 'material_url' => ['nullable', 'url', 'max:500'],
@@ -343,9 +359,10 @@ class FlooringQuotationController extends Controller
                 'flooring_type_id' => ['required', 'integer', 'exists:flooring_types,id'],
                 'square_footage' => ['required', 'numeric', 'min:0.01'],
                 'shoe_moulding_linear_ft' => ['nullable', 'numeric', 'min:0'],
-                'caulk_paint_linear_ft' => ['nullable', 'numeric', 'min:0'],
                 'closet_door_qty' => ['nullable', 'integer', 'min:0'],
                 'material_cost_per_sqft' => ['nullable', 'numeric', 'min:0'],
+                'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+                'material_delivery_fee' => ['nullable', 'numeric', 'min:0'],
                 'material_name' => ['nullable', 'string', 'max:160'],
                 'material_color' => ['nullable', 'string', 'max:120'],
                 'material_url' => ['nullable', 'url', 'max:500'],
@@ -360,11 +377,12 @@ class FlooringQuotationController extends Controller
             'install_shoe_moulding' => $request->boolean('install_shoe_moulding'),
             'shoe_moulding_linear_ft' => round(max(0, (float) ($data['shoe_moulding_linear_ft'] ?? 0)), 2),
             'caulk_paint_shoe_moulding' => $request->boolean('caulk_paint_shoe_moulding'),
-            'caulk_paint_linear_ft' => round(max(0, (float) ($data['caulk_paint_linear_ft'] ?? 0)), 2),
             'closet_doors' => $request->boolean('closet_doors'),
             'closet_door_qty' => max(0, (int) ($data['closet_door_qty'] ?? 0)),
             'include_material_details' => $request->boolean('include_material_details'),
             'material_cost_per_sqft' => round(max(0, (float) ($data['material_cost_per_sqft'] ?? 0)), 4),
+            'material_waste_percent' => round(max(0, (float) ($data['material_waste_percent'] ?? 5)), 2),
+            'material_delivery_fee' => round(max(0, (float) ($data['material_delivery_fee'] ?? 60)), 2),
             'material_name' => trim((string) ($data['material_name'] ?? '')),
             'material_color' => trim((string) ($data['material_color'] ?? '')),
             'material_url' => trim((string) ($data['material_url'] ?? '')),

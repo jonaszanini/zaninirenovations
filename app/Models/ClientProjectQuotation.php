@@ -831,7 +831,16 @@ class ClientProjectQuotation extends Model
     /**
      * Client material selection block for flooring PDFs.
      *
-     * @return array{name: string, color: string, url: string, cost_per_sqft: float}|null
+     * @return array{
+     *   name: string,
+     *   color: string,
+     *   url: string,
+     *   cost_per_sqft: float,
+     *   waste_percent: float,
+     *   delivery_fee: float,
+     *   total_pre_tax: float,
+     *   square_footage: float
+     * }|null
      */
     public function flooringMaterialSelectionForPdf(): ?array
     {
