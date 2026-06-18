@@ -503,6 +503,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.flooring.create');
     Route::get('quotations/flooring/price-configuration', [\App\Http\Controllers\Admin\FlooringDatabaseController::class, 'edit'])
         ->name('quotations.flooring.price-configuration');
+    Route::post('quotations/flooring-calculate', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'preview'])
+        ->name('quotations.flooring.calculate');
     Route::post('quotations/flooring/database', [\App\Http\Controllers\Admin\FlooringDatabaseController::class, 'update'])
         ->name('quotations.flooring.database.update');
     Route::post('quotations/flooring', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'store'])
@@ -511,6 +513,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.flooring.preview');
     Route::get('quotations/flooring/{flooring_quotation}/edit', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'edit'])
         ->name('quotations.flooring.edit');
+    Route::post('quotations/flooring/{flooring_quotation}/calculate', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'preview'])
+        ->name('quotations.flooring.calculate-existing');
     Route::put('quotations/flooring/{flooring_quotation}', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'update'])
         ->name('quotations.flooring.update');
     Route::post('quotations/flooring/{flooring_quotation}/link', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'linkToProject'])

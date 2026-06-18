@@ -124,7 +124,7 @@ class FlooringQuotationController extends Controller
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
 
-    public function preview(Request $request)
+    public function preview(Request $request, ?FlooringQuotation $flooring_quotation = null)
     {
         $raw = $this->gatherInputsFromRequest($request, true);
         $calc = (new FlooringQuotationCalculator)->calculate($raw);

@@ -446,7 +446,11 @@
   <script>
     (function () {
       var form = document.getElementById('fl-main-form');
-      var previewUrl = @json(route('admin.quotations.flooring.preview'));
+      var previewUrl = @json(
+        $isEdit && $quotation
+          ? route('admin.quotations.flooring.calculate-existing', $quotation)
+          : route('admin.quotations.flooring.calculate')
+      );
       var initialPreview = @json($initialPreview ?? null);
       var tokenEl = document.querySelector('meta[name="csrf-token"]');
       var token = tokenEl ? tokenEl.getAttribute('content') : '';
