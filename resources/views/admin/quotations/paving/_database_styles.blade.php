@@ -73,6 +73,9 @@
     align-items: center;
     padding: 0.65rem 1.1rem;
   }
+  .pq-db-stone-grid > * {
+    min-width: 0;
+  }
   .pq-db-stone-head {
     background: var(--admin-surface-hover);
     border-bottom: 1px solid var(--admin-border);
