@@ -678,6 +678,46 @@
     return p;
   }
 
+  /** Move one or more selected corners; group drags keep relative spacing (uniform delta). */
+  function applyVertexGroupDrag(anchorIndex, rawPos, finalize) {
+    var origins = state.vertexDragOrigins;
+    if (!origins || state.selectedVertexIndices.length <= 1) {
+      var single = snapVertexPosition(anchorIndex, rawPos);
+      state.vertices[anchorIndex] = { x: single.x, y: single.y };
+      return single;
+    }
+
+    var anchorOrig = origins[anchorIndex];
+    var raw = clampToCanvas(rawPos);
+    var dx = raw.x - anchorOrig.x;
+    var dy = raw.y - anchorOrig.y;
+
+    if (finalize && pixelsPerFoot() && !state.calibrating && !state.rulerMode) {
+      var step = gridStepPx();
+      dx = Math.round(dx / step) * step;
+      dy = Math.round(dy / step) * step;
+    } else if (finalize && state.shiftHeld && pixelsPerFoot() > 0) {
+      var snapStep = gridStepPx();
+      dx = Math.round(dx / snapStep) * snapStep;
+      dy = Math.round(dy / snapStep) * snapStep;
+    }
+
+    state.selectedVertexIndices.forEach(function (i) {
+      var o = origins[i];
+      state.vertices[i] = clampToCanvas({ x: o.x + dx, y: o.y + dy });
+    });
+    return state.vertices[anchorIndex];
+  }
+
+  function syncSelectedVertexCircles() {
+    var layer = state.layers.vertices;
+    if (!layer) return;
+    var circles = layer.getChildren();
+    state.selectedVertexIndices.forEach(function (i) {
+      if (circles[i]) circles[i].position(state.vertices[i]);
+    });
+  }
+
   function deleteSelectedWall() {
     if (state.selectedWallIndex === null) return;
     var n = state.vertices.length;
@@ -1900,26 +1940,12 @@
         });
         circle.on('dragmove', function (e) {
           e.cancelBubble = true;
-          var pos = snapVertexPosition(vertexIndex, { x: circle.x(), y: circle.y() });
-          var orig = state.vertexDragOrigins && state.vertexDragOrigins[vertexIndex];
-          if (!orig) {
-            circle.position(pos);
-            state.vertices[vertexIndex] = { x: pos.x, y: pos.y };
+          var raw = { x: circle.x(), y: circle.y() };
+          applyVertexGroupDrag(vertexIndex, raw, false);
+          if (state.selectedVertexIndices.length > 1) {
+            syncSelectedVertexCircles();
           } else {
-            var dx = pos.x - orig.x;
-            var dy = pos.y - orig.y;
-            state.selectedVertexIndices.forEach(function (i) {
-              var o = state.vertexDragOrigins[i];
-              var p = snapVertexPosition(i, { x: o.x + dx, y: o.y + dy });
-              state.vertices[i] = { x: p.x, y: p.y };
-            });
-            var layer = state.layers.vertices;
-            if (layer) {
-              var circles = layer.getChildren();
-              state.selectedVertexIndices.forEach(function (i) {
-                if (circles[i]) circles[i].position(state.vertices[i]);
-              });
-            }
+            circle.position(state.vertices[vertexIndex]);
           }
           redrawPolygonLine();
           redrawLabels();
@@ -1934,28 +1960,18 @@
           e.cancelBubble = true;
           state.draggingVertex = false;
           updateCanvasCursor();
-          var pos = snapVertexPosition(vertexIndex, { x: circle.x(), y: circle.y() });
+          var raw = { x: circle.x(), y: circle.y() };
           var dragFrom = state.vertexDragFrom;
           var origins = state.vertexDragOrigins;
+          var multi = origins && state.selectedVertexIndices.length > 1;
           state.vertexDragFrom = null;
           state.vertexDragOrigins = null;
-          if (origins && state.selectedVertexIndices.length > 1) {
-            var anchorOrig = origins[vertexIndex];
-            var dx = pos.x - anchorOrig.x;
-            var dy = pos.y - anchorOrig.y;
-            state.selectedVertexIndices.forEach(function (i) {
-              var o = origins[i];
-              var p = snapVertexPosition(i, { x: o.x + dx, y: o.y + dy });
-              state.vertices[i] = { x: p.x, y: p.y };
-            });
-          } else {
-            state.vertices[vertexIndex] = pos;
-          }
+          applyVertexGroupDrag(vertexIndex, raw, true);
           if (!isValidShape(state.vertices, state.closed)) {
             var snap = state.undoStack.length ? state.undoStack[state.undoStack.length - 1] : null;
             if (snap) restoreUndoSnapshot(snap);
             setFeedback('That corner position would make the shape cross itself.', true);
-          } else if (dragFrom && dist(dragFrom, pos) < 1e-6 && (!origins || state.selectedVertexIndices.length <= 1)) {
+          } else if (dragFrom && dist(dragFrom, state.vertices[vertexIndex]) < 1e-6 && !multi) {
             discardLastUndoSnapshot();
           }
           redrawAll();
