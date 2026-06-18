@@ -68,7 +68,7 @@
       minmax(100px, 0.8fr)
       minmax(75px, 0.6fr)
       minmax(75px, 0.6fr)
-      auto;
+      140px;
     gap: 8px 10px;
     align-items: center;
     padding: 0.65rem 1.1rem;
