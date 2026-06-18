@@ -505,6 +505,7 @@
 
       function runPreview() {
         var fd = new FormData(form);
+        fd.delete('_method');
         fetch(previewUrl, {
           method: 'POST',
           headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
