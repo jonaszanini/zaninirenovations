@@ -139,7 +139,14 @@ class FlooringQuotation extends Model
             'delivery_fee' => $deliveryFee,
             'total_pre_tax' => $totalPreTax,
             'square_footage' => $sqft,
-            'local_images' => $inputs['material_local_images'] ?? [],
+            'local_images' => !empty($inputs['material_local_images']) 
+                ? $inputs['material_local_images'] 
+                : array_values(array_filter([
+                    trim((string) ($inputs['material_image_url_1'] ?? '')),
+                    trim((string) ($inputs['material_image_url_2'] ?? '')),
+                    trim((string) ($inputs['material_image_url_3'] ?? '')),
+                    trim((string) ($inputs['material_image_url_4'] ?? '')),
+                ])),
         ];
     }
 

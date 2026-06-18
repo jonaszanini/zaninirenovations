@@ -359,13 +359,18 @@ class FlooringQuotationController extends Controller
                         $newLocalImages[] = $absolutePath;
                     } else {
                         try {
-                            $response = \Illuminate\Support\Facades\Http::timeout(5)->get($url);
+                            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                            ])->timeout(10)->get($url);
                             if ($response->successful() && str_starts_with((string) $response->header('Content-Type', ''), 'image/')) {
                                 \Illuminate\Support\Facades\Storage::disk('local')->put($filename, $response->body());
                                 $newLocalImages[] = $absolutePath;
+                            } else {
+                                $newLocalImages[] = $url;
                             }
                         } catch (\Exception $e) {
-                            // silently skip
+                            \Illuminate\Support\Facades\Log::warning('Image download failed, falling back to remote URL', ['url' => $url, 'error' => $e->getMessage()]);
+                            $newLocalImages[] = $url;
                         }
                     }
                 }
