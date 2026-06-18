@@ -666,16 +666,10 @@
   }
 
   function snapVertexPosition(idx, raw) {
-    var p;
     if (state.shiftHeld) {
-      p = snapVertexPositionShift(idx, raw);
-    } else {
-      p = clampToCanvas(raw);
+      return snapVertexPositionShift(idx, raw);
     }
-    if (pixelsPerFoot() && !state.calibrating && !state.rulerMode) {
-      p = snapToFootGrid(p);
-    }
-    return p;
+    return clampToCanvas(raw);
   }
 
   /** Move one or more selected corners; group drags keep relative spacing (uniform delta). */
@@ -1262,7 +1256,6 @@
     var uy = (end.y - start.y) / currentPx;
     var oldEnd = { x: end.x, y: end.y };
     var newEnd = { x: start.x + ux * newPx, y: start.y + uy * newPx };
-    if (pixelsPerFoot()) newEnd = snapToFootGrid(newEnd);
 
     pushUndoSnapshot();
     state.vertices[endIdx] = newEnd;
@@ -1286,23 +1279,6 @@
   /** Snap a length in feet to the nearest 1/16" (matches construction precision). */
   function roundToSixteenthFoot(lenFt) {
     return Math.round(lenFt * 16) / 16;
-  }
-
-  /** Snap a canvas point to the nearest foot grid intersection when scale is set. */
-  function snapToFootGrid(p) {
-    var step = gridStepPx();
-    if (step <= 0) return p;
-    return {
-      x: Math.round(p.x / step) * step,
-      y: Math.round(p.y / step) * step
-    };
-  }
-
-  function snapVerticesToFootGrid() {
-    if (!pixelsPerFoot()) return;
-    state.vertices = state.vertices.map(function (v) {
-      return snapToFootGrid(v);
-    });
   }
 
   function verticesInFeet(vertices) {
@@ -2467,7 +2443,7 @@
       }
     }
     pushUndoSnapshot();
-    state.vertices.push(clampToCanvas(pixelsPerFoot() ? snapToFootGrid(point) : point));
+    state.vertices.push(clampToCanvas(point));
     redrawAll();
   }
 
@@ -2506,7 +2482,6 @@
     }
     pushUndoSnapshot();
     state.closed = true;
-    snapVerticesToFootGrid();
     redrawAll();
   }
 
