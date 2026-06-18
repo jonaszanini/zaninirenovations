@@ -77,7 +77,15 @@
           <input type="text" class="admin-input" id="fl-client-name" name="client_name" maxlength="160"
                  value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
         </div>
-        @include('admin.partials.quotation_work_description_ai', ['quotationType' => 'flooring', 'workDescription' => old('work_description', $isEdit ? ($quotation->work_description ?? '') : '')])
+        <div class="admin-form-group">
+          <label for="fl-work-description">Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
+          <textarea class="admin-input" id="fl-work-description" name="work_description" rows="5" maxlength="5000">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+          @include('admin.partials.quotation_work_description_ai', [
+              'workDescriptionTextareaId' => 'fl-work-description',
+              'aiContextFormId' => 'fl-main-form',
+              'aiQuotationType' => 'flooring',
+          ])
+        </div>
       </div>
 
       <div class="admin-card fl-step-card">
@@ -200,14 +208,20 @@
         </div>
       </div>
 
-      @unless ($isEdit && $quotation->isLinked())
-        @include('admin.quotations._link_project_picker', [
-          'linkableProjects' => $linkableProjects,
-          'linkProject' => $linkProject,
-          'linkRoute' => $isEdit ? route('admin.quotations.flooring.link', $quotation) : null,
-          'createProjectRoute' => $isEdit ? route('admin.quotations.flooring.create-project', $quotation) : null,
-        ])
-      @endunless
+      @if (! $isEdit)
+        <div class="admin-card fq-link-project-card">
+          <h4 style="margin:0 0 8px;">Link to project</h4>
+          <p class="admin-form-help" style="margin:0;">
+            <strong>Save the quotation first</strong> (use <em>Save quotation</em>, not draft) with a total greater than zero.
+            Then this page will show options to link an existing project or create a new one.
+            @if ($linkProject)
+              <span class="cp-form-help-flush" style="display:block;margin-top:8px;">
+                You opened this from <strong>{{ $linkProject->name }}</strong> — a published save will attach automatically when possible.
+              </span>
+            @endif
+          </p>
+        </div>
+      @endif
     </div>
 
     <aside class="pq-sticky">
@@ -229,6 +243,66 @@
       </div>
     </aside>
   </form>
+
+  @if ($isEdit && ! $quotation->isLinked())
+    <div class="admin-card fq-link-project-card" style="margin-top:16px;">
+      <h4 style="margin:0 0 8px;">Link to project</h4>
+      <p class="admin-form-help cp-form-help-flush" style="margin:0 0 12px;">
+        Add this flooring estimate as a line on the project <strong>Quotation</strong> tab (pre-tax labour + materials — HST is added on the client PDF).
+      </p>
+      <div class="fq-link-grid">
+        <div>
+          <h5>Existing project</h5>
+          <form method="post" action="{{ route('admin.quotations.flooring.link', $quotation) }}">
+            @csrf
+            @if ($linkableProjects->isNotEmpty())
+              <div class="fq-link-existing-row">
+                @include('admin.quotations._link_project_picker', ['projects' => $linkableProjects])
+                <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
+              </div>
+            @else
+              <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below.</p>
+            @endif
+            <div class="admin-form-group cp-form-group-spaced">
+              <label>Line description (optional)</label>
+              <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
+            </div>
+          </form>
+        </div>
+        <div class="fq-link-col fq-link-col--stack">
+          <h5>Create project &amp; link</h5>
+          <form method="post" action="{{ route('admin.quotations.flooring.create-project', $quotation) }}" class="fq-create-project-form">
+            @csrf
+            <div class="admin-form-group">
+              <label>Project name</label>
+              <input type="text" name="fp_project_name" class="admin-input" maxlength="255" placeholder="Defaults to client + Flooring">
+            </div>
+            <div class="admin-form-group">
+              <label>Client name <span class="cp-required">*</span></label>
+              <input type="text" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
+            </div>
+            <div class="admin-form-group">
+              <label>Email</label>
+              <input type="email" name="fp_client_email" class="admin-input" maxlength="255">
+            </div>
+            <div class="admin-form-group">
+              <label>Phone (10 digits)</label>
+              <input type="text" name="fp_client_phone" class="admin-input" maxlength="14" placeholder="(613) 555-0100">
+            </div>
+            <div class="admin-form-group">
+              <label>Address</label>
+              <input type="text" name="fp_client_address" class="admin-input" maxlength="500">
+            </div>
+            <div class="admin-form-group">
+              <label>Line description (optional)</label>
+              <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
+            </div>
+            <button type="submit" class="admin-btn admin-btn--primary">Create project &amp; link</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  @endif
 
   <script>
     (function () {
