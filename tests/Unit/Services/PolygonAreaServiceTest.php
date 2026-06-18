@@ -67,6 +67,21 @@ class PolygonAreaServiceTest extends TestCase
         $this->assertSame(50.0, $this->service->verticesToSquareFeet($vertices, 10.0));
     }
 
+    public function test_vertices_to_square_feet_snaps_near_integer_feet_to_exact_area(): void
+    {
+        // 12 ft sides with slight pixel drift (~0.15%) should still yield 144 sq ft.
+        $ppf = 100.0;
+        $sidePx = 12 * $ppf + 1.8;
+        $vertices = [
+            ['x' => 0, 'y' => 0],
+            ['x' => $sidePx, 'y' => 0],
+            ['x' => $sidePx, 'y' => $sidePx],
+            ['x' => 0, 'y' => $sidePx],
+        ];
+
+        $this->assertSame(144.0, $this->service->verticesToSquareFeet($vertices, $ppf));
+    }
+
     public function test_vertices_to_square_feet_throws_on_invalid_scale(): void
     {
         $this->expectException(InvalidArgumentException::class);

@@ -76,10 +76,17 @@ class PolygonAreaService
             throw new InvalidArgumentException('Polygon is self-intersecting.');
         }
 
-        $pixelArea = $this->shoelaceArea($pixelVertices);
-        $feetPerPixel = 1 / $pixelsPerFoot;
+        $footVertices = array_map(fn (array $vertex) => [
+            'x' => $this->roundToSixteenthFoot((float) $vertex['x'] / $pixelsPerFoot),
+            'y' => $this->roundToSixteenthFoot((float) $vertex['y'] / $pixelsPerFoot),
+        ], $pixelVertices);
 
-        return round($pixelArea * $feetPerPixel * $feetPerPixel, 2);
+        return round($this->shoelaceArea($footVertices), 2);
+    }
+
+    private function roundToSixteenthFoot(float $feet): float
+    {
+        return round($feet * 16) / 16;
     }
 
     /**

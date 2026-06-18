@@ -114,15 +114,18 @@
     bgNaturalH: 0,
     lastUiScale: 1,
     selectedWallIndex: null,
-    selectedVertexIndex: null,
+    selectedVertexIndices: [],
     draggingVertex: false,
     draggingWall: false,
     wallDragIndex: null,
     wallDragPointerStart: null,
     wallDragOrigA: null,
     wallDragOrigB: null,
+    wallPointerDown: null,
+    wallClickTimer: null,
     didWallDrag: false,
     vertexDragFrom: null,
+    vertexDragOrigins: null,
     undoStack: [],
     draggingRuler: false,
     editingRoomId: null,
@@ -466,9 +469,12 @@
     state.wallDragOrigB = null;
     state.didWallDrag = false;
     state.vertexDragFrom = null;
-    state.selectedVertexIndex = null;
+    state.vertexDragOrigins = null;
+    state.selectedVertexIndices = [];
     clearWallSelection();
     clearVertexSelection();
+    cancelPendingWallClick();
+    state.wallPointerDown = null;
   }
 
   function pixelsPerFoot() {
@@ -487,9 +493,9 @@
     var ppf = pixelsPerFoot();
     if (!ppf || vertices.length < 3) return null;
     if (!isSimplePolygon(vertices)) return null;
-    var pxArea = shoelaceArea(vertices);
-    var fpp = 1 / ppf;
-    return Math.round(pxArea * fpp * fpp * 100) / 100;
+    var footVerts = verticesInFeet(vertices);
+    if (!footVerts) return null;
+    return Math.round(shoelaceArea(footVerts) * 100) / 100;
   }
 
   function dist(a, b) {
@@ -660,10 +666,16 @@
   }
 
   function snapVertexPosition(idx, raw) {
+    var p;
     if (state.shiftHeld) {
-      return snapVertexPositionShift(idx, raw);
+      p = snapVertexPositionShift(idx, raw);
+    } else {
+      p = clampToCanvas(raw);
     }
-    return clampToCanvas(raw);
+    if (pixelsPerFoot() && !state.calibrating && !state.rulerMode) {
+      p = snapToFootGrid(p);
+    }
+    return p;
   }
 
   function deleteSelectedWall() {
@@ -689,9 +701,21 @@
     setFeedback('Wall removed.', false);
   }
 
+  function isVertexSelected(vertexIndex) {
+    return state.selectedVertexIndices.indexOf(vertexIndex) >= 0;
+  }
+
+  function cancelPendingWallClick() {
+    if (state.wallClickTimer) {
+      clearTimeout(state.wallClickTimer);
+      state.wallClickTimer = null;
+    }
+  }
+
   function clearVertexSelection() {
-    if (state.selectedVertexIndex === null && els.vertexEdit && els.vertexEdit.hasAttribute('hidden')) return;
-    state.selectedVertexIndex = null;
+    if (state.selectedVertexIndices.length === 0 && els.vertexEdit && els.vertexEdit.hasAttribute('hidden')) return;
+    state.selectedVertexIndices = [];
+    state.vertexDragOrigins = null;
     show(els.vertexEdit, false);
     if (els.canvasWrap) els.canvasWrap.classList.remove('is-vertex-edit');
     if (state.layers.vertices) {
@@ -700,36 +724,60 @@
     }
   }
 
-  function selectVertex(vertexIndex) {
-    if (vertexIndex < 0 || vertexIndex >= state.vertices.length) return;
-    clearRulerSelection();
-    clearWallSelection();
-    state.selectedVertexIndex = vertexIndex;
-    show(els.vertexEdit, true);
-    if (els.canvasWrap) els.canvasWrap.classList.add('is-vertex-edit');
+  function selectVertices(vertexIndices, options) {
+    options = options || {};
+    var indices = (vertexIndices || []).filter(function (idx) {
+      return idx >= 0 && idx < state.vertices.length;
+    });
+    if (options.mode === 'toggle') {
+      indices.forEach(function (idx) {
+        var at = state.selectedVertexIndices.indexOf(idx);
+        if (at >= 0) state.selectedVertexIndices.splice(at, 1);
+        else state.selectedVertexIndices.push(idx);
+      });
+    } else {
+      state.selectedVertexIndices = indices.slice();
+    }
+    if (state.selectedVertexIndices.length > 0) {
+      clearRulerSelection();
+      clearWallSelection();
+      show(els.vertexEdit, true);
+      if (els.canvasWrap) els.canvasWrap.classList.add('is-vertex-edit');
+    } else {
+      show(els.vertexEdit, false);
+      if (els.canvasWrap) els.canvasWrap.classList.remove('is-vertex-edit');
+    }
     redrawVertices();
     updateToolbar();
   }
 
+  function toggleVertexSelection(vertexIndex) {
+    selectVertices([vertexIndex], { mode: 'toggle' });
+  }
+
   function deleteSelectedVertex() {
-    if (state.selectedVertexIndex === null) return;
-    var idx = state.selectedVertexIndex;
-    if (state.vertices.length < 2) {
-      setFeedback('Need at least two points to keep a wall segment.', true);
+    if (state.selectedVertexIndices.length === 0) return;
+    if (state.vertices.length - state.selectedVertexIndices.length < 2) {
+      setFeedback('Need at least two corners to keep a wall segment.', true);
       return;
     }
 
+    var indices = state.selectedVertexIndices.slice().sort(function (a, b) { return b - a; });
     var copy = state.vertices.map(function (v) { return { x: v.x, y: v.y }; });
-    copy.splice(idx, 1);
+    indices.forEach(function (idx) {
+      copy.splice(idx, 1);
+    });
     var closed = state.closed;
     if (closed && copy.length < 3) closed = false;
     if (!isValidShape(copy, closed)) {
-      setFeedback('Removing this corner would make the shape cross itself.', true);
+      setFeedback('Removing those corners would make the shape cross itself.', true);
       return;
     }
 
     pushUndoSnapshot();
-    state.vertices.splice(idx, 1);
+    indices.forEach(function (idx) {
+      state.vertices.splice(idx, 1);
+    });
     if (state.closed && state.vertices.length < 3) {
       state.closed = false;
     }
@@ -738,7 +786,7 @@
     }
     clearVertexSelection();
     redrawAll();
-    setFeedback('Corner removed.', false);
+    setFeedback(indices.length > 1 ? 'Corners removed.' : 'Corner removed.', false);
   }
 
   function findWallAtPoint(pos) {
@@ -785,21 +833,56 @@
     }
   }
 
-  function startWallDrag(wallIndex) {
+  function onWallPointerDown(wallIndex) {
     if (!canDragWalls() || wallIndex < 0 || wallIndex >= wallCount()) return;
     var pos = getPointerPos();
     if (!pos) return;
+    cancelPendingWallClick();
     clearRulerSelection();
-    state.draggingWall = true;
-    state.didWallDrag = false;
-    state.wallDragIndex = wallIndex;
-    state.wallDragPointerStart = { x: pos.x, y: pos.y };
     var a = state.vertices[wallIndex];
     var b = state.vertices[wallEndIndex(wallIndex)];
-    state.wallDragOrigA = { x: a.x, y: a.y };
-    state.wallDragOrigB = { x: b.x, y: b.y };
-    selectWall(wallIndex);
+    state.wallPointerDown = {
+      wallIndex: wallIndex,
+      x: pos.x,
+      y: pos.y,
+      origA: { x: a.x, y: a.y },
+      origB: { x: b.x, y: b.y }
+    };
+    state.didWallDrag = false;
+  }
+
+  function tryStartWallDragFromPending(pos) {
+    if (!state.wallPointerDown || state.draggingWall || !pos) return;
+    var pending = state.wallPointerDown;
+    if (Math.hypot(pos.x - pending.x, pos.y - pending.y) < uiSize(4)) return;
+    cancelPendingWallClick();
+    state.draggingWall = true;
+    state.didWallDrag = false;
+    state.wallDragIndex = pending.wallIndex;
+    state.wallDragPointerStart = { x: pending.x, y: pending.y };
+    state.wallDragOrigA = pending.origA;
+    state.wallDragOrigB = pending.origB;
+    pushUndoSnapshot();
+    selectWall(pending.wallIndex);
     updateCanvasCursor();
+    moveWallDrag(pos);
+  }
+
+  function finishWallPointerUp(pos) {
+    if (state.draggingWall) {
+      finishWallDrag(pos);
+      state.wallPointerDown = null;
+      return;
+    }
+    if (!state.wallPointerDown) return;
+    var wallIndex = state.wallPointerDown.wallIndex;
+    state.wallPointerDown = null;
+    if (state.didWallDrag) return;
+    cancelPendingWallClick();
+    state.wallClickTimer = setTimeout(function () {
+      state.wallClickTimer = null;
+      if (!state.didWallDrag) selectWall(wallIndex);
+    }, 250);
   }
 
   function moveWallDrag(pos) {
@@ -866,7 +949,7 @@
       if (!canDragWalls()) return;
       if (e.evt && e.evt.button !== undefined && e.evt.button !== 0) return;
       e.cancelBubble = true;
-      startWallDrag(wallIndex);
+      onWallPointerDown(wallIndex);
     });
   }
 
@@ -950,6 +1033,12 @@
         e.evt.preventDefault();
       }
       e.cancelBubble = true;
+      cancelPendingWallClick();
+      state.wallPointerDown = null;
+      if (state.draggingWall) {
+        finishWallDrag(getPointerPos());
+        state.didWallDrag = false;
+      }
       splitWallAtPointer(wallIndex);
     });
   }
@@ -1133,6 +1222,7 @@
     var uy = (end.y - start.y) / currentPx;
     var oldEnd = { x: end.x, y: end.y };
     var newEnd = { x: start.x + ux * newPx, y: start.y + uy * newPx };
+    if (pixelsPerFoot()) newEnd = snapToFootGrid(newEnd);
 
     pushUndoSnapshot();
     state.vertices[endIdx] = newEnd;
@@ -1151,6 +1241,39 @@
   function gridStepPx() {
     var ppf = pixelsPerFoot();
     return ppf > 0 ? ppf : GRID_PX;
+  }
+
+  /** Snap a length in feet to the nearest 1/16" (matches construction precision). */
+  function roundToSixteenthFoot(lenFt) {
+    return Math.round(lenFt * 16) / 16;
+  }
+
+  /** Snap a canvas point to the nearest foot grid intersection when scale is set. */
+  function snapToFootGrid(p) {
+    var step = gridStepPx();
+    if (step <= 0) return p;
+    return {
+      x: Math.round(p.x / step) * step,
+      y: Math.round(p.y / step) * step
+    };
+  }
+
+  function snapVerticesToFootGrid() {
+    if (!pixelsPerFoot()) return;
+    state.vertices = state.vertices.map(function (v) {
+      return snapToFootGrid(v);
+    });
+  }
+
+  function verticesInFeet(vertices) {
+    var ppf = pixelsPerFoot();
+    if (!ppf) return null;
+    return vertices.map(function (v) {
+      return {
+        x: roundToSixteenthFoot(v.x / ppf),
+        y: roundToSixteenthFoot(v.y / ppf)
+      };
+    });
   }
 
   function flushKonva() {
@@ -1172,13 +1295,16 @@
     state.closed = false;
     state.editingRoomId = null;
     state.selectedWallIndex = null;
-    state.selectedVertexIndex = null;
+    state.selectedVertexIndices = [];
+    state.vertexDragOrigins = null;
     state.draggingVertex = false;
     state.draggingWall = false;
     state.wallDragIndex = null;
     state.wallDragPointerStart = null;
     state.wallDragOrigA = null;
     state.wallDragOrigB = null;
+    state.wallPointerDown = null;
+    cancelPendingWallClick();
     state.didWallDrag = false;
     state.vertexDragFrom = null;
     state.draftScale = null;
@@ -1367,6 +1493,9 @@
     });
 
     document.addEventListener('mouseup', function () {
+      if (state.wallPointerDown || state.draggingWall) {
+        finishWallPointerUp(getPointerPos());
+      }
       if (!state.panning) return;
       state.panning = false;
       state.lastPanScreen = null;
@@ -1478,8 +1607,12 @@
     });
 
     state.stage.on('mousemove touchmove', function () {
+      var pos = getPointerPos();
+      if (state.wallPointerDown && !state.draggingWall) {
+        tryStartWallDragFromPending(pos);
+      }
       if (state.draggingWall) {
-        moveWallDrag(getPointerPos());
+        moveWallDrag(pos);
         return;
       }
       if (!state.panning || !state.lastPanScreen) return;
@@ -1512,10 +1645,8 @@
     });
 
     state.stage.on('mouseup touchend mouseleave', function () {
-      if (state.draggingWall) {
-        finishWallDrag(getPointerPos());
-        return;
-      }
+      finishWallPointerUp(getPointerPos());
+      if (state.draggingWall) return;
       if (!state.panning) return;
       state.panning = false;
       state.lastPanScreen = null;
@@ -1705,7 +1836,7 @@
     var verts = state.vertices;
     verts.forEach(function (v, idx) {
       var isFirst = idx === 0;
-      var isSelected = state.selectedVertexIndex === idx;
+      var isSelected = isVertexSelected(idx);
       var showCloseTarget = isFirst && !state.closed && verts.length >= 3;
       (function (vertexIndex) {
         var circle = new Konva.Circle({
@@ -1733,6 +1864,19 @@
             return;
           }
           e.cancelBubble = true;
+          if (!isVertexSelected(vertexIndex)) {
+            clearRulerSelection();
+            clearWallSelection();
+            state.selectedVertexIndices = [vertexIndex];
+            show(els.vertexEdit, true);
+            if (els.canvasWrap) els.canvasWrap.classList.add('is-vertex-edit');
+            updateToolbar();
+          }
+          state.vertexDragOrigins = {};
+          state.selectedVertexIndices.forEach(function (i) {
+            var v = state.vertices[i];
+            state.vertexDragOrigins[i] = { x: v.x, y: v.y };
+          });
           state.draggingVertex = true;
           state.vertexDragFrom = {
             x: state.vertices[vertexIndex].x,
@@ -1744,19 +1888,39 @@
         circle.on('click tap', function (e) {
           e.cancelBubble = true;
           if (state.rulerMode) return;
-          if (vertexIndex === 0 && !state.closed && state.vertices.length >= 3 && !state.draggingVertex) {
+          var shiftKey = state.shiftHeld || !!(e.evt && e.evt.shiftKey);
+          if (vertexIndex === 0 && !state.closed && state.vertices.length >= 3 && !state.draggingVertex && !shiftKey) {
             closeShape();
             return;
           }
           if (!state.draggingVertex) {
-            selectVertex(vertexIndex);
+            if (shiftKey) toggleVertexSelection(vertexIndex);
+            else selectVertices([vertexIndex]);
           }
         });
         circle.on('dragmove', function (e) {
           e.cancelBubble = true;
           var pos = snapVertexPosition(vertexIndex, { x: circle.x(), y: circle.y() });
-          circle.position(pos);
-          state.vertices[vertexIndex] = { x: pos.x, y: pos.y };
+          var orig = state.vertexDragOrigins && state.vertexDragOrigins[vertexIndex];
+          if (!orig) {
+            circle.position(pos);
+            state.vertices[vertexIndex] = { x: pos.x, y: pos.y };
+          } else {
+            var dx = pos.x - orig.x;
+            var dy = pos.y - orig.y;
+            state.selectedVertexIndices.forEach(function (i) {
+              var o = state.vertexDragOrigins[i];
+              var p = snapVertexPosition(i, { x: o.x + dx, y: o.y + dy });
+              state.vertices[i] = { x: p.x, y: p.y };
+            });
+            var layer = state.layers.vertices;
+            if (layer) {
+              var circles = layer.getChildren();
+              state.selectedVertexIndices.forEach(function (i) {
+                if (circles[i]) circles[i].position(state.vertices[i]);
+              });
+            }
+          }
           redrawPolygonLine();
           redrawLabels();
           redrawWalls();
@@ -1772,15 +1936,26 @@
           updateCanvasCursor();
           var pos = snapVertexPosition(vertexIndex, { x: circle.x(), y: circle.y() });
           var dragFrom = state.vertexDragFrom;
+          var origins = state.vertexDragOrigins;
           state.vertexDragFrom = null;
-          var old = state.vertices[vertexIndex];
-          state.vertices[vertexIndex] = pos;
+          state.vertexDragOrigins = null;
+          if (origins && state.selectedVertexIndices.length > 1) {
+            var anchorOrig = origins[vertexIndex];
+            var dx = pos.x - anchorOrig.x;
+            var dy = pos.y - anchorOrig.y;
+            state.selectedVertexIndices.forEach(function (i) {
+              var o = origins[i];
+              var p = snapVertexPosition(i, { x: o.x + dx, y: o.y + dy });
+              state.vertices[i] = { x: p.x, y: p.y };
+            });
+          } else {
+            state.vertices[vertexIndex] = pos;
+          }
           if (!isValidShape(state.vertices, state.closed)) {
-            state.vertices[vertexIndex] = old;
-            circle.position(old);
-            discardLastUndoSnapshot();
+            var snap = state.undoStack.length ? state.undoStack[state.undoStack.length - 1] : null;
+            if (snap) restoreUndoSnapshot(snap);
             setFeedback('That corner position would make the shape cross itself.', true);
-          } else if (dragFrom && dist(dragFrom, pos) < 1e-6) {
+          } else if (dragFrom && dist(dragFrom, pos) < 1e-6 && (!origins || state.selectedVertexIndices.length <= 1)) {
             discardLastUndoSnapshot();
           }
           redrawAll();
@@ -1819,21 +1994,8 @@
           y: midY,
           listening: !state.rulerMode && !state.spaceHeld
         });
-        kLabel.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.draggingWall && !state.spaceHeld && !state.rulerMode) {
-            state.stage.container().style.cursor = wallDragCursorFor(wallIndex);
-          }
-        });
-        kLabel.on('mouseleave', function () {
-          if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
-        });
         bindWallDrag(kLabel, wallIndex);
         bindWallSplit(kLabel, wallIndex);
-        kLabel.on('click tap', function (e) {
-          e.cancelBubble = true;
-          if (state.rulerMode || state.didWallDrag) return;
-          selectWall(wallIndex);
-        });
         kLabel.add(new Konva.Tag({
           fill: isSelected ? 'rgba(249, 168, 37, 0.95)' : 'rgba(255,255,255,0.92)',
           stroke: isSelected ? '#f57f17' : '#024768',
@@ -1889,21 +2051,8 @@
           lineCap: 'round',
           listening: !state.spaceHeld && !state.rulerMode
         });
-        hitLine.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.draggingWall && !state.spaceHeld && !state.rulerMode) {
-            state.stage.container().style.cursor = wallDragCursorFor(wallIndex);
-          }
-        });
-        hitLine.on('mouseleave', function () {
-          if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
-        });
         bindWallDrag(hitLine, wallIndex);
         bindWallSplit(hitLine, wallIndex);
-        hitLine.on('click tap', function (e) {
-          e.cancelBubble = true;
-          if (state.rulerMode || state.didWallDrag) return;
-          selectWall(wallIndex);
-        });
         wallLayer.add(hitLine);
       })(i);
     }
@@ -2302,12 +2451,14 @@
       }
     }
     pushUndoSnapshot();
-    state.vertices.push(clampToCanvas(point));
+    state.vertices.push(clampToCanvas(pixelsPerFoot() ? snapToFootGrid(point) : point));
     redrawAll();
   }
 
   function onStageDblClick(e) {
     if (e && e.evt) e.evt.preventDefault();
+    cancelPendingWallClick();
+    state.wallPointerDown = null;
     if (state.spaceHeld || state.panning || state.calibrating || state.rulerMode) return;
     if (state.draggingWall) {
       finishWallDrag(getPointerPos());
@@ -2339,6 +2490,7 @@
     }
     pushUndoSnapshot();
     state.closed = true;
+    snapVerticesToFootGrid();
     redrawAll();
   }
 
@@ -2354,13 +2506,16 @@
     state.vertices = [];
     state.closed = false;
     state.editingRoomId = null;
-    state.selectedVertexIndex = null;
+    state.selectedVertexIndices = [];
+    state.vertexDragOrigins = null;
     state.draggingVertex = false;
     state.draggingWall = false;
     state.wallDragIndex = null;
     state.wallDragPointerStart = null;
     state.wallDragOrigA = null;
     state.wallDragOrigB = null;
+    state.wallPointerDown = null;
+    cancelPendingWallClick();
     state.didWallDrag = false;
     stopCalibrationMode();
     state.draftRulers = [];
@@ -2437,7 +2592,7 @@
       els.deleteWall.disabled = state.selectedWallIndex === null;
     }
     if (els.deleteVertex) {
-      els.deleteVertex.disabled = state.selectedVertexIndex === null || state.vertices.length < 2;
+      els.deleteVertex.disabled = state.selectedVertexIndices.length === 0 || state.vertices.length < 2;
     }
     if (els.deleteRuler) {
       els.deleteRuler.disabled = state.selectedRulerId === null;
@@ -3144,7 +3299,7 @@
       }
 
       if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-      if (state.selectedVertexIndex !== null) {
+      if (state.selectedVertexIndices.length > 0) {
         e.preventDefault();
         deleteSelectedVertex();
       } else if (state.selectedWallIndex !== null) {
