@@ -37,6 +37,7 @@ class PavingDatabaseController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'product_url' => ['nullable', 'string', 'max:500', 'url'],
+            'image_url' => ['nullable', 'string', 'max:500', 'url'],
             'length_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'width_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'height_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
@@ -68,6 +69,7 @@ class PavingDatabaseController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'product_url' => ['nullable', 'string', 'max:500', 'url'],
+            'image_url' => ['nullable', 'string', 'max:500', 'url'],
             'length_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'width_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'height_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],

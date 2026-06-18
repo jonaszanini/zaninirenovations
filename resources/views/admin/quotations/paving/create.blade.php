@@ -343,22 +343,31 @@
 
               <div class="admin-form-group pq-stone-group">
                 <label for="pq-stone">Stone type <span class="cp-required">*</span></label>
-                <select id="pq-stone" name="paving_stone_type_id" class="admin-input pq-calc-in" required>
-                  @foreach ($stoneTypes as $st)
-                    <option value="{{ $st->id }}"
-                      data-sq="{{ $st->sq_ft_per_stone }}"
-                      data-pr="{{ $st->price_per_stone }}"
-                      data-psq="{{ $st->price_per_sq_ft }}"
-                      data-len="{{ $st->length_in }}"
-                      data-wid="{{ $st->width_in }}"
-                      data-hgt="{{ $st->height_in }}"
-                      data-url="{{ $st->product_url }}"
-                      @selected((int) old('paving_stone_type_id', $inputs['paving_stone_type_id'] ?? 0) === (int) $st->id)>
-                      {{ $st->name }}
-                    </option>
-                  @endforeach
-                </select>
-                <div class="pq-stone-meta" id="pq-stone-meta" aria-live="polite"></div>
+                <div style="display:flex; gap:16px; align-items:flex-start;">
+                  <div class="pq-stone-thumb-wrap" style="width:80px; height:80px; flex-shrink:0; border:2px solid #1e293b; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                    <img id="pq-stone-thumb" src="" alt="Stone preview" style="width:100%; height:100%; object-fit:cover; display:none;">
+                    <i id="pq-stone-thumb-placeholder" class="fa fa-cubes" aria-hidden="true" style="font-size:32px; color:#cbd5e1;"></i>
+                  </div>
+                  <div style="flex-grow:1;">
+                    <select id="pq-stone" name="paving_stone_type_id" class="admin-input pq-calc-in" required>
+                      @foreach ($stoneTypes as $st)
+                        <option value="{{ $st->id }}"
+                          data-sq="{{ $st->sq_ft_per_stone }}"
+                          data-pr="{{ $st->price_per_stone }}"
+                          data-psq="{{ $st->price_per_sq_ft }}"
+                          data-len="{{ $st->length_in }}"
+                          data-wid="{{ $st->width_in }}"
+                          data-hgt="{{ $st->height_in }}"
+                          data-url="{{ $st->product_url }}"
+                          data-img="{{ $st->image_url }}"
+                          @selected((int) old('paving_stone_type_id', $inputs['paving_stone_type_id'] ?? 0) === (int) $st->id)>
+                          {{ $st->name }}
+                        </option>
+                      @endforeach
+                    </select>
+                    <div class="pq-stone-meta" id="pq-stone-meta" aria-live="polite" style="margin-top:8px;"></div>
+                  </div>
+                </div>
                 <input type="hidden" id="pq-sqft" name="stone_sq_ft_per_stone" class="pq-calc-in" required
                        value="{{ old('stone_sq_ft_per_stone', $inputs['stone_sq_ft_per_stone']) }}">
                 <input type="hidden" id="pq-stprice" name="stone_price_per_stone" class="pq-calc-in" required
@@ -442,16 +451,24 @@
               </label>
               <div id="pq-marble-fields" style="margin-top:12px;{{ old('marble_enabled', $inputs['marble_enabled'] ?? false) ? '' : 'display:none;' }}">
                 <div class="pq-form-row">
-                  <div class="admin-form-group">
+                  <div class="admin-form-group" style="flex-grow:1;">
                     <label for="pq-marble-stone">Marble stone type</label>
-                    <select id="pq-marble-stone" name="marble_stone_type_id" class="admin-input pq-calc-in">
-                      <option value="">—</option>
-                      @foreach ($stoneTypes as $st)
-                        <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}" data-psq="{{ $st->price_per_sq_ft }}"
-                          @selected((int) old('marble_stone_type_id', $inputs['marble_stone_type_id'] ?? 0) === (int) $st->id)>{{ $st->name }}</option>
-                      @endforeach
-                    </select>
-                    <p class="pq-stone-meta" id="pq-marble-stone-meta" aria-live="polite"></p>
+                    <div style="display:flex; gap:16px; align-items:flex-start;">
+                      <div class="pq-stone-thumb-wrap" style="width:80px; height:80px; flex-shrink:0; border:2px solid #1e293b; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        <img id="pq-marble-stone-thumb" src="" alt="Marble stone preview" style="width:100%; height:100%; object-fit:cover; display:none;">
+                        <i id="pq-marble-stone-thumb-placeholder" class="fa fa-cubes" aria-hidden="true" style="font-size:32px; color:#cbd5e1;"></i>
+                      </div>
+                      <div style="flex-grow:1;">
+                        <select id="pq-marble-stone" name="marble_stone_type_id" class="admin-input pq-calc-in">
+                          <option value="" data-img="">—</option>
+                          @foreach ($stoneTypes as $st)
+                            <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}" data-psq="{{ $st->price_per_sq_ft }}" data-img="{{ $st->image_url }}"
+                              @selected((int) old('marble_stone_type_id', $inputs['marble_stone_type_id'] ?? 0) === (int) $st->id)>{{ $st->name }}</option>
+                          @endforeach
+                        </select>
+                        <p class="pq-stone-meta" id="pq-marble-stone-meta" aria-live="polite" style="margin-top:8px;"></p>
+                      </div>
+                    </div>
                     <input type="hidden" id="pq-marble-sqft" name="marble_sq_ft_per_stone" class="pq-calc-in"
                            value="{{ old('marble_sq_ft_per_stone', $inputs['marble_sq_ft_per_stone'] ?? '') }}">
                   </div>
@@ -709,17 +726,32 @@
         }
       }
 
-      function wireStoneSelect(sel, sqEl, prEl, psqEl, metaEl, includePrice) {
+      function wireStoneSelect(sel, sqEl, prEl, psqEl, metaEl, thumbEl, placeholderEl, includePrice) {
         if (!sel || (!sqEl && !psqEl)) return;
         function applyFromOption() {
           var opt = sel.options[sel.selectedIndex];
           if (!opt || !opt.value) {
             syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice);
+            if (thumbEl) thumbEl.style.display = 'none';
+            if (placeholderEl) placeholderEl.style.display = 'block';
             return;
           }
           var sq = opt.getAttribute('data-sq');
           var pr = opt.getAttribute('data-pr');
           var psq = opt.getAttribute('data-psq');
+          var img = opt.getAttribute('data-img');
+          
+          if (thumbEl && placeholderEl) {
+            if (img && img.trim() !== '') {
+              thumbEl.src = img;
+              thumbEl.style.display = 'block';
+              placeholderEl.style.display = 'none';
+            } else {
+              thumbEl.style.display = 'none';
+              placeholderEl.style.display = 'block';
+            }
+          }
+
           if (sq) {
             if(sqEl) {
               sqEl.value = sq;
@@ -753,7 +785,7 @@
           syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice);
         }
         sel.addEventListener('change', applyFromOption);
-        syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice);
+        applyFromOption();
       }
       wireStoneSelect(
         document.getElementById('pq-stone'),
@@ -761,6 +793,8 @@
         document.getElementById('pq-stprice'),
         document.getElementById('pq-stpricesq'),
         document.getElementById('pq-stone-meta'),
+        document.getElementById('pq-stone-thumb'),
+        document.getElementById('pq-stone-thumb-placeholder'),
         true
       );
       wireStoneSelect(
@@ -769,6 +803,8 @@
         document.getElementById('pq-marble-price'),
         document.getElementById('pq-marble-price-sq'),
         document.getElementById('pq-marble-stone-meta'),
+        document.getElementById('pq-marble-stone-thumb'),
+        document.getElementById('pq-marble-stone-thumb-placeholder'),
         false
       );
 

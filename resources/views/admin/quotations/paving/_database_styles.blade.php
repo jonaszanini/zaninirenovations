@@ -206,4 +206,40 @@
     .pq-db-rate-row { grid-template-columns: 1fr; }
     .pq-db-rate-inline { justify-content: flex-start; }
   }
+
+  .pq-db-stone-thumb-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .pq-db-stone-thumb-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pq-db-stone-thumb-wrap i {
+    font-size: 24px;
+    color: #94a3b8;
+  }
+  .pq-db-stone-card-header {
+    display: grid;
+    grid-template-columns: auto minmax(120px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
+    gap: 16px;
+    align-items: end;
+    padding: 16px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  @media (max-width: 768px) {
+    .pq-db-stone-card-header {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

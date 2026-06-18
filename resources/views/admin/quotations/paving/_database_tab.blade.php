@@ -24,9 +24,20 @@
                 @method('PUT')
                 
                 <div class="pq-db-stone-card-header">
+                  <div class="pq-db-stone-thumb-wrap">
+                    @if (filled($st->image_url))
+                      <img src="{{ $st->image_url }}" alt="Stone preview">
+                    @else
+                      <i class="fa fa-cubes" aria-hidden="true"></i>
+                    @endif
+                  </div>
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Name</span>
                     <input class="admin-input" type="text" name="name" value="{{ $st->name }}" required maxlength="120" aria-label="Stone name">
+                  </div>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Image URL</span>
+                    <input class="admin-input" type="url" name="image_url" value="{{ $st->image_url }}" maxlength="500" placeholder="https://…" aria-label="Image URL">
                   </div>
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Product link</span>
@@ -118,9 +129,16 @@
         <h5 class="cp-breakdown-intro" style="margin-bottom:16px;">Add new stone type</h5>
         
         <div class="pq-db-stone-card-header">
+          <div class="pq-db-stone-thumb-wrap">
+            <i class="fa fa-cubes" aria-hidden="true"></i>
+          </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Name</span>
             <input type="text" name="name" placeholder="Name" class="admin-input" required maxlength="120" aria-label="New stone name">
+          </div>
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Image URL</span>
+            <input type="url" name="image_url" placeholder="https://…" class="admin-input" maxlength="500" aria-label="Image URL">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Product link</span>

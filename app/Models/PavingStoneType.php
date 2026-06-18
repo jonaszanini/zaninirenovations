@@ -9,6 +9,7 @@ class PavingStoneType extends Model
     protected $fillable = [
         'name',
         'product_url',
+        'image_url',
         'length_in',
         'width_in',
         'height_in',
