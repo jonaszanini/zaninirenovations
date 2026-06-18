@@ -348,6 +348,7 @@
                     <option value="{{ $st->id }}"
                       data-sq="{{ $st->sq_ft_per_stone }}"
                       data-pr="{{ $st->price_per_stone }}"
+                      data-psq="{{ $st->price_per_sq_ft }}"
                       data-len="{{ $st->length_in }}"
                       data-wid="{{ $st->width_in }}"
                       data-hgt="{{ $st->height_in }}"
@@ -362,6 +363,8 @@
                        value="{{ old('stone_sq_ft_per_stone', $inputs['stone_sq_ft_per_stone']) }}">
                 <input type="hidden" id="pq-stprice" name="stone_price_per_stone" class="pq-calc-in" required
                        value="{{ old('stone_price_per_stone', number_format((float) ($inputs['stone_price_per_stone'] ?? 0), 2, '.', '')) }}">
+                <input type="hidden" id="pq-stpricesq" name="stone_price_per_sq_ft" class="pq-calc-in" required
+                       value="{{ old('stone_price_per_sq_ft', number_format((float) ($inputs['stone_price_per_sq_ft'] ?? 0), 4, '.', '')) }}">
               </div>
 
               <div class="pq-field-box">
@@ -444,7 +447,7 @@
                     <select id="pq-marble-stone" name="marble_stone_type_id" class="admin-input pq-calc-in">
                       <option value="">—</option>
                       @foreach ($stoneTypes as $st)
-                        <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}"
+                        <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}" data-psq="{{ $st->price_per_sq_ft }}"
                           @selected((int) old('marble_stone_type_id', $inputs['marble_stone_type_id'] ?? 0) === (int) $st->id)>{{ $st->name }}</option>
                       @endforeach
                     </select>
@@ -458,11 +461,19 @@
                            value="{{ old('marble_area_sq_ft', $inputs['marble_area_sq_ft'] ?? 0) }}">
                   </div>
                 </div>
-                <div class="admin-form-group pq-marble-price-field" style="margin-top:12px;">
-                  <label for="pq-marble-price">Marble $/stone (before tax)</label>
-                  <input type="text" id="pq-marble-price" name="marble_price_per_stone" class="admin-input pq-calc-in cp-money-input"
-                         inputmode="decimal" autocomplete="off" placeholder="Auto from type"
-                         value="{{ old('marble_price_per_stone', isset($inputs['marble_price_per_stone']) && $inputs['marble_price_per_stone'] !== null && $inputs['marble_price_per_stone'] !== '' ? number_format((float) $inputs['marble_price_per_stone'], 2, '.', '') : '') }}">
+                <div class="pq-form-row">
+                  <div class="admin-form-group pq-marble-price-field" style="margin-top:12px;">
+                    <label for="pq-marble-price">Marble $/stone (before tax)</label>
+                    <input type="text" id="pq-marble-price" name="marble_price_per_stone" class="admin-input pq-calc-in cp-money-input"
+                           inputmode="decimal" autocomplete="off" placeholder="Auto from type"
+                           value="{{ old('marble_price_per_stone', isset($inputs['marble_price_per_stone']) && $inputs['marble_price_per_stone'] !== null && $inputs['marble_price_per_stone'] !== '' ? number_format((float) $inputs['marble_price_per_stone'], 2, '.', '') : '') }}">
+                  </div>
+                  <div class="admin-form-group pq-marble-price-field" style="margin-top:12px;">
+                    <label for="pq-marble-price-sq">Marble $/sq ft (before tax)</label>
+                    <input type="text" id="pq-marble-price-sq" name="marble_price_per_sq_ft" class="admin-input pq-calc-in cp-money-input"
+                           inputmode="decimal" autocomplete="off" placeholder="Auto from type"
+                           value="{{ old('marble_price_per_sq_ft', isset($inputs['marble_price_per_sq_ft']) && $inputs['marble_price_per_sq_ft'] !== null && $inputs['marble_price_per_sq_ft'] !== '' ? number_format((float) $inputs['marble_price_per_sq_ft'], 4, '.', '') : '') }}">
+                  </div>
                 </div>
               </div>
             </div>
@@ -641,11 +652,14 @@
         var parts = [];
         var sqN = parseFloat(opt.getAttribute('data-sq'));
         var prN = parseFloat(opt.getAttribute('data-pr'));
-        if (isFinite(sqN) && sqN> 0) {
+        var psqN = parseFloat(opt.getAttribute('data-psq'));
+        if (isFinite(sqN) && sqN > 0) {
           parts.push(sqN.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' sq ft per stone');
-        }
-        if (isFinite(prN) && prN>= 0) {
-          parts.push(formatMoney(prN) + ' per stone (before tax)');
+          if (isFinite(prN) && prN >= 0) {
+            parts.push(formatMoney(prN) + ' per stone (before tax)');
+          }
+        } else if (isFinite(psqN) && psqN > 0) {
+          parts.push(formatMoney(psqN) + ' per sq ft (before tax)');
         }
         var dims = formatStoneDims(
           opt.getAttribute('data-len'),
@@ -667,15 +681,21 @@
         metaEl.innerHTML = html;
       }
 
-      function formatSqFtMeta(sq) {
+      function formatSqFtMeta(sq, psq) {
         var n = parseFloat(sq);
-        if (!isFinite(n) || n <= 0) return '';
-        return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' sq ft per stone';
+        var pn = parseFloat(psq);
+        if (isFinite(n) && n > 0) {
+            return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' sq ft per stone';
+        }
+        if (isFinite(pn) && pn > 0) {
+            return formatMoney(pn) + ' per sq ft';
+        }
+        return '';
       }
 
-      function syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice) {
+      function syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice) {
         if (!metaEl) return;
-        if (!sel || !sqEl) {
+        if (!sel || (!sqEl && !psqEl)) {
           metaEl.innerHTML = '';
           return;
         }
@@ -683,39 +703,63 @@
         if (includePrice && prEl) {
           renderMainStoneMeta(metaEl, opt);
         } else if (opt && opt.value) {
-          metaEl.textContent = formatSqFtMeta(opt.getAttribute('data-sq'));
+          metaEl.textContent = formatSqFtMeta(opt.getAttribute('data-sq'), opt.getAttribute('data-psq'));
         } else {
-          metaEl.textContent = formatSqFtMeta(sqEl.value);
+          metaEl.textContent = formatSqFtMeta(sqEl.value, psqEl ? psqEl.value : null);
         }
       }
 
-      function wireStoneSelect(sel, sqEl, prEl, metaEl, includePrice) {
-        if (!sel || !sqEl || !prEl) return;
+      function wireStoneSelect(sel, sqEl, prEl, psqEl, metaEl, includePrice) {
+        if (!sel || (!sqEl && !psqEl)) return;
         function applyFromOption() {
           var opt = sel.options[sel.selectedIndex];
           if (!opt || !opt.value) {
-            syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice);
+            syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice);
             return;
           }
           var sq = opt.getAttribute('data-sq');
           var pr = opt.getAttribute('data-pr');
+          var psq = opt.getAttribute('data-psq');
           if (sq) {
-            sqEl.value = sq;
-            sqEl.dispatchEvent(new Event('input', { bubbles: true }));
+            if(sqEl) {
+              sqEl.value = sq;
+              sqEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          } else if (sqEl) {
+              sqEl.value = '';
+              sqEl.dispatchEvent(new Event('input', { bubbles: true }));
           }
+          
           if (pr) {
-            prEl.value = pr;
-            prEl.dispatchEvent(new Event('input', { bubbles: true }));
+            if(prEl) {
+              prEl.value = pr;
+              prEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          } else if (prEl) {
+              prEl.value = '';
+              prEl.dispatchEvent(new Event('input', { bubbles: true }));
           }
-          syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice);
+          
+          if (psq) {
+            if(psqEl) {
+              psqEl.value = psq;
+              psqEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          } else if (psqEl) {
+              psqEl.value = '';
+              psqEl.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          
+          syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice);
         }
         sel.addEventListener('change', applyFromOption);
-        syncStoneMeta(sel, metaEl, sqEl, prEl, includePrice);
+        syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice);
       }
       wireStoneSelect(
         document.getElementById('pq-stone'),
         document.getElementById('pq-sqft'),
         document.getElementById('pq-stprice'),
+        document.getElementById('pq-stpricesq'),
         document.getElementById('pq-stone-meta'),
         true
       );
@@ -723,6 +767,7 @@
         document.getElementById('pq-marble-stone'),
         document.getElementById('pq-marble-sqft'),
         document.getElementById('pq-marble-price'),
+        document.getElementById('pq-marble-price-sq'),
         document.getElementById('pq-marble-stone-meta'),
         false
       );

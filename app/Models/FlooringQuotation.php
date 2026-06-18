@@ -139,6 +139,7 @@ class FlooringQuotation extends Model
             'delivery_fee' => $deliveryFee,
             'total_pre_tax' => $totalPreTax,
             'square_footage' => $sqft,
+            'local_images' => $inputs['material_local_images'] ?? [],
         ];
     }
 

@@ -339,6 +339,41 @@ class FlooringQuotationController extends Controller
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
         $workDescription = trim((string) $request->input('work_description'));
 
+        $localImages = $existing->inputs['material_local_images'] ?? [];
+        if (! $draft && ! empty($rawInputs['include_material_details'])) {
+            $urls = [
+                $rawInputs['material_image_url_1'] ?? '',
+                $rawInputs['material_image_url_2'] ?? '',
+                $rawInputs['material_image_url_3'] ?? '',
+                $rawInputs['material_image_url_4'] ?? '',
+            ];
+            
+            $newLocalImages = [];
+            foreach ($urls as $i => $url) {
+                if ($url !== '') {
+                    $hash = md5($url);
+                    $filename = "quotations/materials/{$hash}.jpg";
+                    $absolutePath = storage_path("app/{$filename}");
+                    
+                    if (\Illuminate\Support\Facades\Storage::disk('local')->exists($filename)) {
+                        $newLocalImages[] = $absolutePath;
+                    } else {
+                        try {
+                            $response = \Illuminate\Support\Facades\Http::timeout(5)->get($url);
+                            if ($response->successful() && str_starts_with((string) $response->header('Content-Type', ''), 'image/')) {
+                                \Illuminate\Support\Facades\Storage::disk('local')->put($filename, $response->body());
+                                $newLocalImages[] = $absolutePath;
+                            }
+                        } catch (\Exception $e) {
+                            // silently skip
+                        }
+                    }
+                }
+            }
+            $localImages = $newLocalImages;
+        }
+        $rawInputs['material_local_images'] = $localImages;
+
         return [
             'client_name' => trim((string) $request->input('client_name')) ?: null,
             'work_description' => $workDescription === '' ? null : $workDescription,

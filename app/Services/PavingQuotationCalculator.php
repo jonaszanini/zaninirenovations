@@ -64,24 +64,44 @@ class PavingQuotationCalculator
         $geo = filter_var($inputs['include_geotextile'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $oldRemoval = filter_var($inputs['include_old_surface_removal'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        $stoneSqFt = max(1e-6, (float) ($inputs['stone_sq_ft_per_stone'] ?? 0.77));
-        $stonePrice = max(0.0, (float) ($inputs['stone_price_per_stone'] ?? 1.69));
+        $stoneSqFt = isset($inputs['stone_sq_ft_per_stone']) ? (float) $inputs['stone_sq_ft_per_stone'] : 0.0;
+        $stonePrice = isset($inputs['stone_price_per_stone']) ? (float) $inputs['stone_price_per_stone'] : 0.0;
+        $stonePricePerSqFt = isset($inputs['stone_price_per_sq_ft']) ? (float) $inputs['stone_price_per_sq_ft'] : 0.0;
 
         $marbleOn = filter_var($inputs['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $marbleArea = $marbleOn ? max(0.0, (float) ($inputs['marble_area_sq_ft'] ?? 0)) : 0.0;
         $marbleArea = min($marbleArea, $area);
         $regularArea = max(0.0, $area - $marbleArea);
 
-        $marbleSqFt = max(1e-6, (float) ($inputs['marble_sq_ft_per_stone'] ?? $stoneSqFt));
-        $marbleStonePrice = max(0.0, (float) ($inputs['marble_price_per_stone'] ?? $stonePrice));
+        $marbleSqFt = isset($inputs['marble_sq_ft_per_stone']) ? (float) $inputs['marble_sq_ft_per_stone'] : 0.0;
+        $marblePrice = isset($inputs['marble_price_per_stone']) ? (float) $inputs['marble_price_per_stone'] : 0.0;
+        $marblePricePerSqFt = isset($inputs['marble_price_per_sq_ft']) ? (float) $inputs['marble_price_per_sq_ft'] : 0.0;
 
-        $qtyMain = $area > 0 ? (int) ceil(($regularArea / $stoneSqFt) * (1 + $waste) - 1e-9) : 0;
-        $costMain = $qtyMain * $stonePrice;
+        if ($stoneSqFt > 0) {
+            $qtyMain = $area > 0 ? (int) ceil(($regularArea / $stoneSqFt) * (1 + $waste) - 1e-9) : 0;
+            $costMain = $qtyMain * $stonePrice;
+            $matRowMain = $this->matRow('Main paving stones', 'stones', $qtyMain, $stonePrice, $costMain, $hst, 'Area ÷ sq ft per stone × (1 + waste) — regular portion');
+        } else {
+            $qtyMain = $regularArea > 0 ? round($regularArea * (1 + $waste), 2) : 0.0;
+            $costMain = $qtyMain * $stonePricePerSqFt;
+            $matRowMain = $this->matRow('Main paving stones', 'sq ft', $qtyMain, $stonePricePerSqFt, $costMain, $hst, 'Area × (1 + waste) × price per sq ft');
+        }
 
-        $qtyMarble = ($marbleOn && $marbleArea > 0)
-            ? (int) ceil(($marbleArea / $marbleSqFt) * (1 + $waste) - 1e-9)
-            : 0;
-        $costMarble = $qtyMarble * $marbleStonePrice;
+        if ($marbleOn && $marbleArea > 0) {
+            if ($marbleSqFt > 0) {
+                $qtyMarble = (int) ceil(($marbleArea / $marbleSqFt) * (1 + $waste) - 1e-9);
+                $costMarble = $qtyMarble * $marblePrice;
+                $matRowMarble = $this->matRow('Marble / accent paving stones', 'stones', $qtyMarble, $marblePrice, $costMarble, $hst, 'Marble inlay area ÷ sq ft per stone × (1 + waste)');
+            } else {
+                $qtyMarble = round($marbleArea * (1 + $waste), 2);
+                $costMarble = $qtyMarble * $marblePricePerSqFt;
+                $matRowMarble = $this->matRow('Marble / accent paving stones', 'sq ft', $qtyMarble, $marblePricePerSqFt, $costMarble, $hst, 'Marble inlay area × (1 + waste) × price per sq ft');
+            }
+        } else {
+            $qtyMarble = 0;
+            $costMarble = 0.0;
+            $matRowMarble = $this->matRow('Marble / accent paving stones', 'stones', 0, 0, 0, $hst, '—');
+        }
 
         $r = fn (string $key) => (float) ($this->rates[$key] ?? 0.0);
 
@@ -107,8 +127,8 @@ class PavingQuotationCalculator
         $costSpikes = $qtySpikes * $r('edging_spikes_pack');
 
         $materialRows = [
-            $this->matRow('Main paving stones', 'stones', $qtyMain, $stonePrice, $costMain, $hst, 'Area ÷ sq ft per stone × (1 + waste) — regular portion'),
-            $this->matRow('Marble / accent paving stones', 'stones', $qtyMarble, $marbleStonePrice, $costMarble, $hst, $marbleOn ? 'Marble inlay area' : '—'),
+            $matRowMain,
+            $matRowMarble,
             $this->matRow('Granular base (crushed 3/4")', 'cu yd', $qtyGranular, $r('crushed_stone_cu_yd'), $costGranular, $hst, '8" compacted base: area × depth(ft) × 0.7407 ÷ 27; 0.5 yd steps'),
             $this->matRow('Bedding sand', 'cu yd', $qtyBedding, $r('bedding_sand_cu_yd'), $costBedding, $hst, '1" layer; 0.5 yd steps'),
             $this->matRow('Polymeric sand', 'bags', $qtyPoly, $r('polymeric_sand_bag'), $costPoly, $hst, '~50 sq ft per bag when enabled'),
@@ -401,8 +421,9 @@ class PavingQuotationCalculator
             'area_length_ft' => null,
             'area_width_ft' => null,
             'paving_stone_type_id' => $stone?->id,
-            'stone_sq_ft_per_stone' => $stone ? (float) $stone->sq_ft_per_stone : 0.77,
-            'stone_price_per_stone' => $stone ? (float) $stone->price_per_stone : 1.69,
+            'stone_sq_ft_per_stone' => $stone && $stone->sq_ft_per_stone ? (float) $stone->sq_ft_per_stone : null,
+            'stone_price_per_stone' => $stone && $stone->price_per_stone ? (float) $stone->price_per_stone : null,
+            'stone_price_per_sq_ft' => $stone && $stone->price_per_sq_ft ? (float) $stone->price_per_sq_ft : null,
             'helper_hourly_rate' => 21,
             'owner_hourly_rate' => 65,
             'mini_skid_days' => 1,
@@ -419,6 +440,7 @@ class PavingQuotationCalculator
             'marble_area_sq_ft' => 0,
             'marble_sq_ft_per_stone' => null,
             'marble_price_per_stone' => null,
+            'marble_price_per_sq_ft' => null,
             'manual_price_override' => null,
         ];
     }

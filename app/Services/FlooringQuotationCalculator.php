@@ -34,6 +34,11 @@ class FlooringQuotationCalculator
             'material_name' => '',
             'material_color' => '',
             'material_url' => '',
+            'material_image_url_1' => '',
+            'material_image_url_2' => '',
+            'material_image_url_3' => '',
+            'material_image_url_4' => '',
+            'material_local_images' => [],
         ];
     }
 

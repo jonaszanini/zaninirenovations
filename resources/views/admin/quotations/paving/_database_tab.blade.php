@@ -25,6 +25,7 @@
             <span class="pq-db-stone-head-label">Height (in)</span>
             <span class="pq-db-stone-head-label">Sq ft / stone</span>
             <span class="pq-db-stone-head-label">$/stone (CAD)</span>
+            <span class="pq-db-stone-head-label">Price/sq ft</span>
             <span class="pq-db-stone-head-label"></span>
           </div>
           @foreach ($stoneTypes as $st)
@@ -50,13 +51,16 @@
                   <input class="admin-input" type="number" name="height_in" value="{{ $st->height_in }}" step="0.01" min="0.01" max="999"
                          class="admin-input pq-db-stone-hgt" placeholder="—" aria-label="Height in inches">
                   <div class="pq-db-stone-sq-wrap">
-                    <input class="admin-input" type="number" name="sq_ft_per_stone" value="{{ $st->sq_ft_per_stone }}" step="0.0001" min="0.0001"
-                           class="admin-input pq-db-stone-sq" required aria-label="Sq ft per stone">
+                    <input class="admin-input pq-db-stone-sq" type="number" name="sq_ft_per_stone" value="{{ $st->sq_ft_per_stone }}" step="0.0001" min="0.0001"
+                           aria-label="Sq ft per stone" placeholder="—">
                     <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
                   </div>
-                  <input class="admin-input" type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
-                         value="{{ number_format((float) $st->price_per_stone, 2, '.', '') }}"
-                         class="admin-input cp-money-input" required aria-label="Price per stone CAD">
+                  <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
+                         value="{{ $st->price_per_stone !== null ? number_format((float) $st->price_per_stone, 2, '.', '') : '' }}"
+                         class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD" placeholder="—">
+                  <input type="text" name="price_per_sq_ft" inputmode="decimal" autocomplete="off"
+                         value="{{ $st->price_per_sq_ft !== null ? number_format((float) $st->price_per_sq_ft, 4, '.', '') : '' }}"
+                         class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD" placeholder="Auto">
                   <div class="pq-db-stone-actions">
                     <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save</button>
                     @if ($stoneTypes->count()> 1)
@@ -90,11 +94,13 @@
                  class="admin-input pq-db-stone-hgt" aria-label="Height in inches">
           <div class="pq-db-stone-sq-wrap">
             <input type="number" name="sq_ft_per_stone" placeholder="Sq ft/stone" step="0.0001" min="0.0001"
-                   class="admin-input pq-db-stone-sq" required aria-label="Sq ft per stone">
+                   class="admin-input pq-db-stone-sq" aria-label="Sq ft per stone">
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
           </div>
-          <input type="text" name="price_per_stone" placeholder="0.00" inputmode="decimal" autocomplete="off"
-                 class="admin-input cp-money-input" required aria-label="Price per stone CAD">
+          <input type="text" name="price_per_stone" placeholder="$/stone" inputmode="decimal" autocomplete="off"
+                 class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD">
+          <input type="text" name="price_per_sq_ft" placeholder="$/sq ft" inputmode="decimal" autocomplete="off"
+                 class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD">
           <div class="pq-db-stone-actions">
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add</button>
           </div>
@@ -230,9 +236,35 @@
       }
     }
 
+    function autoCalcPriceSqFt(row) {
+      if (!row) return;
+      var sqInput = row.querySelector('.pq-db-stone-sq');
+      var priceInput = row.querySelector('.pq-db-stone-price');
+      var priceSqFtInput = row.querySelector('.pq-db-stone-price-sqft');
+      
+      if (!sqInput || !priceInput || !priceSqFtInput) return;
+      
+      var sq = parseFloat(sqInput.value);
+      var price = parseFloat(priceInput.value.replace(/,/g, ''));
+      
+      if (isFinite(sq) && sq > 0 && isFinite(price)) {
+        var calc = price / sq;
+        priceSqFtInput.value = (Math.round(calc * 10000) / 10000).toFixed(4);
+        if (window.cpMoneyMask) window.cpMoneyMask.wire(priceSqFtInput);
+      }
+    }
+
     document.querySelectorAll('.pq-db-stone-fill-sq').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        fillSqFtFromRow(btn.closest('.pq-db-stone-grid'));
+        var row = btn.closest('.pq-db-stone-grid');
+        fillSqFtFromRow(row);
+        autoCalcPriceSqFt(row);
+      });
+    });
+
+    document.querySelectorAll('.pq-db-stone-sq, .pq-db-stone-price').forEach(function (input) {
+      input.addEventListener('input', function () {
+        autoCalcPriceSqFt(input.closest('.pq-db-stone-grid'));
       });
     });
 

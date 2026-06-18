@@ -381,6 +381,7 @@ class PavingQuotationController extends Controller
             'marble_area_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'marble_sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
             'marble_price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'marble_price_per_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'manual_price_override' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -446,8 +447,9 @@ class PavingQuotationController extends Controller
             'area_width_ft' => $areaMode === 'dimensions' ? $width : null,
             'total_area_sq_ft' => $totalAreaSqFt,
             'paving_stone_type_id' => (int) $mainStone->id,
-            'stone_sq_ft_per_stone' => (float) $mainStone->sq_ft_per_stone,
-            'stone_price_per_stone' => (float) $mainStone->price_per_stone,
+            'stone_sq_ft_per_stone' => $mainStone->sq_ft_per_stone ? (float) $mainStone->sq_ft_per_stone : null,
+            'stone_price_per_stone' => $mainStone->price_per_stone ? (float) $mainStone->price_per_stone : null,
+            'stone_price_per_sq_ft' => $mainStone->price_per_sq_ft ? (float) $mainStone->price_per_sq_ft : null,
             'helper_hourly_rate' => (float) $data['helper_hourly_rate'],
             'owner_hourly_rate' => (float) $data['owner_hourly_rate'],
             'mini_skid_days' => (int) $data['mini_skid_days'],
@@ -464,10 +466,13 @@ class PavingQuotationController extends Controller
             'marble_area_sq_ft' => isset($data['marble_area_sq_ft']) ? (float) $data['marble_area_sq_ft'] : 0,
             'marble_sq_ft_per_stone' => isset($data['marble_sq_ft_per_stone']) && $data['marble_sq_ft_per_stone'] !== ''
                 ? (float) $data['marble_sq_ft_per_stone']
-                : ($marbleStone ? (float) $marbleStone->sq_ft_per_stone : null),
+                : ($marbleStone && $marbleStone->sq_ft_per_stone ? (float) $marbleStone->sq_ft_per_stone : null),
             'marble_price_per_stone' => isset($data['marble_price_per_stone']) && $data['marble_price_per_stone'] !== ''
                 ? (float) $data['marble_price_per_stone']
-                : ($marbleStone ? (float) $marbleStone->price_per_stone : null),
+                : ($marbleStone && $marbleStone->price_per_stone ? (float) $marbleStone->price_per_stone : null),
+            'marble_price_per_sq_ft' => isset($data['marble_price_per_sq_ft']) && $data['marble_price_per_sq_ft'] !== ''
+                ? (float) $data['marble_price_per_sq_ft']
+                : ($marbleStone && $marbleStone->price_per_sq_ft ? (float) $marbleStone->price_per_sq_ft : null),
             'manual_price_override' => isset($data['manual_price_override']) && $data['manual_price_override'] !== ''
                 ? (float) $data['manual_price_override']
                 : null,
@@ -480,8 +485,8 @@ class PavingQuotationController extends Controller
      */
     protected function normalizeCadMoneyStringsOnRequest(Request $request): void
     {
-        $moneyKeys = ['stone_price_per_stone', 'helper_hourly_rate', 'owner_hourly_rate', 'marble_price_per_stone', 'manual_price_override'];
-        $optionalEmptyToNull = ['marble_price_per_stone', 'manual_price_override'];
+        $moneyKeys = ['stone_price_per_stone', 'stone_price_per_sq_ft', 'helper_hourly_rate', 'owner_hourly_rate', 'marble_price_per_stone', 'marble_price_per_sq_ft', 'manual_price_override'];
+        $optionalEmptyToNull = ['marble_price_per_stone', 'marble_price_per_sq_ft', 'manual_price_override', 'stone_price_per_stone', 'stone_price_per_sq_ft'];
         $emptyMeansZero = ['helper_hourly_rate', 'owner_hourly_rate'];
 
         foreach ($moneyKeys as $key) {

@@ -597,50 +597,18 @@
     </ul>
   </div>
 
-  @php
-    $materialImageUrls = [];
-    if ($quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_FLOORING && is_array($quotation->source_snapshot)) {
-        $inputs = $quotation->source_snapshot['inputs'] ?? [];
-        if (!empty($inputs['include_material_details'])) {
-            foreach (['material_image_url_1', 'material_image_url_2', 'material_image_url_3', 'material_image_url_4'] as $key) {
-                if (!empty($inputs[$key])) {
-                    $materialImageUrls[] = $inputs[$key];
-                }
-            }
-        }
-    }
-  @endphp
-
-  @if (count($materialImageUrls) > 0)
+  @if ($flooringMaterial && !empty($flooringMaterial['local_images']))
     <div class="pdf-photos-section" style="page-break-inside: avoid;">
       <p class="pdf-photos-title">Client material selection images</p>
       <table class="pdf-photos-grid" style="table-layout: fixed; width: 100%;">
-        @foreach (array_chunk($materialImageUrls, 2) as $row)
+        @foreach (array_chunk($flooringMaterial['local_images'], 2) as $row)
           <tr>
-            @foreach ($row as $url)
-              @php
-                $imgData = null;
-                try {
-                    $context = stream_context_create(['http' => ['timeout' => 5], 'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
-                    $imgContent = @file_get_contents($url, false, $context);
-                    if ($imgContent !== false) {
-                        $finfo = new finfo(FILEINFO_MIME_TYPE);
-                        $mime = $finfo->buffer($imgContent) ?: 'image/jpeg';
-                        $imgData = 'data:' . $mime . ';base64,' . base64_encode($imgContent);
-                    }
-                } catch (\Exception $e) {}
-              @endphp
-              @if ($imgData)
-                <td style="width: 50%;">
-                  <div class="pdf-photo-frame">
-                    <img src="{{ $imgData }}" alt="Material Image" style="max-width: 100%; height: auto;">
-                  </div>
-                </td>
-              @else
-                <td style="width: 50%;">
-                  <!-- Image failed to download or invalid URL -->
-                </td>
-              @endif
+            @foreach ($row as $imgPath)
+              <td style="width: 50%;">
+                <div class="pdf-photo-frame">
+                  <img src="{{ $imgPath }}" alt="Material Image" style="max-width: 100%; height: auto;">
+                </div>
+              </td>
             @endforeach
             @if (count($row) === 1)
               <td style="width: 50%;"></td>

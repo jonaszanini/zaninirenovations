@@ -61,12 +61,13 @@
     display: grid;
     grid-template-columns:
       minmax(120px, 1.15fr)
-      minmax(140px, 1.35fr)
-      minmax(70px, 0.52fr)
-      minmax(70px, 0.52fr)
-      minmax(70px, 0.52fr)
-      minmax(108px, 0.92fr)
-      minmax(78px, 0.62fr)
+      minmax(120px, 1.2fr)
+      minmax(60px, 0.5fr)
+      minmax(60px, 0.5fr)
+      minmax(60px, 0.5fr)
+      minmax(100px, 0.8fr)
+      minmax(75px, 0.6fr)
+      minmax(75px, 0.6fr)
       auto;
     gap: 8px 10px;
     align-items: center;

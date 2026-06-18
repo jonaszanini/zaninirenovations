@@ -31,7 +31,7 @@ class PavingDatabaseController extends Controller
 
     public function storeStone(Request $request)
     {
-        $this->mergeStrippedMoney($request, ['price_per_stone']);
+        $this->mergeStrippedMoney($request, ['price_per_stone', 'price_per_sq_ft']);
         $this->normalizeStoneUrlOnRequest($request);
 
         $data = $request->validate([
@@ -40,9 +40,14 @@ class PavingDatabaseController extends Controller
             'length_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'width_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'height_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
-            'sq_ft_per_stone' => ['required', 'numeric', 'min:0.0001', 'max:100'],
-            'price_per_stone' => ['required', 'numeric', 'min:0', 'max:99999'],
+            'sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
+            'price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'price_per_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:99999'],
         ]);
+
+        if (empty($data['price_per_sq_ft']) && (empty($data['sq_ft_per_stone']) || empty($data['price_per_stone']))) {
+            return back()->withInput()->withErrors(['price_per_sq_ft' => 'You must provide either Price/sq ft or both Sq ft/stone and $/stone.']);
+        }
 
         $max = (int) PavingStoneType::query()->max('sort_order');
         PavingStoneType::create($this->stonePayloadFromValidated($data) + [
@@ -54,7 +59,7 @@ class PavingDatabaseController extends Controller
 
     public function updateStone(Request $request, PavingStoneType $paving_stone_type)
     {
-        $this->mergeStrippedMoney($request, ['price_per_stone']);
+        $this->mergeStrippedMoney($request, ['price_per_stone', 'price_per_sq_ft']);
         $this->normalizeStoneUrlOnRequest($request);
 
         $data = $request->validate([
@@ -63,9 +68,14 @@ class PavingDatabaseController extends Controller
             'length_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'width_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'height_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
-            'sq_ft_per_stone' => ['required', 'numeric', 'min:0.0001', 'max:100'],
-            'price_per_stone' => ['required', 'numeric', 'min:0', 'max:99999'],
+            'sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
+            'price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'price_per_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:99999'],
         ]);
+
+        if (empty($data['price_per_sq_ft']) && (empty($data['sq_ft_per_stone']) || empty($data['price_per_stone']))) {
+            return back()->withInput()->withErrors(['price_per_sq_ft' => 'You must provide either Price/sq ft or both Sq ft/stone and $/stone.']);
+        }
 
         $paving_stone_type->update($this->stonePayloadFromValidated($data));
 
@@ -173,14 +183,23 @@ class PavingDatabaseController extends Controller
         $width = isset($data['width_in']) && $data['width_in'] !== '' ? (float) $data['width_in'] : null;
         $height = isset($data['height_in']) && $data['height_in'] !== '' ? (float) $data['height_in'] : null;
 
+        $sqFt = isset($data['sq_ft_per_stone']) && $data['sq_ft_per_stone'] !== '' ? (float) $data['sq_ft_per_stone'] : null;
+        $price = isset($data['price_per_stone']) && $data['price_per_stone'] !== '' ? (float) $data['price_per_stone'] : null;
+        
+        $pricePerSqFt = isset($data['price_per_sq_ft']) && $data['price_per_sq_ft'] !== '' ? (float) $data['price_per_sq_ft'] : null;
+        if ($pricePerSqFt === null && $sqFt > 0 && $price !== null) {
+            $pricePerSqFt = round($price / $sqFt, 4);
+        }
+
         return [
             'name' => trim($data['name']),
             'product_url' => $url !== '' ? $url : null,
             'length_in' => $length,
             'width_in' => $width,
             'height_in' => $height,
-            'sq_ft_per_stone' => $data['sq_ft_per_stone'],
-            'price_per_stone' => $data['price_per_stone'],
+            'sq_ft_per_stone' => $sqFt,
+            'price_per_stone' => $price,
+            'price_per_sq_ft' => $pricePerSqFt,
         ];
     }
 
