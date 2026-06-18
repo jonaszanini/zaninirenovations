@@ -449,6 +449,7 @@ class FlooringQuotationController extends Controller
             $inputs = is_array($flooringQuotation->inputs) ? $flooringQuotation->inputs : [];
             $materialName = trim((string) ($inputs['material_name'] ?? ''));
             $label = $materialName !== '' ? 'Materials — '.$materialName : 'Client-selected flooring material';
+            $label .= "\nNote: Material price is subject to change depending on store price at the time of purchase.";
             $items[] = [
                 'description' => $label,
                 'amount' => $materialAmt,

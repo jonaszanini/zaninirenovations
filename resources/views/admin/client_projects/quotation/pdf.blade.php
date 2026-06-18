@@ -231,10 +231,13 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 10.5pt;
+      table-layout: fixed;
     }
     .quote-material-selection-table td {
       padding: 3pt 0;
       vertical-align: top;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     .quote-material-selection-table td.label {
       width: 28%;
@@ -533,7 +536,7 @@
         @if ($flooringMaterial['url'] !== '')
           <tr>
             <td class="label">Store link</td>
-            <td><a href="{{ $flooringMaterial['url'] }}" style="color:#024768;text-decoration:underline;">{{ $flooringMaterial['url'] }}</a></td>
+            <td><a href="{{ $flooringMaterial['url'] }}" style="color:#024768;text-decoration:underline;">{{ \Illuminate\Support\Str::limit($flooringMaterial['url'], 55) }}</a></td>
           </tr>
         @endif
       </table>
