@@ -165,19 +165,18 @@ class PavingDatabaseController extends Controller
 
     protected function normalizeStoneUrlOnRequest(Request $request): void
     {
-        if (! $request->has('product_url')) {
-            return;
+        foreach (['product_url', 'image_url'] as $key) {
+            if ($request->has($key)) {
+                $url = trim((string) $request->input($key));
+                if ($url === '') {
+                    $request->merge([$key => null]);
+                } elseif (! preg_match('#^https?://#i', $url)) {
+                    $request->merge([$key => 'https://'.$url]);
+                } else {
+                    $request->merge([$key => $url]);
+                }
+            }
         }
-        $url = trim((string) $request->input('product_url'));
-        if ($url === '') {
-            $request->merge(['product_url' => null]);
-
-            return;
-        }
-        if (! preg_match('#^https?://#i', $url)) {
-            $url = 'https://'.$url;
-        }
-        $request->merge(['product_url' => $url]);
     }
 
     /**
@@ -187,6 +186,7 @@ class PavingDatabaseController extends Controller
     protected function stonePayloadFromValidated(array $data): array
     {
         $url = trim((string) ($data['product_url'] ?? ''));
+        $imgUrl = trim((string) ($data['image_url'] ?? ''));
         $length = isset($data['length_in']) && $data['length_in'] !== '' ? (float) $data['length_in'] : null;
         $width = isset($data['width_in']) && $data['width_in'] !== '' ? (float) $data['width_in'] : null;
         $height = isset($data['height_in']) && $data['height_in'] !== '' ? (float) $data['height_in'] : null;
@@ -199,15 +199,23 @@ class PavingDatabaseController extends Controller
             $pricePerSqFt = round($price / $sqFt, 4);
         }
 
+        $deliveryCost = isset($data['delivery_cost']) && $data['delivery_cost'] !== '' ? (float) $data['delivery_cost'] : null;
+        $addCost = isset($data['additional_cost']) && $data['additional_cost'] !== '' ? (float) $data['additional_cost'] : null;
+        $addCostDesc = trim((string) ($data['additional_cost_description'] ?? ''));
+
         return [
             'name' => trim($data['name']),
             'product_url' => $url !== '' ? $url : null,
+            'image_url' => $imgUrl !== '' ? $imgUrl : null,
             'length_in' => $length,
             'width_in' => $width,
             'height_in' => $height,
             'sq_ft_per_stone' => $sqFt,
             'price_per_stone' => $price,
             'price_per_sq_ft' => $pricePerSqFt,
+            'delivery_cost' => $deliveryCost,
+            'additional_cost' => $addCost,
+            'additional_cost_description' => $addCostDesc !== '' ? $addCostDesc : null,
         ];
     }
 
