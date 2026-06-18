@@ -31,7 +31,7 @@ class PavingDatabaseController extends Controller
 
     public function storeStone(Request $request)
     {
-        $this->mergeStrippedMoney($request, ['price_per_stone', 'price_per_sq_ft']);
+        $this->mergeStrippedMoney($request, ['price_per_stone', 'price_per_sq_ft', 'delivery_cost', 'additional_cost']);
         $this->normalizeStoneUrlOnRequest($request);
 
         $data = $request->validate([
@@ -43,6 +43,9 @@ class PavingDatabaseController extends Controller
             'sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
             'price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'price_per_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'delivery_cost' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'additional_cost' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'additional_cost_description' => ['nullable', 'string', 'max:255'],
         ]);
 
         if (empty($data['price_per_sq_ft']) && (empty($data['sq_ft_per_stone']) || empty($data['price_per_stone']))) {
@@ -59,7 +62,7 @@ class PavingDatabaseController extends Controller
 
     public function updateStone(Request $request, PavingStoneType $paving_stone_type)
     {
-        $this->mergeStrippedMoney($request, ['price_per_stone', 'price_per_sq_ft']);
+        $this->mergeStrippedMoney($request, ['price_per_stone', 'price_per_sq_ft', 'delivery_cost', 'additional_cost']);
         $this->normalizeStoneUrlOnRequest($request);
 
         $data = $request->validate([
@@ -71,6 +74,9 @@ class PavingDatabaseController extends Controller
             'sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
             'price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'price_per_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'delivery_cost' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'additional_cost' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'additional_cost_description' => ['nullable', 'string', 'max:255'],
         ]);
 
         if (empty($data['price_per_sq_ft']) && (empty($data['sq_ft_per_stone']) || empty($data['price_per_stone']))) {

@@ -17,59 +17,91 @@
       <p class="admin-form-help">Used by the main and marble stone dropdowns. Length × width (in) ÷ 144 = sq ft per stone — use the fill button or enter sq ft manually.</p>
       <div class="admin-table-scroll">
         <div class="pq-db-stone-list" style="margin-top:12px;">
-          <div class="pq-db-stone-grid pq-db-stone-head" aria-hidden="true">
-            <span class="pq-db-stone-head-label">Name</span>
-            <span class="pq-db-stone-head-label">Product link</span>
-            <span class="pq-db-stone-head-label">Length (in)</span>
-            <span class="pq-db-stone-head-label">Width (in)</span>
-            <span class="pq-db-stone-head-label">Height (in)</span>
-            <span class="pq-db-stone-head-label">Sq ft / stone</span>
-            <span class="pq-db-stone-head-label">$/stone (CAD)</span>
-            <span class="pq-db-stone-head-label">Price/sq ft</span>
-            <span class="pq-db-stone-head-label"></span>
-          </div>
           @foreach ($stoneTypes as $st)
-            <div class="pq-db-stone-row">
+            <div class="pq-db-stone-card">
               <form method="post" action="{{ route('admin.quotations.paving.database.stones.update', $st) }}" class="pq-db-stone-form">
                 @csrf
                 @method('PUT')
-                <div class="pq-db-stone-grid">
-                  <input class="admin-input" type="text" name="name" value="{{ $st->name }}" class="admin-input" required maxlength="120" aria-label="Stone name">
-                  <div class="pq-db-stone-link-wrap">
-                    <input class="admin-input" type="url" name="product_url" value="{{ $st->product_url }}" class="admin-input" maxlength="500"
-                           placeholder="https://…" aria-label="Product link">
-                    @if (filled($st->product_url))
-                      <a href="{{ $st->product_url }}" class="pq-db-stone-open-link" target="_blank" rel="noopener noreferrer" title="Open product page">
-                        <i class="fa fa-external-link" aria-hidden="true"></i>
-                      </a>
-                    @endif
+                
+                <div class="pq-db-stone-card-header">
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Name</span>
+                    <input class="admin-input" type="text" name="name" value="{{ $st->name }}" required maxlength="120" aria-label="Stone name">
                   </div>
-                  <input class="admin-input" type="number" name="length_in" value="{{ $st->length_in }}" step="0.01" min="0.01" max="999"
-                         class="admin-input pq-db-stone-len" placeholder="—" aria-label="Length in inches">
-                  <input class="admin-input" type="number" name="width_in" value="{{ $st->width_in }}" step="0.01" min="0.01" max="999"
-                         class="admin-input pq-db-stone-wid" placeholder="—" aria-label="Width in inches">
-                  <input class="admin-input" type="number" name="height_in" value="{{ $st->height_in }}" step="0.01" min="0.01" max="999"
-                         class="admin-input pq-db-stone-hgt" placeholder="—" aria-label="Height in inches">
-                  <div class="pq-db-stone-sq-wrap">
-                    <input class="admin-input pq-db-stone-sq" type="number" name="sq_ft_per_stone" value="{{ $st->sq_ft_per_stone }}" step="0.0001" min="0.0001"
-                           aria-label="Sq ft per stone" placeholder="—">
-                    <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Product link</span>
+                    <div class="pq-db-stone-link-wrap">
+                      <input class="admin-input" type="url" name="product_url" value="{{ $st->product_url }}" maxlength="500" placeholder="https://…" aria-label="Product link">
+                      @if (filled($st->product_url))
+                        <a href="{{ $st->product_url }}" class="pq-db-stone-open-link" target="_blank" rel="noopener noreferrer" title="Open product page">
+                          <i class="fa fa-external-link" aria-hidden="true"></i>
+                        </a>
+                      @endif
+                    </div>
                   </div>
-                  <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
-                         value="{{ $st->price_per_stone !== null ? number_format((float) $st->price_per_stone, 2, '.', '') : '' }}"
-                         class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD" placeholder="—">
-                  <input type="text" name="price_per_sq_ft" inputmode="decimal" autocomplete="off"
-                         value="{{ $st->price_per_sq_ft !== null ? number_format((float) $st->price_per_sq_ft, 4, '.', '') : '' }}"
-                         class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD" placeholder="Auto">
                   <div class="pq-db-stone-actions">
                     <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save</button>
-                    @if ($stoneTypes->count()> 1)
+                    @if ($stoneTypes->count() > 1)
                       <button type="submit" form="pq-del-stone-{{ $st->id }}" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
                     @endif
                   </div>
                 </div>
+
+                <div class="pq-db-stone-card-body">
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Length (in)</span>
+                    <input class="admin-input pq-db-stone-len" type="number" name="length_in" value="{{ $st->length_in }}" step="0.01" min="0.01" max="999" placeholder="—" aria-label="Length in inches">
+                  </div>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Width (in)</span>
+                    <input class="admin-input pq-db-stone-wid" type="number" name="width_in" value="{{ $st->width_in }}" step="0.01" min="0.01" max="999" placeholder="—" aria-label="Width in inches">
+                  </div>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Height (in)</span>
+                    <input class="admin-input pq-db-stone-hgt" type="number" name="height_in" value="{{ $st->height_in }}" step="0.01" min="0.01" max="999" placeholder="—" aria-label="Height in inches">
+                  </div>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Sq ft / stone</span>
+                    <div class="pq-db-stone-sq-wrap">
+                      <input class="admin-input pq-db-stone-sq" type="number" name="sq_ft_per_stone" value="{{ $st->sq_ft_per_stone }}" step="0.0001" min="0.0001" placeholder="—" aria-label="Sq ft per stone">
+                      <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
+                    </div>
+                  </div>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">$/stone (CAD)</span>
+                    <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
+                           value="{{ $st->price_per_stone !== null ? number_format((float) $st->price_per_stone, 2, '.', '') : '' }}"
+                           class="admin-input cp-money-input pq-db-stone-price" placeholder="—" aria-label="Price per stone CAD">
+                  </div>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Price/sq ft</span>
+                    <input type="text" name="price_per_sq_ft" inputmode="decimal" autocomplete="off"
+                           value="{{ $st->price_per_sq_ft !== null ? number_format((float) $st->price_per_sq_ft, 4, '.', '') : '' }}"
+                           class="admin-input cp-money-input pq-db-stone-price-sqft" placeholder="Auto" aria-label="Price per sq ft CAD">
+                  </div>
+                </div>
+
+                <div class="pq-db-stone-card-footer">
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Delivery Cost (CAD)</span>
+                    <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off"
+                           value="{{ $st->delivery_cost !== null ? number_format((float) $st->delivery_cost, 2, '.', '') : '' }}"
+                           class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost">
+                  </div>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Additional Cost (CAD)</span>
+                    <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off"
+                           value="{{ $st->additional_cost !== null ? number_format((float) $st->additional_cost, 2, '.', '') : '' }}"
+                           class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost">
+                  </div>
+                  <div class="pq-db-field-group">
+                    <span class="pq-db-field-label">Additional Cost Description</span>
+                    <input type="text" name="additional_cost_description" value="{{ $st->additional_cost_description }}"
+                           class="admin-input" placeholder="e.g. Pallet deposit" maxlength="255" aria-label="Additional cost description">
+                  </div>
+                </div>
               </form>
-              @if ($stoneTypes->count()> 1)
+              @if ($stoneTypes->count() > 1)
                 <form id="pq-del-stone-{{ $st->id }}" method="post" action="{{ route('admin.quotations.paving.database.stones.destroy', $st) }}"
                       class="pq-db-hidden-form" onsubmit="return confirm('Delete this stone type?');">
                   @csrf
@@ -80,29 +112,69 @@
           @endforeach
         </div>
       </div>
-      <form method="post" action="{{ route('admin.quotations.paving.database.stones.store') }}" class="admin-card pq-db-add-stone" style="margin-top:16px;padding:16px;border:1px dashed #cbd5e1;">
+      
+      <form method="post" action="{{ route('admin.quotations.paving.database.stones.store') }}" class="admin-card pq-db-add-stone" style="margin-top:24px;padding:16px;border:1px dashed #cbd5e1;background:#f8fafc;">
         @csrf
-        <h5 class="cp-breakdown-intro">Add stone type</h5>
-        <div class="pq-db-stone-grid pq-db-stone-grid--add">
-          <input type="text" name="name" placeholder="Name" class="admin-input" required maxlength="120" aria-label="New stone name">
-          <input type="url" name="product_url" placeholder="Product link (https://…)" class="admin-input" maxlength="500" aria-label="Product link">
-          <input type="number" name="length_in" placeholder="Length (in)" step="0.01" min="0.01" max="999"
-                 class="admin-input pq-db-stone-len" aria-label="Length in inches">
-          <input type="number" name="width_in" placeholder="Width (in)" step="0.01" min="0.01" max="999"
-                 class="admin-input pq-db-stone-wid" aria-label="Width in inches">
-          <input type="number" name="height_in" placeholder="Height (in)" step="0.01" min="0.01" max="999"
-                 class="admin-input pq-db-stone-hgt" aria-label="Height in inches">
-          <div class="pq-db-stone-sq-wrap">
-            <input type="number" name="sq_ft_per_stone" placeholder="Sq ft/stone" step="0.0001" min="0.0001"
-                   class="admin-input pq-db-stone-sq" aria-label="Sq ft per stone">
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
+        <h5 class="cp-breakdown-intro" style="margin-bottom:16px;">Add new stone type</h5>
+        
+        <div class="pq-db-stone-card-header">
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Name</span>
+            <input type="text" name="name" placeholder="Name" class="admin-input" required maxlength="120" aria-label="New stone name">
           </div>
-          <input type="text" name="price_per_stone" placeholder="$/stone" inputmode="decimal" autocomplete="off"
-                 class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD">
-          <input type="text" name="price_per_sq_ft" placeholder="$/sq ft" inputmode="decimal" autocomplete="off"
-                 class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD">
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Product link</span>
+            <div class="pq-db-stone-link-wrap">
+              <input type="url" name="product_url" placeholder="https://…" class="admin-input" maxlength="500" aria-label="Product link">
+            </div>
+          </div>
           <div class="pq-db-stone-actions">
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add</button>
+          </div>
+        </div>
+
+        <div class="pq-db-stone-card-body">
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Length (in)</span>
+            <input type="number" name="length_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-len" aria-label="Length in inches">
+          </div>
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Width (in)</span>
+            <input type="number" name="width_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-wid" aria-label="Width in inches">
+          </div>
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Height (in)</span>
+            <input type="number" name="height_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-hgt" aria-label="Height in inches">
+          </div>
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Sq ft / stone</span>
+            <div class="pq-db-stone-sq-wrap">
+              <input type="number" name="sq_ft_per_stone" placeholder="—" step="0.0001" min="0.0001" class="admin-input pq-db-stone-sq" aria-label="Sq ft per stone">
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
+            </div>
+          </div>
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">$/stone (CAD)</span>
+            <input type="text" name="price_per_stone" placeholder="—" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD">
+          </div>
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Price/sq ft</span>
+            <input type="text" name="price_per_sq_ft" placeholder="Auto" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD">
+          </div>
+        </div>
+
+        <div class="pq-db-stone-card-footer" style="background:transparent;padding:0;border:none;">
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Delivery Cost (CAD)</span>
+            <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost">
+          </div>
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Additional Cost (CAD)</span>
+            <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost">
+          </div>
+          <div class="pq-db-field-group">
+            <span class="pq-db-field-label">Additional Cost Description</span>
+            <input type="text" name="additional_cost_description" class="admin-input" placeholder="e.g. Pallet deposit" maxlength="255" aria-label="Additional cost description">
           </div>
         </div>
       </form>

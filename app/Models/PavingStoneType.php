@@ -14,6 +14,10 @@ class PavingStoneType extends Model
         'height_in',
         'sq_ft_per_stone',
         'price_per_stone',
+        'price_per_sq_ft',
+        'delivery_cost',
+        'additional_cost',
+        'additional_cost_description',
         'sort_order',
     ];
 
@@ -23,6 +27,9 @@ class PavingStoneType extends Model
         'height_in' => 'decimal:2',
         'sq_ft_per_stone' => 'decimal:4',
         'price_per_stone' => 'decimal:2',
+        'price_per_sq_ft' => 'decimal:4',
+        'delivery_cost' => 'decimal:2',
+        'additional_cost' => 'decimal:2',
         'sort_order' => 'integer',
     ];
 

@@ -129,6 +129,37 @@ class PavingQuotationCalculator
         $materialRows = [
             $matRowMain,
             $matRowMarble,
+        ];
+
+        $stoneDelivery = isset($inputs['stone_delivery_cost']) ? (float) $inputs['stone_delivery_cost'] : 0.0;
+        if ($stoneDelivery > 0) {
+            $materialRows[] = $this->matRow('Main paving stone delivery', 'flat', 1, $stoneDelivery, $stoneDelivery, $hst, 'Delivery cost for main stones');
+        }
+
+        $stoneAddCost = isset($inputs['stone_additional_cost']) ? (float) $inputs['stone_additional_cost'] : 0.0;
+        if ($stoneAddCost > 0) {
+            $desc = isset($inputs['stone_additional_cost_description']) && trim($inputs['stone_additional_cost_description']) !== ''
+                ? trim($inputs['stone_additional_cost_description'])
+                : 'Main stone additional cost';
+            $materialRows[] = $this->matRow($desc, 'flat', 1, $stoneAddCost, $stoneAddCost, $hst, 'Additional cost applied to main stones');
+        }
+
+        if ($marbleOn && $marbleArea > 0) {
+            $marbleDelivery = isset($inputs['marble_delivery_cost']) ? (float) $inputs['marble_delivery_cost'] : 0.0;
+            if ($marbleDelivery > 0) {
+                $materialRows[] = $this->matRow('Marble stone delivery', 'flat', 1, $marbleDelivery, $marbleDelivery, $hst, 'Delivery cost for marble / accent stones');
+            }
+
+            $marbleAddCost = isset($inputs['marble_additional_cost']) ? (float) $inputs['marble_additional_cost'] : 0.0;
+            if ($marbleAddCost > 0) {
+                $desc = isset($inputs['marble_additional_cost_description']) && trim($inputs['marble_additional_cost_description']) !== ''
+                    ? trim($inputs['marble_additional_cost_description'])
+                    : 'Marble stone additional cost';
+                $materialRows[] = $this->matRow($desc, 'flat', 1, $marbleAddCost, $marbleAddCost, $hst, 'Additional cost applied to marble stones');
+            }
+        }
+
+        $materialRows = array_merge($materialRows, [
             $this->matRow('Granular base (crushed 3/4")', 'cu yd', $qtyGranular, $r('crushed_stone_cu_yd'), $costGranular, $hst, '8" compacted base: area × depth(ft) × 0.7407 ÷ 27; 0.5 yd steps'),
             $this->matRow('Bedding sand', 'cu yd', $qtyBedding, $r('bedding_sand_cu_yd'), $costBedding, $hst, '1" layer; 0.5 yd steps'),
             $this->matRow('Polymeric sand', 'bags', $qtyPoly, $r('polymeric_sand_bag'), $costPoly, $hst, '~50 sq ft per bag when enabled'),
@@ -136,7 +167,7 @@ class PavingQuotationCalculator
             $this->matRow('Fabric staples', 'boxes', $qtyStapleBoxes, $r('fabric_staples_box'), $costStaples, $hst, '~2 boxes per roll of fabric'),
             $this->matRow('Edge restraints (6 ft)', 'pieces', $qtyEdge, $r('edge_restraint_piece'), $costEdge, $hst, 'Perimeter √(area)×4 ÷ 6 ft + 10%'),
             $this->matRow('Edging spikes', 'packs', $qtySpikes, $r('edging_spikes_pack'), $costSpikes, $hst, '~1 spike pack per 3 edge pieces'),
-        ];
+        ]);
 
         $matPre = 0.0;
         $matHst = 0.0;

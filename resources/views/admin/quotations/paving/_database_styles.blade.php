@@ -56,52 +56,62 @@
   }
   .pq-db-wrap { margin-top: 0; }
   .pq-db-subpanel[hidden] { display: none !important; }
-  .pq-db-stone-list { min-width: 1000px; border: 1px solid var(--admin-border); border-radius: 8px; overflow: hidden; }
-  .pq-db-stone-grid {
+  .pq-db-stone-list { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
+  .pq-db-stone-card {
+    background: #fff;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    transition: box-shadow 0.2s;
+  }
+  .pq-db-stone-card:focus-within {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    border-color: var(--admin-primary-ring);
+  }
+  .pq-db-stone-card-header {
     display: grid;
-    grid-template-columns:
-      minmax(120px, 1.15fr)
-      minmax(120px, 1.2fr)
-      minmax(60px, 0.5fr)
-      minmax(60px, 0.5fr)
-      minmax(60px, 0.5fr)
-      minmax(100px, 0.8fr)
-      minmax(75px, 0.6fr)
-      minmax(75px, 0.6fr)
-      140px;
-    gap: 8px 10px;
-    align-items: center;
-    padding: 0.65rem 1.1rem;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: start;
   }
-  .pq-db-stone-grid > * {
-    min-width: 0;
+  .pq-db-stone-card-body {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
   }
-  .pq-db-stone-head {
-    background: var(--admin-surface-hover);
-    border-bottom: 1px solid var(--admin-border);
-    align-items: end;
-    padding-top: 0.55rem;
-    padding-bottom: 0.5rem;
-  }
-  .pq-db-stone-head-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--admin-muted);
-    font-weight: 600;
-    line-height: 1.2;
-  }
-  .pq-db-stone-row {
-    border-bottom: 1px solid var(--admin-border);
+  .pq-db-stone-card-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 16px;
     background: #f8fafc;
+    padding: 12px 16px;
+    border-radius: 6px;
+    border: 1px dashed #cbd5e1;
   }
-  .pq-db-stone-row:last-child { border-bottom: none; }
-  .pq-db-stone-row .pq-db-stone-grid { padding-top: 0.55rem; padding-bottom: 0.7rem; }
+  .pq-db-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .pq-db-field-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--admin-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .pq-db-stone-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 22px; /* align with inputs that have labels */
+  }
   .pq-db-stone-link-wrap {
     display: flex;
     align-items: center;
     gap: 6px;
-    min-width: 0;
   }
   .pq-db-stone-link-wrap .admin-input { flex: 1 1 auto; min-width: 0; }
   .pq-db-stone-open-link {
@@ -109,8 +119,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 38px;
+    height: 38px;
     border-radius: 6px;
     color: #024768;
     background: #e8f4f8;
@@ -121,26 +131,17 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    min-width: 0;
   }
   .pq-db-stone-sq-wrap .pq-db-stone-sq { flex: 1 1 auto; min-width: 0; }
-  .pq-db-stone-grid--add { margin-top: 4px; }
-  .pq-db-stone-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    justify-content: flex-end;
-    padding-top: 1px;
-  }
   .pq-db-hidden-form { display: none; }
-  @media (max-width: 720px) {
-    .pq-db-stone-grid {
-      grid-template-columns: 1fr;
-    }
-    .pq-db-stone-actions {
-      justify-content: flex-start;
-    }
+  @media (max-width: 860px) {
+    .pq-db-stone-card-header { grid-template-columns: 1fr; }
+    .pq-db-stone-actions { margin-top: 0; }
+    .pq-db-stone-card-body { grid-template-columns: repeat(3, 1fr); }
+    .pq-db-stone-card-footer { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 500px) {
+    .pq-db-stone-card-body { grid-template-columns: 1fr 1fr; }
   }
   .pq-db-rates-groups { display: flex; flex-direction: column; gap: 20px; }
   .pq-db-rates-group-title {

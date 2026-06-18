@@ -450,6 +450,9 @@ class PavingQuotationController extends Controller
             'stone_sq_ft_per_stone' => $mainStone->sq_ft_per_stone ? (float) $mainStone->sq_ft_per_stone : null,
             'stone_price_per_stone' => $mainStone->price_per_stone ? (float) $mainStone->price_per_stone : null,
             'stone_price_per_sq_ft' => $mainStone->price_per_sq_ft ? (float) $mainStone->price_per_sq_ft : null,
+            'stone_delivery_cost' => $mainStone->delivery_cost ? (float) $mainStone->delivery_cost : null,
+            'stone_additional_cost' => $mainStone->additional_cost ? (float) $mainStone->additional_cost : null,
+            'stone_additional_cost_description' => $mainStone->additional_cost_description,
             'helper_hourly_rate' => (float) $data['helper_hourly_rate'],
             'owner_hourly_rate' => (float) $data['owner_hourly_rate'],
             'mini_skid_days' => (int) $data['mini_skid_days'],
@@ -473,6 +476,9 @@ class PavingQuotationController extends Controller
             'marble_price_per_sq_ft' => isset($data['marble_price_per_sq_ft']) && $data['marble_price_per_sq_ft'] !== ''
                 ? (float) $data['marble_price_per_sq_ft']
                 : ($marbleStone && $marbleStone->price_per_sq_ft ? (float) $marbleStone->price_per_sq_ft : null),
+            'marble_delivery_cost' => $marbleStone && $marbleStone->delivery_cost ? (float) $marbleStone->delivery_cost : null,
+            'marble_additional_cost' => $marbleStone && $marbleStone->additional_cost ? (float) $marbleStone->additional_cost : null,
+            'marble_additional_cost_description' => $marbleStone ? $marbleStone->additional_cost_description : null,
             'manual_price_override' => isset($data['manual_price_override']) && $data['manual_price_override'] !== ''
                 ? (float) $data['manual_price_override']
                 : null,
