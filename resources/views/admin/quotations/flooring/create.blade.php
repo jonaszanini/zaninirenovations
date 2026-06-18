@@ -305,6 +305,26 @@
               <input type="url" class="admin-input" id="fl-material-url" name="material_url" maxlength="500"
                      value="{{ old('material_url', $inputs['material_url'] ?? '') }}" placeholder="https://">
             </div>
+            <div class="admin-form-group">
+              <label for="fl-material-image-url-1">Material Image URL 1</label>
+              <input type="url" class="admin-input" id="fl-material-image-url-1" name="material_image_url_1" maxlength="500"
+                     value="{{ old('material_image_url_1', $inputs['material_image_url_1'] ?? '') }}" placeholder="https://">
+            </div>
+            <div class="admin-form-group">
+              <label for="fl-material-image-url-2">Material Image URL 2</label>
+              <input type="url" class="admin-input" id="fl-material-image-url-2" name="material_image_url_2" maxlength="500"
+                     value="{{ old('material_image_url_2', $inputs['material_image_url_2'] ?? '') }}" placeholder="https://">
+            </div>
+            <div class="admin-form-group">
+              <label for="fl-material-image-url-3">Material Image URL 3</label>
+              <input type="url" class="admin-input" id="fl-material-image-url-3" name="material_image_url_3" maxlength="500"
+                     value="{{ old('material_image_url_3', $inputs['material_image_url_3'] ?? '') }}" placeholder="https://">
+            </div>
+            <div class="admin-form-group">
+              <label for="fl-material-image-url-4">Material Image URL 4</label>
+              <input type="url" class="admin-input" id="fl-material-image-url-4" name="material_image_url_4" maxlength="500"
+                     value="{{ old('material_image_url_4', $inputs['material_image_url_4'] ?? '') }}" placeholder="https://">
+            </div>
           </div>
           <div class="fl-material-summary" id="fl-material-summary" hidden>
             <p class="fl-material-summary__title">Material price summary (before tax)</p>

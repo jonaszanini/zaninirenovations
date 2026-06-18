@@ -554,7 +554,14 @@
     <tbody>
       @foreach ($items as $row)
         <tr>
-          <td>{!! nl2br(e($row['description'])) !!}</td>
+          @php
+            $desc = e($row['description']);
+            $note = 'Note: Material price is subject to change depending on store price at the time of purchase.';
+            if (str_contains($desc, $note)) {
+                $desc = str_replace($note, '<span style="font-size: 9pt; color: #6b7280; font-style: italic;">' . $note . '</span>', $desc);
+            }
+          @endphp
+          <td>{!! nl2br($desc) !!}</td>
           <td class="amount">{{ $fmt($row['amount']) }}</td>
         </tr>
       @endforeach
@@ -589,6 +596,60 @@
       <li><strong>40% Completion Payment:</strong> Due upon final completion of the work.</li>
     </ul>
   </div>
+
+  @php
+    $materialImageUrls = [];
+    if ($quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_FLOORING && is_array($quotation->source_snapshot)) {
+        $inputs = $quotation->source_snapshot['inputs'] ?? [];
+        if (!empty($inputs['include_material_details'])) {
+            foreach (['material_image_url_1', 'material_image_url_2', 'material_image_url_3', 'material_image_url_4'] as $key) {
+                if (!empty($inputs[$key])) {
+                    $materialImageUrls[] = $inputs[$key];
+                }
+            }
+        }
+    }
+  @endphp
+
+  @if (count($materialImageUrls) > 0)
+    <div class="pdf-photos-section" style="page-break-inside: avoid;">
+      <p class="pdf-photos-title">Client material selection images</p>
+      <table class="pdf-photos-grid" style="table-layout: fixed; width: 100%;">
+        @foreach (array_chunk($materialImageUrls, 2) as $row)
+          <tr>
+            @foreach ($row as $url)
+              @php
+                $imgData = null;
+                try {
+                    $context = stream_context_create(['http' => ['timeout' => 5], 'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
+                    $imgContent = @file_get_contents($url, false, $context);
+                    if ($imgContent !== false) {
+                        $finfo = new finfo(FILEINFO_MIME_TYPE);
+                        $mime = $finfo->buffer($imgContent) ?: 'image/jpeg';
+                        $imgData = 'data:' . $mime . ';base64,' . base64_encode($imgContent);
+                    }
+                } catch (\Exception $e) {}
+              @endphp
+              @if ($imgData)
+                <td style="width: 50%;">
+                  <div class="pdf-photo-frame">
+                    <img src="{{ $imgData }}" alt="Material Image" style="max-width: 100%; height: auto;">
+                  </div>
+                </td>
+              @else
+                <td style="width: 50%;">
+                  <!-- Image failed to download or invalid URL -->
+                </td>
+              @endif
+            @endforeach
+            @if (count($row) === 1)
+              <td style="width: 50%;"></td>
+            @endif
+          </tr>
+        @endforeach
+      </table>
+    </div>
+  @endif
 
   @if ($pdfPhotos->isNotEmpty())
     <div class="pdf-photos-section">

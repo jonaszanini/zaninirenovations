@@ -366,6 +366,10 @@ class FlooringQuotationController extends Controller
                 'material_name' => ['nullable', 'string', 'max:160'],
                 'material_color' => ['nullable', 'string', 'max:120'],
                 'material_url' => ['nullable', 'url', 'max:500'],
+                'material_image_url_1' => ['nullable', 'url', 'max:500'],
+                'material_image_url_2' => ['nullable', 'url', 'max:500'],
+                'material_image_url_3' => ['nullable', 'url', 'max:500'],
+                'material_image_url_4' => ['nullable', 'url', 'max:500'],
             ]);
         } else {
             $data = $request->validate([
@@ -379,6 +383,10 @@ class FlooringQuotationController extends Controller
                 'material_name' => ['nullable', 'string', 'max:160'],
                 'material_color' => ['nullable', 'string', 'max:120'],
                 'material_url' => ['nullable', 'url', 'max:500'],
+                'material_image_url_1' => ['nullable', 'url', 'max:500'],
+                'material_image_url_2' => ['nullable', 'url', 'max:500'],
+                'material_image_url_3' => ['nullable', 'url', 'max:500'],
+                'material_image_url_4' => ['nullable', 'url', 'max:500'],
             ]);
         }
 
@@ -399,6 +407,10 @@ class FlooringQuotationController extends Controller
             'material_name' => trim((string) ($data['material_name'] ?? '')),
             'material_color' => trim((string) ($data['material_color'] ?? '')),
             'material_url' => trim((string) ($data['material_url'] ?? '')),
+            'material_image_url_1' => trim((string) ($data['material_image_url_1'] ?? '')),
+            'material_image_url_2' => trim((string) ($data['material_image_url_2'] ?? '')),
+            'material_image_url_3' => trim((string) ($data['material_image_url_3'] ?? '')),
+            'material_image_url_4' => trim((string) ($data['material_image_url_4'] ?? '')),
         ];
     }
 
