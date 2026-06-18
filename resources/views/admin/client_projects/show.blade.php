@@ -144,7 +144,7 @@
         <input type="hidden" name="note" id="cp-status-note" value="">
         <div class="cp-status-form-head">
           <label for="cp-status-select" class="cp-status-form-label">Change status</label>
-          <span class="cp-hint" title="Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled and Rejected are final. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
+          <span class="cp-hint" title="Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled is final; rejected projects can be reopened. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
           <span class="cp-status-form-help">Pick a status to save it instantly.</span>
         </div>
         <div class="cp-status-controls">
@@ -317,7 +317,43 @@
           @endif
         </p>
       @else
-        <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>. No further status changes are possible.</p>
+        <div class="cp-reopen-block">
+          <p class="cp-final-note"><i class="fa fa-ban"></i> This project is marked as <strong>Rejected</strong>.</p>
+          <form action="{{ route('admin.client-projects.reopen', $project) }}" method="post" class="cp-reopen-form" id="cp-reopen-form">
+            @csrf
+            <div class="cp-reopen-form-head">
+              <label for="cp-reopen-status" class="cp-reopen-form-label">Reopen project</label>
+              <span class="cp-reopen-form-help">Restore workflow by setting a new status.</span>
+            </div>
+            <div class="cp-reopen-controls">
+              <select id="cp-reopen-status" name="status" class="admin-input cp-reopen-select" required>
+                @foreach (\App\Models\ClientProject::reopenableStatuses() as $statusKey)
+                  <option value="{{ $statusKey }}" @selected($project->suggestedReopenStatus() === $statusKey)>
+                    {{ $statusLabels[$statusKey] ?? $statusKey }}
+                  </option>
+                @endforeach
+              </select>
+              <button type="submit" class="admin-btn admin-btn--primary cp-reopen-submit">
+                <i class="fa fa-undo"></i> Reopen
+              </button>
+            </div>
+            <div class="admin-form-group cp-reopen-note-wrap">
+              <label for="cp-reopen-note" class="cp-reopen-note-label">Note (optional)</label>
+              <input type="text" id="cp-reopen-note" name="note" class="admin-input" maxlength="2000" placeholder="e.g. Client reconsidered after follow-up call">
+            </div>
+          </form>
+        </div>
+        <script>
+          (function () {
+            var form = document.getElementById('cp-reopen-form');
+            if (!form) return;
+            form.addEventListener('submit', function (e) {
+              if (!window.confirm('Reopen this rejected project and restore the selected status?')) {
+                e.preventDefault();
+              }
+            });
+          })();
+        </script>
       @endif
     @endunless
 

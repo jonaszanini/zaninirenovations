@@ -586,6 +586,71 @@ class ClientProject extends Model
     }
 
     /**
+     * Statuses available when reopening a rejected project.
+     *
+     * @return list<string>
+     */
+    public static function reopenableStatuses(): array
+    {
+        return array_values(array_filter(
+            self::statuses(),
+            fn (string $status): bool => ! in_array($status, self::terminalStatuses(), true),
+        ));
+    }
+
+    /**
+     * Status immediately before the most recent rejection, when recorded in history.
+     */
+    public function statusPriorToRejection(): ?string
+    {
+        $entry = $this->latestRejectionHistoryEntry();
+
+        $from = $entry?->from_status;
+
+        if (
+            is_string($from)
+            && in_array($from, self::reopenableStatuses(), true)
+        ) {
+            return $from;
+        }
+
+        return null;
+    }
+
+    private function latestRejectionHistoryEntry(): ?ClientProjectStatusHistoryEntry
+    {
+        $matchesRejection = static function (ClientProjectStatusHistoryEntry $entry): bool {
+            return $entry->to_status === self::STATUS_REJECTED
+                && filled($entry->from_status)
+                && $entry->from_status !== self::STATUS_REJECTED;
+        };
+
+        if ($this->relationLoaded('statusHistory')) {
+            return $this->statusHistory
+                ->filter($matchesRejection)
+                ->sortByDesc(static fn (ClientProjectStatusHistoryEntry $entry): array => [
+                    $entry->changed_at?->getTimestamp() ?? 0,
+                    (int) $entry->id,
+                ])
+                ->first();
+        }
+
+        return $this->statusHistory()
+            ->where('to_status', self::STATUS_REJECTED)
+            ->whereNotNull('from_status')
+            ->where('from_status', '!=', self::STATUS_REJECTED)
+            ->orderByDesc('changed_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /** Default status when reopening a rejected project with no usable history. */
+    public function suggestedReopenStatus(): string
+    {
+        return $this->statusPriorToRejection() ?? self::STATUS_QUOTE_PENDING;
+    }
+
+    /**
      * Statuses where new standalone quotations should not be linked.
      *
      * @return list<string>

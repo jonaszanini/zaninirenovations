@@ -663,6 +663,69 @@ a.cp-header-detail__value:hover {
   opacity: 0.9;
 }
 
+.cp-reopen-block {
+  margin-top: 14px;
+}
+
+.cp-reopen-block .cp-final-note {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.cp-reopen-form {
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.cp-reopen-form-head {
+  margin-bottom: 10px;
+}
+
+.cp-reopen-form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.cp-reopen-form-help {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.cp-reopen-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cp-reopen-select {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.cp-reopen-submit {
+  flex-shrink: 0;
+}
+
+.cp-reopen-note-wrap {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.cp-reopen-note-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 4px;
+}
+
 /* Cancel-project modal */
 #cp-cancel-modal[hidden] {
   display: none !important;

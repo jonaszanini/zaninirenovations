@@ -39,4 +39,30 @@ class ClientProjectStatusController extends Controller
 
         return back()->with('success', 'Status updated.');
     }
+
+    public function reopen(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectStatusService $service,
+    ) {
+        if (! $client_project->isRejected()) {
+            return back()->with('error', 'Only rejected projects can be reopened.');
+        }
+
+        $data = $request->validate([
+            'status' => ['required', Rule::in(ClientProject::reopenableStatuses())],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $targetStatus = $data['status'];
+        $note = filled($data['note'] ?? null)
+            ? trim((string) $data['note'])
+            : 'Project reopened from Rejected.';
+
+        $service->transition($client_project, $targetStatus, $note);
+
+        $label = ClientProject::statusLabels()[$targetStatus] ?? $targetStatus;
+
+        return back()->with('success', "Project reopened — status set to {$label}.");
+    }
 }

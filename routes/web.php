@@ -221,6 +221,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('calendar.personal-events.destroy');
     Route::post('client-projects/{client_project}/status', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'update'])
         ->name('client-projects.status.update');
+    Route::post('client-projects/{client_project}/reopen', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'reopen'])
+        ->name('client-projects.reopen');
     Route::post('client-projects/{client_project}/installments', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'saveInstallments'])
         ->name('client-projects.installments.save');
     Route::post('client-projects/{client_project}/installments/{installment}/paid', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'togglePaid'])

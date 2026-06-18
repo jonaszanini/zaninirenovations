@@ -176,7 +176,8 @@
     }
     .pq-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0; font-size: 13px; }
     .pq-row span:first-child { color: #374151; flex: 1 1 auto; min-width: 0; }
-    .pq-row strong { flex-shrink: 0; text-align: right; font-weight: 600; color: #111827; }
+    .pq-row span:first-child .admin-form-help { display: inline; margin: 0; font-size: 0.92em; }
+    .pq-row strong { flex-shrink: 0; text-align: right; font-weight: 600; color: #111827; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .pq-row--sub { font-size: 12px; }
     .pq-row--sub span:first-child { color: #6b7280; padding-left: 8px; }
     .pq-row--divider { border-top: 1px solid #d8dee4; margin-top: 6px; padding-top: 8px; }
@@ -985,9 +986,15 @@
           rows +
           '</div>';
       }
-      function row(label, value, cls, valueCls) {
-        var valueClass = valueCls ? ' class="' + valueCls + ' pq-row' + (cls ? ' ' + cls : '') + '"' : '';
-        return '<div><span>' + label + '</span><strong' + valueClass + '>' + value + '</strong></div>';
+      function row(label, value, cls, extraCls) {
+        var divClass = 'pq-row';
+        if (cls) {
+          divClass += ' ' + cls;
+        }
+        if (extraCls) {
+          divClass += ' ' + extraCls;
+        }
+        return '<div class="' + divClass + '"><span>' + label + '</span><strong>' + value + '</strong></div>';
       }
       function render(c) {
         if (!c || !c.summary) return;
