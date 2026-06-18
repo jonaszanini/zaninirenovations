@@ -14,6 +14,7 @@
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
 
   $linkProject = $linkProject ?? null;
+  $preservePid = request('project');
 @endphp
 
 @section('heading', $title)
@@ -70,64 +71,7 @@
       align-items: start;
     }
     .pq-layout> div:first-child { min-width: 0; }
-    .pq-nav-tabs {
-      list-style: none;
-      margin: 0 0 1.1rem;
-      padding: 0;
-      display: flex;
-      flex-wrap: wrap;
-      border-bottom: 1px solid var(--admin-border);
-      gap: 0;
-    }
-    .pq-nav-tabs .nav-item {
-      margin: 0 0 -1px 0;
-    }
-    .pq-nav-tabs .nav-link {
-      display: block;
-      margin: 0;
-      padding: 0.5rem 1rem;
-      border: 1px solid transparent;
-      border-top-left-radius: 0.25rem;
-      border-top-right-radius: 0.25rem;
-      background: transparent;
-      color: var(--admin-primary);
-      font-weight: 600;
-      font-size: 0.9rem;
-      font-family: inherit;
-      line-height: 1.4;
-      cursor: pointer;
-      text-align: left;
-      text-decoration: none;
-      box-shadow: none;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-    .pq-nav-tabs .nav-link:hover:not(.active):not(:disabled) {
-      color: var(--admin-primary-hover);
-      border-color: var(--admin-surface-hover) var(--admin-surface-hover) var(--admin-border);
-      background: var(--admin-surface-hover);
-    }
-    .pq-nav-tabs .nav-link:focus {
-      outline: none;
-    }
-    .pq-nav-tabs .nav-link:focus-visible {
-      box-shadow: 0 0 0 2px var(--admin-surface), 0 0 0 4px var(--admin-primary-ring);
-    }
-    /* Active tab: “connected” strip; bottom edge matches main area background */
-    .pq-nav-tabs .nav-link.active {
-      color: var(--admin-text);
-      background: var(--admin-surface);
-      border-color: var(--admin-border) var(--admin-border) var(--admin-bg);
-    }
-    .pq-nav-tabs--secondary {
-      margin-bottom: 1rem;
-    }
-    .pq-nav-tabs--secondary .nav-link {
-      font-size: 0.875rem;
-      padding: 0.42rem 0.9rem;
-    }
-    .pq-panel[hidden] { display: none !important; }
-    /* Admin topbar is not sticky on desktop — keep offset small when scrolling. */
+    .pq-hint { color: #64748b; font-size: 11px; margin-top: 2px; }
     .pq-sticky { position: sticky; top: 12px; align-self: start; }
     @media (max-width: 1100px) {
       .pq-layout { grid-template-columns: 1fr; }
@@ -272,9 +216,6 @@
     }
     .pq-marble-price-field { max-width: 280px; }
     @media (max-width: 700px) { .pq-marble-price-field { max-width: none; } }
-    .pq-db-wrap { margin-top: 0; }
-    .pq-db-subpanel[hidden] { display: none !important; }
-    .pq-hint { color: #64748b; font-size: 11px; margin-top: 2px; }
     .pq-area-block { grid-column: 1 / -1; }
     .pq-area-mode { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 10px; }
     .pq-area-mode label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer; }
@@ -283,170 +224,26 @@
     .pq-area-dimensions-sep { padding-bottom: 10px; font-weight: 600; color: #64748b; }
     .pq-area-computed { margin-top: 8px; font-size: 13px; color: #024768; }
     .pq-marble-box { border: 1px dashed #94a3b8; border-radius: 8px; padding: 14px; margin-top: 12px; background: #f8fafc; }
-
-    /* Price database — stone rows share one grid with the header row */
-    .pq-db-stone-list { min-width: 1000px; border: 1px solid var(--admin-border); border-radius: 8px; overflow: hidden; }
-    .pq-db-stone-grid {
-      display: grid;
-      grid-template-columns:
-        minmax(120px, 1.15fr)
-        minmax(140px, 1.35fr)
-        minmax(70px, 0.52fr)
-        minmax(70px, 0.52fr)
-        minmax(70px, 0.52fr)
-        minmax(108px, 0.92fr)
-        minmax(78px, 0.62fr)
-        auto;
-      gap: 8px 10px;
-      align-items: center;
-      padding: 0.65rem 1.1rem;
-    }
-    .pq-db-stone-head {
-      background: var(--admin-surface-hover);
-      border-bottom: 1px solid var(--admin-border);
-      align-items: end;
-      padding-top: 0.55rem;
-      padding-bottom: 0.5rem;
-    }
-    .pq-db-stone-head-label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--admin-muted);
-      font-weight: 600;
-      line-height: 1.2;
-    }
-    .pq-db-stone-row {
-      border-bottom: 1px solid var(--admin-border);
-      background: #f8fafc;
-    }
-    .pq-db-stone-row:last-child { border-bottom: none; }
-    .pq-db-stone-row .pq-db-stone-grid { padding-top: 0.55rem; padding-bottom: 0.7rem; }
-    .pq-db-stone-link-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-    }
-    .pq-db-stone-link-wrap .admin-input { flex: 1 1 auto; min-width: 0; }
-    .pq-db-stone-open-link {
-      flex-shrink: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      color: #024768;
-      background: #e8f4f8;
-      text-decoration: none;
-    }
-    .pq-db-stone-open-link:hover { background: #d1e9f0; color: #013a52; }
-    .pq-db-stone-sq-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-    }
-    .pq-db-stone-sq-wrap .pq-db-stone-sq { flex: 1 1 auto; min-width: 0; }
-    .pq-db-stone-grid--add { margin-top: 4px; }
-    .pq-db-stone-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      justify-content: flex-end;
-      padding-top: 1px; /* optically match admin-input top padding / border */
-    }
-    .pq-db-hidden-form { display: none; }
-    @media (max-width: 720px) {
-      .pq-db-stone-grid {
-        grid-template-columns: 1fr;
-      }
-      .pq-db-stone-actions {
-        justify-content: flex-start;
-      }
-    }
-    .pq-db-rates-groups { display: flex; flex-direction: column; gap: 20px; }
-    .pq-db-rates-group-title {
-      margin: 0 0 8px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: #64748b;
-    }
-    .pq-db-rates-list {
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #fff;
-    }
-    .pq-db-rate-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px 20px;
-      align-items: center;
-      padding: 12px 16px;
-      border-bottom: 1px solid #e8edf2;
-      background: #fafbfc;
-    }
-    .pq-db-rate-row:last-child { border-bottom: none; }
-    .pq-db-rate-name {
-      display: block;
-      font-size: 14px;
-      font-weight: 600;
-      color: #1e293b;
-      line-height: 1.3;
-    }
-    .pq-db-rate-unit {
-      display: block;
-      margin-top: 2px;
-      font-size: 12px;
-      color: #64748b;
-    }
-    .pq-db-rate-inline {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      justify-content: flex-end;
-    }
-    .pq-db-rate-price-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin: 0;
-    }
-    .pq-db-rate-price-label-text {
-      font-size: 11px;
-      font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .pq-db-rate-input { width: 108px; min-width: 88px; }
-    @media (max-width: 640px) {
-      .pq-db-rate-row { grid-template-columns: 1fr; }
-      .pq-db-rate-inline { justify-content: flex-start; }
-    }
   </style>
 @endpush
 
 @section('content')
   <div class="fq-form-toolbar">
-    <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+    <a href="{{ route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
       <i class="fa fa-arrow-left"></i> Back to list
     </a>
-    @if ($isEdit)
-      <div class="fq-form-toolbar-right">
+    <div class="fq-form-toolbar-right">
+      <a href="{{ route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-cog"></i> Price configuration
+      </a>
+      @if ($isEdit)
         <a href="{{ route('admin.quotations.paving.purchase-list', $quotation) }}"
            target="_blank" rel="noopener noreferrer"
            class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-print"></i> Print Material List
         </a>
-      </div>
-    @endif
+      @endif
+    </div>
   </div>
 
   @if ($isEdit && $quotation->project)
@@ -459,17 +256,7 @@
     </div>
   @endif
 
-  <ul class="nav nav-tabs pq-nav-tabs pq-nav-tabs--primary" role="tablist" aria-label="Quotation mode">
-    <li class="nav-item" role="presentation">
-      <button type="button" class="nav-link active" data-pq-tab="calc" role="tab" aria-selected="true" id="pq-tab-calc" aria-controls="pq-panel-calc">Calculator</button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button type="button" class="nav-link" data-pq-tab="db" role="tab" aria-selected="false" id="pq-tab-db" aria-controls="pq-panel-db">Price database</button>
-    </li>
-  </ul>
-
-  <div id="pq-panel-calc" class="pq-panel">
-    <div class="pq-layout">
+  <div class="pq-layout">
       <div>
         <form id="pq-main-form" method="post" action="{{ $formAction }}">
           @csrf
@@ -783,30 +570,12 @@
         </div>
       </aside>
     </div>
-  </div>
-
-  <div id="pq-panel-db" class="pq-panel" hidden>
-    @include('admin.quotations.paving._database_tab')
-  </div>
 
   <script>
     (function () {
       var previewUrl = @json(route('admin.quotations.paving.preview'));
       var token = document.querySelector('meta[name="csrf-token"]');
       var tokenV = token ? token.getAttribute('content') : '';
-
-      document.querySelectorAll('[data-pq-tab]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var key = btn.getAttribute('data-pq-tab');
-          document.querySelectorAll('[data-pq-tab]').forEach(function (b) {
-            var on = b === btn;
-            b.classList.toggle('active', on);
-            b.setAttribute('aria-selected', on ? 'true' : 'false');
-          });
-          document.getElementById('pq-panel-calc').hidden = key !== 'calc';
-          document.getElementById('pq-panel-db').hidden = key !== 'db';
-        });
-      });
 
       var form = document.getElementById('pq-main-form');
       var intent = document.getElementById('pq-save-intent');

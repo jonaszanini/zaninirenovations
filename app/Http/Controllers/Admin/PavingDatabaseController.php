@@ -14,6 +14,21 @@ use Illuminate\Support\Facades\DB;
  */
 class PavingDatabaseController extends Controller
 {
+    public function edit(Request $request)
+    {
+        $stoneTypes = PavingStoneType::query()->orderBy('sort_order')->get();
+        $materialRateGroups = PavingMaterialRate::groupedForAdmin();
+        $pricingTiers = PavingPricingTier::query()->orderBy('area_sq_ft')->get();
+        $qpid = $request->filled('project') ? (int) $request->query('project') : null;
+
+        return view('admin.quotations.paving.price_configuration', compact(
+            'stoneTypes',
+            'materialRateGroups',
+            'pricingTiers',
+            'qpid',
+        ));
+    }
+
     public function storeStone(Request $request)
     {
         $this->mergeStrippedMoney($request, ['price_per_stone']);

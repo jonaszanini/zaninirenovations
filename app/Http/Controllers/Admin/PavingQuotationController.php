@@ -7,8 +7,6 @@ use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
-use App\Models\PavingMaterialRate;
-use App\Models\PavingPricingTier;
 use App\Models\PavingQuotation;
 use App\Models\PavingStoneType;
 use App\Services\ClientProjectStatusService;
@@ -301,8 +299,6 @@ class PavingQuotationController extends Controller
         $request = $request ?? request();
 
         $stoneTypes = PavingStoneType::query()->orderBy('sort_order')->get();
-        $materialRateGroups = PavingMaterialRate::groupedForAdmin();
-        $pricingTiers = PavingPricingTier::query()->orderBy('area_sq_ft')->get();
 
         $linkableProjects = ClientProject::query()
             ->whereNotIn('status', ClientProject::statusesClosedToNewQuotations())
@@ -317,8 +313,6 @@ class PavingQuotationController extends Controller
         return view('admin.quotations.paving.create', [
             'quotation' => $quotation,
             'stoneTypes' => $stoneTypes,
-            'materialRateGroups' => $materialRateGroups,
-            'pricingTiers' => $pricingTiers,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
         ]);

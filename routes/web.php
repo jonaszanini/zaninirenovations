@@ -413,6 +413,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.paving.index');
     Route::get('quotations/paving/create', [PavingQuotationController::class, 'create'])
         ->name('quotations.paving.create');
+    Route::get('quotations/paving/price-configuration', [PavingDatabaseController::class, 'edit'])
+        ->name('quotations.paving.price-configuration');
     Route::post('quotations/paving', [PavingQuotationController::class, 'store'])
         ->name('quotations.paving.store');
     Route::post('quotations/paving/preview', [PavingQuotationController::class, 'preview'])
