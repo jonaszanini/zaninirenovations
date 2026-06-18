@@ -162,9 +162,9 @@ class FlooringQuotation extends Model
                 continue;
             }
             $label = trim((string) ($row['label'] ?? ''));
-            $detail = trim((string) ($row['detail'] ?? ''));
+            $amount = (float) ($row['amount'] ?? 0);
             if ($label !== '') {
-                $lines[] = '  • '.$label.($detail !== '' ? ' ('.$detail.')' : '');
+                $lines[] = '  • '.$label.' ('.\App\Models\ClientProject::formatMoney($amount).')';
             }
         }
 
