@@ -362,6 +362,7 @@
           <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
         </div>
       </div>
+      @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       <div class="pq-summary-card">
         <h4 style="margin:0 0 10px;">Live breakdown</h4>
         <div id="fl-live-root">

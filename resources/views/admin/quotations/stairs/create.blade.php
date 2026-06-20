@@ -396,6 +396,8 @@
       </div>
 
       <aside class="pq-sticky">
+        @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+        
         <div class="pq-summary-card">
           <h4 class="cp-form-help-spaced">Live summary</h4>
           <div id="sq-live-root">

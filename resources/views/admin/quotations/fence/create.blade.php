@@ -539,6 +539,8 @@
 
     {{-- ====================== RIGHT: BREAKDOWN ==================== --}}
     <aside class="admin-card fq-breakdown-card">
+      @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+      
       <h3 class="cp-heading-md">Live breakdown</h3>
       <p class="admin-form-help cp-breakdown-intro">
         Preview updates as you type. <span class="fq-badge" id="fq-status-badge">Calculating…</span>

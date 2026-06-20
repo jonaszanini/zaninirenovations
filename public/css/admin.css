@@ -2024,6 +2024,19 @@ html.admin-photo-edit-modal-open {
   .admin-nav-backdrop {
     display: none !important;
   }
+  
+  /* Provide a persistent background for the sidebar area even if it bounces or isn't perfectly sticky */
+  .admin-app::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--admin-sidebar-w);
+    background: var(--admin-surface);
+    border-right: 1px solid var(--admin-border);
+    z-index: 0;
+  }
 }
 
 body.admin-nav-open {

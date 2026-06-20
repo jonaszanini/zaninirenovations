@@ -159,6 +159,8 @@
       <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
     @endif
 
+    @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+
     <div class="admin-card sq-intro-card">
       <div class="sq-intro-sections">
         <section class="sq-field-box">
