@@ -221,6 +221,7 @@
     var csrfToken = root.getAttribute('data-csrf') || '';
     var contextFormId = root.getAttribute('data-context-form') || '';
     var quotationType = root.getAttribute('data-quotation-type') || '';
+    var historyKey = root.getAttribute('data-history-key') || ('quotation-work-desc:' + textareaId);
     var textarea = document.getElementById(textareaId);
     var btn = root.querySelector('.quotation-work-description-ai__btn');
     var loadingEl = root.querySelector('.quotation-work-description-ai__loading');
@@ -232,7 +233,7 @@
     var history = null;
     if (historyMount && window.AdminAiTextHistory) {
       history = window.AdminAiTextHistory.create({
-        storageKey: 'quotation-work-desc:' + textareaId,
+        storageKey: historyKey,
         mountEl: historyMount,
         title: 'Work description versions',
         getText: function () { return textarea.value; },

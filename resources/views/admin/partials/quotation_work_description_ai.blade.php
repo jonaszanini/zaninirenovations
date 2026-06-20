@@ -2,9 +2,12 @@
   $workDescriptionTextareaId = $workDescriptionTextareaId ?? 'work-description';
   $aiContextFormId = $aiContextFormId ?? '';
   $aiQuotationType = $aiQuotationType ?? '';
+  // Fallback to URL-based unique key so create and edit pages have independent histories
+  $historyKey = $historyKey ?? ('quotation-work-desc:' . md5(request()->fullUrl()));
 @endphp
 <div class="quotation-work-description-ai"
      data-textarea-id="{{ $workDescriptionTextareaId }}"
+     data-history-key="{{ $historyKey }}"
      data-improve-url="{{ route('admin.quotations.work-description.ai') }}"
      data-csrf="{{ csrf_token() }}"
      @if ($aiContextFormId) data-context-form="{{ $aiContextFormId }}" @endif
