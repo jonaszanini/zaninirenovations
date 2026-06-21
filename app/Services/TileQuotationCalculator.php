@@ -33,10 +33,11 @@ class TileQuotationCalculator
         ?int $mortarTypeId,
         float $jointWidthDecimal,
         ?int $groutTypeId,
-        float $laborRate
+        float $laborRate,
+        float $totalAreaSqft = 0
     ): array {
         // 1. Total Area
-        $netArea = $lengthFt * $widthFt;
+        $netArea = $totalAreaSqft > 0 ? $totalAreaSqft : ($lengthFt * $widthFt);
         $totalArea = $netArea * (1 + ($wasteMarginPercent / 100));
 
         // Models

@@ -50,8 +50,9 @@ class TileQuotationController extends Controller
             'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'client_name' => ['nullable', 'string', 'max:160'],
             'work_description' => ['nullable', 'string'],
-            'length_ft' => ['required', 'numeric', 'min:0'],
-            'width_ft' => ['required', 'numeric', 'min:0'],
+            'total_area_sqft' => ['nullable', 'numeric', 'min:0'],
+            'length_ft' => ['nullable', 'numeric', 'min:0', 'required_without:total_area_sqft'],
+            'width_ft' => ['nullable', 'numeric', 'min:0', 'required_without:total_area_sqft'],
             'waste_margin_percent' => ['required', 'numeric', 'min:0'],
             'tile_product_id' => ['nullable', 'integer', 'exists:tile_products,id'],
             'include_tile_material' => ['nullable', 'boolean'],
@@ -60,14 +61,15 @@ class TileQuotationController extends Controller
             'joint_width_decimal' => ['required', 'numeric', 'min:0'],
             'grout_type_id' => ['nullable', 'integer', 'exists:tile_grout_types,id'],
             'labor_rate' => ['required', 'numeric', 'min:0'],
+
             'is_draft' => ['nullable', 'string'],
         ]);
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $calculation = $calculator->compute(
-            (float) $data['length_ft'],
-            (float) $data['width_ft'],
+            (float) ($data['length_ft'] ?? 0),
+            (float) ($data['width_ft'] ?? 0),
             (float) $data['waste_margin_percent'],
             empty($data['tile_product_id']) ? null : (int) $data['tile_product_id'],
             $includeTile,
@@ -75,7 +77,8 @@ class TileQuotationController extends Controller
             empty($data['mortar_type_id']) ? null : (int) $data['mortar_type_id'],
             (float) $data['joint_width_decimal'],
             empty($data['grout_type_id']) ? null : (int) $data['grout_type_id'],
-            (float) $data['labor_rate']
+            (float) $data['labor_rate'],
+            (float) ($data['total_area_sqft'] ?? 0)
         );
 
         $quotation = new TileQuotation();
@@ -86,8 +89,9 @@ class TileQuotationController extends Controller
         $quotation->work_description = $data['work_description'] ?? null;
         
         $quotation->inputs = [
-            'length_ft' => (float) $data['length_ft'],
-            'width_ft' => (float) $data['width_ft'],
+            'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),
+            'length_ft' => (float) ($data['length_ft'] ?? 0),
+            'width_ft' => (float) ($data['width_ft'] ?? 0),
             'waste_margin_percent' => (float) $data['waste_margin_percent'],
             'tile_product_id' => $data['tile_product_id'] ?? null,
             'include_tile_material' => $includeTile,
@@ -133,8 +137,9 @@ class TileQuotationController extends Controller
         $data = $request->validate([
             'client_name' => ['nullable', 'string', 'max:160'],
             'work_description' => ['nullable', 'string'],
-            'length_ft' => ['required', 'numeric', 'min:0'],
-            'width_ft' => ['required', 'numeric', 'min:0'],
+            'total_area_sqft' => ['nullable', 'numeric', 'min:0'],
+            'length_ft' => ['nullable', 'numeric', 'min:0', 'required_without:total_area_sqft'],
+            'width_ft' => ['nullable', 'numeric', 'min:0', 'required_without:total_area_sqft'],
             'waste_margin_percent' => ['required', 'numeric', 'min:0'],
             'tile_product_id' => ['nullable', 'integer', 'exists:tile_products,id'],
             'include_tile_material' => ['nullable', 'boolean'],
@@ -149,8 +154,8 @@ class TileQuotationController extends Controller
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $calculation = $calculator->compute(
-            (float) $data['length_ft'],
-            (float) $data['width_ft'],
+            (float) ($data['length_ft'] ?? 0),
+            (float) ($data['width_ft'] ?? 0),
             (float) $data['waste_margin_percent'],
             empty($data['tile_product_id']) ? null : (int) $data['tile_product_id'],
             $includeTile,
@@ -158,7 +163,8 @@ class TileQuotationController extends Controller
             empty($data['mortar_type_id']) ? null : (int) $data['mortar_type_id'],
             (float) $data['joint_width_decimal'],
             empty($data['grout_type_id']) ? null : (int) $data['grout_type_id'],
-            (float) $data['labor_rate']
+            (float) $data['labor_rate'],
+            (float) ($data['total_area_sqft'] ?? 0)
         );
 
         if (! $quotation->isLinked()) {
@@ -168,8 +174,9 @@ class TileQuotationController extends Controller
         $quotation->work_description = $data['work_description'] ?? null;
         
         $quotation->inputs = [
-            'length_ft' => (float) $data['length_ft'],
-            'width_ft' => (float) $data['width_ft'],
+            'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),
+            'length_ft' => (float) ($data['length_ft'] ?? 0),
+            'width_ft' => (float) ($data['width_ft'] ?? 0),
             'waste_margin_percent' => (float) $data['waste_margin_percent'],
             'tile_product_id' => $data['tile_product_id'] ?? null,
             'include_tile_material' => $includeTile,
@@ -238,10 +245,11 @@ class TileQuotationController extends Controller
 
     public function calculateLive(Request $request, TileQuotationCalculator $calculator)
     {
+        $totalAreaSqft = (float) $request->input('total_area_sqft', 0);
         $lengthFt = (float) $request->input('length_ft', 0);
         $widthFt = (float) $request->input('width_ft', 0);
         
-        if ($lengthFt <= 0 || $widthFt <= 0) {
+        if (($lengthFt <= 0 || $widthFt <= 0) && $totalAreaSqft <= 0) {
             return response()->json(['valid' => false]);
         }
 
@@ -251,13 +259,14 @@ class TileQuotationController extends Controller
             $lengthFt,
             $widthFt,
             (float) $request->input('waste_margin_percent', 10),
-            $request->input('tile_product_id') ? (int) $request->input('tile_product_id') : null,
+            empty($request->input('tile_product_id')) ? null : (int) $request->input('tile_product_id'),
             $includeTile,
             $request->input('trowel_size', '1/4x1/4'),
-            $request->input('mortar_type_id') ? (int) $request->input('mortar_type_id') : null,
+            empty($request->input('mortar_type_id')) ? null : (int) $request->input('mortar_type_id'),
             (float) $request->input('joint_width_decimal', 0.125),
-            $request->input('grout_type_id') ? (int) $request->input('grout_type_id') : null,
-            (float) $request->input('labor_rate', 12)
+            empty($request->input('grout_type_id')) ? null : (int) $request->input('grout_type_id'),
+            (float) $request->input('labor_rate', 0),
+            $totalAreaSqft
         );
 
         $html = view('admin.quotations.tile._live_breakdown', compact('calculation'))->render();

@@ -55,12 +55,14 @@
                 <td><input type="number" step="0.01" name="mortars[{{ $index }}][bag_weight_lbs]" class="admin-input" value="{{ (float)$m->bag_weight_lbs }}" required></td>
                 <td><input type="number" step="0.0001" name="mortars[{{ $index }}][cost_price]" class="admin-input" value="{{ (float)$m->cost_price }}" required></td>
                 <td><input type="number" name="mortars[{{ $index }}][sort_order]" class="admin-input" value="{{ $m->sort_order }}"></td>
-                <td>
-                  <label class="admin-form-check" style="margin:0;"><input type="checkbox" name="mortars[{{ $index }}][is_active]" value="1" {{ $m->is_active ? 'checked' : '' }}></label>
+                <td style="text-align:center;">
+                  <input type="checkbox" name="mortars[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $m->is_active ? 'checked' : '' }}>
                 </td>
                 <td>
-                  <label class="admin-text-danger" style="cursor:pointer; font-size:12px;">
-                    <input type="checkbox" name="delete_mortar_ids[]" value="{{ $m->id }}"> Del
+                  <label class="admin-checkbox admin-text-danger" style="margin:0;">
+                    <input type="checkbox" name="delete_mortar_ids[]" value="{{ $m->id }}" class="admin-checkbox__input">
+                    <span class="admin-checkbox__mark"></span>
+                    <span class="admin-checkbox__text" style="font-size:12px;">Del</span>
                   </label>
                 </td>
               </tr>
@@ -97,12 +99,14 @@
                 <td><input type="number" step="0.0001" name="grouts[{{ $index }}][density_factor]" class="admin-input" value="{{ (float)$g->density_factor }}" required></td>
                 <td><input type="number" step="0.0001" name="grouts[{{ $index }}][cost_price]" class="admin-input" value="{{ (float)$g->cost_price }}" required></td>
                 <td><input type="number" name="grouts[{{ $index }}][sort_order]" class="admin-input" value="{{ $g->sort_order }}"></td>
-                <td>
-                  <label class="admin-form-check" style="margin:0;"><input type="checkbox" name="grouts[{{ $index }}][is_active]" value="1" {{ $g->is_active ? 'checked' : '' }}></label>
+                <td style="text-align:center;">
+                  <input type="checkbox" name="grouts[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $g->is_active ? 'checked' : '' }}>
                 </td>
                 <td>
-                  <label class="admin-text-danger" style="cursor:pointer; font-size:12px;">
-                    <input type="checkbox" name="delete_grout_ids[]" value="{{ $g->id }}"> Del
+                  <label class="admin-checkbox admin-text-danger" style="margin:0;">
+                    <input type="checkbox" name="delete_grout_ids[]" value="{{ $g->id }}" class="admin-checkbox__input">
+                    <span class="admin-checkbox__mark"></span>
+                    <span class="admin-checkbox__text" style="font-size:12px;">Del</span>
                   </label>
                 </td>
               </tr>
@@ -154,12 +158,14 @@
                 <td><input type="number" step="0.0001" name="products[{{ $index }}][thickness_inches]" class="admin-input" value="{{ (float)$p->thickness_inches }}" required></td>
                 <td><input type="number" step="0.0001" name="products[{{ $index }}][cost_per_sqft]" class="admin-input" value="{{ (float)$p->cost_per_sqft }}" required></td>
                 <td><input type="number" name="products[{{ $index }}][sort_order]" class="admin-input" value="{{ $p->sort_order }}"></td>
-                <td>
-                  <label class="admin-form-check" style="margin:0;"><input type="checkbox" name="products[{{ $index }}][is_active]" value="1" {{ $p->is_active ? 'checked' : '' }}></label>
+                <td style="text-align:center;">
+                  <input type="checkbox" name="products[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $p->is_active ? 'checked' : '' }}>
                 </td>
                 <td>
-                  <label class="admin-text-danger" style="cursor:pointer; font-size:12px;">
-                    <input type="checkbox" name="delete_product_ids[]" value="{{ $p->id }}"> Del
+                  <label class="admin-checkbox admin-text-danger" style="margin:0;">
+                    <input type="checkbox" name="delete_product_ids[]" value="{{ $p->id }}" class="admin-checkbox__input">
+                    <span class="admin-checkbox__mark"></span>
+                    <span class="admin-checkbox__text" style="font-size:12px;">Del</span>
                   </label>
                 </td>
               </tr>

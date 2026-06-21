@@ -11,6 +11,7 @@
   $formAction = ($isEdit ? route('admin.quotations.tile.update', $quotation) : route('admin.quotations.tile.store')).$formQuery;
   $inputs = $isEdit ? ($quotation->inputs ?? []) : [];
 
+  $total_area_sqft = old('total_area_sqft', $inputs['total_area_sqft'] ?? '');
   $length_ft = old('length_ft', $inputs['length_ft'] ?? '');
   $width_ft = old('width_ft', $inputs['width_ft'] ?? '');
   $waste_margin_percent = old('waste_margin_percent', $inputs['waste_margin_percent'] ?? 10);
@@ -88,14 +89,21 @@
 
       <div class="fl-step-card">
         <h4>2. Measurements</h4>
-        <div class="admin-form-grid-2">
-          <div class="admin-form-group">
-            <label class="admin-form-label">Length (ft) <span class="admin-text-danger">*</span></label>
-            <input type="number" step="0.01" name="length_ft" class="admin-input tl-live-trigger" value="{{ $length_ft }}" required>
+        <div style="margin-bottom:12px; font-size:14px; color:#475569;">
+          Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div class="admin-form-group" style="margin-bottom:0;">
+            <label class="admin-form-label">Total Area (sqft)</label>
+            <input type="number" step="0.01" name="total_area_sqft" id="tl-total-area" class="admin-input tl-live-trigger" value="{{ !empty($total_area_sqft) && $total_area_sqft > 0 ? $total_area_sqft : '' }}">
           </div>
-          <div class="admin-form-group">
-            <label class="admin-form-label">Width (ft) <span class="admin-text-danger">*</span></label>
-            <input type="number" step="0.01" name="width_ft" class="admin-input tl-live-trigger" value="{{ $width_ft }}" required>
+          <div class="admin-form-group" style="margin-bottom:0;">
+            <label class="admin-form-label">Length (ft)</label>
+            <input type="number" step="0.01" name="length_ft" id="tl-length" class="admin-input tl-live-trigger" value="{{ !empty($length_ft) && $length_ft > 0 ? $length_ft : '' }}">
+          </div>
+          <div class="admin-form-group" style="margin-bottom:0;">
+            <label class="admin-form-label">Width (ft)</label>
+            <input type="number" step="0.01" name="width_ft" id="tl-width" class="admin-input tl-live-trigger" value="{{ !empty($width_ft) && $width_ft > 0 ? $width_ft : '' }}">
           </div>
         </div>
         <div class="admin-form-grid-2">
@@ -255,6 +263,36 @@ document.addEventListener('DOMContentLoaded', function () {
             clearTimeout(liveTimer);
             doLiveUpdate();
         });
+    }
+
+    // Measurements mutual exclusion
+    var totalAreaInput = document.getElementById('tl-total-area');
+    var lengthInput = document.getElementById('tl-length');
+    var widthInput = document.getElementById('tl-width');
+    
+    function toggleMeasurements() {
+        if (totalAreaInput && lengthInput && widthInput) {
+            if (totalAreaInput.value.trim() !== '') {
+                lengthInput.disabled = true;
+                widthInput.disabled = true;
+                lengthInput.value = '';
+                widthInput.value = '';
+            } else if (lengthInput.value.trim() !== '' || widthInput.value.trim() !== '') {
+                totalAreaInput.disabled = true;
+                totalAreaInput.value = '';
+            } else {
+                totalAreaInput.disabled = false;
+                lengthInput.disabled = false;
+                widthInput.disabled = false;
+            }
+        }
+    }
+
+    if (totalAreaInput && lengthInput && widthInput) {
+        totalAreaInput.addEventListener('input', toggleMeasurements);
+        lengthInput.addEventListener('input', toggleMeasurements);
+        widthInput.addEventListener('input', toggleMeasurements);
+        toggleMeasurements();
     }
 
     // Run on load if filled
