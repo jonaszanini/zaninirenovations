@@ -10,7 +10,7 @@
     table.admin-table { width: 100%; border-collapse: collapse; min-width: 600px; }
     table.admin-table th, table.admin-table td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: middle; }
     table.admin-table th { font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; }
-    table.admin-table .admin-form-input { min-width: 80px; }
+    table.admin-table .admin-input { min-width: 80px; }
   </style>
 @endpush
 
@@ -53,14 +53,14 @@
               <tr>
                 <td>
                   <input type="hidden" name="mortars[{{ $index }}][id]" value="{{ $m->id }}">
-                  <input type="text" name="mortars[{{ $index }}][name]" class="admin-form-input" value="{{ $m->name }}" required>
+                  <input type="text" name="mortars[{{ $index }}][name]" class="admin-input" value="{{ $m->name }}" required>
                 </td>
-                <td><input type="number" step="0.01" name="mortars[{{ $index }}][bag_weight_lbs]" class="admin-form-input" value="{{ (float)$m->bag_weight_lbs }}" required></td>
-                <td><input type="number" step="0.01" name="mortars[{{ $index }}][coverage_14_14]" class="admin-form-input" value="{{ (float)$m->coverage_14_14 }}" required></td>
-                <td><input type="number" step="0.01" name="mortars[{{ $index }}][coverage_14_38]" class="admin-form-input" value="{{ (float)$m->coverage_14_38 }}" required></td>
-                <td><input type="number" step="0.01" name="mortars[{{ $index }}][coverage_12_12]" class="admin-form-input" value="{{ (float)$m->coverage_12_12 }}" required></td>
-                <td><input type="number" step="0.0001" name="mortars[{{ $index }}][cost_price]" class="admin-form-input" value="{{ (float)$m->cost_price }}" required></td>
-                <td><input type="number" name="mortars[{{ $index }}][sort_order]" class="admin-form-input" value="{{ $m->sort_order }}"></td>
+                <td><input type="number" step="0.01" name="mortars[{{ $index }}][bag_weight_lbs]" class="admin-input" value="{{ (float)$m->bag_weight_lbs }}" required></td>
+                <td><input type="number" step="0.01" name="mortars[{{ $index }}][coverage_14_14]" class="admin-input" value="{{ (float)$m->coverage_14_14 }}" required></td>
+                <td><input type="number" step="0.01" name="mortars[{{ $index }}][coverage_14_38]" class="admin-input" value="{{ (float)$m->coverage_14_38 }}" required></td>
+                <td><input type="number" step="0.01" name="mortars[{{ $index }}][coverage_12_12]" class="admin-input" value="{{ (float)$m->coverage_12_12 }}" required></td>
+                <td><input type="number" step="0.0001" name="mortars[{{ $index }}][cost_price]" class="admin-input" value="{{ (float)$m->cost_price }}" required></td>
+                <td><input type="number" name="mortars[{{ $index }}][sort_order]" class="admin-input" value="{{ $m->sort_order }}"></td>
                 <td>
                   <label class="admin-form-check" style="margin:0;"><input type="checkbox" name="mortars[{{ $index }}][is_active]" value="1" {{ $m->is_active ? 'checked' : '' }}></label>
                 </td>
@@ -97,12 +97,12 @@
               <tr>
                 <td>
                   <input type="hidden" name="grouts[{{ $index }}][id]" value="{{ $g->id }}">
-                  <input type="text" name="grouts[{{ $index }}][name]" class="admin-form-input" value="{{ $g->name }}" required>
+                  <input type="text" name="grouts[{{ $index }}][name]" class="admin-input" value="{{ $g->name }}" required>
                 </td>
-                <td><input type="number" step="0.01" name="grouts[{{ $index }}][bag_weight_lbs]" class="admin-form-input" value="{{ (float)$g->bag_weight_lbs }}" required></td>
-                <td><input type="number" step="0.0001" name="grouts[{{ $index }}][density_factor]" class="admin-form-input" value="{{ (float)$g->density_factor }}" required></td>
-                <td><input type="number" step="0.0001" name="grouts[{{ $index }}][cost_price]" class="admin-form-input" value="{{ (float)$g->cost_price }}" required></td>
-                <td><input type="number" name="grouts[{{ $index }}][sort_order]" class="admin-form-input" value="{{ $g->sort_order }}"></td>
+                <td><input type="number" step="0.01" name="grouts[{{ $index }}][bag_weight_lbs]" class="admin-input" value="{{ (float)$g->bag_weight_lbs }}" required></td>
+                <td><input type="number" step="0.0001" name="grouts[{{ $index }}][density_factor]" class="admin-input" value="{{ (float)$g->density_factor }}" required></td>
+                <td><input type="number" step="0.0001" name="grouts[{{ $index }}][cost_price]" class="admin-input" value="{{ (float)$g->cost_price }}" required></td>
+                <td><input type="number" name="grouts[{{ $index }}][sort_order]" class="admin-input" value="{{ $g->sort_order }}"></td>
                 <td>
                   <label class="admin-form-check" style="margin:0;"><input type="checkbox" name="grouts[{{ $index }}][is_active]" value="1" {{ $g->is_active ? 'checked' : '' }}></label>
                 </td>
@@ -140,13 +140,13 @@
               <tr>
                 <td>
                   <input type="hidden" name="products[{{ $index }}][id]" value="{{ $p->id }}">
-                  <input type="text" name="products[{{ $index }}][name]" class="admin-form-input" value="{{ $p->name }}" required>
+                  <input type="text" name="products[{{ $index }}][name]" class="admin-input" value="{{ $p->name }}" required>
                 </td>
-                <td><input type="number" step="0.0001" name="products[{{ $index }}][length_inches]" class="admin-form-input" value="{{ (float)$p->length_inches }}" required></td>
-                <td><input type="number" step="0.0001" name="products[{{ $index }}][width_inches]" class="admin-form-input" value="{{ (float)$p->width_inches }}" required></td>
-                <td><input type="number" step="0.0001" name="products[{{ $index }}][thickness_inches]" class="admin-form-input" value="{{ (float)$p->thickness_inches }}" required></td>
-                <td><input type="number" step="0.0001" name="products[{{ $index }}][cost_per_sqft]" class="admin-form-input" value="{{ (float)$p->cost_per_sqft }}" required></td>
-                <td><input type="number" name="products[{{ $index }}][sort_order]" class="admin-form-input" value="{{ $p->sort_order }}"></td>
+                <td><input type="number" step="0.0001" name="products[{{ $index }}][length_inches]" class="admin-input" value="{{ (float)$p->length_inches }}" required></td>
+                <td><input type="number" step="0.0001" name="products[{{ $index }}][width_inches]" class="admin-input" value="{{ (float)$p->width_inches }}" required></td>
+                <td><input type="number" step="0.0001" name="products[{{ $index }}][thickness_inches]" class="admin-input" value="{{ (float)$p->thickness_inches }}" required></td>
+                <td><input type="number" step="0.0001" name="products[{{ $index }}][cost_per_sqft]" class="admin-input" value="{{ (float)$p->cost_per_sqft }}" required></td>
+                <td><input type="number" name="products[{{ $index }}][sort_order]" class="admin-input" value="{{ $p->sort_order }}"></td>
                 <td>
                   <label class="admin-form-check" style="margin:0;"><input type="checkbox" name="products[{{ $index }}][is_active]" value="1" {{ $p->is_active ? 'checked' : '' }}></label>
                 </td>
@@ -175,12 +175,12 @@
       let tbody = document.querySelector('#mortar-table tbody');
       let tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" name="new_mortars[${mIdx}][name]" class="admin-form-input" placeholder="Name"></td>
-        <td><input type="number" step="0.01" name="new_mortars[${mIdx}][bag_weight_lbs]" class="admin-form-input" value="50"></td>
-        <td><input type="number" step="0.01" name="new_mortars[${mIdx}][coverage_14_14]" class="admin-form-input" value="0"></td>
-        <td><input type="number" step="0.01" name="new_mortars[${mIdx}][coverage_14_38]" class="admin-form-input" value="0"></td>
-        <td><input type="number" step="0.01" name="new_mortars[${mIdx}][coverage_12_12]" class="admin-form-input" value="0"></td>
-        <td><input type="number" step="0.0001" name="new_mortars[${mIdx}][cost_price]" class="admin-form-input" value="0"></td>
+        <td><input type="text" name="new_mortars[${mIdx}][name]" class="admin-input" placeholder="Name"></td>
+        <td><input type="number" step="0.01" name="new_mortars[${mIdx}][bag_weight_lbs]" class="admin-input" value="50"></td>
+        <td><input type="number" step="0.01" name="new_mortars[${mIdx}][coverage_14_14]" class="admin-input" value="0"></td>
+        <td><input type="number" step="0.01" name="new_mortars[${mIdx}][coverage_14_38]" class="admin-input" value="0"></td>
+        <td><input type="number" step="0.01" name="new_mortars[${mIdx}][coverage_12_12]" class="admin-input" value="0"></td>
+        <td><input type="number" step="0.0001" name="new_mortars[${mIdx}][cost_price]" class="admin-input" value="0"></td>
         <td></td><td></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
       `;
@@ -193,10 +193,10 @@
       let tbody = document.querySelector('#grout-table tbody');
       let tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" name="new_grouts[${gIdx}][name]" class="admin-form-input" placeholder="Name"></td>
-        <td><input type="number" step="0.01" name="new_grouts[${gIdx}][bag_weight_lbs]" class="admin-form-input" value="10"></td>
-        <td><input type="number" step="0.0001" name="new_grouts[${gIdx}][density_factor]" class="admin-form-input" value="1.6"></td>
-        <td><input type="number" step="0.0001" name="new_grouts[${gIdx}][cost_price]" class="admin-form-input" value="0"></td>
+        <td><input type="text" name="new_grouts[${gIdx}][name]" class="admin-input" placeholder="Name"></td>
+        <td><input type="number" step="0.01" name="new_grouts[${gIdx}][bag_weight_lbs]" class="admin-input" value="10"></td>
+        <td><input type="number" step="0.0001" name="new_grouts[${gIdx}][density_factor]" class="admin-input" value="1.6"></td>
+        <td><input type="number" step="0.0001" name="new_grouts[${gIdx}][cost_price]" class="admin-input" value="0"></td>
         <td></td><td></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
       `;
@@ -209,11 +209,11 @@
       let tbody = document.querySelector('#product-table tbody');
       let tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" name="new_products[${pIdx}][name]" class="admin-form-input" placeholder="Name"></td>
-        <td><input type="number" step="0.0001" name="new_products[${pIdx}][length_inches]" class="admin-form-input" value="12"></td>
-        <td><input type="number" step="0.0001" name="new_products[${pIdx}][width_inches]" class="admin-form-input" value="12"></td>
-        <td><input type="number" step="0.0001" name="new_products[${pIdx}][thickness_inches]" class="admin-form-input" value="0.25"></td>
-        <td><input type="number" step="0.0001" name="new_products[${pIdx}][cost_per_sqft]" class="admin-form-input" value="0"></td>
+        <td><input type="text" name="new_products[${pIdx}][name]" class="admin-input" placeholder="Name"></td>
+        <td><input type="number" step="0.0001" name="new_products[${pIdx}][length_inches]" class="admin-input" value="12"></td>
+        <td><input type="number" step="0.0001" name="new_products[${pIdx}][width_inches]" class="admin-input" value="12"></td>
+        <td><input type="number" step="0.0001" name="new_products[${pIdx}][thickness_inches]" class="admin-input" value="0.25"></td>
+        <td><input type="number" step="0.0001" name="new_products[${pIdx}][cost_per_sqft]" class="admin-input" value="0"></td>
         <td></td><td></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
       `;

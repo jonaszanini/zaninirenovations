@@ -71,13 +71,13 @@
         @if (! $isEdit || ! $quotation->isLinked())
           <div class="admin-form-group">
             <label class="admin-form-label">Client Name (Optional)</label>
-            <input type="text" name="client_name" class="admin-form-input" value="{{ $client_name }}">
+            <input type="text" name="client_name" class="admin-input" value="{{ $client_name }}">
           </div>
         @endif
 
         <div class="admin-form-group">
           <label class="admin-form-label">Work Description (Appears on PDF)</label>
-          <textarea id="tl-work-description" name="work_description" class="admin-form-input" rows="3">{{ $work_description }}</textarea>
+          <textarea id="tl-work-description" name="work_description" class="admin-input" rows="3">{{ $work_description }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
               'workDescriptionTextareaId' => 'tl-work-description',
               'aiContextFormId' => 'tl-form',
@@ -91,21 +91,21 @@
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label class="admin-form-label">Length (ft) <span class="admin-text-danger">*</span></label>
-            <input type="number" step="0.01" name="length_ft" class="admin-form-input tl-live-trigger" value="{{ $length_ft }}" required>
+            <input type="number" step="0.01" name="length_ft" class="admin-input tl-live-trigger" value="{{ $length_ft }}" required>
           </div>
           <div class="admin-form-group">
             <label class="admin-form-label">Width (ft) <span class="admin-text-danger">*</span></label>
-            <input type="number" step="0.01" name="width_ft" class="admin-form-input tl-live-trigger" value="{{ $width_ft }}" required>
+            <input type="number" step="0.01" name="width_ft" class="admin-input tl-live-trigger" value="{{ $width_ft }}" required>
           </div>
         </div>
         <div class="admin-form-grid-2">
             <div class="admin-form-group">
                 <label class="admin-form-label">Waste Margin (%) <span class="admin-text-danger">*</span></label>
-                <input type="number" step="0.1" name="waste_margin_percent" class="admin-form-input tl-live-trigger" value="{{ $waste_margin_percent }}" required>
+                <input type="number" step="0.1" name="waste_margin_percent" class="admin-input tl-live-trigger" value="{{ $waste_margin_percent }}" required>
             </div>
             <div class="admin-form-group">
                 <label class="admin-form-label">Labor Rate per sqft ($) <span class="admin-text-danger">*</span></label>
-                <input type="number" step="0.01" name="labor_rate" class="admin-form-input tl-live-trigger" value="{{ $labor_rate }}" required>
+                <input type="number" step="0.01" name="labor_rate" class="admin-input tl-live-trigger" value="{{ $labor_rate }}" required>
             </div>
         </div>
       </div>
@@ -114,7 +114,7 @@
         <h4>3. Tile Selection</h4>
         <div class="admin-form-group">
           <label class="admin-form-label">Tile Product</label>
-          <select name="tile_product_id" class="admin-form-input tl-live-trigger">
+          <select name="tile_product_id" class="admin-input tl-live-trigger">
             <option value="">-- No Tile Selected --</option>
             @foreach ($products as $p)
               <option value="{{ $p->id }}" {{ $tile_product_id == $p->id ? 'selected' : '' }}>
@@ -135,7 +135,7 @@
         <div class="admin-form-grid-2">
             <div class="admin-form-group">
                 <label class="admin-form-label">Mortar Type</label>
-                <select name="mortar_type_id" class="admin-form-input tl-live-trigger">
+                <select name="mortar_type_id" class="admin-input tl-live-trigger">
                     <option value="">-- None --</option>
                     @foreach ($mortarTypes as $m)
                         <option value="{{ $m->id }}" {{ $mortar_type_id == $m->id ? 'selected' : '' }}>{{ $m->name }}</option>
@@ -144,7 +144,7 @@
             </div>
             <div class="admin-form-group">
                 <label class="admin-form-label">Trowel Size <span class="admin-text-danger">*</span></label>
-                <select name="trowel_size" class="admin-form-input tl-live-trigger" required>
+                <select name="trowel_size" class="admin-input tl-live-trigger" required>
                     <option value="1/4x1/4" {{ $trowel_size === '1/4x1/4' ? 'selected' : '' }}>1/4" x 1/4" x 1/4"</option>
                     <option value="1/4x3/8" {{ $trowel_size === '1/4x3/8' ? 'selected' : '' }}>1/4" x 3/8" x 1/4"</option>
                     <option value="1/2x1/2" {{ $trowel_size === '1/2x1/2' ? 'selected' : '' }}>1/2" x 1/2" x 1/2"</option>
@@ -154,7 +154,7 @@
         <div class="admin-form-grid-2">
             <div class="admin-form-group">
                 <label class="admin-form-label">Grout Type</label>
-                <select name="grout_type_id" class="admin-form-input tl-live-trigger">
+                <select name="grout_type_id" class="admin-input tl-live-trigger">
                     <option value="">-- None --</option>
                     @foreach ($groutTypes as $g)
                         <option value="{{ $g->id }}" {{ $grout_type_id == $g->id ? 'selected' : '' }}>{{ $g->name }}</option>
@@ -163,7 +163,7 @@
             </div>
             <div class="admin-form-group">
                 <label class="admin-form-label">Joint Width <span class="admin-text-danger">*</span></label>
-                <select name="joint_width_decimal" class="admin-form-input tl-live-trigger" required>
+                <select name="joint_width_decimal" class="admin-input tl-live-trigger" required>
                     <option value="0.0625" {{ $joint_width_decimal == 0.0625 ? 'selected' : '' }}>1/16"</option>
                     <option value="0.125" {{ $joint_width_decimal == 0.125 ? 'selected' : '' }}>1/8"</option>
                     <option value="0.1875" {{ $joint_width_decimal == 0.1875 ? 'selected' : '' }}>3/16"</option>
