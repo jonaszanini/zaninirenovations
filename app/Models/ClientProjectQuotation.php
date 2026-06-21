@@ -45,6 +45,8 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_FLOORING = 'flooring';
 
+    public const SOURCE_TILE = 'tile';
+
     protected $fillable = [
         'client_project_id',
         'title',
@@ -238,6 +240,13 @@ class ClientProjectQuotation extends Model
             $flooring = FlooringQuotation::query()->find($this->source_id);
             if ($flooring) {
                 return $flooring->displayTitle();
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_TILE && $this->source_id) {
+            $tile = TileQuotation::query()->find($this->source_id);
+            if ($tile) {
+                return $tile->displayTitle();
             }
         }
 
@@ -733,6 +742,7 @@ class ClientProjectQuotation extends Model
                     self::SOURCE_STAIRS => StairsQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_PAINTING => PaintingQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_FLOORING => FlooringQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_TILE => TileQuotation::query()->whereKey($sourceId)->delete(),
                     default => null,
                 };
             }
@@ -810,6 +820,15 @@ class ClientProjectQuotation extends Model
             $flooring = FlooringQuotation::query()->find($this->source_id);
             if ($flooring) {
                 return $flooring->includesMaterialCharge()
+                    ? 'To supply material and labour of the following:'
+                    : 'For the labour of the following:';
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_TILE && $this->source_id) {
+            $tile = TileQuotation::query()->find($this->source_id);
+            if ($tile) {
+                return $tile->includesMaterialCharge()
                     ? 'To supply material and labour of the following:'
                     : 'For the labour of the following:';
             }

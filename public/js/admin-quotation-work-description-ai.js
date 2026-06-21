@@ -182,11 +182,32 @@
     };
   }
 
+  function collectTileContext(form) {
+    var includeMaterial = form.elements['include_tile_material'] && form.elements['include_tile_material'].checked;
+    return {
+      client_name: formValue(form, 'client_name'),
+      length_ft: formValue(form, 'length_ft'),
+      width_ft: formValue(form, 'width_ft'),
+      waste_margin_percent: formValue(form, 'waste_margin_percent'),
+      tile_product_id: formSelectValue(form, 'tile_product_id'),
+      include_tile_material: includeMaterial,
+      mortar_type_id: formSelectValue(form, 'mortar_type_id'),
+      trowel_size: formSelectValue(form, 'trowel_size'),
+      grout_type_id: formSelectValue(form, 'grout_type_id'),
+      joint_width_decimal: formSelectValue(form, 'joint_width_decimal'),
+      labor_rate: formValue(form, 'labor_rate'),
+      breakdown_summary: panelText('tl-live-root')
+    };
+  }
+
   var collectors = {
     painting: collectPaintingContext,
     fence: collectFenceContext,
     paving: collectPavingContext,
     standard: collectStandardContext,
+    stairs: collectStairsContext,
+    flooring: collectFlooringContext,
+    tile: collectTileContext,
   };
 
   function collectQuotationContext(formId, quotationType) {
@@ -239,6 +260,9 @@
         getText: function () { return textarea.value; },
         setText: function (text) { textarea.value = text; },
       });
+      if (textarea.value.trim() === '') {
+        history.clear();
+      }
     }
 
     function setStatus(message, isError) {

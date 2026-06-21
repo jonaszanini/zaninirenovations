@@ -251,6 +251,11 @@
       count: function () {
         return state.versions.length;
       },
+      clear: function () {
+        state.versions = [];
+        state.activeId = null;
+        persist();
+      },
     };
   }
 

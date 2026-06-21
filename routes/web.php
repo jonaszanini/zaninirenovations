@@ -524,6 +524,28 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::delete('quotations/flooring/{flooring_quotation}', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'destroy'])
         ->name('quotations.flooring.destroy');
 
+    // Tile quotations
+    Route::get('quotations/tile', [\App\Http\Controllers\Admin\TileQuotationController::class, 'index'])
+        ->name('quotations.tile.index');
+    Route::get('quotations/tile/create', [\App\Http\Controllers\Admin\TileQuotationController::class, 'create'])
+        ->name('quotations.tile.create');
+    Route::get('quotations/tile/price-configuration', [\App\Http\Controllers\Admin\TileDatabaseController::class, 'edit'])
+        ->name('quotations.tile.price-configuration');
+    Route::put('quotations/tile/price-configuration', [\App\Http\Controllers\Admin\TileDatabaseController::class, 'update'])
+        ->name('quotations.tile.price-configuration.update');
+    Route::post('quotations/tile', [\App\Http\Controllers\Admin\TileQuotationController::class, 'store'])
+        ->name('quotations.tile.store');
+    Route::post('quotations/tile/live', [\App\Http\Controllers\Admin\TileQuotationController::class, 'calculateLive'])
+        ->name('quotations.tile.live');
+    Route::get('quotations/tile/{quotation}/edit', [\App\Http\Controllers\Admin\TileQuotationController::class, 'edit'])
+        ->name('quotations.tile.edit');
+    Route::put('quotations/tile/{quotation}', [\App\Http\Controllers\Admin\TileQuotationController::class, 'update'])
+        ->name('quotations.tile.update');
+    Route::post('quotations/tile/{quotation}/link', [\App\Http\Controllers\Admin\TileQuotationController::class, 'linkToProject'])
+        ->name('quotations.tile.link');
+    Route::delete('quotations/tile/{quotation}', [\App\Http\Controllers\Admin\TileQuotationController::class, 'destroy'])
+        ->name('quotations.tile.destroy');
+
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
 

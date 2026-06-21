@@ -59,6 +59,7 @@ body.admin-body {
 .admin-sidebar {
   width: var(--admin-sidebar-w);
   flex-shrink: 0;
+  align-self: flex-start;
   background: var(--admin-surface);
   border-right: 1px solid var(--admin-border);
   display: flex;
@@ -2978,3 +2979,5 @@ body.admin-ai-text-history-open {
   margin-top: auto;
   padding-top: 0.35rem;
 }
+. a d m i n - s i d e b a r   {   a l i g n - s e l f :   f l e x - s t a r t ;   } 
+ 
