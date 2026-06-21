@@ -24,6 +24,11 @@
   $labor_rate = old('labor_rate', $inputs['labor_rate'] ?? 12);
   $work_description = old('work_description', $isEdit ? $quotation->work_description : '');
   $client_name = old('client_name', $isEdit ? $quotation->client_name : '');
+  
+  $include_demolition = old('include_demolition', $inputs['include_demolition'] ?? false);
+  $demolition_complexity = old('demolition_complexity', $inputs['demolition_complexity'] ?? 'standard');
+  $custom_demolition_rate = old('custom_demolition_rate', $inputs['custom_demolition_rate'] ?? '');
+  $include_disposal_fee = old('include_disposal_fee', $inputs['include_disposal_fee'] ?? false);
 @endphp
 
 @section('heading', $title)
@@ -119,7 +124,43 @@
       </div>
 
       <div class="fl-step-card">
-        <h4>3. Tile Selection</h4>
+        <h4>3. Demolition & Prep Work</h4>
+        <div class="admin-form-group">
+          <label class="admin-checkbox">
+            <input type="checkbox" name="include_demolition" id="tl-include-demolition" value="1" class="admin-checkbox__input tl-live-trigger" {{ $include_demolition ? 'checked' : '' }}>
+            <span class="admin-checkbox__mark"></span>
+            <span class="admin-checkbox__text">Include Tile Removal</span>
+          </label>
+        </div>
+        
+        <div id="tl-demolition-details" style="{{ $include_demolition ? '' : 'display:none;' }} background:#f8fafc; padding:16px; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:16px;">
+          <div class="admin-form-grid-2">
+            <div class="admin-form-group">
+              <label class="admin-form-label">Removal Complexity</label>
+              <select name="demolition_complexity" id="tl-demolition-complexity" class="admin-input tl-live-trigger">
+                <option value="standard" {{ $demolition_complexity === 'standard' ? 'selected' : '' }}>Standard Removal (CAD$ 4.00 / sq ft)</option>
+                <option value="heavy" {{ $demolition_complexity === 'heavy' ? 'selected' : '' }}>Heavy-Duty Removal (CAD$ 6.50 / sq ft)</option>
+                <option value="custom" {{ $demolition_complexity === 'custom' ? 'selected' : '' }}>Custom Rate</option>
+              </select>
+            </div>
+            <div class="admin-form-group" id="tl-custom-demo-rate-group" style="{{ $demolition_complexity === 'custom' ? '' : 'display:none;' }}">
+              <label class="admin-form-label">Custom Rate ($ / sq ft)</label>
+              <input type="number" step="0.01" name="custom_demolition_rate" id="tl-custom-demo-rate" class="admin-input tl-live-trigger" value="{{ $custom_demolition_rate }}">
+            </div>
+          </div>
+          
+          <div class="admin-form-group" style="margin-bottom:0;">
+            <label class="admin-checkbox">
+              <input type="checkbox" name="include_disposal_fee" value="1" class="admin-checkbox__input tl-live-trigger" {{ $include_disposal_fee ? 'checked' : '' }}>
+              <span class="admin-checkbox__mark"></span>
+              <span class="admin-checkbox__text">Include Disposal Fee (Flat CAD$ 60.00)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="fl-step-card">
+        <h4>4. Tile Selection</h4>
         <div class="admin-form-group">
           <label class="admin-form-label">Tile Product</label>
           <select name="tile_product_id" id="tile_product_id" class="admin-input tl-live-trigger">
@@ -140,7 +181,7 @@
       </div>
 
       <div class="fl-step-card">
-        <h4>4. Mortar & Grout</h4>
+        <h4>5. Mortar & Grout</h4>
         <div class="admin-form-grid-2">
             <div class="admin-form-group">
                 <label class="admin-form-label">Mortar Type</label>
@@ -293,6 +334,24 @@ document.addEventListener('DOMContentLoaded', function () {
         lengthInput.addEventListener('input', toggleMeasurements);
         widthInput.addEventListener('input', toggleMeasurements);
         toggleMeasurements();
+    }
+    
+    // Demolition UI toggles
+    var includeDemolition = document.getElementById('tl-include-demolition');
+    var demolitionDetails = document.getElementById('tl-demolition-details');
+    var demoComplexity = document.getElementById('tl-demolition-complexity');
+    var customDemoGroup = document.getElementById('tl-custom-demo-rate-group');
+
+    if (includeDemolition && demolitionDetails) {
+        includeDemolition.addEventListener('change', function() {
+            demolitionDetails.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    if (demoComplexity && customDemoGroup) {
+        demoComplexity.addEventListener('change', function() {
+            customDemoGroup.style.display = this.value === 'custom' ? 'block' : 'none';
+        });
     }
 
     // Run on load if filled

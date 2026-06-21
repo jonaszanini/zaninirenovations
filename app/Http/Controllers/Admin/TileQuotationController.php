@@ -61,6 +61,10 @@ class TileQuotationController extends Controller
             'joint_width_decimal' => ['required', 'numeric', 'min:0'],
             'grout_type_id' => ['nullable', 'integer', 'exists:tile_grout_types,id'],
             'labor_rate' => ['required', 'numeric', 'min:0'],
+            'include_demolition' => ['nullable', 'boolean'],
+            'demolition_complexity' => ['nullable', 'string', 'in:standard,heavy,custom'],
+            'custom_demolition_rate' => ['nullable', 'numeric', 'min:0'],
+            'include_disposal_fee' => ['nullable', 'boolean'],
 
             'is_draft' => ['nullable', 'string'],
         ]);
@@ -78,7 +82,11 @@ class TileQuotationController extends Controller
             (float) $data['joint_width_decimal'],
             empty($data['grout_type_id']) ? null : (int) $data['grout_type_id'],
             (float) $data['labor_rate'],
-            (float) ($data['total_area_sqft'] ?? 0)
+            (float) ($data['total_area_sqft'] ?? 0),
+            filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            $data['demolition_complexity'] ?? 'standard',
+            (float) ($data['custom_demolition_rate'] ?? 0),
+            filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN)
         );
 
         $quotation = new TileQuotation();
@@ -100,6 +108,10 @@ class TileQuotationController extends Controller
             'joint_width_decimal' => (float) $data['joint_width_decimal'],
             'grout_type_id' => $data['grout_type_id'] ?? null,
             'labor_rate' => (float) $data['labor_rate'],
+            'include_demolition' => filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'demolition_complexity' => $data['demolition_complexity'] ?? 'standard',
+            'custom_demolition_rate' => (float) ($data['custom_demolition_rate'] ?? 0),
+            'include_disposal_fee' => filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
         ];
         $quotation->calculation = $calculation;
         $quotation->final_quote_total = $calculation['grand_total'];
@@ -148,6 +160,10 @@ class TileQuotationController extends Controller
             'joint_width_decimal' => ['required', 'numeric', 'min:0'],
             'grout_type_id' => ['nullable', 'integer', 'exists:tile_grout_types,id'],
             'labor_rate' => ['required', 'numeric', 'min:0'],
+            'include_demolition' => ['nullable', 'boolean'],
+            'demolition_complexity' => ['nullable', 'string', 'in:standard,heavy,custom'],
+            'custom_demolition_rate' => ['nullable', 'numeric', 'min:0'],
+            'include_disposal_fee' => ['nullable', 'boolean'],
             'is_draft' => ['nullable', 'string'],
         ]);
 
@@ -164,7 +180,11 @@ class TileQuotationController extends Controller
             (float) $data['joint_width_decimal'],
             empty($data['grout_type_id']) ? null : (int) $data['grout_type_id'],
             (float) $data['labor_rate'],
-            (float) ($data['total_area_sqft'] ?? 0)
+            (float) ($data['total_area_sqft'] ?? 0),
+            filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            $data['demolition_complexity'] ?? 'standard',
+            (float) ($data['custom_demolition_rate'] ?? 0),
+            filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN)
         );
 
         if (! $quotation->isLinked()) {
@@ -185,6 +205,10 @@ class TileQuotationController extends Controller
             'joint_width_decimal' => (float) $data['joint_width_decimal'],
             'grout_type_id' => $data['grout_type_id'] ?? null,
             'labor_rate' => (float) $data['labor_rate'],
+            'include_demolition' => filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'demolition_complexity' => $data['demolition_complexity'] ?? 'standard',
+            'custom_demolition_rate' => (float) ($data['custom_demolition_rate'] ?? 0),
+            'include_disposal_fee' => filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
         ];
         $quotation->calculation = $calculation;
         $quotation->final_quote_total = $calculation['grand_total'];
@@ -266,7 +290,11 @@ class TileQuotationController extends Controller
             (float) $request->input('joint_width_decimal', 0.125),
             empty($request->input('grout_type_id')) ? null : (int) $request->input('grout_type_id'),
             (float) $request->input('labor_rate', 0),
-            $totalAreaSqft
+            $totalAreaSqft,
+            filter_var($request->input('include_demolition', false), FILTER_VALIDATE_BOOLEAN),
+            $request->input('demolition_complexity', 'standard'),
+            (float) $request->input('custom_demolition_rate', 0),
+            filter_var($request->input('include_disposal_fee', false), FILTER_VALIDATE_BOOLEAN)
         );
 
         $html = view('admin.quotations.tile._live_breakdown', compact('calculation'))->render();

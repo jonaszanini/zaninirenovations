@@ -34,7 +34,11 @@ class TileQuotationCalculator
         float $jointWidthDecimal,
         ?int $groutTypeId,
         float $laborRate,
-        float $totalAreaSqft = 0
+        float $totalAreaSqft = 0,
+        bool $includeDemolition = false,
+        string $demolitionComplexity = 'standard',
+        float $customDemolitionRate = 0.0,
+        bool $includeDisposalFee = false
     ): array {
         // 1. Total Area
         $netArea = $totalAreaSqft > 0 ? $totalAreaSqft : ($lengthFt * $widthFt);
@@ -100,9 +104,31 @@ class TileQuotationCalculator
         // 5. Labor
         $laborTotal = $totalArea * $laborRate;
 
+        // 6. Demolition & Prep Work
+        $demolitionTotal = 0.0;
+        $demolitionRate = 0.0;
+        $disposalFee = 0.0;
+
+        if ($includeDemolition && $netArea > 0) {
+            if ($demolitionComplexity === 'standard') {
+                $demolitionRate = 4.00;
+            } elseif ($demolitionComplexity === 'heavy') {
+                $demolitionRate = 6.50;
+            } else {
+                $demolitionRate = $customDemolitionRate;
+            }
+            
+            $demolitionTotal = $netArea * $demolitionRate;
+
+            if ($includeDisposalFee) {
+                $disposalFee = 60.00;
+                $demolitionTotal += $disposalFee;
+            }
+        }
+
         // Subtotals
         $materialsTotal = $mortarTotalPrice + $groutTotalPrice + $tileTotalPrice;
-        $subtotal = $materialsTotal + $laborTotal;
+        $subtotal = $materialsTotal + $laborTotal + $demolitionTotal;
 
         // HST
         $hstRate = \App\Models\TileQuotation::HST_RATE;
@@ -123,6 +149,11 @@ class TileQuotationCalculator
             'tile_total_price' => round($tileTotalPrice, 2),
             
             'labor_total' => round($laborTotal, 2),
+            
+            'include_demolition' => $includeDemolition,
+            'demolition_rate' => round($demolitionRate, 2),
+            'disposal_fee' => round($disposalFee, 2),
+            'demolition_total' => round($demolitionTotal, 2),
             
             'materials_subtotal' => round($materialsTotal, 2),
             'subtotal' => round($subtotal, 2),
