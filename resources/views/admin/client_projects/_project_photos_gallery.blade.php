@@ -89,6 +89,10 @@
         var grid = document.getElementById(galleryId + '-grid');
         if (!lightbox || !grid) return;
 
+        if (lightbox.parentElement !== document.body) {
+          document.body.appendChild(lightbox);
+        }
+
         var imgEl = lightbox.querySelector('[data-cp-lightbox-img]');
         var videoEl = lightbox.querySelector('[data-cp-lightbox-video]');
         var pdfWrap = lightbox.querySelector('[data-cp-lightbox-pdf]');
