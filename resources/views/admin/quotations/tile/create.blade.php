@@ -43,6 +43,17 @@
     .fl-step-card h4 { margin: 0 0 12px; color: #024768; }
     .pq-sidebar-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
     .pq-sidebar-actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    
+    /* Toolbar */
+    .fq-form-toolbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px 20px; flex-wrap: wrap; margin-bottom: 18px; }
+    .fq-form-toolbar-right { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; flex: 1 1 auto; min-width: 0; }
+    @media (max-width: 720px) {
+      .fq-form-toolbar { flex-direction: column; align-items: stretch; }
+      .fq-form-toolbar> a:first-child { width: fit-content; }
+      .fq-form-toolbar-right { justify-content: flex-start; }
+    }
+    .fq-linked-banner { display: flex; gap: 8px; align-items: center; background: #e8f4ea; color: #0f5132; border: 1px solid #bfddc6; border-radius: 8px; padding: 10px 14px; margin-bottom: 0; }
+    .fq-linked-banner a { color: #0f5132; font-weight: 600; }
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 @endpush
@@ -56,16 +67,44 @@
     </div>
   @endif
 
-  <form action="{{ $formAction }}" method="POST" id="tl-form" class="pq-layout">
+  <form action="{{ $formAction }}" method="POST" id="tl-form">
     @csrf
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ old('is_draft', $isEdit && $quotation->is_draft ? '1' : '0') }}">
     
-    @if (! $isEdit && $preservePid)
-      <input type="hidden" name="client_project_id" value="{{ $preservePid }}">
-    @endif
+    <div class="fq-form-toolbar">
+      <a href="{{ $returnToProject ? route('admin.projects.show', ['project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-arrow-left"></i> Back
+      </a>
+      <div class="fq-form-toolbar-right">
+        @if ($linkProject)
+          <div class="fq-linked-banner">
+            <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.projects.show', $linkProject) }}">{{ $linkProject->name }}</a>
+          </div>
+          <input type="hidden" name="client_project_id" value="{{ $linkProject->id }}">
+        @elseif ($isEdit && $quotation->project)
+          <div class="fq-linked-banner">
+            <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.projects.show', $quotation->project) }}">{{ $quotation->project->name }}</a>
+          </div>
+          <input type="hidden" name="client_project_id" value="{{ $quotation->client_project_id }}">
+        @else
+          <!-- Dropdown for unlinked quotes -->
+          <div style="display: flex; gap: 8px; align-items: center; background: #f8fafc; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <i class="fa fa-link" style="color: #64748b;"></i>
+            <span style="font-size: 13px; font-weight: 500; color: #475569;">Link project:</span>
+            <select name="client_project_id" class="admin-input admin-input--sm" style="min-width: 180px;">
+              <option value="">-- None (Standalone quote) --</option>
+              @foreach (\App\Models\ClientProject::query()->orderByDesc('created_at')->get() as $p)
+                <option value="{{ $p->id }}" {{ strval($preservePid) === strval($p->id) ? 'selected' : '' }}>{{ $p->name }}</option>
+              @endforeach
+            </select>
+          </div>
+        @endif
+      </div>
+    </div>
 
-    <div>
+    <div class="pq-layout">
+      <div>
       <div class="fl-step-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h4 style="margin:0;">1. General Details</h4>
@@ -245,6 +284,7 @@
         </div>
       </div>
     </aside>
+    </div>
   </form>
 @endsection
 

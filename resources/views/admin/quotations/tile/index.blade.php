@@ -51,7 +51,7 @@
               <tr>
                 <td><strong>{{ $q->quote_number }}</strong></td>
                 <td>{{ $q->client_name ?: '—' }}</td>
-                <td>{{ $q->totalArea() > 0 ? number_format($q->totalArea(), 0).' sq ft' : '—' }}</td>
+                <td>{{ $q->squareFootage() > 0 ? number_format($q->squareFootage(), 0).' sq ft' : '—' }}</td>
                 <td>{{ $q->is_draft ? 'Yes' : '—' }}</td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($q->final_quote_total) }}</td>
                 <td>
