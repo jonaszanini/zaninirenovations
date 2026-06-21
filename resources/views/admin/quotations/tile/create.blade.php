@@ -114,14 +114,15 @@
         <h4>3. Tile Selection</h4>
         <div class="admin-form-group">
           <label class="admin-form-label">Tile Product</label>
-          <select name="tile_product_id" class="admin-input tl-live-trigger">
-            <option value="">-- No Tile Selected --</option>
+          <select name="tile_product_id" id="tile_product_id" class="admin-input tl-live-trigger">
+            <option value="" data-url="" data-image="">-- No Tile Selected --</option>
             @foreach ($products as $p)
-              <option value="{{ $p->id }}" {{ $tile_product_id == $p->id ? 'selected' : '' }}>
+              <option value="{{ $p->id }}" data-url="{{ $p->url }}" data-image="{{ $p->image_path ? Storage::url($p->image_path) : '' }}" {{ $tile_product_id == $p->id ? 'selected' : '' }}>
                 {{ $p->name }} (${{ number_format($p->cost_per_sqft, 2) }}/sqft, {{ (float)$p->length_inches }}x{{ (float)$p->width_inches }}x{{ (float)$p->thickness_inches }}")
               </option>
             @endforeach
           </select>
+          <div id="tile-preview" style="margin-top:12px;"></div>
         </div>
         <label class="admin-form-check">
             <input type="hidden" name="include_tile_material" value="0">
@@ -258,6 +259,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Run on load if filled
     doLiveUpdate();
+
+    // Tile Product Preview Logic
+    var tileProductSelect = document.getElementById('tile_product_id');
+    var tilePreview = document.getElementById('tile-preview');
+
+    function updateTilePreview() {
+        if (!tileProductSelect) return;
+        var selectedOpt = tileProductSelect.options[tileProductSelect.selectedIndex];
+        if (!selectedOpt) return;
+
+        var url = selectedOpt.getAttribute('data-url');
+        var img = selectedOpt.getAttribute('data-image');
+
+        var html = '';
+        if (img) {
+            html += `<div style="margin-bottom:8px;"><img src="${img}" style="max-width:150px; max-height:150px; border-radius:6px; box-shadow:0 2px 4px rgba(0,0,0,0.1);"></div>`;
+        }
+        if (url) {
+            html += `<div><a href="${url}" target="_blank" class="admin-text-primary" style="font-size:14px; text-decoration:none;"><i class="fa fa-external-link"></i> View Supplier Link</a></div>`;
+        }
+
+        tilePreview.innerHTML = html;
+    }
+
+    if (tileProductSelect) {
+        tileProductSelect.addEventListener('change', updateTilePreview);
+        updateTilePreview();
+    }
 });
 </script>
 @endpush

@@ -9,6 +9,8 @@ class TileProduct extends Model
 {
     protected $fillable = [
         'name',
+        'url',
+        'image_path',
         'length_inches',
         'width_inches',
         'thickness_inches',

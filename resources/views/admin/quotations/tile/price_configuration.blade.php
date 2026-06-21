@@ -27,7 +27,7 @@
     </div>
   @endif
 
-  <form action="{{ route('admin.quotations.tile.price-configuration.update') }}{{ $qpid ? '?project='.$qpid : '' }}" method="POST">
+  <form action="{{ route('admin.quotations.tile.price-configuration.update') }}{{ $qpid ? '?project='.$qpid : '' }}" method="POST" enctype="multipart/form-data">
     @csrf
     @method('PUT')
 
@@ -120,6 +120,8 @@
           <thead>
             <tr>
               <th>Name / Model</th>
+              <th>Supplier URL</th>
+              <th>Image</th>
               <th>Length (in)</th>
               <th>Width (in)</th>
               <th>Thickness (in)</th>
@@ -135,6 +137,17 @@
                 <td>
                   <input type="hidden" name="products[{{ $index }}][id]" value="{{ $p->id }}">
                   <input type="text" name="products[{{ $index }}][name]" class="admin-input" value="{{ $p->name }}" required>
+                </td>
+                <td><input type="url" name="products[{{ $index }}][url]" class="admin-input" value="{{ $p->url }}" placeholder="https://..."></td>
+                <td>
+                  @if($p->image_path)
+                    <div style="margin-bottom:4px;">
+                      <a href="{{ Storage::url($p->image_path) }}" target="_blank">
+                        <img src="{{ Storage::url($p->image_path) }}" style="max-height:40px; border-radius:4px;">
+                      </a>
+                    </div>
+                  @endif
+                  <input type="file" name="products[{{ $index }}][image]" class="admin-input" accept="image/*" style="font-size:12px;">
                 </td>
                 <td><input type="number" step="0.0001" name="products[{{ $index }}][length_inches]" class="admin-input" value="{{ (float)$p->length_inches }}" required></td>
                 <td><input type="number" step="0.0001" name="products[{{ $index }}][width_inches]" class="admin-input" value="{{ (float)$p->width_inches }}" required></td>
@@ -201,6 +214,8 @@
       let tr = document.createElement('tr');
       tr.innerHTML = `
         <td><input type="text" name="new_products[${pIdx}][name]" class="admin-input" placeholder="Name"></td>
+        <td><input type="url" name="new_products[${pIdx}][url]" class="admin-input" placeholder="https://..."></td>
+        <td><input type="file" name="new_products[${pIdx}][image]" class="admin-input" accept="image/*" style="font-size:12px;"></td>
         <td><input type="number" step="0.0001" name="new_products[${pIdx}][length_inches]" class="admin-input" value="12"></td>
         <td><input type="number" step="0.0001" name="new_products[${pIdx}][width_inches]" class="admin-input" value="12"></td>
         <td><input type="number" step="0.0001" name="new_products[${pIdx}][thickness_inches]" class="admin-input" value="0.25"></td>

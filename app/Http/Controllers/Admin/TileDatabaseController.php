@@ -9,6 +9,7 @@ use App\Models\TileProduct;
 use App\Models\TileQuotation;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Storage;
 
 class TileDatabaseController extends Controller
 {
@@ -67,10 +68,14 @@ class TileDatabaseController extends Controller
             'products.*.width_inches' => ['required', 'numeric', 'min:0'],
             'products.*.thickness_inches' => ['required', 'numeric', 'min:0'],
             'products.*.cost_per_sqft' => ['required', 'numeric', 'min:0'],
+            'products.*.url' => ['nullable', 'url', 'max:2048'],
+            'products.*.image' => ['nullable', 'image', 'max:5120'],
             'products.*.sort_order' => ['nullable', 'integer', 'min:0'],
             'products.*.is_active' => ['nullable', 'boolean'],
             'new_products' => ['nullable', 'array'],
             'new_products.*.name' => ['nullable', 'string', 'max:255'],
+            'new_products.*.url' => ['nullable', 'url', 'max:2048'],
+            'new_products.*.image' => ['nullable', 'image', 'max:5120'],
             'new_products.*.length_inches' => ['nullable', 'numeric', 'min:0'],
             'new_products.*.width_inches' => ['nullable', 'numeric', 'min:0'],
             'new_products.*.thickness_inches' => ['nullable', 'numeric', 'min:0'],
@@ -140,26 +145,50 @@ class TileDatabaseController extends Controller
         }
 
         // 3. Process Products
-        foreach ($data['products'] ?? [] as $row) {
+        foreach ($data['products'] ?? [] as $index => $row) {
             if (! is_array($row) || empty($row['id'])) continue;
             $p = TileProduct::query()->find($row['id']);
             if ($p) {
-                $p->update([
+                $updateData = [
                     'name' => trim((string) $row['name']),
+                    'url' => !empty($row['url']) ? trim((string) $row['url']) : null,
                     'length_inches' => round((float) $row['length_inches'], 4),
                     'width_inches' => round((float) $row['width_inches'], 4),
                     'thickness_inches' => round((float) $row['thickness_inches'], 4),
                     'cost_per_sqft' => round((float) $row['cost_per_sqft'], 4),
                     'sort_order' => max(0, (int) ($row['sort_order'] ?? $p->sort_order)),
                     'is_active' => filter_var($row['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
-                ]);
+                ];
+
+                if ($request->hasFile("products.{$index}.image")) {
+                    $file = $request->file("products.{$index}.image");
+                    if ($file->isValid()) {
+                        if ($p->image_path && Storage::disk('public')->exists($p->image_path)) {
+                            Storage::disk('public')->delete($p->image_path);
+                        }
+                        $updateData['image_path'] = $file->store('tiles', 'public');
+                    }
+                }
+
+                $p->update($updateData);
             }
         }
         $maxSortProduct = (int) TileProduct::query()->max('sort_order');
-        foreach ($data['new_products'] ?? [] as $row) {
+        foreach ($data['new_products'] ?? [] as $index => $row) {
             if (! is_array($row) || empty(trim((string) ($row['name'] ?? '')))) continue;
+            
+            $imagePath = null;
+            if ($request->hasFile("new_products.{$index}.image")) {
+                $file = $request->file("new_products.{$index}.image");
+                if ($file->isValid()) {
+                    $imagePath = $file->store('tiles', 'public');
+                }
+            }
+            
             TileProduct::query()->create([
                 'name' => trim((string) $row['name']),
+                'url' => !empty($row['url']) ? trim((string) $row['url']) : null,
+                'image_path' => $imagePath,
                 'length_inches' => round((float) ($row['length_inches'] ?? 0), 4),
                 'width_inches' => round((float) ($row['width_inches'] ?? 0), 4),
                 'thickness_inches' => round((float) ($row['thickness_inches'] ?? 0), 4),
@@ -169,7 +198,15 @@ class TileDatabaseController extends Controller
             ]);
         }
         foreach ($data['delete_product_ids'] ?? [] as $id) {
-            if ($id > 0) TileProduct::query()->whereKey($id)->delete();
+            if ($id > 0) {
+                $p = TileProduct::query()->find($id);
+                if ($p) {
+                    if ($p->image_path && Storage::disk('public')->exists($p->image_path)) {
+                        Storage::disk('public')->delete($p->image_path);
+                    }
+                    $p->delete();
+                }
+            }
         }
 
         return redirect()
