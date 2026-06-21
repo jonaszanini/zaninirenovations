@@ -10,10 +10,8 @@ class TileMortarType extends Model
     protected $fillable = [
         'name',
         'bag_weight_lbs',
-        'coverage_14_14',
-        'coverage_14_38',
-        'coverage_12_12',
         'cost_price',
+        'retail_price',
         'sort_order',
         'is_active',
     ];

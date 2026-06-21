@@ -50,15 +50,19 @@ class TileQuotationCalculator
         $mortarCoverage = 0.0;
 
         if ($mortar && $totalArea > 0) {
+            $baseCoverage = 0;
             if ($trowelSize === '1/4x1/4') {
-                $mortarCoverage = (float) $mortar->coverage_14_14;
+                $baseCoverage = 90;
             } elseif ($trowelSize === '1/4x3/8') {
-                $mortarCoverage = (float) $mortar->coverage_14_38;
+                $baseCoverage = 70;
             } elseif ($trowelSize === '1/2x1/2') {
-                $mortarCoverage = (float) $mortar->coverage_12_12;
+                $baseCoverage = 40;
             }
             
-            if ($mortarCoverage > 0) {
+            if ($baseCoverage > 0) {
+                $bagWeight = (float) $mortar->bag_weight_lbs > 0 ? (float) $mortar->bag_weight_lbs : 50.0;
+                $mortarCoverage = ($bagWeight / 50.0) * $baseCoverage;
+                
                 $mortarBags = (int) ceil($totalArea / $mortarCoverage);
                 $mortarTotalPrice = $mortarBags * (float) $mortar->cost_price;
             }
