@@ -35,14 +35,12 @@ class TileDatabaseController extends Controller
             'mortars.*.name' => ['required', 'string', 'max:255'],
             'mortars.*.bag_weight_lbs' => ['required', 'numeric', 'min:0'],
             'mortars.*.cost_price' => ['required', 'numeric', 'min:0'],
-            'mortars.*.retail_price' => ['required', 'numeric', 'min:0'],
             'mortars.*.sort_order' => ['nullable', 'integer', 'min:0'],
             'mortars.*.is_active' => ['nullable', 'boolean'],
             'new_mortars' => ['nullable', 'array'],
             'new_mortars.*.name' => ['nullable', 'string', 'max:255'],
             'new_mortars.*.bag_weight_lbs' => ['nullable', 'numeric', 'min:0'],
             'new_mortars.*.cost_price' => ['nullable', 'numeric', 'min:0'],
-            'new_mortars.*.retail_price' => ['nullable', 'numeric', 'min:0'],
             'delete_mortar_ids' => ['nullable', 'array'],
             'delete_mortar_ids.*' => ['integer', 'exists:tile_mortar_types,id'],
 
@@ -90,7 +88,6 @@ class TileDatabaseController extends Controller
                     'name' => trim((string) $row['name']),
                     'bag_weight_lbs' => round((float) $row['bag_weight_lbs'], 2),
                     'cost_price' => round((float) $row['cost_price'], 4),
-                    'retail_price' => round((float) ($row['retail_price'] ?? 0), 4),
                     'sort_order' => max(0, (int) ($row['sort_order'] ?? $m->sort_order)),
                     'is_active' => filter_var($row['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
                 ]);
@@ -103,7 +100,6 @@ class TileDatabaseController extends Controller
                 'name' => trim((string) $row['name']),
                 'bag_weight_lbs' => round((float) ($row['bag_weight_lbs'] ?? 50), 2),
                 'cost_price' => round((float) ($row['cost_price'] ?? 0), 4),
-                'retail_price' => round((float) ($row['retail_price'] ?? 0), 4),
                 'sort_order' => ++$maxSortMortar,
                 'is_active' => true,
             ]);

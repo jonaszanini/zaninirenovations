@@ -40,7 +40,6 @@
               <th>Name</th>
               <th>Bag (lbs)</th>
               <th>Cost ($)</th>
-              <th>Retail Price ($)</th>
               <th style="width:60px;">Sort</th>
               <th style="width:70px;">Active</th>
               <th style="width:50px;"></th>
@@ -55,7 +54,6 @@
                 </td>
                 <td><input type="number" step="0.01" name="mortars[{{ $index }}][bag_weight_lbs]" class="admin-input" value="{{ (float)$m->bag_weight_lbs }}" required></td>
                 <td><input type="number" step="0.0001" name="mortars[{{ $index }}][cost_price]" class="admin-input" value="{{ (float)$m->cost_price }}" required></td>
-                <td><input type="number" step="0.0001" name="mortars[{{ $index }}][retail_price]" class="admin-input" value="{{ (float)$m->retail_price }}" required></td>
                 <td><input type="number" name="mortars[{{ $index }}][sort_order]" class="admin-input" value="{{ $m->sort_order }}"></td>
                 <td>
                   <label class="admin-form-check" style="margin:0;"><input type="checkbox" name="mortars[{{ $index }}][is_active]" value="1" {{ $m->is_active ? 'checked' : '' }}></label>
@@ -174,7 +172,6 @@
         <td><input type="text" name="new_mortars[${mIdx}][name]" class="admin-input" placeholder="Name"></td>
         <td><input type="number" step="0.01" name="new_mortars[${mIdx}][bag_weight_lbs]" class="admin-input" value="50"></td>
         <td><input type="number" step="0.0001" name="new_mortars[${mIdx}][cost_price]" class="admin-input" value="0"></td>
-        <td><input type="number" step="0.0001" name="new_mortars[${mIdx}][retail_price]" class="admin-input" value="0"></td>
         <td></td><td></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
       `;

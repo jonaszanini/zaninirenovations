@@ -11,7 +11,6 @@ class TileMortarType extends Model
         'name',
         'bag_weight_lbs',
         'cost_price',
-        'retail_price',
         'sort_order',
         'is_active',
     ];
