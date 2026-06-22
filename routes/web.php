@@ -545,6 +545,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.tile.link');
     Route::delete('quotations/tile/{quotation}', [\App\Http\Controllers\Admin\TileQuotationController::class, 'destroy'])
         ->name('quotations.tile.destroy');
+    Route::post('quotations/tile/{quotation}/create-project', [\App\Http\Controllers\Admin\TileQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.tile.create-project');
 
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);

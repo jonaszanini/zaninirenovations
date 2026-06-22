@@ -141,7 +141,12 @@ class TileQuotationController extends Controller
         $returnToProject = $request->query('return') === 'project';
         $linkProject = null;
 
-        return view('admin.quotations.tile.create', compact('quotation', 'mortarTypes', 'groutTypes', 'products', 'returnToProject', 'linkProject'));
+        $linkableProjects = ClientProject::query()
+            ->whereNotIn('status', ClientProject::statusesClosedToNewQuotations())
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('admin.quotations.tile.create', compact('quotation', 'mortarTypes', 'groutTypes', 'products', 'returnToProject', 'linkProject', 'linkableProjects'));
     }
 
     public function update(Request $request, TileQuotation $quotation, TileQuotationCalculator $calculator)
@@ -265,6 +270,98 @@ class TileQuotationController extends Controller
         return redirect()
             ->route('admin.projects.show', ['project' => $quotation->client_project_id, 'tab' => 'quotation'])
             ->with('success', 'Quotation linked successfully.');
+    }
+
+    public function createProjectAndLink(
+        Request $request,
+        TileQuotation $quotation,
+        \App\Services\ClientProjectStatusService $statusService
+    ) {
+        if ($quotation->isLinked()) {
+            return back()->with('error', 'This tile quotation is already linked to a project.');
+        }
+        if ($quotation->is_draft) {
+            return back()->with('error', 'Publish the quotation before creating a project.');
+        }
+        if ((float) $quotation->final_quote_total <= 0) {
+            return back()->with('error', 'Set a final quote total greater than zero before creating a project.');
+        }
+
+        $this->normalisePhoneOnRequest($request);
+
+        if (! filled(trim((string) $request->input('fp_client_address', '')))) {
+            $request->merge([
+                'fp_client_address' => null,
+                'fp_client_address_place_id' => null,
+                'fp_client_address_latitude' => null,
+                'fp_client_address_longitude' => null,
+            ]);
+        }
+
+        $data = $request->validate([
+            'fp_project_name' => ['nullable', 'string', 'max:255'],
+            'fp_client_name' => ['required', 'string', 'max:255'],
+            'fp_client_email' => ['nullable', 'email', 'max:255'],
+            'fp_client_phone' => ['nullable', 'digits:10'],
+            'fp_client_address' => ['nullable', 'string', 'max:500'],
+            'fp_client_address_place_id' => ['nullable', 'string', 'max:255'],
+            'fp_client_address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'fp_client_address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+        ], [
+            'fp_client_phone.digits' => 'Phone number must have exactly 10 digits.',
+        ]);
+
+        $clientName = trim($data['fp_client_name']);
+        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
+        if ($projectTitle === '') {
+            $projectTitle = $clientName.' — Tile';
+        }
+        $projectTitle = \Illuminate\Support\Str::limit($projectTitle, 255, '');
+
+        $project = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $projectTitle, $clientName, $quotation) {
+            $project = ClientProject::create([
+                'name' => $projectTitle,
+                'client_name' => $clientName,
+                'client_email' => $data['fp_client_email'] ?: null,
+                'client_phone' => $data['fp_client_phone'] ?: null,
+                'client_address' => $data['fp_client_address'] ?: null,
+                'client_address_place_id' => $data['fp_client_address_place_id'] ?: null,
+                'client_address_latitude' => $data['fp_client_address_latitude'] ?? null,
+                'client_address_longitude' => $data['fp_client_address_longitude'] ?? null,
+                'billing_type' => ClientProject::BILLING_FIXED,
+                'hourly_rate' => null,
+                'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+                'status_changed_at' => now(),
+            ]);
+
+            $quotation->client_project_id = $project->id;
+            $quotation->linked_at = now();
+            $quotation->save();
+
+            $this->syncProjectQuotation($quotation);
+
+            return $project;
+        });
+
+        $statusService->onCreated($project, false);
+        app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+
+        return redirect()
+            ->to(route('admin.projects.show', ['project' => $project->id, 'tab' => 'quotation']))
+            ->with('success', 'Project created. The tile quotation was added to the Quotation tab.');
+    }
+
+    protected function normalisePhoneOnRequest(Request $request): void
+    {
+        if (! $request->has('fp_client_phone')) {
+            return;
+        }
+
+        $raw = (string) $request->input('fp_client_phone');
+        $digits = preg_replace('/\D/', '', $raw);
+        $request->merge([
+            'fp_client_phone' => $digits === '' ? null : $digits,
+        ]);
     }
 
     public function calculateLive(Request $request, TileQuotationCalculator $calculator)
