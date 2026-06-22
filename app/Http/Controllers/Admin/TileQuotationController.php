@@ -124,7 +124,7 @@ class TileQuotationController extends Controller
         if ($quotation->client_project_id) {
             $this->syncProjectQuotation($quotation);
             return redirect()
-                ->route('admin.projects.show', ['project' => $quotation->client_project_id, 'tab' => 'quotation'])
+                ->route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation'])
                 ->with('success', 'Tile quotation created and linked.');
         }
 
@@ -227,7 +227,7 @@ class TileQuotationController extends Controller
 
         if ($request->query('return') === 'project' && $quotation->client_project_id) {
             return redirect()
-                ->route('admin.projects.show', ['project' => $quotation->client_project_id, 'tab' => 'quotation'])
+                ->route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation'])
                 ->with('success', 'Tile quotation updated.');
         }
 
@@ -268,7 +268,7 @@ class TileQuotationController extends Controller
         $this->syncProjectQuotation($quotation);
 
         return redirect()
-            ->route('admin.projects.show', ['project' => $quotation->client_project_id, 'tab' => 'quotation'])
+            ->route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation'])
             ->with('success', 'Quotation linked successfully.');
     }
 
@@ -347,7 +347,7 @@ class TileQuotationController extends Controller
         app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
 
         return redirect()
-            ->to(route('admin.projects.show', ['project' => $project->id, 'tab' => 'quotation']))
+            ->to(route('admin.client-projects.show', ['client_project' => $project->id]).'#quotation')
             ->with('success', 'Project created. The tile quotation was added to the Quotation tab.');
     }
 
