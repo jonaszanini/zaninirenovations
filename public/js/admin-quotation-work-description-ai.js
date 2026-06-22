@@ -200,6 +200,35 @@
     };
   }
 
+  function collectStairsContext(form) {
+    return {
+      client_name: formValue(form, 'client_name'),
+      total_steps: formValue(form, 'total_steps'),
+      material_type: formSelectValue(form, 'material_type_id'),
+      nosing_choice: formValue(form, 'nosing_choice'),
+      carpet_removal: form.elements['carpet_removal'] && form.elements['carpet_removal'].checked,
+      requires_stain: form.elements['requires_stain'] && form.elements['requires_stain'].checked,
+      requires_clear_coat: form.elements['requires_clear_coat'] && form.elements['requires_clear_coat'].checked,
+      breakdown_summary: panelText('st-live-root')
+    };
+  }
+
+  function collectFlooringContext(form) {
+    return {
+      client_name: formValue(form, 'client_name'),
+      square_footage: formValue(form, 'square_footage'),
+      flooring_type: formSelectValue(form, 'flooring_type_id'),
+      remove_carpet: form.elements['remove_carpet'] && form.elements['remove_carpet'].checked,
+      rescrew_subfloor: form.elements['rescrew_subfloor'] && form.elements['rescrew_subfloor'].checked,
+      install_shoe_moulding: form.elements['install_shoe_moulding'] && form.elements['install_shoe_moulding'].checked,
+      caulk_paint_shoe_moulding: form.elements['caulk_paint_shoe_moulding'] && form.elements['caulk_paint_shoe_moulding'].checked,
+      closet_doors: form.elements['closet_doors'] && form.elements['closet_doors'].checked,
+      closet_door_qty: formValue(form, 'closet_door_qty'),
+      material_name: formValue(form, 'material_name'),
+      breakdown_summary: panelText('fl-live-root')
+    };
+  }
+
   var collectors = {
     painting: collectPaintingContext,
     fence: collectFenceContext,
