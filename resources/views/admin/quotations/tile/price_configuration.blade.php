@@ -24,6 +24,11 @@
   @if ($errors->any())
     <div class="admin-banner admin-banner--danger" style="margin-bottom:16px;">
       <i class="fa fa-exclamation-triangle"></i> Please check the form for errors.
+      <ul style="margin-top: 8px; margin-bottom: 0;">
+        @foreach ($errors->all() as $error)
+          <li>{{ $error }}</li>
+        @endforeach
+      </ul>
     </div>
   @endif
 
@@ -42,7 +47,7 @@
               <th>Cost ($)</th>
               <th style="width:60px;">Sort</th>
               <th style="width:70px;">Active</th>
-              <th style="width:50px;"></th>
+              <th style="width:50px; text-align:center;">Del</th>
             </tr>
           </thead>
           <tbody>
@@ -58,11 +63,10 @@
                 <td style="text-align:center;">
                   <input type="checkbox" name="mortars[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $m->is_active ? 'checked' : '' }}>
                 </td>
-                <td>
-                  <label class="admin-checkbox admin-text-danger" style="margin:0;">
+                <td style="text-align:center;">
+                  <label class="admin-checkbox admin-text-danger" style="margin:0; display:inline-flex;">
                     <input type="checkbox" name="delete_mortar_ids[]" value="{{ $m->id }}" class="admin-checkbox__input">
                     <span class="admin-checkbox__mark"></span>
-                    <span class="admin-checkbox__text" style="font-size:12px;">Del</span>
                   </label>
                 </td>
               </tr>
@@ -85,7 +89,7 @@
               <th>Cost ($)</th>
               <th style="width:60px;">Sort</th>
               <th style="width:70px;">Active</th>
-              <th style="width:50px;"></th>
+              <th style="width:50px; text-align:center;">Del</th>
             </tr>
           </thead>
           <tbody>
@@ -102,11 +106,10 @@
                 <td style="text-align:center;">
                   <input type="checkbox" name="grouts[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $g->is_active ? 'checked' : '' }}>
                 </td>
-                <td>
-                  <label class="admin-checkbox admin-text-danger" style="margin:0;">
+                <td style="text-align:center;">
+                  <label class="admin-checkbox admin-text-danger" style="margin:0; display:inline-flex;">
                     <input type="checkbox" name="delete_grout_ids[]" value="{{ $g->id }}" class="admin-checkbox__input">
                     <span class="admin-checkbox__mark"></span>
-                    <span class="admin-checkbox__text" style="font-size:12px;">Del</span>
                   </label>
                 </td>
               </tr>
@@ -132,7 +135,7 @@
               <th>Cost / sqft ($)</th>
               <th style="width:60px;">Sort</th>
               <th style="width:70px;">Active</th>
-              <th style="width:50px;"></th>
+              <th style="width:50px; text-align:center;">Del</th>
             </tr>
           </thead>
           <tbody>
@@ -161,11 +164,10 @@
                 <td style="text-align:center;">
                   <input type="checkbox" name="products[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $p->is_active ? 'checked' : '' }}>
                 </td>
-                <td>
-                  <label class="admin-checkbox admin-text-danger" style="margin:0;">
+                <td style="text-align:center;">
+                  <label class="admin-checkbox admin-text-danger" style="margin:0; display:inline-flex;">
                     <input type="checkbox" name="delete_product_ids[]" value="{{ $p->id }}" class="admin-checkbox__input">
                     <span class="admin-checkbox__mark"></span>
-                    <span class="admin-checkbox__text" style="font-size:12px;">Del</span>
                   </label>
                 </td>
               </tr>
