@@ -14,6 +14,7 @@ use App\Models\PaintingQuotation;
 use App\Models\PavingQuotation;
 use App\Models\StairsQuotation;
 use App\Models\StandardQuotation;
+use App\Models\TileQuotation;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientSmsService;
@@ -96,6 +97,12 @@ class ClientProjectQuotationController extends Controller
             $fl = FlooringQuotation::find($quotation->source_id);
             if ($fl) {
                 return redirect()->route('admin.quotations.flooring.edit', [$fl, 'return' => 'project']);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_TILE && $quotation->source_id) {
+            $tl = TileQuotation::find($quotation->source_id);
+            if ($tl) {
+                return redirect()->route('admin.quotations.tile.edit', [$tl, 'return' => 'project']);
             }
         }
 
