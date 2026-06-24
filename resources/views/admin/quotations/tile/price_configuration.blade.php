@@ -147,12 +147,14 @@
                 </td>
                 <td><input type="url" name="products[{{ $index }}][url]" class="admin-input" value="{{ $p->url }}" placeholder="https://..."></td>
                 <td>
-                  @if($p->image_path)
+                  @if ($imageUrl = $p->publicImageUrl())
                     <div style="margin-bottom:4px;">
-                      <a href="{{ Storage::url($p->image_path) }}" target="_blank">
-                        <img src="{{ Storage::url($p->image_path) }}" style="max-height:40px; border-radius:4px;">
+                      <a href="{{ $imageUrl }}" target="_blank" rel="noopener">
+                        <img src="{{ $imageUrl }}" alt="" style="max-height:40px; border-radius:4px;">
                       </a>
                     </div>
+                  @elseif ($p->image_path)
+                    <p class="admin-form-help" style="margin:0 0 4px;color:#b45309;">Image missing on server — re-upload.</p>
                   @endif
                   <input type="file" name="products[{{ $index }}][image]" class="admin-input" accept="image/*" style="font-size:12px;">
                 </td>

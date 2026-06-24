@@ -205,7 +205,7 @@
           <select name="tile_product_id" id="tile_product_id" class="admin-input tl-live-trigger">
             <option value="" data-url="" data-image="">-- No Tile Selected --</option>
             @foreach ($products as $p)
-              <option value="{{ $p->id }}" data-url="{{ $p->url }}" data-image="{{ $p->image_path ? Storage::url($p->image_path) : '' }}" {{ $tile_product_id == $p->id ? 'selected' : '' }}>
+              <option value="{{ $p->id }}" data-url="{{ $p->url }}" data-image="{{ $p->publicImageUrl() ?? '' }}" {{ $tile_product_id == $p->id ? 'selected' : '' }}>
                 {{ $p->name }} (${{ number_format($p->cost_per_sqft, 2) }}/sqft, {{ (float)$p->length_inches }}x{{ (float)$p->width_inches }}x{{ (float)$p->thickness_inches }}")
               </option>
             @endforeach

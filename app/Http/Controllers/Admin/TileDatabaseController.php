@@ -7,7 +7,9 @@ use App\Models\TileMortarType;
 use App\Models\TileGroutType;
 use App\Models\TileProduct;
 use App\Models\TileQuotation;
+use App\Services\ProjectPhotoWebpStorage;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Storage;
 
@@ -145,54 +147,65 @@ class TileDatabaseController extends Controller
         }
 
         // 3. Process Products
-        foreach ($data['products'] ?? [] as $index => $row) {
-            if (! is_array($row) || empty($row['id'])) continue;
-            $p = TileProduct::query()->find($row['id']);
+        $validatedProductsById = collect($data['products'] ?? [])->keyBy('id');
+
+        foreach ($request->input('products', []) as $index => $row) {
+            if (! is_array($row) || empty($row['id'])) {
+                continue;
+            }
+
+            $productId = (int) $row['id'];
+            $validated = $validatedProductsById->get($productId);
+            if (! is_array($validated)) {
+                continue;
+            }
+
+            $p = TileProduct::query()->find($productId);
             if ($p) {
                 $updateData = [
-                    'name' => trim((string) $row['name']),
-                    'url' => !empty($row['url']) ? trim((string) $row['url']) : null,
-                    'length_inches' => round((float) $row['length_inches'], 4),
-                    'width_inches' => round((float) $row['width_inches'], 4),
-                    'thickness_inches' => round((float) $row['thickness_inches'], 4),
-                    'cost_per_sqft' => round((float) $row['cost_per_sqft'], 4),
-                    'sort_order' => max(0, (int) ($row['sort_order'] ?? $p->sort_order)),
-                    'is_active' => filter_var($row['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                    'name' => trim((string) $validated['name']),
+                    'url' => ! empty($validated['url']) ? trim((string) $validated['url']) : null,
+                    'length_inches' => round((float) $validated['length_inches'], 4),
+                    'width_inches' => round((float) $validated['width_inches'], 4),
+                    'thickness_inches' => round((float) $validated['thickness_inches'], 4),
+                    'cost_per_sqft' => round((float) $validated['cost_per_sqft'], 4),
+                    'sort_order' => max(0, (int) ($validated['sort_order'] ?? $p->sort_order)),
+                    'is_active' => filter_var($validated['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
                 ];
 
-                if ($request->hasFile("products.{$index}.image")) {
-                    $file = $request->file("products.{$index}.image");
-                    if ($file->isValid()) {
-                        if ($p->image_path && Storage::disk('public')->exists($p->image_path)) {
-                            Storage::disk('public')->delete($p->image_path);
-                        }
-                        $updateData['image_path'] = $file->store('tiles', 'public');
-                    }
+                $file = $request->file("products.{$index}.image");
+                if ($file instanceof UploadedFile && $file->isValid()) {
+                    $updateData['image_path'] = $this->storeProductImage($file, $p->image_path);
                 }
 
                 $p->update($updateData);
             }
         }
         $maxSortProduct = (int) TileProduct::query()->max('sort_order');
-        foreach ($data['new_products'] ?? [] as $index => $row) {
-            if (! is_array($row) || empty(trim((string) ($row['name'] ?? '')))) continue;
-            
-            $imagePath = null;
-            if ($request->hasFile("new_products.{$index}.image")) {
-                $file = $request->file("new_products.{$index}.image");
-                if ($file->isValid()) {
-                    $imagePath = $file->store('tiles', 'public');
-                }
+        foreach ($request->input('new_products', []) as $index => $row) {
+            if (! is_array($row) || empty(trim((string) ($row['name'] ?? '')))) {
+                continue;
             }
-            
+
+            $validated = $data['new_products'][$index] ?? null;
+            if (! is_array($validated)) {
+                continue;
+            }
+
+            $imagePath = null;
+            $file = $request->file("new_products.{$index}.image");
+            if ($file instanceof UploadedFile && $file->isValid()) {
+                $imagePath = $this->storeProductImage($file);
+            }
+
             TileProduct::query()->create([
-                'name' => trim((string) $row['name']),
-                'url' => !empty($row['url']) ? trim((string) $row['url']) : null,
+                'name' => trim((string) $validated['name']),
+                'url' => ! empty($validated['url']) ? trim((string) $validated['url']) : null,
                 'image_path' => $imagePath,
-                'length_inches' => round((float) ($row['length_inches'] ?? 0), 4),
-                'width_inches' => round((float) ($row['width_inches'] ?? 0), 4),
-                'thickness_inches' => round((float) ($row['thickness_inches'] ?? 0), 4),
-                'cost_per_sqft' => round((float) ($row['cost_per_sqft'] ?? 0), 4),
+                'length_inches' => round((float) ($validated['length_inches'] ?? 0), 4),
+                'width_inches' => round((float) ($validated['width_inches'] ?? 0), 4),
+                'thickness_inches' => round((float) ($validated['thickness_inches'] ?? 0), 4),
+                'cost_per_sqft' => round((float) ($validated['cost_per_sqft'] ?? 0), 4),
                 'sort_order' => ++$maxSortProduct,
                 'is_active' => true,
             ]);
@@ -201,16 +214,54 @@ class TileDatabaseController extends Controller
             if ($id > 0) {
                 $p = TileProduct::query()->find($id);
                 if ($p) {
-                    if ($p->image_path && Storage::disk('public')->exists($p->image_path)) {
-                        Storage::disk('public')->delete($p->image_path);
-                    }
+                    $this->deleteProductImage($p->image_path);
                     $p->delete();
                 }
+            }
+        }
+
+        foreach (TileProduct::query()->whereNotNull('image_path')->get(['id', 'image_path']) as $product) {
+            if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
+                app(ProjectPhotoWebpStorage::class)->syncPublicMirror($product->image_path);
             }
         }
 
         return redirect()
             ->route('admin.quotations.tile.price-configuration', $request->filled('project') ? ['project' => $request->query('project')] : [])
             ->with('success', 'Tile database updated.');
+    }
+
+    protected function storeProductImage(UploadedFile $file, ?string $previousPath = null): string
+    {
+        Storage::disk('public')->makeDirectory('tiles');
+
+        $path = $file->store('tiles', 'public');
+        if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
+            throw ValidationException::withMessages([
+                'products' => 'Could not save the tile image. Check that storage/app/public is writable on the server.',
+            ]);
+        }
+
+        app(ProjectPhotoWebpStorage::class)->syncPublicMirror($path);
+
+        if ($previousPath && $previousPath !== $path) {
+            $this->deleteProductImage($previousPath);
+        }
+
+        return $path;
+    }
+
+    protected function deleteProductImage(?string $relativePath): void
+    {
+        if (! filled($relativePath)) {
+            return;
+        }
+
+        Storage::disk('public')->delete($relativePath);
+
+        $mirror = public_path('storage/'.ltrim(str_replace('\\', '/', $relativePath), '/'));
+        if (is_file($mirror)) {
+            @unlink($mirror);
+        }
     }
 }
