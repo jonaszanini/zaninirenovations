@@ -409,22 +409,59 @@ class TileQuotationController extends Controller
             return;
         }
 
+        $items = [[
+            'description' => 'Tile installation (labor)',
+            'amount' => $quotation->labourPreTaxAmountForProjectQuotation(),
+            'apply_hst' => true,
+        ]];
+
+        $materialAmt = $quotation->materialsPreTaxAmountForProjectQuotation();
+        if ($materialAmt > 0) {
+            $items[] = [
+                'description' => 'Client-selected tile & materials',
+                'amount' => $materialAmt,
+                'apply_hst' => true,
+            ];
+        }
+
+        $snapshot = $quotation->only([
+            'quote_number',
+            'client_name',
+            'inputs',
+            'calculation',
+            'final_quote_total',
+            'work_description',
+            'version',
+        ]);
+
         $row = ClientProjectQuotation::query()->firstOrNew([
             'client_project_id' => $quotation->client_project_id,
             'source_type' => ClientProjectQuotation::SOURCE_TILE,
             'source_id' => $quotation->id,
         ]);
 
+        if (! $row->exists) {
+            $row->fill([
+                'status' => ClientProjectQuotation::STATUS_DRAFT,
+                'type' => ClientProjectQuotation::TYPE_QUOTATION,
+                'quotation_number' => ClientProjectQuotation::generateNumber(
+                    ClientProjectQuotation::TYPE_QUOTATION
+                ),
+                'version' => 1,
+            ]);
+        }
+
+        $row->labour = true;
+        $row->material = $quotation->includesMaterialCharge();
         $row->title = $quotation->displayTitle();
-        $row->status = $quotation->is_draft ? 'draft' : 'approved';
-        $row->display_order = $row->exists ? $row->display_order : 999;
-        
-        $row->pre_tax_labor_amount = $quotation->labourPreTaxAmountForProjectQuotation();
-        $row->pre_tax_materials_amount = $quotation->materialsPreTaxAmountForProjectQuotation();
-        
-        $row->summary_description = $quotation->summaryDescription();
+        $row->items = $items;
         $row->work_description = $quotation->scopeDescriptionForPdf();
+        $row->source_snapshot = $snapshot;
 
         $row->save();
+
+        if ($quotation->project) {
+            $quotation->project->syncFixedContractTotalsFromQuotation();
+        }
     }
 }

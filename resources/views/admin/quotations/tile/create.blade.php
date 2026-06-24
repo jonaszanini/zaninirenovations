@@ -73,18 +73,18 @@
     <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ old('is_draft', $isEdit && $quotation->is_draft ? '1' : '0') }}">
     
     <div class="fq-form-toolbar">
-      <a href="{{ $returnToProject ? route('admin.projects.show', ['project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+      <a href="{{ $returnToProject ? route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Back
       </a>
       <div class="fq-form-toolbar-right">
         @if ($linkProject)
           <div class="fq-linked-banner">
-            <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.projects.show', $linkProject) }}">{{ $linkProject->name }}</a>
+            <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.client-projects.show', $linkProject) }}">{{ $linkProject->name }}</a>
           </div>
           <input type="hidden" name="client_project_id" value="{{ $linkProject->id }}">
         @elseif ($isEdit && $quotation->project)
           <div class="fq-linked-banner">
-            <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.projects.show', $quotation->project) }}">{{ $quotation->project->name }}</a>
+            <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.client-projects.show', $quotation->project) }}">{{ $quotation->project->name }}</a>
           </div>
           <input type="hidden" name="client_project_id" value="{{ $quotation->client_project_id }}">
         @else
@@ -270,7 +270,7 @@
         </button>
         <div class="pq-sidebar-actions-row">
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tl-btn-draft">Save as draft</button>
-          <a href="{{ $returnToProject ? route('admin.projects.show', ['project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+          <a href="{{ $returnToProject ? route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
         </div>
       </div>
       
