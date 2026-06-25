@@ -265,6 +265,7 @@ class ClientProjectController extends Controller
             'helpers',
             'helperTimeEntries.helper',
             'helperTimeEntries.payment',
+            'helperTimeEntries.payment.splits',
             'helperPayments.helper',
             'helperPayments.timeEntries',
             'statusHistory.user',

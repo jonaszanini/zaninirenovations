@@ -234,8 +234,7 @@
             class="cp-helper-pay-form"
             id="cp-helper-pay-form"
             data-cp-helper-pay-form
-            data-entry-amounts="{{ $entryAmounts }}"
-            onsubmit="return cpHelperPayConfirm();">
+            data-entry-amounts="{{ $entryAmounts }}">
         @csrf
         <div class="cp-helper-pay-toolbar cp-helper-panel" id="cp-helper-pay-toolbar">
 
@@ -252,6 +251,7 @@
               {{-- First split row (always present) --}}
               <div class="cp-split-row" data-split-row>
                 <select class="admin-input cp-split-row__method" name="splits[0][method]" required>
+                  <option value="" disabled selected>Select method…</option>
                   @foreach ($paymentMethods as $value => $label)
                     <option value="{{ $value }}">{{ $label }}</option>
                   @endforeach
@@ -374,9 +374,10 @@
             var rows = document.querySelectorAll('#cp-split-rows .cp-split-row');
             if (rows.length >= maxSplits) return;
 
-            var opts = Object.entries(paymentMethods).map(function (kv) {
-              return '<option value="' + kv[0] + '">' + kv[1] + '</option>';
-            }).join('');
+            var opts = '<option value="" disabled selected>Select method\u2026</option>' +
+              Object.entries(paymentMethods).map(function (kv) {
+                return '<option value="' + kv[0] + '">' + kv[1] + '</option>';
+              }).join('');
 
             var div = document.createElement('div');
             div.className = 'cp-split-row';
@@ -422,19 +423,42 @@
           }
 
           // ── Confirm dialog ────────────────────────────────────────────────────
-          window.cpHelperPayConfirm = function () {
+          // Intercept the pay-form submit and show the styled AdminDialog instead
+          // of the native confirm(). We handle both the mismatch alert and the
+          // final "proceed" confirmation through the same path.
+          document.getElementById('cp-helper-pay-form').addEventListener('submit', function (e) {
+            if (this.dataset.dialogBypass === '1') return; // already confirmed, let submit through
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            var form = this;
             var selected = getSelectedTotal();
             var entered  = getSplitsTotal();
             var diff     = Math.abs(selected - entered);
+
             if (diff > 0.01) {
-              alert(
-                'The split amounts (' + formatMoney(entered) + ') don\'t match the selected total (' + formatMoney(selected) + ').\n' +
-                'Please adjust the amounts before submitting.'
+              window.AdminDialog.alert(
+                'The split amounts (' + formatMoney(entered) + ') don\'t match the selected total (' + formatMoney(selected) + '). Please adjust the amounts before submitting.',
+                { title: 'Amount mismatch' }
               );
-              return false;
+              return;
             }
-            return confirm('Mark selected days as paid, add a project expense, and email the helper?');
-          };
+
+            window.AdminDialog.confirm(
+              'Mark selected days as paid, add a project expense, and email the helper?',
+              { title: 'Mark as paid' }
+            ).then(function (ok) {
+              if (!ok) return;
+              form.dataset.dialogBypass = '1';
+              if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+              } else {
+                HTMLFormElement.prototype.submit.call(form);
+              }
+              delete form.dataset.dialogBypass;
+            });
+          }, true);
+
 
           // ── Wire up events ────────────────────────────────────────────────────
           document.addEventListener('change', function (e) {
