@@ -1,0 +1,101 @@
+{
+  "entities": [
+    {
+      "name": "ZaniniRenovations",
+      "entityType": "Project",
+      "observations": [
+        "PHP application based on Laravel 9",
+        "Renovation and Carpentry Services Website",
+        "Memory graph persisted at .cursor/memory-graph.json in the project root (configured via MCP server-memory --path)."
+      ]
+    },
+    {
+      "name": "Architecture",
+      "entityType": "Component",
+      "observations": [
+        "Standard Laravel MVC structure",
+        "Models located in app/Models/ (e.g., Client, Project, Quotation models)",
+        "Controllers located in app/Http/Controllers/",
+        "Routing uses standard Laravel routes/web.php and routes/api.php",
+        "Views are built using Blade templates and connect to controllers via the view() helper (e.g., view('site.blog.index')).",
+        "Layouts (like public.blade.php) utilize standard Blade directives such as @yield, @include, and @stack.",
+        "Configuration values are managed in .env and accessed via config() or env() helpers."
+      ]
+    },
+    {
+      "name": "Database",
+      "entityType": "Component",
+      "observations": [
+        "Uses MySQL connection configured via .env and config/database.php",
+        "Strict mode is enabled in config/database.php",
+        "Table naming convention follows plural snake_case (e.g., client_projects, paving_stone_types).",
+        "Database schema is versioned using timestamped migrations."
+      ]
+    },
+    {
+      "name": "CodingStandards",
+      "entityType": "Concept",
+      "observations": [
+        "Uses PSR-4 autoloading for the App namespace",
+        "Does not strictly enforce declare(strict_types=1) across the app directory",
+        "Uses standard PascalCase for classes and controllers",
+        "Formatting follows standard PSR-12 conventions.",
+        "Variable and method names use camelCase (e.g., $categorySlug, incrementViews).",
+        "Error handling leverages Laravel's built-in exceptions like abort(404).",
+        "PHP 8 features like short closures (fn () => ...) are actively used."
+      ]
+    },
+    {
+      "name": "Dependencies",
+      "entityType": "Component",
+      "observations": [
+        "Requires PHP ^8.0",
+        "Uses barryvdh/laravel-dompdf and spatie/browsershot for PDF generation",
+        "Uses guzzlehttp/guzzle for HTTP requests",
+        "Frontend relies on Bootstrap, FontAwesome, Owl Carousel, and Venobox.",
+        "CSS and JS files are served directly from the public/ directory with custom timestamp-based cache busting instead of Webpack/Vite.",
+        "package.json only includes puppeteer, which supports the spatie/browsershot backend package."
+      ]
+    },
+    {
+      "name": "ExternalAPIs",
+      "entityType": "Component",
+      "observations": [
+        "Integrates with Gmail SMTP",
+        "Integrates with Mocean SMS",
+        "Integrates with Google Maps Platform (Places API, Distance Matrix API)",
+        "Integrates with Google Photos Picker API",
+        "Integrates with Google Gemini API for AI features",
+        "Integrates with SerpApi for material price scraping",
+        "Frontend utilizes Google Analytics 4 (configured via SEO_GA4_MEASUREMENT_ID)."
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "ZaniniRenovations",
+      "to": "Architecture",
+      "relationType": "uses"
+    },
+    {
+      "from": "ZaniniRenovations",
+      "to": "Database",
+      "relationType": "uses"
+    },
+    {
+      "from": "ZaniniRenovations",
+      "to": "CodingStandards",
+      "relationType": "follows"
+    },
+    {
+      "from": "ZaniniRenovations",
+      "to": "Dependencies",
+      "relationType": "depends on"
+    },
+    {
+      "from": "ZaniniRenovations",
+      "to": "ExternalAPIs",
+      "relationType": "integrates with"
+    }
+  ]
+}
