@@ -225,23 +225,52 @@
     @endif
 
     @if ($unpaidClosed->isNotEmpty())
+      @php
+        // Build a JS-safe map of entry_id => line amount so the "Remaining" counter can react to checkbox changes.
+        $entryAmounts = $unpaidClosed->mapWithKeys(fn ($e) => [$e->id => round((float) $e->lineAmount(), 2)])->toJson();
+      @endphp
       <form action="{{ route('admin.client-projects.helper-time.mark-paid', $project) }}"
             method="post"
             class="cp-helper-pay-form"
             id="cp-helper-pay-form"
             data-cp-helper-pay-form
-            onsubmit="return confirm('Mark selected days as paid, add a project expense, and email the helper?');">
+            data-entry-amounts="{{ $entryAmounts }}"
+            onsubmit="return cpHelperPayConfirm();">
         @csrf
-        <div class="cp-helper-pay-toolbar cp-helper-panel">
-          <div class="admin-form-group">
-            <label>Payment method</label>
-            <select class="admin-input" name="payment_method" required>
-              @foreach ($paymentMethods as $value => $label)
-                <option value="{{ $value }}">{{ $label }}</option>
-              @endforeach
-            </select>
+        <div class="cp-helper-pay-toolbar cp-helper-panel" id="cp-helper-pay-toolbar">
+
+          {{-- Split builder --}}
+          <div class="cp-split-builder" id="cp-split-builder">
+            <div class="cp-split-builder__head">
+              <span class="cp-split-builder__label">Payment method(s)</span>
+              <span class="cp-split-builder__remaining" id="cp-split-remaining">
+                Remaining: <strong id="cp-split-remaining-val">—</strong>
+              </span>
+            </div>
+
+            <div id="cp-split-rows">
+              {{-- First split row (always present) --}}
+              <div class="cp-split-row" data-split-row>
+                <select class="admin-input cp-split-row__method" name="splits[0][method]" required>
+                  @foreach ($paymentMethods as $value => $label)
+                    <option value="{{ $value }}">{{ $label }}</option>
+                  @endforeach
+                </select>
+                <input class="admin-input cp-split-row__amount" type="number" step="0.01" min="0.01"
+                       name="splits[0][amount]" placeholder="Amount" required>
+                <button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)" disabled>
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm cp-split-add-btn" id="cp-split-add-btn"
+                    onclick="cpAddSplitRow()">
+              <i class="fa fa-plus"></i> Add payment method
+            </button>
           </div>
-          <div class="admin-form-group">
+
+          <div class="admin-form-group" style="margin-top:12px;">
             <label>Paid on</label>
             <input class="admin-input" type="date" name="paid_on" value="{{ now()->toDateString() }}">
           </div>
@@ -250,8 +279,186 @@
           </button>
         </div>
         @error('entry_ids') <p class="admin-form-error">{{ $message }}</p> @enderror
+        @error('splits') <p class="admin-form-error">{{ $message }}</p> @enderror
       </form>
+
+      <style>
+        .cp-split-builder { margin-bottom: 4px; }
+        .cp-split-builder__head { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+        .cp-split-builder__label { font-size: 13px; font-weight: 600; color: #374151; }
+        .cp-split-builder__remaining { font-size: 13px; color: #6b7280; }
+        .cp-split-builder__remaining strong { color: #374151; }
+        .cp-split-builder__remaining.is-balanced strong { color: #16a34a; }
+        .cp-split-builder__remaining.is-over strong { color: #dc2626; }
+        #cp-split-rows { display: flex; flex-direction: column; gap: 8px; }
+        .cp-split-row { display: flex; align-items: center; gap: 8px; }
+        .cp-split-row__method { flex: 1; min-width: 120px; }
+        .cp-split-row__amount { width: 120px; }
+        .cp-split-row__remove {
+          background: none; border: 1px solid #e5e7eb; border-radius: 6px;
+          color: #9ca3af; padding: 5px 8px; cursor: pointer; line-height: 1;
+          transition: color .15s, border-color .15s;
+        }
+        .cp-split-row__remove:not(:disabled):hover { color: #ef4444; border-color: #ef4444; }
+        .cp-split-row__remove:disabled { opacity: .35; cursor: default; }
+        .cp-split-add-btn { margin-top: 4px; font-size: 12px; }
+      </style>
+
+      <script>
+        (function () {
+          var splitIdx = 1; // next index (row 0 is already rendered)
+          var maxSplits = 5;
+          var paymentMethods = @json($paymentMethods);
+
+          // Build entry-amount map from the form's data attribute.
+          var entryAmounts = JSON.parse(
+            document.getElementById('cp-helper-pay-form').dataset.entryAmounts || '{}'
+          );
+
+          // ── Remaining counter ──────────────────────────────────────────────────
+          function getSelectedTotal() {
+            var total = 0;
+            document.querySelectorAll('[data-cp-helper-pay-form] input[name="entry_ids[]"]:checked').forEach(function (cb) {
+              total += entryAmounts[cb.value] || 0;
+            });
+            return Math.round(total * 100) / 100;
+          }
+
+          function getSplitsTotal() {
+            var total = 0;
+            document.querySelectorAll('#cp-split-rows .cp-split-row__amount').forEach(function (inp) {
+              var v = parseFloat(inp.value);
+              if (!isNaN(v)) total += v;
+            });
+            return Math.round(total * 100) / 100;
+          }
+
+          function formatMoney(n) {
+            return 'CA$' + n.toFixed(2);
+          }
+
+          function updateRemaining() {
+            var selected = getSelectedTotal();
+            var entered  = getSplitsTotal();
+            var rem      = Math.round((selected - entered) * 100) / 100;
+            var el       = document.getElementById('cp-split-remaining');
+            var valEl    = document.getElementById('cp-split-remaining-val');
+
+            if (selected === 0) {
+              valEl.textContent = '—';
+              el.className = 'cp-split-builder__remaining';
+              return;
+            }
+
+            valEl.textContent = formatMoney(rem);
+            el.className = 'cp-split-builder__remaining' +
+              (Math.abs(rem) <= 0.01 ? ' is-balanced' : (rem < -0.01 ? ' is-over' : ''));
+          }
+
+          function autoFillFirstRow() {
+            var selected = getSelectedTotal();
+            if (selected <= 0) return;
+            // Only auto-fill when there's just one split row and its amount is empty.
+            var rows = document.querySelectorAll('#cp-split-rows .cp-split-row');
+            if (rows.length === 1) {
+              var amtInput = rows[0].querySelector('.cp-split-row__amount');
+              if (!amtInput.value) {
+                amtInput.value = selected.toFixed(2);
+                updateRemaining();
+              }
+            }
+          }
+
+          // ── Add / remove rows ─────────────────────────────────────────────────
+          window.cpAddSplitRow = function () {
+            var rows = document.querySelectorAll('#cp-split-rows .cp-split-row');
+            if (rows.length >= maxSplits) return;
+
+            var opts = Object.entries(paymentMethods).map(function (kv) {
+              return '<option value="' + kv[0] + '">' + kv[1] + '</option>';
+            }).join('');
+
+            var div = document.createElement('div');
+            div.className = 'cp-split-row';
+            div.setAttribute('data-split-row', '');
+            div.innerHTML =
+              '<select class="admin-input cp-split-row__method" name="splits[' + splitIdx + '][method]" required>' + opts + '</select>' +
+              '<input class="admin-input cp-split-row__amount" type="number" step="0.01" min="0.01" name="splits[' + splitIdx + '][amount]" placeholder="Amount" required>' +
+              '<button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)"><i class="fa fa-times"></i></button>';
+
+            document.getElementById('cp-split-rows').appendChild(div);
+            splitIdx++;
+
+            // Auto-suggest the remaining amount.
+            var rem = Math.round((getSelectedTotal() - getSplitsTotal()) * 100) / 100;
+            if (rem > 0.005) {
+              div.querySelector('.cp-split-row__amount').value = rem.toFixed(2);
+              updateRemaining();
+            }
+
+            updateRemoveButtons();
+            updateAddButton();
+            div.querySelector('.cp-split-row__amount').focus();
+          };
+
+          window.cpRemoveSplitRow = function (btn) {
+            var row = btn.closest('[data-split-row]');
+            row.parentNode.removeChild(row);
+            updateRemaining();
+            updateRemoveButtons();
+            updateAddButton();
+          };
+
+          function updateRemoveButtons() {
+            var rows = document.querySelectorAll('#cp-split-rows .cp-split-row');
+            rows.forEach(function (r) {
+              r.querySelector('.cp-split-row__remove').disabled = rows.length === 1;
+            });
+          }
+
+          function updateAddButton() {
+            var rows = document.querySelectorAll('#cp-split-rows .cp-split-row');
+            document.getElementById('cp-split-add-btn').disabled = rows.length >= maxSplits;
+          }
+
+          // ── Confirm dialog ────────────────────────────────────────────────────
+          window.cpHelperPayConfirm = function () {
+            var selected = getSelectedTotal();
+            var entered  = getSplitsTotal();
+            var diff     = Math.abs(selected - entered);
+            if (diff > 0.01) {
+              alert(
+                'The split amounts (' + formatMoney(entered) + ') don\'t match the selected total (' + formatMoney(selected) + ').\n' +
+                'Please adjust the amounts before submitting.'
+              );
+              return false;
+            }
+            return confirm('Mark selected days as paid, add a project expense, and email the helper?');
+          };
+
+          // ── Wire up events ────────────────────────────────────────────────────
+          document.addEventListener('change', function (e) {
+            if (e.target.matches('[data-cp-helper-pay-form] input[name="entry_ids[]"]')) {
+              autoFillFirstRow();
+              updateRemaining();
+            }
+            if (e.target.matches('#cp-split-rows .cp-split-row__method, #cp-split-rows .cp-split-row__amount')) {
+              updateRemaining();
+            }
+          });
+          document.addEventListener('input', function (e) {
+            if (e.target.matches('#cp-split-rows .cp-split-row__amount')) {
+              updateRemaining();
+            }
+          });
+
+          updateRemaining();
+          updateRemoveButtons();
+          updateAddButton();
+        })();
+      </script>
     @endif
+
 
         @include('admin.client_projects._helper_time_entries', [
           'project' => $project,

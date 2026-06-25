@@ -48,7 +48,36 @@ class ClientProjectHelperPayment extends Model
 
     public function paymentMethodLabel(): string
     {
-        return self::paymentMethodOptions()[$this->payment_method] ?? ucfirst(str_replace('_', ' ', (string) $this->payment_method));
+        // If splits are already loaded (eager-loaded), derive the label from them.
+        if ($this->relationLoaded('splits') && $this->splits->isNotEmpty()) {
+            return $this->splits
+                ->map(fn ($s) => $s->paymentMethodLabel())
+                ->unique()
+                ->implode(' + ');
+        }
+
+        // Fallback for legacy payments that have no splits, or when splits aren't loaded.
+        return self::paymentMethodOptions()[$this->payment_method]
+            ?? ucfirst(str_replace('_', ' ', (string) $this->payment_method));
+    }
+
+    /**
+     * Return each split as "CA$400.00 — Cash" lines, for use in emails.
+     * Falls back to a single line using the stored payment_method when no splits exist.
+     *
+     * @return array<string>
+     */
+    public function paymentSplitLines(): array
+    {
+        if ($this->relationLoaded('splits') && $this->splits->isNotEmpty()) {
+            return $this->splits
+                ->map(fn ($s) => ClientProject::formatMoney((float) $s->amount).' — '.$s->paymentMethodLabel())
+                ->values()
+                ->all();
+        }
+
+        // Legacy: single line
+        return [ClientProject::formatMoney((float) $this->total_amount).' — '.$this->paymentMethodLabel()];
     }
 
     public function project(): BelongsTo
@@ -64,6 +93,11 @@ class ClientProjectHelperPayment extends Model
     public function expense(): BelongsTo
     {
         return $this->belongsTo(ClientProjectExpense::class, 'client_project_expense_id');
+    }
+
+    public function splits(): HasMany
+    {
+        return $this->hasMany(ClientProjectHelperPaymentSplit::class, 'client_project_helper_payment_id');
     }
 
     public function timeEntries(): HasMany

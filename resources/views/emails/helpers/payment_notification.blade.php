@@ -27,8 +27,17 @@
   </p>
 
   <p style="margin:12px 0;">
-    <strong>Payment method:</strong> {{ $payment->paymentMethodLabel() }}<br>
+    @php $splitLines = $payment->paymentSplitLines(); @endphp
+    @if (count($splitLines) === 1)
+      <strong>Payment method:</strong> {{ $payment->paymentMethodLabel() }}<br>
+    @else
+      <strong>Payment breakdown:</strong><br>
+      @foreach ($splitLines as $line)
+        &nbsp;&nbsp;{{ $line }}<br>
+      @endforeach
+    @endif
     <strong>Paid on:</strong> {{ ClientProject::formatDate($payment->paid_at) }}<br>
+
     @if ((float) $payment->total_hours > 0)
       <strong>Total hours:</strong> {{ number_format((float) $payment->total_hours, 2) }}<br>
       @if (! $hasMixedRates && (float) $payment->hourly_rate > 0)

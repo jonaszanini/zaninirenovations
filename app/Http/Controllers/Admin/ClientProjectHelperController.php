@@ -8,6 +8,7 @@ use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectHelperPayment;
+use App\Models\ClientProjectHelperPaymentSplit;
 use App\Models\ClientProjectHelperTimeEntry;
 use App\Models\ClientProjectTimeEntry;
 use App\Models\Helper;
@@ -197,21 +198,35 @@ class ClientProjectHelperController extends Controller
         }
 
         $data = $request->validate([
-            'entry_ids' => ['required', 'array', 'min:1'],
-            'entry_ids.*' => ['integer'],
-            'payment_method' => [
+            'entry_ids'         => ['required', 'array', 'min:1'],
+            'entry_ids.*'       => ['integer'],
+            'splits'            => ['required', 'array', 'min:1', 'max:5'],
+            'splits.*.method'   => [
                 'required',
                 Rule::in(array_keys(ClientProjectHelperPayment::paymentMethodOptions())),
             ],
-            'paid_on' => ['nullable', 'date'],
+            'splits.*.amount'   => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+            'paid_on'           => ['nullable', 'date'],
+        ], [
+            'splits.required'           => 'Add at least one payment method.',
+            'splits.*.method.required'  => 'Each split must have a payment method.',
+            'splits.*.amount.required'  => 'Each split must have an amount.',
+            'splits.*.amount.min'       => 'Each split amount must be at least $0.01.',
         ]);
+
+        // Normalise split amounts to 2 dp.
+        $splits = collect($data['splits'])->map(fn ($s) => [
+            'method' => $s['method'],
+            'amount' => round((float) $s['amount'], 2),
+        ])->values();
+        $splitsTotal = round($splits->sum('amount'), 2);
 
         $paidOn = $data['paid_on'] ?? now()->toDateString();
         $payment = null;
         $emailWarning = null;
 
         try {
-            DB::transaction(function () use ($client_project, $data, $paidOn, &$payment) {
+            DB::transaction(function () use ($client_project, $data, $splits, $splitsTotal, $paidOn, &$payment) {
                 ClientProject::whereKey($client_project->id)->lockForUpdate()->first();
 
                 $entries = ClientProjectHelperTimeEntry::query()
@@ -289,6 +304,17 @@ class ClientProjectHelperController extends Controller
                     ]);
                 }
 
+                // Validate that splits sum to the computed total (±$0.01 rounding tolerance).
+                if (abs($splitsTotal - $totalAmount) > 0.01) {
+                    throw ValidationException::withMessages([
+                        'splits' => sprintf(
+                            'Split amounts total %s but the selected entries total %s — please adjust.',
+                            ClientProject::formatMoney($splitsTotal),
+                            ClientProject::formatMoney($totalAmount)
+                        ),
+                    ]);
+                }
+
                 $sortedDates = $entries
                     ->sortBy(fn ($e) => $e->occurred_on?->format('Y-m-d') ?? '')
                     ->map(fn ($e) => ClientProject::formatDate($e->occurred_on))
@@ -327,16 +353,31 @@ class ClientProjectHelperController extends Controller
                     'amount' => $totalAmount,
                 ]);
 
+                // Build a human-readable summary for the payment_method column.
+                $methodLabels = $splits
+                    ->map(fn ($s) => ClientProjectHelperPayment::paymentMethodOptions()[$s['method']])
+                    ->unique()
+                    ->implode(' + ');
+
                 $payment = ClientProjectHelperPayment::create([
-                    'client_project_id' => $client_project->id,
-                    'helper_id' => $helper->id,
-                    'payment_method' => $data['payment_method'],
-                    'total_amount' => $totalAmount,
-                    'total_hours' => $totalHours,
-                    'hourly_rate' => $avgRate,
+                    'client_project_id'        => $client_project->id,
+                    'helper_id'                => $helper->id,
+                    'payment_method'           => $methodLabels,
+                    'total_amount'             => $totalAmount,
+                    'total_hours'              => $totalHours,
+                    'hourly_rate'              => $avgRate,
                     'client_project_expense_id' => $expense->id,
-                    'paid_at' => $paidOn,
+                    'paid_at'                  => $paidOn,
                 ]);
+
+                // Create the individual split rows.
+                foreach ($splits as $split) {
+                    ClientProjectHelperPaymentSplit::create([
+                        'client_project_helper_payment_id' => $payment->id,
+                        'payment_method'                   => $split['method'],
+                        'amount'                           => $split['amount'],
+                    ]);
+                }
 
                 ClientProjectHelperTimeEntry::query()
                     ->whereIn('id', $entries->pluck('id'))
@@ -350,7 +391,7 @@ class ClientProjectHelperController extends Controller
             return back()->withFragment('time')->with('error', 'Could not record the helper payment.');
         }
 
-        $payment->load(['helper', 'timeEntries', 'project']);
+        $payment->load(['helper', 'timeEntries', 'splits', 'project']);
 
         try {
             Mail::to($payment->helper->email, $payment->helper->name)
