@@ -318,7 +318,7 @@
           // ── Remaining counter ──────────────────────────────────────────────────
           function getSelectedTotal() {
             var total = 0;
-            document.querySelectorAll('[data-cp-helper-pay-form] input[name="entry_ids[]"]:checked').forEach(function (cb) {
+            document.querySelectorAll('input[name="entry_ids[]"]:checked').forEach(function (cb) {
               total += entryAmounts[cb.value] || 0;
             });
             return Math.round(total * 100) / 100;
@@ -438,7 +438,7 @@
 
           // ── Wire up events ────────────────────────────────────────────────────
           document.addEventListener('change', function (e) {
-            if (e.target.matches('[data-cp-helper-pay-form] input[name="entry_ids[]"]')) {
+            if (e.target.matches('input[name="entry_ids[]"]')) {
               autoFillFirstRow();
               updateRemaining();
             }
