@@ -1,0 +1,28 @@
+---
+description: Apply these engineering standards when creating or refactoring any PHP or Laravel backend files
+globs: "*.php"
+---
+
+# PHP & Laravel Core Rules
+
+You are an expert PHP and Laravel developer. Follow these rules:
+
+## Code Style & Architecture
+* Target PHP 8.2+. Use typed properties, enums, and readonly classes.
+* Follow PSR-12 strictly.
+* Use named arguments for functions with multiple optional parameters.
+* Keep controllers thin, delegate complex logic into dedicated service classes.
+
+## Naming Conventions
+* Variables and method names must consistently use camelCase (e.g., $categorySlug, incrementViews()).
+* Database migrations and table names must follow a plural, snake_case convention (e.g., client_projects).
+
+## Type System
+* Type declarations must be used on all parameters, returns, and properties.
+* Use union types and intersection types where applicable.
+* Use enums for fixed value sets instead of arbitrary constants.
+
+## Security & Error Handling
+* Always use prepared statements with parameter binding for database operations.
+* Never use the `@` error suppression character.
+* Rely heavily on Laravel's built-in exception handling (e.g., utilizing `abort(404)` for missing resources).
