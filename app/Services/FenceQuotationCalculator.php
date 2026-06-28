@@ -104,11 +104,16 @@ class FenceQuotationCalculator
             }
         }
 
+        $defaultLabour6 = (float) $this->settings->labour_rate_per_ft;
+        $defaultLabour8 = (float) ($this->settings->labour_rate_8ft_per_ft ?? $defaultLabour6);
+
         return [
             'sides' => $sides,
             'fence_height_ft' => round($height, 2),
             'board_style' => $style,
             'gate_count' => max($gateCount, $gatesMarkedOnSides),
+            'labour_rate_per_ft' => round(max(0, (float) ($inputs['labour_rate_per_ft'] ?? $defaultLabour6)), 2),
+            'labour_rate_8ft_per_ft' => round(max(0, (float) ($inputs['labour_rate_8ft_per_ft'] ?? $defaultLabour8)), 2),
         ];
     }
 

@@ -230,6 +230,37 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(3.708, $side['section_lengths_ft'][0], 0.01);
     }
 
+    public function test_custom_labour_rate_affects_grand_total(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $base = $calculator->calculate([
+            'sides' => [['length_ft' => 41.5]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 25,
+            'labour_rate_8ft_per_ft' => 27,
+        ]);
+
+        $higher = $calculator->calculate([
+            'sides' => [['length_ft' => 41.5]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 26,
+            'labour_rate_8ft_per_ft' => 27,
+        ]);
+
+        $this->assertSame(25.0, $base['inputs']['labour_rate_per_ft']);
+        $this->assertSame(26.0, $higher['inputs']['labour_rate_per_ft']);
+        $this->assertGreaterThan($base['totals']['grand_total'], $higher['totals']['grand_total']);
+        $this->assertGreaterThan(
+            $base['totals']['labour_subtotal'],
+            $higher['totals']['labour_subtotal']
+        );
+    }
+
     public function test_gate_side_assignment_honours_all_marked_sides(): void
     {
         $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());

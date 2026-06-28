@@ -909,7 +909,11 @@
 
   function parseLabourRate(input) {
     if (!input) return 0;
-    var v = parseFloat(String(input.value || '').replace(/,/g, ''));
+    var raw = String(input.value || '').replace(/,/g, '');
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
+      return window.cpMoneyMask.parse(raw);
+    }
+    var v = parseFloat(raw);
     return isFinite(v) ? v : 0;
   }
 
@@ -1104,7 +1108,7 @@
       if (e.target.matches('#fq-gates')) {
         updateGateCheckboxState();
       }
-      if (e.target.matches('#fq-form input, #fq-form select')) {
+      if (e.target.matches('#fq-labour-rate-6, #fq-labour-rate-8, #fq-form input, #fq-form select')) {
         schedulePreview();
       }
     });
