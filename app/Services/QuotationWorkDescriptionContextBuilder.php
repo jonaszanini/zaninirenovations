@@ -127,6 +127,9 @@ class QuotationWorkDescriptionContextBuilder
                 if (! empty($side['already_have_post_right'])) {
                     $existing[] = 'existing post on right';
                 }
+                if (! empty($side['gate_goes_here'])) {
+                    $existing[] = 'gate on this side';
+                }
                 if ($existing !== []) {
                     $part .= ' ('.implode(', ', $existing).')';
                 }

@@ -205,6 +205,7 @@ class FenceQuotationController extends Controller
             'sides.*.length_ft' => ['nullable', 'numeric', 'min:0', 'max:5000'],
             'sides.*.already_have_post_left' => ['nullable', 'boolean'],
             'sides.*.already_have_post_right' => ['nullable', 'boolean'],
+            'sides.*.gate_goes_here' => ['nullable', 'boolean'],
             'fence_height_ft' => ['required', 'numeric', Rule::in([6, 8])],
             'board_style' => ['required', Rule::in([FenceQuotation::BOARD_STYLE_STANDARD, FenceQuotation::BOARD_STYLE_OVERLAPPING])],
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
@@ -610,6 +611,7 @@ class FenceQuotationController extends Controller
             'sides.*.length_ft' => ['required', 'numeric', 'min:0.5', 'max:5000'],
             'sides.*.already_have_post_left' => ['nullable', 'boolean'],
             'sides.*.already_have_post_right' => ['nullable', 'boolean'],
+            'sides.*.gate_goes_here' => ['nullable', 'boolean'],
             'fence_height_ft' => ['required', 'numeric', Rule::in([6, 8])],
             'board_style' => ['required', Rule::in([
                 FenceQuotation::BOARD_STYLE_STANDARD,

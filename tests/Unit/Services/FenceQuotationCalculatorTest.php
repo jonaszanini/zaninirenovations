@@ -150,13 +150,55 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertSame(2, $side['posts']);
     }
 
-    public function test_compute_side_layout_sections_plus_one_posts_when_no_existing_boundaries(): void
+    public function test_gate_on_side_reduces_structural_posts_and_sections(): void
     {
         $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
 
-        $layout = $calculator->computeSideLayout(33.5, false, false);
+        $withoutGate = $calculator->calculate([
+            'sides' => [['length_ft' => 33.5]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
 
-        $this->assertSame(5, $layout['sections']);
-        $this->assertSame(6, $layout['posts']);
+        $withGate = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 33.5,
+                'gate_goes_here' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+        ]);
+
+        $this->assertSame(5, $withoutGate['geometry']['sections_total']);
+        $this->assertSame(6, $withoutGate['geometry']['structural_posts']);
+
+        $this->assertSame(4, $withGate['geometry']['sections_total']);
+        $this->assertSame(5, $withGate['geometry']['structural_posts']);
+        $this->assertSame(1, $withGate['geometry']['gate_posts']);
+        $this->assertSame(6, $withGate['geometry']['posts_before_waste']);
+        $this->assertSame(1, $withGate['geometry']['gates_on_sides']);
+        $this->assertTrue($withGate['geometry']['sides_breakdown'][0]['gate_goes_here']);
+        $this->assertSame(29.5, $withGate['geometry']['picket_linear_ft']);
+    }
+
+    public function test_gate_side_assignment_respects_gate_count_limit(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [
+                ['length_ft' => 16, 'gate_goes_here' => true],
+                ['length_ft' => 16, 'gate_goes_here' => true],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+        ]);
+
+        $this->assertSame(1, $result['geometry']['gates_on_sides']);
+        $this->assertTrue($result['geometry']['sides_breakdown'][0]['gate_goes_here']);
+        $this->assertFalse($result['geometry']['sides_breakdown'][1]['gate_goes_here']);
     }
 }

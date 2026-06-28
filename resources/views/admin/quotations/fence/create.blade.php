@@ -9,9 +9,9 @@
 
   $initialSides = $isEdit
     ? ($quotation->sides ?? [])
-    : [['length_ft' => null, 'already_have_post_left' => false, 'already_have_post_right' => false]];
+    : [['length_ft' => null, 'already_have_post_left' => false, 'already_have_post_right' => false, 'gate_goes_here' => false]];
   if (empty($initialSides)) {
-    $initialSides = [['length_ft' => null, 'already_have_post_left' => false, 'already_have_post_right' => false]];
+    $initialSides = [['length_ft' => null, 'already_have_post_left' => false, 'already_have_post_right' => false, 'gate_goes_here' => false]];
   }
 
   $initialHeight = $isEdit ? (int) round((float) $quotation->fence_height_ft) : 6;
@@ -130,6 +130,19 @@
     }
     .fq-side-post-check--right .admin-checkbox__input:focus-visible ~ .admin-checkbox__mark {
       box-shadow: 0 0 0 3px var(--admin-primary-ring, rgba(2, 71, 104, 0.22));
+    }
+    .fq-side-gate {
+      margin-top: 8px;
+    }
+    .fq-side-gate label.admin-checkbox {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 500;
+      gap: 6px;
+    }
+    .fq-side-gate label.admin-checkbox.is-disabled {
+      opacity: 0.45;
+      pointer-events: none;
     }
     .fq-breakdown-card {
       position: sticky;
@@ -679,6 +692,7 @@
     sides.forEach(function (side, i) {
       var leftChecked = !!(side && side.already_have_post_left);
       var rightChecked = !!(side && side.already_have_post_right);
+      var gateChecked = !!(side && side.gate_goes_here);
       var card = document.createElement('div');
       card.className = 'fq-side-card';
       card.innerHTML = [
@@ -713,11 +727,74 @@
         '    </label>',
         '  </span>',
         '</div>',
+        '<div class="fq-side-gate">',
+        '  <label class="admin-checkbox fq-side-gate-check">',
+        '    <input type="hidden" name="sides[' + i + '][gate_goes_here]" value="0">',
+        '    <input type="checkbox" class="admin-checkbox__input fq-side-gate-here"',
+        '           name="sides[' + i + '][gate_goes_here]" value="1"',
+        (gateChecked ? ' checked' : '') + '>',
+        '    <span class="admin-checkbox__mark" aria-hidden="true"></span>',
+        '    <span class="admin-checkbox__text">Gate goes here</span>',
+        '  </label>',
+        '</div>',
         '<div class="fq-side-meta" data-meta="' + i + '"></div>'
       ].join('');
       sidesEl.appendChild(card);
     });
+    updateGateCheckboxState();
     updateAddRemoveState();
+  }
+
+  function gateCountLimit() {
+    var n = parseInt(gatesInput && gatesInput.value, 10);
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+
+  function updateGateCheckboxState() {
+    var limit = gateCountLimit();
+    var gateInputs = sidesEl.querySelectorAll('.fq-side-gate-here');
+    var checkedCount = 0;
+
+    gateInputs.forEach(function (input) {
+      if (input.checked) checkedCount++;
+    });
+
+    if (checkedCount > limit) {
+      var excess = checkedCount - limit;
+      Array.prototype.slice.call(gateInputs).reverse().forEach(function (input) {
+        if (excess <= 0) return;
+        if (input.checked) {
+          input.checked = false;
+          excess--;
+        }
+      });
+      checkedCount = limit;
+    }
+
+    gateInputs.forEach(function (input) {
+      var label = input.closest('label.admin-checkbox');
+      var disabled = limit === 0 || (!input.checked && checkedCount >= limit);
+      input.disabled = disabled;
+      if (label) label.classList.toggle('is-disabled', disabled);
+    });
+  }
+
+  function onGateCheckboxChange(changedInput) {
+    var limit = gateCountLimit();
+    if (limit === 0) {
+      changedInput.checked = false;
+      updateGateCheckboxState();
+      return;
+    }
+
+    if (changedInput.checked) {
+      var checked = sidesEl.querySelectorAll('.fq-side-gate-here:checked');
+      if (checked.length > limit) {
+        changedInput.checked = false;
+      }
+    }
+
+    updateGateCheckboxState();
   }
 
   function updateAddRemoveState() {
@@ -729,7 +806,7 @@
   addBtn.addEventListener('click', function () {
     var current = collectSides();
     if (current.length>= MAX_SIDES) return;
-    current.push({ length_ft: null, already_have_post_left: false, already_have_post_right: false });
+    current.push({ length_ft: null, already_have_post_left: false, already_have_post_right: false, gate_goes_here: false });
     renderSides(current);
     schedulePreview();
   });
@@ -750,10 +827,12 @@
         var v = parseFloat(lengthInput && lengthInput.value);
         var leftInput = card.querySelector('.fq-side-post-left');
         var rightInput = card.querySelector('.fq-side-post-right');
+        var gateInput = card.querySelector('.fq-side-gate-here');
         return {
           length_ft: isFinite(v) ? v : null,
           already_have_post_left: !!(leftInput && leftInput.checked),
           already_have_post_right: !!(rightInput && rightInput.checked),
+          gate_goes_here: !!(gateInput && gateInput.checked),
         };
       }
     );
@@ -859,7 +938,8 @@
         meta.innerHTML =
           s.sections + ' section' + (s.sections === 1 ? '' : 's') +
           ' · ' + posts + ' post' + (posts === 1 ? '' : 's') +
-          ' · max ' + maxSpan.toFixed(2) + ' ft span';
+          ' · max ' + maxSpan.toFixed(2) + ' ft span' +
+          (s.gate_goes_here ? ' · gate' : '');
       }
     });
 
@@ -914,6 +994,12 @@
   ['input', 'change'].forEach(function (evt) {
     document.addEventListener(evt, function (e) {
       if (!e.target || !e.target.closest) return;
+      if (e.target.matches('.fq-side-gate-here')) {
+        onGateCheckboxChange(e.target);
+      }
+      if (e.target.matches('#fq-gates')) {
+        updateGateCheckboxState();
+      }
       if (e.target.matches('#fq-form input, #fq-form select')) {
         schedulePreview();
       }

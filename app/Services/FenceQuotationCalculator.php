@@ -11,7 +11,7 @@ use App\Models\FenceQuotation;
  * Fence quotation module.
  *
  * Inputs (from the UI):
-     *   - sides          : array<['length_ft' => float, 'already_have_post_left' => bool, 'already_have_post_right' => bool]>
+     *   - sides          : array<['length_ft' => float, 'already_have_post_left' => bool, 'already_have_post_right' => bool, 'gate_goes_here' => bool]>
  *   - fence_height_ft: 6 or 8
  *   - board_style    : 'standard' | 'overlapping'
  *   - overlap_in     : float (only used when board_style = overlapping)
@@ -31,6 +31,9 @@ use App\Models\FenceQuotation;
  */
 class FenceQuotationCalculator
 {
+    /** Typical clear opening width credited off picket runs when a gate is on a side. */
+    private const GATE_OPENING_FT = 4.0;
+
     /** Standard 4×4 post face width (inches). */
     private const POST_WIDTH_IN = 3.5;
 
@@ -79,6 +82,7 @@ class FenceQuotationCalculator
                     'length_ft' => round($len, 2),
                     'already_have_post_left' => filter_var($side['already_have_post_left'] ?? false, FILTER_VALIDATE_BOOLEAN),
                     'already_have_post_right' => filter_var($side['already_have_post_right'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                    'gate_goes_here' => filter_var($side['gate_goes_here'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 ];
             }
         }
@@ -108,9 +112,12 @@ class FenceQuotationCalculator
     {
         $sideCount = count($in['sides']);
         $totalLinearFt = 0.0;
+        $picketLinearFt = 0.0;
         $sectionsTotal = 0;
         $sidesBreakdown = [];
         $postsPerSide = [];
+        $gatesRemaining = max(0, (int) $in['gate_count']);
+        $gatesAssigned = 0;
 
         foreach ($in['sides'] as $idx => $side) {
             $layout = $this->computeSideLayout(
@@ -119,21 +126,35 @@ class FenceQuotationCalculator
                 (bool) ($side['already_have_post_right'] ?? false),
             );
 
+            $sections = $layout['sections'];
+            $posts = $layout['posts'];
+            $gateHere = (bool) ($side['gate_goes_here'] ?? false) && $gatesRemaining > 0;
+            if ($gateHere) {
+                $posts = max(0, $posts - 1);
+                $sections = max(0, $sections - 1);
+                $gatesRemaining--;
+                $gatesAssigned++;
+            }
+
+            $sideLengthFt = (float) $side['length_ft'];
+            $picketLinearFt += max(0.0, $sideLengthFt - ($gateHere ? self::GATE_OPENING_FT : 0.0));
+
             $sidesBreakdown[] = [
                 'index' => $idx + 1,
-                'length_ft' => (float) $side['length_ft'],
-                'sections' => $layout['sections'],
-                'posts' => $layout['posts'],
+                'length_ft' => $sideLengthFt,
+                'sections' => $sections,
+                'posts' => $posts,
                 'section_length_ft' => $layout['section_length_ft'],
                 'section_lengths_ft' => $layout['section_lengths_ft'],
                 'max_section_length_ft' => $layout['max_section_length_ft'],
                 'already_have_post_left' => (bool) ($side['already_have_post_left'] ?? false),
                 'already_have_post_right' => (bool) ($side['already_have_post_right'] ?? false),
+                'gate_goes_here' => $gateHere,
             ];
 
-            $totalLinearFt += (float) $side['length_ft'];
-            $sectionsTotal += $layout['sections'];
-            $postsPerSide[] = $layout['posts'];
+            $totalLinearFt += $sideLengthFt;
+            $sectionsTotal += $sections;
+            $postsPerSide[] = $posts;
         }
 
         $structuralPosts = array_sum($postsPerSide);
@@ -151,9 +172,11 @@ class FenceQuotationCalculator
 
         return [
             'total_linear_ft' => round($totalLinearFt, 2),
+            'picket_linear_ft' => round($picketLinearFt, 2),
             'sections_total' => $sectionsTotal,
             'structural_posts' => $structuralPosts,
             'gate_posts' => $gatePosts,
+            'gates_on_sides' => $gatesAssigned,
             'posts_before_waste' => $postsBeforeWaste,
             'sides_breakdown' => $sidesBreakdown,
         ];
@@ -265,7 +288,7 @@ class FenceQuotationCalculator
     {
         $height = (int) round((float) $in['fence_height_ft']);
         $settings = $this->settings;
-        $totalFt = (float) $geom['total_linear_ft'];
+        $totalFt = (float) ($geom['picket_linear_ft'] ?? $geom['total_linear_ft']);
         $sectionsTotal = (int) $geom['sections_total'];
         $postsBeforeWaste = (int) $geom['posts_before_waste'];
 
@@ -372,7 +395,7 @@ class FenceQuotationCalculator
             $postKey,
             $postsTotal,
             'ea',
-            "Structural: {$postsBeforeWaste}, +1 waste. Max {$settings->max_post_spacing_ft}' spacing."
+            $this->postRowNotes($geom, $settings, $postsBeforeWaste)
         );
 
         // Fence Boards (pickets = run along the fence)
@@ -538,6 +561,19 @@ class FenceQuotationCalculator
         }
 
         return array_values($merged);
+    }
+
+    private function postRowNotes(array $geom, FenceFormulaSetting $settings, int $postsBeforeWaste): string
+    {
+        $note = "Structural: {$postsBeforeWaste}, +1 waste. Max {$settings->max_post_spacing_ft}' spacing.";
+        $gatesOnSides = (int) ($geom['gates_on_sides'] ?? 0);
+        if ($gatesOnSides > 0) {
+            $note .= ' Gate on side'
+                .($gatesOnSides === 1 ? '' : 's')
+                .": {$gatesOnSides} (1 fence post per gate credited to gate jambs).";
+        }
+
+        return $note;
     }
 
     /** ================================================================
