@@ -366,41 +366,48 @@ class TileQuotationController extends Controller
 
     public function calculateLive(Request $request, TileQuotationCalculator $calculator)
     {
-        $totalAreaSqft = (float) $request->input('total_area_sqft', 0);
-        $lengthFt = (float) $request->input('length_ft', 0);
-        $widthFt = (float) $request->input('width_ft', 0);
-        
-        if (($lengthFt <= 0 || $widthFt <= 0) && $totalAreaSqft <= 0) {
-            return response()->json(['valid' => false]);
+        try {
+            $totalAreaSqft = (float) $request->input('total_area_sqft', 0);
+            $lengthFt = (float) $request->input('length_ft', 0);
+            $widthFt = (float) $request->input('width_ft', 0);
+            
+            \Illuminate\Support\Facades\Log::info("Tile Live Calc: total_area={$totalAreaSqft}, length={$lengthFt}, width={$widthFt}");
+            
+            if (($lengthFt <= 0 || $widthFt <= 0) && $totalAreaSqft <= 0) {
+                return response()->json(['valid' => false]);
+            }
+            
+            $includeTile = filter_var($request->input('include_tile_material', false), FILTER_VALIDATE_BOOLEAN);
+
+            $calculation = $calculator->compute(
+                $lengthFt,
+                $widthFt,
+                (float) $request->input('waste_margin_percent', 10),
+                empty($request->input('tile_product_id')) ? null : (int) $request->input('tile_product_id'),
+                $includeTile,
+                $request->input('trowel_size', '1/4x1/4'),
+                empty($request->input('mortar_type_id')) ? null : (int) $request->input('mortar_type_id'),
+                (float) $request->input('joint_width_decimal', 0.125),
+                empty($request->input('grout_type_id')) ? null : (int) $request->input('grout_type_id'),
+                (float) $request->input('labor_rate', 0),
+                $totalAreaSqft,
+                filter_var($request->input('include_demolition', false), FILTER_VALIDATE_BOOLEAN),
+                $request->input('demolition_complexity', 'standard'),
+                (float) $request->input('custom_demolition_rate', 0),
+                filter_var($request->input('include_disposal_fee', false), FILTER_VALIDATE_BOOLEAN)
+            );
+
+            $html = view('admin.quotations.tile._live_breakdown', compact('calculation'))->render();
+
+            return response()->json([
+                'valid' => true,
+                'html' => $html,
+                'calculation' => $calculation,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Tile calculateLive error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['valid' => false, 'error' => $e->getMessage()]);
         }
-
-        $includeTile = filter_var($request->input('include_tile_material', false), FILTER_VALIDATE_BOOLEAN);
-
-        $calculation = $calculator->compute(
-            $lengthFt,
-            $widthFt,
-            (float) $request->input('waste_margin_percent', 10),
-            empty($request->input('tile_product_id')) ? null : (int) $request->input('tile_product_id'),
-            $includeTile,
-            $request->input('trowel_size', '1/4x1/4'),
-            empty($request->input('mortar_type_id')) ? null : (int) $request->input('mortar_type_id'),
-            (float) $request->input('joint_width_decimal', 0.125),
-            empty($request->input('grout_type_id')) ? null : (int) $request->input('grout_type_id'),
-            (float) $request->input('labor_rate', 0),
-            $totalAreaSqft,
-            filter_var($request->input('include_demolition', false), FILTER_VALIDATE_BOOLEAN),
-            $request->input('demolition_complexity', 'standard'),
-            (float) $request->input('custom_demolition_rate', 0),
-            filter_var($request->input('include_disposal_fee', false), FILTER_VALIDATE_BOOLEAN)
-        );
-
-        $html = view('admin.quotations.tile._live_breakdown', compact('calculation'))->render();
-
-        return response()->json([
-            'valid' => true,
-            'html' => $html,
-            'calculation' => $calculation,
-        ]);
     }
 
     protected function syncProjectQuotation(TileQuotation $quotation): void
