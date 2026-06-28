@@ -89,6 +89,11 @@
       font-size: 13px;
       color: #374151;
     }
+    .fq-geometry-per-ft-note {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 400;
+    }
     .fq-geometry-sides {
       display: flex;
       flex-direction: column;
@@ -1004,11 +1009,19 @@
     statusBadge.style.color = '#0f5132';
 
     var g = calc.geometry || {};
+    var t = calc.totals || {};
     var sidesHtml = (g.sides_breakdown || []).map(sideBreakdownHtml).join('');
+    var linearFt = Number(g.total_linear_ft || 0);
+    var preTaxTotal = Number(t.materials_subtotal || 0) + Number(t.labour_subtotal || 0);
+    var perFt = linearFt > 0 ? preTaxTotal / linearFt : 0;
+    var perFtHtml = linearFt > 0
+      ? ' · <strong>' + money(perFt) + '/ft</strong> <span class="fq-geometry-per-ft-note">(materials + labour, pre-tax)</span>'
+      : '';
     geometryEl.innerHTML =
       '<p class="fq-geometry-summary"><strong>' + (g.total_linear_ft || 0) + ' linear ft</strong> · '
       + (g.sections_total || 0) + ' section' + ((g.sections_total === 1) ? '' : 's') + ' · '
-      + (g.posts_before_waste || 0) + ' posts (pre-waste)</p>'
+      + (g.posts_before_waste || 0) + ' posts (pre-waste)'
+      + perFtHtml + '</p>'
       + (sidesHtml ? '<div class="fq-geometry-sides">' + sidesHtml + '</div>' : '');
 
     // Per-side section meta on input cards.
@@ -1034,7 +1047,6 @@
     }).join('');
     materialsBody.innerHTML = rows || '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
 
-    var t = calc.totals || {};
     tMaterials.textContent = money(t.materials_subtotal);
     tHst.textContent = money(t.hst);
     tLabour.textContent = money(t.labour_subtotal);
