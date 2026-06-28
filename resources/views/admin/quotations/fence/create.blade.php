@@ -808,13 +808,21 @@
 
     gateInputs.forEach(function (input) {
       var label = input.closest('label.admin-checkbox');
-      var disabled = limit === 0 || (!input.checked && checkedCount >= limit);
+      var disabled = limit > 0 && !input.checked && checkedCount >= limit;
       input.disabled = disabled;
       if (label) label.classList.toggle('is-disabled', disabled);
     });
   }
 
   function onGateCheckboxChange(changedInput) {
+    if (changedInput.checked && gatesInput) {
+      var checkedCount = sidesEl.querySelectorAll('.fq-side-gate-here:checked').length;
+      var gateCount = parseInt(gatesInput.value, 10) || 0;
+      if (checkedCount > gateCount) {
+        gatesInput.value = String(checkedCount);
+      }
+    }
+
     var limit = gateCountLimit();
     if (limit === 0) {
       changedInput.checked = false;
@@ -863,11 +871,12 @@
         var leftInput = card.querySelector('.fq-side-post-left');
         var rightInput = card.querySelector('.fq-side-post-right');
         var gateInput = card.querySelector('.fq-side-gate-here');
+        var gateChecked = !!(gateInput && gateInput.checked);
         return {
           length_ft: isFinite(v) ? v : null,
           already_have_post_left: !!(leftInput && leftInput.checked),
           already_have_post_right: !!(rightInput && rightInput.checked),
-          gate_goes_here: !!(gateInput && gateInput.checked),
+          gate_goes_here: gateChecked,
         };
       }
     );
@@ -881,11 +890,18 @@
   }
 
   function buildPayload() {
+    var sides = collectSides();
+    var gateSides = sides.filter(function (s) { return s.gate_goes_here; }).length;
+    var gateCount = parseInt(gatesInput.value, 10) || 0;
+    if (gateSides > gateCount) {
+      gateCount = gateSides;
+      gatesInput.value = String(gateCount);
+    }
     return {
-      sides: collectSides(),
+      sides: sides,
       fence_height_ft: parseInt(heightSelect.value, 10) || 6,
       board_style: styleSelect.value,
-      gate_count: parseInt(gatesInput.value, 10) || 0,
+      gate_count: gateCount,
       labour_rate_per_ft: parseLabourRate(labourRate6Input),
       labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input)
     };

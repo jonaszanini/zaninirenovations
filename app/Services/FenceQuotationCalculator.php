@@ -96,11 +96,19 @@ class FenceQuotationCalculator
             ? FenceQuotation::BOARD_STYLE_OVERLAPPING
             : FenceQuotation::BOARD_STYLE_STANDARD;
 
+        $gateCount = max(0, (int) ($inputs['gate_count'] ?? 0));
+        $gatesMarkedOnSides = 0;
+        foreach ($sides as $side) {
+            if ($side['gate_goes_here']) {
+                $gatesMarkedOnSides++;
+            }
+        }
+
         return [
             'sides' => $sides,
             'fence_height_ft' => round($height, 2),
             'board_style' => $style,
-            'gate_count' => max(0, (int) ($inputs['gate_count'] ?? 0)),
+            'gate_count' => max($gateCount, $gatesMarkedOnSides),
         ];
     }
 

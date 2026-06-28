@@ -207,7 +207,7 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(3.708, $side['section_lengths_ft'][0], 0.01);
     }
 
-    public function test_gate_side_assignment_respects_gate_count_limit(): void
+    public function test_gate_side_assignment_honours_all_marked_sides(): void
     {
         $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
 
@@ -221,8 +221,9 @@ class FenceQuotationCalculatorTest extends TestCase
             'gate_count' => 1,
         ]);
 
-        $this->assertSame(1, $result['geometry']['gates_on_sides']);
+        $this->assertSame(2, $result['inputs']['gate_count']);
+        $this->assertSame(2, $result['geometry']['gates_on_sides']);
         $this->assertTrue($result['geometry']['sides_breakdown'][0]['gate_goes_here']);
-        $this->assertFalse($result['geometry']['sides_breakdown'][1]['gate_goes_here']);
+        $this->assertTrue($result['geometry']['sides_breakdown'][1]['gate_goes_here']);
     }
 }

@@ -249,7 +249,7 @@ class FenceQuotationScenarioTest extends TestCase
         $this->assertSame(1, $side['posts']);
     }
 
-    public function test_section_span_excludes_post_width_for_gate_side(): void
+    public function test_gate_marked_on_side_with_zero_gate_count_still_applies(): void
     {
         $calculator = $this->calculator();
 
@@ -261,13 +261,44 @@ class FenceQuotationScenarioTest extends TestCase
             ]],
             'fence_height_ft' => 6,
             'board_style' => 'standard',
-            'gate_count' => 1,
+            'gate_count' => 0,
         ]);
 
         $side = $result['geometry']['sides_breakdown'][0];
 
-        $this->assertCount(1, $side['section_lengths_ft']);
-        // 4 ft fence run minus one 3.5 in post face.
+        $this->assertSame(1, $result['inputs']['gate_count']);
+        $this->assertTrue($side['gate_goes_here']);
+        $this->assertSame(2, $side['posts']);
         $this->assertEqualsWithDelta(3.708, $side['section_lengths_ft'][0], 0.01);
+    }
+
+    public function test_two_sides_gate_only_on_side_two_with_left_existing(): void
+    {
+        $calculator = $this->calculator();
+
+        $result = $calculator->calculate([
+            'sides' => [
+                [
+                    'length_ft' => 33.5,
+                    'already_have_post_left' => true,
+                    'already_have_post_right' => true,
+                ],
+                [
+                    'length_ft' => 8,
+                    'already_have_post_left' => true,
+                    'gate_goes_here' => true,
+                ],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+        ]);
+
+        $side2 = $result['geometry']['sides_breakdown'][1];
+
+        $this->assertTrue($side2['gate_goes_here']);
+        $this->assertSame(4.0, $side2['fence_length_ft']);
+        $this->assertSame(2, $side2['posts']);
+        $this->assertEqualsWithDelta(3.708, $side2['section_lengths_ft'][0], 0.01);
     }
 }
