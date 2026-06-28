@@ -840,8 +840,6 @@
     });
   });
 
-  syncStyleVisibility();
-
   if (initialCalc) {
     renderCalc(initialCalc);
   } else {
