@@ -283,27 +283,23 @@ class FenceQuotationCalculator
     }
 
     /**
-     * Fill full max-width spans first; remainder becomes the final partial section.
+     * Split the inner span budget equally across all sections (each ≤ max width).
      *
      * @return list<float> section lengths in inches
      */
     private function distributeSectionLengthsIn(float $budgetIn, int $sections, float $maxSectionIn): array
     {
-        $lengths = [];
-        $remaining = $budgetIn;
+        if ($sections <= 0) {
+            return [];
+        }
 
-        for ($i = 0; $i < $sections; $i++) {
-            if ($i === $sections - 1) {
-                $lengths[] = round($remaining, 4);
+        $equalLength = $budgetIn / $sections;
+        $lengths = array_fill(0, $sections, round($equalLength, 4));
 
-                continue;
-            }
-
-            $sectionsAfter = $sections - $i - 1;
-            $minReserve = $sectionsAfter * 0.01;
-            $assign = min($maxSectionIn, max(0.01, $remaining - $minReserve));
-            $lengths[] = round($assign, 4);
-            $remaining -= $assign;
+        // Absorb rounding drift on the final section so the total matches the budget.
+        $drift = round($budgetIn - array_sum($lengths), 4);
+        if ($drift !== 0.0) {
+            $lengths[$sections - 1] = round($lengths[$sections - 1] + $drift, 4);
         }
 
         return $lengths;

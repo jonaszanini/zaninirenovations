@@ -127,6 +127,29 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertSame(6, $result['geometry']['posts_before_waste']);
     }
 
+    public function test_sections_on_a_side_are_equal_length(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 33.5,
+                'already_have_post_left' => true,
+                'already_have_post_right' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $lengths = $result['geometry']['sides_breakdown'][0]['section_lengths_ft'];
+        $this->assertCount(5, $lengths);
+
+        foreach ($lengths as $length) {
+            $this->assertEqualsWithDelta(6.467, $length, 0.01);
+        }
+    }
+
     public function test_existing_boundary_posts_reduce_post_count(): void
     {
         $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
