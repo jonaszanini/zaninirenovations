@@ -1028,10 +1028,10 @@
     var t = calc.totals || {};
     var sidesHtml = (g.sides_breakdown || []).map(sideBreakdownHtml).join('');
     var linearFt = Number(g.total_linear_ft || 0);
-    var preTaxTotal = Number(t.materials_subtotal || 0) + Number(t.labour_subtotal || 0);
-    var perFt = linearFt > 0 ? preTaxTotal / linearFt : 0;
+    var withTaxTotal = Number(t.grand_total || 0);
+    var perFt = linearFt > 0 ? withTaxTotal / linearFt : 0;
     var perFtHtml = linearFt > 0
-      ? ' · <strong>' + money(perFt) + '/ft</strong> <span class="fq-geometry-per-ft-note">(materials + labour, pre-tax)</span>'
+      ? ' · <strong>' + money(perFt) + '/ft</strong> <span class="fq-geometry-per-ft-note">(materials + labour, incl. tax)</span>'
       : '';
     geometryEl.innerHTML =
       '<p class="fq-geometry-summary"><strong>' + (g.total_linear_ft || 0) + ' linear ft</strong> · '
