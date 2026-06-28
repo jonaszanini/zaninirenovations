@@ -85,9 +85,9 @@
     }
     .fq-side-existing-posts {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px 14px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
       margin-top: 10px;
       font-size: 12px;
       color: #475569;
@@ -96,10 +96,40 @@
       font-weight: 500;
       color: #64748b;
     }
+    .fq-side-existing-posts__checks {
+      display: inline-flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 12px;
+    }
     .fq-side-existing-posts label.admin-checkbox {
+      flex-shrink: 0;
       font-size: 12px;
       font-weight: 500;
       margin: 0;
+      gap: 6px;
+    }
+    .fq-side-existing-posts label.admin-checkbox .admin-checkbox__text {
+      flex: 0 0 auto;
+    }
+    /* Right end: label before checkbox (already have post on [ ] left  right [ ]) */
+    .fq-side-post-check--right .admin-checkbox__input:checked ~ .admin-checkbox__mark {
+      background: var(--admin-primary, #024768);
+      border-color: var(--admin-primary, #024768);
+    }
+    .fq-side-post-check--right .admin-checkbox__input:checked ~ .admin-checkbox__mark::after {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 3px;
+      width: 6px;
+      height: 11px;
+      border: solid #fff;
+      border-width: 0 2.5px 2.5px 0;
+      transform: rotate(45deg);
+    }
+    .fq-side-post-check--right .admin-checkbox__input:focus-visible ~ .admin-checkbox__mark {
+      box-shadow: 0 0 0 3px var(--admin-primary-ring, rgba(2, 71, 104, 0.22));
     }
     .fq-breakdown-card {
       position: sticky;
@@ -664,22 +694,24 @@
         '</div>',
         '<div class="fq-side-existing-posts">',
         '  <span class="fq-side-existing-posts__label">already have post on</span>',
-        '  <label class="admin-checkbox">',
-        '    <input type="hidden" name="sides[' + i + '][already_have_post_left]" value="0">',
-        '    <input type="checkbox" class="admin-checkbox__input fq-side-post-left"',
-        '           name="sides[' + i + '][already_have_post_left]" value="1"',
+        '  <span class="fq-side-existing-posts__checks">',
+        '    <label class="admin-checkbox fq-side-post-check--left">',
+        '      <input type="hidden" name="sides[' + i + '][already_have_post_left]" value="0">',
+        '      <input type="checkbox" class="admin-checkbox__input fq-side-post-left"',
+        '             name="sides[' + i + '][already_have_post_left]" value="1"',
         (leftChecked ? ' checked' : '') + '>',
-        '    <span class="admin-checkbox__mark" aria-hidden="true"></span>',
-        '    <span class="admin-checkbox__text">left</span>',
-        '  </label>',
-        '  <label class="admin-checkbox">',
-        '    <input type="hidden" name="sides[' + i + '][already_have_post_right]" value="0">',
-        '    <input type="checkbox" class="admin-checkbox__input fq-side-post-right"',
-        '           name="sides[' + i + '][already_have_post_right]" value="1"',
+        '      <span class="admin-checkbox__mark" aria-hidden="true"></span>',
+        '      <span class="admin-checkbox__text">left</span>',
+        '    </label>',
+        '    <label class="admin-checkbox fq-side-post-check--right">',
+        '      <input type="hidden" name="sides[' + i + '][already_have_post_right]" value="0">',
+        '      <input type="checkbox" class="admin-checkbox__input fq-side-post-right"',
+        '             name="sides[' + i + '][already_have_post_right]" value="1"',
         (rightChecked ? ' checked' : '') + '>',
-        '    <span class="admin-checkbox__mark" aria-hidden="true"></span>',
-        '    <span class="admin-checkbox__text">right</span>',
-        '  </label>',
+        '      <span class="admin-checkbox__text">right</span>',
+        '      <span class="admin-checkbox__mark" aria-hidden="true"></span>',
+        '    </label>',
+        '  </span>',
         '</div>',
         '<div class="fq-side-meta" data-meta="' + i + '"></div>'
       ].join('');
