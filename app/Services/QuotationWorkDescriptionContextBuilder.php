@@ -119,7 +119,18 @@ class QuotationWorkDescriptionContextBuilder
             }
             $len = $side['length_ft'] ?? null;
             if ($len !== null && $len !== '' && is_numeric($len) && (float) $len > 0) {
-                $sideParts[] = 'Side '.($i + 1).': '.rtrim(rtrim(number_format((float) $len, 1, '.', ''), '0'), '.').' linear ft';
+                $part = 'Side '.($i + 1).': '.rtrim(rtrim(number_format((float) $len, 1, '.', ''), '0'), '.').' linear ft';
+                $existing = [];
+                if (! empty($side['already_have_post_left'])) {
+                    $existing[] = 'existing post on left';
+                }
+                if (! empty($side['already_have_post_right'])) {
+                    $existing[] = 'existing post on right';
+                }
+                if ($existing !== []) {
+                    $part .= ' ('.implode(', ', $existing).')';
+                }
+                $sideParts[] = $part;
             }
         }
         if ($sideParts !== []) {

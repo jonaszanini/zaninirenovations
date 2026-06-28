@@ -9,9 +9,9 @@
 
   $initialSides = $isEdit
     ? ($quotation->sides ?? [])
-    : [['length_ft' => null]];
+    : [['length_ft' => null, 'already_have_post_left' => false, 'already_have_post_right' => false]];
   if (empty($initialSides)) {
-    $initialSides = [['length_ft' => null]];
+    $initialSides = [['length_ft' => null, 'already_have_post_left' => false, 'already_have_post_right' => false]];
   }
 
   $initialHeight = $isEdit ? (int) round((float) $quotation->fence_height_ft) : 6;
@@ -82,6 +82,24 @@
       font-size: 12px;
       color: #6b7280;
       min-height: 16px;
+    }
+    .fq-side-existing-posts {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 14px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #475569;
+    }
+    .fq-side-existing-posts__label {
+      font-weight: 500;
+      color: #64748b;
+    }
+    .fq-side-existing-posts label.admin-checkbox {
+      font-size: 12px;
+      font-weight: 500;
+      margin: 0;
     }
     .fq-breakdown-card {
       position: sticky;
@@ -629,6 +647,8 @@
   function renderSides(sides) {
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
+      var leftChecked = !!(side && side.already_have_post_left);
+      var rightChecked = !!(side && side.already_have_post_right);
       var card = document.createElement('div');
       card.className = 'fq-side-card';
       card.innerHTML = [
@@ -641,6 +661,25 @@
         '         value="' + (side && side.length_ft != null ? side.length_ft : '') + '"',
         '         data-side-index="' + i + '"',
         '         autocomplete="off">',
+        '</div>',
+        '<div class="fq-side-existing-posts">',
+        '  <span class="fq-side-existing-posts__label">already have post on</span>',
+        '  <label class="admin-checkbox">',
+        '    <input type="hidden" name="sides[' + i + '][already_have_post_left]" value="0">',
+        '    <input type="checkbox" class="admin-checkbox__input fq-side-post-left"',
+        '           name="sides[' + i + '][already_have_post_left]" value="1"',
+        (leftChecked ? ' checked' : '') + '>',
+        '    <span class="admin-checkbox__box" aria-hidden="true"></span>',
+        '    <span class="admin-checkbox__text">left</span>',
+        '  </label>',
+        '  <label class="admin-checkbox">',
+        '    <input type="hidden" name="sides[' + i + '][already_have_post_right]" value="0">',
+        '    <input type="checkbox" class="admin-checkbox__input fq-side-post-right"',
+        '           name="sides[' + i + '][already_have_post_right]" value="1"',
+        (rightChecked ? ' checked' : '') + '>',
+        '    <span class="admin-checkbox__box" aria-hidden="true"></span>',
+        '    <span class="admin-checkbox__text">right</span>',
+        '  </label>',
         '</div>',
         '<div class="fq-side-meta" data-meta="' + i + '"></div>'
       ].join('');
@@ -658,7 +697,7 @@
   addBtn.addEventListener('click', function () {
     var current = collectSides();
     if (current.length>= MAX_SIDES) return;
-    current.push({ length_ft: null });
+    current.push({ length_ft: null, already_have_post_left: false, already_have_post_right: false });
     renderSides(current);
     schedulePreview();
   });
@@ -673,10 +712,17 @@
 
   function collectSides() {
     return Array.prototype.map.call(
-      sidesEl.querySelectorAll('.fq-side-length'),
-      function (input) {
-        var v = parseFloat(input.value);
-        return { length_ft: isFinite(v) ? v : null };
+      sidesEl.querySelectorAll('.fq-side-card'),
+      function (card) {
+        var lengthInput = card.querySelector('.fq-side-length');
+        var v = parseFloat(lengthInput && lengthInput.value);
+        var leftInput = card.querySelector('.fq-side-post-left');
+        var rightInput = card.querySelector('.fq-side-post-right');
+        return {
+          length_ft: isFinite(v) ? v : null,
+          already_have_post_left: !!(leftInput && leftInput.checked),
+          already_have_post_right: !!(rightInput && rightInput.checked),
+        };
       }
     );
   }
@@ -776,10 +822,12 @@
     (g.sides_breakdown || []).forEach(function (s) {
       var meta = document.querySelector('[data-meta="' + (s.index - 1) + '"]');
       if (meta) {
-        var secLen = Number(s.section_length_ft || 0);
+        var maxSpan = Number(s.max_section_length_ft || s.section_length_ft || 0);
+        var posts = Number(s.posts || 0);
         meta.innerHTML =
           s.sections + ' section' + (s.sections === 1 ? '' : 's') +
-          ' · ' + secLen.toFixed(2) + ' ft spacing';
+          ' · ' + posts + ' post' + (posts === 1 ? '' : 's') +
+          ' · max ' + maxSpan.toFixed(2) + ' ft span';
       }
     });
 

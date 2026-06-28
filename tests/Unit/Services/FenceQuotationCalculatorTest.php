@@ -110,4 +110,53 @@ class FenceQuotationCalculatorTest extends TestCase
 
         $this->assertSame(6.0, $result['inputs']['fence_height_ft']);
     }
+
+    public function test_thirty_three_point_five_feet_yields_five_sections_and_six_posts(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 33.5]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $this->assertSame(5, $result['geometry']['sections_total']);
+        $this->assertSame(6, $result['geometry']['structural_posts']);
+        $this->assertSame(6, $result['geometry']['posts_before_waste']);
+    }
+
+    public function test_existing_boundary_posts_reduce_post_count(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 17.83,
+                'already_have_post_left' => true,
+                'already_have_post_right' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $this->assertSame(3, $result['geometry']['sections_total']);
+        $this->assertSame(2, $result['geometry']['structural_posts']);
+
+        $side = $result['geometry']['sides_breakdown'][0];
+        $this->assertSame(3, $side['sections']);
+        $this->assertSame(2, $side['posts']);
+    }
+
+    public function test_compute_side_layout_sections_plus_one_posts_when_no_existing_boundaries(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $layout = $calculator->computeSideLayout(33.5, false, false);
+
+        $this->assertSame(5, $layout['sections']);
+        $this->assertSame(6, $layout['posts']);
+    }
 }
