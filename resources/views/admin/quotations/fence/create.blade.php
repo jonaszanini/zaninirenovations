@@ -16,7 +16,6 @@
 
   $initialHeight = $isEdit ? (int) round((float) $quotation->fence_height_ft) : 6;
   $initialStyle = $isEdit ? $quotation->board_style : \App\Models\FenceQuotation::BOARD_STYLE_STANDARD;
-  $initialOverlap = $isEdit ? (float) $quotation->overlap_in : 0;
   $initialGates = $isEdit ? (int) $quotation->gate_count : 1;
 
   $defaultLabour6 = (float) $settings->labour_rate_per_ft;
@@ -412,21 +411,13 @@
             <select name="board_style" id="fq-style" class="admin-input">
               <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_STANDARD }}"
                       @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_STANDARD)>
-                Standard (1/8" gap)
+                Standard
               </option>
               <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING }}"
                       @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING)>
                 Overlapping
               </option>
             </select>
-          </div>
-
-          <div class="admin-form-group fq-overlap-wrap" id="fq-overlap-wrap"
-               style="{{ $initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING ? 'display:block;' : '' }}">
-            <label for="fq-overlap">Overlap (inches)</label>
-            <input id="fq-overlap" type="number" min="0" max="6" step="0.125"
-                   name="overlap_in" class="admin-input"
-                   value="{{ old('overlap_in', $initialOverlap) }}">
           </div>
         </div>
 
@@ -612,10 +603,8 @@
   var addBtn = document.getElementById('fq-add-side');
   var removeBtn = document.getElementById('fq-remove-side');
   var styleSelect = document.getElementById('fq-style');
-  var overlapWrap = document.getElementById('fq-overlap-wrap');
   var heightSelect = document.getElementById('fq-height');
   var gatesInput = document.getElementById('fq-gates');
-  var overlapInput = document.getElementById('fq-overlap');
   var labourRate6Input = document.getElementById('fq-labour-rate-6');
   var labourRate8Input = document.getElementById('fq-labour-rate-8');
 
@@ -692,19 +681,6 @@
     );
   }
 
-  // ---------- Style toggle (overlap visibility) ------------------------
-  function syncStyleVisibility() {
-    if (styleSelect.value === @json(\App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING)) {
-      overlapWrap.style.display = 'block';
-    } else {
-      overlapWrap.style.display = 'none';
-    }
-  }
-  styleSelect.addEventListener('change', function () {
-    syncStyleVisibility();
-    schedulePreview();
-  });
-
   // ---------- Live preview ---------------------------------------------
   var previewTimer = null;
   function schedulePreview() {
@@ -717,7 +693,6 @@
       sides: collectSides(),
       fence_height_ft: parseInt(heightSelect.value, 10) || 6,
       board_style: styleSelect.value,
-      overlap_in: parseFloat(overlapInput.value) || 0,
       gate_count: parseInt(gatesInput.value, 10) || 0,
       labour_rate_per_ft: parseLabourRate(labourRate6Input),
       labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input)

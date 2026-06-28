@@ -28,7 +28,7 @@ class FenceFormulaSetting extends Model
         'rails_per_section_8ft',
         'nails_per_picket',
         'board_width_in',
-        'standard_gap_in',
+        'overlapping_in',
         'max_post_spacing_ft',
     ];
 
@@ -43,7 +43,7 @@ class FenceFormulaSetting extends Model
         'rails_per_section_8ft' => 'integer',
         'nails_per_picket' => 'integer',
         'board_width_in' => 'decimal:3',
-        'standard_gap_in' => 'decimal:3',
+        'overlapping_in' => 'decimal:3',
         'max_post_spacing_ft' => 'decimal:2',
     ];
 

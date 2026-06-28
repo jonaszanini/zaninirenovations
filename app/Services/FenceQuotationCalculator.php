@@ -85,16 +85,10 @@ class FenceQuotationCalculator
             ? FenceQuotation::BOARD_STYLE_OVERLAPPING
             : FenceQuotation::BOARD_STYLE_STANDARD;
 
-        $overlap = (float) ($inputs['overlap_in'] ?? 0);
-        if ($style !== FenceQuotation::BOARD_STYLE_OVERLAPPING) {
-            $overlap = 0.0;
-        }
-
         return [
             'sides' => $sides,
             'fence_height_ft' => round($height, 2),
             'board_style' => $style,
-            'overlap_in' => round(max($overlap, 0), 3),
             'gate_count' => max(0, (int) ($inputs['gate_count'] ?? 0)),
         ];
     }
@@ -177,17 +171,16 @@ class FenceQuotationCalculator
 
         // -------- PICKETS (fence boards along the run) -------------------
         // Effective per-board width depends on style:
-        //   standard:    board_width + gap    (board covers width + gap)
+        //   standard:    board_width    (0 gap)
         //   overlapping: board_width − overlap (each next board hides part
         //                                        of the previous one)
         $boardWidth = (float) $settings->board_width_in;
-        $gap = (float) $settings->standard_gap_in;
-        $overlap = (float) $in['overlap_in'];
+        $overlap = (float) $settings->overlapping_in;
 
         if ($in['board_style'] === FenceQuotation::BOARD_STYLE_OVERLAPPING) {
             $effectiveWidth = max($boardWidth - $overlap, 0.01);
         } else {
-            $effectiveWidth = $boardWidth + $gap;
+            $effectiveWidth = $boardWidth;
         }
 
         $picketsBeforeWaste = $effectiveWidth > 0 && $totalFt > 0

@@ -104,7 +104,6 @@
       fence_height_ft: formSelectValue(form, 'fence_height_ft') || formValue(form, 'fence_height_ft'),
       board_style: formValue(form, 'board_style'),
       gates: formValue(form, 'gates'),
-      overlap_in: formValue(form, 'overlap_in'),
       sides: sides,
       geometry_summary: panelText('fq-geometry'),
       materials_summary: materials.join('\n'),

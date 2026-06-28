@@ -205,15 +205,10 @@ class FenceQuotationController extends Controller
             'sides.*.length_ft' => ['nullable', 'numeric', 'min:0', 'max:5000'],
             'fence_height_ft' => ['required', 'numeric', Rule::in([6, 8])],
             'board_style' => ['required', Rule::in([FenceQuotation::BOARD_STYLE_STANDARD, FenceQuotation::BOARD_STYLE_OVERLAPPING])],
-            'overlap_in' => ['nullable', 'numeric', 'min:0', 'max:6'],
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
         ]);
-
-        if ($data['board_style'] !== FenceQuotation::BOARD_STYLE_OVERLAPPING) {
-            $data['overlap_in'] = 0;
-        }
 
         $calc = (new FenceQuotationCalculator())->calculate($data);
 
@@ -616,22 +611,13 @@ class FenceQuotationController extends Controller
                 FenceQuotation::BOARD_STYLE_STANDARD,
                 FenceQuotation::BOARD_STYLE_OVERLAPPING,
             ])],
-            'overlap_in' => ['nullable', 'numeric', 'min:0', 'max:6'],
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             ...CommuteExpenseService::commuteValidationRules(),
         ];
 
-        $data = $request->validate($rules);
-
-        // Overlap is irrelevant in standard-gap mode; normalise it here
-        // so the form doesn't smuggle a stale value.
-        if ($data['board_style'] !== FenceQuotation::BOARD_STYLE_OVERLAPPING) {
-            $data['overlap_in'] = 0;
-        }
-
-        return $data;
+        return $request->validate($rules);
     }
 
     /**
@@ -650,7 +636,6 @@ class FenceQuotationController extends Controller
             'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
             'board_style' => $calc['inputs']['board_style'],
-            'overlap_in' => $calc['inputs']['overlap_in'],
             'gate_count' => $calc['inputs']['gate_count'],
             'labour_rate_per_ft' => $data['labour_rate_per_ft'],
             'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],

@@ -104,8 +104,11 @@ class QuotationWorkDescriptionContextBuilder
         $this->appendLine($lines, 'Board style', $c['board_style'] ?? null);
         $this->appendLine($lines, 'Gates', $c['gates'] ?? null);
 
-        if (isset($c['overlap_in']) && (float) $c['overlap_in'] > 0) {
-            $this->appendLine($lines, 'Board overlap', $c['overlap_in'].' in');
+        if (($c['board_style'] ?? '') === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING) {
+            $overlap = \App\Models\FenceFormulaSetting::current()->overlapping_in;
+            if ($overlap > 0) {
+                $this->appendLine($lines, 'Board overlap', $overlap.' in');
+            }
         }
 
         $sides = is_array($c['sides'] ?? null) ? $c['sides'] : [];
