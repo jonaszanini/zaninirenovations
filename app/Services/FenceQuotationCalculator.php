@@ -35,7 +35,10 @@ class FenceQuotationCalculator
     private const GATE_OPENING_FT = 4.0;
 
     /** Standard 4×4 post face width (inches). */
-    private const POST_WIDTH_IN = 3.5;
+    private const POST_WIDTH_IN_4X4 = 3.5;
+
+    /** Standard 6×6 post face width (inches). */
+    private const POST_WIDTH_IN_6X6 = 5.5;
 
     private FenceFormulaSetting $settings;
 
@@ -114,6 +117,7 @@ class FenceQuotationCalculator
             'gate_count' => max($gateCount, $gatesMarkedOnSides),
             'labour_rate_per_ft' => round(max(0, (float) ($inputs['labour_rate_per_ft'] ?? $defaultLabour6)), 2),
             'labour_rate_8ft_per_ft' => round(max(0, (float) ($inputs['labour_rate_8ft_per_ft'] ?? $defaultLabour8)), 2),
+            'post_size' => $this->normalisePostSize($inputs['post_size'] ?? null),
         ];
     }
 
@@ -131,6 +135,7 @@ class FenceQuotationCalculator
         $postsPerSide = [];
         $gatesRemaining = max(0, (int) $in['gate_count']);
         $gatesAssigned = 0;
+        $postWidthIn = $this->postWidthInFor($in);
 
         foreach ($in['sides'] as $idx => $side) {
             $sideLengthFt = (float) $side['length_ft'];
@@ -153,6 +158,7 @@ class FenceQuotationCalculator
                 $fenceLengthFt,
                 $existingLeft,
                 $layoutExistingRight,
+                $postWidthIn,
             );
 
             $sections = $layout['sections'];
@@ -230,8 +236,14 @@ class FenceQuotationCalculator
      *   max_section_length_ft: float,
      * }
      */
-    public function computeSideLayout(float $lengthFt, bool $existingPostLeft, bool $existingPostRight): array
-    {
+    public function computeSideLayout(
+        float $lengthFt,
+        bool $existingPostLeft,
+        bool $existingPostRight,
+        ?float $postWidthIn = null,
+    ): array {
+        $postWidthIn = $postWidthIn ?? self::POST_WIDTH_IN_4X4;
+
         if ($lengthFt <= 0) {
             return [
                 'sections' => 0,
@@ -250,7 +262,7 @@ class FenceQuotationCalculator
                 - ($existingPostLeft ? 1 : 0)
                 - ($existingPostRight ? 1 : 0);
             $posts = max(0, $posts);
-            $postInches = $posts * self::POST_WIDTH_IN;
+            $postInches = $posts * $postWidthIn;
             $sectionBudget = $totalIn - $postInches;
 
             if ($sectionBudget <= 0) {
@@ -308,6 +320,22 @@ class FenceQuotationCalculator
         }
 
         return $lengths;
+    }
+
+    private function normalisePostSize(mixed $value): string
+    {
+        $size = is_string($value) ? trim($value) : '';
+
+        return in_array($size, [FenceQuotation::POST_SIZE_4X4, FenceQuotation::POST_SIZE_6X6], true)
+            ? $size
+            : FenceQuotation::POST_SIZE_4X4;
+    }
+
+    private function postWidthInFor(array $in): float
+    {
+        return ($in['post_size'] ?? FenceQuotation::POST_SIZE_4X4) === FenceQuotation::POST_SIZE_6X6
+            ? self::POST_WIDTH_IN_6X6
+            : self::POST_WIDTH_IN_4X4;
     }
 
     /** ================================================================

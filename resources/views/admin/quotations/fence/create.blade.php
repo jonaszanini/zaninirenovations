@@ -15,6 +15,12 @@
   }
 
   $initialHeight = $isEdit ? (int) round((float) $quotation->fence_height_ft) : 6;
+  $initialPostSize = old(
+      'post_size',
+      $isEdit
+          ? ($quotation->resolvedPostSize())
+          : \App\Models\FenceQuotation::POST_SIZE_4X4
+  );
   $initialStyle = $isEdit ? $quotation->board_style : \App\Models\FenceQuotation::BOARD_STYLE_STANDARD;
   $initialGates = $isEdit ? (int) $quotation->gate_count : 1;
 
@@ -495,6 +501,21 @@
           </div>
 
           <div class="admin-form-group">
+            <label for="fq-post-size">Post size</label>
+            <select name="post_size" id="fq-post-size" class="admin-input">
+              <option value="{{ \App\Models\FenceQuotation::POST_SIZE_4X4 }}"
+                      @selected($initialPostSize === \App\Models\FenceQuotation::POST_SIZE_4X4)>
+                4×4
+              </option>
+              <option value="{{ \App\Models\FenceQuotation::POST_SIZE_6X6 }}"
+                      @selected($initialPostSize === \App\Models\FenceQuotation::POST_SIZE_6X6)>
+                6×6
+              </option>
+            </select>
+            <p class="admin-form-help">Cross-section of the fence posts for layout and PDF description.</p>
+          </div>
+
+          <div class="admin-form-group">
             <label for="fq-gates">Gates</label>
             <input id="fq-gates" type="number" min="0" max="10" step="1"
                    name="gate_count" class="admin-input"
@@ -700,6 +721,7 @@
   var removeBtn = document.getElementById('fq-remove-side');
   var styleSelect = document.getElementById('fq-style');
   var heightSelect = document.getElementById('fq-height');
+  var postSizeSelect = document.getElementById('fq-post-size');
   var gatesInput = document.getElementById('fq-gates');
   var labourRate6Input = document.getElementById('fq-labour-rate-6');
   var labourRate8Input = document.getElementById('fq-labour-rate-8');
@@ -900,6 +922,7 @@
     return {
       sides: sides,
       fence_height_ft: parseInt(heightSelect.value, 10) || 6,
+      post_size: postSizeSelect ? postSizeSelect.value : '4x4',
       board_style: styleSelect.value,
       gate_count: gateCount,
       labour_rate_per_ft: parseLabourRate(labourRate6Input),

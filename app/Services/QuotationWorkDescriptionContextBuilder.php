@@ -101,6 +101,7 @@ class QuotationWorkDescriptionContextBuilder
 
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
         $this->appendLine($lines, 'Fence height', $c['fence_height_ft'] ?? null);
+        $this->appendLine($lines, 'Post size', $c['post_size'] ?? null);
         $this->appendLine($lines, 'Board style', $c['board_style'] ?? null);
         $this->appendLine($lines, 'Gates', $c['gates'] ?? null);
 

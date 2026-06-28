@@ -24,12 +24,17 @@ class FenceQuotation extends Model
     public const BOARD_STYLE_STANDARD = 'standard';
     public const BOARD_STYLE_OVERLAPPING = 'overlapping';
 
+    public const POST_SIZE_4X4 = '4x4';
+
+    public const POST_SIZE_6X6 = '6x6';
+
     protected $fillable = [
         'client_project_id',
         'quote_number',
         'client_name',
         'work_description',
         'fence_height_ft',
+        'post_size',
         'board_style',
         'gate_count',
         'labour_rate_per_ft',
@@ -85,7 +90,7 @@ class FenceQuotation extends Model
     /**
      * Short human-friendly description used when linking a fence quote
      * into a project's main Quotation as a line item. Example:
-     *   "Pressure treated wood fence 6' high — 40 linear ft, 1 gate"
+     *   "Pressure treated wood fence 6' high, 4×4 posts — 40 linear ft, 1 gate"
      */
     public function summaryDescription(): string
     {
@@ -96,11 +101,56 @@ class FenceQuotation extends Model
         $gatesPart = $gates > 0 ? ', '.$gates.' '.\Illuminate\Support\Str::plural('gate', $gates) : '';
 
         return sprintf(
-            "Pressure treated wood fence %d' high — %s linear ft%s",
+            "Pressure treated wood fence %d' high, %s posts — %s linear ft%s",
             $height,
+            $this->postSizeLabel(),
             rtrim(rtrim(number_format($totalFt, 2), '0'), '.'),
             $gatesPart
         );
+    }
+
+    /** Client-facing label for the post cross-section (4×4 or 6×6). */
+    public function postSizeLabel(): string
+    {
+        $size = $this->resolvedPostSize();
+
+        return $size === self::POST_SIZE_6X6 ? '6×6' : '4×4';
+    }
+
+    public function resolvedPostSize(): string
+    {
+        $stored = is_string($this->post_size ?? null) ? trim($this->post_size) : '';
+        if (in_array($stored, [self::POST_SIZE_4X4, self::POST_SIZE_6X6], true)) {
+            return $stored;
+        }
+
+        return self::postSizeFromCalculation(is_array($this->calculation) ? $this->calculation : null);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $calculation
+     */
+    public static function postSizeFromCalculation(?array $calculation): string
+    {
+        foreach ($calculation['materials'] ?? [] as $material) {
+            if (! is_array($material)) {
+                continue;
+            }
+            if (! in_array($material['key'] ?? '', [FenceMaterial::KEY_POST_10, FenceMaterial::KEY_POST_12], true)) {
+                continue;
+            }
+
+            $text = strtolower(trim(
+                ($material['name'] ?? '').' '.($material['long_name'] ?? '').' '.($material['model'] ?? '')
+            ));
+            if (str_contains($text, '6x6') || str_contains($text, '6 x 6')) {
+                return self::POST_SIZE_6X6;
+            }
+
+            return self::POST_SIZE_4X4;
+        }
+
+        return self::POST_SIZE_4X4;
     }
 
     /**
