@@ -82,6 +82,36 @@
       font-size: 12px;
       color: #6b7280;
       min-height: 16px;
+      line-height: 1.45;
+    }
+    .fq-geometry-summary {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #374151;
+    }
+    .fq-geometry-sides {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .fq-geometry-side {
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fafbfc;
+      font-size: 12px;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+    .fq-geometry-side__title {
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .fq-geometry-side__sections {
+      margin-top: 4px;
+      color: #6b7280;
     }
     .fq-side-existing-posts {
       display: flex;
@@ -917,6 +947,56 @@
     return 'CA$' + v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function formatFt(n) {
+    var v = Number(n);
+    if (!isFinite(v)) return '0.00';
+    return v.toFixed(2);
+  }
+
+  function formatSectionLengths(lengths) {
+    if (!lengths || !lengths.length) return '';
+    return lengths.map(formatFt).join(', ') + ' ft';
+  }
+
+  function sideMetaHtml(s) {
+    var posts = Number(s.posts || 0);
+    var parts = [
+      s.sections + ' section' + (s.sections === 1 ? '' : 's'),
+      posts + ' post' + (posts === 1 ? '' : 's'),
+    ];
+    if (s.gate_goes_here) {
+      parts.push(formatFt(s.gate_opening_ft || 4) + ' ft gate');
+    }
+    if (s.section_lengths_ft && s.section_lengths_ft.length) {
+      parts.push('spans ' + formatSectionLengths(s.section_lengths_ft));
+    } else if (Number(s.max_section_length_ft || 0) > 0) {
+      parts.push('max ' + formatFt(s.max_section_length_ft) + ' ft span');
+    }
+    return parts.join(' · ');
+  }
+
+  function sideBreakdownHtml(s) {
+    var posts = Number(s.posts || 0);
+    var title = 'Side ' + s.index + ' — ' + formatFt(s.length_ft) + ' ft';
+    var stats = s.sections + ' section' + (s.sections === 1 ? '' : 's')
+      + ' · ' + posts + ' post' + (posts === 1 ? '' : 's');
+    if (s.gate_goes_here) {
+      stats += ' · ' + formatFt(s.gate_opening_ft || 4) + ' ft gate';
+      if (Number(s.fence_length_ft || 0) > 0) {
+        stats += ' · ' + formatFt(s.fence_length_ft) + ' ft fence run';
+      }
+    }
+    var html = '<div class="fq-geometry-side">'
+      + '<div class="fq-geometry-side__title">' + escapeHtml(title) + '</div>'
+      + '<div>' + escapeHtml(stats) + '</div>';
+    if (s.section_lengths_ft && s.section_lengths_ft.length) {
+      html += '<div class="fq-geometry-side__sections">Section spans (excl. posts): '
+        + escapeHtml(formatSectionLengths(s.section_lengths_ft)) + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   function renderCalc(calc) {
     lastCalc = calc;
     statusBadge.textContent = 'Up to date';
@@ -924,22 +1004,18 @@
     statusBadge.style.color = '#0f5132';
 
     var g = calc.geometry || {};
+    var sidesHtml = (g.sides_breakdown || []).map(sideBreakdownHtml).join('');
     geometryEl.innerHTML =
-      '<strong>' + (g.total_linear_ft || 0) + ' linear ft</strong> · ' +
-      (g.sections_total || 0) + ' section' + ((g.sections_total === 1) ? '' : 's') + ' · ' +
-      (g.posts_before_waste || 0) + ' posts (pre-waste)';
+      '<p class="fq-geometry-summary"><strong>' + (g.total_linear_ft || 0) + ' linear ft</strong> · '
+      + (g.sections_total || 0) + ' section' + ((g.sections_total === 1) ? '' : 's') + ' · '
+      + (g.posts_before_waste || 0) + ' posts (pre-waste)</p>'
+      + (sidesHtml ? '<div class="fq-geometry-sides">' + sidesHtml + '</div>' : '');
 
-    // Per-side section meta.
+    // Per-side section meta on input cards.
     (g.sides_breakdown || []).forEach(function (s) {
       var meta = document.querySelector('[data-meta="' + (s.index - 1) + '"]');
       if (meta) {
-        var maxSpan = Number(s.max_section_length_ft || s.section_length_ft || 0);
-        var posts = Number(s.posts || 0);
-        meta.innerHTML =
-          s.sections + ' section' + (s.sections === 1 ? '' : 's') +
-          ' · ' + posts + ' post' + (posts === 1 ? '' : 's') +
-          ' · max ' + maxSpan.toFixed(2) + ' ft span' +
-          (s.gate_goes_here ? ' · gate' : '');
+        meta.innerHTML = sideMetaHtml(s);
       }
     });
 

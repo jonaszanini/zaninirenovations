@@ -120,28 +120,32 @@ class FenceQuotationCalculator
         $gatesAssigned = 0;
 
         foreach ($in['sides'] as $idx => $side) {
+            $sideLengthFt = (float) $side['length_ft'];
+            $gateHere = (bool) ($side['gate_goes_here'] ?? false) && $gatesRemaining > 0;
+            $fenceLengthFt = $gateHere
+                ? max(0.0, $sideLengthFt - self::GATE_OPENING_FT)
+                : $sideLengthFt;
+
             $layout = $this->computeSideLayout(
-                (float) $side['length_ft'],
+                $fenceLengthFt,
                 (bool) ($side['already_have_post_left'] ?? false),
                 (bool) ($side['already_have_post_right'] ?? false),
             );
 
             $sections = $layout['sections'];
             $posts = $layout['posts'];
-            $gateHere = (bool) ($side['gate_goes_here'] ?? false) && $gatesRemaining > 0;
             if ($gateHere) {
                 $posts = max(0, $posts - 1);
-                $sections = max(0, $sections - 1);
                 $gatesRemaining--;
                 $gatesAssigned++;
             }
 
-            $sideLengthFt = (float) $side['length_ft'];
             $picketLinearFt += max(0.0, $sideLengthFt - ($gateHere ? self::GATE_OPENING_FT : 0.0));
 
             $sidesBreakdown[] = [
                 'index' => $idx + 1,
                 'length_ft' => $sideLengthFt,
+                'fence_length_ft' => round($fenceLengthFt, 2),
                 'sections' => $sections,
                 'posts' => $posts,
                 'section_length_ft' => $layout['section_length_ft'],
@@ -150,6 +154,7 @@ class FenceQuotationCalculator
                 'already_have_post_left' => (bool) ($side['already_have_post_left'] ?? false),
                 'already_have_post_right' => (bool) ($side['already_have_post_right'] ?? false),
                 'gate_goes_here' => $gateHere,
+                'gate_opening_ft' => $gateHere ? self::GATE_OPENING_FT : null,
             ];
 
             $totalLinearFt += $sideLengthFt;

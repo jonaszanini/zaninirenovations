@@ -175,12 +175,36 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertSame(6, $withoutGate['geometry']['structural_posts']);
 
         $this->assertSame(4, $withGate['geometry']['sections_total']);
-        $this->assertSame(5, $withGate['geometry']['structural_posts']);
+        $this->assertSame(4, $withGate['geometry']['structural_posts']);
         $this->assertSame(1, $withGate['geometry']['gate_posts']);
-        $this->assertSame(6, $withGate['geometry']['posts_before_waste']);
+        $this->assertSame(5, $withGate['geometry']['posts_before_waste']);
         $this->assertSame(1, $withGate['geometry']['gates_on_sides']);
         $this->assertTrue($withGate['geometry']['sides_breakdown'][0]['gate_goes_here']);
+        $this->assertSame(29.5, $withGate['geometry']['sides_breakdown'][0]['fence_length_ft']);
         $this->assertSame(29.5, $withGate['geometry']['picket_linear_ft']);
+    }
+
+    public function test_gate_side_uses_remaining_length_for_sections(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 8,
+                'already_have_post_left' => true,
+                'gate_goes_here' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+        ]);
+
+        $side = $result['geometry']['sides_breakdown'][0];
+        $this->assertSame(4.0, $side['fence_length_ft']);
+        $this->assertSame(1, $side['sections']);
+        $this->assertSame(0, $side['posts']);
+        $this->assertCount(1, $side['section_lengths_ft']);
+        $this->assertEqualsWithDelta(3.708, $side['section_lengths_ft'][0], 0.01);
     }
 
     public function test_gate_side_assignment_respects_gate_count_limit(): void
