@@ -136,7 +136,7 @@ class FenceQuotation extends Model
             if (! is_array($material)) {
                 continue;
             }
-            if (! in_array($material['key'] ?? '', [FenceMaterial::KEY_POST_10, FenceMaterial::KEY_POST_12], true)) {
+            if (! in_array($material['key'] ?? '', FenceMaterial::POST_KEYS, true)) {
                 continue;
             }
 

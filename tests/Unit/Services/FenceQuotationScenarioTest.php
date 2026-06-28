@@ -41,6 +41,8 @@ class FenceQuotationScenarioTest extends TestCase
         $catalogue = collect([
             $make(FenceMaterial::KEY_POST_10, 40),
             $make(FenceMaterial::KEY_POST_12, 45),
+            $make(FenceMaterial::KEY_POST_6X6_10, 55),
+            $make(FenceMaterial::KEY_POST_6X6_12, 60),
             $make(FenceMaterial::KEY_BOARD_6, 8),
             $make(FenceMaterial::KEY_BOARD_8, 10),
             $make(FenceMaterial::KEY_RAIL, 7),

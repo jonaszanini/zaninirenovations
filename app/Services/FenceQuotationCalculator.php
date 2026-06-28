@@ -353,7 +353,7 @@ class FenceQuotationCalculator
         // -------- POSTS --------------------------------------------------
         // Waste margin: +1 post per project.
         $postsTotal = $postsBeforeWaste + ($postsBeforeWaste > 0 ? 1 : 0);
-        $postKey = $height === 8 ? FenceMaterial::KEY_POST_12 : FenceMaterial::KEY_POST_10;
+        $postKey = FenceMaterial::postKeyFor($height, (string) ($in['post_size'] ?? FenceQuotation::POST_SIZE_4X4));
 
         // -------- PICKETS (fence boards along the run) -------------------
         // Effective per-board width depends on style:

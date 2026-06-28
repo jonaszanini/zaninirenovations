@@ -47,6 +47,8 @@ class FenceQuotationCalculatorTest extends TestCase
         return collect([
             $make(FenceMaterial::KEY_POST_10, 40),
             $make(FenceMaterial::KEY_POST_12, 45),
+            $make(FenceMaterial::KEY_POST_6X6_10, 55),
+            $make(FenceMaterial::KEY_POST_6X6_12, 60),
             $make(FenceMaterial::KEY_BOARD_6, 8),
             $make(FenceMaterial::KEY_BOARD_8, 10),
             $make(FenceMaterial::KEY_RAIL, 7),
@@ -259,6 +261,34 @@ class FenceQuotationCalculatorTest extends TestCase
             $base['totals']['labour_subtotal'],
             $higher['totals']['labour_subtotal']
         );
+    }
+
+    public function test_six_by_six_posts_use_six_by_six_material_keys(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 16]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'post_size' => FenceQuotation::POST_SIZE_6X6,
+        ]);
+
+        $postRow = collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_POST_6X6_10);
+        $this->assertNotNull($postRow);
+        $this->assertSame(FenceMaterial::KEY_POST_6X6_10, $postRow['key']);
+
+        $eightFt = $calculator->calculate([
+            'sides' => [['length_ft' => 16]],
+            'fence_height_ft' => 8,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'post_size' => FenceQuotation::POST_SIZE_6X6,
+        ]);
+
+        $post12 = collect($eightFt['materials'])->firstWhere('key', FenceMaterial::KEY_POST_6X6_12);
+        $this->assertNotNull($post12);
     }
 
     public function test_gate_side_assignment_honours_all_marked_sides(): void

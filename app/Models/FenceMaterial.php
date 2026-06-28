@@ -20,6 +20,10 @@ class FenceMaterial extends Model
 
     public const KEY_POST_12 = 'post_12';
 
+    public const KEY_POST_6X6_10 = 'post_6x6_10';
+
+    public const KEY_POST_6X6_12 = 'post_6x6_12';
+
     public const KEY_BOARD_6 = 'board_6';
 
     public const KEY_BOARD_8 = 'board_8';
@@ -46,6 +50,8 @@ class FenceMaterial extends Model
     public const PURCHASE_LIST_KEYS = [
         self::KEY_POST_10,
         self::KEY_POST_12,
+        self::KEY_POST_6X6_10,
+        self::KEY_POST_6X6_12,
         self::KEY_BOARD_6,
         self::KEY_BOARD_8,
         self::KEY_RAIL,
@@ -53,6 +59,28 @@ class FenceMaterial extends Model
         self::KEY_BRACKET,
         self::KEY_POST_CAP,
     ];
+
+    /** @var list<string> */
+    public const POST_KEYS = [
+        self::KEY_POST_10,
+        self::KEY_POST_12,
+        self::KEY_POST_6X6_10,
+        self::KEY_POST_6X6_12,
+    ];
+
+    /**
+     * Catalogue key for structural posts based on fence height and post cross-section.
+     */
+    public static function postKeyFor(int $fenceHeightFt, string $postSize): string
+    {
+        $use6x6 = $postSize === '6x6';
+
+        if ($fenceHeightFt === 8) {
+            return $use6x6 ? self::KEY_POST_6X6_12 : self::KEY_POST_12;
+        }
+
+        return $use6x6 ? self::KEY_POST_6X6_10 : self::KEY_POST_10;
+    }
 
     protected $fillable = [
         'key',
