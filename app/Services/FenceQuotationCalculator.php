@@ -126,16 +126,30 @@ class FenceQuotationCalculator
                 ? max(0.0, $sideLengthFt - self::GATE_OPENING_FT)
                 : $sideLengthFt;
 
+            $existingLeft = (bool) ($side['already_have_post_left'] ?? false);
+            $existingRight = (bool) ($side['already_have_post_right'] ?? false);
+
+            // Gate-side layout model (gate consumes 4 ft at the end of the side):
+            //   [existing left?] — fence run (length − 4 ft) — hinge post — 4 ft opening — latch/right post
+            // "Existing post on right" means the latch/end post after the gate, not the hinge.
+            // The fence run always ends at a hinge post, so never treat the right flag as existing
+            // when computing fence sections on a gate side.
+            $layoutExistingRight = $gateHere ? false : $existingRight;
+
             $layout = $this->computeSideLayout(
                 $fenceLengthFt,
-                (bool) ($side['already_have_post_left'] ?? false),
-                (bool) ($side['already_have_post_right'] ?? false),
+                $existingLeft,
+                $layoutExistingRight,
             );
 
             $sections = $layout['sections'];
             $posts = $layout['posts'];
             if ($gateHere) {
-                $posts = max(0, $posts - 1);
+                // Fence layout includes the hinge post at the fence/gate junction.
+                // Add the latch/end post on the far side of the gate opening when needed.
+                if (! $existingRight) {
+                    $posts += 1;
+                }
                 $gatesRemaining--;
                 $gatesAssigned++;
             }
@@ -151,8 +165,8 @@ class FenceQuotationCalculator
                 'section_length_ft' => $layout['section_length_ft'],
                 'section_lengths_ft' => $layout['section_lengths_ft'],
                 'max_section_length_ft' => $layout['max_section_length_ft'],
-                'already_have_post_left' => (bool) ($side['already_have_post_left'] ?? false),
-                'already_have_post_right' => (bool) ($side['already_have_post_right'] ?? false),
+                'already_have_post_left' => $existingLeft,
+                'already_have_post_right' => $existingRight,
                 'gate_goes_here' => $gateHere,
                 'gate_opening_ft' => $gateHere ? self::GATE_OPENING_FT : null,
             ];
@@ -172,7 +186,9 @@ class FenceQuotationCalculator
         }
         $structuralPosts = max(0, $structuralPosts);
 
-        $gatePosts = (int) $in['gate_count'];
+        // Gate jambs on marked sides are already in structural counts; only add
+        // extra gate posts for gates not assigned to a side.
+        $gatePosts = max(0, (int) $in['gate_count'] - $gatesAssigned);
         $postsBeforeWaste = $structuralPosts + $gatePosts;
 
         return [
@@ -575,7 +591,7 @@ class FenceQuotationCalculator
         if ($gatesOnSides > 0) {
             $note .= ' Gate on side'
                 .($gatesOnSides === 1 ? '' : 's')
-                .": {$gatesOnSides} (1 fence post per gate credited to gate jambs).";
+                .": {$gatesOnSides} (hinge + latch posts included in structural count).";
         }
 
         return $note;

@@ -175,9 +175,9 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertSame(6, $withoutGate['geometry']['structural_posts']);
 
         $this->assertSame(4, $withGate['geometry']['sections_total']);
-        $this->assertSame(4, $withGate['geometry']['structural_posts']);
-        $this->assertSame(1, $withGate['geometry']['gate_posts']);
-        $this->assertSame(5, $withGate['geometry']['posts_before_waste']);
+        $this->assertSame(6, $withGate['geometry']['structural_posts']);
+        $this->assertSame(0, $withGate['geometry']['gate_posts']);
+        $this->assertSame(6, $withGate['geometry']['posts_before_waste']);
         $this->assertSame(1, $withGate['geometry']['gates_on_sides']);
         $this->assertTrue($withGate['geometry']['sides_breakdown'][0]['gate_goes_here']);
         $this->assertSame(29.5, $withGate['geometry']['sides_breakdown'][0]['fence_length_ft']);
@@ -202,7 +202,7 @@ class FenceQuotationCalculatorTest extends TestCase
         $side = $result['geometry']['sides_breakdown'][0];
         $this->assertSame(4.0, $side['fence_length_ft']);
         $this->assertSame(1, $side['sections']);
-        $this->assertSame(0, $side['posts']);
+        $this->assertSame(2, $side['posts']);
         $this->assertCount(1, $side['section_lengths_ft']);
         $this->assertEqualsWithDelta(3.708, $side['section_lengths_ft'][0], 0.01);
     }
