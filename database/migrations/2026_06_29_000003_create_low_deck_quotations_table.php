@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('low_deck_quotations')) {
+            return;
+        }
+
         Schema::create('low_deck_quotations', function (Blueprint $table) {
             $table->id();
 

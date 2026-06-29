@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Support\Logging\RequestContext;
+use App\Support\ProductionDatabaseGuard;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Event;
@@ -29,6 +30,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Event::listen(CommandStarting::class, function (CommandStarting $event): void {
+            // Abort destructive DB commands (migrate:fresh, db:wipe, ...) before
+            // they can touch the live production database.
+            ProductionDatabaseGuard::handle($event);
+
             RequestContext::set([
                 'request_id' => (string) Str::uuid(),
                 'channel' => 'cli',
