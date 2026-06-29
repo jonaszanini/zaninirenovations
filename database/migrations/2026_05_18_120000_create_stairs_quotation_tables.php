@@ -16,6 +16,10 @@ return new class extends Migration
             $table->id();
             $table->decimal('stain_per_step', 10, 2)->default(0);
             $table->decimal('clear_coat_per_step', 10, 2)->default(0);
+            // Folded in from 2026_05_16_120000, which has an earlier timestamp
+            // than this create and therefore cannot rely on the table existing
+            // during a fresh or forward migrate.
+            $table->json('nosing_option_photos')->nullable();
             $table->timestamps();
         });
 

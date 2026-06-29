@@ -64,6 +64,18 @@ jobs:
             -e "ssh ${SSH_ARGS}" \
             ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/"
 
+          # Mirror database/migrations EXACTLY (with --delete) so files removed
+          # or renamed in the repo are also removed on the server. The main
+          # rsync above intentionally has no --delete (it must not touch
+          # server-only paths like vendor/), so orphaned migration files would
+          # otherwise linger and run again as "pending", causing duplicate
+          # column/table errors. Scoping --delete to this folder is safe
+          # because migrations must always mirror the repo one-to-one.
+          echo "[rsync] Mirroring database/migrations (with --delete)..."
+          rsync -az --delete --timeout=120 \
+            -e "ssh ${SSH_ARGS}" \
+            ./database/migrations/ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/database/migrations/"
+
           echo "[remote] Running Laravel deploy commands..."
           ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "export DEPLOY_ROOT='${DEPLOY_ROOT}'; bash -s" < .github/scripts/remote-laravel-deploy.sh
 
