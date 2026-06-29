@@ -390,6 +390,38 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::delete('quotations/fence/{fence_quotation}', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'destroy'])
         ->name('quotations.fence.destroy');
 
+    // Low deck configuration (materials catalogue + formula parameters).
+    Route::get('quotations/low-deck/config', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'index'])
+        ->name('quotations.low-deck.config');
+    Route::put('quotations/low-deck/config/materials', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'updateMaterials'])
+        ->name('quotations.low-deck.config.materials.update');
+    Route::post('quotations/low-deck/config/materials/sync', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'syncMaterials'])
+        ->name('quotations.low-deck.config.materials.sync');
+    Route::put('quotations/low-deck/config/formula', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'updateFormula'])
+        ->name('quotations.low-deck.config.formula.update');
+
+    // Low deck quotations CRUD + purchase list + project-link.
+    Route::get('quotations/low-deck', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'index'])
+        ->name('quotations.low-deck.index');
+    Route::get('quotations/low-deck/create', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'create'])
+        ->name('quotations.low-deck.create');
+    Route::post('quotations/low-deck', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'store'])
+        ->name('quotations.low-deck.store');
+    Route::post('quotations/low-deck/preview', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'preview'])
+        ->name('quotations.low-deck.preview');
+    Route::get('quotations/low-deck/{low_deck_quotation}/edit', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'edit'])
+        ->name('quotations.low-deck.edit');
+    Route::get('quotations/low-deck/{low_deck_quotation}/purchase-list', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'purchaseList'])
+        ->name('quotations.low-deck.purchase-list');
+    Route::put('quotations/low-deck/{low_deck_quotation}', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'update'])
+        ->name('quotations.low-deck.update');
+    Route::post('quotations/low-deck/{low_deck_quotation}/link', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'linkToProject'])
+        ->name('quotations.low-deck.link');
+    Route::post('quotations/low-deck/{low_deck_quotation}/create-project', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.low-deck.create-project');
+    Route::delete('quotations/low-deck/{low_deck_quotation}', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'destroy'])
+        ->name('quotations.low-deck.destroy');
+
     // Standard quotations (materials grid + labour, no PDF in-module).
     Route::get('quotations/standard', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'index'])
         ->name('quotations.standard.index');

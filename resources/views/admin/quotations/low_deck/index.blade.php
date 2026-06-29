@@ -1,0 +1,100 @@
+@extends('admin.layouts.app')
+
+@section('heading', 'Low Deck Quotations')
+
+@section('content')
+  @php $qpid = request('project'); @endphp
+  <div class="admin-toolbar fq-list-toolbar">
+    <div class="admin-toolbar-group">
+      <a href="{{ route('admin.quotations.index', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-arrow-left"></i> All quotation types
+      </a>
+      <a href="{{ route('admin.quotations.low-deck.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-cog"></i> Configuration
+      </a>
+    </div>
+    <a href="{{ route('admin.quotations.low-deck.create', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--primary">
+      <i class="fa fa-plus"></i> New low deck quotation
+    </a>
+  </div>
+
+  @include('admin.quotations._index_project_context')
+
+  @if ($quotations->isEmpty())
+    <div class="admin-card" style="text-align:center;padding:36px 24px;">
+      <p class="admin-form-help cp-form-help-flush">
+        @if ($filterUnlinkedOnly ?? false)
+          No unlinked low deck quotations available. Click <strong>New low deck quotation</strong> to open the calculator for this project.
+        @else
+          No low deck quotations yet. Click <strong>New low deck quotation</strong> to open the calculator.
+        @endif
+      </p>
+    </div>
+  @else
+    <div class="admin-card">
+      <div class="admin-table-scroll">
+        <table class="admin-table fq-list-table">
+          <thead>
+            <tr>
+              <th>Number</th>
+              <th>Client</th>
+              <th>Size</th>
+              <th>Area</th>
+              <th>Joist O.C.</th>
+              <th>Total</th>
+              <th>Linked project</th>
+              <th>Updated</th>
+              <th style="width: 160px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($quotations as $q)
+              <tr>
+                <td><strong>{{ $q->quote_number }}</strong></td>
+                <td>{{ $q->client_name }}</td>
+                <td>{{ rtrim(rtrim(number_format((float) $q->width_ft, 2), '0'), '.') }}' &times; {{ rtrim(rtrim(number_format((float) $q->length_ft, 2), '0'), '.') }}'</td>
+                <td>{{ rtrim(rtrim(number_format($q->areaSqFt(), 2), '0'), '.') }} sq ft</td>
+                <td>{{ (int) $q->joist_spacing_in }} in.</td>
+                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($q->grand_total) }}</td>
+                <td>
+                  @if ($q->project)
+                    <a href="{{ route('admin.client-projects.show', $q->project) }}#quotation">
+                      {{ $q->project->name }}
+                    </a>
+                  @else
+                    <span class="admin-form-help">—</span>
+                  @endif
+                </td>
+                <td>
+                  <span class="admin-form-help">{{ $q->updated_at ? \App\Support\EasternStandardTimeDisplay::formatInstantCalendarDate($q->updated_at) : '' }}</span>
+                </td>
+                <td>
+                  <div class="fq-list-actions">
+                    <a href="{{ route('admin.quotations.low-deck.edit', $q) }}"
+                       class="admin-btn admin-btn--ghost admin-btn--sm">
+                      <i class="fa fa-pencil"></i> Edit
+                    </a>
+                    <form method="post"
+                          action="{{ route('admin.quotations.low-deck.destroy', $q) }}"
+                          class="cp-inline-form"
+                          onsubmit="return confirm('Delete low deck quotation {{ $q->quote_number }}? This cannot be undone.');">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      {{ $quotations->links() }}
+    </div>
+  @endif
+@endsection

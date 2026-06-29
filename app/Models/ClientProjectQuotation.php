@@ -47,6 +47,8 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_TILE = 'tile';
 
+    public const SOURCE_LOW_DECK = 'low_deck';
+
     protected $fillable = [
         'client_project_id',
         'title',
@@ -278,6 +280,13 @@ class ClientProjectQuotation extends Model
             $fq = FenceQuotation::query()->find($this->source_id);
             if ($fq) {
                 return trim((string) ($fq->work_description ?? ''));
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_LOW_DECK && $this->source_id) {
+            $ld = LowDeckQuotation::query()->find($this->source_id);
+            if ($ld) {
+                return trim((string) ($ld->work_description ?? ''));
             }
         }
 
@@ -743,6 +752,7 @@ class ClientProjectQuotation extends Model
                     self::SOURCE_PAINTING => PaintingQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_FLOORING => FlooringQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_TILE => TileQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_LOW_DECK => LowDeckQuotation::query()->whereKey($sourceId)->delete(),
                     default => null,
                 };
             }

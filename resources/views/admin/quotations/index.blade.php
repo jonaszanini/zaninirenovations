@@ -98,5 +98,14 @@
         <h4>Stairs</h4>
       </div>
     </a>
+
+    <a href="{{ route('admin.quotations.low-deck.index', $pq) }}" class="fq-hub-card">
+      <div class="fq-hub-card-image-wrap" aria-hidden="true">
+        <img src="{{ asset('images/services/deck.webp') }}" alt="" class="fq-hub-card-image">
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Low Deck</h4>
+      </div>
+    </a>
   </div>
 @endsection

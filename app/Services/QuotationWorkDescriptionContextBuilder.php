@@ -19,6 +19,7 @@ class QuotationWorkDescriptionContextBuilder
         return match ($type) {
             'painting' => $this->painting($context),
             'fence' => $this->fence($context),
+            'low_deck' => $this->lowDeck($context),
             'paving' => $this->paving($context),
             'standard' => $this->standard($context),
             default => $this->generic($type, $context),
@@ -140,6 +141,25 @@ class QuotationWorkDescriptionContextBuilder
         if ($sideParts !== []) {
             $lines[] = 'Fence runs: '.implode('; ', $sideParts);
         }
+
+        $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
+        $this->appendBlock($lines, 'Materials list', $c['materials_summary'] ?? null);
+        $this->appendBlock($lines, 'Pricing snapshot', $c['totals_summary'] ?? null);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function lowDeck(array $c): string
+    {
+        $lines = ['Quotation type: Low floating deck'];
+
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+        $this->appendLine($lines, 'Width', isset($c['width_ft']) ? $c['width_ft']." ft" : null);
+        $this->appendLine($lines, 'Length', isset($c['length_ft']) ? $c['length_ft']." ft" : null);
+        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) ? $c['joist_spacing_in'].' in on centre' : null);
 
         $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
         $this->appendBlock($lines, 'Materials list', $c['materials_summary'] ?? null);

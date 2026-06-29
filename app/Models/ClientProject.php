@@ -1434,6 +1434,7 @@ class ClientProject extends Model
             ClientProjectQuotation::SOURCE_PAVING => 'Paving calculator',
             ClientProjectQuotation::SOURCE_STAIRS => 'Stairs calculator',
             ClientProjectQuotation::SOURCE_PAINTING => 'Painting calculator',
+            ClientProjectQuotation::SOURCE_LOW_DECK => 'Low deck calculator',
             ClientProjectQuotation::SOURCE_MANUAL => 'Manual / legacy',
             null, '' => 'Manual / legacy',
             default => (string) $q->source_type,

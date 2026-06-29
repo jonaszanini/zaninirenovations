@@ -10,6 +10,7 @@ use App\Models\ClientProjectPhoto;
 use App\Models\ClientProjectQuotation;
 use App\Models\FenceQuotation;
 use App\Models\FlooringQuotation;
+use App\Models\LowDeckQuotation;
 use App\Models\PaintingQuotation;
 use App\Models\PavingQuotation;
 use App\Models\StairsQuotation;
@@ -73,6 +74,12 @@ class ClientProjectQuotationController extends Controller
             $fq = FenceQuotation::find($quotation->source_id);
             if ($fq) {
                 return redirect()->route('admin.quotations.fence.edit', $fq);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_LOW_DECK && $quotation->source_id) {
+            $ld = LowDeckQuotation::find($quotation->source_id);
+            if ($ld) {
+                return redirect()->route('admin.quotations.low-deck.edit', $ld);
             }
         }
         if ($quotation->source_type === ClientProjectQuotation::SOURCE_PAVING && $quotation->source_id) {
