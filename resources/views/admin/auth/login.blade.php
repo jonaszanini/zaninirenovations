@@ -24,6 +24,10 @@
           <h1>Sign in</h1>
           <p class="subtitle">Site administration only. Use the account provided by your team.</p>
 
+          @if (session('status'))
+            <div class="admin-auth-status">{{ session('status') }}</div>
+          @endif
+
           <form method="post" action="{{ route('login') }}">
             @csrf
             <div class="admin-form-group">
@@ -35,14 +39,20 @@
             </div>
             <div class="admin-form-group">
               <label for="password">Password</label>
-              <input class="admin-input" type="password" id="password" name="password" required autocomplete="current-password">
+              <div class="admin-password-field">
+                <input class="admin-input" type="password" id="password" name="password" required autocomplete="current-password">
+                <button type="button" class="admin-password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false">
+                  <i class="fa fa-eye" aria-hidden="true"></i>
+                </button>
+              </div>
             </div>
-            <div class="admin-form-group">
+            <div class="admin-form-group admin-login-row">
               <label class="admin-login-remember">
                 <input type="checkbox" class="admin-checkbox__input" name="remember" value="1" {{ old('remember') ? 'checked' : '' }}>
                 <span class="admin-checkbox__mark" aria-hidden="true"></span>
                 <span class="admin-checkbox__text">Remember me</span>
               </label>
+              <a class="admin-login-link" href="{{ route('password.request') }}">Forgot your password?</a>
             </div>
             <button type="submit" class="admin-btn admin-btn--primary">Sign in</button>
           </form>
@@ -52,5 +62,6 @@
       </div>
     </div>
   </div>
+  @include('admin.auth.partials.password-toggle-script')
 </body>
 </html>

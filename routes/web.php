@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\MaterialController;
 use App\Http\Controllers\Admin\ClientProjectInvoiceController;
 use App\Http\Controllers\Admin\ClientProjectQuotationController;
 use App\Http\Controllers\Admin\Auth\LoginController;
+use App\Http\Controllers\Admin\Auth\PasswordResetController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GooglePhotosController;
@@ -111,6 +112,18 @@ Route::get('/blog/{post:slug}', [\App\Http\Controllers\BlogController::class, 's
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/admin/login', [LoginController::class, 'login']);
+
+    // Password recovery / reset.
+    Route::get('/admin/forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])
+        ->name('password.request');
+    Route::post('/admin/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])
+        ->middleware('throttle:6,1')
+        ->name('password.email');
+    Route::get('/admin/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])
+        ->name('password.reset');
+    Route::post('/admin/reset-password', [PasswordResetController::class, 'reset'])
+        ->middleware('throttle:6,1')
+        ->name('password.update');
 });
 
 Route::middleware('auth')->get('/dashboard', [DashboardController::class, 'index'])
