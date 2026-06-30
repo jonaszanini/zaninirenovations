@@ -250,9 +250,6 @@
         }
 
         btn.addEventListener('click', function () {
-          var confirmMsg = btn.getAttribute('data-confirm');
-          if (confirmMsg && !window.confirm(confirmMsg)) return;
-
           var startUrl = btn.getAttribute('data-start-url');
           var stepUrl = btn.getAttribute('data-step-url');
           var mode = btn.getAttribute('data-mode') || 'missing';
