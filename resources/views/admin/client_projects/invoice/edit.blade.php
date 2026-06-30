@@ -324,7 +324,7 @@
               <span id="cp-invoice-labour-sub">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row">
-              <span>Materials (tax-included)</span>
+              <span>Materials / Gas (tax-included)</span>
               <span id="cp-invoice-materials-sub">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row cp-invoice-hst-row">

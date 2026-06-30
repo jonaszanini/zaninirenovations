@@ -8,8 +8,8 @@
     $fontDir = str_replace('\\', '/', public_path('fonts/roboto'));
     $items = $invoice->cleanItems();
     $hourlyPdf = ($isHourlyManual ?? false);
-    $labourRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => ($r['line_kind'] ?? 'labour') !== 'materials')) : $items;
-    $materialsRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => ($r['line_kind'] ?? '') === 'materials')) : [];
+    $labourRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => !in_array(($r['line_kind'] ?? 'labour'), ['materials', 'gas']))) : $items;
+    $materialsRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => in_array(($r['line_kind'] ?? ''), ['materials', 'gas']))) : [];
 
     $subtotal = (float) $invoice->subtotal;
     $hst = (float) $invoice->hst;
@@ -388,8 +388,8 @@
     @endif
 
     @if (count($materialsRows)> 0)
-      <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Materials (amounts include HST)</p>
-      <p style="margin:0 0 8pt;font-size:9.5pt;color:#4b5563;font-style:italic;">No additional HST is charged on materials — amounts below are the final client prices (tax-included).</p>
+      <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Materials / Gas (amounts include HST)</p>
+      <p style="margin:0 0 8pt;font-size:9.5pt;color:#4b5563;font-style:italic;">No additional HST is charged on materials or gas — amounts below are the final client prices (tax-included).</p>
       <table class="items" style="margin-bottom:12pt;">
         <thead>
           <tr>
@@ -438,7 +438,7 @@
         @endif
         @if (($hourlyMaterialsTotal ?? 0)> 0.0001)
           <tr>
-            <td class="totals-label">Materials (tax-included)</td>
+            <td class="totals-label">Materials / Gas (tax-included)</td>
             <td class="amount">{{ $fmt($hourlyMaterialsTotal) }}</td>
           </tr>
         @endif
