@@ -9,6 +9,7 @@ use App\Models\MaterialVendor;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Services\MaterialScraping\MaterialSkuImportService;
+use App\Services\MaterialShortNameAiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,6 +21,8 @@ class MaterialController extends Controller
     private const BULK_IMPORT_SESSION_PREFIX = 'material_bulk_import.';
 
     private const SYNC_ALL_SESSION_PREFIX = 'material_sync_all.';
+
+    private const AI_SHORT_NAMES_SESSION_PREFIX = 'material_ai_short_names.';
 
     public function index(Request $request): View
     {
@@ -274,6 +277,123 @@ class MaterialController extends Controller
         }
 
         return $this->syncAllProgressResponse($state, $message, $done);
+    }
+
+    public function aiShortNamesStart(Request $request, MaterialShortNameAiService $shortNameAi): JsonResponse
+    {
+        $data = $request->validate([
+            'mode' => ['required', 'string', 'in:missing,all'],
+        ]);
+
+        $mode = $data['mode'];
+        $materialIds = $shortNameAi->materialsQuery($mode)->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        if ($materialIds === []) {
+            return response()->json([
+                'message' => $mode === 'missing'
+                    ? 'All materials already have a short name.'
+                    : 'No materials in the catalog.',
+            ], 422);
+        }
+
+        $batches = $shortNameAi->buildBatches($materialIds);
+        $token = Str::random(40);
+
+        session()->put(self::AI_SHORT_NAMES_SESSION_PREFIX.$token, [
+            'user_id' => $request->user()->id,
+            'mode' => $mode,
+            'batches' => $batches,
+            'batch_index' => 0,
+            'updated' => 0,
+            'skipped' => 0,
+            'failed' => 0,
+            'log' => [],
+        ]);
+
+        $totalMaterials = count($materialIds);
+        $totalBatches = count($batches);
+        $modeLabel = $mode === 'all' ? 'Regenerating all short names' : 'Generating missing short names';
+
+        return response()->json([
+            'token' => $token,
+            'phase' => 'ai_short_names',
+            'phase_label' => $modeLabel,
+            'current' => 0,
+            'phase_total' => $totalBatches,
+            'overall_total' => $totalMaterials,
+            'overall_current' => 0,
+            'remaining' => $totalBatches,
+            'message' => $modeLabel.' for '.$totalMaterials.' material(s) in '.$totalBatches.' batch(es).',
+            'stats' => $this->aiShortNamesStats(['updated' => 0, 'skipped' => 0, 'failed' => 0]),
+            'log' => [],
+            'done' => false,
+        ]);
+    }
+
+    public function aiShortNamesStep(Request $request, MaterialShortNameAiService $shortNameAi): JsonResponse
+    {
+        set_time_limit(max(120, (int) config('gemini.timeout_seconds', 120) + 30));
+
+        $data = $request->validate([
+            'token' => ['required', 'string', 'max:64'],
+        ]);
+
+        $sessionKey = self::AI_SHORT_NAMES_SESSION_PREFIX.$data['token'];
+        $state = session($sessionKey);
+
+        if (! is_array($state) || (int) ($state['user_id'] ?? 0) !== (int) $request->user()->id) {
+            return response()->json([
+                'message' => 'Short name session expired or invalid. Please start again.',
+            ], 404);
+        }
+
+        $batches = $state['batches'] ?? [];
+        $batchIndex = (int) ($state['batch_index'] ?? 0);
+        $totalBatches = count($batches);
+
+        if ($batchIndex >= $totalBatches) {
+            session()->forget($sessionKey);
+
+            return $this->aiShortNamesProgressResponse($state, 'Short name generation complete.', true);
+        }
+
+        $batchIds = $batches[$batchIndex];
+        $materials = Material::query()->whereIn('id', $batchIds)->orderBy('id')->get()->all();
+        $overwrite = ($state['mode'] ?? 'missing') === 'all';
+
+        try {
+            $result = $shortNameAi->generateAndApplyBatch($materials, $overwrite);
+            $state['updated'] += $result['updated'];
+            $state['skipped'] += $result['skipped'];
+
+            foreach ($result['results'] as $row) {
+                $state = $this->bulkImportAppendLog(
+                    $state,
+                    'Updated #'.$row['id'].' → '.$row['short_name'],
+                );
+            }
+
+            if ($result['updated'] === 0 && $result['skipped'] > 0) {
+                $state = $this->bulkImportAppendLog($state, 'Batch '.($batchIndex + 1).': no changes needed.');
+            }
+
+            $message = 'Batch '.($batchIndex + 1).' of '.$totalBatches.': '.$result['updated'].' updated, '.$result['skipped'].' skipped.';
+        } catch (\Throwable $e) {
+            $state['failed']++;
+            $message = 'Batch '.($batchIndex + 1).' failed: '.$e->getMessage();
+            $state = $this->bulkImportAppendLog($state, $message);
+        }
+
+        $state['batch_index'] = $batchIndex + 1;
+        $done = $state['batch_index'] >= $totalBatches;
+
+        if ($done) {
+            session()->forget($sessionKey);
+        } else {
+            session()->put($sessionKey, $state);
+        }
+
+        return $this->aiShortNamesProgressResponse($state, $message, $done);
     }
 
     public function bulkDestroy(Request $request)
@@ -569,6 +689,11 @@ class MaterialController extends Controller
             'needsSyncCount' => app(MaterialPriceSyncService::class)->countNeedingSync(),
             'syncableCount' => app(MaterialPriceSyncService::class)->countSerpApiSyncable(),
             'totalMaterials' => Material::query()->count(),
+            'missingShortNameCount' => Material::query()
+                ->where(function ($q) {
+                    $q->whereNull('short_name')->orWhere('short_name', '');
+                })
+                ->count(),
             'failedCount' => Material::query()
                 ->where('last_scrape_status', Material::SCRAPE_FAILED)
                 ->count(),
@@ -832,6 +957,72 @@ class MaterialController extends Controller
             (int) $state['skipped'],
             (int) $state['index'],
             count($state['material_ids']),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, int>
+     */
+    private function aiShortNamesStats(array $state): array
+    {
+        return [
+            'updated' => (int) ($state['updated'] ?? 0),
+            'skipped' => (int) ($state['skipped'] ?? 0),
+            'failed' => (int) ($state['failed'] ?? 0),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function aiShortNamesProgressResponse(array $state, string $message, bool $done): JsonResponse
+    {
+        $batches = $state['batches'] ?? [];
+        $totalBatches = count($batches);
+        $currentBatch = (int) ($state['batch_index'] ?? 0);
+        $remaining = max(0, $totalBatches - $currentBatch);
+        $totalMaterials = array_sum(array_map('count', $batches));
+        $processedMaterials = 0;
+        for ($i = 0; $i < min($currentBatch, $totalBatches); $i++) {
+            $processedMaterials += count($batches[$i]);
+        }
+
+        $mode = $state['mode'] ?? 'missing';
+        $phaseLabel = $done
+            ? 'Complete'
+            : ($mode === 'all' ? 'Regenerating short names' : 'Generating short names');
+
+        return response()->json([
+            'done' => $done,
+            'phase' => $done ? 'done' : 'ai_short_names',
+            'phase_label' => $phaseLabel,
+            'current' => $currentBatch,
+            'phase_total' => $totalBatches,
+            'overall_total' => $totalMaterials,
+            'overall_current' => $processedMaterials,
+            'remaining' => $remaining,
+            'message' => $message,
+            'stats' => $this->aiShortNamesStats($state),
+            'log' => $state['log'] ?? [],
+            'summary' => $done ? $this->aiShortNamesSummary($state) : null,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function aiShortNamesSummary(array $state): string
+    {
+        $batches = $state['batches'] ?? [];
+        $totalMaterials = array_sum(array_map('count', $batches));
+
+        return sprintf(
+            '%d updated, %d skipped, %d batch(es) failed. Processed %d material(s).',
+            (int) ($state['updated'] ?? 0),
+            (int) ($state['skipped'] ?? 0),
+            (int) ($state['failed'] ?? 0),
+            $totalMaterials,
         );
     }
 }

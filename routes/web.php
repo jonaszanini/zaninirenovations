@@ -197,6 +197,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('materials.sync-all.start');
     Route::post('materials/sync-all/step', [MaterialController::class, 'syncAllStep'])
         ->name('materials.sync-all.step');
+    Route::post('materials/config/ai-short-names/start', [MaterialController::class, 'aiShortNamesStart'])
+        ->name('materials.config.ai-short-names.start');
+    Route::post('materials/config/ai-short-names/step', [MaterialController::class, 'aiShortNamesStep'])
+        ->name('materials.config.ai-short-names.step');
     Route::post('materials/{material}/sync-price', [MaterialController::class, 'syncPrice'])
         ->name('materials.sync-price');
     Route::resource('materials', MaterialController::class)->except(['show']);

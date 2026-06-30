@@ -183,6 +183,129 @@
       }
     }
 
+    (function () {
+      var missingBtn = document.getElementById('mat-ai-short-names-missing-btn');
+      var allBtn = document.getElementById('mat-ai-short-names-all-btn');
+      if (missingBtn && missingBtn.disabled) {
+        missingBtn.setAttribute('data-originally-disabled', '1');
+      }
+      if (allBtn && allBtn.disabled) {
+        allBtn.setAttribute('data-originally-disabled', '1');
+      }
+
+      function initAiShortNamesRunner(btn) {
+        if (!btn) return;
+
+        var csrf = getCsrfToken();
+        var progressEl = document.getElementById('mat-ai-short-names-progress');
+        var phaseLabel = document.getElementById('mat-ai-short-names-phase-label');
+        var counterEl = document.getElementById('mat-ai-short-names-counter');
+        var barEl = document.getElementById('mat-ai-short-names-bar');
+        var progressbarEl = document.getElementById('mat-ai-short-names-progressbar');
+        var messageEl = document.getElementById('mat-ai-short-names-message');
+        var logEl = document.getElementById('mat-ai-short-names-log');
+        var doneEl = document.getElementById('mat-ai-short-names-done');
+        var summaryEl = document.getElementById('mat-ai-short-names-summary');
+        var reloadBtn = document.getElementById('mat-ai-short-names-reload');
+        var statUpdated = document.getElementById('mat-ai-stat-updated');
+        var statSkipped = document.getElementById('mat-ai-stat-skipped');
+        var statFailed = document.getElementById('mat-ai-stat-failed');
+
+        function setRunning(running) {
+          [missingBtn, allBtn].forEach(function (b) {
+            if (!b) return;
+            if (running) {
+              b.disabled = true;
+            } else if (!b.hasAttribute('data-originally-disabled')) {
+              b.disabled = false;
+            }
+          });
+        }
+
+        function updateProgress(data) {
+          var overallTotal = data.overall_total || data.phase_total || 1;
+          var overallCurrent = data.overall_current != null ? data.overall_current : (data.current || 0);
+          var pct = overallTotal > 0 ? Math.round((overallCurrent / overallTotal) * 100) : 0;
+
+          if (phaseLabel) phaseLabel.textContent = data.phase_label || 'Generating short names…';
+          if (counterEl) {
+            counterEl.textContent = (data.current || 0) + ' / ' + (data.phase_total || 0) + ' batches';
+          }
+          if (barEl) barEl.style.width = pct + '%';
+          if (progressbarEl) progressbarEl.setAttribute('aria-valuenow', String(pct));
+          if (messageEl) messageEl.textContent = data.message || '';
+          if (data.stats) {
+            if (statUpdated) statUpdated.textContent = String(data.stats.updated || 0);
+            if (statSkipped) statSkipped.textContent = String(data.stats.skipped || 0);
+            if (statFailed) statFailed.textContent = String(data.stats.failed || 0);
+          }
+          if (logEl && Array.isArray(data.log)) {
+            logEl.innerHTML = '';
+            data.log.slice().reverse().forEach(function (line) {
+              var li = document.createElement('li');
+              li.textContent = line;
+              logEl.appendChild(li);
+            });
+          }
+        }
+
+        btn.addEventListener('click', function () {
+          var confirmMsg = btn.getAttribute('data-confirm');
+          if (confirmMsg && !window.confirm(confirmMsg)) return;
+
+          var startUrl = btn.getAttribute('data-start-url');
+          var stepUrl = btn.getAttribute('data-step-url');
+          var mode = btn.getAttribute('data-mode') || 'missing';
+          if (!startUrl || !stepUrl || !progressEl) return;
+
+          progressEl.hidden = false;
+          if (doneEl) doneEl.hidden = true;
+          if (messageEl) {
+            messageEl.textContent = 'Starting…';
+            messageEl.classList.remove('mat-bulk-progress__message--error');
+          }
+          if (logEl) logEl.innerHTML = '';
+          setRunning(true);
+
+          postJson(startUrl, { mode: mode }, csrf)
+            .then(function (startData) {
+              updateProgress(startData);
+
+              function runStep(token) {
+                return postJson(stepUrl, { token: token }, csrf).then(function (stepData) {
+                  updateProgress(stepData);
+                  if (stepData.done) {
+                    setRunning(false);
+                    if (doneEl) doneEl.hidden = false;
+                    if (summaryEl) summaryEl.textContent = stepData.summary || stepData.message || 'Done.';
+                    return stepData;
+                  }
+                  return runStep(token);
+                });
+              }
+
+              return runStep(startData.token);
+            })
+            .catch(function (err) {
+              if (messageEl) {
+                messageEl.textContent = err.message || 'Short name generation failed.';
+                messageEl.classList.add('mat-bulk-progress__message--error');
+              }
+              setRunning(false);
+            });
+        });
+      }
+
+      initAiShortNamesRunner(missingBtn);
+      initAiShortNamesRunner(allBtn);
+
+      if (document.getElementById('mat-ai-short-names-reload')) {
+        document.getElementById('mat-ai-short-names-reload').addEventListener('click', function () {
+          window.location.reload();
+        });
+      }
+    })();
+
     document.querySelectorAll('.mat-sync-commands__copy').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var targetId = btn.getAttribute('data-copy-target');

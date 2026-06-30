@@ -162,7 +162,7 @@ class ClientProjectInvoiceController extends Controller
             'items' => ['nullable', 'array'],
             'items.*.description' => ['nullable', 'string', 'max:2000'],
             'items.*.amount' => ['nullable', 'numeric'],
-            'items.*.line_kind' => ['nullable', Rule::in(['labour', 'materials', 'labour_credit'])],
+            'items.*.line_kind' => ['nullable', Rule::in(['labour', 'materials', 'labour_credit', 'gas'])],
             'items.*.expense_id' => ['nullable', 'integer'],
             'manual_description' => ['nullable', 'string', 'max:255'],
             'manual_total' => ['nullable', 'numeric', 'min:0'],
@@ -1312,7 +1312,7 @@ class ClientProjectInvoiceController extends Controller
         foreach ($items as $row) {
             $amt = round((float) ($row['amount'] ?? 0), 2);
             $kind = $row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR;
-            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS) {
+            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS || $kind === ClientProjectInvoice::LINE_KIND_GAS) {
                 $materials += $amt;
             } elseif ($kind === ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
                 $labour -= abs($amt);
@@ -1337,7 +1337,7 @@ class ClientProjectInvoiceController extends Controller
             $description = trim((string) ($row['description'] ?? ''));
             $amount = (float) ($row['amount'] ?? 0);
             $kind = strtolower(trim((string) ($row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR)));
-            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS) {
+            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS || $kind === ClientProjectInvoice::LINE_KIND_GAS) {
                 // keep
             } elseif ($kind === ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
                 $kind = ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT;
@@ -1354,7 +1354,7 @@ class ClientProjectInvoiceController extends Controller
                     continue;
                 }
             }
-            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS && $amount < 0) {
+            if (($kind === ClientProjectInvoice::LINE_KIND_MATERIALS || $kind === ClientProjectInvoice::LINE_KIND_GAS) && $amount < 0) {
                 continue;
             }
 
