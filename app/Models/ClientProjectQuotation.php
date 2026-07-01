@@ -639,7 +639,7 @@ class ClientProjectQuotation extends Model
      */
     public function lineItemsSubtotal(): float
     {
-        return round(array_sum(array_column($this->cleanItems(), 'amount')), 2);
+        return $this->pdfSubtotal();
     }
 
     /**
@@ -668,17 +668,11 @@ class ClientProjectQuotation extends Model
     /** 13% HST only on rows where `apply_hst` is true (default). */
     public function hst(): float
     {
-        $items = $this->cleanItems();
-
         if (! $this->hasSubtotalOverrideActive()) {
-            $sum = 0.0;
-            foreach ($items as $row) {
-                $sum += self::lineHstAmount($row);
-            }
-
-            return round($sum, 2);
+            return $this->pdfHst();
         }
 
+        $items = $this->pdfLineItems();
         $lineSub = $this->lineItemsSubtotal();
         $override = round((float) $this->subtotal_override, 2);
 
