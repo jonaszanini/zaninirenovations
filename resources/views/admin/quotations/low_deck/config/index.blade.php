@@ -406,6 +406,7 @@
           placeholder: 'Type to search name or SKU…',
           allowEmptyOption: true,
           closeAfterSelect: true,
+          dropdownParent: 'body',
           render: {
             option: function (data, escape) {
               return '<div class="fq-catalog-picker__option">' +

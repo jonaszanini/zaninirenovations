@@ -83,6 +83,7 @@ class LowDeckMaterial extends Model
         self::KEY_SCREW_STRUCTURAL_6IN,
         self::KEY_SCREW_DECK_2_5IN,
         self::KEY_SCREW_FRAME_3IN,
+        self::KEY_JOIST_TAPE_50FT,
     ];
 
     /**
