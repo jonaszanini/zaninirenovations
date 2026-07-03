@@ -47,12 +47,27 @@
                         aria-controls="cp-notes-popover">
                   <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Notes
                 </button>
+                <button type="button"
+                        class="cp-notes-edit-icon-btn"
+                        id="cp-notes-edit-btn"
+                        onclick="cpOpenNotesDrawer()"
+                        title="Edit notes">
+                  <i class="fa fa-pencil" aria-hidden="true"></i>
+                </button>
                 <div class="cp-notes-popover" id="cp-notes-popover" role="dialog" aria-label="Project notes preview" hidden>
                   <div class="cp-notes-popover-body">{{ $notesPreview }}</div>
                 </div>
               </span>
+            @else
+              <button type="button"
+                      class="cp-notes-insert-btn"
+                      onclick="cpOpenNotesDrawer()"
+                      title="Add internal notes for this project">
+                <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Add notes
+              </button>
             @endif
           </div>
+
 
           <div class="cp-header-client-row">
             <span class="cp-header-client">{{ $project->client_name }}</span>
@@ -126,6 +141,295 @@
         </div>
       @endif
     </div>
+
+    {{-- ─── Notes inline edit drawer ──────────────────────────────────────────
+         Opens from the "Add notes" or pencil icon buttons. A small slide-over
+         panel with a textarea + save (PUT to client-projects.update with the
+         required fields included as hidden inputs).
+    ──────────────────────────────────────────────────────────────────────── --}}
+    <div id="cp-notes-drawer"
+         class="cp-nd"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="cp-nd-title"
+         hidden>
+      <div class="cp-nd__overlay" onclick="cpCloseNotesDrawer()"></div>
+      <div class="cp-nd__panel">
+        <div class="cp-nd__header">
+          <h3 class="cp-nd__title" id="cp-nd-title">
+            <i class="fa fa-sticky-note-o" aria-hidden="true"></i>
+            {{ filled($project->notes) ? 'Edit notes' : 'Add notes' }}
+          </h3>
+          <button type="button" class="cp-nd__close" onclick="cpCloseNotesDrawer()" aria-label="Close">
+            <i class="fa fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <form action="{{ route('admin.client-projects.update', $project) }}"
+              method="post"
+              class="cp-nd__form"
+              id="cp-nd-form">
+          @csrf
+          @method('PUT')
+          {{-- Required by the controller (same pattern as the schedule partial form) --}}
+          <input type="hidden" name="name"         value="{{ $project->name }}">
+          <input type="hidden" name="client_name"  value="{{ $project->client_name }}">
+
+          <div class="cp-nd__body">
+            <label class="cp-nd__label" for="cp-nd-textarea">
+              Internal notes
+              <span class="cp-nd__label-hint">Not visible to the client.</span>
+            </label>
+            <textarea id="cp-nd-textarea"
+                      name="notes"
+                      class="admin-input cp-nd__textarea"
+                      rows="10"
+                      maxlength="5000"
+                      placeholder="Add any internal notes about this project, scope details, client preferences, reminders…">{{ old('notes', $project->notes) }}</textarea>
+            <p class="admin-form-help cp-nd__char-hint" id="cp-nd-char-hint"></p>
+          </div>
+
+          <div class="cp-nd__footer">
+            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-nd-save">
+              <i class="fa fa-save" aria-hidden="true"></i> Save notes
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="cpCloseNotesDrawer()">
+              Cancel
+            </button>
+            @if (filled($project->notes))
+              {{-- Clear notes option --}}
+              <button type="button"
+                      class="admin-btn admin-btn--ghost admin-btn--sm cp-nd__clear-btn"
+                      id="cp-nd-clear"
+                      title="Remove all notes from this project">
+                <i class="fa fa-trash-o" aria-hidden="true"></i> Clear
+              </button>
+            @endif
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <style>
+      /* ── Notes edit icon button (pencil, beside the Notes badge) ──────── */
+      .cp-notes-edit-icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: none;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        color: #6b7280;
+        cursor: pointer;
+        font-size: 11px;
+        padding: 0;
+        margin-left: 2px;
+        vertical-align: middle;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .cp-notes-edit-icon-btn:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #024768;
+      }
+
+      /* ── "Add notes" insert button ────────────────────────────────────── */
+      .cp-notes-insert-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: none;
+        border: 1px dashed #c9d3e0;
+        border-radius: 6px;
+        padding: 3px 9px;
+        font-size: 12px;
+        color: #6b7280;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .cp-notes-insert-btn:hover {
+        background: #f0f7ff;
+        border-color: #6faacd;
+        color: #024768;
+      }
+
+      /* ── Notes drawer shell ───────────────────────────────────────────── */
+      .cp-nd {
+        position: fixed;
+        inset: 0;
+        z-index: 1060;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .cp-nd[hidden]   { display: none; }
+      .cp-nd.is-open   { display: flex; }
+
+      .cp-nd__overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        cursor: pointer;
+        animation: cpNdFade 0.16s ease;
+      }
+
+      .cp-nd__panel {
+        position: relative;
+        width: min(480px, 100vw);
+        height: 100%;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        box-shadow: -4px 0 28px rgba(0,0,0,0.16);
+        animation: cpNdSlide 0.2s cubic-bezier(.22,.68,0,1.2);
+      }
+
+      @keyframes cpNdFade  { from { opacity:0; } to { opacity:1; } }
+      @keyframes cpNdSlide { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+      .cp-nd__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid #e5e7eb;
+        flex-shrink: 0;
+      }
+      .cp-nd__title {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 700;
+        color: #111827;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .cp-nd__close {
+        background: none;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #6b7280;
+        font-size: 13px;
+        flex-shrink: 0;
+        transition: background 0.12s, color 0.12s;
+      }
+      .cp-nd__close:hover { background: #f3f4f6; color: #111827; }
+
+      .cp-nd__form   { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+      .cp-nd__body   { flex: 1 1 0; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+
+      .cp-nd__label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .cp-nd__label-hint {
+        font-size: 11px;
+        font-weight: 400;
+        color: #9ca3af;
+      }
+
+      .cp-nd__textarea {
+        width: 100%;
+        resize: vertical;
+        min-height: 180px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #111827;
+        box-sizing: border-box;
+      }
+      .cp-nd__char-hint {
+        font-size: 11px;
+        color: #9ca3af;
+        text-align: right;
+        margin: 0;
+      }
+
+      .cp-nd__footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 14px 20px;
+        border-top: 1px solid #e5e7eb;
+        flex-shrink: 0;
+      }
+      .cp-nd__clear-btn {
+        margin-left: auto;
+        color: #b91c1c !important;
+        border-color: #fca5a5 !important;
+      }
+      .cp-nd__clear-btn:hover { background: #fef2f2 !important; }
+    </style>
+
+    <script>
+      (function () {
+        var drawer   = document.getElementById('cp-notes-drawer');
+        var textarea = document.getElementById('cp-nd-textarea');
+        var charHint = document.getElementById('cp-nd-char-hint');
+        var clearBtn = document.getElementById('cp-nd-clear');
+        var MAX      = 5000;
+
+        function updateCharHint() {
+          if (!textarea || !charHint) return;
+          var remaining = MAX - textarea.value.length;
+          charHint.textContent = remaining + ' characters remaining';
+        }
+
+        window.cpOpenNotesDrawer = function () {
+          if (!drawer) return;
+          drawer.removeAttribute('hidden');
+          drawer.classList.add('is-open');
+          document.body.style.overflow = 'hidden';
+          if (textarea) {
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          }
+          updateCharHint();
+        };
+
+        window.cpCloseNotesDrawer = function () {
+          if (!drawer) return;
+          drawer.classList.remove('is-open');
+          drawer.setAttribute('hidden', '');
+          document.body.style.overflow = '';
+        };
+
+        // Character counter
+        if (textarea) {
+          textarea.addEventListener('input', updateCharHint);
+          updateCharHint();
+        }
+
+        // Clear button: wipe textarea content before submit
+        if (clearBtn) {
+          clearBtn.addEventListener('click', function () {
+            if (!confirm('Remove all notes from this project?')) return;
+            if (textarea) textarea.value = '';
+            var form = document.getElementById('cp-nd-form');
+            if (form) form.submit();
+          });
+        }
+
+        // Escape key closes
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && drawer && !drawer.hidden) {
+            cpCloseNotesDrawer();
+          }
+        });
+      })();
+    </script>
 
     @if ($project->photos->isNotEmpty())
       @include('admin.client_projects._project_photos_gallery', [
