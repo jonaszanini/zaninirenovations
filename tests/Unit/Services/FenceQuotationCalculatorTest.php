@@ -47,6 +47,8 @@ class FenceQuotationCalculatorTest extends TestCase
         return collect([
             $make(FenceMaterial::KEY_POST_10, 40),
             $make(FenceMaterial::KEY_POST_12, 45),
+            $make(FenceMaterial::KEY_POST_6X6_10, 55),
+            $make(FenceMaterial::KEY_POST_6X6_12, 60),
             $make(FenceMaterial::KEY_BOARD_6, 8),
             $make(FenceMaterial::KEY_BOARD_8, 10),
             $make(FenceMaterial::KEY_RAIL, 7),
@@ -109,5 +111,203 @@ class FenceQuotationCalculatorTest extends TestCase
         ]);
 
         $this->assertSame(6.0, $result['inputs']['fence_height_ft']);
+    }
+
+    public function test_thirty_three_point_five_feet_yields_five_sections_and_six_posts(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 33.5]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $this->assertSame(5, $result['geometry']['sections_total']);
+        $this->assertSame(6, $result['geometry']['structural_posts']);
+        $this->assertSame(6, $result['geometry']['posts_before_waste']);
+    }
+
+    public function test_sections_on_a_side_are_equal_length(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 33.5,
+                'already_have_post_left' => true,
+                'already_have_post_right' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $lengths = $result['geometry']['sides_breakdown'][0]['section_lengths_ft'];
+        $this->assertCount(5, $lengths);
+
+        foreach ($lengths as $length) {
+            $this->assertEqualsWithDelta(6.467, $length, 0.01);
+        }
+    }
+
+    public function test_existing_boundary_posts_reduce_post_count(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 17.83,
+                'already_have_post_left' => true,
+                'already_have_post_right' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $this->assertSame(3, $result['geometry']['sections_total']);
+        $this->assertSame(2, $result['geometry']['structural_posts']);
+
+        $side = $result['geometry']['sides_breakdown'][0];
+        $this->assertSame(3, $side['sections']);
+        $this->assertSame(2, $side['posts']);
+    }
+
+    public function test_gate_on_side_reduces_structural_posts_and_sections(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $withoutGate = $calculator->calculate([
+            'sides' => [['length_ft' => 33.5]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $withGate = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 33.5,
+                'gate_goes_here' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+        ]);
+
+        $this->assertSame(5, $withoutGate['geometry']['sections_total']);
+        $this->assertSame(6, $withoutGate['geometry']['structural_posts']);
+
+        $this->assertSame(4, $withGate['geometry']['sections_total']);
+        $this->assertSame(6, $withGate['geometry']['structural_posts']);
+        $this->assertSame(0, $withGate['geometry']['gate_posts']);
+        $this->assertSame(6, $withGate['geometry']['posts_before_waste']);
+        $this->assertSame(1, $withGate['geometry']['gates_on_sides']);
+        $this->assertTrue($withGate['geometry']['sides_breakdown'][0]['gate_goes_here']);
+        $this->assertSame(29.5, $withGate['geometry']['sides_breakdown'][0]['fence_length_ft']);
+        $this->assertSame(29.5, $withGate['geometry']['picket_linear_ft']);
+    }
+
+    public function test_gate_side_uses_remaining_length_for_sections(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 8,
+                'already_have_post_left' => true,
+                'gate_goes_here' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+        ]);
+
+        $side = $result['geometry']['sides_breakdown'][0];
+        $this->assertSame(4.0, $side['fence_length_ft']);
+        $this->assertSame(1, $side['sections']);
+        $this->assertSame(2, $side['posts']);
+        $this->assertCount(1, $side['section_lengths_ft']);
+        $this->assertEqualsWithDelta(3.708, $side['section_lengths_ft'][0], 0.01);
+    }
+
+    public function test_custom_labour_rate_affects_grand_total(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $base = $calculator->calculate([
+            'sides' => [['length_ft' => 41.5]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 25,
+            'labour_rate_8ft_per_ft' => 27,
+        ]);
+
+        $higher = $calculator->calculate([
+            'sides' => [['length_ft' => 41.5]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 26,
+            'labour_rate_8ft_per_ft' => 27,
+        ]);
+
+        $this->assertSame(25.0, $base['inputs']['labour_rate_per_ft']);
+        $this->assertSame(26.0, $higher['inputs']['labour_rate_per_ft']);
+        $this->assertGreaterThan($base['totals']['grand_total'], $higher['totals']['grand_total']);
+        $this->assertGreaterThan(
+            $base['totals']['labour_subtotal'],
+            $higher['totals']['labour_subtotal']
+        );
+    }
+
+    public function test_six_by_six_posts_use_six_by_six_material_keys(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 16]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'post_size' => FenceQuotation::POST_SIZE_6X6,
+        ]);
+
+        $postRow = collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_POST_6X6_10);
+        $this->assertNotNull($postRow);
+        $this->assertSame(FenceMaterial::KEY_POST_6X6_10, $postRow['key']);
+
+        $eightFt = $calculator->calculate([
+            'sides' => [['length_ft' => 16]],
+            'fence_height_ft' => 8,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'post_size' => FenceQuotation::POST_SIZE_6X6,
+        ]);
+
+        $post12 = collect($eightFt['materials'])->firstWhere('key', FenceMaterial::KEY_POST_6X6_12);
+        $this->assertNotNull($post12);
+    }
+
+    public function test_gate_side_assignment_honours_all_marked_sides(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $result = $calculator->calculate([
+            'sides' => [
+                ['length_ft' => 16, 'gate_goes_here' => true],
+                ['length_ft' => 16, 'gate_goes_here' => true],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+        ]);
+
+        $this->assertSame(2, $result['inputs']['gate_count']);
+        $this->assertSame(2, $result['geometry']['gates_on_sides']);
+        $this->assertTrue($result['geometry']['sides_breakdown'][0]['gate_goes_here']);
+        $this->assertTrue($result['geometry']['sides_breakdown'][1]['gate_goes_here']);
     }
 }

@@ -82,6 +82,13 @@
   margin: 1rem 0 0;
 }
 
+.mat-ai-short-names__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
 .mat-sync-all-progress {
   margin-bottom: 1rem;
 }

@@ -619,6 +619,28 @@
     </div>
   @endif
 
+  @php
+    $lowDeckDiagrams = null;
+    if ($quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_LOW_DECK) {
+      $ldSnap = is_array($quotation->source_snapshot) ? $quotation->source_snapshot : [];
+      $ldGeometry = $ldSnap['calculation']['geometry'] ?? null;
+      $ldShow = (bool) ($ldSnap['include_diagrams_on_pdf'] ?? false);
+      if ($ldShow && is_array($ldGeometry)) {
+        $lowDeckDiagrams = \App\Support\LowDeckDiagramRenderer::render($ldGeometry);
+      }
+    }
+  @endphp
+  @if ($lowDeckDiagrams)
+    <div class="pdf-photos-section" style="page-break-inside: avoid;">
+      <p class="pdf-photos-title">Deck layout diagrams</p>
+      <div style="text-align:center; margin-bottom:10pt;">
+        <div style="width:70%; margin:0 auto 8pt;">{!! $lowDeckDiagrams['foundations'] !!}</div>
+        <div style="width:70%; margin:0 auto 8pt;">{!! $lowDeckDiagrams['framing'] !!}</div>
+        <div style="width:70%; margin:0 auto;">{!! $lowDeckDiagrams['decking'] !!}</div>
+      </div>
+    </div>
+  @endif
+
   @if ($pdfPhotos->isNotEmpty())
     <div class="pdf-photos-section">
       <p class="pdf-photos-title">Reference photos</p>

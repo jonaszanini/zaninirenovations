@@ -261,11 +261,11 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-gap">Standard gap between boards (inches)</label>
-        <input id="fq-gap" type="number" min="0" step="0.001" name="standard_gap_in"
+        <label for="fq-overlap">Overlapping (inches)</label>
+        <input id="fq-overlap" type="number" min="0" step="0.001" name="overlapping_in"
                class="admin-input"
-               value="{{ old('standard_gap_in', (float) $settings->standard_gap_in) }}">
-        <p class="admin-form-help">Only used in "standard" board style.</p>
+               value="{{ old('overlapping_in', (float) $settings->overlapping_in) }}">
+        <p class="admin-form-help">Only used in "overlapping" board style.</p>
       </div>
     </div>
   </form>

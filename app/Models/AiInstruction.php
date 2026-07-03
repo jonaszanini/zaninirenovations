@@ -18,6 +18,8 @@ class AiInstruction extends Model
 
     public const KEY_QUOTATION_WORK_DESCRIPTION = 'quotation_work_description';
 
+    public const KEY_MATERIAL_SHORT_NAME = 'material_short_name';
+
     protected $fillable = [
         'key',
         'name',

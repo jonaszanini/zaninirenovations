@@ -19,6 +19,7 @@ class QuotationWorkDescriptionContextBuilder
         return match ($type) {
             'painting' => $this->painting($context),
             'fence' => $this->fence($context),
+            'low_deck' => $this->lowDeck($context),
             'paving' => $this->paving($context),
             'standard' => $this->standard($context),
             default => $this->generic($type, $context),
@@ -101,11 +102,15 @@ class QuotationWorkDescriptionContextBuilder
 
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
         $this->appendLine($lines, 'Fence height', $c['fence_height_ft'] ?? null);
+        $this->appendLine($lines, 'Post size', $c['post_size'] ?? null);
         $this->appendLine($lines, 'Board style', $c['board_style'] ?? null);
         $this->appendLine($lines, 'Gates', $c['gates'] ?? null);
 
-        if (isset($c['overlap_in']) && (float) $c['overlap_in'] > 0) {
-            $this->appendLine($lines, 'Board overlap', $c['overlap_in'].' in');
+        if (($c['board_style'] ?? '') === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING) {
+            $overlap = \App\Models\FenceFormulaSetting::current()->overlapping_in;
+            if ($overlap > 0) {
+                $this->appendLine($lines, 'Board overlap', $overlap.' in');
+            }
         }
 
         $sides = is_array($c['sides'] ?? null) ? $c['sides'] : [];
@@ -116,12 +121,45 @@ class QuotationWorkDescriptionContextBuilder
             }
             $len = $side['length_ft'] ?? null;
             if ($len !== null && $len !== '' && is_numeric($len) && (float) $len > 0) {
-                $sideParts[] = 'Side '.($i + 1).': '.rtrim(rtrim(number_format((float) $len, 1, '.', ''), '0'), '.').' linear ft';
+                $part = 'Side '.($i + 1).': '.rtrim(rtrim(number_format((float) $len, 1, '.', ''), '0'), '.').' linear ft';
+                $existing = [];
+                if (! empty($side['already_have_post_left'])) {
+                    $existing[] = 'existing post on left';
+                }
+                if (! empty($side['already_have_post_right'])) {
+                    $existing[] = 'existing post on right';
+                }
+                if (! empty($side['gate_goes_here'])) {
+                    $existing[] = 'gate on this side';
+                }
+                if ($existing !== []) {
+                    $part .= ' ('.implode(', ', $existing).')';
+                }
+                $sideParts[] = $part;
             }
         }
         if ($sideParts !== []) {
             $lines[] = 'Fence runs: '.implode('; ', $sideParts);
         }
+
+        $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
+        $this->appendBlock($lines, 'Materials list', $c['materials_summary'] ?? null);
+        $this->appendBlock($lines, 'Pricing snapshot', $c['totals_summary'] ?? null);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function lowDeck(array $c): string
+    {
+        $lines = ['Quotation type: Low floating deck'];
+
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+        $this->appendLine($lines, 'Width', isset($c['width_ft']) ? $c['width_ft']." ft" : null);
+        $this->appendLine($lines, 'Length', isset($c['length_ft']) ? $c['length_ft']." ft" : null);
+        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) ? $c['joist_spacing_in'].' in on centre' : null);
 
         $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
         $this->appendBlock($lines, 'Materials list', $c['materials_summary'] ?? null);

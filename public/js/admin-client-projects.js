@@ -1065,10 +1065,7 @@
   }
 
   function initQuotationCopyLink() {
-    document.addEventListener('click', function (ev) {
-      var btn = ev.target.closest('[data-cp-copy-quotation-link]');
-      if (!btn) return;
-
+    function copyQuotationLink(btn) {
       var url = btn.getAttribute('data-copy-url');
       if (!url) return;
 
@@ -1115,6 +1112,16 @@
       } else {
         fallbackCopy(url);
       }
+    }
+
+    document.querySelectorAll('[data-cp-copy-quotation-link]').forEach(function (btn) {
+      if (btn._cpCopyLinkWired) return;
+      btn._cpCopyLinkWired = true;
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        copyQuotationLink(btn);
+      });
     });
   }
 

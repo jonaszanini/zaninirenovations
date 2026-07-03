@@ -55,6 +55,9 @@ class ClientProjectInvoice extends Model
     /** Pre-tax labour deduction (e.g. prepaid toward estimate). Amount stored positive; subtracts from labour for HST. */
     public const LINE_KIND_LABOUR_CREDIT = 'labour_credit';
 
+    /** Gas expense. Amount is stored tax-included; no extra HST. */
+    public const LINE_KIND_GAS = 'gas';
+
     protected $fillable = [
         'client_project_id',
         'installment_number',
@@ -233,6 +236,8 @@ class ClientProjectInvoice extends Model
                 $lineKind = self::LINE_KIND_LABOUR_CREDIT;
             } elseif ($lineKind === self::LINE_KIND_MATERIALS) {
                 $lineKind = self::LINE_KIND_MATERIALS;
+            } elseif ($lineKind === self::LINE_KIND_GAS) {
+                $lineKind = self::LINE_KIND_GAS;
             } else {
                 $lineKind = self::LINE_KIND_LABOUR;
             }
@@ -262,7 +267,7 @@ class ClientProjectInvoice extends Model
         $sum = 0.0;
         foreach ($this->cleanItems() as $row) {
             $kind = $row['line_kind'] ?? self::LINE_KIND_LABOUR;
-            if ($kind === self::LINE_KIND_MATERIALS) {
+            if ($kind === self::LINE_KIND_MATERIALS || $kind === self::LINE_KIND_GAS) {
                 continue;
             }
             $amt = (float) ($row['amount'] ?? 0);
@@ -281,7 +286,8 @@ class ClientProjectInvoice extends Model
     {
         $sum = 0.0;
         foreach ($this->cleanItems() as $row) {
-            if (($row['line_kind'] ?? self::LINE_KIND_LABOUR) === self::LINE_KIND_MATERIALS) {
+            $kind = $row['line_kind'] ?? self::LINE_KIND_LABOUR;
+            if ($kind === self::LINE_KIND_MATERIALS || $kind === self::LINE_KIND_GAS) {
                 $sum += (float) ($row['amount'] ?? 0);
             }
         }

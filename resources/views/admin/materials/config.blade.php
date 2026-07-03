@@ -135,6 +135,71 @@
       </div>
     </details>
 
+    <details class="admin-accordion admin-card mat-config-accordion mat-ai-short-names">
+      <summary class="admin-accordion__summary">
+        <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+        <span class="admin-accordion__title">Short names (Gemini)</span>
+      </summary>
+      <div class="admin-accordion__panel">
+        <p class="admin-form-help">
+          Generate compact short names from store product titles using Gemini.
+          @if ($missingShortNameCount > 0)
+            <strong>{{ number_format($missingShortNameCount) }}</strong> material{{ $missingShortNameCount === 1 ? '' : 's' }} missing a short name.
+          @else
+            All {{ number_format($totalMaterials) }} materials have a short name.
+          @endif
+          Prompt is editable under <a href="{{ route('admin.ai-instructions.edit', \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME) }}" class="admin-text-link">Tools → AI Instructions</a>.
+        </p>
+        <div class="mat-ai-short-names__actions">
+          <button type="button"
+                  class="admin-btn admin-btn--gemini admin-btn--sm"
+                  id="mat-ai-short-names-missing-btn"
+                  data-start-url="{{ route('admin.materials.config.ai-short-names.start') }}"
+                  data-step-url="{{ route('admin.materials.config.ai-short-names.step') }}"
+                  data-mode="missing"
+                  @disabled($missingShortNameCount === 0)>
+            <span class="admin-btn__icon" aria-hidden="true">
+              @include('admin.partials.gemini_icon', ['gradientPrefix' => 'mat-sn-gemini'])
+            </span>
+            Generate missing short names
+          </button>
+          <button type="button"
+                  class="admin-btn admin-btn--gemini admin-btn--sm"
+                  id="mat-ai-short-names-all-btn"
+                  data-start-url="{{ route('admin.materials.config.ai-short-names.start') }}"
+                  data-step-url="{{ route('admin.materials.config.ai-short-names.step') }}"
+                  data-mode="all"
+                  data-confirm="Overwrite short names for all {{ number_format($totalMaterials) }} material{{ $totalMaterials === 1 ? '' : 's' }}?"
+                  @disabled($totalMaterials === 0)>
+            <span class="admin-btn__icon" aria-hidden="true">
+              @include('admin.partials.gemini_icon', ['gradientPrefix' => 'mat-sn-gemini-all'])
+            </span>
+            Regenerate all short names
+          </button>
+        </div>
+        <div id="mat-ai-short-names-progress" class="mat-bulk-progress" hidden aria-live="polite">
+          <div class="mat-bulk-progress__head">
+            <h3 class="mat-bulk-progress__title" id="mat-ai-short-names-phase-label">Generating short names</h3>
+            <span class="mat-bulk-progress__counter" id="mat-ai-short-names-counter">0 / 0</span>
+          </div>
+          <div class="mat-bulk-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="mat-ai-short-names-progressbar">
+            <div class="mat-bulk-progress__bar" id="mat-ai-short-names-bar" style="width:0%"></div>
+          </div>
+          <p class="mat-bulk-progress__message" id="mat-ai-short-names-message">Preparing…</p>
+          <dl class="mat-bulk-progress__stats" id="mat-ai-short-names-stats">
+            <div><dt>Updated</dt><dd id="mat-ai-stat-updated">0</dd></div>
+            <div><dt>Skipped</dt><dd id="mat-ai-stat-skipped">0</dd></div>
+            <div><dt>Failed batches</dt><dd id="mat-ai-stat-failed">0</dd></div>
+          </dl>
+          <ul class="mat-bulk-progress__log" id="mat-ai-short-names-log"></ul>
+          <div class="mat-bulk-progress__done" id="mat-ai-short-names-done" hidden>
+            <p class="mat-bulk-progress__summary" id="mat-ai-short-names-summary"></p>
+            <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-ai-short-names-reload">Reload page</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
     <details class="admin-accordion admin-card mat-config-accordion mat-local-sync">
       <summary class="admin-accordion__summary">
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
@@ -174,18 +239,9 @@
           <li class="mat-sync-commands__row">
             <div class="mat-sync-commands__cmd-wrap">
               <code class="mat-sync-commands__cmd" id="mat-sync-cmd-meta">php artisan materials:populate-metadata</code>
-              <span class="admin-form-help mat-sync-commands__label">Short names, categories &amp; units — fill blanks only</span>
+              <span class="admin-form-help mat-sync-commands__label">Categories &amp; units — fill blanks only (short names: use Short names Gemini above)</span>
             </div>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-meta">
-              <i class="fa fa-copy"></i> Copy
-            </button>
-          </li>
-          <li class="mat-sync-commands__row">
-            <div class="mat-sync-commands__cmd-wrap">
-              <code class="mat-sync-commands__cmd" id="mat-sync-cmd-meta-short">php artisan materials:populate-metadata --only-short-name</code>
-              <span class="admin-form-help mat-sync-commands__label">Short names — fill missing only</span>
-            </div>
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-meta-short">
               <i class="fa fa-copy"></i> Copy
             </button>
           </li>

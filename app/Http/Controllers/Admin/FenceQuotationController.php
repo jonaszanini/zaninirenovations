@@ -203,17 +203,16 @@ class FenceQuotationController extends Controller
         $data = $request->validate([
             'sides' => ['required', 'array', 'min:1', 'max:4'],
             'sides.*.length_ft' => ['nullable', 'numeric', 'min:0', 'max:5000'],
+            'sides.*.already_have_post_left' => ['nullable', 'boolean'],
+            'sides.*.already_have_post_right' => ['nullable', 'boolean'],
+            'sides.*.gate_goes_here' => ['nullable', 'boolean'],
             'fence_height_ft' => ['required', 'numeric', Rule::in([6, 8])],
+            'post_size' => ['nullable', Rule::in([FenceQuotation::POST_SIZE_4X4, FenceQuotation::POST_SIZE_6X6])],
             'board_style' => ['required', Rule::in([FenceQuotation::BOARD_STYLE_STANDARD, FenceQuotation::BOARD_STYLE_OVERLAPPING])],
-            'overlap_in' => ['nullable', 'numeric', 'min:0', 'max:6'],
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
         ]);
-
-        if ($data['board_style'] !== FenceQuotation::BOARD_STYLE_OVERLAPPING) {
-            $data['overlap_in'] = 0;
-        }
 
         $calc = (new FenceQuotationCalculator())->calculate($data);
 
@@ -378,6 +377,7 @@ class FenceQuotationController extends Controller
             'client_name',
             'work_description',
             'fence_height_ft',
+            'post_size',
             'board_style',
             'gate_count',
             'labour_rate_per_ft',
@@ -611,27 +611,25 @@ class FenceQuotationController extends Controller
             'work_description' => ['nullable', 'string', 'max:5000'],
             'sides' => ['required', 'array', 'min:1', 'max:4'],
             'sides.*.length_ft' => ['required', 'numeric', 'min:0.5', 'max:5000'],
+            'sides.*.already_have_post_left' => ['nullable', 'boolean'],
+            'sides.*.already_have_post_right' => ['nullable', 'boolean'],
+            'sides.*.gate_goes_here' => ['nullable', 'boolean'],
             'fence_height_ft' => ['required', 'numeric', Rule::in([6, 8])],
+            'post_size' => ['nullable', Rule::in([
+                FenceQuotation::POST_SIZE_4X4,
+                FenceQuotation::POST_SIZE_6X6,
+            ])],
             'board_style' => ['required', Rule::in([
                 FenceQuotation::BOARD_STYLE_STANDARD,
                 FenceQuotation::BOARD_STYLE_OVERLAPPING,
             ])],
-            'overlap_in' => ['nullable', 'numeric', 'min:0', 'max:6'],
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             ...CommuteExpenseService::commuteValidationRules(),
         ];
 
-        $data = $request->validate($rules);
-
-        // Overlap is irrelevant in standard-gap mode; normalise it here
-        // so the form doesn't smuggle a stale value.
-        if ($data['board_style'] !== FenceQuotation::BOARD_STYLE_OVERLAPPING) {
-            $data['overlap_in'] = 0;
-        }
-
-        return $data;
+        return $request->validate($rules);
     }
 
     /**
@@ -649,8 +647,8 @@ class FenceQuotationController extends Controller
             'client_name' => $data['client_name'],
             'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
+            'post_size' => $calc['inputs']['post_size'],
             'board_style' => $calc['inputs']['board_style'],
-            'overlap_in' => $calc['inputs']['overlap_in'],
             'gate_count' => $calc['inputs']['gate_count'],
             'labour_rate_per_ft' => $data['labour_rate_per_ft'],
             'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],

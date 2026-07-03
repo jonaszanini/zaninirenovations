@@ -98,5 +98,24 @@
         <h4>Stairs</h4>
       </div>
     </a>
+
+    <a href="{{ route('admin.quotations.low-deck.index', $pq) }}" class="fq-hub-card">
+      <div class="fq-hub-card-image-wrap fq-hub-card-image-wrap--svg" aria-hidden="true">
+        <svg class="fq-hub-card-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
+          <line x1="4" y1="52" x2="60" y2="52" stroke="#024768" stroke-width="1.5"/>
+          <rect x="11" y="44" width="7" height="8" rx="1" fill="#b8c4ce"/>
+          <rect x="46" y="44" width="7" height="8" rx="1" fill="#b8c4ce"/>
+          <rect x="8" y="38" width="48" height="5" rx="1" fill="#8b6914"/>
+          <rect x="8" y="14" width="48" height="5" rx="1" fill="#f0e6d6"/>
+          <rect x="8" y="20" width="48" height="5" rx="1" fill="#e8d4b8"/>
+          <rect x="8" y="26" width="48" height="5" rx="1" fill="#d4b896"/>
+          <rect x="8" y="32" width="48" height="5" rx="1" fill="#c4a574"/>
+          <rect x="8" y="14" width="48" height="29" rx="1" fill="none" stroke="#024768" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Low Deck</h4>
+      </div>
+    </a>
   </div>
 @endsection

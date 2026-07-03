@@ -9,14 +9,19 @@
 
   $initialSides = $isEdit
     ? ($quotation->sides ?? [])
-    : [['length_ft' => null]];
+    : [['length_ft' => null, 'already_have_post_left' => false, 'already_have_post_right' => false, 'gate_goes_here' => false]];
   if (empty($initialSides)) {
-    $initialSides = [['length_ft' => null]];
+    $initialSides = [['length_ft' => null, 'already_have_post_left' => false, 'already_have_post_right' => false, 'gate_goes_here' => false]];
   }
 
   $initialHeight = $isEdit ? (int) round((float) $quotation->fence_height_ft) : 6;
+  $initialPostSize = old(
+      'post_size',
+      $isEdit
+          ? ($quotation->resolvedPostSize())
+          : \App\Models\FenceQuotation::POST_SIZE_4X4
+  );
   $initialStyle = $isEdit ? $quotation->board_style : \App\Models\FenceQuotation::BOARD_STYLE_STANDARD;
-  $initialOverlap = $isEdit ? (float) $quotation->overlap_in : 0;
   $initialGates = $isEdit ? (int) $quotation->gate_count : 1;
 
   $defaultLabour6 = (float) $settings->labour_rate_per_ft;
@@ -83,6 +88,102 @@
       font-size: 12px;
       color: #6b7280;
       min-height: 16px;
+      line-height: 1.45;
+    }
+    .fq-geometry-summary {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #374151;
+    }
+    .fq-geometry-per-ft-note {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 400;
+    }
+    .fq-geometry-sides {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .fq-geometry-side {
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fafbfc;
+      font-size: 12px;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+    .fq-geometry-side__title {
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .fq-geometry-side__sections {
+      margin-top: 4px;
+      color: #6b7280;
+    }
+    .fq-side-existing-posts {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #475569;
+    }
+    .fq-side-existing-posts__label {
+      font-weight: 500;
+      color: #64748b;
+    }
+    .fq-side-existing-posts__checks {
+      display: inline-flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 12px;
+    }
+    .fq-side-existing-posts label.admin-checkbox {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 500;
+      margin: 0;
+      gap: 6px;
+    }
+    .fq-side-existing-posts label.admin-checkbox .admin-checkbox__text {
+      flex: 0 0 auto;
+    }
+    /* Right end: label before checkbox (already have post on [ ] left  right [ ]) */
+    .fq-side-post-check--right .admin-checkbox__input:checked ~ .admin-checkbox__mark {
+      background: var(--admin-primary, #024768);
+      border-color: var(--admin-primary, #024768);
+    }
+    .fq-side-post-check--right .admin-checkbox__input:checked ~ .admin-checkbox__mark::after {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 3px;
+      width: 6px;
+      height: 11px;
+      border: solid #fff;
+      border-width: 0 2.5px 2.5px 0;
+      transform: rotate(45deg);
+    }
+    .fq-side-post-check--right .admin-checkbox__input:focus-visible ~ .admin-checkbox__mark {
+      box-shadow: 0 0 0 3px var(--admin-primary-ring, rgba(2, 71, 104, 0.22));
+    }
+    .fq-side-gate {
+      margin-top: 8px;
+    }
+    .fq-side-gate label.admin-checkbox {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 500;
+      gap: 6px;
+    }
+    .fq-side-gate label.admin-checkbox.is-disabled {
+      opacity: 0.45;
+      pointer-events: none;
     }
     .fq-breakdown-card {
       position: sticky;
@@ -400,6 +501,21 @@
           </div>
 
           <div class="admin-form-group">
+            <label for="fq-post-size">Post size</label>
+            <select name="post_size" id="fq-post-size" class="admin-input">
+              <option value="{{ \App\Models\FenceQuotation::POST_SIZE_4X4 }}"
+                      @selected($initialPostSize === \App\Models\FenceQuotation::POST_SIZE_4X4)>
+                4×4
+              </option>
+              <option value="{{ \App\Models\FenceQuotation::POST_SIZE_6X6 }}"
+                      @selected($initialPostSize === \App\Models\FenceQuotation::POST_SIZE_6X6)>
+                6×6
+              </option>
+            </select>
+            <p class="admin-form-help">Cross-section of the fence posts for layout and PDF description.</p>
+          </div>
+
+          <div class="admin-form-group">
             <label for="fq-gates">Gates</label>
             <input id="fq-gates" type="number" min="0" max="10" step="1"
                    name="gate_count" class="admin-input"
@@ -412,21 +528,13 @@
             <select name="board_style" id="fq-style" class="admin-input">
               <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_STANDARD }}"
                       @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_STANDARD)>
-                Standard (1/8" gap)
+                Standard
               </option>
               <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING }}"
                       @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING)>
                 Overlapping
               </option>
             </select>
-          </div>
-
-          <div class="admin-form-group fq-overlap-wrap" id="fq-overlap-wrap"
-               style="{{ $initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING ? 'display:block;' : '' }}">
-            <label for="fq-overlap">Overlap (inches)</label>
-            <input id="fq-overlap" type="number" min="0" max="6" step="0.125"
-                   name="overlap_in" class="admin-input"
-                   value="{{ old('overlap_in', $initialOverlap) }}">
           </div>
         </div>
 
@@ -612,10 +720,9 @@
   var addBtn = document.getElementById('fq-add-side');
   var removeBtn = document.getElementById('fq-remove-side');
   var styleSelect = document.getElementById('fq-style');
-  var overlapWrap = document.getElementById('fq-overlap-wrap');
   var heightSelect = document.getElementById('fq-height');
+  var postSizeSelect = document.getElementById('fq-post-size');
   var gatesInput = document.getElementById('fq-gates');
-  var overlapInput = document.getElementById('fq-overlap');
   var labourRate6Input = document.getElementById('fq-labour-rate-6');
   var labourRate8Input = document.getElementById('fq-labour-rate-8');
 
@@ -640,6 +747,9 @@
   function renderSides(sides) {
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
+      var leftChecked = !!(side && side.already_have_post_left);
+      var rightChecked = !!(side && side.already_have_post_right);
+      var gateChecked = !!(side && side.gate_goes_here);
       var card = document.createElement('div');
       card.className = 'fq-side-card';
       card.innerHTML = [
@@ -653,11 +763,103 @@
         '         data-side-index="' + i + '"',
         '         autocomplete="off">',
         '</div>',
+        '<div class="fq-side-existing-posts">',
+        '  <span class="fq-side-existing-posts__label">already have post on</span>',
+        '  <span class="fq-side-existing-posts__checks">',
+        '    <label class="admin-checkbox fq-side-post-check--left">',
+        '      <input type="hidden" name="sides[' + i + '][already_have_post_left]" value="0">',
+        '      <input type="checkbox" class="admin-checkbox__input fq-side-post-left"',
+        '             name="sides[' + i + '][already_have_post_left]" value="1"',
+        (leftChecked ? ' checked' : '') + '>',
+        '      <span class="admin-checkbox__mark" aria-hidden="true"></span>',
+        '      <span class="admin-checkbox__text">left</span>',
+        '    </label>',
+        '    <label class="admin-checkbox fq-side-post-check--right">',
+        '      <input type="hidden" name="sides[' + i + '][already_have_post_right]" value="0">',
+        '      <input type="checkbox" class="admin-checkbox__input fq-side-post-right"',
+        '             name="sides[' + i + '][already_have_post_right]" value="1"',
+        (rightChecked ? ' checked' : '') + '>',
+        '      <span class="admin-checkbox__text">right</span>',
+        '      <span class="admin-checkbox__mark" aria-hidden="true"></span>',
+        '    </label>',
+        '  </span>',
+        '</div>',
+        '<div class="fq-side-gate">',
+        '  <label class="admin-checkbox fq-side-gate-check">',
+        '    <input type="hidden" name="sides[' + i + '][gate_goes_here]" value="0">',
+        '    <input type="checkbox" class="admin-checkbox__input fq-side-gate-here"',
+        '           name="sides[' + i + '][gate_goes_here]" value="1"',
+        (gateChecked ? ' checked' : '') + '>',
+        '    <span class="admin-checkbox__mark" aria-hidden="true"></span>',
+        '    <span class="admin-checkbox__text">Gate goes here</span>',
+        '  </label>',
+        '</div>',
         '<div class="fq-side-meta" data-meta="' + i + '"></div>'
       ].join('');
       sidesEl.appendChild(card);
     });
+    updateGateCheckboxState();
     updateAddRemoveState();
+  }
+
+  function gateCountLimit() {
+    var n = parseInt(gatesInput && gatesInput.value, 10);
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+
+  function updateGateCheckboxState() {
+    var limit = gateCountLimit();
+    var gateInputs = sidesEl.querySelectorAll('.fq-side-gate-here');
+    var checkedCount = 0;
+
+    gateInputs.forEach(function (input) {
+      if (input.checked) checkedCount++;
+    });
+
+    if (checkedCount > limit) {
+      var excess = checkedCount - limit;
+      Array.prototype.slice.call(gateInputs).reverse().forEach(function (input) {
+        if (excess <= 0) return;
+        if (input.checked) {
+          input.checked = false;
+          excess--;
+        }
+      });
+      checkedCount = limit;
+    }
+
+    gateInputs.forEach(function (input) {
+      var label = input.closest('label.admin-checkbox');
+      var disabled = limit > 0 && !input.checked && checkedCount >= limit;
+      input.disabled = disabled;
+      if (label) label.classList.toggle('is-disabled', disabled);
+    });
+  }
+
+  function onGateCheckboxChange(changedInput) {
+    if (changedInput.checked && gatesInput) {
+      var checkedCount = sidesEl.querySelectorAll('.fq-side-gate-here:checked').length;
+      var gateCount = parseInt(gatesInput.value, 10) || 0;
+      if (checkedCount > gateCount) {
+        gatesInput.value = String(checkedCount);
+      }
+    }
+
+    var limit = gateCountLimit();
+    if (limit === 0) {
+      changedInput.checked = false;
+      updateGateCheckboxState();
+      return;
+    }
+
+    if (changedInput.checked) {
+      var checked = sidesEl.querySelectorAll('.fq-side-gate-here:checked');
+      if (checked.length > limit) {
+        changedInput.checked = false;
+      }
+    }
+
+    updateGateCheckboxState();
   }
 
   function updateAddRemoveState() {
@@ -669,7 +871,7 @@
   addBtn.addEventListener('click', function () {
     var current = collectSides();
     if (current.length>= MAX_SIDES) return;
-    current.push({ length_ft: null });
+    current.push({ length_ft: null, already_have_post_left: false, already_have_post_right: false, gate_goes_here: false });
     renderSides(current);
     schedulePreview();
   });
@@ -684,26 +886,23 @@
 
   function collectSides() {
     return Array.prototype.map.call(
-      sidesEl.querySelectorAll('.fq-side-length'),
-      function (input) {
-        var v = parseFloat(input.value);
-        return { length_ft: isFinite(v) ? v : null };
+      sidesEl.querySelectorAll('.fq-side-card'),
+      function (card) {
+        var lengthInput = card.querySelector('.fq-side-length');
+        var v = parseFloat(lengthInput && lengthInput.value);
+        var leftInput = card.querySelector('.fq-side-post-left');
+        var rightInput = card.querySelector('.fq-side-post-right');
+        var gateInput = card.querySelector('.fq-side-gate-here');
+        var gateChecked = !!(gateInput && gateInput.checked);
+        return {
+          length_ft: isFinite(v) ? v : null,
+          already_have_post_left: !!(leftInput && leftInput.checked),
+          already_have_post_right: !!(rightInput && rightInput.checked),
+          gate_goes_here: gateChecked,
+        };
       }
     );
   }
-
-  // ---------- Style toggle (overlap visibility) ------------------------
-  function syncStyleVisibility() {
-    if (styleSelect.value === @json(\App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING)) {
-      overlapWrap.style.display = 'block';
-    } else {
-      overlapWrap.style.display = 'none';
-    }
-  }
-  styleSelect.addEventListener('change', function () {
-    syncStyleVisibility();
-    schedulePreview();
-  });
 
   // ---------- Live preview ---------------------------------------------
   var previewTimer = null;
@@ -713,12 +912,19 @@
   }
 
   function buildPayload() {
+    var sides = collectSides();
+    var gateSides = sides.filter(function (s) { return s.gate_goes_here; }).length;
+    var gateCount = parseInt(gatesInput.value, 10) || 0;
+    if (gateSides > gateCount) {
+      gateCount = gateSides;
+      gatesInput.value = String(gateCount);
+    }
     return {
-      sides: collectSides(),
+      sides: sides,
       fence_height_ft: parseInt(heightSelect.value, 10) || 6,
+      post_size: postSizeSelect ? postSizeSelect.value : '4x4',
       board_style: styleSelect.value,
-      overlap_in: parseFloat(overlapInput.value) || 0,
-      gate_count: parseInt(gatesInput.value, 10) || 0,
+      gate_count: gateCount,
       labour_rate_per_ft: parseLabourRate(labourRate6Input),
       labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input)
     };
@@ -726,7 +932,11 @@
 
   function parseLabourRate(input) {
     if (!input) return 0;
-    var v = parseFloat(String(input.value || '').replace(/,/g, ''));
+    var raw = String(input.value || '').replace(/,/g, '');
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
+      return window.cpMoneyMask.parse(raw);
+    }
+    var v = parseFloat(raw);
     return isFinite(v) ? v : 0;
   }
 
@@ -785,6 +995,56 @@
     return 'CA$' + v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function formatFt(n) {
+    var v = Number(n);
+    if (!isFinite(v)) return '0.00';
+    return v.toFixed(2);
+  }
+
+  function formatSectionLengths(lengths) {
+    if (!lengths || !lengths.length) return '';
+    return lengths.map(formatFt).join(', ') + ' ft';
+  }
+
+  function sideMetaHtml(s) {
+    var posts = Number(s.posts || 0);
+    var parts = [
+      s.sections + ' section' + (s.sections === 1 ? '' : 's'),
+      posts + ' post' + (posts === 1 ? '' : 's'),
+    ];
+    if (s.gate_goes_here) {
+      parts.push(formatFt(s.gate_opening_ft || 4) + ' ft gate');
+    }
+    if (s.section_lengths_ft && s.section_lengths_ft.length) {
+      parts.push('spans ' + formatSectionLengths(s.section_lengths_ft));
+    } else if (Number(s.max_section_length_ft || 0) > 0) {
+      parts.push('max ' + formatFt(s.max_section_length_ft) + ' ft span');
+    }
+    return parts.join(' · ');
+  }
+
+  function sideBreakdownHtml(s) {
+    var posts = Number(s.posts || 0);
+    var title = 'Side ' + s.index + ' — ' + formatFt(s.length_ft) + ' ft';
+    var stats = s.sections + ' section' + (s.sections === 1 ? '' : 's')
+      + ' · ' + posts + ' post' + (posts === 1 ? '' : 's');
+    if (s.gate_goes_here) {
+      stats += ' · ' + formatFt(s.gate_opening_ft || 4) + ' ft gate';
+      if (Number(s.fence_length_ft || 0) > 0) {
+        stats += ' · ' + formatFt(s.fence_length_ft) + ' ft fence run';
+      }
+    }
+    var html = '<div class="fq-geometry-side">'
+      + '<div class="fq-geometry-side__title">' + escapeHtml(title) + '</div>'
+      + '<div>' + escapeHtml(stats) + '</div>';
+    if (s.section_lengths_ft && s.section_lengths_ft.length) {
+      html += '<div class="fq-geometry-side__sections">Section spans (excl. posts): '
+        + escapeHtml(formatSectionLengths(s.section_lengths_ft)) + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   function renderCalc(calc) {
     lastCalc = calc;
     statusBadge.textContent = 'Up to date';
@@ -792,19 +1052,26 @@
     statusBadge.style.color = '#0f5132';
 
     var g = calc.geometry || {};
+    var t = calc.totals || {};
+    var sidesHtml = (g.sides_breakdown || []).map(sideBreakdownHtml).join('');
+    var linearFt = Number(g.total_linear_ft || 0);
+    var withTaxTotal = Number(t.grand_total || 0);
+    var perFt = linearFt > 0 ? withTaxTotal / linearFt : 0;
+    var perFtHtml = linearFt > 0
+      ? ' · <strong>' + money(perFt) + '/ft</strong> <span class="fq-geometry-per-ft-note">(materials + labour, incl. tax)</span>'
+      : '';
     geometryEl.innerHTML =
-      '<strong>' + (g.total_linear_ft || 0) + ' linear ft</strong> · ' +
-      (g.sections_total || 0) + ' section' + ((g.sections_total === 1) ? '' : 's') + ' · ' +
-      (g.posts_before_waste || 0) + ' posts (pre-waste)';
+      '<p class="fq-geometry-summary"><strong>' + (g.total_linear_ft || 0) + ' linear ft</strong> · '
+      + (g.sections_total || 0) + ' section' + ((g.sections_total === 1) ? '' : 's') + ' · '
+      + (g.posts_before_waste || 0) + ' posts (pre-waste)'
+      + perFtHtml + '</p>'
+      + (sidesHtml ? '<div class="fq-geometry-sides">' + sidesHtml + '</div>' : '');
 
-    // Per-side section meta.
+    // Per-side section meta on input cards.
     (g.sides_breakdown || []).forEach(function (s) {
       var meta = document.querySelector('[data-meta="' + (s.index - 1) + '"]');
       if (meta) {
-        var secLen = Number(s.section_length_ft || 0);
-        meta.innerHTML =
-          s.sections + ' section' + (s.sections === 1 ? '' : 's') +
-          ' · ' + secLen.toFixed(2) + ' ft spacing';
+        meta.innerHTML = sideMetaHtml(s);
       }
     });
 
@@ -823,7 +1090,6 @@
     }).join('');
     materialsBody.innerHTML = rows || '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
 
-    var t = calc.totals || {};
     tMaterials.textContent = money(t.materials_subtotal);
     tHst.textContent = money(t.hst);
     tLabour.textContent = money(t.labour_subtotal);
@@ -859,13 +1125,17 @@
   ['input', 'change'].forEach(function (evt) {
     document.addEventListener(evt, function (e) {
       if (!e.target || !e.target.closest) return;
-      if (e.target.matches('#fq-form input, #fq-form select')) {
+      if (e.target.matches('.fq-side-gate-here')) {
+        onGateCheckboxChange(e.target);
+      }
+      if (e.target.matches('#fq-gates')) {
+        updateGateCheckboxState();
+      }
+      if (e.target.matches('#fq-labour-rate-6, #fq-labour-rate-8, #fq-form input, #fq-form select')) {
         schedulePreview();
       }
     });
   });
-
-  syncStyleVisibility();
 
   if (initialCalc) {
     renderCalc(initialCalc);

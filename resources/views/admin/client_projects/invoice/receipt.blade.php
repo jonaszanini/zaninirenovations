@@ -291,7 +291,7 @@
       @endif
       @if (($hourlyMaterialsTotal ?? 0)> 0.0001)
         <tr>
-          <td class="label">Materials (tax-included)</td>
+          <td class="label">Materials / Gas (tax-included)</td>
           <td class="value" style="font-weight:400;color:#4b5563;">{{ $fmt($hourlyMaterialsTotal) }}</td>
         </tr>
       @endif

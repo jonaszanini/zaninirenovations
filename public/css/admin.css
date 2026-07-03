@@ -1875,6 +1875,74 @@ html.admin-photo-edit-modal-open {
   padding-top: 2px;
 }
 
+/* Row holding "Remember me" + "Forgot your password?" on one line. */
+.admin-login-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-login-link {
+  color: var(--admin-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-login-link:hover {
+  text-decoration: underline;
+}
+
+/* Success / informational banner on the auth pages (e.g. reset link sent). */
+.admin-auth-status {
+  margin: 0 0 1.1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #b7e0c2;
+  background: #eafaef;
+  color: #1d6b38;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* Password field with an inline show/hide (eye) toggle button. */
+.admin-password-field {
+  position: relative;
+}
+
+.admin-password-field .admin-input {
+  padding-right: 2.85rem;
+}
+
+.admin-password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 2.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--admin-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.admin-password-toggle:hover {
+  color: var(--admin-primary);
+}
+
+.admin-password-toggle:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: -3px;
+  border-radius: 6px;
+}
+
 .admin-sidebar-user {
   word-break: break-word;
 }

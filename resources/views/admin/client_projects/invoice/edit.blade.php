@@ -187,7 +187,7 @@
           @else
             <div class="admin-form-group">
                 <span class="admin-form-help cp-invoice-help-block">
-                  Mark each line as Labour (pre-tax), <strong>Labour credit</strong> (pre-tax deduction — enter a positive amount), or Materials (<strong>amount includes HST</strong>). Invoice HST applies to net labour only — materials pass through tax-included.
+                  Mark each line as Labour (pre-tax), <strong>Labour credit</strong> (pre-tax deduction — enter a positive amount), or Materials/Gas (<strong>amount includes HST</strong>). Invoice HST applies to net labour only — materials and gas pass through tax-included.
                 </span>
             </div>
           @endunless
@@ -241,6 +241,8 @@
                     $lk = 'materials';
                 } elseif ($lk === 'labour_credit') {
                     $lk = 'labour_credit';
+                } elseif ($lk === 'gas') {
+                    $lk = 'gas';
                 } else {
                     $lk = 'labour';
                 }
@@ -273,6 +275,7 @@
                         <option value="labour" @selected($lk === 'labour')>Labour</option>
                         <option value="labour_credit" @selected($lk === 'labour_credit')>Labour credit</option>
                         <option value="materials" @selected($lk === 'materials')>Materials</option>
+                        <option value="gas" @selected($lk === 'gas')>Gas</option>
                       </select>
                     @endif
                   </td>
@@ -321,7 +324,7 @@
               <span id="cp-invoice-labour-sub">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row">
-              <span>Materials (tax-included)</span>
+              <span>Materials / Gas (tax-included)</span>
               <span id="cp-invoice-materials-sub">CA$0.00</span>
             </div>
             <div class="cp-quotation-totals-row cp-invoice-hst-row">
@@ -462,6 +465,7 @@
             <option value="labour" selected>Labour</option>
             <option value="labour_credit">Labour credit</option>
             <option value="materials">Materials</option>
+            <option value="gas">Gas</option>
           </select>
         </td>
         <td class="col-amount">
@@ -623,7 +627,7 @@
           tbody.querySelectorAll('tr.cp-quotation-row').forEach(function (tr) {
             var amt = parseAmount(tr.querySelector('.cp-quotation-row-amount'));
             var kind = rowLineKind(tr);
-            if (kind === 'materials') {
+            if (kind === 'materials' || kind === 'gas') {
               materials += amt;
             } else if (kind === 'labour_credit') {
               labour -= Math.abs(amt);

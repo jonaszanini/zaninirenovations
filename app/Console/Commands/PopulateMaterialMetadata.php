@@ -9,18 +9,16 @@ class PopulateMaterialMetadata extends Command
 {
     protected $signature = 'materials:populate-metadata
                             {--dry-run : Preview changes without saving}
-                            {--only-short-name : Create short names only for materials missing one}
                             {--skip-category : Do not update categories}';
 
-    protected $description = 'One-time helper: suggest short names, categories, and units from material store names';
+    protected $description = 'One-time helper: suggest categories and units from material store names (short names: use Materials → Config → Short names Gemini)';
 
     public function handle(MaterialMetadataPopulationService $population): int
     {
         $dryRun = (bool) $this->option('dry-run');
-        $onlyShortName = (bool) $this->option('only-short-name');
         $skipCategory = (bool) $this->option('skip-category');
 
-        $rows = $population->previewAll($skipCategory, $onlyShortName);
+        $rows = $population->previewAll($skipCategory, onlyShortName: false, skipShortName: true);
 
         if ($rows->isNotEmpty()) {
             $this->table(
@@ -31,15 +29,16 @@ class PopulateMaterialMetadata extends Command
 
         if (! $dryRun) {
             $result = $population->applyToMaterials(
-                $population->materialsQuery($onlyShortName)->orderBy('id')->get(),
+                $population->materialsQuery(onlyShortName: false)->orderBy('id')->get(),
                 $skipCategory,
-                $onlyShortName,
+                onlyShortName: false,
+                skipShortName: true,
             );
             $updated = $result['updated'];
             $skipped = $result['skipped'];
         } else {
             $updated = $rows->count();
-            $skipped = $population->materialsQuery($onlyShortName)->count() - $updated;
+            $skipped = $population->materialsQuery(onlyShortName: false)->count() - $updated;
         }
 
         $verb = $dryRun ? 'Would update' : 'Updated';

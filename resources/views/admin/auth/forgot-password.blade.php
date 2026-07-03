@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Reset password — Zanini Renovations</title>
+  <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
+  <link rel="stylesheet" href="{{ asset('css/font-awesome.min.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) ?: time() }}">
+</head>
+<body class="admin-body">
+  <div class="admin-login-page">
+    <div class="admin-login-wrap">
+      <div class="admin-login-card">
+        <div class="admin-login-card-strip" role="presentation"></div>
+        <div class="admin-login-card-inner">
+          <div class="admin-login-brand">
+            <a href="{{ url('/') }}" class="admin-login-logo-link" title="Zanini Renovations — home">
+              <img src="{{ asset('images/logo.png') }}" alt="Zanini Renovations" class="admin-login-logo">
+            </a>
+            <strong>Admin</strong>
+          </div>
+          <h1>Forgot your password?</h1>
+          <p class="subtitle">Enter the email on your account and we will send you a secure link to choose a new password.</p>
+
+          @if (session('status'))
+            <div class="admin-auth-status">{{ session('status') }}</div>
+          @endif
+
+          <form method="post" action="{{ route('password.email') }}">
+            @csrf
+            <div class="admin-form-group">
+              <label for="email">Email</label>
+              <input class="admin-input" type="email" id="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username">
+              @error('email')
+                <div class="admin-form-error">{{ $message }}</div>
+              @enderror
+            </div>
+            <button type="submit" class="admin-btn admin-btn--primary">Send reset link</button>
+          </form>
+
+          <a class="back" href="{{ route('login') }}"><i class="fa fa-arrow-left"></i> Back to sign in</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

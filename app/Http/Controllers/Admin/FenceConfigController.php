@@ -152,7 +152,7 @@ class FenceConfigController extends Controller
             'rails_per_section_8ft' => ['required', 'integer', 'min:1', 'max:10'],
             'nails_per_picket' => ['required', 'integer', 'min:1', 'max:50'],
             'board_width_in' => ['required', 'numeric', 'min:1', 'max:20'],
-            'standard_gap_in' => ['required', 'numeric', 'min:0', 'max:5'],
+            'overlapping_in' => ['required', 'numeric', 'min:0', 'max:12'],
             'max_post_spacing_ft' => ['required', 'numeric', 'min:1', 'max:20'],
         ]);
 

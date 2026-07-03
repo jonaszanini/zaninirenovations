@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\MaterialController;
 use App\Http\Controllers\Admin\ClientProjectInvoiceController;
 use App\Http\Controllers\Admin\ClientProjectQuotationController;
 use App\Http\Controllers\Admin\Auth\LoginController;
+use App\Http\Controllers\Admin\Auth\PasswordResetController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GooglePhotosController;
@@ -111,6 +112,18 @@ Route::get('/blog/{post:slug}', [\App\Http\Controllers\BlogController::class, 's
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/admin/login', [LoginController::class, 'login']);
+
+    // Password recovery / reset.
+    Route::get('/admin/forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])
+        ->name('password.request');
+    Route::post('/admin/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])
+        ->middleware('throttle:6,1')
+        ->name('password.email');
+    Route::get('/admin/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])
+        ->name('password.reset');
+    Route::post('/admin/reset-password', [PasswordResetController::class, 'reset'])
+        ->middleware('throttle:6,1')
+        ->name('password.update');
 });
 
 Route::middleware('auth')->get('/dashboard', [DashboardController::class, 'index'])
@@ -184,6 +197,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('materials.sync-all.start');
     Route::post('materials/sync-all/step', [MaterialController::class, 'syncAllStep'])
         ->name('materials.sync-all.step');
+    Route::post('materials/config/ai-short-names/start', [MaterialController::class, 'aiShortNamesStart'])
+        ->name('materials.config.ai-short-names.start');
+    Route::post('materials/config/ai-short-names/step', [MaterialController::class, 'aiShortNamesStep'])
+        ->name('materials.config.ai-short-names.step');
     Route::post('materials/{material}/sync-price', [MaterialController::class, 'syncPrice'])
         ->name('materials.sync-price');
     Route::resource('materials', MaterialController::class)->except(['show']);
@@ -389,6 +406,38 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.fence.create-project');
     Route::delete('quotations/fence/{fence_quotation}', [\App\Http\Controllers\Admin\FenceQuotationController::class, 'destroy'])
         ->name('quotations.fence.destroy');
+
+    // Low deck configuration (materials catalogue + formula parameters).
+    Route::get('quotations/low-deck/config', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'index'])
+        ->name('quotations.low-deck.config');
+    Route::put('quotations/low-deck/config/materials', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'updateMaterials'])
+        ->name('quotations.low-deck.config.materials.update');
+    Route::post('quotations/low-deck/config/materials/sync', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'syncMaterials'])
+        ->name('quotations.low-deck.config.materials.sync');
+    Route::put('quotations/low-deck/config/formula', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'updateFormula'])
+        ->name('quotations.low-deck.config.formula.update');
+
+    // Low deck quotations CRUD + purchase list + project-link.
+    Route::get('quotations/low-deck', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'index'])
+        ->name('quotations.low-deck.index');
+    Route::get('quotations/low-deck/create', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'create'])
+        ->name('quotations.low-deck.create');
+    Route::post('quotations/low-deck', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'store'])
+        ->name('quotations.low-deck.store');
+    Route::post('quotations/low-deck/preview', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'preview'])
+        ->name('quotations.low-deck.preview');
+    Route::get('quotations/low-deck/{low_deck_quotation}/edit', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'edit'])
+        ->name('quotations.low-deck.edit');
+    Route::get('quotations/low-deck/{low_deck_quotation}/purchase-list', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'purchaseList'])
+        ->name('quotations.low-deck.purchase-list');
+    Route::put('quotations/low-deck/{low_deck_quotation}', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'update'])
+        ->name('quotations.low-deck.update');
+    Route::post('quotations/low-deck/{low_deck_quotation}/link', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'linkToProject'])
+        ->name('quotations.low-deck.link');
+    Route::post('quotations/low-deck/{low_deck_quotation}/create-project', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.low-deck.create-project');
+    Route::delete('quotations/low-deck/{low_deck_quotation}', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'destroy'])
+        ->name('quotations.low-deck.destroy');
 
     // Standard quotations (materials grid + labour, no PDF in-module).
     Route::get('quotations/standard', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'index'])

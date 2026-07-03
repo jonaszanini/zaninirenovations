@@ -50,4 +50,15 @@ return [
         'amazon_language' => env('MATERIALS_SCRAPER_AMAZON_LANGUAGE', 'en_CA'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | AI short name generation (Gemini)
+    |--------------------------------------------------------------------------
+    |
+    | Number of materials sent per Gemini request when generating short names.
+    |
+    */
+
+    'ai_short_name_batch_size' => (int) env('MATERIALS_AI_SHORT_NAME_BATCH_SIZE', 25),
+
 ];
