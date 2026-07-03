@@ -18,6 +18,16 @@ use Illuminate\Support\Collection;
  */
 class PavingQuotationCalculator
 {
+    private const STONE_COMPACTION_FACTOR = 1.20;
+
+    private const STONE_TONS_PER_CU_YD = 1.4;
+
+    private const SAND_TONS_PER_CU_YD = 1.35;
+
+    private const DEFAULT_CRUSHED_BASE_DEPTH_IN = 8.0;
+
+    private const DEFAULT_BEDDING_SAND_DEPTH_IN = 1.0;
+
     /** @var array<string, float> */
     protected array $rates = [];
 
@@ -105,13 +115,28 @@ class PavingQuotationCalculator
 
         $r = fn (string $key) => (float) ($this->rates[$key] ?? 0.0);
 
-        $qtyGranular = $this->ceilingStep(($area * ($depthIn / 12) * 0.7407 / 27), 0.5);
+        $stoneDepthIn = max(0.0, (float) ($inputs['crushed_base_depth_in'] ?? self::DEFAULT_CRUSHED_BASE_DEPTH_IN));
+        $sandDepthIn = max(0.0, (float) ($inputs['bedding_sand_depth_in'] ?? self::DEFAULT_BEDDING_SAND_DEPTH_IN));
+
+        $stoneCuFt = $area > 0 && $stoneDepthIn > 0
+            ? $area * ($stoneDepthIn / 12) * self::STONE_COMPACTION_FACTOR
+            : 0.0;
+        $qtyGranular = $this->ceilingStep($stoneCuFt / 27, 0.5);
+        $qtyGranularTons = $this->ceilingStep($qtyGranular * self::STONE_TONS_PER_CU_YD, 0.5);
         $costGranular = $qtyGranular * $r('crushed_stone_cu_yd');
 
-        $qtyBedding = $this->ceilingStep(($area * (1 / 12) / 27), 0.5);
+        $sandCuFt = $area > 0 && $sandDepthIn > 0
+            ? $area * ($sandDepthIn / 12)
+            : 0.0;
+        $qtyBedding = $this->ceilingStep($sandCuFt / 27, 0.5);
+        $qtyBeddingTons = $this->ceilingStep($qtyBedding * self::SAND_TONS_PER_CU_YD, 0.5);
         $costBedding = $qtyBedding * $r('bedding_sand_cu_yd');
 
-        $qtyPoly = $poly ? (int) ceil($area / 50 - 1e-9) : 0;
+        [$paverLengthIn, $paverWidthIn] = $this->resolvePaverDimensions($inputs);
+        $polyCoverage = $this->polymericSandCoverageSqFt($paverLengthIn, $paverWidthIn);
+        $qtyPoly = $poly && $area > 0
+            ? (int) ceil($area / $polyCoverage - 1e-9)
+            : 0;
         $costPoly = $qtyPoly * $r('polymeric_sand_bag');
 
         $qtyGeoRolls = $geo ? (int) ceil($area / 150 - 1e-9) : 0;
@@ -160,9 +185,53 @@ class PavingQuotationCalculator
         }
 
         $materialRows = array_merge($materialRows, [
-            $this->matRow('Granular base (crushed 3/4")', 'cu yd', $qtyGranular, $r('crushed_stone_cu_yd'), $costGranular, $hst, '8" compacted base: area × depth(ft) × 0.7407 ÷ 27; 0.5 yd steps'),
-            $this->matRow('Bedding sand', 'cu yd', $qtyBedding, $r('bedding_sand_cu_yd'), $costBedding, $hst, '1" layer; 0.5 yd steps'),
-            $this->matRow('Polymeric sand', 'bags', $qtyPoly, $r('polymeric_sand_bag'), $costPoly, $hst, '~50 sq ft per bag when enabled'),
+            $this->matRow(
+                'Crushed stone base (3/4 in.)',
+                'cu yd',
+                $qtyGranular,
+                $r('crushed_stone_cu_yd'),
+                $costGranular,
+                $hst,
+                sprintf(
+                    '%s cu ft loose (%s in. base × 1.20 compaction); order %s cu yd + %s tons',
+                    $this->formatQty($stoneCuFt),
+                    $this->formatQty($stoneDepthIn),
+                    $this->formatQty($qtyGranular),
+                    $this->formatQty($qtyGranularTons),
+                ),
+                $qtyGranularTons,
+            ),
+            $this->matRow(
+                'Bedding sand',
+                'cu yd',
+                $qtyBedding,
+                $r('bedding_sand_cu_yd'),
+                $costBedding,
+                $hst,
+                sprintf(
+                    '%s cu ft (%s in. screeded layer); order %s cu yd + %s tons',
+                    $this->formatQty($sandCuFt),
+                    $this->formatQty($sandDepthIn),
+                    $this->formatQty($qtyBedding),
+                    $this->formatQty($qtyBeddingTons),
+                ),
+                $qtyBeddingTons,
+            ),
+            $this->matRow(
+                'Polymeric sand',
+                'bags',
+                $qtyPoly,
+                $r('polymeric_sand_bag'),
+                $costPoly,
+                $hst,
+                sprintf(
+                    'Paver face %s×%s in. (%s sq in.); %s sq ft per bag',
+                    $this->formatQty($paverLengthIn),
+                    $this->formatQty($paverWidthIn),
+                    $this->formatQty($paverLengthIn * $paverWidthIn),
+                    $this->formatQty($polyCoverage),
+                ),
+            ),
             $this->matRow('Geotextile fabric', 'rolls', $qtyGeoRolls, $r('geotextile_roll'), $costGeo, $hst, '150 sq ft per roll when enabled'),
             $this->matRow('Fabric staples', 'boxes', $qtyStapleBoxes, $r('fabric_staples_box'), $costStaples, $hst, '~2 boxes per roll of fabric'),
             $this->matRow('Edge restraints (6 ft)', 'pieces', $qtyEdge, $r('edge_restraint_piece'), $costEdge, $hst, 'Perimeter √(area)×4 ÷ 6 ft + 10%'),
@@ -379,12 +448,13 @@ class PavingQuotationCalculator
         float $unitPrice,
         float $beforeTax,
         float $hstRate,
-        string $note
+        string $note,
+        ?float $qtyTons = null,
     ): array {
         $bt = round($beforeTax, 2);
         $hst = round($bt * $hstRate, 2);
 
-        return [
+        $row = [
             'label' => $label,
             'unit' => $unit,
             'qty' => $qty,
@@ -394,6 +464,61 @@ class PavingQuotationCalculator
             'with_tax' => round($bt + $hst, 2),
             'note' => $note,
         ];
+
+        if ($qtyTons !== null && $qtyTons > 0) {
+            $row['qty_tons'] = $qtyTons;
+        }
+
+        return $row;
+    }
+
+    /**
+     * @return array{0: float, 1: float}
+     */
+    protected function resolvePaverDimensions(array $inputs): array
+    {
+        $length = (float) ($inputs['stone_length_in'] ?? 0);
+        $width = (float) ($inputs['stone_width_in'] ?? 0);
+        if ($length > 0 && $width > 0) {
+            return [$length, $width];
+        }
+
+        $stoneId = $inputs['paving_stone_type_id'] ?? null;
+        if ($stoneId) {
+            $stone = PavingStoneType::query()->find($stoneId);
+            if ($stone && $stone->length_in && $stone->width_in) {
+                return [(float) $stone->length_in, (float) $stone->width_in];
+            }
+        }
+
+        return [6.0, 9.0];
+    }
+
+    protected function polymericSandCoverageSqFt(float $paverLengthIn, float $paverWidthIn): float
+    {
+        $paverAreaSqIn = max(0.0, $paverLengthIn) * max(0.0, $paverWidthIn);
+
+        if ($paverAreaSqIn <= 32) {
+            return 70.0;
+        }
+
+        if ($paverAreaSqIn <= 72) {
+            return 85.0;
+        }
+
+        return 110.0;
+    }
+
+    protected function formatQty(float $value): string
+    {
+        if (abs($value - round($value)) < 0.00001) {
+            return (string) (int) round($value);
+        }
+
+        $formatted = number_format($value, 1, '.', '');
+        $formatted = rtrim(rtrim($formatted, '0'), '.');
+
+        return $formatted !== '' ? $formatted : '0';
     }
 
     protected function ceilingStep(float $x, float $step): float
@@ -462,6 +587,10 @@ class PavingQuotationCalculator
             'profit_margin' => 0.05,
             'waste_factor' => 0.05,
             'excavation_depth_in' => 12,
+            'crushed_base_depth_in' => self::DEFAULT_CRUSHED_BASE_DEPTH_IN,
+            'bedding_sand_depth_in' => self::DEFAULT_BEDDING_SAND_DEPTH_IN,
+            'stone_length_in' => $stone && $stone->length_in ? (float) $stone->length_in : null,
+            'stone_width_in' => $stone && $stone->width_in ? (float) $stone->width_in : null,
             'hst_rate' => 0.13,
             'add_polymeric_sand' => true,
             'include_old_surface_removal' => false,

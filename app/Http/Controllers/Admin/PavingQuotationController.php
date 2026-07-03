@@ -136,7 +136,10 @@ class PavingQuotationController extends Controller
     {
         $paving_quotation->loadMissing('project');
 
-        $calc = $paving_quotation->calculation;
+        $inputs = is_array($paving_quotation->inputs) ? $paving_quotation->inputs : [];
+        $calc = $inputs !== []
+            ? (new PavingQuotationCalculator)->calculate($inputs)
+            : $paving_quotation->calculation;
         $materialRows = [];
         $rentalRows = [];
         $stoneLinks = $this->purchaseListStoneLinks($paving_quotation);
@@ -376,6 +379,8 @@ class PavingQuotationController extends Controller
             'profit_margin' => ['required', 'numeric', 'min:0', 'max:100'],
             'waste_factor' => ['required', 'numeric', 'min:0', 'max:100'],
             'excavation_depth_in' => ['required', 'numeric', 'min:1', 'max:48'],
+            'crushed_base_depth_in' => ['nullable', 'numeric', 'min:1', 'max:24'],
+            'bedding_sand_depth_in' => ['nullable', 'numeric', 'min:0.25', 'max:6'],
             'hst_rate' => ['required', 'numeric', 'min:0', 'max:30'],
             'marble_stone_type_id' => ['nullable', 'integer', 'exists:paving_stone_types,id'],
             'marble_area_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
@@ -460,6 +465,14 @@ class PavingQuotationController extends Controller
             'profit_margin' => $profitMargin,
             'waste_factor' => $waste,
             'excavation_depth_in' => (float) $data['excavation_depth_in'],
+            'crushed_base_depth_in' => isset($data['crushed_base_depth_in']) && $data['crushed_base_depth_in'] !== ''
+                ? (float) $data['crushed_base_depth_in']
+                : 8.0,
+            'bedding_sand_depth_in' => isset($data['bedding_sand_depth_in']) && $data['bedding_sand_depth_in'] !== ''
+                ? (float) $data['bedding_sand_depth_in']
+                : 1.0,
+            'stone_length_in' => $mainStone->length_in ? (float) $mainStone->length_in : null,
+            'stone_width_in' => $mainStone->width_in ? (float) $mainStone->width_in : null,
             'hst_rate' => $hst,
             'add_polymeric_sand' => $request->boolean('add_polymeric_sand'),
             'include_old_surface_removal' => $request->boolean('include_old_surface_removal'),
@@ -706,18 +719,26 @@ class PavingQuotationController extends Controller
      */
     protected function formatPurchaseListRow(array $row, array $stoneLinks): array
     {
-        $label = (string) ($row['label'] ?? '');
+        $label = html_entity_decode((string) ($row['label'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $qty = (float) ($row['qty'] ?? 0);
+        $qtyTons = isset($row['qty_tons']) ? (float) $row['qty_tons'] : 0.0;
         $unit = (string) ($row['unit'] ?? '');
-        $note = (string) ($row['note'] ?? '');
+        $note = html_entity_decode((string) ($row['note'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
         $withTax = (float) ($row['with_tax'] ?? 0);
         if ($withTax <= 0 && isset($row['before_tax'])) {
             $withTax = round((float) $row['before_tax'] + (float) ($row['hst'] ?? 0), 2);
         }
 
+        $quantityLabel = $this->formatPurchaseQuantityLabel($qty);
+        if ($qtyTons > 0) {
+            $quantityLabel = $this->formatPurchaseQuantityLabel($qty).' cu yd · '
+                .$this->formatPurchaseQuantityLabel($qtyTons).' tons';
+            $unit = 'vol. / wt.';
+        }
+
         return [
-            'quantity_label' => $this->formatPurchaseQuantityLabel($qty),
+            'quantity_label' => $quantityLabel,
             'label' => $label,
             'unit' => $unit,
             'note' => $note !== '' && $note !== '—' ? $note : '',

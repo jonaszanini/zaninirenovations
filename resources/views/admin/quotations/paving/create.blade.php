@@ -427,6 +427,17 @@
                            value="{{ old('excavation_depth_in', $inputs['excavation_depth_in']) }}">
                   </div>
                   <div class="admin-form-group">
+                    <label for="pq-base-depth">Crushed base depth (in)</label>
+                    <input type="number" id="pq-base-depth" name="crushed_base_depth_in" class="admin-input pq-calc-in" step="0.5" min="1" max="24"
+                           value="{{ old('crushed_base_depth_in', $inputs['crushed_base_depth_in'] ?? 8) }}">
+                    <p class="pq-hint">Compacted 3/4 in. stone layer before bedding sand.</p>
+                  </div>
+                  <div class="admin-form-group">
+                    <label for="pq-sand-depth">Bedding sand depth (in)</label>
+                    <input type="number" id="pq-sand-depth" name="bedding_sand_depth_in" class="admin-input pq-calc-in" step="0.25" min="0.25" max="6"
+                           value="{{ old('bedding_sand_depth_in', $inputs['bedding_sand_depth_in'] ?? 1) }}">
+                  </div>
+                  <div class="admin-form-group">
                     <label for="pq-profit">Profit margin (%)</label>
                     <input type="number" id="pq-profit" name="profit_margin" class="admin-input pq-calc-in" step="0.01" min="0" max="100"
                            value="{{ old('profit_margin', (($inputs['profit_margin'] ?? 0.05) <= 1 ? ($inputs['profit_margin'] ?? 0.05) * 100 : ($inputs['profit_margin'] ?? 5))) }}">
