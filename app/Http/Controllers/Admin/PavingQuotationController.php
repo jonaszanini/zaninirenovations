@@ -381,7 +381,6 @@ class PavingQuotationController extends Controller
             'profit_margin' => ['required', 'numeric', 'min:0', 'max:100'],
             'waste_factor' => ['required', 'numeric', 'min:0', 'max:100'],
             'excavation_depth_in' => ['required', 'numeric', 'min:1', 'max:48'],
-            'crushed_base_depth_in' => ['nullable', 'numeric', 'min:1', 'max:24'],
             'bedding_sand_depth_in' => ['nullable', 'numeric', 'min:0.25', 'max:6'],
             'hst_rate' => ['required', 'numeric', 'min:0', 'max:30'],
             'marble_stone_type_id' => ['nullable', 'integer', 'exists:paving_stone_types,id'],
@@ -448,6 +447,23 @@ class PavingQuotationController extends Controller
             ? PavingStoneType::query()->find($data['marble_stone_type_id'])
             : null;
 
+        $excavationDepthIn = (float) $data['excavation_depth_in'];
+        $sandDepthIn = isset($data['bedding_sand_depth_in']) && $data['bedding_sand_depth_in'] !== ''
+            ? (float) $data['bedding_sand_depth_in']
+            : 1.0;
+        $stoneHeightIn = $mainStone->height_in ? (float) $mainStone->height_in : 2.0;
+        $crushedBaseDepthIn = max(0.0, $excavationDepthIn - $stoneHeightIn - $sandDepthIn);
+
+        if ($crushedBaseDepthIn < 0.5) {
+            throw ValidationException::withMessages([
+                'excavation_depth_in' => sprintf(
+                    'Excavation depth must be greater than paver height (%s in.) plus bedding sand (%s in.).',
+                    rtrim(rtrim(number_format($stoneHeightIn, 2), '0'), '.'),
+                    rtrim(rtrim(number_format($sandDepthIn, 2), '0'), '.'),
+                ),
+            ]);
+        }
+
         return [
             'area_input_mode' => $areaMode,
             'area_length_ft' => $areaMode === 'dimensions' ? $length : null,
@@ -466,13 +482,10 @@ class PavingQuotationController extends Controller
             'plate_compactor_days' => (int) $data['plate_compactor_days'],
             'profit_margin' => $profitMargin,
             'waste_factor' => $waste,
-            'excavation_depth_in' => (float) $data['excavation_depth_in'],
-            'crushed_base_depth_in' => isset($data['crushed_base_depth_in']) && $data['crushed_base_depth_in'] !== ''
-                ? (float) $data['crushed_base_depth_in']
-                : 8.0,
-            'bedding_sand_depth_in' => isset($data['bedding_sand_depth_in']) && $data['bedding_sand_depth_in'] !== ''
-                ? (float) $data['bedding_sand_depth_in']
-                : 1.0,
+            'excavation_depth_in' => $excavationDepthIn,
+            'bedding_sand_depth_in' => $sandDepthIn,
+            'stone_height_in' => $stoneHeightIn,
+            'crushed_base_depth_in' => $crushedBaseDepthIn,
             'stone_length_in' => $mainStone->length_in ? (float) $mainStone->length_in : null,
             'stone_width_in' => $mainStone->width_in ? (float) $mainStone->width_in : null,
             'hst_rate' => $hst,

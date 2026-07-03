@@ -427,15 +427,15 @@
                            value="{{ old('excavation_depth_in', $inputs['excavation_depth_in']) }}">
                   </div>
                   <div class="admin-form-group">
-                    <label for="pq-base-depth">Crushed base depth (in)</label>
-                    <input type="number" id="pq-base-depth" name="crushed_base_depth_in" class="admin-input pq-calc-in" step="0.5" min="1" max="24"
-                           value="{{ old('crushed_base_depth_in', $inputs['crushed_base_depth_in'] ?? 8) }}">
-                    <p class="pq-hint">Compacted 3/4 in. stone layer before bedding sand.</p>
+                    <label for="pq-base-depth-display">Crushed base depth (in)</label>
+                    <output id="pq-base-depth-display" class="admin-input" style="background:#f8fafc; display:block; min-height:38px; line-height:1.4; padding:8px 12px;">—</output>
+                    <p class="pq-hint">Excavation depth − paver height − bedding sand.</p>
                   </div>
                   <div class="admin-form-group">
                     <label for="pq-sand-depth">Bedding sand depth (in)</label>
-                    <input type="number" id="pq-sand-depth" name="bedding_sand_depth_in" class="admin-input pq-calc-in" step="0.25" min="0.25" max="6"
+                    <input type="number" id="pq-sand-depth" name="bedding_sand_depth_in" class="admin-input pq-calc-in" step="0.25" min="0.25" max="6" readonly
                            value="{{ old('bedding_sand_depth_in', $inputs['bedding_sand_depth_in'] ?? 1) }}">
+                    <p class="pq-hint">Standard 1 in. screeded layer.</p>
                   </div>
                   <div class="admin-form-group">
                     <label for="pq-profit">Profit margin (%)</label>
@@ -835,6 +835,40 @@
       }
       if (marbleChk) marbleChk.addEventListener('change', syncMarbleFields);
       syncMarbleFields();
+
+      function syncBaseDepthDisplay() {
+        var display = document.getElementById('pq-base-depth-display');
+        var depthInput = document.getElementById('pq-depth');
+        var sandInput = document.getElementById('pq-sand-depth');
+        var stoneSel = document.getElementById('pq-stone');
+        if (!display || !depthInput) return;
+
+        var excav = parseFloat(depthInput.value) || 0;
+        var sand = sandInput ? (parseFloat(sandInput.value) || 1) : 1;
+        var hgt = 2;
+        if (stoneSel && stoneSel.selectedIndex >= 0) {
+          var opt = stoneSel.options[stoneSel.selectedIndex];
+          var parsed = parseFloat(opt.getAttribute('data-hgt'));
+          if (isFinite(parsed) && parsed > 0) hgt = parsed;
+        }
+        var base = Math.max(0, excav - hgt - sand);
+        if (excav <= 0) {
+          display.textContent = '—';
+          return;
+        }
+        display.textContent = (Math.abs(base - Math.round(base)) < 1e-6 ? String(Math.round(base)) : base.toFixed(2)) + ' in.';
+      }
+
+      ['pq-depth', 'pq-sand-depth'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', syncBaseDepthDisplay);
+      });
+      var stoneSelect = document.getElementById('pq-stone');
+      if (stoneSelect) {
+        stoneSelect.addEventListener('change', syncBaseDepthDisplay);
+        stoneSelect.addEventListener('input', syncBaseDepthDisplay);
+      }
+      syncBaseDepthDisplay();
 
       var root = document.getElementById('pq-live-root');
       var t = null;

@@ -175,11 +175,11 @@ final class LowDeckDiagramRenderer
 
     private static function foundationBlock(float $fx, float $fy, array $c): string
     {
-        $holePx = self::HOLE_FT * $c['scale'];
-        $holeX = $c['x0'] + $fx * $c['scale'] - $holePx / 2;
-        $holeY = $c['y0'] + $fy * $c['scale'] - $holePx / 2;
-
         [$postCx, $postCy] = self::postCenterFt($fx, $fy, $c['runFt'], $c['spanFt']);
+        $holePx = self::HOLE_FT * $c['scale'];
+        $holeX = $c['x0'] + $postCx * $c['scale'] - $holePx / 2;
+        $holeY = $c['y0'] + $postCy * $c['scale'] - $holePx / 2;
+
         $postPx = self::POST_FT * $c['scale'];
         $postX = $c['x0'] + $postCx * $c['scale'] - $postPx / 2;
         $postY = $c['y0'] + $postCy * $c['scale'] - $postPx / 2;

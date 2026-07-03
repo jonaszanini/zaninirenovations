@@ -88,6 +88,49 @@
     .ld-diagram-panel { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; background: #fff; }
     .ld-diagram-panel h5 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #374151; }
     .ld-diagram-svg { width: 100%; height: auto; display: block; }
+    .ld-diagrams-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .ld-diagrams-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ld-diagram-print-header { display: none; margin: 0 0 12px; font-size: 14px; color: #374151; }
+    @media print {
+      .admin-sidebar,
+      .admin-nav-backdrop,
+      .admin-topbar,
+      .ld-form-toolbar,
+      .ld-calc-layout,
+      .ld-linked-banner,
+      .admin-flash,
+      .no-print { display: none !important; }
+      .admin-main,
+      .admin-content { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+      .admin-body { background: #fff !important; }
+      .ld-diagrams-card {
+        margin: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
+      .ld-diagrams-grid {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+      .ld-diagram-panel {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .ld-diagram-print-header { display: block !important; }
+      .ld-diagram-svg,
+      .ld-diagram-panel {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
     .ld-section { margin-top: 4px; padding-top: 16px; border-top: 1px dashed #e0e4ea; }
     .ld-link-project-card {
       border: 1px dashed #c9d3e0; background: #fbfcfd; border-radius: 10px; padding: 18px 20px; margin-top: 20px;
@@ -117,6 +160,11 @@
            target="_blank" rel="noopener noreferrer"
            class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-print"></i> Print Shopping List
+        </a>
+        <a href="{{ route('admin.quotations.low-deck.layout-diagrams', $quotation) }}"
+           target="_blank" rel="noopener noreferrer"
+           class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-print"></i> Print Layout Diagrams
         </a>
       @endif
       <button type="submit" form="ld-form" class="admin-btn admin-btn--primary admin-btn--sm">
@@ -407,8 +455,29 @@
 
   {{-- ====================== DIAGRAMS ============================= --}}
   <div class="admin-card ld-diagrams-card">
-    <h3 class="cp-heading-md">Layout diagrams</h3>
-    <p class="admin-form-help cp-form-help-flush" id="ld-diagrams-hint">Enter dimensions to generate the foundations, framing, and decking layouts.</p>
+    <div class="ld-diagrams-toolbar no-print">
+      <h3 class="cp-heading-md" style="margin:0;">Layout diagrams</h3>
+      <div class="ld-diagrams-toolbar-actions">
+        @if ($isEdit)
+          <a href="{{ route('admin.quotations.low-deck.layout-diagrams', $quotation) }}"
+             target="_blank" rel="noopener noreferrer"
+             class="admin-btn admin-btn--ghost admin-btn--sm">
+            <i class="fa fa-external-link"></i> Open print view
+          </a>
+        @endif
+        <button type="button" id="ld-print-diagrams" class="admin-btn admin-btn--ghost admin-btn--sm" disabled>
+          <i class="fa fa-print"></i> Print layout diagrams
+        </button>
+      </div>
+    </div>
+    <div class="ld-diagram-print-header" id="ld-diagram-print-header">
+      <strong>{{ $isEdit ? e($quotation->quote_number) : 'Low deck quotation' }}</strong>
+      @if ($isEdit && filled($quotation->client_name))
+        · {{ e($quotation->client_name) }}
+      @endif
+      <span id="ld-diagram-print-dims"></span>
+    </div>
+    <p class="admin-form-help cp-form-help-flush no-print" id="ld-diagrams-hint">Enter dimensions to generate the foundations, framing, and decking layouts.</p>
     <div class="ld-diagrams-grid">
       <div class="ld-diagram-panel">
         <h5>1. Foundations</h5>
@@ -454,6 +523,8 @@
   var tCommuteRow = document.getElementById('ld-t-commute-row');
   var tCommute = document.getElementById('ld-t-commute');
   var diagramsHint = document.getElementById('ld-diagrams-hint');
+  var printDiagramsBtn = document.getElementById('ld-print-diagrams');
+  var diagramPrintDims = document.getElementById('ld-diagram-print-dims');
 
   var lastCommuteAmount = 0;
   var lastCalc = null;
@@ -581,6 +652,8 @@
     document.getElementById('ld-diagram-framing').innerHTML = '';
     document.getElementById('ld-diagram-decking').innerHTML = '';
     if (diagramsHint) diagramsHint.style.display = '';
+    if (printDiagramsBtn) printDiagramsBtn.disabled = true;
+    if (diagramPrintDims) diagramPrintDims.textContent = '';
   }
 
   function renderCalc(calc) {
@@ -679,10 +752,10 @@
   }
 
   function foundationBlock(svg, fx, fy, c) {
-    var holePx = HOLE_FT * c.scale;
-    var holeX = c.x0 + fx * c.scale - holePx / 2;
-    var holeY = c.y0 + fy * c.scale - holePx / 2;
     var post = postCenterFt(fx, fy, c.runFt, c.spanFt);
+    var holePx = HOLE_FT * c.scale;
+    var holeX = c.x0 + post.cx * c.scale - holePx / 2;
+    var holeY = c.y0 + post.cy * c.scale - holePx / 2;
     var postPx = POST_FT * c.scale;
     var postX = c.x0 + post.cx * c.scale - postPx / 2;
     var postY = c.y0 + post.cy * c.scale - postPx / 2;
@@ -756,8 +829,13 @@
     var frEl = document.getElementById('ld-diagram-framing');
     var dEl = document.getElementById('ld-diagram-decking');
     fEl.innerHTML = ''; frEl.innerHTML = ''; dEl.innerHTML = '';
-    if (!c) { if (diagramsHint) diagramsHint.style.display = ''; return; }
+    if (!c) { if (diagramsHint) diagramsHint.style.display = ''; if (printDiagramsBtn) printDiagramsBtn.disabled = true; return; }
     if (diagramsHint) diagramsHint.style.display = 'none';
+    if (printDiagramsBtn) printDiagramsBtn.disabled = false;
+    if (diagramPrintDims) {
+      diagramPrintDims.textContent = ' · ' + ftLabel(g.width_ft) + ' × ' + ftLabel(g.length_ft)
+        + ' (' + (g.area_sq_ft || 0) + ' sq ft)';
+    }
 
     var blocks = g.blocks || {}, joists = g.joists || {}, beams = g.beams || {}, boards = g.boards || {};
     var xs = blocks.positions_x_ft || [], ys = blocks.positions_y_ft || [];
@@ -830,6 +908,12 @@
       renderCalc(lastCalc);
     }
   });
+
+  if (printDiagramsBtn) {
+    printDiagramsBtn.addEventListener('click', function () {
+      window.print();
+    });
+  }
 })();
 </script>
 @endpush

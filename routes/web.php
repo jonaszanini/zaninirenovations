@@ -433,6 +433,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.low-deck.edit');
     Route::get('quotations/low-deck/{low_deck_quotation}/purchase-list', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'purchaseList'])
         ->name('quotations.low-deck.purchase-list');
+    Route::get('quotations/low-deck/{low_deck_quotation}/layout-diagrams', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'layoutDiagrams'])
+        ->name('quotations.low-deck.layout-diagrams');
     Route::put('quotations/low-deck/{low_deck_quotation}', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'update'])
         ->name('quotations.low-deck.update');
     Route::post('quotations/low-deck/{low_deck_quotation}/link', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'linkToProject'])

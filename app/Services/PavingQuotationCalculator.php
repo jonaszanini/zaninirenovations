@@ -24,9 +24,10 @@ class PavingQuotationCalculator
 
     private const SAND_TONS_PER_CU_YD = 1.35;
 
-    private const DEFAULT_CRUSHED_BASE_DEPTH_IN = 8.0;
-
     private const DEFAULT_BEDDING_SAND_DEPTH_IN = 1.0;
+
+    /** Typical paver thickness when the stone type has no height on file. */
+    private const DEFAULT_PAVER_HEIGHT_IN = 2.0;
 
     /** @var array<string, float> */
     protected array $rates = [];
@@ -115,8 +116,13 @@ class PavingQuotationCalculator
 
         $r = fn (string $key) => (float) ($this->rates[$key] ?? 0.0);
 
-        $stoneDepthIn = max(0.0, (float) ($inputs['crushed_base_depth_in'] ?? self::DEFAULT_CRUSHED_BASE_DEPTH_IN));
+        $excavationDepthIn = max(0.0, (float) ($inputs['excavation_depth_in'] ?? 12));
         $sandDepthIn = max(0.0, (float) ($inputs['bedding_sand_depth_in'] ?? self::DEFAULT_BEDDING_SAND_DEPTH_IN));
+        $paverHeightIn = $this->resolveStoneHeightIn($inputs);
+        $stoneDepthIn = $this->resolveCrushedBaseDepthIn($excavationDepthIn, $paverHeightIn, $sandDepthIn);
+
+        $inputs['stone_height_in'] = $paverHeightIn;
+        $inputs['crushed_base_depth_in'] = $stoneDepthIn;
 
         $stoneCuFt = $area > 0 && $stoneDepthIn > 0
             ? $area * ($stoneDepthIn / 12) * self::STONE_COMPACTION_FACTOR
@@ -193,9 +199,12 @@ class PavingQuotationCalculator
                 $costGranular,
                 $hst,
                 sprintf(
-                    '%s cu ft loose (%s in. base × 1.20 compaction); order %s cu yd + %s tons',
+                    '%s cu ft loose (%s in. base = %s in. excavation − %s in. paver − %s in. sand, × 1.20 compaction); order %s cu yd + %s tons',
                     $this->formatQty($stoneCuFt),
                     $this->formatQty($stoneDepthIn),
+                    $this->formatQty($excavationDepthIn),
+                    $this->formatQty($paverHeightIn),
+                    $this->formatQty($sandDepthIn),
                     $this->formatQty($qtyGranular),
                     $this->formatQty($qtyGranularTons),
                 ),
@@ -472,6 +481,29 @@ class PavingQuotationCalculator
         return $row;
     }
 
+    protected function resolveStoneHeightIn(array $inputs): float
+    {
+        $height = (float) ($inputs['stone_height_in'] ?? 0);
+        if ($height > 0) {
+            return $height;
+        }
+
+        $stoneId = $inputs['paving_stone_type_id'] ?? null;
+        if ($stoneId) {
+            $stone = PavingStoneType::query()->find($stoneId);
+            if ($stone && $stone->height_in) {
+                return (float) $stone->height_in;
+            }
+        }
+
+        return self::DEFAULT_PAVER_HEIGHT_IN;
+    }
+
+    protected function resolveCrushedBaseDepthIn(float $excavationDepthIn, float $paverHeightIn, float $sandDepthIn): float
+    {
+        return max(0.0, $excavationDepthIn - $paverHeightIn - $sandDepthIn);
+    }
+
     /**
      * @return array{0: float, 1: float}
      */
@@ -587,10 +619,10 @@ class PavingQuotationCalculator
             'profit_margin' => 0.05,
             'waste_factor' => 0.05,
             'excavation_depth_in' => 12,
-            'crushed_base_depth_in' => self::DEFAULT_CRUSHED_BASE_DEPTH_IN,
             'bedding_sand_depth_in' => self::DEFAULT_BEDDING_SAND_DEPTH_IN,
             'stone_length_in' => $stone && $stone->length_in ? (float) $stone->length_in : null,
             'stone_width_in' => $stone && $stone->width_in ? (float) $stone->width_in : null,
+            'stone_height_in' => $stone && $stone->height_in ? (float) $stone->height_in : null,
             'hst_rate' => 0.13,
             'add_polymeric_sand' => true,
             'include_old_surface_removal' => false,

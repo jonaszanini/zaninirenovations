@@ -297,6 +297,28 @@ class LowDeckQuotationController extends Controller
         ]);
     }
 
+    /** Printable foundations / framing / decking layout diagrams for a saved quote. */
+    public function layoutDiagrams(LowDeckQuotation $low_deck_quotation)
+    {
+        $low_deck_quotation->loadMissing('project');
+
+        $geometry = is_array($low_deck_quotation->calculation)
+            ? ($low_deck_quotation->calculation['geometry'] ?? [])
+            : [];
+
+        $hasDiagrams = is_array($geometry)
+            && (float) ($geometry['run_ft'] ?? 0) > 0
+            && (float) ($geometry['span_ft'] ?? 0) > 0;
+
+        return view('admin.quotations.low_deck.layout_diagrams', [
+            'quotation' => $low_deck_quotation,
+            'hasDiagrams' => $hasDiagrams,
+            'diagrams' => $hasDiagrams
+                ? \App\Support\LowDeckDiagramRenderer::render($geometry)
+                : ['foundations' => '', 'framing' => '', 'decking' => ''],
+        ]);
+    }
+
     // =================================================================
     //   Helpers
     // =================================================================

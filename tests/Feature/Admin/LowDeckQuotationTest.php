@@ -85,4 +85,33 @@ class LowDeckQuotationTest extends IntegrationTestCase
         $response->assertSessionHasErrors('width_ft');
         $this->assertSame(0, LowDeckQuotation::query()->count());
     }
+
+    public function test_layout_diagrams_print_page_renders_saved_geometry(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+            'billing_type' => ClientProject::BILLING_FIXED,
+        ]);
+
+        $this->post(route('admin.quotations.low-deck.store', ['project' => $project->id]), [
+            'client_name' => 'Jane Homeowner',
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'joist_spacing_in' => 16,
+            'labour_rate_per_sqft' => 10,
+        ]);
+
+        $quote = LowDeckQuotation::query()->latest('id')->firstOrFail();
+
+        $response = $this->get(route('admin.quotations.low-deck.layout-diagrams', $quote));
+
+        $response->assertOk();
+        $response->assertSee('Layout diagrams', false);
+        $response->assertSee($quote->quote_number, false);
+        $response->assertSee('1. Foundations', false);
+        $response->assertSee('12 in. pier holes', false);
+        $response->assertSee('members shown 1.5 in. wide', false);
+    }
 }
