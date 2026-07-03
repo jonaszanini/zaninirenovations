@@ -300,6 +300,7 @@ class TileQuotationController extends Controller
 
         $data = $request->validate([
             'fp_project_name' => ['nullable', 'string', 'max:255'],
+            'fp_client_id'    => ['nullable', 'integer', 'exists:clients,id'],
             'fp_client_name' => ['required', 'string', 'max:255'],
             'fp_client_email' => ['nullable', 'email', 'max:255'],
             'fp_client_phone' => ['nullable', 'digits:10'],
@@ -321,6 +322,7 @@ class TileQuotationController extends Controller
         $project = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $projectTitle, $clientName, $quotation) {
             $project = ClientProject::create([
                 'name' => $projectTitle,
+                'client_id' => $data['fp_client_id'] ?: null,
                 'client_name' => $clientName,
                 'client_email' => $data['fp_client_email'] ?: null,
                 'client_phone' => $data['fp_client_phone'] ?: null,
