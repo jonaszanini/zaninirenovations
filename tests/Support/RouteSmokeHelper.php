@@ -31,9 +31,12 @@ final class RouteSmokeHelper
         'api/',
     ];
 
-    public function __construct(
-        private readonly SmokeTestFixtures $fixtures = new SmokeTestFixtures,
-    ) {}
+    private SmokeTestFixtures $fixtures;
+
+    public function __construct(?SmokeTestFixtures $fixtures = null)
+    {
+        $this->fixtures = $fixtures ?? new SmokeTestFixtures();
+    }
 
     /**
      * @return list<array{route: Route, url: string}>
