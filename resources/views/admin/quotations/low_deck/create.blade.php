@@ -302,7 +302,7 @@
               <p class="admin-form-help">Extra material for cuts and breakage. Internal ordering buffer — not shown on the client quotation.</p>
             </div>
             <div class="admin-form-group">
-              <label for="ld-waste-fee">Waste material dump fee (CA$ / project)</label>
+              <label for="ld-waste-fee">Material dump fee</label>
               <input id="ld-waste-fee" type="text" name="waste_dump_fee_cad"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('waste_dump_fee_cad')])
                      inputmode="decimal" autocomplete="off"
