@@ -628,6 +628,9 @@
 
   // ---------- Diagrams (mirrors LowDeckDiagramRenderer) ----------------
   var CANVAS_W = 640, CANVAS_H = 380, PAD = 46;
+  var HOLE_FT = 1;
+  var RIM_JOIST_FT = 1.5 / 12;
+  var POST_FT = 3.5 / 12;
 
   function svgEl(tag, attrs) {
     var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -645,26 +648,96 @@
   }
 
   function newSvg() {
-    var svg = svgEl('svg', { viewBox: '0 0 ' + CANVAS_W + ' ' + CANVAS_H, class: 'ld-diagram-svg', preserveAspectRatio: 'xMidYMid meet' });
-    return svg;
+    return svgEl('svg', { viewBox: '0 0 ' + CANVAS_W + ' ' + CANVAS_H, class: 'ld-diagram-svg', preserveAspectRatio: 'xMidYMid meet' });
   }
 
   function deckRect(svg, c) {
-    svg.appendChild(svgEl('rect', { x: c.x0, y: c.y0, width: c.w, height: c.h, fill: '#f8fafc', stroke: '#334155', 'stroke-width': 1.5 }));
+    svg.appendChild(svgEl('rect', { x: c.x0, y: c.y0, width: c.w, height: c.h, fill: '#f8fafc', stroke: '#1e293b', 'stroke-width': 1.5 }));
+  }
+
+  function rimJoistBands(svg, c) {
+    var rim = RIM_JOIST_FT * c.scale;
+    svg.appendChild(svgEl('rect', { x: c.x0, y: c.y0, width: c.w, height: rim, fill: '#e2e8f0', opacity: 0.9 }));
+    svg.appendChild(svgEl('rect', { x: c.x0, y: c.y0 + c.h - rim, width: c.w, height: rim, fill: '#e2e8f0', opacity: 0.9 }));
+    svg.appendChild(svgEl('rect', { x: c.x0, y: c.y0, width: rim, height: c.h, fill: '#e2e8f0', opacity: 0.9 }));
+    svg.appendChild(svgEl('rect', { x: c.x0 + c.w - rim, y: c.y0, width: rim, height: c.h, fill: '#e2e8f0', opacity: 0.9 }));
+  }
+
+  function postCenterFt(fx, fy, runFt, spanFt) {
+    var rim = RIM_JOIST_FT, postHalf = POST_FT / 2, eps = 0.001;
+    var cx = Math.abs(fx) < eps ? rim + postHalf : (Math.abs(fx - runFt) < eps ? runFt - rim - postHalf : fx);
+    var cy = Math.abs(fy) < eps ? rim + postHalf : (Math.abs(fy - spanFt) < eps ? spanFt - rim - postHalf : fy);
+    return { cx: cx, cy: cy };
+  }
+
+  function foundationBlock(svg, fx, fy, c) {
+    var holePx = HOLE_FT * c.scale;
+    var holeX = c.x0 + fx * c.scale - holePx / 2;
+    var holeY = c.y0 + fy * c.scale - holePx / 2;
+    var post = postCenterFt(fx, fy, c.runFt, c.spanFt);
+    var postPx = POST_FT * c.scale;
+    var postX = c.x0 + post.cx * c.scale - postPx / 2;
+    var postY = c.y0 + post.cy * c.scale - postPx / 2;
+    svg.appendChild(svgEl('rect', { x: holeX, y: holeY, width: holePx, height: holePx, fill: '#f0f9ff', stroke: '#0284c7', 'stroke-width': 1.25 }));
+    svg.appendChild(svgEl('rect', { x: postX, y: postY, width: postPx, height: postPx, fill: '#024768', stroke: '#013a52', 'stroke-width': 0.75, rx: 0.5 }));
+  }
+
+  function ftInLabel(ft) {
+    var whole = Math.floor(ft + 1e-9);
+    var inches = Math.round((ft - whole) * 12);
+    if (inches >= 12) { whole++; inches = 0; }
+    if (inches === 0) return whole + "'";
+    return whole + "'" + inches + '"';
+  }
+
+  function dimensionLineH(svg, x1, x2, y, label) {
+    var offset = 18, color = '#475569', lineY = y - offset, midX = (x1 + x2) / 2;
+    svg.appendChild(svgEl('line', { x1: x1, y1: lineY, x2: x2, y2: lineY, stroke: color, 'stroke-width': 1 }));
+    svg.appendChild(svgEl('line', { x1: x1, y1: lineY - 4, x2: x1, y2: lineY + 4, stroke: color, 'stroke-width': 1 }));
+    svg.appendChild(svgEl('line', { x1: x2, y1: lineY - 4, x2: x2, y2: lineY + 4, stroke: color, 'stroke-width': 1 }));
+    var t = svgEl('text', { x: midX, y: lineY - 5, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600, fill: color });
+    t.textContent = label;
+    svg.appendChild(t);
+  }
+
+  function dimensionLineV(svg, x, y1, y2, label) {
+    var offset = 18, color = '#475569', lineX = x - offset, midY = (y1 + y2) / 2;
+    svg.appendChild(svgEl('line', { x1: lineX, y1: y1, x2: lineX, y2: y2, stroke: color, 'stroke-width': 1 }));
+    svg.appendChild(svgEl('line', { x1: lineX - 4, y1: y1, x2: lineX + 4, y2: y1, stroke: color, 'stroke-width': 1 }));
+    svg.appendChild(svgEl('line', { x1: lineX - 4, y1: y2, x2: lineX + 4, y2: y2, stroke: color, 'stroke-width': 1 }));
+    var t = svgEl('text', { x: lineX - 6, y: midY, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600, fill: color, transform: 'rotate(-90 ' + (lineX - 6) + ' ' + midY + ')' });
+    t.textContent = label;
+    svg.appendChild(t);
+  }
+
+  function holeSpacingDimensions(svg, xs, ys, c) {
+    if (xs.length < 2 && ys.length < 2) return;
+    var dimY = c.y0 + (ys[0] || 0) * c.scale;
+    var dimX = c.x0 + (xs[0] || 0) * c.scale;
+    for (var i = 0; i < xs.length - 1; i++) {
+      var x1 = c.x0 + xs[i] * c.scale;
+      var x2 = c.x0 + xs[i + 1] * c.scale;
+      dimensionLineH(svg, x1, x2, dimY, ftInLabel(xs[i + 1] - xs[i]));
+    }
+    for (var j = 0; j < ys.length - 1; j++) {
+      var y1 = c.y0 + ys[j] * c.scale;
+      var y2 = c.y0 + ys[j + 1] * c.scale;
+      dimensionLineV(svg, dimX, y1, y2, ftInLabel(ys[j + 1] - ys[j]));
+    }
   }
 
   function dimensions(svg, c) {
     var midX = c.x0 + c.w / 2, midY = c.y0 + c.h / 2;
-    var t1 = svgEl('text', { x: midX, y: c.y0 - 14, 'text-anchor': 'middle', 'font-size': 13, fill: '#334155' });
+    var t1 = svgEl('text', { x: midX, y: c.y0 - 14, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, fill: '#334155' });
     t1.textContent = ftLabel(c.runFt);
     svg.appendChild(t1);
-    var t2 = svgEl('text', { x: c.x0 - 16, y: midY, 'text-anchor': 'middle', 'font-size': 13, fill: '#334155', transform: 'rotate(-90 ' + (c.x0 - 16) + ' ' + midY + ')' });
+    var t2 = svgEl('text', { x: c.x0 - 16, y: midY, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, fill: '#334155', transform: 'rotate(-90 ' + (c.x0 - 16) + ' ' + midY + ')' });
     t2.textContent = ftLabel(c.spanFt);
     svg.appendChild(t2);
   }
 
   function caption(svg, text) {
-    var t = svgEl('text', { x: CANVAS_W / 2, y: CANVAS_H - 10, 'text-anchor': 'middle', 'font-size': 12, fill: '#64748b' });
+    var t = svgEl('text', { x: CANVAS_W / 2, y: CANVAS_H - 10, 'text-anchor': 'middle', 'font-size': 11, fill: '#64748b' });
     t.textContent = text;
     svg.appendChild(t);
   }
@@ -679,33 +752,34 @@
     if (diagramsHint) diagramsHint.style.display = 'none';
 
     var blocks = g.blocks || {}, joists = g.joists || {}, beams = g.beams || {}, boards = g.boards || {};
+    var xs = blocks.positions_x_ft || [], ys = blocks.positions_y_ft || [];
 
     // 1. Foundations
     var s1 = newSvg();
     deckRect(s1, c);
-    (blocks.positions_x_ft || []).forEach(function (fx) {
-      (blocks.positions_y_ft || []).forEach(function (fy) {
-        var cx = c.x0 + fx * c.scale - 5.5, cy = c.y0 + fy * c.scale - 5.5;
-        s1.appendChild(svgEl('rect', { x: cx, y: cy, width: 11, height: 11, rx: 1.5, fill: '#024768' }));
-      });
+    rimJoistBands(s1, c);
+    xs.forEach(function (fx) {
+      ys.forEach(function (fy) { foundationBlock(s1, fx, fy, c); });
     });
+    holeSpacingDimensions(s1, xs, ys, c);
     dimensions(s1, c);
-    caption(s1, (blocks.count || 0) + ' concrete deck blocks, ' + (blocks.grid_lines_run || 0) + ' x ' + (blocks.grid_lines_span || 0) + ' grid');
+    caption(s1, (blocks.count || 0) + ' concrete deck blocks, ' + (blocks.grid_lines_run || 0) + ' x ' + (blocks.grid_lines_span || 0) + ' grid · 12 in. pier holes · posts inset 1.5 in. for rim joist');
     fEl.appendChild(s1);
 
-    // 2. Framing
+    // 2. Framing (members drawn 1.5 in. wide in plan)
     var s2 = newSvg();
     deckRect(s2, c);
-    (joists.positions_x_ft || []).forEach(function (fx) {
-      var x = c.x0 + fx * c.scale;
-      s2.appendChild(svgEl('line', { x1: x, y1: c.y0, x2: x, y2: c.y0 + c.h, stroke: '#0f766e', 'stroke-width': 2 }));
-    });
+    var thick = RIM_JOIST_FT * c.scale, half = thick / 2;
     (beams.positions_y_ft || []).forEach(function (fy) {
-      var y = c.y0 + fy * c.scale;
-      s2.appendChild(svgEl('line', { x1: c.x0, y1: y, x2: c.x0 + c.w, y2: y, stroke: '#b45309', 'stroke-width': 3 }));
+      var y = c.y0 + fy * c.scale - half;
+      s2.appendChild(svgEl('rect', { x: c.x0, y: y, width: c.w, height: thick, fill: '#b45309', stroke: '#92400e', 'stroke-width': 0.75, rx: 0.5 }));
+    });
+    (joists.positions_x_ft || []).forEach(function (fx) {
+      var x = c.x0 + fx * c.scale - half;
+      s2.appendChild(svgEl('rect', { x: x, y: c.y0, width: thick, height: c.h, fill: '#0f766e', stroke: '#115e59', 'stroke-width': 0.75, rx: 0.5 }));
     });
     dimensions(s2, c);
-    caption(s2, (joists.total_lines || 0) + ' joists at ' + (g.joist_spacing_in || 0) + ' in. O.C., ' + (beams.lines_total || 0) + ' beam lines');
+    caption(s2, (joists.total_lines || 0) + ' joists at ' + (g.joist_spacing_in || 0) + ' in. O.C., ' + (beams.lines_total || 0) + ' beam lines · members shown 1.5 in. wide');
     frEl.appendChild(s2);
 
     // 3. Decking

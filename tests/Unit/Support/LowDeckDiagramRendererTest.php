@@ -1,0 +1,59 @@
+<?php
+
+namespace Tests\Unit\Support;
+
+use App\Support\LowDeckDiagramRenderer;
+use Tests\TestCase;
+
+class LowDeckDiagramRendererTest extends TestCase
+{
+    public function test_foundations_svg_shows_pier_holes_posts_and_spacing(): void
+    {
+        $svg = LowDeckDiagramRenderer::render($this->sampleGeometry())['foundations'];
+
+        $this->assertStringContainsString('12 in. pier holes', $svg);
+        $this->assertStringContainsString('stroke="#0284c7"', $svg);
+        $this->assertStringContainsString('fill="#024768"', $svg);
+        $this->assertStringContainsString('4&#039;', $svg);
+        $this->assertStringContainsString('5&#039;', $svg);
+    }
+
+    public function test_framing_svg_draws_members_with_thickness(): void
+    {
+        $svg = LowDeckDiagramRenderer::render($this->sampleGeometry())['framing'];
+
+        $this->assertStringContainsString('members shown 1.5 in. wide', $svg);
+        $this->assertStringContainsString('fill="#0f766e"', $svg);
+        $this->assertStringContainsString('fill="#b45309"', $svg);
+        $this->assertStringNotContainsString('<line', $svg);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sampleGeometry(): array
+    {
+        return [
+            'run_ft' => 12.0,
+            'span_ft' => 10.0,
+            'joist_spacing_in' => 16,
+            'blocks' => [
+                'count' => 12,
+                'grid_lines_run' => 4,
+                'grid_lines_span' => 3,
+                'positions_x_ft' => [0.0, 4.0, 8.0, 12.0],
+                'positions_y_ft' => [0.0, 5.0, 10.0],
+            ],
+            'joists' => [
+                'total_lines' => 10,
+                'positions_x_ft' => [0.0, 1.333, 2.667, 4.0, 5.333, 6.667, 8.0, 9.333, 10.667, 12.0],
+            ],
+            'beams' => [
+                'lines_total' => 3,
+                'interior_count' => 1,
+                'positions_y_ft' => [0.0, 5.0, 10.0],
+            ],
+            'boards' => ['rows' => 22],
+        ];
+    }
+}
