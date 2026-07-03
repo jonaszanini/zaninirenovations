@@ -5,6 +5,15 @@
   $missingDelivery (optional), $canDeliverByEmail, $canDeliverBySms
 --}}
 <div class="cp-quotation-toolbar">
+  @if ($hasContent)
+    <button type="button"
+            class="admin-btn admin-btn--ghost admin-btn--sm"
+            onclick="cpOpenQuotationDrawer('qd-{{ $quotation->id }}')"
+            title="View calculator details in a side panel">
+      <i class="fa fa-eye" aria-hidden="true"></i> View
+    </button>
+  @endif
+
   @unless ($legacy)
     <a href="{{ route('admin.client-projects.quotation.edit', [$project, $quotation]) }}"
        class="admin-btn admin-btn--ghost admin-btn--sm">

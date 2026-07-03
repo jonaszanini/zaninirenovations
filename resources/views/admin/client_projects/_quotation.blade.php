@@ -446,4 +446,39 @@
       </div>
     @endif
   @endforeach
+
+  {{-- ─── View Drawers (one per quotation, rendered once per quotation, toggled by JS) ─── --}}
+  @foreach ($quotationRows as $quotation)
+    @php
+      use App\Models\ClientProjectQuotation;
+      use App\Models\FenceQuotation;
+      use App\Models\FlooringQuotation;
+      use App\Models\PaintingQuotation;
+      use App\Models\PavingQuotation;
+      use App\Models\StairsQuotation;
+      use App\Models\StandardQuotation;
+      use App\Models\TileQuotation;
+
+      $drawerSourceModel = null;
+      if ($quotation->source_id) {
+          $drawerSourceModel = match ($quotation->source_type ?? '') {
+              ClientProjectQuotation::SOURCE_PAVING   => PavingQuotation::find($quotation->source_id),
+              ClientProjectQuotation::SOURCE_FENCE    => FenceQuotation::find($quotation->source_id),
+              ClientProjectQuotation::SOURCE_STANDARD => StandardQuotation::find($quotation->source_id),
+              ClientProjectQuotation::SOURCE_STAIRS   => StairsQuotation::find($quotation->source_id),
+              ClientProjectQuotation::SOURCE_PAINTING => PaintingQuotation::find($quotation->source_id),
+              ClientProjectQuotation::SOURCE_FLOORING => FlooringQuotation::find($quotation->source_id),
+              ClientProjectQuotation::SOURCE_TILE     => TileQuotation::find($quotation->source_id),
+              default                                  => null,
+          };
+      }
+    @endphp
+    @if ($quotation->hasContent())
+      @include('admin.client_projects._quotation_view_drawer', [
+          'project'     => $project,
+          'quotation'   => $quotation,
+          'sourceModel' => $drawerSourceModel,
+      ])
+    @endif
+  @endforeach
 @endif
