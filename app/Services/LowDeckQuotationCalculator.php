@@ -18,6 +18,7 @@ use App\Support\LowDeckLumberPacker;
  *   - joist_spacing_in    : 12 | 16
  *   - labour_rate_per_sqft: float (optional, falls back to settings)
  *   - waste_dump_fee_cad  : float (optional, falls back to settings)
+ *   - material_waste_percent: float (optional, default 10 — admin-only ordering buffer)
  *
  * Output (`calculate()`):
  *   {
@@ -90,12 +91,20 @@ class LowDeckQuotationCalculator
             ? round(max(0.0, (float) $inputs['waste_dump_fee_cad']), 2)
             : round((float) $this->settings->waste_dump_fee_cad, 2);
 
+        $materialWastePercent = array_key_exists('material_waste_percent', $inputs) && $inputs['material_waste_percent'] !== null && $inputs['material_waste_percent'] !== ''
+            ? round(max(0.0, (float) $inputs['material_waste_percent']), 2)
+            : 10.0;
+        if ($materialWastePercent > 0 && $materialWastePercent <= 1) {
+            $materialWastePercent *= 100;
+        }
+
         return [
             'width_ft' => $width,
             'length_ft' => $length,
             'joist_spacing_in' => $spacing,
             'labour_rate_per_sqft' => $labourRate,
             'waste_dump_fee_cad' => $wasteFee,
+            'material_waste_percent' => $materialWastePercent,
         ];
     }
 
@@ -365,6 +374,7 @@ class LowDeckQuotationCalculator
     private function computeMaterials(array $in, array $geom, array $packing): array
     {
         $settings = $this->settings;
+        $wastePercent = (float) ($in['material_waste_percent'] ?? 0);
         $rows = [];
 
         // -------- BLOCKS -------------------------------------------------
@@ -372,7 +382,7 @@ class LowDeckQuotationCalculator
         if ($blocks > 0) {
             $rows[] = $this->row(
                 LowDeckMaterial::KEY_BLOCK_4X4,
-                $blocks,
+                $this->wastefulQuantity($blocks, $wastePercent),
                 'ea',
                 sprintf(
                     '%d × %d grid (max %s ft on centre)',
@@ -384,7 +394,7 @@ class LowDeckQuotationCalculator
         }
 
         // -------- POSTS (packed) ----------------------------------------
-        foreach ($this->lumberRows($packing['posts'], 'Posts: '.number_format((float) $settings->post_length_per_block_ft, 2).' ft per block') as $row) {
+        foreach ($this->lumberRows($packing['posts'], 'Posts: '.number_format((float) $settings->post_length_per_block_ft, 2).' ft per block', $wastePercent) as $row) {
             $rows[] = $row;
         }
 
@@ -398,7 +408,7 @@ class LowDeckQuotationCalculator
         if ($gravelBags > 0) {
             $rows[] = $this->row(
                 LowDeckMaterial::KEY_GRAVEL_BAG,
-                $gravelBags,
+                $this->wastefulQuantity($gravelBags, $wastePercent),
                 'bag',
                 sprintf(
                     '%s cu ft total (%s cu ft / block × %d), %s cu ft / bag',
@@ -416,7 +426,7 @@ class LowDeckQuotationCalculator
             (int) $geom['joists']['field_count'],
             (int) $geom['beams']['interior_count']
         );
-        foreach ($this->lumberRows($packing['joists'], $joistNote) as $row) {
+        foreach ($this->lumberRows($packing['joists'], $joistNote, $wastePercent) as $row) {
             $rows[] = $row;
         }
 
@@ -425,7 +435,7 @@ class LowDeckQuotationCalculator
         if ($rolls > 0) {
             $rows[] = $this->row(
                 LowDeckMaterial::KEY_JOIST_TAPE_50FT,
-                $rolls,
+                $this->wastefulQuantity($rolls, $wastePercent),
                 'roll',
                 sprintf(
                     '%s linear ft of joist tops, %s ft per roll',
@@ -442,7 +452,7 @@ class LowDeckQuotationCalculator
             rtrim(rtrim(number_format((float) $geom['boards']['run_ft'], 2), '0'), '.'),
             rtrim(rtrim(number_format((float) $geom['boards']['board_gap_in'], 3), '0'), '.')
         );
-        foreach ($this->lumberRows($packing['boards'], $boardNote) as $row) {
+        foreach ($this->lumberRows($packing['boards'], $boardNote, $wastePercent) as $row) {
             $rows[] = $row;
         }
 
@@ -462,7 +472,8 @@ class LowDeckQuotationCalculator
                     (int) $settings->structural_screws_per_post,
                     $cornerCount,
                     (int) $settings->structural_screws_per_corner
-                )
+                ),
+                $wastePercent
             );
         }
 
@@ -477,7 +488,8 @@ class LowDeckQuotationCalculator
                     '%d screws (2 per 10 in over %s in of boards)',
                     $boardScrews,
                     rtrim(rtrim(number_format($boardLengthIn, 1), '0'), '.')
-                )
+                ),
+                $wastePercent
             );
         }
 
@@ -497,7 +509,8 @@ class LowDeckQuotationCalculator
                     (int) $settings->frame_screws_per_t_joint,
                     $crossJoints,
                     (int) $settings->frame_screws_per_cross_joint
-                )
+                ),
+                $wastePercent
             );
         }
 
@@ -527,7 +540,7 @@ class LowDeckQuotationCalculator
      *
      * @return list<array<string, mixed>>
      */
-    private function lumberRows(array $packing, string $note): array
+    private function lumberRows(array $packing, string $note, float $wastePercent): array
     {
         $rows = [];
         $byKey = $packing['by_key'] ?? [];
@@ -536,10 +549,25 @@ class LowDeckQuotationCalculator
             if ((int) $count <= 0) {
                 continue;
             }
-            $rows[] = $this->row($key, (int) $count, 'ea', $note);
+            $rows[] = $this->row($key, $this->wastefulQuantity((int) $count, $wastePercent), 'ea', $note);
         }
 
         return $rows;
+    }
+
+    private function wastefulQuantity(int|float $baseQty, float $wastePercent): int|float
+    {
+        if ($baseQty <= 0 || $wastePercent <= 0) {
+            return $baseQty;
+        }
+
+        $adjusted = (float) $baseQty * (1 + ($wastePercent / 100));
+
+        if (is_int($baseQty) || abs($baseQty - round($baseQty)) < 1e-6) {
+            return (int) ceil($adjusted - 1e-9);
+        }
+
+        return round($adjusted, 2);
     }
 
     /**
@@ -573,13 +601,14 @@ class LowDeckQuotationCalculator
      * Build a box-sold material row: rounds the loose unit count up to whole
      * retail boxes and prices per box.
      */
-    private function boxRow(string $key, int $unitsNeeded, string $notes): array
+    private function boxRow(string $key, int $unitsNeeded, string $notes, float $wastePercent = 0.0): array
     {
         /** @var LowDeckMaterial|null $mat */
         $mat = $this->catalogue->get($key);
 
+        $adjustedUnits = (int) $this->wastefulQuantity($unitsNeeded, $wastePercent);
         $boxSize = (int) ($mat?->effectiveQuantityPerBox() ?? 0);
-        $boxes = ($boxSize > 0 && $unitsNeeded > 0) ? (int) ceil($unitsNeeded / $boxSize) : 0;
+        $boxes = ($boxSize > 0 && $adjustedUnits > 0) ? (int) ceil($adjustedUnits / $boxSize) : 0;
         $unitPrice = $mat ? $mat->effectivePriceCad() : 0.0;
         $subtotal = round($boxes * $unitPrice, 2);
 
@@ -595,7 +624,7 @@ class LowDeckQuotationCalculator
             'unit_price' => round($unitPrice, 2),
             'subtotal' => $subtotal,
             'notes' => $notes,
-            'quantity_of_individual_units' => $unitsNeeded,
+            'quantity_of_individual_units' => $adjustedUnits,
             'quantity_per_box' => $boxSize,
         ];
     }
@@ -628,6 +657,7 @@ class LowDeckQuotationCalculator
             'hst_rate' => LowDeckQuotation::HST_RATE,
             'labour_rate_per_sqft' => round($labourRate, 2),
             'area_sq_ft' => round($area, 2),
+            'material_waste_percent' => round((float) ($in['material_waste_percent'] ?? 0), 2),
         ];
     }
 }

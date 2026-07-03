@@ -86,7 +86,12 @@ class LowDeckQuotationCalculatorTest extends TestCase
     public function test_geometry_for_twelve_by_sixteen_deck(): void
     {
         $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
-        $result = $calc->calculate(['width_ft' => 12, 'length_ft' => 16, 'joist_spacing_in' => 16]);
+        $result = $calc->calculate([
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'joist_spacing_in' => 16,
+            'material_waste_percent' => 0,
+        ]);
 
         $geom = $result['geometry'];
 
@@ -113,7 +118,12 @@ class LowDeckQuotationCalculatorTest extends TestCase
     public function test_fastener_counts_round_up_to_retail_boxes(): void
     {
         $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
-        $result = $calc->calculate(['width_ft' => 12, 'length_ft' => 16, 'joist_spacing_in' => 16]);
+        $result = $calc->calculate([
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'joist_spacing_in' => 16,
+            'material_waste_percent' => 0,
+        ]);
 
         $structural = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_SCREW_STRUCTURAL_6IN);
         $this->assertNotNull($structural);
@@ -131,10 +141,47 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $this->assertSame(3, $frame['quantity']);
     }
 
-    public function test_waste_dump_fee_is_a_flat_line_in_materials_subtotal(): void
+    public function test_material_waste_defaults_to_ten_percent_and_inflates_order_quantities(): void
     {
         $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
         $result = $calc->calculate(['width_ft' => 12, 'length_ft' => 16, 'joist_spacing_in' => 16]);
+
+        $this->assertSame(10.0, $result['inputs']['material_waste_percent']);
+        $this->assertSame(10.0, $result['totals']['material_waste_percent']);
+
+        $blocks = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_BLOCK_4X4);
+        $this->assertNotNull($blocks);
+        $this->assertSame(22, $blocks['quantity']);
+
+        $wasteFee = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WASTE_DUMP_FEE);
+        $this->assertNotNull($wasteFee);
+        $this->assertSame(1, $wasteFee['quantity']);
+    }
+
+    public function test_material_waste_can_be_set_to_zero(): void
+    {
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'joist_spacing_in' => 16,
+            'material_waste_percent' => 0,
+        ]);
+
+        $blocks = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_BLOCK_4X4);
+        $this->assertNotNull($blocks);
+        $this->assertSame(20, $blocks['quantity']);
+    }
+
+    public function test_waste_dump_fee_is_a_flat_line_in_materials_subtotal(): void
+    {
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'joist_spacing_in' => 16,
+            'material_waste_percent' => 0,
+        ]);
 
         $waste = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WASTE_DUMP_FEE);
         $this->assertNotNull($waste);

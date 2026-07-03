@@ -136,7 +136,11 @@ class LowDeckQuotationController extends Controller
             'joist_spacing_in' => ['required', 'integer', 'in:12,16'],
             'labour_rate_per_sqft' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'waste_dump_fee_cad' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
+            'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
+        $data['material_waste_percent'] = $this->normaliseMaterialWastePercent(
+            $request->input('material_waste_percent')
+        );
 
         try {
             $calc = (new LowDeckQuotationCalculator())->calculate($data);
@@ -281,10 +285,10 @@ class LowDeckQuotationController extends Controller
                 $rows[] = [
                     'quantity' => $quantity,
                     'unit' => (string) ($line['unit'] ?? 'ea'),
-                    'name' => $longName,
+                    'name' => $this->decodePurchaseListText($longName),
                     'store_sku' => $mat && filled($mat->effectiveStoreSku())
-                        ? $mat->effectiveStoreSku()
-                        : (filled($line['store_sku'] ?? null) ? (string) $line['store_sku'] : null),
+                        ? $this->decodePurchaseListText($mat->effectiveStoreSku())
+                        : (filled($line['store_sku'] ?? null) ? $this->decodePurchaseListText((string) $line['store_sku']) : null),
                     'unit_price' => (float) ($line['unit_price'] ?? 0),
                     'subtotal' => (float) ($line['subtotal'] ?? 0),
                 ];
@@ -498,6 +502,7 @@ class LowDeckQuotationController extends Controller
             'joist_spacing_in' => ['required', 'integer', 'in:12,16'],
             'labour_rate_per_sqft' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'waste_dump_fee_cad' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
+            'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'include_diagrams_on_pdf' => ['nullable', 'boolean'],
             ...CommuteExpenseService::commuteValidationRules(),
         ];
@@ -517,7 +522,22 @@ class LowDeckQuotationController extends Controller
             }
         });
 
-        return $validator->validate();
+        return $validator->validate() + [
+            'material_waste_percent' => $this->normaliseMaterialWastePercent(
+                $request->input('material_waste_percent')
+            ),
+        ];
+    }
+
+    protected function normaliseMaterialWastePercent(mixed $value): float
+    {
+        if ($value === null || $value === '') {
+            return 10.0;
+        }
+
+        $percent = round(max(0.0, (float) $value), 2);
+
+        return $percent > 0 && $percent <= 1 ? round($percent * 100, 2) : $percent;
     }
 
     /**
@@ -551,5 +571,10 @@ class LowDeckQuotationController extends Controller
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'low_deck_quotations');
 
         return $this->mergeCommuteIntoPersistence($base, $commute, 'grand_total');
+    }
+
+    protected function decodePurchaseListText(string $value): string
+    {
+        return html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 }

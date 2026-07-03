@@ -15,6 +15,10 @@
   $defaultWasteFee = (float) $settings->waste_dump_fee_cad;
   $initialLabour = old('labour_rate_per_sqft', $isEdit ? (float) ($quotation->labour_rate_per_sqft ?? $defaultLabour) : $defaultLabour);
   $initialWasteFee = old('waste_dump_fee_cad', $isEdit ? (float) ($quotation->waste_dump_fee_cad ?? $defaultWasteFee) : $defaultWasteFee);
+  $initialMaterialWaste = old(
+      'material_waste_percent',
+      $isEdit ? (float) ($quotation->calculation['inputs']['material_waste_percent'] ?? 10) : 10
+  );
   $initialIncludeDiagrams = (bool) old('include_diagrams_on_pdf', $isEdit ? $quotation->include_diagrams_on_pdf : false);
 
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
@@ -44,7 +48,7 @@
     @media (max-width: 640px) { .ld-dims-grid { grid-template-columns: 1fr; } }
     .ld-rates-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
     }
     @media (max-width: 640px) { .ld-rates-grid { grid-template-columns: 1fr; } }
@@ -289,6 +293,15 @@
               @error('labour_rate_per_sqft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group">
+              <label for="ld-material-waste">Material waste (%)</label>
+              <input id="ld-material-waste" type="number" min="0" max="100" step="0.1" name="material_waste_percent"
+                     @class(['admin-input', 'is-invalid' => $errors->has('material_waste_percent')])
+                     value="{{ rtrim(rtrim(number_format((float) $initialMaterialWaste, 2, '.', ''), '0'), '.') }}"
+                     autocomplete="off">
+              @error('material_waste_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
+              <p class="admin-form-help">Extra material for cuts and breakage. Internal ordering buffer — not shown on the client quotation.</p>
+            </div>
+            <div class="admin-form-group">
               <label for="ld-waste-fee">Waste material dump fee (CA$ / project)</label>
               <input id="ld-waste-fee" type="text" name="waste_dump_fee_cad"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('waste_dump_fee_cad')])
@@ -509,6 +522,7 @@
   var spacingSelect = document.getElementById('ld-joist-spacing');
   var labourInput = document.getElementById('ld-labour-rate');
   var wasteInput = document.getElementById('ld-waste-fee');
+  var materialWasteInput = document.getElementById('ld-material-waste');
 
   var statusBadge = document.getElementById('ld-status-badge');
   var geometryEl = document.getElementById('ld-geometry');
@@ -575,7 +589,8 @@
       length_ft: parseFloat(lengthInput.value) || 0,
       joist_spacing_in: parseInt(spacingSelect.value, 10) || 16,
       labour_rate_per_sqft: parseMoney(labourInput),
-      waste_dump_fee_cad: parseMoney(wasteInput)
+      waste_dump_fee_cad: parseMoney(wasteInput),
+      material_waste_percent: materialWasteInput ? (parseFloat(materialWasteInput.value) || 0) : 10
     };
   }
 
@@ -679,6 +694,9 @@
       + (beams.lines_total || 0) + ' beam lines (' + (beams.interior_count || 0) + ' interior)<br>'
       + (boards.rows || 0) + ' deck board rows · '
       + (tape.rolls_required || 0) + ' joist tape roll' + ((tape.rolls_required === 1) ? '' : 's')
+      + ((calc.inputs && calc.inputs.material_waste_percent > 0)
+        ? '<br>Material waste: ' + calc.inputs.material_waste_percent + '% (internal)'
+        : '')
       + '</div>';
 
     var rows = (calc.materials || []).map(function (m) {
