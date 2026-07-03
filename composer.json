@@ -42,6 +42,11 @@
     "scripts": {
         "test:blade": "php artisan test tests/Unit/Views/BladeSyntaxTest.php",
         "test:smoke": "php artisan test tests/Feature/Smoke",
+        "test:pre-push": [
+            "@test:blade",
+            "@test:smoke"
+        ],
+        "hooks:install": "@php scripts/install-git-hooks.php",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump"
         ],

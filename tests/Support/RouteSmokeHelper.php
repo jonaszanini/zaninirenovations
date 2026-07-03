@@ -4,6 +4,8 @@ namespace Tests\Support;
 
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as RouteFacade;
+use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 
 final class RouteSmokeHelper
 {
@@ -145,5 +147,32 @@ final class RouteSmokeHelper
         $name = $route->getName();
 
         return $name ? "{$name} ({$url})" : "{$url}";
+    }
+
+    public static function formatFailure(Route $route, string $url, TestResponse $response): string
+    {
+        $status = $response->getStatusCode();
+        $label = self::routeLabel($route, $url);
+        $hint = self::responseHint($response);
+
+        return $hint !== ''
+            ? "{$label} returned HTTP {$status} — {$hint}"
+            : "{$label} returned HTTP {$status}";
+    }
+
+    private static function responseHint(TestResponse $response): string
+    {
+        $content = $response->getContent();
+        if (! is_string($content) || $content === '') {
+            return '';
+        }
+
+        if (preg_match('/<title[^>]*>([^<]+)<\/title>/i', $content, $matches)) {
+            return trim(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        }
+
+        $plain = trim(preg_replace('/\s+/', ' ', strip_tags($content)) ?? '');
+
+        return Str::limit($plain, 120, '…');
     }
 }

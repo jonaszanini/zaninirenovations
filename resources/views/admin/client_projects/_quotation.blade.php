@@ -7,6 +7,13 @@
 
 @php
   use App\Models\ClientProjectQuotation;
+  use App\Models\FenceQuotation;
+  use App\Models\FlooringQuotation;
+  use App\Models\PaintingQuotation;
+  use App\Models\PavingQuotation;
+  use App\Models\StairsQuotation;
+  use App\Models\StandardQuotation;
+  use App\Models\TileQuotation;
   use App\Services\MoceanSmsService;
   use Illuminate\Support\Facades\URL;
 
@@ -450,15 +457,6 @@
   {{-- ─── View Drawers (one per quotation, rendered once per quotation, toggled by JS) ─── --}}
   @foreach ($quotationRows as $quotation)
     @php
-      use App\Models\ClientProjectQuotation;
-      use App\Models\FenceQuotation;
-      use App\Models\FlooringQuotation;
-      use App\Models\PaintingQuotation;
-      use App\Models\PavingQuotation;
-      use App\Models\StairsQuotation;
-      use App\Models\StandardQuotation;
-      use App\Models\TileQuotation;
-
       $drawerSourceModel = null;
       if ($quotation->source_id) {
           $drawerSourceModel = match ($quotation->source_type ?? '') {

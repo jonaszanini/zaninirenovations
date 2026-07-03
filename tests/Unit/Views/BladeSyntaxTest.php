@@ -71,6 +71,30 @@ class BladeSyntaxTest extends TestCase
         );
     }
 
+    public function test_blade_views_do_not_use_imports_inside_loops(): void
+    {
+        $viewsRoot = resource_path('views');
+        $offenders = [];
+
+        foreach ($this->bladeFiles($viewsRoot) as $file) {
+            $contents = file_get_contents($file);
+            if ($contents === false) {
+                continue;
+            }
+
+            // PHP `use` imports inside @foreach compile to a ParseError at runtime.
+            if (preg_match('/@foreach\b.*?@php\s+use /s', $contents) === 1) {
+                $offenders[] = $this->relativeViewPath($file);
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $offenders,
+            "Move `use` imports to the top of the Blade file (not inside @foreach):\n".implode("\n", $offenders)
+        );
+    }
+
     /**
      * @return list<string>
      */

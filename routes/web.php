@@ -211,14 +211,17 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('blog.posts.ai-metadata');
     Route::resource('blog/posts', \App\Http\Controllers\Admin\BlogPostController::class)
         ->parameters(['posts' => 'post'])
+        ->except(['show'])
         ->names('blog.posts');
     Route::resource('blog/categories', \App\Http\Controllers\Admin\BlogCategoryController::class)
         ->parameters(['categories' => 'category'])
+        ->except(['show'])
         ->names('blog.categories');
     Route::post('blog/tags/bulk', [\App\Http\Controllers\Admin\BlogTagController::class, 'bulkStore'])
         ->name('blog.tags.bulk');
     Route::resource('blog/tags', \App\Http\Controllers\Admin\BlogTagController::class)
         ->parameters(['tags' => 'tag'])
+        ->except(['show'])
         ->names('blog.tags');
     Route::get('blog/comments', [\App\Http\Controllers\Admin\BlogCommentController::class, 'index'])
         ->name('blog.comments.index');

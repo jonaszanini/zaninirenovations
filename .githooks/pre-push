@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Runs before every git push. Blocks the push when tests fail.
+#
+# Skip once:  SKIP_PRE_PUSH_CHECKS=1 git push
+# Install:    composer hooks:install
+
+set -euo pipefail
+
+if [[ "${SKIP_PRE_PUSH_CHECKS:-}" == "1" ]]; then
+    echo "SKIP_PRE_PUSH_CHECKS=1 — skipping pre-push checks"
+    exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo ""
+echo "▶ Pre-push: checking pages for 500 errors (Blade + route smoke)"
+echo ""
+
+composer test:pre-push --no-interaction
+
+echo ""
+echo "✓ Pre-push checks passed"
+echo ""

@@ -22,7 +22,7 @@ class AdminGetRoutesSmokeTest extends IntegrationTestCase
             $status = $response->getStatusCode();
 
             if ($status >= 500) {
-                $failures[] = RouteSmokeHelper::routeLabel($entry['route'], $entry['url'])." returned HTTP {$status}";
+                $failures[] = RouteSmokeHelper::formatFailure($entry['route'], $entry['url'], $response);
             }
         }
 
