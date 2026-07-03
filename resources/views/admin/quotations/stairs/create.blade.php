@@ -368,20 +368,28 @@
                     <input type="text" name="fp_project_name" class="admin-input" maxlength="255" placeholder="Defaults to client + Stairs">
                   </div>
                   <div class="admin-form-group">
-                    <label>Client name <span class="cp-required">*</span></label>
-                    <input type="text" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
+                    <label for="st-new-client-name">Client name <span class="cp-required">*</span></label>
+                    @include('admin.quotations._fp_client_picker', [
+                        'clientsSearchUrl' => route('admin.clients.search'),
+                        'pickerId'         => 'st-fp-client-picker',
+                        'nameInputId'      => 'st-new-client-name',
+                        'emailInputId'     => 'st-new-client-email',
+                        'phoneInputId'     => 'st-new-client-phone',
+                        'addressInputId'   => 'st-new-client-address',
+                    ])
+                    <input type="text" id="st-new-client-name" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
                   </div>
                   <div class="admin-form-group">
-                    <label>Email</label>
-                    <input type="email" name="fp_client_email" class="admin-input" maxlength="255">
+                    <label for="st-new-client-email">Email</label>
+                    <input type="email" id="st-new-client-email" name="fp_client_email" class="admin-input" maxlength="255">
                   </div>
                   <div class="admin-form-group">
-                    <label>Phone (10 digits)</label>
-                    <input type="text" name="fp_client_phone" class="admin-input" maxlength="14">
+                    <label for="st-new-client-phone">Phone (10 digits)</label>
+                    <input type="text" id="st-new-client-phone" name="fp_client_phone" class="admin-input" maxlength="14">
                   </div>
                   <div class="admin-form-group">
-                    <label>Address</label>
-                    <input type="text" name="fp_client_address" class="admin-input" maxlength="500">
+                    <label for="st-new-client-address">Address</label>
+                    <input type="text" id="st-new-client-address" name="fp_client_address" class="admin-input" maxlength="500">
                   </div>
                   <div class="admin-form-group">
                     <label>Line description (optional)</label>

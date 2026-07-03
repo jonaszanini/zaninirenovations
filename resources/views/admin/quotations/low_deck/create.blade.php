@@ -307,6 +307,14 @@
               </div>
               <div class="admin-form-group">
                 <label for="ld-new-client-name">Client name <span class="admin-required">*</span></label>
+                @include('admin.quotations._fp_client_picker', [
+                    'clientsSearchUrl' => route('admin.clients.search'),
+                    'pickerId'         => 'ld-fp-client-picker',
+                    'nameInputId'      => 'ld-new-client-name',
+                    'emailInputId'     => 'ld-new-client-email',
+                    'phoneInputId'     => 'ld-new-client-phone',
+                    'addressInputId'   => 'ld-new-client-address',
+                ])
                 <input type="text" id="ld-new-client-name" name="fp_client_name" class="admin-input @error('fp_client_name') is-invalid @enderror"
                        maxlength="255" required value="{{ old('fp_client_name') }}">
                 @error('fp_client_name') <p class="admin-form-error">{{ $message }}</p> @enderror

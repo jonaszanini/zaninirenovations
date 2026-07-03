@@ -320,6 +320,14 @@
               </div>
               <div class="admin-form-group">
                 <label for="tl-new-client-name">Client name <span class="cp-required">*</span></label>
+                @include('admin.quotations._fp_client_picker', [
+                    'clientsSearchUrl' => route('admin.clients.search'),
+                    'pickerId'         => 'tl-fp-client-picker',
+                    'nameInputId'      => 'tl-new-client-name',
+                    'emailInputId'     => 'tl-new-client-email',
+                    'phoneInputId'     => 'tl-new-client-phone',
+                    'addressInputId'   => 'tl-new-client-address',
+                ])
                 <input type="text" id="tl-new-client-name" name="fp_client_name"
                        class="admin-input @error('fp_client_name') is-invalid @enderror"
                        required maxlength="255"

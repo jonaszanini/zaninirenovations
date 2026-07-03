@@ -274,7 +274,8 @@ class FenceQuotationController extends Controller
 
         $data = $request->validate([
             'fp_project_name' => ['nullable', 'string', 'max:255'],
-            'fp_client_name' => ['required', 'string', 'max:255'],
+            'fp_client_id'    => ['nullable', 'integer', 'exists:clients,id'],
+            'fp_client_name'  => ['required', 'string', 'max:255'],
             'fp_client_email' => ['nullable', 'email', 'max:255'],
             'fp_client_phone' => ['nullable', 'digits:10'],
             'fp_client_address' => ['nullable', 'string', 'max:500'],
@@ -292,14 +293,15 @@ class FenceQuotationController extends Controller
 
         $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $fence_quotation) {
             $project = ClientProject::create([
-                'name' => $projectTitle,
-                'client_name' => $clientName,
-                'client_email' => $data['fp_client_email'] ?: null,
-                'client_phone' => $data['fp_client_phone'] ?: null,
+                'name'           => $projectTitle,
+                'client_id'      => $data['fp_client_id'] ?: null,
+                'client_name'    => $clientName,
+                'client_email'   => $data['fp_client_email'] ?: null,
+                'client_phone'   => $data['fp_client_phone'] ?: null,
                 'client_address' => $data['fp_client_address'] ?: null,
-                'billing_type' => ClientProject::BILLING_FIXED,
-                'hourly_rate' => null,
-                'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+                'billing_type'   => ClientProject::BILLING_FIXED,
+                'hourly_rate'    => null,
+                'status'         => ClientProject::STATUS_VISIT_SCHEDULED,
                 'status_changed_at' => now(),
             ]);
 

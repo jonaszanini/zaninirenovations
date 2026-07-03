@@ -568,20 +568,28 @@
                     <input type="text" name="fp_project_name" class="admin-input" maxlength="255" placeholder="Defaults to client + Paving">
                   </div>
                   <div class="admin-form-group">
-                    <label>Client name <span class="cp-required">*</span></label>
-                    <input type="text" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
+                    <label for="pv-new-client-name">Client name <span class="cp-required">*</span></label>
+                    @include('admin.quotations._fp_client_picker', [
+                        'clientsSearchUrl' => route('admin.clients.search'),
+                        'pickerId'         => 'pv-fp-client-picker',
+                        'nameInputId'      => 'pv-new-client-name',
+                        'emailInputId'     => 'pv-new-client-email',
+                        'phoneInputId'     => 'pv-new-client-phone',
+                        'addressInputId'   => 'pv-new-client-address',
+                    ])
+                    <input type="text" id="pv-new-client-name" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
                   </div>
                   <div class="admin-form-group">
-                    <label>Email</label>
-                    <input type="email" name="fp_client_email" class="admin-input" maxlength="255">
+                    <label for="pv-new-client-email">Email</label>
+                    <input type="email" id="pv-new-client-email" name="fp_client_email" class="admin-input" maxlength="255">
                   </div>
                   <div class="admin-form-group">
-                    <label>Phone (10 digits)</label>
-                    <input type="text" name="fp_client_phone" class="admin-input" maxlength="14" placeholder="(613) 555-0100">
+                    <label for="pv-new-client-phone">Phone (10 digits)</label>
+                    <input type="text" id="pv-new-client-phone" name="fp_client_phone" class="admin-input" maxlength="14" placeholder="(613) 555-0100">
                   </div>
                   <div class="admin-form-group">
-                    <label>Address</label>
-                    <input type="text" name="fp_client_address" class="admin-input" maxlength="500">
+                    <label for="pv-new-client-address">Address</label>
+                    <input type="text" id="pv-new-client-address" name="fp_client_address" class="admin-input" maxlength="500">
                   </div>
                   <button type="submit" class="admin-btn admin-btn--primary">Create project &amp; link</button>
                 </form>
