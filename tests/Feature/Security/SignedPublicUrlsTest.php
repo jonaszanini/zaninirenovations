@@ -12,7 +12,7 @@ class SignedPublicUrlsTest extends IntegrationTestCase
     public function test_unsigned_invoice_pdf_url_is_rejected(): void
     {
         $project = ClientProject::factory()->create();
-        $invoice = ClientProjectInvoice::factory()->for($project)->create();
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create();
 
         $this->get(route('public.client-project.invoice-pdf', [$project, $invoice]))
             ->assertForbidden();
@@ -21,7 +21,7 @@ class SignedPublicUrlsTest extends IntegrationTestCase
     public function test_valid_signed_invoice_pdf_url_is_allowed(): void
     {
         $project = ClientProject::factory()->create();
-        $invoice = ClientProjectInvoice::factory()->for($project)->create();
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create();
 
         $url = URL::temporarySignedRoute(
             'public.client-project.invoice-pdf',

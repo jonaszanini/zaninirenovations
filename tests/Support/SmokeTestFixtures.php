@@ -92,7 +92,7 @@ final class SmokeTestFixtures
         static $invoice;
 
         return $invoice ??= ClientProjectInvoice::factory()
-            ->for($this->clientProject())
+            ->for($this->clientProject(), 'project')
             ->create();
     }
 

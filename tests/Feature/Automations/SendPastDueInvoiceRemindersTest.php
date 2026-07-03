@@ -36,7 +36,7 @@ class SendPastDueInvoiceRemindersTest extends IntegrationTestCase
         ]);
 
         $invoice = ClientProjectInvoice::factory()
-            ->for($project)
+            ->for($project, 'project')
             ->sent()
             ->create([
                 'due_on' => '2026-06-10',
@@ -60,11 +60,11 @@ class SendPastDueInvoiceRemindersTest extends IntegrationTestCase
             'client_email' => 'client@example.com',
         ]);
 
-        ClientProjectInvoice::factory()->for($project)->paid()->create([
+        ClientProjectInvoice::factory()->for($project, 'project')->paid()->create([
             'due_on' => '2026-06-10',
         ]);
 
-        ClientProjectInvoice::factory()->for($project)->sent()->create([
+        ClientProjectInvoice::factory()->for($project, 'project')->sent()->create([
             'due_on' => '2026-06-20',
         ]);
 
@@ -82,7 +82,7 @@ class SendPastDueInvoiceRemindersTest extends IntegrationTestCase
             'client_email' => 'client@example.com',
         ]);
 
-        ClientProjectInvoice::factory()->for($project)->sent()->create([
+        ClientProjectInvoice::factory()->for($project, 'project')->sent()->create([
             'due_on' => '2026-06-10',
         ]);
 

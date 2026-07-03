@@ -15,7 +15,7 @@ class MarkPaidInvoiceTest extends IntegrationTestCase
     public function test_guest_cannot_mark_invoice_paid(): void
     {
         $project = ClientProject::factory()->create();
-        $invoice = ClientProjectInvoice::factory()->for($project)->create();
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create();
 
         $this->post(route('admin.client-projects.invoices.mark-paid', [$project, $invoice]))
             ->assertRedirect(route('login'));
@@ -25,7 +25,7 @@ class MarkPaidInvoiceTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
         $project = ClientProject::factory()->create();
-        $invoice = ClientProjectInvoice::factory()->for($project)->paid()->create();
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->paid()->create();
 
         $this->from('/admin/client-projects/'.$project->id)
             ->post(route('admin.client-projects.invoices.mark-paid', [$project, $invoice]), [
@@ -41,7 +41,7 @@ class MarkPaidInvoiceTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
         $project = ClientProject::factory()->create();
-        $invoice = ClientProjectInvoice::factory()->for($project)->create([
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create([
             'items' => [],
             'subtotal' => 0,
             'hst' => 0,
@@ -64,7 +64,7 @@ class MarkPaidInvoiceTest extends IntegrationTestCase
         $this->actingAsAdmin();
 
         $project = ClientProject::factory()->create();
-        $invoice = ClientProjectInvoice::factory()->for($project)->sent()->create();
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->sent()->create();
 
         $this->post(route('admin.client-projects.invoices.mark-paid', [$project, $invoice]), [
             'paid_on' => '2026-06-01',
@@ -87,7 +87,7 @@ class MarkPaidInvoiceTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
         $project = ClientProject::factory()->create();
-        $invoice = ClientProjectInvoice::factory()->for($project)->create();
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create();
 
         $this->post(route('admin.client-projects.invoices.mark-paid', [$project, $invoice]), [
             'paid_on' => now()->toDateString(),
