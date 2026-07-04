@@ -40,6 +40,17 @@
     }
     .ss-notes-preview { max-width: 220px; color: #6b7280; font-size: 13px; }
     .ss-favorite { color: #d97706; }
+    .ss-url-actions {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 4px;
+    }
+    .ss-url-action {
+      min-width: 32px;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
   </style>
 @endpush
 
@@ -109,10 +120,27 @@
               </td>
               <td><strong>{{ $site->name }}</strong></td>
               <td>
-                <a href="{{ $site->url }}" target="_blank" rel="noopener noreferrer" class="admin-text-link">
-                  {{ $site->url }}
-                  <i class="fa fa-external-link" aria-hidden="true" style="font-size:11px;margin-left:4px;"></i>
-                </a>
+                @if (filled($site->url))
+                  <div class="ss-url-actions">
+                    <a href="{{ $site->url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="admin-btn admin-btn--ghost admin-btn--sm ss-url-action"
+                       title="Open website: {{ $site->url }}"
+                       aria-label="Open {{ $site->name }} website">
+                      <i class="fa fa-external-link" aria-hidden="true"></i>
+                    </a>
+                    <button type="button"
+                            class="admin-btn admin-btn--ghost admin-btn--sm ss-url-action ss-url-copy"
+                            title="Copy link: {{ $site->url }}"
+                            aria-label="Copy {{ $site->name }} website link"
+                            data-copy-url="{{ $site->url }}">
+                      <i class="fa fa-copy" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                @else
+                  —
+                @endif
               </td>
               <td>
                 @forelse ($site->tags as $tag)
@@ -172,3 +200,35 @@
     @endif
   </div>
 @endsection
+
+@push('scripts')
+  <script>
+    (function () {
+      document.querySelectorAll('.ss-url-copy').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var url = btn.getAttribute('data-copy-url');
+          if (!url) return;
+
+          function showCopied() {
+            btn.classList.add('is-copied');
+            var icon = btn.querySelector('i');
+            var prevClass = icon ? icon.className : '';
+            if (icon) icon.className = 'fa fa-check';
+            window.setTimeout(function () {
+              btn.classList.remove('is-copied');
+              if (icon) icon.className = prevClass;
+            }, 1600);
+          }
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(showCopied).catch(function () {
+              window.prompt('Copy link:', url);
+            });
+          } else {
+            window.prompt('Copy link:', url);
+          }
+        });
+      });
+    })();
+  </script>
+@endpush
