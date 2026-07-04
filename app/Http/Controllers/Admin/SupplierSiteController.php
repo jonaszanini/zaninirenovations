@@ -29,6 +29,8 @@ class SupplierSiteController extends Controller
                         ->orWhere('url', 'like', $like)
                         ->orWhere('notes', 'like', $like)
                         ->orWhere('phone', 'like', $like)
+                        ->orWhere('email', 'like', $like)
+                        ->orWhere('address', 'like', $like)
                         ->orWhereHas('tags', fn ($tags) => $tags->where('name', 'like', $like));
                 });
             })
@@ -61,6 +63,7 @@ class SupplierSiteController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalisePhoneOnRequest($request);
         $data = $this->validateSupplierSite($request);
 
         $site = SupplierSite::create($data);
@@ -84,6 +87,7 @@ class SupplierSiteController extends Controller
 
     public function update(Request $request, SupplierSite $supplier_site)
     {
+        $this->normalisePhoneOnRequest($request);
         $data = $this->validateSupplierSite($request);
 
         $supplier_site->update($data);
@@ -118,7 +122,9 @@ class SupplierSiteController extends Controller
             'name' => ['required', 'string', 'max:160'],
             'url' => ['required', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'phone' => ['nullable', 'digits:10'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'address' => ['nullable', 'string', 'max:500'],
             'is_favorite' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:32767'],
             'tags_input' => ['nullable', 'string', 'max:2000'],
@@ -135,10 +141,25 @@ class SupplierSiteController extends Controller
             'name' => trim($data['name']),
             'url' => $url,
             'notes' => filled($data['notes'] ?? null) ? trim($data['notes']) : null,
-            'phone' => filled($data['phone'] ?? null) ? trim($data['phone']) : null,
+            'phone' => filled($data['phone'] ?? null) ? (string) $data['phone'] : null,
+            'email' => filled($data['email'] ?? null) ? strtolower(trim($data['email'])) : null,
+            'address' => filled($data['address'] ?? null) ? trim($data['address']) : null,
             'is_favorite' => $request->boolean('is_favorite'),
             'sort_order' => (int) ($data['sort_order'] ?? 0),
         ];
+    }
+
+    protected function normalisePhoneOnRequest(Request $request): void
+    {
+        if (! $request->has('phone')) {
+            return;
+        }
+
+        $digits = preg_replace('/\D/', '', (string) $request->input('phone'));
+
+        $request->merge([
+            'phone' => $digits === '' ? null : $digits,
+        ]);
     }
 
     protected function normalizeUrl(string $raw): ?string

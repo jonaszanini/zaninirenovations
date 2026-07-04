@@ -14,7 +14,30 @@
       font-size: 12px;
       white-space: nowrap;
     }
-    .ss-tag-filter { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+    .ss-toolbar-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+    .ss-toolbar-search-row {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .ss-toolbar-search-row .admin-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+    }
+    .ss-toolbar-filters {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
     .ss-notes-preview { max-width: 220px; color: #6b7280; font-size: 13px; }
     .ss-favorite { color: #d97706; }
   </style>
@@ -22,34 +45,38 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <form method="get" action="{{ route('admin.supplier-sites.index') }}" class="cp-clients-toolbar-search admin-list-filters" style="flex:1;">
-      <input type="search"
-             name="q"
-             value="{{ $q }}"
-             placeholder="Search name, URL, notes, phone, or tags…"
-             class="admin-input cp-clients-toolbar-search__input">
-      <label class="admin-list-filters__per-page">
-        <span class="admin-list-filters__per-page-label">Tag</span>
-        <select name="tag" class="admin-input admin-list-filters__per-page-select" aria-label="Filter by tag" onchange="this.form.submit()">
-          <option value="">All tags</option>
-          @foreach ($filterTags as $tag)
-            <option value="{{ $tag->slug }}" @selected($tagSlug === $tag->slug)>{{ $tag->name }}</option>
-          @endforeach
-        </select>
-      </label>
-      <label class="admin-list-filters__per-page">
-        <span class="admin-list-filters__per-page-label">Show</span>
-        <select name="per_page" class="admin-input admin-list-filters__per-page-select" aria-label="Rows per page" onchange="this.form.submit()">
-          @foreach (\App\Support\AdminPaginatedList::PER_PAGE_OPTIONS as $option)
-            <option value="{{ $option }}" @selected((string) $perPage === (string) $option)>
-              {{ $option === 'all' ? 'All' : $option }}
-            </option>
-          @endforeach
-        </select>
-      </label>
-      <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-search"></i> Search
-      </button>
+    <form method="get" action="{{ route('admin.supplier-sites.index') }}" class="ss-toolbar-form">
+      <div class="ss-toolbar-search-row">
+        <input type="search"
+               name="q"
+               value="{{ $q }}"
+               placeholder="Search name, URL, email, address, notes, phone, or tags…"
+               class="admin-input">
+        <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-search"></i> Search
+        </button>
+      </div>
+      <div class="ss-toolbar-filters admin-list-filters">
+        <label class="admin-list-filters__per-page">
+          <span class="admin-list-filters__per-page-label">Tag</span>
+          <select name="tag" class="admin-input admin-list-filters__per-page-select" aria-label="Filter by tag" onchange="this.form.submit()">
+            <option value="">All tags</option>
+            @foreach ($filterTags as $tag)
+              <option value="{{ $tag->slug }}" @selected($tagSlug === $tag->slug)>{{ $tag->name }}</option>
+            @endforeach
+          </select>
+        </label>
+        <label class="admin-list-filters__per-page">
+          <span class="admin-list-filters__per-page-label">Show</span>
+          <select name="per_page" class="admin-input admin-list-filters__per-page-select" aria-label="Rows per page" onchange="this.form.submit()">
+            @foreach (\App\Support\AdminPaginatedList::PER_PAGE_OPTIONS as $option)
+              <option value="{{ $option }}" @selected((string) $perPage === (string) $option)>
+                {{ $option === 'all' ? 'All' : $option }}
+              </option>
+            @endforeach
+          </select>
+        </label>
+      </div>
     </form>
     <a href="{{ route('admin.supplier-sites.create') }}" class="admin-btn admin-btn--primary admin-btn--sm">
       <i class="fa fa-plus"></i> Add supplier
@@ -65,7 +92,9 @@
             <th>Name</th>
             <th>Website</th>
             <th>Tags</th>
+            <th>Email</th>
             <th>Phone</th>
+            <th>Address</th>
             <th>Notes</th>
             <th></th>
           </tr>
@@ -92,7 +121,21 @@
                   <span class="admin-form-help">—</span>
                 @endforelse
               </td>
-              <td>{{ filled($site->phone) ? $site->phone : '—' }}</td>
+              <td>
+                @if (filled($site->email))
+                  <a href="mailto:{{ $site->email }}" class="admin-text-link">{{ $site->email }}</a>
+                @else
+                  —
+                @endif
+              </td>
+              <td>{{ filled($site->phone) ? \App\Models\ClientProject::formatPhone($site->phone) : '—' }}</td>
+              <td>
+                @if (filled($site->address))
+                  <span class="ss-notes-preview">{{ \Illuminate\Support\Str::limit($site->address, 60) }}</span>
+                @else
+                  —
+                @endif
+              </td>
               <td>
                 @if (filled($site->notes))
                   <span class="ss-notes-preview">{{ \Illuminate\Support\Str::limit($site->notes, 80) }}</span>
@@ -110,7 +153,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="7" class="admin-form-help">
+              <td colspan="9" class="admin-form-help">
                 @if ($q !== '' || $tagSlug !== '')
                   No suppliers match your search.
                 @else

@@ -17,17 +17,40 @@
         </div>
         <div class="admin-form-group">
           <label for="ss-phone">Phone</label>
-          <input class="admin-input @error('phone') is-invalid @enderror" type="text" id="ss-phone" name="phone"
-                 value="{{ old('phone', $supplierSite->phone) }}" maxlength="40" autocomplete="tel">
+          <input type="text"
+                 id="ss-phone"
+                 name="phone"
+                 @class(['admin-input', 'cp-phone-input', 'is-invalid' => $errors->has('phone')])
+                 inputmode="tel"
+                 autocomplete="tel"
+                 maxlength="14"
+                 placeholder="(xxx) xxx-xxxx"
+                 value="{{ \App\Models\ClientProject::formatPhone(old('phone', $supplierSite->phone)) }}">
           @error('phone') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
       </div>
 
+      <div class="admin-form-grid-2">
+        <div class="admin-form-group">
+          <label for="ss-email">Email</label>
+          <input class="admin-input @error('email') is-invalid @enderror" type="email" id="ss-email" name="email"
+                 value="{{ old('email', $supplierSite->email) }}" maxlength="255" autocomplete="email">
+          @error('email') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+        <div class="admin-form-group">
+          <label for="ss-url">Website URL <span class="cp-required">*</span></label>
+          <input class="admin-input @error('url') is-invalid @enderror" type="url" id="ss-url" name="url"
+                 value="{{ old('url', $supplierSite->url) }}" required maxlength="500" placeholder="https://debline.com" autocomplete="url">
+          @error('url') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+      </div>
+
       <div class="admin-form-group">
-        <label for="ss-url">Website URL <span class="cp-required">*</span></label>
-        <input class="admin-input @error('url') is-invalid @enderror" type="url" id="ss-url" name="url"
-               value="{{ old('url', $supplierSite->url) }}" required maxlength="500" placeholder="https://debline.com" autocomplete="url">
-        @error('url') <p class="admin-form-error">{{ $message }}</p> @enderror
+        <label for="ss-address">Address</label>
+        <input class="admin-input @error('address') is-invalid @enderror" type="text" id="ss-address" name="address"
+               value="{{ old('address', $supplierSite->address) }}" maxlength="500" autocomplete="street-address"
+               placeholder="123 Main St, Carleton Place, ON">
+        @error('address') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
       <div class="admin-form-group">

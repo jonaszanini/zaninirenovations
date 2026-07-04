@@ -21,6 +21,8 @@ class SupplierSiteTest extends IntegrationTestCase
             'tags_input' => 'Bin Rental, crushed stone, bedding sand',
             'notes' => 'Landscaping / aggregates',
             'phone' => '613-555-0100',
+            'email' => 'orders@debline.com',
+            'address' => '100 Industrial Rd, Carleton Place, ON',
             'is_favorite' => '1',
         ]);
 
@@ -30,6 +32,9 @@ class SupplierSiteTest extends IntegrationTestCase
         $site = SupplierSite::query()->where('name', 'Debline')->first();
         $this->assertNotNull($site);
         $this->assertSame('https://debline.com', $site->url);
+        $this->assertSame('6135550100', $site->phone);
+        $this->assertSame('orders@debline.com', $site->email);
+        $this->assertSame('100 Industrial Rd, Carleton Place, ON', $site->address);
         $this->assertTrue($site->is_favorite);
         $this->assertSame(
             ['Bin Rental', 'bedding sand', 'crushed stone'],
@@ -79,6 +84,29 @@ class SupplierSiteTest extends IntegrationTestCase
         $tag = SupplierTag::query()->where('slug', 'bin-rental')->firstOrFail();
 
         $response = $this->get(route('admin.supplier-sites.index', ['tag' => $tag->slug]));
+
+        $response->assertOk();
+        $response->assertSee('Debline', false);
+        $response->assertDontSee('Other Supply', false);
+    }
+
+    public function test_index_search_finds_supplier_by_email(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->post(route('admin.supplier-sites.store'), [
+            'name' => 'Debline',
+            'url' => 'https://debline.com',
+            'email' => 'orders@debline.com',
+        ]);
+
+        $this->post(route('admin.supplier-sites.store'), [
+            'name' => 'Other Supply',
+            'url' => 'https://example.com',
+            'email' => 'info@example.com',
+        ]);
+
+        $response = $this->get(route('admin.supplier-sites.index', ['q' => 'orders@debline']));
 
         $response->assertOk();
         $response->assertSee('Debline', false);

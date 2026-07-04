@@ -12,6 +12,8 @@ class SupplierSite extends Model
         'url',
         'notes',
         'phone',
+        'email',
+        'address',
         'is_favorite',
         'sort_order',
     ];
