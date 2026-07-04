@@ -626,7 +626,7 @@
       $ldGeometry = $ldSnap['calculation']['geometry'] ?? null;
       $ldShow = (bool) ($ldSnap['include_diagrams_on_pdf'] ?? false);
       if ($ldShow && is_array($ldGeometry)) {
-        $lowDeckDiagrams = \App\Support\LowDeckDiagramRenderer::render($ldGeometry);
+        $lowDeckDiagrams = \App\Support\LowDeckDiagramRenderer::renderForPdf($ldGeometry);
       }
     }
   @endphp

@@ -618,6 +618,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::put('ai-instructions/{ai_instruction}', [\App\Http\Controllers\Admin\AiInstructionController::class, 'update'])
         ->name('ai-instructions.update');
 
+    Route::resource('supplier-sites', \App\Http\Controllers\Admin\SupplierSiteController::class)
+        ->except(['show'])
+        ->names('supplier-sites');
+
     Route::get('image-creation', [\App\Http\Controllers\Admin\ImageCreationController::class, 'index'])
         ->name('image-creation.index');
     Route::get('image-creation/create', [\App\Http\Controllers\Admin\ImageCreationController::class, 'create'])

@@ -70,6 +70,36 @@ final class LowDeckDiagramRenderer
         ];
     }
 
+    /**
+     * Same diagrams as {@see render()}, but as DomPDF-compatible <img> tags.
+     * Inline <svg> is not rendered by dompdf; data-URI images are.
+     *
+     * @param  array<string, mixed>  $geometry
+     * @return array{foundations: string, framing: string, decking: string}
+     */
+    public static function renderForPdf(array $geometry): array
+    {
+        $svg = self::render($geometry);
+
+        return [
+            'foundations' => self::svgAsPdfImage($svg['foundations']),
+            'framing' => self::svgAsPdfImage($svg['framing']),
+            'decking' => self::svgAsPdfImage($svg['decking']),
+        ];
+    }
+
+    private static function svgAsPdfImage(string $svg): string
+    {
+        $encoded = base64_encode($svg);
+
+        return sprintf(
+            '<img src="data:image/svg+xml;base64,%s" width="%d" height="%d" alt="" style="width:100%%;height:auto;display:block;" />',
+            $encoded,
+            (int) self::CANVAS_W,
+            (int) self::CANVAS_H
+        );
+    }
+
     private static function foundations(array $g, array $c): string
     {
         $blocks = $g['blocks'] ?? [];

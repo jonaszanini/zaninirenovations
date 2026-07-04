@@ -51,7 +51,8 @@
         $isComms = request()->routeIs('admin.communications.*');
         $isUtilities = request()->routeIs('admin.utilities.*')
             || request()->routeIs('admin.ai-instructions.*')
-            || request()->routeIs('admin.image-creation.*');
+            || request()->routeIs('admin.image-creation.*')
+            || request()->routeIs('admin.supplier-sites.*');
         $isBlog = request()->routeIs('admin.blog.*');
       @endphp
       <ul class="admin-nav">
@@ -220,6 +221,12 @@
                 <a href="{{ route('admin.utilities.index') }}" class="{{ request()->routeIs('admin.utilities.*') ? 'is-active' : '' }}">
                   <i class="fa fa-wrench"></i>
                   Utilities
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.supplier-sites.index') }}" class="{{ request()->routeIs('admin.supplier-sites.*') ? 'is-active' : '' }}">
+                  <i class="fa fa-bookmark"></i>
+                  Suppliers
                 </a>
               </li>
             </ul>

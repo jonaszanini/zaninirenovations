@@ -7,6 +7,15 @@ use Tests\TestCase;
 
 class LowDeckDiagramRendererTest extends TestCase
 {
+    public function test_render_for_pdf_wraps_svgs_as_data_uri_images(): void
+    {
+        $html = LowDeckDiagramRenderer::renderForPdf($this->sampleGeometry())['foundations'];
+
+        $this->assertStringStartsWith('<img src="data:image/svg+xml;base64,', $html);
+        $this->assertStringContainsString('width="640"', $html);
+        $this->assertStringContainsString('height="380"', $html);
+    }
+
     public function test_foundations_svg_shows_pier_holes_posts_and_spacing(): void
     {
         $svg = LowDeckDiagramRenderer::render($this->sampleGeometry())['foundations'];
