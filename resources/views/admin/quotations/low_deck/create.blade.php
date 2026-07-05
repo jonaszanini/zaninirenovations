@@ -430,6 +430,10 @@
       </div>
 
       <div class="ld-totals">
+        <div class="ld-totals-row is-hidden" id="ld-t-material-waste-row">
+          <span>Material waste allowance <span class="admin-form-help" id="ld-t-material-waste-label">(internal)</span></span>
+          <span id="ld-t-material-waste">CA$0.00</span>
+        </div>
         <div class="ld-totals-row">
           <span>Materials subtotal <span class="admin-form-help">(incl. dump fee)</span></span>
           <span id="ld-t-materials">CA$0.00</span>
@@ -523,6 +527,9 @@
   var geometryEl = document.getElementById('ld-geometry');
   var materialsBody = document.querySelector('#ld-materials tbody');
   var tMaterials = document.getElementById('ld-t-materials');
+  var tMaterialWasteRow = document.getElementById('ld-t-material-waste-row');
+  var tMaterialWaste = document.getElementById('ld-t-material-waste');
+  var tMaterialWasteLabel = document.getElementById('ld-t-material-waste-label');
   var tHst = document.getElementById('ld-t-hst');
   var tLabour = document.getElementById('ld-t-labour');
   var tLabourRate = document.getElementById('ld-t-labour-rate');
@@ -641,6 +648,7 @@
     });
     clearDiagrams();
     if (generateWorkDescriptionBtn) generateWorkDescriptionBtn.disabled = true;
+    if (tMaterialWasteRow) tMaterialWasteRow.classList.add('is-hidden');
   }
 
   function renderIdle(msg) {
@@ -658,6 +666,7 @@
     tLabourRate.textContent = '';
     clearDiagrams();
     if (generateWorkDescriptionBtn) generateWorkDescriptionBtn.disabled = true;
+    if (tMaterialWasteRow) tMaterialWasteRow.classList.add('is-hidden');
   }
 
   function clearDiagrams() {
@@ -714,6 +723,19 @@
         '</tr>';
     }).join('');
     materialsBody.innerHTML = rows || '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
+
+    var wasteAmount = Number(t.material_waste_amount || 0);
+    var wastePercent = Number(t.material_waste_percent || (calc.inputs && calc.inputs.material_waste_percent) || 0);
+    if (tMaterialWasteRow && tMaterialWaste) {
+      var showWaste = wasteAmount > 0 && wastePercent > 0;
+      tMaterialWasteRow.classList.toggle('is-hidden', !showWaste);
+      if (showWaste) {
+        tMaterialWaste.textContent = money(wasteAmount);
+        if (tMaterialWasteLabel) {
+          tMaterialWasteLabel.textContent = '(' + wastePercent + '% — internal, included in quantities above)';
+        }
+      }
+    }
 
     tMaterials.textContent = money(t.materials_subtotal);
     tHst.textContent = money(t.hst);

@@ -172,6 +172,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
 
         $this->assertSame(10.0, $result['inputs']['material_waste_percent']);
         $this->assertSame(10.0, $result['totals']['material_waste_percent']);
+        $this->assertGreaterThan(0, $result['totals']['material_waste_amount']);
 
         $blocks = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_BLOCK_4X4);
         $this->assertNotNull($blocks);
@@ -198,6 +199,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $blocks = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_BLOCK_4X4);
         $this->assertNotNull($blocks);
         $this->assertSame(20, $blocks['quantity']);
+        $this->assertSame(0.0, $result['totals']['material_waste_amount']);
     }
 
     public function test_waste_dump_fee_is_a_flat_line_in_materials_subtotal(): void

@@ -72,7 +72,13 @@ class LowDeckQuotationCalculator
         $geometry = $this->computeGeometry($normalised);
         $packing = $this->computePacking($geometry);
         $materials = $this->computeMaterials($normalised, $geometry, $packing);
-        $totals = $this->computeTotals($materials, $geometry, $normalised);
+        $materialWasteAmount = $this->computeMaterialWasteAllowanceAmount(
+            $normalised,
+            $geometry,
+            $packing,
+            $materials
+        );
+        $totals = $this->computeTotals($materials, $geometry, $normalised, $materialWasteAmount);
 
         return [
             'inputs' => $normalised,
@@ -890,7 +896,7 @@ class LowDeckQuotationCalculator
      *   TOTALS
      *  ================================================================ */
 
-    private function computeTotals(array $materials, array $geom, array $in): array
+    private function computeTotals(array $materials, array $geom, array $in, float $materialWasteAmount = 0.0): array
     {
         $materialsSubtotal = round(array_sum(array_column($materials, 'subtotal')), 2);
         $hst = round($materialsSubtotal * LowDeckQuotation::HST_RATE, 2);
@@ -915,6 +921,55 @@ class LowDeckQuotationCalculator
             'labour_rate_per_sqft' => round($labourRate, 2),
             'area_sq_ft' => round($area, 2),
             'material_waste_percent' => round((float) ($in['material_waste_percent'] ?? 0), 2),
+            'material_waste_amount' => round(max(0.0, $materialWasteAmount), 2),
         ];
+    }
+
+    /**
+     * Dollar value of the internal material-waste buffer (inflated qty minus base).
+     *
+     * @param  list<array<string, mixed>>  $materialsWithWaste
+     */
+    private function computeMaterialWasteAllowanceAmount(
+        array $in,
+        array $geom,
+        array $packing,
+        array $materialsWithWaste
+    ): float {
+        $wastePercent = (float) ($in['material_waste_percent'] ?? 0);
+        if ($wastePercent <= 0) {
+            return 0.0;
+        }
+
+        $noWaste = $in;
+        $noWaste['material_waste_percent'] = 0;
+        $materialsBase = $this->computeMaterials($noWaste, $geom, $packing);
+
+        return $this->materialWasteAllowanceDelta($materialsWithWaste, $materialsBase);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $withWaste
+     * @param  list<array<string, mixed>>  $base
+     */
+    private function materialWasteAllowanceDelta(array $withWaste, array $base): float
+    {
+        $exclude = [
+            LowDeckMaterial::KEY_WASTE_DUMP_FEE,
+            LowDeckMaterial::KEY_JOIST_HANGER_2X6,
+        ];
+
+        $delta = 0.0;
+        foreach ($withWaste as $i => $row) {
+            if (in_array($row['key'] ?? '', $exclude, true)) {
+                continue;
+            }
+
+            $withSubtotal = (float) ($row['subtotal'] ?? 0);
+            $baseSubtotal = (float) ($base[$i]['subtotal'] ?? 0);
+            $delta += max(0.0, $withSubtotal - $baseSubtotal);
+        }
+
+        return round($delta, 2);
     }
 }
