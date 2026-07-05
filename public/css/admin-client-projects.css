@@ -2905,7 +2905,7 @@ a:hover .cp-expense-receipt-pdf {
   flex: 0 0 auto;
   white-space: nowrap;
 }
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .cp-quotation-controls {
     grid-template-columns: 1fr;
   }
@@ -2913,8 +2913,15 @@ a:hover .cp-expense-receipt-pdf {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+    gap: 8px;
   }
-  .cp-quotation-toolbar .admin-btn {
+  .cp-quotation-toolbar .cp-inline-form {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+  }
+  .cp-quotation-toolbar .admin-btn,
+  .cp-quotation-toolbar .cp-inline-form .admin-btn {
     width: 100%;
     justify-content: center;
   }
@@ -2927,6 +2934,9 @@ a:hover .cp-expense-receipt-pdf {
   }
   .cp-quotation-control__submit {
     width: 100%;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 38px;
   }
 }
 
@@ -2981,6 +2991,39 @@ a:hover .cp-expense-receipt-pdf {
   font-size: 14px;
   color: #1f2937;
   margin: 6px 0 14px;
+}
+
+.cp-quotation-supply-scope {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: #eff6ff;
+  border: 2px solid #024768;
+  border-radius: 8px;
+}
+.cp-quotation-supply-scope-headline {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #024768;
+  line-height: 1.35;
+}
+.cp-quotation-supply-scope-item {
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.cp-quotation-supply-scope-item--included {
+  font-weight: 700;
+  color: #065f46;
+}
+.cp-quotation-supply-scope-item--excluded {
+  color: #6b7280;
+}
+.cp-quotation-supply-scope-detail {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.45;
 }
 
 /* "Description of the work" — collapsed accordion on admin quotation preview. */

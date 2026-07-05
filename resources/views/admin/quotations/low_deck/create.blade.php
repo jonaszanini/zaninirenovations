@@ -732,7 +732,7 @@
       if (showWaste) {
         tMaterialWaste.textContent = money(wasteAmount);
         if (tMaterialWasteLabel) {
-          tMaterialWasteLabel.textContent = '(' + wastePercent + '% — internal, included in quantities above)';
+          tMaterialWasteLabel.textContent = '(' + wastePercent + '%)';
         }
       }
     }

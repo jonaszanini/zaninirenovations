@@ -798,6 +798,116 @@ class ClientProjectQuotation extends Model
     }
 
     /**
+     * Whether this quotation price includes labour (installation / workmanship).
+     */
+    public function includesLabourInSupplyScope(): bool
+    {
+        if ($this->source_type === self::SOURCE_STAIRS && $this->source_id) {
+            return true;
+        }
+
+        if ($this->source_type === self::SOURCE_PAINTING && $this->source_id) {
+            return true;
+        }
+
+        if ($this->source_type === self::SOURCE_FLOORING && $this->source_id) {
+            return true;
+        }
+
+        if ($this->source_type === self::SOURCE_TILE && $this->source_id) {
+            return true;
+        }
+
+        return (bool) $this->labour;
+    }
+
+    /**
+     * Whether this quotation price includes materials supplied by Zanini.
+     */
+    public function includesMaterialInSupplyScope(): bool
+    {
+        if ($this->source_type === self::SOURCE_STAIRS && $this->source_id) {
+            $stairs = StairsQuotation::query()->find($this->source_id);
+
+            return $stairs?->includesMaterialCharge() ?? false;
+        }
+
+        if ($this->source_type === self::SOURCE_PAINTING && $this->source_id) {
+            $painting = PaintingQuotation::query()->find($this->source_id);
+
+            return $painting?->includesMaterialCharge() ?? false;
+        }
+
+        if ($this->source_type === self::SOURCE_FLOORING && $this->source_id) {
+            $flooring = FlooringQuotation::query()->find($this->source_id);
+
+            return $flooring?->includesMaterialCharge() ?? false;
+        }
+
+        if ($this->source_type === self::SOURCE_TILE && $this->source_id) {
+            $tile = TileQuotation::query()->find($this->source_id);
+
+            return $tile?->includesMaterialCharge() ?? false;
+        }
+
+        return (bool) $this->material;
+    }
+
+    /**
+     * Client-facing supply scope block for PDF and admin preview.
+     *
+     * @return array{
+     *   headline: string,
+     *   detail: string,
+     *   items: list<array{label: string, included: bool}>
+     * }
+     */
+    public function supplyScopePdfMeta(): array
+    {
+        $labour = $this->includesLabourInSupplyScope();
+        $material = $this->includesMaterialInSupplyScope();
+
+        if ($labour && $material) {
+            return [
+                'headline' => 'This quotation includes materials and labour',
+                'detail' => 'All materials and professional labour in the amounts below are included in this quoted price.',
+                'items' => [
+                    ['label' => 'Materials', 'included' => true],
+                    ['label' => 'Labour', 'included' => true],
+                ],
+            ];
+        }
+
+        if ($labour) {
+            return [
+                'headline' => 'This quotation is for labour only',
+                'detail' => 'Materials are not included. The client is responsible for supplying all required materials.',
+                'items' => [
+                    ['label' => 'Materials', 'included' => false],
+                    ['label' => 'Labour', 'included' => true],
+                ],
+            ];
+        }
+
+        if ($material) {
+            return [
+                'headline' => 'This quotation is for materials only',
+                'detail' => 'Labour and installation are not included in this quoted price.',
+                'items' => [
+                    ['label' => 'Materials', 'included' => true],
+                    ['label' => 'Labour', 'included' => false],
+                ],
+            ];
+        }
+
+        return [
+            'headline' => 'Quotation scope',
+            'detail' => '',
+            'items' => [],
+        ];
+    }
+
+    /**
      * Intro phrase printed before the items table, derived from the
      * labour/material checkboxes:
      *   - both   → "To supply material and labour of the following:"
@@ -807,44 +917,13 @@ class ClientProjectQuotation extends Model
      */
     public function introPhrase(): string
     {
-        if ($this->source_type === self::SOURCE_STAIRS && $this->source_id) {
-            $stairs = StairsQuotation::query()->find($this->source_id);
-            if ($stairs) {
-                return $stairs->includesMaterialCharge()
-                    ? 'To supply material and labour of the following:'
-                    : 'For the labour of the following:';
-            }
-        }
-
-        if ($this->source_type === self::SOURCE_PAINTING && $this->source_id) {
+        if ($this->includesLabourInSupplyScope() && $this->includesMaterialInSupplyScope()) {
             return 'To supply material and labour of the following:';
         }
-
-        if ($this->source_type === self::SOURCE_FLOORING && $this->source_id) {
-            $flooring = FlooringQuotation::query()->find($this->source_id);
-            if ($flooring) {
-                return $flooring->includesMaterialCharge()
-                    ? 'To supply material and labour of the following:'
-                    : 'For the labour of the following:';
-            }
-        }
-
-        if ($this->source_type === self::SOURCE_TILE && $this->source_id) {
-            $tile = TileQuotation::query()->find($this->source_id);
-            if ($tile) {
-                return $tile->includesMaterialCharge()
-                    ? 'To supply material and labour of the following:'
-                    : 'For the labour of the following:';
-            }
-        }
-
-        if ($this->labour && $this->material) {
-            return 'To supply material and labour of the following:';
-        }
-        if ($this->labour) {
+        if ($this->includesLabourInSupplyScope()) {
             return 'For the labour of the following:';
         }
-        if ($this->material) {
+        if ($this->includesMaterialInSupplyScope()) {
             return 'To supply material of the following:';
         }
 

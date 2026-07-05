@@ -228,7 +228,13 @@
                 </div>
               </div>
 
-              <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
+              @php $supplyScope = $quotation->supplyScopePdfMeta(); @endphp
+              @if (($supplyScope['items'] ?? []) !== [])
+                @include('admin.client_projects._quotation_supply_scope', ['quotation' => $quotation])
+                <p class="cp-quotation-intro">Breakdown of quoted work:</p>
+              @else
+                <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
+              @endif
 
               @include('admin.client_projects._quotation_work_description', ['previewWorkDesc' => $previewWorkDesc])
 
@@ -376,7 +382,13 @@
             </div>
           </div>
 
-          <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
+          @php $supplyScope = $quotation->supplyScopePdfMeta(); @endphp
+          @if (($supplyScope['items'] ?? []) !== [])
+            @include('admin.client_projects._quotation_supply_scope', ['quotation' => $quotation])
+            <p class="cp-quotation-intro">Breakdown of quoted work:</p>
+          @else
+            <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
+          @endif
 
           @include('admin.client_projects._quotation_work_description', ['previewWorkDesc' => $previewWorkDesc])
 

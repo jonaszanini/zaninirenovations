@@ -191,6 +191,38 @@
       margin: 6pt 0 12pt;
     }
 
+    .quote-supply-scope {
+      margin: 0 0 14pt;
+      padding: 10pt 12pt;
+      background: #eff6ff;
+      border: 1.5pt solid #024768;
+    }
+    .quote-supply-scope-headline {
+      margin: 0 0 6pt;
+      font-size: 12pt;
+      font-weight: 700;
+      color: #024768;
+      line-height: 1.35;
+    }
+    .quote-supply-scope-item {
+      margin: 0 0 3pt;
+      font-size: 10.5pt;
+      line-height: 1.4;
+    }
+    .quote-supply-scope-item--included {
+      font-weight: 700;
+      color: #065f46;
+    }
+    .quote-supply-scope-item--excluded {
+      color: #6b7280;
+    }
+    .quote-supply-scope-detail {
+      margin: 6pt 0 0;
+      font-size: 9.5pt;
+      color: #374151;
+      line-height: 1.45;
+    }
+
     .quote-work-description {
       margin: 0 0 14pt;
       padding: 10pt 12pt;
@@ -476,8 +508,17 @@
     </tr>
   </table>
 
-  {{-- Intro phrase --}}
-  <p class="quote-intro">{{ $quotation->introPhrase() }}</p>
+  {{-- Supply scope — materials and/or labour included in this price --}}
+  @php $supplyScope = $quotation->supplyScopePdfMeta(); @endphp
+  @if (($supplyScope['items'] ?? []) !== [])
+    @include('admin.client_projects._quotation_supply_scope', [
+        'quotation' => $quotation,
+        'class' => 'quote-supply-scope',
+    ])
+    <p class="quote-intro">Breakdown of quoted work:</p>
+  @else
+    <p class="quote-intro">{{ $quotation->introPhrase() }}</p>
+  @endif
 
   {{-- Optional "Description of the work" — free-form notes about the
        service. Rendered as its own block above the line items table so
