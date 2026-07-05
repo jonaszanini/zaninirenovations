@@ -42,6 +42,9 @@ class LowDeckQuotationCalculator
     /** Maximum uniform center spacing for field joists (inches). */
     private const MAX_FIELD_JOIST_SPACING_IN = 15;
 
+    /** Joist hangers per field joist at the centre blocking beam. */
+    private const HANGERS_PER_FIELD_JOIST = 2;
+
     private LowDeckFormulaSetting $settings;
 
     /** @var \Illuminate\Support\Collection<string, LowDeckMaterial> */
@@ -149,11 +152,24 @@ class LowDeckQuotationCalculator
         $beamLines = count($beamPositionsY);
         $interiorBeams = max(0, $beamLines - 4); // exclude 2 outer + 2 inner edge headers
 
-        // --- Deck boards (run in run direction, stacked over span) ------
-        $boardWidth = (float) $this->settings->board_width_in;
-        $boardGap = (float) $this->settings->board_gap_in;
-        $boardPitch = max(0.01, $boardWidth + $boardGap);
-        $boardRows = $spanFt > 0 ? (int) ceil(($spanFt * 12.0) / $boardPitch) : 0;
+        // --- Deck boards (picture-frame border + infill field) ----------
+        $boardLayout = $this->computeDeckBoardLayout($runFt, $spanFt);
+
+        // --- Joist hangers (field joists at centre interior beam) -------
+        $centerBeamY = $this->centerInteriorBeamY($beamPositionsY, $spanFt, $edgeHeaderYs);
+        $fieldJoistPositions = $framing['field_positions_x_ft'];
+        $hangerCount = $fieldJoists > 0 && $centerBeamY !== null
+            ? $fieldJoists * self::HANGERS_PER_FIELD_JOIST
+            : 0;
+        $hangerPositions = [];
+        if ($hangerCount > 0 && $centerBeamY !== null) {
+            foreach ($fieldJoistPositions as $x) {
+                $hangerPositions[] = [
+                    'x_ft' => (float) $x,
+                    'y_ft' => $centerBeamY,
+                ];
+            }
+        }
 
         // --- Frame intersections ----------------------------------------
         $verticalFraming = $fieldJoists + 2; // field + inner edge joists (left/right)
@@ -220,11 +236,13 @@ class LowDeckQuotationCalculator
                 'edge_inset_positions_y_ft' => $edgeHeaderYs,
                 'positions_y_ft' => $beamPositionsY,
             ],
-            'boards' => [
-                'rows' => $boardRows,
-                'run_ft' => round($runFt, 2),
-                'board_width_in' => round($boardWidth, 3),
-                'board_gap_in' => round($boardGap, 3),
+            'boards' => $boardLayout,
+            'joist_hangers' => [
+                'count' => $hangerCount,
+                'per_field_joist' => self::HANGERS_PER_FIELD_JOIST,
+                'field_joist_count' => $fieldJoists,
+                'beam_y_ft' => $centerBeamY,
+                'positions_ft' => $hangerPositions,
             ],
             'intersections' => [
                 't_count' => $tJoints,
@@ -239,7 +257,113 @@ class LowDeckQuotationCalculator
         ];
     }
 
-    /** Number of grid lines so spacing never exceeds the max (min 2). */
+    /**
+     * Interior blocking beam closest to deck mid-span (excludes rim + edge headers).
+     *
+     * @param  list<float>  $beamYs
+     * @param  list<float>  $edgeHeaderYs
+     */
+    private function centerInteriorBeamY(array $beamYs, float $spanFt, array $edgeHeaderYs): ?float
+    {
+        $eps = 0.001;
+        $center = $spanFt / 2.0;
+        $exclude = array_merge([0.0, round($spanFt, 3)], array_map(
+            static fn ($y) => round((float) $y, 3),
+            $edgeHeaderYs
+        ));
+
+        $interior = [];
+        foreach ($beamYs as $y) {
+            $y = round((float) $y, 3);
+            foreach ($exclude as $excluded) {
+                if (abs($y - $excluded) < $eps) {
+                    continue 2;
+                }
+            }
+            $interior[] = $y;
+        }
+
+        if ($interior === []) {
+            return null;
+        }
+
+        usort($interior, static fn (float $a, float $b): int => abs($a - $center) <=> abs($b - $center));
+
+        return $interior[0];
+    }
+
+    /**
+     * Picture-frame decking: mitred border boards plus infill rows at 1/8 in. gaps.
+     *
+     * @return array<string, mixed>
+     */
+    private function computeDeckBoardLayout(float $runFt, float $spanFt): array
+    {
+        $boardWidthIn = (float) $this->settings->board_width_in;
+        $boardGapIn = (float) $this->settings->board_gap_in;
+        $boardWidthFt = $boardWidthIn / 12.0;
+        $boardPitchIn = max(0.01, $boardWidthIn + $boardGapIn);
+
+        if ($runFt <= 0 || $spanFt <= 0) {
+            return [
+                'layout' => 'picture_frame',
+                'border_count' => 0,
+                'infill_rows' => 0,
+                'total_boards' => 0,
+                'rows' => 0,
+                'run_ft' => 0.0,
+                'board_width_in' => round($boardWidthIn, 3),
+                'board_gap_in' => round($boardGapIn, 3),
+                'board_width_ft' => 0.0,
+                'inner_run_ft' => 0.0,
+                'inner_span_ft' => 0.0,
+                'border_parallel_ft' => 0.0,
+                'border_perpendicular_ft' => 0.0,
+                'infill_length_ft' => 0.0,
+                'total_length_ft' => 0.0,
+                'runs_ft' => [],
+            ];
+        }
+
+        $innerRunFt = max(0.0, $runFt - 2 * $boardWidthFt);
+        $innerSpanFt = max(0.0, $spanFt - 2 * $boardWidthFt);
+        $sideBorderFt = round($innerSpanFt, 3);
+        $parallelBorderFt = round($runFt, 3);
+        $infillLengthFt = round($innerRunFt, 3);
+
+        $infillRows = $innerSpanFt > 0
+            ? (int) ceil(($innerSpanFt * 12.0) / $boardPitchIn)
+            : 0;
+
+        $runsFt = array_merge(
+            [$parallelBorderFt, $parallelBorderFt],
+            [$sideBorderFt, $sideBorderFt],
+            array_fill(0, $infillRows, $infillLengthFt)
+        );
+
+        $totalBoards = count($runsFt);
+        $totalLengthFt = round(array_sum($runsFt), 2);
+
+        return [
+            'layout' => 'picture_frame',
+            'border_count' => 4,
+            'infill_rows' => $infillRows,
+            'total_boards' => $totalBoards,
+            'rows' => $infillRows,
+            'run_ft' => round($runFt, 2),
+            'board_width_in' => round($boardWidthIn, 3),
+            'board_gap_in' => round($boardGapIn, 3),
+            'board_width_ft' => round($boardWidthFt, 4),
+            'inner_run_ft' => $infillLengthFt,
+            'inner_span_ft' => round($innerSpanFt, 3),
+            'border_parallel_ft' => $parallelBorderFt,
+            'border_perpendicular_ft' => $sideBorderFt,
+            'infill_length_ft' => $infillLengthFt,
+            'total_length_ft' => $totalLengthFt,
+            'runs_ft' => $runsFt,
+        ];
+    }
+
     private function gridLinesAlong(float $lengthFt, float $maxSpacingFt): int
     {
         if ($lengthFt <= 0) {
@@ -370,9 +494,10 @@ class LowDeckQuotationCalculator
         $joistPieces = $this->splitToStock($joistRuns, $this->maxStockLengthFt($joistStocks));
         $joists = LowDeckLumberPacker::pack($joistPieces, $joistStocks, $kerf);
 
-        // Deck boards: one row per board pitch, each row runs the long side.
+        // Deck boards: picture-frame border pieces + infill rows.
+        $boardRuns = $geom['boards']['runs_ft'] ?? [];
         $boardPieces = $this->splitToStock(
-            array_fill(0, (int) $geom['boards']['rows'], $runFt),
+            array_map('floatval', $boardRuns),
             $this->maxStockLengthFt($boardStocks)
         );
         $boards = LowDeckLumberPacker::pack($boardPieces, $boardStocks, $kerf);
@@ -511,6 +636,24 @@ class LowDeckQuotationCalculator
             $rows[] = $row;
         }
 
+        // -------- JOIST HANGERS (2x6) ------------------------------------
+        $hangers = (int) ($geom['joist_hangers']['count'] ?? 0);
+        if ($hangers > 0) {
+            $fieldJoists = (int) ($geom['joist_hangers']['field_joist_count'] ?? 0);
+            $perJoist = (int) ($geom['joist_hangers']['per_field_joist'] ?? self::HANGERS_PER_FIELD_JOIST);
+            $rows[] = $this->row(
+                LowDeckMaterial::KEY_JOIST_HANGER_2X6,
+                $this->wastefulQuantity($hangers, $wastePercent),
+                'ea',
+                sprintf(
+                    '%d hangers (%d per field joist × %d at centre beam)',
+                    $hangers,
+                    $perJoist,
+                    $fieldJoists
+                )
+            );
+        }
+
         // -------- JOIST TAPE --------------------------------------------
         $rolls = (int) $geom['joist_tape']['rolls_required'];
         if ($rolls > 0) {
@@ -528,10 +671,11 @@ class LowDeckQuotationCalculator
 
         // -------- DECK BOARDS (packed) ----------------------------------
         $boardNote = sprintf(
-            '%d rows × %s ft (5.5 in boards, %s in gap)',
-            (int) $geom['boards']['rows'],
-            rtrim(rtrim(number_format((float) $geom['boards']['run_ft'], 2), '0'), '.'),
-            rtrim(rtrim(number_format((float) $geom['boards']['board_gap_in'], 3), '0'), '.')
+            '%d boards: 4 border (45° miters) + %d infill × %s ft (5.5 in boards, %s in gap)',
+            (int) ($geom['boards']['total_boards'] ?? 0),
+            (int) ($geom['boards']['infill_rows'] ?? 0),
+            rtrim(rtrim(number_format((float) ($geom['boards']['infill_length_ft'] ?? 0), 2), '0'), '.'),
+            rtrim(rtrim(number_format((float) ($geom['boards']['board_gap_in'] ?? 0), 3), '0'), '.')
         );
         foreach ($this->lumberRows($packing['boards'], $boardNote, $wastePercent) as $row) {
             $rows[] = $row;
@@ -559,7 +703,7 @@ class LowDeckQuotationCalculator
         }
 
         // -------- DECK BOARD SCREWS (2-1/2 in) --------------------------
-        $boardLengthIn = (int) $geom['boards']['rows'] * (float) $geom['boards']['run_ft'] * 12.0;
+        $boardLengthIn = (int) round(((float) ($geom['boards']['total_length_ft'] ?? 0)) * 12.0);
         $boardScrews = (int) ceil($boardLengthIn * (float) $settings->board_screws_per_inch);
         if ($boardScrews > 0) {
             $rows[] = $this->boxRow(

@@ -37,6 +37,16 @@ class LowDeckDiagramRendererTest extends TestCase
         $this->assertStringContainsString('13.96&quot;', $svg);
         $this->assertStringContainsString('max 15 in.', $svg);
         $this->assertStringContainsString('<line', $svg);
+        $this->assertStringContainsString('stroke="#ea580c"', $svg);
+    }
+
+    public function test_decking_svg_draws_picture_frame_border_and_infill(): void
+    {
+        $svg = LowDeckDiagramRenderer::render($this->sampleGeometry())['decking'];
+
+        $this->assertStringContainsString('45° miters', $svg);
+        $this->assertStringContainsString('<polygon', $svg);
+        $this->assertStringContainsString('fill="#c8a36b"', $svg);
     }
 
     /**
@@ -72,7 +82,26 @@ class LowDeckDiagramRendererTest extends TestCase
                 'edge_count' => 2,
                 'positions_y_ft' => [0.0, 0.375, 5.0, 9.625, 10.0],
             ],
-            'boards' => ['rows' => 22],
+            'joist_hangers' => [
+                'count' => 8,
+                'field_joist_count' => 4,
+                'per_field_joist' => 2,
+                'beam_y_ft' => 5.0,
+                'positions_ft' => [
+                    ['x_ft' => 2.54, 'y_ft' => 5.0],
+                    ['x_ft' => 4.705, 'y_ft' => 5.0],
+                    ['x_ft' => 6.87, 'y_ft' => 5.0],
+                    ['x_ft' => 9.035, 'y_ft' => 5.0],
+                ],
+            ],
+            'boards' => [
+                'layout' => 'picture_frame',
+                'total_boards' => 20,
+                'infill_rows' => 16,
+                'board_width_ft' => 5.5 / 12.0,
+                'board_gap_in' => 0.125,
+                'rows' => 16,
+            ],
         ];
     }
 }

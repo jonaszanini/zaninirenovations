@@ -36,6 +36,8 @@ class LowDeckMaterial extends Model
 
     public const KEY_JOIST_2X6_16 = 'joist_2x6_16';
 
+    public const KEY_JOIST_HANGER_2X6 = 'joist_hanger_2x6';
+
     // Waterproofing
     public const KEY_JOIST_TAPE_50FT = 'joist_tape_50ft';
 
@@ -103,6 +105,7 @@ class LowDeckMaterial extends Model
         self::KEY_JOIST_2X6_10,
         self::KEY_JOIST_2X6_12,
         self::KEY_JOIST_2X6_16,
+        self::KEY_JOIST_HANGER_2X6,
         self::KEY_JOIST_TAPE_50FT,
         self::KEY_BOARD_5_4X6_8,
         self::KEY_BOARD_5_4X6_10,

@@ -50,6 +50,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             [LowDeckMaterial::KEY_JOIST_2X6_10, 7.0, null],
             [LowDeckMaterial::KEY_JOIST_2X6_12, 8.0, null],
             [LowDeckMaterial::KEY_JOIST_2X6_16, 10.0, null],
+            [LowDeckMaterial::KEY_JOIST_HANGER_2X6, 3.5, null],
             [LowDeckMaterial::KEY_JOIST_TAPE_50FT, 30.0, null],
             [LowDeckMaterial::KEY_BOARD_5_4X6_8, 4.0, null],
             [LowDeckMaterial::KEY_BOARD_5_4X6_10, 5.0, null],
@@ -109,13 +110,23 @@ class LowDeckQuotationCalculatorTest extends TestCase
 
         $this->assertSame(6, $geom['beams']['lines_total']);
         $this->assertSame(2, $geom['beams']['interior_count']);
-        $this->assertSame(26, $geom['boards']['rows']);
+        $this->assertSame(24, $geom['boards']['infill_rows']);
+        $this->assertSame(28, $geom['boards']['total_boards']);
+        $this->assertSame('picture_frame', $geom['boards']['layout']);
 
         $this->assertSame(28, $geom['intersections']['cross_count']);
         $this->assertSame(40, $geom['intersections']['t_count']);
 
         $this->assertSame(6, $geom['joist_tape']['rolls_required']);
         $this->assertSame(22, $geom['joist_tape']['members_taped']);
+
+        $this->assertSame(24, $geom['joist_hangers']['count']);
+        $this->assertSame(12, $geom['joist_hangers']['field_joist_count']);
+        $this->assertCount(12, $geom['joist_hangers']['positions_ft']);
+
+        $hangers = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_JOIST_HANGER_2X6);
+        $this->assertNotNull($hangers);
+        $this->assertSame(24, $hangers['quantity']);
     }
 
     public function test_fastener_counts_round_up_to_retail_boxes(): void

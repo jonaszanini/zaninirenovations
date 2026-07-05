@@ -20,6 +20,14 @@ final class LowDeckDiagramRenderer
 
     private const PAD = 46.0;
 
+    /** Offset for block-grid segment dimensions (px). */
+    private const DIM_SEGMENT_OFFSET = 18.0;
+
+    /** Outer tier for overall deck size when segment dims are drawn (px). */
+    private const DIM_TOTAL_OFFSET_RUN = 40.0;
+
+    private const DIM_TOTAL_OFFSET_SPAN = 44.0;
+
     /** 12 in. concrete pier hole (plan view). */
     private const HOLE_FT = 1.0;
 
@@ -116,7 +124,7 @@ final class LowDeckDiagramRenderer
         }
 
         $body .= self::holeSpacingDimensions($xs, $ys, $c);
-        $body .= self::dimensions($c);
+        $body .= self::dimensions($c, true);
         $body .= self::caption(sprintf(
             '%d concrete deck blocks, %d x %d grid · 12 in. pier holes · posts inset 1.5 in. for rim joist',
             (int) ($blocks['count'] ?? 0),
@@ -161,6 +169,7 @@ final class LowDeckDiagramRenderer
         }
 
         $body .= self::fieldJoistSpacingDimension($joists, $c);
+        $body .= self::joistHangerMarkers($g['joist_hangers'] ?? [], $c);
         $body .= self::dimensions($c);
         $spacingLabel = self::fieldJoistSpacingLabel($joists);
         $body .= self::caption(sprintf(
@@ -178,32 +187,136 @@ final class LowDeckDiagramRenderer
     private static function decking(array $g, array $c): string
     {
         $boards = $g['boards'] ?? [];
-        $rows = (int) ($boards['rows'] ?? 0);
 
         $body = self::deckRect($c);
+        $body .= self::deckingBoards($boards, $c);
+        $body .= self::dimensions($c);
+        $body .= self::caption(self::deckingCaption($boards));
 
-        if ($rows > 0) {
-            $pitch = $c['h'] / $rows;
-            $boardH = max(1.5, $pitch * 0.82);
-            for ($i = 0; $i < $rows; $i++) {
-                $y = $c['y0'] + $i * $pitch;
-                $body .= sprintf(
-                    '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="1" fill="#c8a36b" stroke="#a9824a" stroke-width="0.5" />',
-                    $c['x0'],
-                    $y,
-                    $c['w'],
-                    $boardH
+        return self::wrap($body);
+    }
+
+    private static function deckingCaption(array $boards): string
+    {
+        if (($boards['layout'] ?? '') === 'picture_frame') {
+            return sprintf(
+                '%d boards: 4 border (45° miters) + %d infill · 5.5 in. wide · %s in. gap',
+                (int) ($boards['total_boards'] ?? 0),
+                (int) ($boards['infill_rows'] ?? 0),
+                rtrim(rtrim(number_format((float) ($boards['board_gap_in'] ?? 0), 3), '0'), '.')
+            );
+        }
+
+        $rows = (int) ($boards['rows'] ?? 0);
+
+        return sprintf('%d deck boards, 5.5 in. wide, 1/8 in. gap', $rows);
+    }
+
+    private static function deckingBoards(array $boards, array $c): string
+    {
+        if (($boards['layout'] ?? '') !== 'picture_frame') {
+            return self::deckingBoardsLegacy($boards, $c);
+        }
+
+        $boardWidthFt = (float) ($boards['board_width_ft'] ?? 0);
+        $boardGapIn = (float) ($boards['board_gap_in'] ?? 0);
+        $infillRows = (int) ($boards['infill_rows'] ?? 0);
+        if ($boardWidthFt <= 0) {
+            return '';
+        }
+
+        $b = $boardWidthFt * $c['scale'];
+        $x0 = $c['x0'];
+        $y0 = $c['y0'];
+        $w = $c['w'];
+        $h = $c['h'];
+        $fill = '#c8a36b';
+        $stroke = '#a9824a';
+
+        $svg = sprintf(
+            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
+            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
+            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
+            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />',
+            $x0 + $b, $y0,
+            $x0 + $w - $b, $y0,
+            $x0 + $w, $y0 + $b,
+            $x0 + $w - $b, $y0 + $b,
+            $x0 + $b, $y0 + $b,
+            $x0, $y0 + $b,
+            $fill,
+            $stroke,
+            $x0 + $b, $y0 + $h - $b,
+            $x0, $y0 + $h,
+            $x0 + $b, $y0 + $h,
+            $x0 + $w - $b, $y0 + $h,
+            $x0 + $w, $y0 + $h,
+            $x0 + $w - $b, $y0 + $h - $b,
+            $fill,
+            $stroke,
+            $x0, $y0 + $b,
+            $x0 + $b, $y0 + $b,
+            $x0 + $b, $y0 + $h - $b,
+            $x0, $y0 + $h - $b,
+            $fill,
+            $stroke,
+            $x0 + $w - $b, $y0 + $b,
+            $x0 + $w, $y0 + $b,
+            $x0 + $w, $y0 + $h - $b,
+            $x0 + $w - $b, $y0 + $h - $b,
+            $fill,
+            $stroke
+        );
+
+        if ($infillRows > 0) {
+            $pitchPx = (($boardWidthFt * 12.0) + $boardGapIn) / 12.0 * $c['scale'];
+            $innerX = $x0 + $b;
+            $innerY = $y0 + $b;
+            $innerW = $w - 2 * $b;
+            $innerH = $h - 2 * $b;
+
+            for ($i = 0; $i < $infillRows; $i++) {
+                $rowY = $innerY + $i * $pitchPx;
+                if ($rowY + $b > $innerY + $innerH + 0.5) {
+                    break;
+                }
+                $svg .= sprintf(
+                    '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="0.5" fill="%s" stroke="%s" stroke-width="0.5" />',
+                    $innerX,
+                    $rowY,
+                    $innerW,
+                    $b,
+                    $fill,
+                    $stroke
                 );
             }
         }
 
-        $body .= self::dimensions($c);
-        $body .= self::caption(sprintf(
-            '%d deck boards, 5.5 in. wide, 1/8 in. gap',
-            $rows
-        ));
+        return $svg;
+    }
 
-        return self::wrap($body);
+    private static function deckingBoardsLegacy(array $boards, array $c): string
+    {
+        $rows = (int) ($boards['rows'] ?? 0);
+        if ($rows <= 0) {
+            return '';
+        }
+
+        $svg = '';
+        $pitch = $c['h'] / $rows;
+        $boardH = max(1.5, $pitch * 0.82);
+        for ($i = 0; $i < $rows; $i++) {
+            $y = $c['y0'] + $i * $pitch;
+            $svg .= sprintf(
+                '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="1" fill="#c8a36b" stroke="#a9824a" stroke-width="0.5" />',
+                $c['x0'],
+                $y,
+                $c['w'],
+                $boardH
+            );
+        }
+
+        return $svg;
     }
 
     private static function foundationBlock(float $fx, float $fy, array $c): string
@@ -322,7 +435,7 @@ final class LowDeckDiagramRenderer
         array $c,
         ?float $y2 = null
     ): string {
-        $offset = 18.0;
+        $offset = self::DIM_SEGMENT_OFFSET;
         $color = '#475569';
 
         if ($orientation === 'horizontal') {
@@ -389,6 +502,29 @@ final class LowDeckDiagramRenderer
         );
     }
 
+    private static function joistHangerMarkers(array $hangers, array $c): string
+    {
+        $positions = $hangers['positions_ft'] ?? [];
+        if ($positions === []) {
+            return '';
+        }
+
+        $radius = max(3.0, self::RIM_JOIST_FT * $c['scale'] * 1.4);
+        $svg = '';
+        foreach ($positions as $pos) {
+            $cx = $c['x0'] + (float) ($pos['x_ft'] ?? 0) * $c['scale'];
+            $cy = $c['y0'] + (float) ($pos['y_ft'] ?? 0) * $c['scale'];
+            $svg .= sprintf(
+                '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="none" stroke="#ea580c" stroke-width="1.5" />',
+                $cx,
+                $cy,
+                $radius
+            );
+        }
+
+        return $svg;
+    }
+
     private static function fieldJoistSpacingLabel(array $joists): string
     {
         $spacingIn = (float) ($joists['field_spacing_in'] ?? 0);
@@ -448,22 +584,24 @@ final class LowDeckDiagramRenderer
         );
     }
 
-    private static function dimensions(array $c): string
+    private static function dimensions(array $c, bool $outerTier = false): string
     {
         $runLabel = self::ftLabel($c['runFt']);
         $spanLabel = self::ftLabel($c['spanFt']);
         $midX = $c['x0'] + $c['w'] / 2;
         $midY = $c['y0'] + $c['h'] / 2;
+        $runY = $c['y0'] - ($outerTier ? self::DIM_TOTAL_OFFSET_RUN : 14.0);
+        $spanX = $c['x0'] - ($outerTier ? self::DIM_TOTAL_OFFSET_SPAN : 16.0);
 
         return sprintf(
             '<text x="%.1f" y="%.1f" text-anchor="middle" font-size="13" font-weight="600" fill="#334155">%s</text>'.
             '<text x="%.1f" y="%.1f" text-anchor="middle" font-size="13" font-weight="600" fill="#334155" transform="rotate(-90 %.1f %.1f)">%s</text>',
             $midX,
-            $c['y0'] - 14,
+            $runY,
             $runLabel,
-            $c['x0'] - 16,
+            $spanX,
             $midY,
-            $c['x0'] - 16,
+            $spanX,
             $midY,
             $spanLabel
         );

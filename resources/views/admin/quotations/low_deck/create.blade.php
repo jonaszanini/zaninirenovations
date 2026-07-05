@@ -685,8 +685,11 @@
       + (blocks.count || 0) + ' blocks (' + (blocks.grid_lines_run || 0) + ' × ' + (blocks.grid_lines_span || 0) + ' grid)<br>'
       + (joists.total_lines || 0) + ' joist lines · ' + formatJoistSpacing(joists.field_spacing_in) + ' spacing (max 15 in.) · '
       + (beams.lines_total || 0) + ' beam lines (' + (beams.interior_count || 0) + ' interior)<br>'
-      + (boards.rows || 0) + ' deck board rows · '
+      + (boards.total_boards || boards.rows || 0) + ' deck boards (4 border + ' + (boards.infill_rows || boards.rows || 0) + ' infill) · '
       + (tape.rolls_required || 0) + ' joist tape roll' + ((tape.rolls_required === 1) ? '' : 's')
+      + ((g.joist_hangers && g.joist_hangers.count > 0)
+        ? '<br>' + g.joist_hangers.count + ' joist hangers (2 per field joist)'
+        : '')
       + ((calc.inputs && calc.inputs.material_waste_percent > 0)
         ? '<br>Material waste: ' + calc.inputs.material_waste_percent + '% (internal)'
         : '')
@@ -723,6 +726,9 @@
   var HOLE_FT = 1;
   var RIM_JOIST_FT = 1.5 / 12;
   var POST_FT = 3.5 / 12;
+  var DIM_SEGMENT_OFFSET = 18;
+  var DIM_TOTAL_OFFSET_RUN = 40;
+  var DIM_TOTAL_OFFSET_SPAN = 44;
 
   function svgEl(tag, attrs) {
     var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -813,7 +819,7 @@
   }
 
   function dimensionLineH(svg, x1, x2, y, label) {
-    var offset = 18, color = '#475569', lineY = y - offset, midX = (x1 + x2) / 2;
+    var offset = DIM_SEGMENT_OFFSET, color = '#475569', lineY = y - offset, midX = (x1 + x2) / 2;
     svg.appendChild(svgEl('line', { x1: x1, y1: lineY, x2: x2, y2: lineY, stroke: color, 'stroke-width': 1 }));
     svg.appendChild(svgEl('line', { x1: x1, y1: lineY - 4, x2: x1, y2: lineY + 4, stroke: color, 'stroke-width': 1 }));
     svg.appendChild(svgEl('line', { x1: x2, y1: lineY - 4, x2: x2, y2: lineY + 4, stroke: color, 'stroke-width': 1 }));
@@ -823,7 +829,7 @@
   }
 
   function dimensionLineV(svg, x, y1, y2, label) {
-    var offset = 18, color = '#475569', lineX = x - offset, midY = (y1 + y2) / 2;
+    var offset = DIM_SEGMENT_OFFSET, color = '#475569', lineX = x - offset, midY = (y1 + y2) / 2;
     svg.appendChild(svgEl('line', { x1: lineX, y1: y1, x2: lineX, y2: y2, stroke: color, 'stroke-width': 1 }));
     svg.appendChild(svgEl('line', { x1: lineX - 4, y1: y1, x2: lineX + 4, y2: y1, stroke: color, 'stroke-width': 1 }));
     svg.appendChild(svgEl('line', { x1: lineX - 4, y1: y2, x2: lineX + 4, y2: y2, stroke: color, 'stroke-width': 1 }));
@@ -848,14 +854,109 @@
     }
   }
 
-  function dimensions(svg, c) {
+  function dimensions(svg, c, outerTier) {
     var midX = c.x0 + c.w / 2, midY = c.y0 + c.h / 2;
-    var t1 = svgEl('text', { x: midX, y: c.y0 - 14, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, fill: '#334155' });
+    var runY = c.y0 - (outerTier ? DIM_TOTAL_OFFSET_RUN : 14);
+    var spanX = c.x0 - (outerTier ? DIM_TOTAL_OFFSET_SPAN : 16);
+    var t1 = svgEl('text', { x: midX, y: runY, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, fill: '#334155' });
     t1.textContent = ftLabel(c.runFt);
     svg.appendChild(t1);
-    var t2 = svgEl('text', { x: c.x0 - 16, y: midY, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, fill: '#334155', transform: 'rotate(-90 ' + (c.x0 - 16) + ' ' + midY + ')' });
+    var t2 = svgEl('text', { x: spanX, y: midY, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, fill: '#334155', transform: 'rotate(-90 ' + spanX + ' ' + midY + ')' });
     t2.textContent = ftLabel(c.spanFt);
     svg.appendChild(t2);
+  }
+
+  function deckingCaption(boards) {
+    if (boards.layout === 'picture_frame') {
+      return (boards.total_boards || 0) + ' boards: 4 border (45° miters) + ' + (boards.infill_rows || 0)
+        + ' infill · 5.5 in. wide · ' + (boards.board_gap_in || 0.125) + ' in. gap';
+    }
+    return (boards.rows || 0) + ' deck boards, 5.5 in. wide, 1/8 in. gap';
+  }
+
+  function drawPictureFrameDecking(svg, boards, c) {
+    var boardWidthFt = Number(boards.board_width_ft || 0);
+    var boardGapIn = Number(boards.board_gap_in || 0);
+    var infillRows = parseInt(boards.infill_rows || 0, 10);
+    if (!(boardWidthFt > 0)) return;
+
+    var b = boardWidthFt * c.scale;
+    var x0 = c.x0, y0 = c.y0, w = c.w, h = c.h;
+    var fill = '#c8a36b', stroke = '#a9824a';
+
+    function poly(points) {
+      svg.appendChild(svgEl('polygon', { points: points, fill: fill, stroke: stroke, 'stroke-width': 0.5 }));
+    }
+
+    poly([
+      x0 + b, y0,
+      x0 + w - b, y0,
+      x0 + w, y0 + b,
+      x0 + w - b, y0 + b,
+      x0 + b, y0 + b,
+      x0, y0 + b
+    ].map(function (n) { return n.toFixed(1); }).join(' '));
+
+    poly([
+      x0 + b, y0 + h - b,
+      x0, y0 + h,
+      x0 + b, y0 + h,
+      x0 + w - b, y0 + h,
+      x0 + w, y0 + h,
+      x0 + w - b, y0 + h - b
+    ].map(function (n) { return n.toFixed(1); }).join(' '));
+
+    poly([
+      x0, y0 + b,
+      x0 + b, y0 + b,
+      x0 + b, y0 + h - b,
+      x0, y0 + h - b
+    ].map(function (n) { return n.toFixed(1); }).join(' '));
+
+    poly([
+      x0 + w - b, y0 + b,
+      x0 + w, y0 + b,
+      x0 + w, y0 + h - b,
+      x0 + w - b, y0 + h - b
+    ].map(function (n) { return n.toFixed(1); }).join(' '));
+
+    if (infillRows > 0) {
+      var pitchPx = ((boardWidthFt * 12) + boardGapIn) / 12 * c.scale;
+      var innerX = x0 + b, innerY = y0 + b, innerW = w - 2 * b, innerH = h - 2 * b;
+      for (var i = 0; i < infillRows; i++) {
+        var rowY = innerY + i * pitchPx;
+        if (rowY + b > innerY + innerH + 0.5) break;
+        svg.appendChild(svgEl('rect', {
+          x: innerX, y: rowY, width: innerW, height: b,
+          rx: 0.5, fill: fill, stroke: stroke, 'stroke-width': 0.5
+        }));
+      }
+    }
+  }
+
+  function drawLegacyDecking(svg, boards, c) {
+    var rows = boards.rows || 0;
+    if (rows <= 0) return;
+    var pitch = c.h / rows;
+    var boardH = Math.max(1.5, pitch * 0.82);
+    for (var i = 0; i < rows; i++) {
+      var y = c.y0 + i * pitch;
+      svg.appendChild(svgEl('rect', { x: c.x0, y: y, width: c.w, height: boardH, rx: 1, fill: '#c8a36b', stroke: '#a9824a', 'stroke-width': 0.5 }));
+    }
+  }
+
+  function joistHangerMarkers(svg, hangers, c) {
+    var positions = (hangers && hangers.positions_ft) ? hangers.positions_ft : [];
+    if (!positions.length) return;
+    var radius = Math.max(3, (RIM_JOIST_FT * c.scale) * 1.4);
+    positions.forEach(function (pos) {
+      var cx = c.x0 + (pos.x_ft || 0) * c.scale;
+      var cy = c.y0 + (pos.y_ft || 0) * c.scale;
+      svg.appendChild(svgEl('circle', {
+        cx: cx, cy: cy, r: radius,
+        fill: 'none', stroke: '#ea580c', 'stroke-width': 1.5
+      }));
+    });
   }
 
   function caption(svg, text) {
@@ -889,7 +990,7 @@
       ys.forEach(function (fy) { foundationBlock(s1, fx, fy, c); });
     });
     holeSpacingDimensions(s1, xs, ys, c);
-    dimensions(s1, c);
+    dimensions(s1, c, true);
     caption(s1, (blocks.count || 0) + ' concrete deck blocks, ' + (blocks.grid_lines_run || 0) + ' x ' + (blocks.grid_lines_span || 0) + ' grid · 12 in. pier holes · posts inset 1.5 in. for rim joist');
     fEl.appendChild(s1);
 
@@ -906,6 +1007,7 @@
       s2.appendChild(svgEl('rect', { x: x, y: c.y0, width: thick, height: c.h, fill: '#0f766e', stroke: '#115e59', 'stroke-width': 0.75, rx: 0.5 }));
     });
     fieldJoistSpacingDimension(s2, joists, c);
+    joistHangerMarkers(s2, g.joist_hangers || {}, c);
     dimensions(s2, c);
     caption(s2, (joists.total_lines || 0) + ' joist lines · ' + formatJoistSpacing(joists.field_spacing_in) + ' spacing (max 15 in.), ' + (beams.lines_total || 0) + ' beam lines · members shown 1.5 in. wide');
     frEl.appendChild(s2);
@@ -913,17 +1015,13 @@
     // 3. Decking
     var s3 = newSvg();
     deckRect(s3, c);
-    var rows = boards.rows || 0;
-    if (rows > 0) {
-      var pitch = c.h / rows;
-      var boardH = Math.max(1.5, pitch * 0.82);
-      for (var i = 0; i < rows; i++) {
-        var y = c.y0 + i * pitch;
-        s3.appendChild(svgEl('rect', { x: c.x0, y: y, width: c.w, height: boardH, rx: 1, fill: '#c8a36b', stroke: '#a9824a', 'stroke-width': 0.5 }));
-      }
+    if (boards.layout === 'picture_frame') {
+      drawPictureFrameDecking(s3, boards, c);
+    } else {
+      drawLegacyDecking(s3, boards, c);
     }
     dimensions(s3, c);
-    caption(s3, rows + ' deck boards, 5.5 in. wide, 1/8 in. gap');
+    caption(s3, deckingCaption(boards));
     dEl.appendChild(s3);
   }
 
