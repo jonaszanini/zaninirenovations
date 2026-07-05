@@ -111,8 +111,12 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $this->assertSame(6, $geom['beams']['lines_total']);
         $this->assertSame(2, $geom['beams']['interior_count']);
         $this->assertSame(24, $geom['boards']['infill_rows']);
+        $this->assertSame(23, $geom['boards']['infill_full_rows']);
+        $this->assertSame(1, $geom['boards']['infill_rip_rows']);
         $this->assertSame(28, $geom['boards']['total_boards']);
         $this->assertSame('picture_frame', $geom['boards']['layout']);
+        $this->assertCount(24, $geom['boards']['infill_row_widths_in']);
+        $this->assertSame(3.625, $geom['boards']['infill_row_widths_in'][23]);
 
         $this->assertSame(28, $geom['intersections']['cross_count']);
         $this->assertSame(40, $geom['intersections']['t_count']);

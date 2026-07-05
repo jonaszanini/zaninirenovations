@@ -302,7 +302,6 @@ class LowDeckQuotationCalculator
         $boardWidthIn = (float) $this->settings->board_width_in;
         $boardGapIn = (float) $this->settings->board_gap_in;
         $boardWidthFt = $boardWidthIn / 12.0;
-        $boardPitchIn = max(0.01, $boardWidthIn + $boardGapIn);
 
         if ($runFt <= 0 || $spanFt <= 0) {
             return [
@@ -330,10 +329,11 @@ class LowDeckQuotationCalculator
         $sideBorderFt = round($innerSpanFt, 3);
         $parallelBorderFt = round($runFt, 3);
         $infillLengthFt = round($innerRunFt, 3);
-
-        $infillRows = $innerSpanFt > 0
-            ? (int) ceil(($innerSpanFt * 12.0) / $boardPitchIn)
-            : 0;
+        $infill = $this->computeInfillRowWidths($innerSpanFt, $boardWidthIn, $boardGapIn);
+        $infillRowWidthsIn = $infill['row_widths_in'];
+        $infillRows = $infill['total_rows'];
+        $infillFullRows = $infill['full_rows'];
+        $infillRipRows = $infill['rip_rows'];
 
         $runsFt = array_merge(
             [$parallelBorderFt, $parallelBorderFt],
@@ -348,6 +348,9 @@ class LowDeckQuotationCalculator
             'layout' => 'picture_frame',
             'border_count' => 4,
             'infill_rows' => $infillRows,
+            'infill_full_rows' => $infillFullRows,
+            'infill_rip_rows' => $infillRipRows,
+            'infill_row_widths_in' => $infillRowWidthsIn,
             'total_boards' => $totalBoards,
             'rows' => $infillRows,
             'run_ft' => round($runFt, 2),
@@ -361,6 +364,56 @@ class LowDeckQuotationCalculator
             'infill_length_ft' => $infillLengthFt,
             'total_length_ft' => $totalLengthFt,
             'runs_ft' => $runsFt,
+        ];
+    }
+
+    /**
+     * Full-width infill rows plus one ripped row when a remainder is left in the field.
+     *
+     * @return array{full_rows: int, rip_rows: int, total_rows: int, row_widths_in: list<float>}
+     */
+    private function computeInfillRowWidths(float $innerSpanFt, float $boardWidthIn, float $boardGapIn): array
+    {
+        $innerSpanIn = max(0.0, $innerSpanFt * 12.0);
+        $pitchIn = max(0.01, $boardWidthIn + $boardGapIn);
+
+        if ($innerSpanIn <= 0) {
+            return [
+                'full_rows' => 0,
+                'rip_rows' => 0,
+                'total_rows' => 0,
+                'row_widths_in' => [],
+            ];
+        }
+
+        $fullRows = 0;
+        for ($n = 1; ; $n++) {
+            $usedIn = ($n - 1) * $pitchIn + $boardWidthIn;
+            if ($usedIn > $innerSpanIn + 1e-6) {
+                break;
+            }
+            $fullRows = $n;
+        }
+
+        $widthsIn = array_fill(0, $fullRows, round($boardWidthIn, 3));
+        $usedIn = $fullRows > 0 ? ($fullRows - 1) * $pitchIn + $boardWidthIn : 0.0;
+        $remainderIn = max(0.0, $innerSpanIn - $usedIn);
+        $ripRows = 0;
+
+        if ($remainderIn > 0.01) {
+            $gapBeforeRip = $fullRows > 0 ? $boardGapIn : 0.0;
+            $ripWidthIn = max(0.0, $remainderIn - $gapBeforeRip);
+            if ($ripWidthIn > 0.01) {
+                $widthsIn[] = round($ripWidthIn, 3);
+                $ripRows = 1;
+            }
+        }
+
+        return [
+            'full_rows' => $fullRows,
+            'rip_rows' => $ripRows,
+            'total_rows' => count($widthsIn),
+            'row_widths_in' => $widthsIn,
         ];
     }
 
@@ -671,9 +724,10 @@ class LowDeckQuotationCalculator
 
         // -------- DECK BOARDS (packed) ----------------------------------
         $boardNote = sprintf(
-            '%d boards: 4 border (45° miters) + %d infill × %s ft (5.5 in boards, %s in gap)',
+            '%d boards: 4 border (45° miters) + %d infill%s × %s ft (5.5 in boards, %s in gap)',
             (int) ($geom['boards']['total_boards'] ?? 0),
             (int) ($geom['boards']['infill_rows'] ?? 0),
+            ((int) ($geom['boards']['infill_rip_rows'] ?? 0) > 0) ? ' incl. 1 ripped' : '',
             rtrim(rtrim(number_format((float) ($geom['boards']['infill_length_ft'] ?? 0), 2), '0'), '.'),
             rtrim(rtrim(number_format((float) ($geom['boards']['board_gap_in'] ?? 0), 3), '0'), '.')
         );

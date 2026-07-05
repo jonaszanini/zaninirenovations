@@ -199,10 +199,13 @@ final class LowDeckDiagramRenderer
     private static function deckingCaption(array $boards): string
     {
         if (($boards['layout'] ?? '') === 'picture_frame') {
+            $ripNote = ((int) ($boards['infill_rip_rows'] ?? 0) > 0) ? ' incl. 1 ripped' : '';
+
             return sprintf(
-                '%d boards: 4 border (45° miters) + %d infill · 5.5 in. wide · %s in. gap',
+                '%d boards: 4 border (45° miters) + %d infill%s · 5.5 in. wide · %s in. gap',
                 (int) ($boards['total_boards'] ?? 0),
                 (int) ($boards['infill_rows'] ?? 0),
+                $ripNote,
                 rtrim(rtrim(number_format((float) ($boards['board_gap_in'] ?? 0), 3), '0'), '.')
             );
         }
@@ -212,32 +215,13 @@ final class LowDeckDiagramRenderer
         return sprintf('%d deck boards, 5.5 in. wide, 1/8 in. gap', $rows);
     }
 
-    private static function deckingBoards(array $boards, array $c): string
+    private static function deckingBorderPolygons(float $b, float $x0, float $y0, float $w, float $h, string $fill, string $stroke): string
     {
-        if (($boards['layout'] ?? '') !== 'picture_frame') {
-            return self::deckingBoardsLegacy($boards, $c);
-        }
-
-        $boardWidthFt = (float) ($boards['board_width_ft'] ?? 0);
-        $boardGapIn = (float) ($boards['board_gap_in'] ?? 0);
-        $infillRows = (int) ($boards['infill_rows'] ?? 0);
-        if ($boardWidthFt <= 0) {
-            return '';
-        }
-
-        $b = $boardWidthFt * $c['scale'];
-        $x0 = $c['x0'];
-        $y0 = $c['y0'];
-        $w = $c['w'];
-        $h = $c['h'];
-        $fill = '#c8a36b';
-        $stroke = '#a9824a';
-
-        $svg = sprintf(
+        return sprintf(
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
-            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />',
+            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />',
             $x0 + $b, $y0,
             $x0 + $w - $b, $y0,
             $x0 + $w, $y0 + $b,
@@ -246,12 +230,12 @@ final class LowDeckDiagramRenderer
             $x0, $y0 + $b,
             $fill,
             $stroke,
-            $x0 + $b, $y0 + $h - $b,
-            $x0, $y0 + $h,
             $x0 + $b, $y0 + $h,
             $x0 + $w - $b, $y0 + $h,
-            $x0 + $w, $y0 + $h,
+            $x0 + $w, $y0 + $h - $b,
             $x0 + $w - $b, $y0 + $h - $b,
+            $x0 + $b, $y0 + $h - $b,
+            $x0, $y0 + $h - $b,
             $fill,
             $stroke,
             $x0, $y0 + $b,
@@ -264,33 +248,68 @@ final class LowDeckDiagramRenderer
             $x0 + $w, $y0 + $b,
             $x0 + $w, $y0 + $h - $b,
             $x0 + $w - $b, $y0 + $h - $b,
+            $x0 + $w - $b, $y0 + $h,
             $fill,
             $stroke
         );
+    }
 
-        if ($infillRows > 0) {
-            $pitchPx = (($boardWidthFt * 12.0) + $boardGapIn) / 12.0 * $c['scale'];
-            $innerX = $x0 + $b;
-            $innerY = $y0 + $b;
-            $innerW = $w - 2 * $b;
-            $innerH = $h - 2 * $b;
-
-            for ($i = 0; $i < $infillRows; $i++) {
-                $rowY = $innerY + $i * $pitchPx;
-                if ($rowY + $b > $innerY + $innerH + 0.5) {
-                    break;
-                }
-                $svg .= sprintf(
-                    '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="0.5" fill="%s" stroke="%s" stroke-width="0.5" />',
-                    $innerX,
-                    $rowY,
-                    $innerW,
-                    $b,
-                    $fill,
-                    $stroke
-                );
-            }
+    private static function deckingInfillRows(array $boards, array $c, float $b, float $x0, float $y0, float $w, float $h, string $fill, string $stroke): string
+    {
+        $rowWidthsIn = $boards['infill_row_widths_in'] ?? [];
+        if ($rowWidthsIn === []) {
+            return '';
         }
+
+        $boardGapIn = (float) ($boards['board_gap_in'] ?? 0);
+        $gapPx = ($boardGapIn / 12.0) * $c['scale'];
+        $innerX = $x0 + $b;
+        $innerY = $y0 + $b;
+        $innerW = $w - 2 * $b;
+        $cursorY = $innerY;
+        $svg = '';
+
+        foreach ($rowWidthsIn as $index => $widthIn) {
+            if ($index > 0) {
+                $cursorY += $gapPx;
+            }
+            $rowH = ((float) $widthIn / 12.0) * $c['scale'];
+            $svg .= sprintf(
+                '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="0.5" fill="%s" stroke="%s" stroke-width="0.5" />',
+                $innerX,
+                $cursorY,
+                $innerW,
+                $rowH,
+                $fill,
+                $stroke
+            );
+            $cursorY += $rowH;
+        }
+
+        return $svg;
+    }
+
+    private static function deckingBoards(array $boards, array $c): string
+    {
+        if (($boards['layout'] ?? '') !== 'picture_frame') {
+            return self::deckingBoardsLegacy($boards, $c);
+        }
+
+        $boardWidthFt = (float) ($boards['board_width_ft'] ?? 0);
+        if ($boardWidthFt <= 0) {
+            return '';
+        }
+
+        $b = $boardWidthFt * $c['scale'];
+        $x0 = $c['x0'];
+        $y0 = $c['y0'];
+        $w = $c['w'];
+        $h = $c['h'];
+        $fill = '#c8a36b';
+        $stroke = '#a9824a';
+
+        $svg = self::deckingInfillRows($boards, $c, $b, $x0, $y0, $w, $h, $fill, $stroke);
+        $svg .= self::deckingBorderPolygons($b, $x0, $y0, $w, $h, $fill, $stroke);
 
         return $svg;
     }

@@ -98,8 +98,14 @@ class LowDeckDiagramRendererTest extends TestCase
                 'layout' => 'picture_frame',
                 'total_boards' => 20,
                 'infill_rows' => 16,
+                'infill_full_rows' => 15,
+                'infill_rip_rows' => 1,
                 'board_width_ft' => 5.5 / 12.0,
                 'board_gap_in' => 0.125,
+                'infill_row_widths_in' => array_merge(
+                    array_fill(0, 15, 5.5),
+                    [4.125]
+                ),
                 'rows' => 16,
             ],
         ];
