@@ -3021,18 +3021,11 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-quotation-supply-scope-mark {
   display: inline-block;
-  width: 14px;
-  height: 14px;
-  margin-right: 6px;
-  background: #065f46;
-  color: #fff;
-  font-family: 'DejaVu Sans', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 14px;
-  text-align: center;
+  margin-right: 7px;
+  color: #065f46;
+  font-size: 14px;
+  line-height: 1;
   vertical-align: middle;
-  border-radius: 2px;
 }
 .cp-quotation-supply-scope-label {
   font-weight: 700;

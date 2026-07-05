@@ -218,17 +218,15 @@
     }
     .quote-supply-scope-mark {
       display: inline-block;
-      width: 10pt;
-      height: 10pt;
       margin-right: 5pt;
-      background: #065f46;
-      color: #fff;
+      color: #065f46;
       font-family: 'DejaVu Sans', sans-serif;
-      font-size: 7pt;
+      font-size: 12pt;
       font-weight: 700;
-      line-height: 10pt;
-      text-align: center;
+      line-height: 1;
       vertical-align: middle;
+      background: transparent;
+      border: none;
     }
     .quote-supply-scope-label {
       font-weight: 700;

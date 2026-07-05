@@ -2,6 +2,7 @@
 @php
   $supplyScope = $quotation->supplyScopePdfMeta();
   $wrapperClass = $class ?? 'cp-quotation-supply-scope';
+  $isPdf = $wrapperClass === 'quote-supply-scope';
 @endphp
 @if (($supplyScope['items'] ?? []) !== [])
   <div class="{{ $wrapperClass }}">
@@ -13,7 +14,11 @@
         $wrapperClass.'-item--excluded' => ! $item['included'],
       ])>
         @if ($item['included'])
-          <span class="{{ $wrapperClass }}-mark" aria-hidden="true">&#10003;</span>
+          @if ($isPdf)
+            <span class="{{ $wrapperClass }}-mark" aria-hidden="true">&#10003;</span>
+          @else
+            <i class="fa fa-check {{ $wrapperClass }}-mark" aria-hidden="true"></i>
+          @endif
           <span class="{{ $wrapperClass }}-label">{{ strtoupper($item['label']) }}</span><span class="{{ $wrapperClass }}-suffix"> &mdash; included in this quotation</span>
         @else
           <span class="{{ $wrapperClass }}-label">{{ strtoupper($item['label']) }}</span><span class="{{ $wrapperClass }}-suffix"> &mdash; not included (client responsibility)</span>
