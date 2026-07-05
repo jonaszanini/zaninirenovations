@@ -217,38 +217,37 @@ final class LowDeckDiagramRenderer
 
     private static function deckingBorderPolygons(float $b, float $x0, float $y0, float $w, float $h, string $fill, string $stroke): string
     {
-        // Top / bottom: 4 corners each; the polygon close edge is the 45° miter
-        // (inner frame point → outer deck vertex). Left / right: simple strips.
+        // Top / bottom / left / right: 4-point quads; polygon close edge = 45° miter.
         return sprintf(
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />',
-            // Top: outer edge L→R, miter TR, inner edge R→L, miter TL (close)
+            // Top: outer L→R, miter TR, inner R→L, miter TL (close)
             $x0, $y0,
             $x0 + $w, $y0,
             $x0 + $w - $b, $y0 + $b,
             $x0 + $b, $y0 + $b,
             $fill,
             $stroke,
-            // Bottom: outer edge L→R, miter BR, inner edge R→L, miter BL (close)
+            // Bottom: outer L→R, miter BR, inner R→L, miter BL (close)
             $x0, $y0 + $h,
             $x0 + $w, $y0 + $h,
             $x0 + $w - $b, $y0 + $h - $b,
             $x0 + $b, $y0 + $h - $b,
             $fill,
             $stroke,
-            // Left strip (between top/bottom miters)
-            $x0, $y0 + $b,
+            // Left: outer B→T, miter TL, inner T→B, miter BL (close)
+            $x0, $y0 + $h,
+            $x0, $y0,
             $x0 + $b, $y0 + $b,
             $x0 + $b, $y0 + $h - $b,
-            $x0, $y0 + $h - $b,
             $fill,
             $stroke,
-            // Right strip (between top/bottom miters)
+            // Right: outer B→T, miter TR, inner T→B, miter BR (close)
+            $x0 + $w, $y0 + $h,
+            $x0 + $w, $y0,
             $x0 + $w - $b, $y0 + $b,
-            $x0 + $w, $y0 + $b,
-            $x0 + $w, $y0 + $h - $b,
             $x0 + $w - $b, $y0 + $h - $b,
             $fill,
             $stroke

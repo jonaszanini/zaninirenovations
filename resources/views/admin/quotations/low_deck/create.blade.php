@@ -896,16 +896,16 @@
     ].map(function (n) { return n.toFixed(1); }).join(' '));
 
     poly([
-      x0, y0 + b,
+      x0, y0 + h,
+      x0, y0,
       x0 + b, y0 + b,
-      x0 + b, y0 + h - b,
-      x0, y0 + h - b
+      x0 + b, y0 + h - b
     ].map(function (n) { return n.toFixed(1); }).join(' '));
 
     poly([
+      x0 + w, y0 + h,
+      x0 + w, y0,
       x0 + w - b, y0 + b,
-      x0 + w, y0 + b,
-      x0 + w, y0 + h - b,
       x0 + w - b, y0 + h - b
     ].map(function (n) { return n.toFixed(1); }).join(' '));
   }
