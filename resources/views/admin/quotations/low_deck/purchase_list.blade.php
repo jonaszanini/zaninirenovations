@@ -85,13 +85,13 @@
           <tr>
             <td class="check"><span class="check-box"></span></td>
             <td>
-              <div class="item-name">{{ e($row['name']) }}</div>
-              @if (!empty($row['store_sku']))
-                <div class="item-sku">SKU {{ e($row['store_sku']) }}</div>
+              <div class="item-name">{!! $row['name_html'] !!}</div>
+              @if (!empty($row['store_sku_html']))
+                <div class="item-sku">SKU {!! $row['store_sku_html'] !!}</div>
               @endif
             </td>
             <td class="qty">
-              {{ rtrim(rtrim(number_format((float) $row['quantity'], 2), '0'), '.') }} {{ e($row['unit']) }}
+              {{ rtrim(rtrim(number_format((float) $row['quantity'], 2), '0'), '.') }} {!! $row['unit_html'] !!}
             </td>
             <td class="num">{{ \App\Models\ClientProject::formatMoney((float) $row['unit_price']) }}</td>
             <td class="num">{{ \App\Models\ClientProject::formatMoney((float) $row['subtotal']) }}</td>

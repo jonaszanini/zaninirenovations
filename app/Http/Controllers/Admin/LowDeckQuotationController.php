@@ -284,10 +284,11 @@ class LowDeckQuotationController extends Controller
                 $rows[] = [
                     'quantity' => $quantity,
                     'unit' => (string) ($line['unit'] ?? 'ea'),
-                    'name' => $this->decodePurchaseListText($longName),
-                    'store_sku' => $mat && filled($mat->effectiveStoreSku())
-                        ? $this->decodePurchaseListText($mat->effectiveStoreSku())
-                        : (filled($line['store_sku'] ?? null) ? $this->decodePurchaseListText((string) $line['store_sku']) : null),
+                    'name_html' => $this->purchaseListCellHtml($longName),
+                    'store_sku_html' => $mat && filled($mat->effectiveStoreSku())
+                        ? $this->purchaseListCellHtml($mat->effectiveStoreSku())
+                        : (filled($line['store_sku'] ?? null) ? $this->purchaseListCellHtml((string) $line['store_sku']) : null),
+                    'unit_html' => $this->purchaseListCellHtml((string) ($line['unit'] ?? 'ea')),
                     'unit_price' => (float) ($line['unit_price'] ?? 0),
                     'subtotal' => (float) ($line['subtotal'] ?? 0),
                 ];
@@ -571,8 +572,53 @@ class LowDeckQuotationController extends Controller
         return $this->mergeCommuteIntoPersistence($base, $commute, 'grand_total');
     }
 
+    /**
+     * Undo literal HTML entities in catalogue text (e.g. &#039;, &amp;#039;).
+     */
     protected function decodePurchaseListText(string $value): string
     {
-        return html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decoded = $value;
+        for ($i = 0; $i < 8; $i++) {
+            $next = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        $decoded = preg_replace('/&(?:#0*39|#39)(?!\\d);?/i', "'", $decoded);
+        $decoded = preg_replace('/&(?:#x0*27)(?![0-9a-fA-F]);?/i', "'", $decoded);
+        $decoded = str_replace(['&apos;', '&#039;', '&#39;', '&#x27;', '&#X27;'], "'", $decoded);
+
+        for ($i = 0; $i < 3; $i++) {
+            $next = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        for ($i = 0; $i < 5; $i++) {
+            $next = preg_replace('/&(?:#0*39|#39)(?!\\d);?/i', "'", $decoded);
+            $next = preg_replace('/&(?:#x0*27)(?![0-9a-fA-F]);?/i', "'", $next);
+            $next = str_replace(['&apos;', '&#039;', '&#39;', '&#x27;', '&#X27;'], "'", $next);
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Decode catalogue entities, then escape for HTML text nodes without
+     * re-encoding apostrophes (avoids &#039; showing literally in print).
+     */
+    protected function purchaseListCellHtml(string $value): string
+    {
+        $plain = $this->decodePurchaseListText($value);
+
+        return htmlspecialchars($plain, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8', true);
     }
 }

@@ -46,7 +46,7 @@ class LowDeckQuotationCalculator
     private const HANGERS_PER_FIELD_JOIST = 2;
 
     /** Additional hangers included on the materials line (edge/corner extras). */
-    private const EXTRA_HANGERS_FOR_QUOTE = 4;
+    private const EXTRA_HANGERS_FOR_QUOTE = 8;
 
     private LowDeckFormulaSetting $settings;
 
@@ -671,18 +671,15 @@ class LowDeckQuotationCalculator
         $fieldHangers = (int) ($geom['joist_hangers']['count'] ?? 0);
         $quoteHangers = (int) ($geom['joist_hangers']['quote_count'] ?? $fieldHangers);
         if ($quoteHangers > 0) {
-            $fieldJoists = (int) ($geom['joist_hangers']['field_joist_count'] ?? 0);
-            $perJoist = (int) ($geom['joist_hangers']['per_field_joist'] ?? self::HANGERS_PER_FIELD_JOIST);
             $extraHangers = (int) ($geom['joist_hangers']['extra_count'] ?? self::EXTRA_HANGERS_FOR_QUOTE);
             $rows[] = $this->row(
                 LowDeckMaterial::KEY_JOIST_HANGER_2X6,
-                $this->wastefulQuantity($quoteHangers, $wastePercent),
+                $quoteHangers,
                 'ea',
                 sprintf(
-                    '%d hangers (%d per field joist × %d + %d extra)',
+                    '%d hangers (%d for field joists + %d extra)',
                     $quoteHangers,
-                    $perJoist,
-                    $fieldJoists,
+                    $fieldHangers,
                     $extraHangers
                 )
             );
