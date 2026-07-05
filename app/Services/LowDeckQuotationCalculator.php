@@ -162,15 +162,17 @@ class LowDeckQuotationCalculator
             : 0;
         $hangerPositions = [];
         if ($hangerCount > 0) {
+            $topHeaderY = $edgeHeaderYs[0];
+            $bottomHeaderY = $edgeHeaderYs[1];
             foreach ($fieldJoistPositions as $x) {
                 $hangerPositions[] = [
                     'x_ft' => (float) $x,
-                    'y_ft' => 0.0,
+                    'y_ft' => $topHeaderY,
                     'end' => 'top',
                 ];
                 $hangerPositions[] = [
                     'x_ft' => (float) $x,
-                    'y_ft' => $spanFt,
+                    'y_ft' => $bottomHeaderY,
                     'end' => 'bottom',
                 ];
             }

@@ -725,6 +725,10 @@
   var CANVAS_W = 640, CANVAS_H = 380, PAD = 46;
   var HOLE_FT = 1;
   var RIM_JOIST_FT = 1.5 / 12;
+  var JOIST_FILL = '#a7f3d0';
+  var JOIST_STROKE = '#10b981';
+  var BEAM_FILL = '#fed7aa';
+  var BEAM_STROKE = '#f97316';
   var POST_FT = 3.5 / 12;
   var DIM_SEGMENT_OFFSET = 18;
   var DIM_TOTAL_OFFSET_RUN = 40;
@@ -952,8 +956,65 @@
     }
   }
 
-  function joistHangerMarkers(svg, hangers, c) {
-    var positions = (hangers && hangers.positions_ft) ? hangers.positions_ft : [];
+  function normalizedJoistHangerPositions(g) {
+    var hangers = g.joist_hangers || {};
+    var positions = hangers.positions_ft || [];
+    var fieldXs = (g.joists && g.joists.field_positions_x_ft) ? g.joists.field_positions_x_ft : [];
+    var edgeYs = (g.beams && g.beams.edge_inset_positions_y_ft) ? g.beams.edge_inset_positions_y_ft : [];
+    var spanFt = g.span_ft || 0;
+    if (!fieldXs.length || !edgeYs.length) return positions;
+
+    var topY = edgeYs[0];
+    var bottomY = edgeYs[1] != null ? edgeYs[1] : (spanFt - topY);
+    var uniqueY = [];
+    positions.forEach(function (pos) {
+      var y = Math.round((pos.y_ft || 0) * 1000) / 1000;
+      if (uniqueY.indexOf(y) === -1) uniqueY.push(y);
+    });
+
+    var legacyInteriorBeam = positions.length === fieldXs.length
+      && uniqueY.length === 1
+      && uniqueY[0] > topY + 0.25
+      && uniqueY[0] < bottomY - 0.25;
+
+    if (legacyInteriorBeam) {
+      var regenerated = [];
+      fieldXs.forEach(function (x) {
+        regenerated.push({ x_ft: x, y_ft: topY, end: 'top' });
+        regenerated.push({ x_ft: x, y_ft: bottomY, end: 'bottom' });
+      });
+      return regenerated;
+    }
+
+    var normalized = [];
+    positions.forEach(function (pos) {
+      var end = pos.end || '';
+      var y = pos.y_ft || 0;
+      if (!end) {
+        if (Math.abs(y - topY) < 0.06 || Math.abs(y) < 0.01) {
+          end = 'top';
+          y = topY;
+        } else if (Math.abs(y - bottomY) < 0.06 || Math.abs(y - spanFt) < 0.01) {
+          end = 'bottom';
+          y = bottomY;
+        } else {
+          return;
+        }
+      } else if (end === 'top') {
+        y = topY;
+      } else if (end === 'bottom') {
+        y = bottomY;
+      } else {
+        return;
+      }
+      normalized.push({ x_ft: pos.x_ft || 0, y_ft: y, end: end });
+    });
+
+    return normalized.length ? normalized : positions;
+  }
+
+  function joistHangerMarkers(svg, g, c) {
+    var positions = normalizedJoistHangerPositions(g);
     if (!positions.length) return;
     var thick = RIM_JOIST_FT * c.scale;
     var half = thick / 2;
@@ -1038,14 +1099,14 @@
     var thick = RIM_JOIST_FT * c.scale, half = thick / 2;
     (beams.positions_y_ft || []).forEach(function (fy) {
       var y = c.y0 + fy * c.scale - half;
-      s2.appendChild(svgEl('rect', { x: c.x0, y: y, width: c.w, height: thick, fill: '#b45309', stroke: '#92400e', 'stroke-width': 0.75, rx: 0.5 }));
+      s2.appendChild(svgEl('rect', { x: c.x0, y: y, width: c.w, height: thick, fill: BEAM_FILL, stroke: BEAM_STROKE, 'stroke-width': 0.75, rx: 0.5 }));
     });
     (joists.positions_x_ft || []).forEach(function (fx) {
       var x = c.x0 + fx * c.scale - half;
-      s2.appendChild(svgEl('rect', { x: x, y: c.y0, width: thick, height: c.h, fill: '#0f766e', stroke: '#115e59', 'stroke-width': 0.75, rx: 0.5 }));
+      s2.appendChild(svgEl('rect', { x: x, y: c.y0, width: thick, height: c.h, fill: JOIST_FILL, stroke: JOIST_STROKE, 'stroke-width': 0.75, rx: 0.5 }));
     });
     fieldJoistSpacingDimension(s2, joists, c);
-    joistHangerMarkers(s2, g.joist_hangers || {}, c);
+    joistHangerMarkers(s2, g, c);
     dimensions(s2, c);
     caption(s2, (joists.total_lines || 0) + ' joist lines · ' + formatJoistSpacing(joists.field_spacing_in) + ' spacing (max 15 in.), ' + (beams.lines_total || 0) + ' beam lines · members shown 1.5 in. wide');
     frEl.appendChild(s2);
@@ -1075,9 +1136,8 @@
 
   if (initialCalc) {
     renderCalc(initialCalc);
-  } else {
-    schedulePreview();
   }
+  schedulePreview();
 
   document.addEventListener('commute-expense:change', function (e) {
     var d = e.detail || {};

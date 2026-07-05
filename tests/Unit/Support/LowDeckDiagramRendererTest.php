@@ -32,13 +32,29 @@ class LowDeckDiagramRendererTest extends TestCase
         $svg = LowDeckDiagramRenderer::render($this->sampleGeometry())['framing'];
 
         $this->assertStringContainsString('members shown 1.5 in. wide', $svg);
-        $this->assertStringContainsString('fill="#0f766e"', $svg);
-        $this->assertStringContainsString('fill="#b45309"', $svg);
+        $this->assertStringContainsString('fill="#a7f3d0"', $svg);
+        $this->assertStringContainsString('fill="#fed7aa"', $svg);
         $this->assertStringContainsString('13.96&quot;', $svg);
         $this->assertStringContainsString('max 15 in.', $svg);
         $this->assertStringContainsString('<line', $svg);
         $this->assertStringContainsString('fill="#94a3b8"', $svg);
         $this->assertStringContainsString('stroke="#64748b"', $svg);
+    }
+
+    public function test_framing_svg_remaps_legacy_center_beam_hangers_to_joist_ends(): void
+    {
+        $geometry = $this->sampleGeometry();
+        $geometry['joist_hangers']['positions_ft'] = [
+            ['x_ft' => 2.54, 'y_ft' => 5.0],
+            ['x_ft' => 4.705, 'y_ft' => 5.0],
+            ['x_ft' => 6.87, 'y_ft' => 5.0],
+            ['x_ft' => 9.035, 'y_ft' => 5.0],
+        ];
+
+        $svg = LowDeckDiagramRenderer::render($geometry)['framing'];
+
+        $this->assertStringNotContainsString('stroke="#ea580c"', $svg);
+        $this->assertSame(8, substr_count($svg, 'fill="#94a3b8"'));
     }
 
     public function test_decking_svg_draws_picture_frame_border_and_infill(): void
@@ -81,6 +97,7 @@ class LowDeckDiagramRendererTest extends TestCase
                 'lines_total' => 5,
                 'interior_count' => 1,
                 'edge_count' => 2,
+                'edge_inset_positions_y_ft' => [0.375, 9.625],
                 'positions_y_ft' => [0.0, 0.375, 5.0, 9.625, 10.0],
             ],
             'joist_hangers' => [
@@ -88,14 +105,14 @@ class LowDeckDiagramRendererTest extends TestCase
                 'field_joist_count' => 4,
                 'per_field_joist' => 2,
                 'positions_ft' => [
-                    ['x_ft' => 2.54, 'y_ft' => 0.0, 'end' => 'top'],
-                    ['x_ft' => 2.54, 'y_ft' => 10.0, 'end' => 'bottom'],
-                    ['x_ft' => 4.705, 'y_ft' => 0.0, 'end' => 'top'],
-                    ['x_ft' => 4.705, 'y_ft' => 10.0, 'end' => 'bottom'],
-                    ['x_ft' => 6.87, 'y_ft' => 0.0, 'end' => 'top'],
-                    ['x_ft' => 6.87, 'y_ft' => 10.0, 'end' => 'bottom'],
-                    ['x_ft' => 9.035, 'y_ft' => 0.0, 'end' => 'top'],
-                    ['x_ft' => 9.035, 'y_ft' => 10.0, 'end' => 'bottom'],
+                    ['x_ft' => 2.54, 'y_ft' => 0.375, 'end' => 'top'],
+                    ['x_ft' => 2.54, 'y_ft' => 9.625, 'end' => 'bottom'],
+                    ['x_ft' => 4.705, 'y_ft' => 0.375, 'end' => 'top'],
+                    ['x_ft' => 4.705, 'y_ft' => 9.625, 'end' => 'bottom'],
+                    ['x_ft' => 6.87, 'y_ft' => 0.375, 'end' => 'top'],
+                    ['x_ft' => 6.87, 'y_ft' => 9.625, 'end' => 'bottom'],
+                    ['x_ft' => 9.035, 'y_ft' => 0.375, 'end' => 'top'],
+                    ['x_ft' => 9.035, 'y_ft' => 9.625, 'end' => 'bottom'],
                 ],
             ],
             'boards' => [

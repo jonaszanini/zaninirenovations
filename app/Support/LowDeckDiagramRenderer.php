@@ -34,6 +34,15 @@ final class LowDeckDiagramRenderer
     /** Nominal 2× lumber thickness (rim joist / joist width in plan). */
     private const RIM_JOIST_FT = 0.125;
 
+    /** Framing diagram member colours (light fills, medium strokes). */
+    private const JOIST_FILL = '#a7f3d0';
+
+    private const JOIST_STROKE = '#10b981';
+
+    private const BEAM_FILL = '#fed7aa';
+
+    private const BEAM_STROKE = '#f97316';
+
     /** Actual 4×4 post width in plan. */
     private const POST_FT = 3.5 / 12.0;
 
@@ -149,27 +158,31 @@ final class LowDeckDiagramRenderer
         foreach ($beamYs as $fy) {
             $y = $c['y0'] + (float) $fy * $c['scale'] - $half;
             $body .= sprintf(
-                '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#b45309" stroke="#92400e" stroke-width="0.75" rx="0.5" />',
+                '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" stroke="%s" stroke-width="0.75" rx="0.5" />',
                 $c['x0'],
                 $y,
                 $c['w'],
-                $thick
+                $thick,
+                self::BEAM_FILL,
+                self::BEAM_STROKE
             );
         }
 
         foreach ($joistXs as $fx) {
             $x = $c['x0'] + (float) $fx * $c['scale'] - $half;
             $body .= sprintf(
-                '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#0f766e" stroke="#115e59" stroke-width="0.75" rx="0.5" />',
+                '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" stroke="%s" stroke-width="0.75" rx="0.5" />',
                 $x,
                 $c['y0'],
                 $thick,
-                $c['h']
+                $c['h'],
+                self::JOIST_FILL,
+                self::JOIST_STROKE
             );
         }
 
         $body .= self::fieldJoistSpacingDimension($joists, $c);
-        $body .= self::joistHangerMarkers($g['joist_hangers'] ?? [], $c);
+        $body .= self::joistHangerMarkers($g, $c);
         $body .= self::dimensions($c);
         $spacingLabel = self::fieldJoistSpacingLabel($joists);
         $body .= self::caption(sprintf(
@@ -521,9 +534,87 @@ final class LowDeckDiagramRenderer
         );
     }
 
-    private static function joistHangerMarkers(array $hangers, array $c): string
+    /**
+     * @param  array<string, mixed>  $g
+     * @return list<array{x_ft: float, y_ft: float, end: string}>
+     */
+    private static function normalizedJoistHangerPositions(array $g): array
     {
+        $hangers = $g['joist_hangers'] ?? [];
         $positions = $hangers['positions_ft'] ?? [];
+        $fieldXs = $g['joists']['field_positions_x_ft'] ?? [];
+        $edgeYs = $g['beams']['edge_inset_positions_y_ft'] ?? [];
+        $spanFt = (float) ($g['span_ft'] ?? 0);
+
+        if ($fieldXs === [] || $edgeYs === []) {
+            return is_array($positions) ? $positions : [];
+        }
+
+        $topY = (float) $edgeYs[0];
+        $bottomY = (float) ($edgeYs[1] ?? ($spanFt - $topY));
+
+        $uniqueY = array_values(array_unique(array_map(
+            static fn (array $p): float => round((float) ($p['y_ft'] ?? 0), 3),
+            is_array($positions) ? $positions : []
+        )));
+
+        $legacyInteriorBeam = is_array($positions)
+            && count($positions) === count($fieldXs)
+            && count($uniqueY) === 1
+            && $uniqueY[0] > $topY + 0.25
+            && $uniqueY[0] < $bottomY - 0.25;
+
+        if ($legacyInteriorBeam) {
+            $regenerated = [];
+            foreach ($fieldXs as $x) {
+                $regenerated[] = ['x_ft' => (float) $x, 'y_ft' => $topY, 'end' => 'top'];
+                $regenerated[] = ['x_ft' => (float) $x, 'y_ft' => $bottomY, 'end' => 'bottom'];
+            }
+
+            return $regenerated;
+        }
+
+        $normalized = [];
+        foreach (is_array($positions) ? $positions : [] as $pos) {
+            if (! is_array($pos)) {
+                continue;
+            }
+
+            $end = (string) ($pos['end'] ?? '');
+            $y = (float) ($pos['y_ft'] ?? 0);
+
+            if ($end === '') {
+                if (abs($y - $topY) < 0.06 || abs($y) < 0.01) {
+                    $end = 'top';
+                    $y = $topY;
+                } elseif (abs($y - $bottomY) < 0.06 || abs($y - $spanFt) < 0.01) {
+                    $end = 'bottom';
+                    $y = $bottomY;
+                } else {
+                    continue;
+                }
+            } elseif ($end === 'top') {
+                $y = $topY;
+            } elseif ($end === 'bottom') {
+                $y = $bottomY;
+            } else {
+                continue;
+            }
+
+            $normalized[] = [
+                'x_ft' => (float) ($pos['x_ft'] ?? 0),
+                'y_ft' => $y,
+                'end' => $end,
+            ];
+        }
+
+        return $normalized !== [] ? $normalized : (is_array($positions) ? $positions : []);
+    }
+
+    /** @param  array<string, mixed>  $g */
+    private static function joistHangerMarkers(array $g, array $c): string
+    {
+        $positions = self::normalizedJoistHangerPositions($g);
         if ($positions === []) {
             return '';
         }
