@@ -15,7 +15,6 @@ use App\Support\LowDeckLumberPacker;
  * Inputs (from the UI):
  *   - width_ft            : float (> 0)
  *   - length_ft           : float (> 0)
- *   - joist_spacing_in    : 12 | 16
  *   - labour_rate_per_sqft: float (optional, falls back to settings)
  *   - waste_dump_fee_cad  : float (optional, falls back to settings)
  *   - material_waste_percent: float (optional, default 10 — admin-only ordering buffer)
@@ -34,6 +33,15 @@ use App\Support\LowDeckLumberPacker;
  */
 class LowDeckQuotationCalculator
 {
+    /** Nominal 2×6 thickness in feet (plan view). */
+    private const RIM_JOIST_FT = 1.5 / 12.0;
+
+    /** Clear gap between perimeter rim and inner edge joist (inches). */
+    private const EDGE_INSET_GAP_IN = 2.25;
+
+    /** Maximum uniform center spacing for field joists (inches). */
+    private const MAX_FIELD_JOIST_SPACING_IN = 15;
+
     private LowDeckFormulaSetting $settings;
 
     /** @var \Illuminate\Support\Collection<string, LowDeckMaterial> */
@@ -78,11 +86,6 @@ class LowDeckQuotationCalculator
         $width = max(0.0, round((float) ($inputs['width_ft'] ?? 0), 2));
         $length = max(0.0, round((float) ($inputs['length_ft'] ?? 0), 2));
 
-        $spacing = (int) ($inputs['joist_spacing_in'] ?? $this->settings->default_joist_spacing_in);
-        if (! in_array($spacing, [12, 16], true)) {
-            $spacing = 16;
-        }
-
         $labourRate = array_key_exists('labour_rate_per_sqft', $inputs) && $inputs['labour_rate_per_sqft'] !== null && $inputs['labour_rate_per_sqft'] !== ''
             ? round(max(0.0, (float) $inputs['labour_rate_per_sqft']), 2)
             : round((float) $this->settings->labour_rate_per_sqft, 2);
@@ -101,7 +104,6 @@ class LowDeckQuotationCalculator
         return [
             'width_ft' => $width,
             'length_ft' => $length,
-            'joist_spacing_in' => $spacing,
             'labour_rate_per_sqft' => $labourRate,
             'waste_dump_fee_cad' => $wasteFee,
             'material_waste_percent' => $materialWastePercent,
@@ -123,10 +125,7 @@ class LowDeckQuotationCalculator
         $spanFt = min($width, $length);
         $runFt = max($width, $length);
 
-        $spacingFt = (float) $in['joist_spacing_in'] / 12.0;
         $blockSpacingFt = max(0.5, (float) $this->settings->block_spacing_ft);
-
-        // --- Block grid (max spacing both directions) -------------------
         $gridLinesRun = $this->gridLinesAlong($runFt, $blockSpacingFt);
         $gridLinesSpan = $this->gridLinesAlong($spanFt, $blockSpacingFt);
         $blockPositionsX = $this->evenPositions($runFt, $gridLinesRun);
@@ -135,13 +134,20 @@ class LowDeckQuotationCalculator
         $cornerCount = $blockCount >= 4 ? 4 : $blockCount;
 
         // --- Joists (run in span direction, distributed over run) -------
-        $joistPositionsX = $this->joistPositions($runFt, $spacingFt);
+        $edgeInsetFt = $this->edgeInsetCenterFt();
+        $framing = $this->computeJoistFraming($runFt, $edgeInsetFt);
+        $fieldJoists = $framing['field_count'];
+        $joistPositionsX = $framing['positions_x_ft'];
         $totalJoistLines = count($joistPositionsX);
-        $fieldJoists = max(0, $totalJoistLines - 2); // exclude the 2 end rims
+        $joistSpacingIn = $framing['field_spacing_in'];
 
-        // --- Beams (run in run direction, at each span grid line) -------
-        $beamLines = $gridLinesSpan;
-        $interiorBeams = max(0, $beamLines - 2);
+        // --- Beams (run in run direction) --------------------------------
+        $edgeInsetY = $edgeInsetFt;
+        $outerHeaderYs = [0.0, $spanFt];
+        $edgeHeaderYs = [$edgeInsetY, round($spanFt - $edgeInsetY, 3)];
+        $beamPositionsY = $this->uniqueSorted(array_merge($outerHeaderYs, $edgeHeaderYs, $blockPositionsY));
+        $beamLines = count($beamPositionsY);
+        $interiorBeams = max(0, $beamLines - 4); // exclude 2 outer + 2 inner edge headers
 
         // --- Deck boards (run in run direction, stacked over span) ------
         $boardWidth = (float) $this->settings->board_width_in;
@@ -150,16 +156,23 @@ class LowDeckQuotationCalculator
         $boardRows = $spanFt > 0 ? (int) ceil(($spanFt * 12.0) / $boardPitch) : 0;
 
         // --- Frame intersections ----------------------------------------
-        $crossJoints = $fieldJoists * $interiorBeams;
-        $tJoints = $fieldJoists * 2 + 4 + $interiorBeams * 2;
+        $verticalFraming = $fieldJoists + 2; // field + inner edge joists (left/right)
+        $crossJoints = $verticalFraming * $interiorBeams;
+        $tJoints = $verticalFraming * 2 + 4 + $interiorBeams * 2 + 4;
 
         // --- Joist tape (tops of all decking-bearing members) -----------
         $overlapFt = (float) $this->settings->joist_tape_overlap_in / 12.0;
         $rollLengthFt = max(1.0, (float) $this->settings->joist_tape_roll_length_ft);
-        $tapedMembers = $fieldJoists + 2 /* end rims */ + 2 /* headers */ + $interiorBeams;
+        $tapedMembers = $fieldJoists + 2 /* inner edge vertical */
+            + 2 /* outer rim joists */
+            + 2 /* outer headers */
+            + 2 /* inner edge headers */
+            + $interiorBeams;
         $tapeBaseFt = $fieldJoists * $spanFt
-            + 2 * $spanFt
-            + 2 * $runFt
+            + 2 * $spanFt /* inner edge vertical */
+            + 2 * $spanFt /* outer rims */
+            + 2 * $runFt /* outer headers */
+            + 2 * $runFt /* inner edge headers */
             + $interiorBeams * $runFt;
         $totalTapeFt = round($tapeBaseFt + $tapedMembers * $overlapFt, 2);
         $tapeRolls = $totalTapeFt > 0 ? (int) ceil($totalTapeFt / $rollLengthFt) : 0;
@@ -170,7 +183,9 @@ class LowDeckQuotationCalculator
             'area_sq_ft' => $area,
             'span_ft' => round($spanFt, 2),
             'run_ft' => round($runFt, 2),
-            'joist_spacing_in' => (int) $in['joist_spacing_in'],
+            'joist_spacing_in' => $joistSpacingIn,
+            'max_joist_spacing_in' => self::MAX_FIELD_JOIST_SPACING_IN,
+            'edge_inset_in' => self::EDGE_INSET_GAP_IN,
             'blocks' => [
                 'count' => $blockCount,
                 'corner_count' => $cornerCount,
@@ -181,15 +196,29 @@ class LowDeckQuotationCalculator
             ],
             'joists' => [
                 'field_count' => $fieldJoists,
+                'edge_count' => 2,
+                'rim_count' => 2,
                 'total_lines' => $totalJoistLines,
                 'length_ft' => round($spanFt, 2),
+                'field_spacing_in' => $joistSpacingIn,
+                'edge_inset_ft' => round($edgeInsetFt, 3),
+                'rim_positions_x_ft' => [0.0, round($runFt, 3)],
+                'edge_inset_positions_x_ft' => [
+                    round($edgeInsetFt, 3),
+                    round($runFt - $edgeInsetFt, 3),
+                ],
+                'field_positions_x_ft' => $framing['field_positions_x_ft'],
                 'positions_x_ft' => $joistPositionsX,
             ],
             'beams' => [
                 'lines_total' => $beamLines,
                 'interior_count' => $interiorBeams,
+                'edge_count' => 2,
                 'length_ft' => round($runFt, 2),
-                'positions_y_ft' => $blockPositionsY,
+                'edge_inset_ft' => round($edgeInsetY, 3),
+                'rim_positions_y_ft' => $outerHeaderYs,
+                'edge_inset_positions_y_ft' => $edgeHeaderYs,
+                'positions_y_ft' => $beamPositionsY,
             ],
             'boards' => [
                 'rows' => $boardRows,
@@ -238,22 +267,72 @@ class LowDeckQuotationCalculator
         return $positions;
     }
 
-    /** Joist line positions at spacing O.C. plus an end joist at the far edge. */
-    private function joistPositions(float $runFt, float $spacingFt): array
+    /** Joist line positions: rims, edge inset joists, and evenly spaced field joists. */
+    private function computeJoistFraming(float $runFt, float $edgeInsetFt): array
     {
-        if ($runFt <= 0 || $spacingFt <= 0) {
-            return [];
+        if ($runFt <= 0) {
+            return [
+                'field_count' => 0,
+                'field_spacing_in' => 0.0,
+                'field_positions_x_ft' => [],
+                'positions_x_ft' => [],
+            ];
         }
 
-        $positions = [];
-        $pos = 0.0;
-        while ($pos < $runFt - 1e-6) {
-            $positions[] = round($pos, 3);
-            $pos += $spacingFt;
-        }
-        $positions[] = round($runFt, 3); // closing end joist
+        $innerLeft = $edgeInsetFt + self::RIM_JOIST_FT / 2.0;
+        $innerRight = $runFt - $edgeInsetFt - self::RIM_JOIST_FT / 2.0;
+        $clearSpanFt = max(0.0, $innerRight - $innerLeft);
+        $clearSpanIn = $clearSpanFt * 12.0;
 
-        return $positions;
+        $fieldCount = 0;
+        $spacingIn = $clearSpanIn;
+        while ($spacingIn > self::MAX_FIELD_JOIST_SPACING_IN + 1e-6) {
+            $fieldCount++;
+            $spacingIn = $clearSpanIn / ($fieldCount + 1);
+        }
+        $spacingIn = round($spacingIn, 2);
+        $spacingFt = $spacingIn / 12.0;
+
+        $fieldPositions = [];
+        for ($i = 1; $i <= $fieldCount; $i++) {
+            $fieldPositions[] = round($innerLeft + $spacingFt * $i, 3);
+        }
+
+        $positions = $this->uniqueSorted(array_merge(
+            [0.0, round($edgeInsetFt, 3)],
+            $fieldPositions,
+            [round($runFt - $edgeInsetFt, 3), round($runFt, 3)]
+        ));
+
+        return [
+            'field_count' => $fieldCount,
+            'field_spacing_in' => $spacingIn,
+            'field_positions_x_ft' => $fieldPositions,
+            'positions_x_ft' => $positions,
+        ];
+    }
+
+    private function edgeInsetCenterFt(): float
+    {
+        return round(
+            self::RIM_JOIST_FT + self::EDGE_INSET_GAP_IN / 12.0 + self::RIM_JOIST_FT / 2.0,
+            4
+        );
+    }
+
+    /**
+     * @param  list<float|int>  $values
+     * @return list<float>
+     */
+    private function uniqueSorted(array $values): array
+    {
+        $unique = array_values(array_unique(array_map(
+            static fn ($v) => round((float) $v, 3),
+            $values
+        )));
+        sort($unique, SORT_NUMERIC);
+
+        return $unique;
     }
 
     /** ================================================================
@@ -282,8 +361,10 @@ class LowDeckQuotationCalculator
         $runFt = (float) $geom['run_ft'];
         $joistRuns = array_merge(
             array_fill(0, (int) $geom['joists']['field_count'], $spanFt),
-            [$spanFt, $spanFt],                 // 2 end rim joists
-            [$runFt, $runFt],                   // 2 perimeter headers
+            array_fill(0, (int) ($geom['joists']['edge_count'] ?? 2), $spanFt),
+            array_fill(0, (int) ($geom['joists']['rim_count'] ?? 2), $spanFt),
+            array_fill(0, 2, $runFt),                   // outer perimeter headers
+            array_fill(0, (int) ($geom['beams']['edge_count'] ?? 2), $runFt),
             array_fill(0, (int) $geom['beams']['interior_count'], $runFt)
         );
         $joistPieces = $this->splitToStock($joistRuns, $this->maxStockLengthFt($joistStocks));

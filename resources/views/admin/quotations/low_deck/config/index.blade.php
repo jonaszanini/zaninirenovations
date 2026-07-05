@@ -198,11 +198,8 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="ld-default-spacing">Default joist spacing (in.)</label>
-        <select id="ld-default-spacing" name="default_joist_spacing_in" class="admin-input">
-          <option value="12" @selected((int) old('default_joist_spacing_in', $settings->default_joist_spacing_in) === 12)>12 in</option>
-          <option value="16" @selected((int) old('default_joist_spacing_in', $settings->default_joist_spacing_in) === 16)>16 in</option>
-        </select>
+        <label>Field joist spacing</label>
+        <p class="admin-form-help">Calculated automatically from deck width/length (uniform bays, max 15 in.). Edge joists are fixed 2¼ in. inside the perimeter rim.</p>
       </div>
 
       <div class="admin-form-group">

@@ -146,7 +146,6 @@ class LowDeckConfigController extends Controller
         $data = $request->validate([
             'max_area_sq_ft' => ['required', 'numeric', 'min:50', 'max:5000'],
             'block_spacing_ft' => ['required', 'numeric', 'min:1', 'max:10'],
-            'default_joist_spacing_in' => ['required', 'integer', 'in:12,16'],
             'max_joist_span_in' => ['required', 'numeric', 'min:24', 'max:240'],
             'board_width_in' => ['required', 'numeric', 'min:1', 'max:20'],
             'board_gap_in' => ['required', 'numeric', 'min:0', 'max:2'],

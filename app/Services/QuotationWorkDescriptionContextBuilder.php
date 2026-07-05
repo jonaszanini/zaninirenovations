@@ -159,7 +159,7 @@ class QuotationWorkDescriptionContextBuilder
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
         $this->appendLine($lines, 'Width', isset($c['width_ft']) ? $c['width_ft']." ft" : null);
         $this->appendLine($lines, 'Length', isset($c['length_ft']) ? $c['length_ft']." ft" : null);
-        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) ? $c['joist_spacing_in'].' in on centre' : null);
+        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) ? $c['joist_spacing_in'].' in (auto, max 15 in.)' : null);
 
         $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
         $this->appendBlock($lines, 'Materials list', $c['materials_summary'] ?? null);

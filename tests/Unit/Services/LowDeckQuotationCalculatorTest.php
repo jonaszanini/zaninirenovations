@@ -89,7 +89,6 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $result = $calc->calculate([
             'width_ft' => 12,
             'length_ft' => 16,
-            'joist_spacing_in' => 16,
             'material_waste_percent' => 0,
         ]);
 
@@ -102,17 +101,21 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $this->assertSame(20, $geom['blocks']['count']);
         $this->assertSame(4, $geom['blocks']['corner_count']);
 
-        $this->assertSame(13, $geom['joists']['total_lines']);
-        $this->assertSame(11, $geom['joists']['field_count']);
+        $this->assertSame(16, $geom['joists']['total_lines']);
+        $this->assertSame(12, $geom['joists']['field_count']);
+        $this->assertSame(2, $geom['joists']['edge_count']);
+        $this->assertSame(13.96, $geom['joists']['field_spacing_in']);
+        $this->assertSame(13.96, $geom['joist_spacing_in']);
 
+        $this->assertSame(6, $geom['beams']['lines_total']);
         $this->assertSame(2, $geom['beams']['interior_count']);
         $this->assertSame(26, $geom['boards']['rows']);
 
-        $this->assertSame(22, $geom['intersections']['cross_count']);
-        $this->assertSame(30, $geom['intersections']['t_count']);
+        $this->assertSame(28, $geom['intersections']['cross_count']);
+        $this->assertSame(40, $geom['intersections']['t_count']);
 
-        $this->assertSame(5, $geom['joist_tape']['rolls_required']);
-        $this->assertSame(17, $geom['joist_tape']['members_taped']);
+        $this->assertSame(6, $geom['joist_tape']['rolls_required']);
+        $this->assertSame(22, $geom['joist_tape']['members_taped']);
     }
 
     public function test_fastener_counts_round_up_to_retail_boxes(): void
@@ -121,7 +124,6 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $result = $calc->calculate([
             'width_ft' => 12,
             'length_ft' => 16,
-            'joist_spacing_in' => 16,
             'material_waste_percent' => 0,
         ]);
 
@@ -137,14 +139,14 @@ class LowDeckQuotationCalculatorTest extends TestCase
 
         $frame = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_SCREW_FRAME_3IN);
         $this->assertNotNull($frame);
-        $this->assertSame(222, $frame['quantity_of_individual_units']);
+        $this->assertSame(288, $frame['quantity_of_individual_units']);
         $this->assertSame(3, $frame['quantity']);
     }
 
     public function test_material_waste_defaults_to_ten_percent_and_inflates_order_quantities(): void
     {
         $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
-        $result = $calc->calculate(['width_ft' => 12, 'length_ft' => 16, 'joist_spacing_in' => 16]);
+        $result = $calc->calculate(['width_ft' => 12, 'length_ft' => 16]);
 
         $this->assertSame(10.0, $result['inputs']['material_waste_percent']);
         $this->assertSame(10.0, $result['totals']['material_waste_percent']);
@@ -164,7 +166,6 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $result = $calc->calculate([
             'width_ft' => 12,
             'length_ft' => 16,
-            'joist_spacing_in' => 16,
             'material_waste_percent' => 0,
         ]);
 
@@ -179,7 +180,6 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $result = $calc->calculate([
             'width_ft' => 12,
             'length_ft' => 16,
-            'joist_spacing_in' => 16,
             'material_waste_percent' => 0,
         ]);
 
@@ -199,7 +199,6 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $result = $calc->calculate([
             'width_ft' => 12,
             'length_ft' => 16,
-            'joist_spacing_in' => 16,
             'waste_dump_fee_cad' => 90,
         ]);
 
@@ -214,7 +213,6 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $result = $calc->calculate([
             'width_ft' => 12,
             'length_ft' => 16,
-            'joist_spacing_in' => 16,
             'labour_rate_per_sqft' => 10,
         ]);
 
@@ -234,7 +232,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
 
         $this->expectException(LowDeckAreaExceededException::class);
-        $calc->calculate(['width_ft' => 30, 'length_ft' => 30, 'joist_spacing_in' => 16]);
+        $calc->calculate(['width_ft' => 30, 'length_ft' => 30]);
     }
 
     public function test_area_exactly_at_guardrail_is_allowed(): void
@@ -242,7 +240,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $calc = new LowDeckQuotationCalculator($this->settings(['max_area_sq_ft' => 592.00]), $this->catalogue());
 
         // 24 × 24 = 576 sq ft, just under the 592 guardrail.
-        $result = $calc->calculate(['width_ft' => 24, 'length_ft' => 24, 'joist_spacing_in' => 16]);
+        $result = $calc->calculate(['width_ft' => 24, 'length_ft' => 24]);
         $this->assertSame(576.0, $result['geometry']['area_sq_ft']);
     }
 }

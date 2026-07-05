@@ -97,12 +97,27 @@ class LowDeckQuotation extends Model
         $area = $this->trimFt($this->areaSqFt());
 
         return sprintf(
-            "Low floating deck, %s' x %s' (%s sq ft), %d in. joist spacing",
+            "Low floating deck, %s' x %s' (%s sq ft), %s joist spacing",
             $width,
             $length,
             $area,
-            (int) $this->joist_spacing_in
+            $this->formatJoistSpacingLabel()
         );
+    }
+
+    private function formatJoistSpacingLabel(): string
+    {
+        $exact = data_get($this->calculation, 'geometry.joists.field_spacing_in');
+        if (is_numeric($exact) && (float) $exact > 0) {
+            $value = (float) $exact;
+            if (abs($value - round($value)) < 0.01) {
+                return (int) round($value).' in.';
+            }
+
+            return rtrim(rtrim(number_format($value, 2), '0'), '.').' in.';
+        }
+
+        return (int) $this->joist_spacing_in.' in.';
     }
 
     private function trimFt(float $value): string

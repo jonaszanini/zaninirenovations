@@ -160,11 +160,14 @@ final class LowDeckDiagramRenderer
             );
         }
 
+        $body .= self::fieldJoistSpacingDimension($joists, $c);
         $body .= self::dimensions($c);
+        $spacingLabel = self::fieldJoistSpacingLabel($joists);
         $body .= self::caption(sprintf(
-            '%d joists at %d in. O.C., %d beam lines (%d interior) · members shown 1.5 in. wide',
+            '%d joist lines · %s spacing (max %d in.), %d beam lines (%d interior) · members shown 1.5 in. wide',
             (int) ($joists['total_lines'] ?? 0),
-            (int) ($g['joist_spacing_in'] ?? 0),
+            $spacingLabel !== '' ? $spacingLabel : 'auto',
+            (int) ($g['max_joist_spacing_in'] ?? 15),
             (int) ($beams['lines_total'] ?? 0),
             (int) ($beams['interior_count'] ?? 0)
         ));
@@ -384,6 +387,54 @@ final class LowDeckDiagramRenderer
             $midY,
             htmlspecialchars($label, ENT_QUOTES, 'UTF-8')
         );
+    }
+
+    private static function fieldJoistSpacingLabel(array $joists): string
+    {
+        $spacingIn = (float) ($joists['field_spacing_in'] ?? 0);
+        if ($spacingIn <= 0) {
+            return '';
+        }
+
+        if (abs($spacingIn - round($spacingIn)) < 0.01) {
+            return (int) round($spacingIn).'"';
+        }
+
+        return rtrim(rtrim(number_format($spacingIn, 2), '0'), '.').'"';
+    }
+
+    private static function fieldJoistSpacingDimension(array $joists, array $c): string
+    {
+        $fieldPositions = $joists['field_positions_x_ft'] ?? [];
+        $spacingIn = (float) ($joists['field_spacing_in'] ?? 0);
+        if ($spacingIn <= 0) {
+            return '';
+        }
+
+        $label = self::fieldJoistSpacingLabel($joists);
+        $dimY = $c['y0'] + $c['h'] / 2;
+
+        if (count($fieldPositions) >= 2) {
+            $x1 = $c['x0'] + (float) $fieldPositions[0] * $c['scale'];
+            $x2 = $c['x0'] + (float) $fieldPositions[1] * $c['scale'];
+
+            return self::dimensionLine($x1, $x2, $dimY, $label, 'horizontal', $c);
+        }
+
+        if (count($fieldPositions) === 1) {
+            $edgeLeft = (float) (($joists['edge_inset_positions_x_ft'][0] ?? 0));
+            $x1 = $c['x0'] + $edgeLeft * $c['scale'];
+            $x2 = $c['x0'] + (float) $fieldPositions[0] * $c['scale'];
+
+            return self::dimensionLine($x1, $x2, $dimY, $label, 'horizontal', $c);
+        }
+
+        $edgeLeft = (float) (($joists['edge_inset_positions_x_ft'][0] ?? 0));
+        $edgeRight = (float) (($joists['edge_inset_positions_x_ft'][1] ?? $c['runFt']));
+        $x1 = $c['x0'] + $edgeLeft * $c['scale'];
+        $x2 = $c['x0'] + $edgeRight * $c['scale'];
+
+        return self::dimensionLine($x1, $x2, $dimY, $label, 'horizontal', $c);
     }
 
     private static function deckRect(array $c): string

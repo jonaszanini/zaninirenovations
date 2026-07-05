@@ -40,7 +40,7 @@
               <th>Client</th>
               <th>Size</th>
               <th>Area</th>
-              <th>Joist O.C.</th>
+              <th>Joist spacing</th>
               <th>Total</th>
               <th>Linked project</th>
               <th>Updated</th>
@@ -54,7 +54,16 @@
                 <td>{{ $q->client_name }}</td>
                 <td>{{ rtrim(rtrim(number_format((float) $q->width_ft, 2), '0'), '.') }}' &times; {{ rtrim(rtrim(number_format((float) $q->length_ft, 2), '0'), '.') }}'</td>
                 <td>{{ rtrim(rtrim(number_format($q->areaSqFt(), 2), '0'), '.') }} sq ft</td>
-                <td>{{ (int) $q->joist_spacing_in }} in.</td>
+                <td>
+                  @php
+                    $spacing = data_get($q->calculation, 'geometry.joists.field_spacing_in', $q->joist_spacing_in);
+                  @endphp
+                  @if (is_numeric($spacing) && (float) $spacing > 0)
+                    {{ rtrim(rtrim(number_format((float) $spacing, 2), '0'), '.') }}"
+                  @else
+                    <span class="admin-form-help">—</span>
+                  @endif
+                </td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($q->grand_total) }}</td>
                 <td>
                   @if ($q->project)

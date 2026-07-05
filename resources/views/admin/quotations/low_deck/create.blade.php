@@ -9,7 +9,6 @@
 
   $initialWidth = old('width_ft', $isEdit ? rtrim(rtrim(number_format((float) $quotation->width_ft, 2, '.', ''), '0'), '.') : '');
   $initialLength = old('length_ft', $isEdit ? rtrim(rtrim(number_format((float) $quotation->length_ft, 2, '.', ''), '0'), '.') : '');
-  $initialSpacing = (int) old('joist_spacing_in', $isEdit ? (int) $quotation->joist_spacing_in : (int) $settings->default_joist_spacing_in);
 
   $defaultLabour = (float) $settings->labour_rate_per_sqft;
   $defaultWasteFee = (float) $settings->waste_dump_fee_cad;
@@ -41,7 +40,7 @@
     .ld-left-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
     .ld-dims-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
       align-items: start;
     }
@@ -267,14 +266,10 @@
                      value="{{ $initialLength }}" autocomplete="off" required>
               @error('length_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
-            <div class="admin-form-group">
-              <label for="ld-joist-spacing">Joist spacing</label>
-              <select name="joist_spacing_in" id="ld-joist-spacing" class="admin-input">
-                <option value="12" @selected($initialSpacing === 12)>12 in. on centre</option>
-                <option value="16" @selected($initialSpacing === 16)>16 in. on centre</option>
-              </select>
-            </div>
           </div>
+          <p class="admin-form-help cp-form-help-spaced">
+            Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.
+          </p>
         </div>
 
         {{-- Rates ----------------------------------------------------- --}}
@@ -519,7 +514,6 @@
 
   var widthInput = document.getElementById('ld-width');
   var lengthInput = document.getElementById('ld-length');
-  var spacingSelect = document.getElementById('ld-joist-spacing');
   var labourInput = document.getElementById('ld-labour-rate');
   var wasteInput = document.getElementById('ld-waste-fee');
   var materialWasteInput = document.getElementById('ld-material-waste');
@@ -587,7 +581,6 @@
     return {
       width_ft: parseFloat(widthInput.value) || 0,
       length_ft: parseFloat(lengthInput.value) || 0,
-      joist_spacing_in: parseInt(spacingSelect.value, 10) || 16,
       labour_rate_per_sqft: parseMoney(labourInput),
       waste_dump_fee_cad: parseMoney(wasteInput),
       material_waste_percent: materialWasteInput ? (parseFloat(materialWasteInput.value) || 0) : 10
@@ -690,7 +683,7 @@
       + ftLabel(g.width_ft) + ' × ' + ftLabel(g.length_ft) + '</p>'
       + '<div style="font-size:12px;color:#4b5563;line-height:1.6;">'
       + (blocks.count || 0) + ' blocks (' + (blocks.grid_lines_run || 0) + ' × ' + (blocks.grid_lines_span || 0) + ' grid)<br>'
-      + (joists.total_lines || 0) + ' joists at ' + (g.joist_spacing_in || 0) + ' in. O.C. · '
+      + (joists.total_lines || 0) + ' joist lines · ' + formatJoistSpacing(joists.field_spacing_in) + ' spacing (max 15 in.) · '
       + (beams.lines_total || 0) + ' beam lines (' + (beams.interior_count || 0) + ' interior)<br>'
       + (boards.rows || 0) + ' deck board rows · '
       + (tape.rolls_required || 0) + ' joist tape roll' + ((tape.rolls_required === 1) ? '' : 's')
@@ -779,6 +772,36 @@
     var postY = c.y0 + post.cy * c.scale - postPx / 2;
     svg.appendChild(svgEl('rect', { x: holeX, y: holeY, width: holePx, height: holePx, fill: '#f0f9ff', stroke: '#0284c7', 'stroke-width': 1.25 }));
     svg.appendChild(svgEl('rect', { x: postX, y: postY, width: postPx, height: postPx, fill: '#024768', stroke: '#013a52', 'stroke-width': 0.75, rx: 0.5 }));
+  }
+
+  function formatJoistSpacing(inches) {
+    var v = Number(inches || 0);
+    if (!(v > 0)) return 'auto';
+    if (Math.abs(v - Math.round(v)) < 0.01) return Math.round(v) + '"';
+    return v.toFixed(2).replace(/\.?0+$/, '') + '"';
+  }
+
+  function fieldJoistSpacingDimension(svg, joists, c) {
+    var fieldPositions = joists.field_positions_x_ft || [];
+    var spacingIn = Number(joists.field_spacing_in || 0);
+    if (!(spacingIn > 0)) return;
+    var label = formatJoistSpacing(spacingIn);
+    var dimY = c.y0 + c.h / 2;
+    var x1, x2;
+    if (fieldPositions.length >= 2) {
+      x1 = c.x0 + fieldPositions[0] * c.scale;
+      x2 = c.x0 + fieldPositions[1] * c.scale;
+    } else if (fieldPositions.length === 1) {
+      var edgeLeft = (joists.edge_inset_positions_x_ft || [])[0] || 0;
+      x1 = c.x0 + edgeLeft * c.scale;
+      x2 = c.x0 + fieldPositions[0] * c.scale;
+    } else {
+      var edge = joists.edge_inset_positions_x_ft || [];
+      if (edge.length < 2) return;
+      x1 = c.x0 + edge[0] * c.scale;
+      x2 = c.x0 + edge[1] * c.scale;
+    }
+    dimensionLineH(svg, x1, x2, dimY, label);
   }
 
   function ftInLabel(ft) {
@@ -882,8 +905,9 @@
       var x = c.x0 + fx * c.scale - half;
       s2.appendChild(svgEl('rect', { x: x, y: c.y0, width: thick, height: c.h, fill: '#0f766e', stroke: '#115e59', 'stroke-width': 0.75, rx: 0.5 }));
     });
+    fieldJoistSpacingDimension(s2, joists, c);
     dimensions(s2, c);
-    caption(s2, (joists.total_lines || 0) + ' joists at ' + (g.joist_spacing_in || 0) + ' in. O.C., ' + (beams.lines_total || 0) + ' beam lines · members shown 1.5 in. wide');
+    caption(s2, (joists.total_lines || 0) + ' joist lines · ' + formatJoistSpacing(joists.field_spacing_in) + ' spacing (max 15 in.), ' + (beams.lines_total || 0) + ' beam lines · members shown 1.5 in. wide');
     frEl.appendChild(s2);
 
     // 3. Decking

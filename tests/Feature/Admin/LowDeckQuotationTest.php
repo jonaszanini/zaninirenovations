@@ -50,7 +50,6 @@ class LowDeckQuotationTest extends IntegrationTestCase
             'client_name' => 'Jane Homeowner',
             'width_ft' => 12,
             'length_ft' => 16,
-            'joist_spacing_in' => 16,
             'labour_rate_per_sqft' => 10,
         ]);
 
@@ -79,7 +78,6 @@ class LowDeckQuotationTest extends IntegrationTestCase
                 'client_name' => 'Too Big',
                 'width_ft' => 30,
                 'length_ft' => 30,
-                'joist_spacing_in' => 16,
             ]);
 
         $response->assertSessionHasErrors('width_ft');
@@ -99,7 +97,6 @@ class LowDeckQuotationTest extends IntegrationTestCase
             'client_name' => 'Jane Homeowner',
             'width_ft' => 12,
             'length_ft' => 16,
-            'joist_spacing_in' => 16,
             'labour_rate_per_sqft' => 10,
         ]);
 
