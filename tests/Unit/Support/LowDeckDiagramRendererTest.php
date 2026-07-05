@@ -37,7 +37,8 @@ class LowDeckDiagramRendererTest extends TestCase
         $this->assertStringContainsString('13.96&quot;', $svg);
         $this->assertStringContainsString('max 15 in.', $svg);
         $this->assertStringContainsString('<line', $svg);
-        $this->assertStringContainsString('stroke="#ea580c"', $svg);
+        $this->assertStringContainsString('fill="#94a3b8"', $svg);
+        $this->assertStringContainsString('stroke="#64748b"', $svg);
     }
 
     public function test_decking_svg_draws_picture_frame_border_and_infill(): void
@@ -86,12 +87,15 @@ class LowDeckDiagramRendererTest extends TestCase
                 'count' => 8,
                 'field_joist_count' => 4,
                 'per_field_joist' => 2,
-                'beam_y_ft' => 5.0,
                 'positions_ft' => [
-                    ['x_ft' => 2.54, 'y_ft' => 5.0],
-                    ['x_ft' => 4.705, 'y_ft' => 5.0],
-                    ['x_ft' => 6.87, 'y_ft' => 5.0],
-                    ['x_ft' => 9.035, 'y_ft' => 5.0],
+                    ['x_ft' => 2.54, 'y_ft' => 0.0, 'end' => 'top'],
+                    ['x_ft' => 2.54, 'y_ft' => 10.0, 'end' => 'bottom'],
+                    ['x_ft' => 4.705, 'y_ft' => 0.0, 'end' => 'top'],
+                    ['x_ft' => 4.705, 'y_ft' => 10.0, 'end' => 'bottom'],
+                    ['x_ft' => 6.87, 'y_ft' => 0.0, 'end' => 'top'],
+                    ['x_ft' => 6.87, 'y_ft' => 10.0, 'end' => 'bottom'],
+                    ['x_ft' => 9.035, 'y_ft' => 0.0, 'end' => 'top'],
+                    ['x_ft' => 9.035, 'y_ft' => 10.0, 'end' => 'bottom'],
                 ],
             ],
             'boards' => [

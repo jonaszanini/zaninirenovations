@@ -155,18 +155,23 @@ class LowDeckQuotationCalculator
         // --- Deck boards (picture-frame border + infill field) ----------
         $boardLayout = $this->computeDeckBoardLayout($runFt, $spanFt);
 
-        // --- Joist hangers (field joists at centre interior beam) -------
-        $centerBeamY = $this->centerInteriorBeamY($beamPositionsY, $spanFt, $edgeHeaderYs);
+        // --- Joist hangers (one at each end of every field joist) --------
         $fieldJoistPositions = $framing['field_positions_x_ft'];
-        $hangerCount = $fieldJoists > 0 && $centerBeamY !== null
+        $hangerCount = $fieldJoists > 0
             ? $fieldJoists * self::HANGERS_PER_FIELD_JOIST
             : 0;
         $hangerPositions = [];
-        if ($hangerCount > 0 && $centerBeamY !== null) {
+        if ($hangerCount > 0) {
             foreach ($fieldJoistPositions as $x) {
                 $hangerPositions[] = [
                     'x_ft' => (float) $x,
-                    'y_ft' => $centerBeamY,
+                    'y_ft' => 0.0,
+                    'end' => 'top',
+                ];
+                $hangerPositions[] = [
+                    'x_ft' => (float) $x,
+                    'y_ft' => $spanFt,
+                    'end' => 'bottom',
                 ];
             }
         }
@@ -241,7 +246,6 @@ class LowDeckQuotationCalculator
                 'count' => $hangerCount,
                 'per_field_joist' => self::HANGERS_PER_FIELD_JOIST,
                 'field_joist_count' => $fieldJoists,
-                'beam_y_ft' => $centerBeamY,
                 'positions_ft' => $hangerPositions,
             ],
             'intersections' => [
@@ -255,41 +259,6 @@ class LowDeckQuotationCalculator
                 'roll_length_ft' => round($rollLengthFt, 2),
             ],
         ];
-    }
-
-    /**
-     * Interior blocking beam closest to deck mid-span (excludes rim + edge headers).
-     *
-     * @param  list<float>  $beamYs
-     * @param  list<float>  $edgeHeaderYs
-     */
-    private function centerInteriorBeamY(array $beamYs, float $spanFt, array $edgeHeaderYs): ?float
-    {
-        $eps = 0.001;
-        $center = $spanFt / 2.0;
-        $exclude = array_merge([0.0, round($spanFt, 3)], array_map(
-            static fn ($y) => round((float) $y, 3),
-            $edgeHeaderYs
-        ));
-
-        $interior = [];
-        foreach ($beamYs as $y) {
-            $y = round((float) $y, 3);
-            foreach ($exclude as $excluded) {
-                if (abs($y - $excluded) < $eps) {
-                    continue 2;
-                }
-            }
-            $interior[] = $y;
-        }
-
-        if ($interior === []) {
-            return null;
-        }
-
-        usort($interior, static fn (float $a, float $b): int => abs($a - $center) <=> abs($b - $center));
-
-        return $interior[0];
     }
 
     /**
@@ -699,7 +668,7 @@ class LowDeckQuotationCalculator
                 $this->wastefulQuantity($hangers, $wastePercent),
                 'ea',
                 sprintf(
-                    '%d hangers (%d per field joist × %d at centre beam)',
+                    '%d hangers (%d per field joist × %d, one each end)',
                     $hangers,
                     $perJoist,
                     $fieldJoists

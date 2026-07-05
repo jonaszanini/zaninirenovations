@@ -528,17 +528,49 @@ final class LowDeckDiagramRenderer
             return '';
         }
 
-        $radius = max(3.0, self::RIM_JOIST_FT * $c['scale'] * 1.4);
+        $thick = self::RIM_JOIST_FT * $c['scale'];
+        $half = $thick / 2.0;
+        $outerHalf = $half * 1.15;
+        $depth = max(4.0, $thick * 2.2);
+        $seat = max(1.5, $thick * 0.45);
+        $fill = '#94a3b8';
+        $stroke = '#64748b';
+
         $svg = '';
         foreach ($positions as $pos) {
             $cx = $c['x0'] + (float) ($pos['x_ft'] ?? 0) * $c['scale'];
-            $cy = $c['y0'] + (float) ($pos['y_ft'] ?? 0) * $c['scale'];
-            $svg .= sprintf(
-                '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="none" stroke="#ea580c" stroke-width="1.5" />',
-                $cx,
-                $cy,
-                $radius
-            );
+            $end = (string) ($pos['end'] ?? '');
+            if ($end === 'bottom') {
+                $y = $c['y0'] + (float) ($pos['y_ft'] ?? 0) * $c['scale'];
+                $svg .= sprintf(
+                    '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.75" />',
+                    $cx - $outerHalf, $y,
+                    $cx + $outerHalf, $y,
+                    $cx + $outerHalf, $y - $depth,
+                    $cx + $half, $y - $depth,
+                    $cx + $half, $y - $seat,
+                    $cx - $half, $y - $seat,
+                    $cx - $half, $y - $depth,
+                    $cx - $outerHalf, $y - $depth,
+                    $fill,
+                    $stroke
+                );
+            } else {
+                $y = $c['y0'] + (float) ($pos['y_ft'] ?? 0) * $c['scale'];
+                $svg .= sprintf(
+                    '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.75" />',
+                    $cx - $outerHalf, $y,
+                    $cx + $outerHalf, $y,
+                    $cx + $outerHalf, $y + $depth,
+                    $cx + $half, $y + $depth,
+                    $cx + $half, $y + $seat,
+                    $cx - $half, $y + $seat,
+                    $cx - $half, $y + $depth,
+                    $cx - $outerHalf, $y + $depth,
+                    $fill,
+                    $stroke
+                );
+            }
         }
 
         return $svg;

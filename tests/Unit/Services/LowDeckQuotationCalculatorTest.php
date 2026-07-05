@@ -126,7 +126,11 @@ class LowDeckQuotationCalculatorTest extends TestCase
 
         $this->assertSame(24, $geom['joist_hangers']['count']);
         $this->assertSame(12, $geom['joist_hangers']['field_joist_count']);
-        $this->assertCount(12, $geom['joist_hangers']['positions_ft']);
+        $this->assertCount(24, $geom['joist_hangers']['positions_ft']);
+        $this->assertSame('top', $geom['joist_hangers']['positions_ft'][0]['end']);
+        $this->assertSame(0.0, $geom['joist_hangers']['positions_ft'][0]['y_ft']);
+        $this->assertSame('bottom', $geom['joist_hangers']['positions_ft'][1]['end']);
+        $this->assertSame(12.0, $geom['joist_hangers']['positions_ft'][1]['y_ft']);
 
         $hangers = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_JOIST_HANGER_2X6);
         $this->assertNotNull($hangers);

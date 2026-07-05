@@ -688,7 +688,7 @@
       + (boards.total_boards || boards.rows || 0) + ' deck boards (4 border + ' + (boards.infill_rows || boards.rows || 0) + ' infill) · '
       + (tape.rolls_required || 0) + ' joist tape roll' + ((tape.rolls_required === 1) ? '' : 's')
       + ((g.joist_hangers && g.joist_hangers.count > 0)
-        ? '<br>' + g.joist_hangers.count + ' joist hangers (2 per field joist)'
+        ? '<br>' + g.joist_hangers.count + ' joist hangers (2 per field joist, one each end)'
         : '')
       + ((calc.inputs && calc.inputs.material_waste_percent > 0)
         ? '<br>Material waste: ' + calc.inputs.material_waste_percent + '% (internal)'
@@ -955,13 +955,44 @@
   function joistHangerMarkers(svg, hangers, c) {
     var positions = (hangers && hangers.positions_ft) ? hangers.positions_ft : [];
     if (!positions.length) return;
-    var radius = Math.max(3, (RIM_JOIST_FT * c.scale) * 1.4);
+    var thick = RIM_JOIST_FT * c.scale;
+    var half = thick / 2;
+    var outerHalf = half * 1.15;
+    var depth = Math.max(4, thick * 2.2);
+    var seat = Math.max(1.5, thick * 0.45);
+    var fill = '#94a3b8';
+    var stroke = '#64748b';
     positions.forEach(function (pos) {
       var cx = c.x0 + (pos.x_ft || 0) * c.scale;
-      var cy = c.y0 + (pos.y_ft || 0) * c.scale;
-      svg.appendChild(svgEl('circle', {
-        cx: cx, cy: cy, r: radius,
-        fill: 'none', stroke: '#ea580c', 'stroke-width': 1.5
+      var end = pos.end || '';
+      var y = c.y0 + (pos.y_ft || 0) * c.scale;
+      var points;
+      if (end === 'bottom') {
+        points = [
+          [cx - outerHalf, y],
+          [cx + outerHalf, y],
+          [cx + outerHalf, y - depth],
+          [cx + half, y - depth],
+          [cx + half, y - seat],
+          [cx - half, y - seat],
+          [cx - half, y - depth],
+          [cx - outerHalf, y - depth]
+        ];
+      } else {
+        points = [
+          [cx - outerHalf, y],
+          [cx + outerHalf, y],
+          [cx + outerHalf, y + depth],
+          [cx + half, y + depth],
+          [cx + half, y + seat],
+          [cx - half, y + seat],
+          [cx - half, y + depth],
+          [cx - outerHalf, y + depth]
+        ];
+      }
+      svg.appendChild(svgEl('polygon', {
+        points: points.map(function (p) { return p[0] + ',' + p[1]; }).join(' '),
+        fill: fill, stroke: stroke, 'stroke-width': 0.75
       }));
     });
   }
