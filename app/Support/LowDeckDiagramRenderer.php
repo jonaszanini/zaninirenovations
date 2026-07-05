@@ -217,38 +217,44 @@ final class LowDeckDiagramRenderer
 
     private static function deckingBorderPolygons(float $b, float $x0, float $y0, float $w, float $h, string $fill, string $stroke): string
     {
+        // Each miter runs from the inner frame corner to the outer deck vertex (true 45°).
         return sprintf(
-            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
-            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
+            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
+            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />'.
-            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />',
+            '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="%s" stroke="%s" stroke-width="0.5" />',
+            // Top border
             $x0 + $b, $y0,
             $x0 + $w - $b, $y0,
-            $x0 + $w, $y0 + $b,
+            $x0 + $w, $y0,
             $x0 + $w - $b, $y0 + $b,
             $x0 + $b, $y0 + $b,
+            $x0, $y0,
             $x0, $y0 + $b,
             $fill,
             $stroke,
+            // Bottom border
             $x0 + $b, $y0 + $h,
             $x0 + $w - $b, $y0 + $h,
-            $x0 + $w, $y0 + $h - $b,
+            $x0 + $w, $y0 + $h,
             $x0 + $w - $b, $y0 + $h - $b,
             $x0 + $b, $y0 + $h - $b,
+            $x0, $y0 + $h,
             $x0, $y0 + $h - $b,
             $fill,
             $stroke,
+            // Left border
             $x0, $y0 + $b,
             $x0 + $b, $y0 + $b,
             $x0 + $b, $y0 + $h - $b,
             $x0, $y0 + $h - $b,
             $fill,
             $stroke,
+            // Right border
             $x0 + $w - $b, $y0 + $b,
             $x0 + $w, $y0 + $b,
             $x0 + $w, $y0 + $h - $b,
             $x0 + $w - $b, $y0 + $h - $b,
-            $x0 + $w - $b, $y0 + $h,
             $fill,
             $stroke
         );
