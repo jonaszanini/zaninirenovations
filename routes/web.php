@@ -419,6 +419,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.low-deck.config.materials.sync');
     Route::put('quotations/low-deck/config/formula', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'updateFormula'])
         ->name('quotations.low-deck.config.formula.update');
+    Route::get('quotations/low-deck/config/work-description', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'workDescriptionTemplate'])
+        ->name('quotations.low-deck.config.work-description');
+    Route::put('quotations/low-deck/config/work-description', [\App\Http\Controllers\Admin\LowDeckConfigController::class, 'updateWorkDescriptionTemplate'])
+        ->name('quotations.low-deck.config.work-description.update');
 
     // Low deck quotations CRUD + purchase list + project-link.
     Route::get('quotations/low-deck', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'index'])

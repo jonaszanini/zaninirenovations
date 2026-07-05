@@ -8,6 +8,7 @@ use App\Models\LowDeckMaterial;
 use App\Models\Material;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
+use App\Support\LowDeckWorkDescriptionGenerator;
 use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
 
@@ -139,6 +140,49 @@ class LowDeckConfigController extends Controller
         return redirect()
             ->route('admin.quotations.low-deck.config')
             ->with($failed > 0 ? 'error' : 'success', $message);
+    }
+
+    public function workDescriptionTemplate()
+    {
+        return view('admin.quotations.low_deck.config.work_description', [
+            'settings' => LowDeckFormulaSetting::current(),
+            'template' => LowDeckWorkDescriptionGenerator::template(),
+            'placeholders' => [
+                LowDeckWorkDescriptionGenerator::PLACEHOLDER_DIMENSIONS => 'Deck width × length (e.g. 18\'x19.6\')',
+                LowDeckWorkDescriptionGenerator::PLACEHOLDER_AREA => 'Total area in square feet (e.g. 352.8)',
+                LowDeckWorkDescriptionGenerator::PLACEHOLDER_JOIST_SPACING => 'Computed field joist spacing (e.g. 14.98 inches)',
+            ],
+        ]);
+    }
+
+    public function updateWorkDescriptionTemplate(Request $request)
+    {
+        $data = $request->validate([
+            'work_description_template' => ['required', 'string', 'max:10000'],
+        ]);
+
+        $template = trim($data['work_description_template']);
+        foreach ([
+            LowDeckWorkDescriptionGenerator::PLACEHOLDER_DIMENSIONS,
+            LowDeckWorkDescriptionGenerator::PLACEHOLDER_AREA,
+            LowDeckWorkDescriptionGenerator::PLACEHOLDER_JOIST_SPACING,
+        ] as $required) {
+            if (! str_contains($template, $required)) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'work_description_template' => 'Template must include '.$required.'.',
+                    ]);
+            }
+        }
+
+        LowDeckFormulaSetting::current()->update([
+            'work_description_template' => $template,
+        ]);
+
+        return redirect()
+            ->route('admin.quotations.low-deck.config.work-description')
+            ->with('success', 'Work description template saved.');
     }
 
     public function updateFormula(Request $request)

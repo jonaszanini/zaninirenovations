@@ -239,6 +239,18 @@
               'aiContextFormId' => 'ld-form',
               'aiQuotationType' => 'low_deck',
           ])
+          <div class="nb2-generate-row" style="margin-top:8px;">
+            <div class="admin-ai-action-group">
+              <button type="button" id="ld-generate-work-description" class="admin-btn admin-btn--ghost admin-btn--sm" disabled>
+                <i class="fa fa-file-text-o" aria-hidden="true"></i>
+                <span>Generate description</span>
+              </button>
+              <a href="{{ route('admin.quotations.low-deck.config.work-description') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Edit work description template">
+                <i class="fa fa-pencil" aria-hidden="true"></i>
+                <span>Edit template</span>
+              </a>
+            </div>
+          </div>
           <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
@@ -533,6 +545,8 @@
   var diagramsHint = document.getElementById('ld-diagrams-hint');
   var printDiagramsBtn = document.getElementById('ld-print-diagrams');
   var diagramPrintDims = document.getElementById('ld-diagram-print-dims');
+  var workDescriptionInput = document.getElementById('ld-work-description');
+  var generateWorkDescriptionBtn = document.getElementById('ld-generate-work-description');
 
   var lastCommuteAmount = 0;
   var lastCalc = null;
@@ -637,6 +651,7 @@
       document.getElementById(id).textContent = 'CA$0.00';
     });
     clearDiagrams();
+    if (generateWorkDescriptionBtn) generateWorkDescriptionBtn.disabled = true;
   }
 
   function renderIdle(msg) {
@@ -653,6 +668,7 @@
     tGrand.textContent = 'CA$0.00';
     tLabourRate.textContent = '';
     clearDiagrams();
+    if (generateWorkDescriptionBtn) generateWorkDescriptionBtn.disabled = true;
   }
 
   function clearDiagrams() {
@@ -666,6 +682,9 @@
 
   function renderCalc(calc) {
     lastCalc = calc;
+    if (generateWorkDescriptionBtn) {
+      generateWorkDescriptionBtn.disabled = !(calc.suggested_work_description);
+    }
     statusBadge.textContent = 'Up to date';
     statusBadge.style.background = '#e8f4ea';
     statusBadge.style.color = '#0f5132';
@@ -1126,6 +1145,21 @@
   }
 
   // ---------- Wire up --------------------------------------------------
+  if (generateWorkDescriptionBtn && workDescriptionInput) {
+    generateWorkDescriptionBtn.addEventListener('click', function () {
+      if (!lastCalc || !lastCalc.suggested_work_description) {
+        window.alert('Enter deck width and length first so the calculator can fill in dimensions.');
+        return;
+      }
+      var current = (workDescriptionInput.value || '').trim();
+      if (current !== '' && !window.confirm('Replace the current description with a new one from the template?')) {
+        return;
+      }
+      workDescriptionInput.value = lastCalc.suggested_work_description;
+      workDescriptionInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
   ['input', 'change'].forEach(function (evt) {
     document.addEventListener(evt, function (e) {
       if (!e.target || !e.target.closest) return;

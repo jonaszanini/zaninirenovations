@@ -19,6 +19,9 @@
       <a href="{{ route('admin.materials.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-cubes"></i> Materials catalog
       </a>
+      <a href="{{ route('admin.quotations.low-deck.config.work-description') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-file-text-o"></i> Work description template
+      </a>
     </div>
   </div>
 

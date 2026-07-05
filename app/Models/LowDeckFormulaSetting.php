@@ -37,6 +37,7 @@ class LowDeckFormulaSetting extends Model
         'kerf_in',
         'labour_rate_per_sqft',
         'waste_dump_fee_cad',
+        'work_description_template',
     ];
 
     protected $casts = [

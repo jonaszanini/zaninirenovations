@@ -14,6 +14,7 @@ use App\Models\LowDeckQuotation;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\LowDeckQuotationCalculator;
+use App\Support\LowDeckWorkDescriptionGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -146,6 +147,8 @@ class LowDeckQuotationController extends Controller
         } catch (LowDeckAreaExceededException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
+
+        $calc['suggested_work_description'] = LowDeckWorkDescriptionGenerator::generate($calc['geometry'] ?? []);
 
         return response()->json($calc);
     }
