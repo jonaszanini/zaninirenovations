@@ -208,13 +208,34 @@
       margin: 0 0 3pt;
       font-size: 10.5pt;
       line-height: 1.4;
+      font-weight: 400;
     }
     .quote-supply-scope-item--included {
-      font-weight: 700;
       color: #065f46;
     }
     .quote-supply-scope-item--excluded {
       color: #6b7280;
+    }
+    .quote-supply-scope-mark {
+      display: inline-block;
+      width: 10pt;
+      height: 10pt;
+      margin-right: 5pt;
+      background: #065f46;
+      color: #fff;
+      font-family: 'DejaVu Sans', sans-serif;
+      font-size: 7pt;
+      font-weight: 700;
+      line-height: 10pt;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .quote-supply-scope-label {
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .quote-supply-scope-suffix {
+      font-weight: 400;
     }
     .quote-supply-scope-detail {
       margin: 6pt 0 0;

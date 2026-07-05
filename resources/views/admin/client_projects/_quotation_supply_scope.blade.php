@@ -13,9 +13,10 @@
         $wrapperClass.'-item--excluded' => ! $item['included'],
       ])>
         @if ($item['included'])
-          &#10003; {{ $item['label'] }} &mdash; included in this quotation
+          <span class="{{ $wrapperClass }}-mark" aria-hidden="true">&#10003;</span>
+          <span class="{{ $wrapperClass }}-label">{{ strtoupper($item['label']) }}</span><span class="{{ $wrapperClass }}-suffix"> &mdash; included in this quotation</span>
         @else
-          {{ $item['label'] }} &mdash; not included (client responsibility)
+          <span class="{{ $wrapperClass }}-label">{{ strtoupper($item['label']) }}</span><span class="{{ $wrapperClass }}-suffix"> &mdash; not included (client responsibility)</span>
         @endif
       </p>
     @endforeach

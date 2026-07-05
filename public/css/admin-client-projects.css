@@ -3011,13 +3011,35 @@ a:hover .cp-expense-receipt-pdf {
   margin: 0 0 4px;
   font-size: 14px;
   line-height: 1.45;
+  font-weight: 400;
 }
 .cp-quotation-supply-scope-item--included {
-  font-weight: 700;
   color: #065f46;
 }
 .cp-quotation-supply-scope-item--excluded {
   color: #6b7280;
+}
+.cp-quotation-supply-scope-mark {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  background: #065f46;
+  color: #fff;
+  font-family: 'DejaVu Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.cp-quotation-supply-scope-label {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.cp-quotation-supply-scope-suffix {
+  font-weight: 400;
 }
 .cp-quotation-supply-scope-detail {
   margin: 8px 0 0;
