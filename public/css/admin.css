@@ -2718,6 +2718,40 @@ a.ic-model-card:hover {
   align-items: center;
   gap: 1rem;
   margin-top: 0.25rem;
+  width: 100%;
+}
+
+.admin-ai-action-group--trailing {
+  margin-left: auto;
+}
+
+.admin-ai-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background: #fff;
+  color: var(--admin-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.admin-ai-icon-btn:hover:not(:disabled) {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+.admin-ai-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .admin-ai-action-group {

@@ -24,6 +24,11 @@
       ])
       <span class="admin-ai-text-history-mount" data-history-mount></span>
     </div>
+    @if (!empty($trailingActionPartial))
+      <div class="admin-ai-action-group admin-ai-action-group--trailing">
+        @include($trailingActionPartial)
+      </div>
+    @endif
     <div class="nb2-loading quotation-work-description-ai__loading" hidden aria-live="polite">
       <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
       <span>Writing with Gemini…</span>

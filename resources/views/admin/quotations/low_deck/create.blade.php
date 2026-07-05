@@ -238,19 +238,8 @@
               'workDescriptionTextareaId' => 'ld-work-description',
               'aiContextFormId' => 'ld-form',
               'aiQuotationType' => 'low_deck',
+              'trailingActionPartial' => 'admin.quotations.low_deck._work_description_trailing_actions',
           ])
-          <div class="nb2-generate-row" style="margin-top:8px;">
-            <div class="admin-ai-action-group">
-              <button type="button" id="ld-generate-work-description" class="admin-btn admin-btn--ghost admin-btn--sm" disabled>
-                <i class="fa fa-file-text-o" aria-hidden="true"></i>
-                <span>Generate description</span>
-              </button>
-              <a href="{{ route('admin.quotations.low-deck.config.work-description') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Edit work description template">
-                <i class="fa fa-pencil" aria-hidden="true"></i>
-                <span>Edit template</span>
-              </a>
-            </div>
-          </div>
           <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
