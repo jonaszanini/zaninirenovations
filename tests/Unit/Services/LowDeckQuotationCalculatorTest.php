@@ -125,6 +125,8 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $this->assertSame(22, $geom['joist_tape']['members_taped']);
 
         $this->assertSame(24, $geom['joist_hangers']['count']);
+        $this->assertSame(28, $geom['joist_hangers']['quote_count']);
+        $this->assertSame(4, $geom['joist_hangers']['extra_count']);
         $this->assertSame(12, $geom['joist_hangers']['field_joist_count']);
         $this->assertCount(24, $geom['joist_hangers']['positions_ft']);
         $this->assertSame('top', $geom['joist_hangers']['positions_ft'][0]['end']);
@@ -134,7 +136,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
 
         $hangers = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_JOIST_HANGER_2X6);
         $this->assertNotNull($hangers);
-        $this->assertSame(24, $hangers['quantity']);
+        $this->assertSame(28, $hangers['quantity']);
     }
 
     public function test_fastener_counts_round_up_to_retail_boxes(): void

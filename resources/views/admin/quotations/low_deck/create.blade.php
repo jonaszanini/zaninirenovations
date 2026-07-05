@@ -687,8 +687,9 @@
       + (beams.lines_total || 0) + ' beam lines (' + (beams.interior_count || 0) + ' interior)<br>'
       + (boards.total_boards || boards.rows || 0) + ' deck boards (4 border + ' + (boards.infill_rows || boards.rows || 0) + ' infill) · '
       + (tape.rolls_required || 0) + ' joist tape roll' + ((tape.rolls_required === 1) ? '' : 's')
-      + ((g.joist_hangers && g.joist_hangers.count > 0)
-        ? '<br>' + g.joist_hangers.count + ' joist hangers (2 per field joist, one each end)'
+      + ((g.joist_hangers && (g.joist_hangers.quote_count || g.joist_hangers.count) > 0)
+        ? '<br>' + (g.joist_hangers.quote_count || g.joist_hangers.count) + ' joist hangers ('
+          + g.joist_hangers.count + ' field + ' + (g.joist_hangers.extra_count || 0) + ' extra)'
         : '')
       + ((calc.inputs && calc.inputs.material_waste_percent > 0)
         ? '<br>Material waste: ' + calc.inputs.material_waste_percent + '% (internal)'

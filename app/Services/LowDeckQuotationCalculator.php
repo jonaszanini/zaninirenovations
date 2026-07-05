@@ -42,8 +42,11 @@ class LowDeckQuotationCalculator
     /** Maximum uniform center spacing for field joists (inches). */
     private const MAX_FIELD_JOIST_SPACING_IN = 15;
 
-    /** Joist hangers per field joist at the centre blocking beam. */
+    /** Joist hangers per field joist (one at each end). */
     private const HANGERS_PER_FIELD_JOIST = 2;
+
+    /** Additional hangers included on the materials line (edge/corner extras). */
+    private const EXTRA_HANGERS_FOR_QUOTE = 4;
 
     private LowDeckFormulaSetting $settings;
 
@@ -246,6 +249,10 @@ class LowDeckQuotationCalculator
             'boards' => $boardLayout,
             'joist_hangers' => [
                 'count' => $hangerCount,
+                'quote_count' => $hangerCount > 0
+                    ? $hangerCount + self::EXTRA_HANGERS_FOR_QUOTE
+                    : 0,
+                'extra_count' => self::EXTRA_HANGERS_FOR_QUOTE,
                 'per_field_joist' => self::HANGERS_PER_FIELD_JOIST,
                 'field_joist_count' => $fieldJoists,
                 'positions_ft' => $hangerPositions,
@@ -661,19 +668,22 @@ class LowDeckQuotationCalculator
         }
 
         // -------- JOIST HANGERS (2x6) ------------------------------------
-        $hangers = (int) ($geom['joist_hangers']['count'] ?? 0);
-        if ($hangers > 0) {
+        $fieldHangers = (int) ($geom['joist_hangers']['count'] ?? 0);
+        $quoteHangers = (int) ($geom['joist_hangers']['quote_count'] ?? $fieldHangers);
+        if ($quoteHangers > 0) {
             $fieldJoists = (int) ($geom['joist_hangers']['field_joist_count'] ?? 0);
             $perJoist = (int) ($geom['joist_hangers']['per_field_joist'] ?? self::HANGERS_PER_FIELD_JOIST);
+            $extraHangers = (int) ($geom['joist_hangers']['extra_count'] ?? self::EXTRA_HANGERS_FOR_QUOTE);
             $rows[] = $this->row(
                 LowDeckMaterial::KEY_JOIST_HANGER_2X6,
-                $this->wastefulQuantity($hangers, $wastePercent),
+                $this->wastefulQuantity($quoteHangers, $wastePercent),
                 'ea',
                 sprintf(
-                    '%d hangers (%d per field joist × %d, one each end)',
-                    $hangers,
+                    '%d hangers (%d per field joist × %d + %d extra)',
+                    $quoteHangers,
                     $perJoist,
-                    $fieldJoists
+                    $fieldJoists,
+                    $extraHangers
                 )
             );
         }
