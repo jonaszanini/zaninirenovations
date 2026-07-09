@@ -161,6 +161,9 @@
       <i class="fa fa-arrow-left"></i> Back to low deck quotations
     </a>
     <div class="ld-form-toolbar-right">
+      <a href="{{ route('admin.quotations.low-deck.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-cog"></i> Configuration
+      </a>
       <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       @if ($isEdit)
         <a href="{{ route('admin.quotations.low-deck.purchase-list', $quotation) }}"
