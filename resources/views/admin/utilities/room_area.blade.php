@@ -147,45 +147,71 @@
       {{-- Full-width drawing area --}}
       <section class="admin-card util-ra-canvas-card">
         <div class="util-ra-canvas-toolbar">
-          <div class="util-ra-canvas-tools">
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-undo-vertex disabled>
-              <i class="fa fa-undo"></i> Undo
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-close-shape disabled>
-              <i class="fa fa-check-circle"></i> Close
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-add-area disabled title="Add another area in the same color group">
-              <i class="fa fa-plus-square"></i> Add area
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-add-area-new-group disabled title="Start a new color group">
-              <i class="fa fa-palette"></i> New group
-            </button>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-area disabled title="Delete the active area">
-              <i class="fa fa-minus-circle"></i> Delete area
-            </button>
-            <span class="util-ra-group-chip" data-ra-group-chip hidden>
-              <span class="util-ra-group-chip__swatch" data-ra-group-chip-swatch></span>
-              <span class="util-ra-group-chip__label">Active group:</span>
-              <strong data-ra-group-chip-total>—</strong>
-            </span>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-clear-shape>
-              <i class="fa fa-eraser"></i> Clear
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-toggle title="Measure distances on the floor plan">
-              <i class="fa fa-arrows-alt"></i> Ruler
-            </button>
-            <label class="admin-checkbox admin-checkbox--sm util-ra-bg-show" data-ra-bg-show-wrap hidden>
-              <input type="checkbox" class="admin-checkbox__input" data-ra-bg-show checked>
-              <span class="admin-checkbox__mark" aria-hidden="true"></span>
-              <span class="admin-checkbox__text">Show image</span>
-            </label>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-bg-delete-canvas hidden title="Remove floor plan image from canvas">
-              <i class="fa fa-trash"></i> Delete image
-            </button>
+          <div class="util-ra-toolbar__groups">
+            <div class="util-ra-tool-group">
+              <span class="util-ra-tool-group__label">Shape</span>
+              <div class="util-ra-tool-group__actions">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-undo-vertex disabled>
+                  <i class="fa fa-undo"></i> Undo
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-close-shape disabled>
+                  <i class="fa fa-check-circle"></i> Close
+                </button>
+              </div>
+            </div>
+
+            <div class="util-ra-tool-group util-ra-tool-group--areas">
+              <span class="util-ra-tool-group__label">Areas</span>
+              <div class="util-ra-tool-group__actions">
+                <div class="util-ra-btn-cluster" role="group" aria-label="Add area options">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-add-area disabled title="Add another area in the same color group">
+                    <i class="fa fa-plus-square"></i> Add area
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn-cluster__secondary" data-ra-add-area-new-group disabled title="Start a new color group">
+                    <i class="fa fa-palette"></i> New group
+                  </button>
+                </div>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-delete-area disabled title="Delete the active area">
+                  <i class="fa fa-minus-circle"></i> Delete area
+                </button>
+                <span class="util-ra-group-chip" data-ra-group-chip hidden>
+                  <span class="util-ra-group-chip__swatch" data-ra-group-chip-swatch></span>
+                  <span class="util-ra-group-chip__label">Group</span>
+                  <strong data-ra-group-chip-total>—</strong>
+                </span>
+              </div>
+            </div>
+
+            <div class="util-ra-tool-group">
+              <span class="util-ra-tool-group__label">Tools</span>
+              <div class="util-ra-tool-group__actions">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-clear-shape>
+                  <i class="fa fa-eraser"></i> Clear all
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-toggle title="Measure distances on the floor plan">
+                  <i class="fa fa-arrows-alt"></i> Ruler
+                </button>
+              </div>
+            </div>
+
+            <div class="util-ra-tool-group util-ra-tool-group--floor-plan">
+              <span class="util-ra-tool-group__label">Floor plan</span>
+              <div class="util-ra-tool-group__actions">
+                <label class="admin-checkbox admin-checkbox--sm util-ra-bg-show" data-ra-bg-show-wrap hidden>
+                  <input type="checkbox" class="admin-checkbox__input" data-ra-bg-show checked>
+                  <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                  <span class="admin-checkbox__text">Show image</span>
+                </label>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-bg-delete-canvas hidden title="Remove floor plan image from canvas">
+                  <i class="fa fa-trash"></i> Delete image
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="util-ra-canvas-tools util-ra-canvas-tools--zoom">
-            <span class="util-ra-tool-label">Zoom</span>
-            <div class="util-ra-zoom-controls">
+
+          <div class="util-ra-tool-group util-ra-tool-group--zoom">
+            <span class="util-ra-tool-group__label">Zoom</span>
+            <div class="util-ra-tool-group__actions util-ra-zoom-controls">
               <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-zoom-btn" data-ra-zoom-out title="Zoom out" aria-label="Zoom out">
                 <i class="fa fa-minus"></i>
               </button>
