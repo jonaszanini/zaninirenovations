@@ -1385,7 +1385,7 @@
   }
 
   function canDragWalls() {
-    return wallCount() > 0 && !state.spaceHeld && !state.rulerMode && !state.calibrating;
+    return wallCount() > 0 && isActiveClosed() && !state.spaceHeld && !state.rulerMode && !state.calibrating;
   }
 
   function refreshSelectedWallLengthInput() {
@@ -2664,7 +2664,7 @@
           stroke: 'rgba(0,0,0,0.001)',
           strokeWidth: uiSize(WALL_HIT * 2),
           lineCap: 'round',
-          listening: !state.spaceHeld && !state.rulerMode
+          listening: !state.spaceHeld && !state.rulerMode && isActiveClosed()
         });
         bindWallDrag(hitLine, wallIndex);
         bindWallSplit(hitLine, wallIndex);
@@ -3031,6 +3031,33 @@
     }
 
     if (findVertexAtPoint(pos) >= 0) return;
+
+    // While drawing an open shape, prioritize new corners over selecting other areas.
+    if (!isActiveClosed()) {
+      clearVertexSelection();
+      clearWallSelection();
+
+      if (activeVertices().length >= 3) {
+        var closeFirst = activeVertices()[0];
+        if (dist(pos, closeFirst) <= hitTolerance(CLOSE_HIT)) {
+          closeShape();
+          return;
+        }
+      }
+
+      var drawShiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+      var drawPoint = pos;
+      if (activeVertices().length > 0) {
+        var drawPrev = activeVertices()[activeVertices().length - 1];
+        if (drawShiftSnap) {
+          drawPoint = snapPoint(pos, drawPrev, SHIFT_SNAP_STEP);
+        }
+      }
+      pushUndoSnapshot();
+      activeVertices().push(clampToCanvas(drawPoint));
+      redrawAll();
+      return;
+    }
 
     var polygonHit = polygonAtPoint(pos);
     if (polygonHit) {
