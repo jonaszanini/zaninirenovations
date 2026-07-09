@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RoomAreaCanvasData;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -23,6 +24,11 @@ class RoomAreaRoom extends Model
         'area_sqft' => 'float',
         'scale_pixels_per_foot' => 'float',
     ];
+
+    public function canvasData(): array
+    {
+        return app(RoomAreaCanvasData::class)->normalize($this->vertices);
+    }
 
     public function project(): BelongsTo
     {

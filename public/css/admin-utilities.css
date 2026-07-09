@@ -2057,11 +2057,104 @@
 }
 
 .util-ra-live-area {
-  padding: 0.5rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   border-radius: 8px;
   background: var(--admin-primary-soft);
   font-size: 0.92rem;
-  white-space: nowrap;
+}
+
+.util-ra-live-area__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.util-ra-live-area__row--total {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(2, 71, 104, 0.12);
+}
+
+.util-ra-live-area-groups {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.util-ra-live-area-groups__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.util-ra-live-area-groups__swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.util-ra-live-area-groups__count,
+.util-ra-live-area-groups__label {
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+}
+
+.util-ra-group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--admin-surface, #fff);
+  border: 1px solid var(--admin-border, #d8dee6);
+  font-size: 0.85rem;
+}
+
+.util-ra-group-chip__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.util-ra-group-chip__label {
+  color: var(--admin-muted);
+}
+
+.util-ra-rooms-item__groups {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.util-ra-rooms-item__group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--admin-muted);
+}
+
+.util-ra-rooms-item__group-swatch {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.util-ra-rooms-item__group-count {
+  opacity: 0.85;
 }
 
 .util-ra-live-area__label {

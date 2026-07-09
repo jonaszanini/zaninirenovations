@@ -25,6 +25,9 @@
   var UNDO_MAX = 50;
   var WALL_DOUBLE_CLICK_MS = 400;
   var WALL_SPLIT_DEBOUNCE_MS = 400;
+  var GROUP_COLORS = ['#024768', '#2e7d32', '#e65100', '#6a1b9a', '#c62828', '#00838f', '#5d4037'];
+  var DEFAULT_GROUP_COLOR = GROUP_COLORS[0];
+  var INACTIVE_POLYGON_OPACITY = 0.45;
 
   var els = {
     projectSelect: root.querySelector('[data-ra-project-select]'),
@@ -50,6 +53,12 @@
     bgShowImage: root.querySelector('[data-ra-bg-show]'),
     undoVertex: root.querySelector('[data-ra-undo-vertex]'),
     closeShape: root.querySelector('[data-ra-close-shape]'),
+    addArea: root.querySelector('[data-ra-add-area]'),
+    addAreaNewGroup: root.querySelector('[data-ra-add-area-new-group]'),
+    deleteArea: root.querySelector('[data-ra-delete-area]'),
+    groupChip: root.querySelector('[data-ra-group-chip]'),
+    groupChipSwatch: root.querySelector('[data-ra-group-chip-swatch]'),
+    groupChipTotal: root.querySelector('[data-ra-group-chip-total]'),
     clearShape: root.querySelector('[data-ra-clear-shape]'),
     deleteWall: root.querySelector('[data-ra-delete-wall]'),
     vertexEdit: root.querySelector('[data-ra-vertex-edit]'),
@@ -62,6 +71,9 @@
     rulerCancel: root.querySelector('[data-ra-ruler-cancel]'),
     canvasWrap: root.querySelector('[data-ra-canvas-wrap]'),
     liveArea: root.querySelector('[data-ra-live-area]'),
+    liveActiveShape: root.querySelector('[data-ra-live-active-shape]'),
+    liveGroupList: root.querySelector('[data-ra-live-group-list]'),
+    liveGrandTotal: root.querySelector('[data-ra-live-grand-total]'),
     liveSqft: root.querySelector('[data-ra-live-sqft]'),
     liveSqm: root.querySelector('[data-ra-live-sqm]'),
     feedback: root.querySelector('[data-ra-feedback]'),
@@ -90,8 +102,11 @@
   var state = {
     projects: [],
     activeProjectId: null,
-    vertices: [],
-    closed: false,
+    groups: [],
+    activeGroupId: null,
+    activePolygonId: null,
+    nextGroupId: 1,
+    nextPolygonId: 1,
     calibrating: false,
     calibPoints: [],
     rulerMode: false,
@@ -144,6 +159,386 @@
   };
 
   var resizeTimer = null;
+
+  function cloneGroups(groups) {
+    return (groups || []).map(function (group) {
+      return {
+        id: group.id,
+        color: group.color,
+        polygons: (group.polygons || []).map(function (poly) {
+          return {
+            id: poly.id,
+            closed: !!poly.closed,
+            vertices: (poly.vertices || []).map(function (v) {
+              return { x: v.x, y: v.y };
+            })
+          };
+        })
+      };
+    });
+  }
+
+  function findGroupById(groupId) {
+    return state.groups.find(function (g) { return g.id === groupId; }) || null;
+  }
+
+  function findPolygonInGroup(group, polygonId) {
+    if (!group) return null;
+    return group.polygons.find(function (p) { return p.id === polygonId; }) || null;
+  }
+
+  function activeGroup() {
+    return findGroupById(state.activeGroupId);
+  }
+
+  function activePolygon() {
+    var group = activeGroup();
+    return group ? findPolygonInGroup(group, state.activePolygonId) : null;
+  }
+
+  function ensureInitialCanvas() {
+    if (!state.groups.length) {
+      startNewGroup(false);
+    }
+    if (!activePolygon()) {
+      var group = activeGroup() || state.groups[0];
+      if (group && group.polygons.length) {
+        state.activeGroupId = group.id;
+        state.activePolygonId = group.polygons[0].id;
+      } else if (group) {
+        startNewPolygon(group.id);
+      }
+    }
+  }
+
+  function activeVertices() {
+    ensureInitialCanvas();
+    var poly = activePolygon();
+    return poly ? poly.vertices : [];
+  }
+
+  function isActiveClosed() {
+    var poly = activePolygon();
+    return poly ? !!poly.closed : false;
+  }
+
+  function setActiveClosed(closed) {
+    var poly = activePolygon();
+    if (poly) poly.closed = !!closed;
+  }
+
+  function setActiveVertices(vertices) {
+    var poly = activePolygon();
+    if (!poly) return;
+    poly.vertices = (vertices || []).map(function (v) {
+      return { x: parseFloat(v.x), y: parseFloat(v.y) };
+    });
+  }
+
+  function paletteColorForIndex(index) {
+    return GROUP_COLORS[index % GROUP_COLORS.length];
+  }
+
+  function createPolygon() {
+    var id = 'p' + state.nextPolygonId;
+    state.nextPolygonId += 1;
+    return { id: id, vertices: [], closed: false };
+  }
+
+  function createGroup(color) {
+    var id = 'g' + state.nextGroupId;
+    state.nextGroupId += 1;
+    var poly = createPolygon();
+    return {
+      id: id,
+      color: color || paletteColorForIndex(state.groups.length),
+      polygons: [poly]
+    };
+  }
+
+  function startNewGroup(selectIt) {
+    var group = createGroup();
+    state.groups.push(group);
+    if (selectIt !== false) {
+      state.activeGroupId = group.id;
+      state.activePolygonId = group.polygons[0].id;
+      clearWallSelection();
+      clearVertexSelection();
+    }
+    return group;
+  }
+
+  function startNewPolygon(groupId) {
+    var group = groupId ? findGroupById(groupId) : activeGroup();
+    if (!group) group = startNewGroup();
+    var poly = createPolygon();
+    group.polygons.push(poly);
+    state.activeGroupId = group.id;
+    state.activePolygonId = poly.id;
+    clearWallSelection();
+    clearVertexSelection();
+    return poly;
+  }
+
+  function resetCanvasGroups() {
+    state.groups = [];
+    state.activeGroupId = null;
+    state.activePolygonId = null;
+    state.nextGroupId = 1;
+    state.nextPolygonId = 1;
+  }
+
+  function allPolygons() {
+    var out = [];
+    state.groups.forEach(function (group) {
+      (group.polygons || []).forEach(function (poly) {
+        out.push({ group: group, polygon: poly });
+      });
+    });
+    return out;
+  }
+
+  function allClosedPolygons() {
+    return allPolygons().filter(function (entry) {
+      return entry.polygon.closed && entry.polygon.vertices.length >= 3;
+    });
+  }
+
+  function hasAnyClosedPolygon() {
+    return allClosedPolygons().length > 0;
+  }
+
+  function groupAreaSqFt(group) {
+    var total = 0;
+    (group.polygons || []).forEach(function (poly) {
+      if (poly.closed && poly.vertices.length >= 3) {
+        var sqft = areaSqFt(poly.vertices);
+        if (sqft !== null) total += sqft;
+      }
+    });
+    return Math.round(total * 100) / 100;
+  }
+
+  function canvasTotalAreaSqFt() {
+    var total = 0;
+    state.groups.forEach(function (group) {
+      total += groupAreaSqFt(group);
+    });
+    return Math.round(total * 100) / 100;
+  }
+
+  function pointInPolygon(point, vertices) {
+    var inside = false;
+    var n = vertices.length;
+    if (n < 3) return false;
+    for (var i = 0, j = n - 1; i < n; j = i++) {
+      var xi = vertices[i].x;
+      var yi = vertices[i].y;
+      var xj = vertices[j].x;
+      var yj = vertices[j].y;
+      var intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < ((xj - xi) * (point.y - yi)) / (yj - yi + 1e-12) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function distanceToSegment(point, a, b) {
+    var dx = b.x - a.x;
+    var dy = b.y - a.y;
+    if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) return dist(point, a);
+    var t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy);
+    t = Math.max(0, Math.min(1, t));
+    return dist(point, { x: a.x + t * dx, y: a.y + t * dy });
+  }
+
+  function polygonAtPoint(pos) {
+    var hit = null;
+    var bestDist = Infinity;
+    allPolygons().forEach(function (entry) {
+      var poly = entry.polygon;
+      var verts = poly.vertices;
+      if (verts.length < 2) return;
+      if (poly.closed && verts.length >= 3 && pointInPolygon(pos, verts)) {
+        hit = entry;
+        bestDist = 0;
+        return;
+      }
+      var wallTotal = poly.closed ? verts.length : verts.length - 1;
+      for (var i = 0; i < wallTotal; i++) {
+        var a = verts[i];
+        var b = verts[(i + 1) % verts.length];
+        var d = distanceToSegment(pos, a, b);
+        if (d <= hitTolerance(WALL_HIT) && d < bestDist) {
+          bestDist = d;
+          hit = entry;
+        }
+      }
+    });
+    return hit;
+  }
+
+  function activatePolygon(groupId, polygonId) {
+    if (state.activeGroupId === groupId && state.activePolygonId === polygonId) return;
+    state.activeGroupId = groupId;
+    state.activePolygonId = polygonId;
+    clearWallSelection();
+    clearVertexSelection();
+    updateGroupChip();
+    redrawAll();
+  }
+
+  function deleteActivePolygon() {
+    var group = activeGroup();
+    var poly = activePolygon();
+    if (!group || !poly) return;
+    pushUndoSnapshot();
+    if (group.polygons.length === 1 && state.groups.length === 1 && !poly.closed && !poly.vertices.length) {
+      discardLastUndoSnapshot();
+      return;
+    }
+    group.polygons = group.polygons.filter(function (p) { return p.id !== poly.id; });
+    if (!group.polygons.length) {
+      state.groups = state.groups.filter(function (g) { return g.id !== group.id; });
+    }
+    var next = allPolygons()[0];
+    if (next) {
+      state.activeGroupId = next.group.id;
+      state.activePolygonId = next.polygon.id;
+    } else {
+      state.activeGroupId = null;
+      state.activePolygonId = null;
+      ensureInitialCanvas();
+    }
+    clearWallSelection();
+    clearVertexSelection();
+    if (!allPolygons().length) {
+      ensureInitialCanvas();
+    }
+    redrawAll();
+  }
+
+  function serializeCanvas() {
+    var groups = [];
+    state.groups.forEach(function (group) {
+      var polygons = [];
+      (group.polygons || []).forEach(function (poly) {
+        if (!poly.closed || poly.vertices.length < 3) return;
+        polygons.push({
+          id: poly.id,
+          vertices: poly.vertices.map(function (v) {
+            return { x: Math.round(v.x * 1000) / 1000, y: Math.round(v.y * 1000) / 1000 };
+          })
+        });
+      });
+      if (polygons.length) {
+        groups.push({
+          id: group.id,
+          color: group.color,
+          polygons: polygons
+        });
+      }
+    });
+    return { v: 2, groups: groups };
+  }
+
+  function normalizeCanvasInput(raw) {
+    if (!raw) return { v: 2, groups: [] };
+    if (Array.isArray(raw) && raw.length && raw[0] && typeof raw[0].x === 'number') {
+      return {
+        v: 2,
+        groups: [{
+          id: 'g1',
+          color: DEFAULT_GROUP_COLOR,
+          polygons: [{ id: 'p1', vertices: raw }]
+        }]
+      };
+    }
+    if (raw.v === 2 && Array.isArray(raw.groups)) return raw;
+    return { v: 2, groups: [] };
+  }
+
+  function hydrateCanvas(raw, scaleFromW, scaleFromH, scaleToW, scaleToH) {
+    resetCanvasGroups();
+    var data = normalizeCanvasInput(raw);
+    var maxGroupNum = 0;
+    var maxPolyNum = 0;
+    data.groups.forEach(function (group, gi) {
+      var groupId = group.id || ('g' + (gi + 1));
+      var groupNum = parseInt(String(groupId).replace(/\D/g, ''), 10);
+      if (groupNum > maxGroupNum) maxGroupNum = groupNum;
+      var polygons = [];
+      (group.polygons || []).forEach(function (poly, pi) {
+        var polyId = poly.id || ('p' + (pi + 1));
+        var polyNum = parseInt(String(polyId).replace(/\D/g, ''), 10);
+        if (polyNum > maxPolyNum) maxPolyNum = polyNum;
+        var verts = poly.vertices || [];
+        if (scaleFromW && scaleFromH && scaleToW && scaleToH) {
+          verts = scalePoints(verts, scaleFromW, scaleFromH, scaleToW, scaleToH);
+        }
+        if (verts.length < 3) return;
+        polygons.push({
+          id: polyId,
+          closed: true,
+          vertices: verts.map(function (v) { return { x: v.x, y: v.y }; })
+        });
+      });
+      if (polygons.length) {
+        state.groups.push({
+          id: groupId,
+          color: group.color || paletteColorForIndex(gi),
+          polygons: polygons
+        });
+      }
+    });
+    state.nextGroupId = Math.max(maxGroupNum + 1, state.groups.length + 1);
+    state.nextPolygonId = Math.max(maxPolyNum + 1, 2);
+    var first = allPolygons()[0];
+    if (first) {
+      state.activeGroupId = first.group.id;
+      state.activePolygonId = first.polygon.id;
+    } else {
+      ensureInitialCanvas();
+    }
+  }
+
+  function scaleAllCanvasPoints(fromW, fromH, toW, toH) {
+    if (!fromW || !fromH || fromW < 1 || fromH < 1) return;
+    state.groups.forEach(function (group) {
+      group.polygons.forEach(function (poly) {
+        poly.vertices = scalePoints(poly.vertices, fromW, fromH, toW, toH);
+      });
+    });
+  }
+
+  function syncIdCountersFromGroups() {
+    var maxGroup = 0;
+    var maxPoly = 0;
+    state.groups.forEach(function (group) {
+      var gn = parseInt(String(group.id).replace(/\D/g, ''), 10);
+      if (gn > maxGroup) maxGroup = gn;
+      group.polygons.forEach(function (poly) {
+        var pn = parseInt(String(poly.id).replace(/\D/g, ''), 10);
+        if (pn > maxPoly) maxPoly = pn;
+      });
+    });
+    state.nextGroupId = Math.max(state.nextGroupId, maxGroup + 1);
+    state.nextPolygonId = Math.max(state.nextPolygonId, maxPoly + 1);
+  }
+
+  function updateGroupChip() {
+    if (!els.groupChip) return;
+    var group = activeGroup();
+    var hasClosed = hasAnyClosedPolygon();
+    show(els.groupChip, !!group && hasClosed);
+    if (!group || !hasClosed) return;
+    if (els.groupChipSwatch) els.groupChipSwatch.style.backgroundColor = group.color;
+    if (els.groupChipTotal) {
+      var sqft = groupAreaSqFt(group);
+      var count = (group.polygons || []).filter(function (p) { return p.closed && p.vertices.length >= 3; }).length;
+      els.groupChipTotal.textContent = fmt(sqft, 2) + ' sq ft' + (count > 1 ? ' (' + count + ' areas)' : '');
+    }
+  }
 
   function getCanvasDimensions() {
     var wrap = els.canvasWrap;
@@ -249,8 +644,9 @@
     return {
       editingRoomId: state.editingRoomId,
       name: (els.roomName && els.roomName.value || '').trim(),
-      vertices: normalizeVertices(state.vertices),
-      closed: state.closed,
+      groups: cloneGroups(state.groups),
+      activeGroupId: state.activeGroupId,
+      activePolygonId: state.activePolygonId,
       scale: pixelsPerFoot() || null,
       backgroundUrl: state.activeBackgroundUrl || null,
       hasDraftBackground: !!(state.draftBackground && state.draftBackground.file),
@@ -508,8 +904,9 @@
 
   function snapshotState() {
     return {
-      vertices: state.vertices.map(function (v) { return { x: v.x, y: v.y }; }),
-      closed: state.closed
+      groups: cloneGroups(state.groups),
+      activeGroupId: state.activeGroupId,
+      activePolygonId: state.activePolygonId
     };
   }
 
@@ -531,8 +928,21 @@
   }
 
   function restoreUndoSnapshot(snap) {
-    state.vertices = snap.vertices.map(function (v) { return { x: v.x, y: v.y }; });
-    state.closed = snap.closed;
+    if (snap.groups) {
+      state.groups = cloneGroups(snap.groups);
+      state.activeGroupId = snap.activeGroupId || null;
+      state.activePolygonId = snap.activePolygonId || null;
+      syncIdCountersFromGroups();
+      if (!activePolygon() && allPolygons().length) {
+        var first = allPolygons()[0];
+        state.activeGroupId = first.group.id;
+        state.activePolygonId = first.polygon.id;
+      }
+    } else if (snap.vertices) {
+      ensureInitialCanvas();
+      setActiveVertices(snap.vertices);
+      setActiveClosed(!!snap.closed);
+    }
     state.draggingVertex = false;
     state.draggingWall = false;
     state.wallDragIndex = null;
@@ -632,16 +1042,16 @@
   }
 
   function getVertexPrev(idx) {
-    var n = state.vertices.length;
-    if (idx > 0) return state.vertices[idx - 1];
-    if (state.closed && n > 1) return state.vertices[n - 1];
+    var n = activeVertices().length;
+    if (idx > 0) return activeVertices()[idx - 1];
+    if (isActiveClosed() && n > 1) return activeVertices()[n - 1];
     return null;
   }
 
   function getVertexNext(idx) {
-    var n = state.vertices.length;
-    if (idx < n - 1) return state.vertices[idx + 1];
-    if (state.closed && n > 1) return state.vertices[0];
+    var n = activeVertices().length;
+    if (idx < n - 1) return activeVertices()[idx + 1];
+    if (isActiveClosed() && n > 1) return activeVertices()[0];
     return null;
   }
 
@@ -687,22 +1097,22 @@
   }
 
   function wallCount() {
-    var n = state.vertices.length;
+    var n = activeVertices().length;
     if (n < 2) return 0;
-    return state.closed ? n : n - 1;
+    return isActiveClosed() ? n : n - 1;
   }
 
   function wallEndIndex(wallIndex) {
-    var n = state.vertices.length;
-    if (state.closed) return (wallIndex + 1) % n;
+    var n = activeVertices().length;
+    if (isActiveClosed()) return (wallIndex + 1) % n;
     return wallIndex + 1;
   }
 
   function wallLengthFeet(wallIndex) {
     var ppf = pixelsPerFoot();
     if (!ppf) return null;
-    var a = state.vertices[wallIndex];
-    var b = state.vertices[wallEndIndex(wallIndex)];
+    var a = activeVertices()[wallIndex];
+    var b = activeVertices()[wallEndIndex(wallIndex)];
     return dist(a, b) / ppf;
   }
 
@@ -724,8 +1134,8 @@
   function findVertexAtPoint(pos) {
     if (!pos) return -1;
     var hit = hitTolerance(VERTEX_HIT);
-    for (var i = 0; i < state.vertices.length; i++) {
-      if (dist(pos, state.vertices[i]) <= hit) return i;
+    for (var i = 0; i < activeVertices().length; i++) {
+      if (dist(pos, activeVertices()[i]) <= hit) return i;
     }
     return -1;
   }
@@ -749,7 +1159,7 @@
     var origins = state.vertexDragOrigins;
     if (!origins || state.selectedVertexIndices.length <= 1) {
       var single = snapVertexPosition(anchorIndex, rawPos);
-      state.vertices[anchorIndex] = { x: single.x, y: single.y };
+      activeVertices()[anchorIndex] = { x: single.x, y: single.y };
       return single;
     }
 
@@ -770,9 +1180,9 @@
 
     state.selectedVertexIndices.forEach(function (i) {
       var o = origins[i];
-      state.vertices[i] = clampToCanvas({ x: o.x + dx, y: o.y + dy });
+      activeVertices()[i] = clampToCanvas({ x: o.x + dx, y: o.y + dy });
     });
-    return state.vertices[anchorIndex];
+    return activeVertices()[anchorIndex];
   }
 
   function syncSelectedVertexCircles() {
@@ -780,27 +1190,27 @@
     if (!layer) return;
     var circles = layer.getChildren();
     state.selectedVertexIndices.forEach(function (i) {
-      if (circles[i]) circles[i].position(state.vertices[i]);
+      if (circles[i]) circles[i].position(activeVertices()[i]);
     });
   }
 
   function deleteSelectedWall() {
     if (state.selectedWallIndex === null) return;
-    var n = state.vertices.length;
+    var n = activeVertices().length;
     if (wallCount() === 0) return;
 
     pushUndoSnapshot();
     var wallIndex = state.selectedWallIndex;
     var removeIdx = wallEndIndex(wallIndex);
 
-    state.vertices.splice(removeIdx, 1);
+    activeVertices().splice(removeIdx, 1);
     clearWallSelection();
 
-    if (state.closed && state.vertices.length < 3) {
-      state.closed = false;
+    if (isActiveClosed() && activeVertices().length < 3) {
+      setActiveClosed(false);
     }
-    if (state.vertices.length === 0) {
-      state.closed = false;
+    if (activeVertices().length === 0) {
+      setActiveClosed(false);
     }
 
     redrawAll();
@@ -879,7 +1289,7 @@
   function selectVertices(vertexIndices, options) {
     options = options || {};
     var indices = (vertexIndices || []).filter(function (idx) {
-      return idx >= 0 && idx < state.vertices.length;
+      return idx >= 0 && idx < activeVertices().length;
     });
     if (options.mode === 'toggle') {
       indices.forEach(function (idx) {
@@ -909,17 +1319,17 @@
 
   function deleteSelectedVertex() {
     if (state.selectedVertexIndices.length === 0) return;
-    if (state.vertices.length - state.selectedVertexIndices.length < 2) {
+    if (activeVertices().length - state.selectedVertexIndices.length < 2) {
       setFeedback('Need at least two corners to keep a wall segment.', true);
       return;
     }
 
     var indices = state.selectedVertexIndices.slice().sort(function (a, b) { return b - a; });
-    var copy = state.vertices.map(function (v) { return { x: v.x, y: v.y }; });
+    var copy = activeVertices().map(function (v) { return { x: v.x, y: v.y }; });
     indices.forEach(function (idx) {
       copy.splice(idx, 1);
     });
-    var closed = state.closed;
+    var closed = isActiveClosed();
     if (closed && copy.length < 3) closed = false;
     if (!isValidShape(copy, closed)) {
       setFeedback('Removing those corners would make the shape cross itself.', true);
@@ -928,13 +1338,13 @@
 
     pushUndoSnapshot();
     indices.forEach(function (idx) {
-      state.vertices.splice(idx, 1);
+      activeVertices().splice(idx, 1);
     });
-    if (state.closed && state.vertices.length < 3) {
-      state.closed = false;
+    if (isActiveClosed() && activeVertices().length < 3) {
+      setActiveClosed(false);
     }
-    if (state.vertices.length === 0) {
-      state.closed = false;
+    if (activeVertices().length === 0) {
+      setActiveClosed(false);
     }
     clearVertexSelection();
     redrawAll();
@@ -946,8 +1356,8 @@
     var best = -1;
     var bestDist = hitTolerance(WALL_HIT) + 1;
     for (var i = 0; i < wallCount(); i++) {
-      var a = state.vertices[i];
-      var b = state.vertices[wallEndIndex(i)];
+      var a = activeVertices()[i];
+      var b = activeVertices()[wallEndIndex(i)];
       var d = pointToSegmentDistance(pos, a, b);
       if (d <= hitTolerance(WALL_HIT) && d < bestDist) {
         bestDist = d;
@@ -966,8 +1376,8 @@
   }
 
   function wallDragCursorFor(wallIndex) {
-    var a = state.vertices[wallIndex];
-    var b = state.vertices[wallEndIndex(wallIndex)];
+    var a = activeVertices()[wallIndex];
+    var b = activeVertices()[wallEndIndex(wallIndex)];
     var dx = Math.abs(b.x - a.x);
     var dy = Math.abs(b.y - a.y);
     if (dx >= dy) return 'ns-resize';
@@ -991,8 +1401,8 @@
     if (!pos) return;
     cancelPendingWallClick();
     clearRulerSelection();
-    var a = state.vertices[wallIndex];
-    var b = state.vertices[wallEndIndex(wallIndex)];
+    var a = activeVertices()[wallIndex];
+    var b = activeVertices()[wallEndIndex(wallIndex)];
     state.wallPointerDown = {
       wallIndex: wallIndex,
       x: pos.x,
@@ -1052,11 +1462,11 @@
     var oy = n.y * amount;
     var wallIndex = state.wallDragIndex;
     var endIdx = wallEndIndex(wallIndex);
-    state.vertices[wallIndex] = clampToCanvas({
+    activeVertices()[wallIndex] = clampToCanvas({
       x: state.wallDragOrigA.x + ox,
       y: state.wallDragOrigA.y + oy
     });
-    state.vertices[endIdx] = clampToCanvas({
+    activeVertices()[endIdx] = clampToCanvas({
       x: state.wallDragOrigB.x + ox,
       y: state.wallDragOrigB.y + oy
     });
@@ -1076,9 +1486,9 @@
     var origA = state.wallDragOrigA;
     var origB = state.wallDragOrigB;
     var hadWallDrag = state.didWallDrag;
-    if (origA && origB && !isValidShape(state.vertices, state.closed)) {
-      state.vertices[wallIndex] = origA;
-      state.vertices[endIdx] = origB;
+    if (origA && origB && !isValidShape(activeVertices(), isActiveClosed())) {
+      activeVertices()[wallIndex] = origA;
+      activeVertices()[endIdx] = origB;
       if (hadWallDrag) discardLastUndoSnapshot();
       state.didWallDrag = false;
       setFeedback('That wall position would make the shape cross itself.', true);
@@ -1102,8 +1512,8 @@
   }
 
   function wallInsertIndex(wallIndex) {
-    var n = state.vertices.length;
-    if (!state.closed) return wallIndex + 1;
+    var n = activeVertices().length;
+    if (!isActiveClosed()) return wallIndex + 1;
     return wallIndex === n - 1 ? n : wallIndex + 1;
   }
 
@@ -1123,8 +1533,8 @@
 
   function insertVertexOnWall(wallIndex, rawPos) {
     if (wallIndex < 0 || wallIndex >= wallCount()) return -1;
-    var a = state.vertices[wallIndex];
-    var b = state.vertices[wallEndIndex(wallIndex)];
+    var a = activeVertices()[wallIndex];
+    var b = activeVertices()[wallEndIndex(wallIndex)];
     var projected = projectPointOnSegment(rawPos, a, b);
     if (!projected) {
       setFeedback('Wall is too short to add a corner here.', true);
@@ -1132,9 +1542,9 @@
     }
     var point = clampToCanvas(projected);
     var insertIdx = wallInsertIndex(wallIndex);
-    state.vertices.splice(insertIdx, 0, point);
-    if (!isValidShape(state.vertices, state.closed)) {
-      state.vertices.splice(insertIdx, 1);
+    activeVertices().splice(insertIdx, 0, point);
+    if (!isValidShape(activeVertices(), isActiveClosed())) {
+      activeVertices().splice(insertIdx, 1);
       setFeedback('That corner would make the shape cross itself.', true);
       return -1;
     }
@@ -1349,8 +1759,8 @@
 
     var wallIndex = state.selectedWallIndex;
     var endIdx = wallEndIndex(wallIndex);
-    var start = state.vertices[wallIndex];
-    var end = state.vertices[endIdx];
+    var start = activeVertices()[wallIndex];
+    var end = activeVertices()[endIdx];
     var currentPx = dist(start, end);
     if (currentPx < 1e-6) {
       setFeedback('Wall has no length to adjust.', true);
@@ -1373,9 +1783,9 @@
     var newEnd = { x: start.x + ux * newPx, y: start.y + uy * newPx };
 
     pushUndoSnapshot();
-    state.vertices[endIdx] = newEnd;
-    if (!isValidShape(state.vertices, state.closed)) {
-      state.vertices[endIdx] = oldEnd;
+    activeVertices()[endIdx] = newEnd;
+    if (!isValidShape(activeVertices(), isActiveClosed())) {
+      activeVertices()[endIdx] = oldEnd;
       discardLastUndoSnapshot();
       setFeedback('That length would make the shape cross itself.', true);
       return;
@@ -1422,8 +1832,8 @@
 
   function resetEditor() {
     bumpEditorToken();
-    state.vertices = [];
-    state.closed = false;
+    resetCanvasGroups();
+    ensureInitialCanvas();
     state.editingRoomId = null;
     state.selectedWallIndex = null;
     state.selectedVertexIndices = [];
@@ -1526,12 +1936,12 @@
     var maxX = cw;
     var maxY = ch;
 
-    if (state.vertices.length > 0) {
+    if (activeVertices().length > 0) {
       minX = Infinity;
       minY = Infinity;
       maxX = -Infinity;
       maxY = -Infinity;
-      state.vertices.forEach(function (v) {
+      activeVertices().forEach(function (v) {
         minX = Math.min(minX, v.x);
         minY = Math.min(minY, v.y);
         maxX = Math.max(maxX, v.x);
@@ -1647,8 +2057,8 @@
 
     if (oldW > 0 && oldH > 0) {
       var factor = canvasScaleFactor(oldW, oldH, dims.w, dims.h);
-      if (state.vertices.length) {
-        state.vertices = scalePoints(state.vertices, oldW, oldH, dims.w, dims.h);
+      if (state.groups.length && allPolygons().some(function (e) { return e.polygon.vertices.length; })) {
+        scaleAllCanvasPoints(oldW, oldH, dims.w, dims.h);
         clearUndoStack();
       }
       if (state.calibPoints.length) {
@@ -1937,39 +2347,104 @@
     updateToolbar();
   }
 
+  function hexToRgba(hex, alpha) {
+    var h = String(hex || DEFAULT_GROUP_COLOR).replace('#', '');
+    if (h.length === 3) {
+      h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    }
+    var r = parseInt(h.substring(0, 2), 16) || 2;
+    var g = parseInt(h.substring(2, 4), 16) || 71;
+    var b = parseInt(h.substring(4, 6), 16) || 104;
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  function roomCanvasRaw(room) {
+    if (room && room.canvas && room.canvas.groups) return room.canvas;
+    if (room && room.vertices) return room.vertices;
+    return null;
+  }
+
+  function roomHasDrawableData(room) {
+    var raw = roomCanvasRaw(room);
+    if (!raw) return false;
+    return normalizeCanvasInput(raw).groups.length > 0;
+  }
+
+  function reloadSavedRoomCanvas(room) {
+    var project = activeProject();
+    if (!project || !room) return;
+    var source = roomSourceCanvas(room, project);
+    hydrateCanvas(roomCanvasRaw(room), source.w, source.h, state.canvasW, state.canvasH);
+    state.editingRoomId = room.id;
+    if (els.roomName) els.roomName.value = room.name;
+    clearUndoStack();
+    updateEditUI();
+    redrawAll();
+  }
+
+  function addAreaSameGroup() {
+    if (!isActiveClosed()) {
+      setFeedback('Close the current shape before adding another area.', true);
+      return;
+    }
+    pushUndoSnapshot();
+    startNewPolygon(state.activeGroupId);
+    redrawAll();
+    setFeedback('Draw another area in the same color group.', false);
+  }
+
+  function addAreaNewGroup() {
+    if (!isActiveClosed()) {
+      setFeedback('Close the current shape before starting a new color group.', true);
+      return;
+    }
+    pushUndoSnapshot();
+    startNewGroup();
+    redrawAll();
+    setFeedback('Draw an area in a new color group.', false);
+  }
+
   function redrawPolygonLine() {
     var layer = state.layers.draw;
     if (!layer) return;
     layer.destroyChildren();
 
-    var verts = state.vertices;
-    if (verts.length === 0) {
-      flushKonva();
-      return;
-    }
-
-    var linePoints = [];
-    verts.forEach(function (v) { linePoints.push(v.x, v.y); });
-    if (state.closed && verts.length >= 3) {
-      linePoints.push(verts[0].x, verts[0].y);
-    }
-
-    if (linePoints.length >= 4) {
-      if (state.closed) {
+    var hasAny = false;
+    allPolygons().forEach(function (entry) {
+      var group = entry.group;
+      var poly = entry.polygon;
+      var verts = poly.vertices;
+      if (!verts.length) return;
+      hasAny = true;
+      var isActive = group.id === state.activeGroupId && poly.id === state.activePolygonId;
+      var opacity = isActive ? 1 : INACTIVE_POLYGON_OPACITY;
+      var linePoints = [];
+      verts.forEach(function (v) { linePoints.push(v.x, v.y); });
+      if (poly.closed && verts.length >= 3) {
+        linePoints.push(verts[0].x, verts[0].y);
         layer.add(new Konva.Line({
           points: linePoints,
           closed: true,
-          fill: 'rgba(2, 71, 104, 0.12)',
+          fill: hexToRgba(group.color, 0.12 * opacity),
+          opacity: opacity,
           listening: false
         }));
       }
-      layer.add(new Konva.Line({
-        points: linePoints,
-        stroke: '#024768',
-        strokeWidth: uiSize(2.5),
-        closed: state.closed,
-        listening: false
-      }));
+      if (linePoints.length >= 4 || (!poly.closed && linePoints.length >= 2)) {
+        layer.add(new Konva.Line({
+          points: linePoints,
+          stroke: group.color,
+          strokeWidth: uiSize(isActive ? 2.5 : 2),
+          opacity: opacity,
+          closed: poly.closed,
+          listening: false
+        }));
+      }
+    });
+
+    if (!hasAny) {
+      flushKonva();
+      return;
     }
 
     flushKonva();
@@ -1985,17 +2460,18 @@
       return;
     }
 
-    var verts = state.vertices;
+    var verts = activeVertices();
     verts.forEach(function (v, idx) {
       var isFirst = idx === 0;
       var isSelected = isVertexSelected(idx);
-      var showCloseTarget = isFirst && !state.closed && verts.length >= 3;
+      var showCloseTarget = isFirst && !isActiveClosed() && verts.length >= 3;
       (function (vertexIndex) {
+        var groupColor = activeGroup() ? activeGroup().color : DEFAULT_GROUP_COLOR;
         var circle = new Konva.Circle({
           x: v.x,
           y: v.y,
           radius: uiSize(isSelected ? 10 : (showCloseTarget ? CLOSE_HIT / 2 : 8)),
-          fill: isSelected ? '#f9a825' : (isFirst ? '#c62828' : '#024768'),
+          fill: isSelected ? '#f9a825' : (isFirst ? '#c62828' : groupColor),
           stroke: isSelected ? '#f57f17' : '#fff',
           strokeWidth: uiSize(isSelected ? 3 : 2),
           draggable: !state.spaceHeld && !state.rulerMode,
@@ -2032,13 +2508,13 @@
           }
           state.vertexDragOrigins = {};
           state.selectedVertexIndices.forEach(function (i) {
-            var v = state.vertices[i];
+            var v = activeVertices()[i];
             state.vertexDragOrigins[i] = { x: v.x, y: v.y };
           });
           state.draggingVertex = true;
           state.vertexDragFrom = {
-            x: state.vertices[vertexIndex].x,
-            y: state.vertices[vertexIndex].y
+            x: activeVertices()[vertexIndex].x,
+            y: activeVertices()[vertexIndex].y
           };
           pushUndoSnapshot();
           updateCanvasCursor();
@@ -2051,7 +2527,7 @@
             return;
           }
           var shiftKey = isShiftKey(e);
-          if (vertexIndex === 0 && !state.closed && state.vertices.length >= 3 && !state.draggingVertex && !shiftKey) {
+          if (vertexIndex === 0 && !isActiveClosed() && activeVertices().length >= 3 && !state.draggingVertex && !shiftKey) {
             closeShape();
             return;
           }
@@ -2068,7 +2544,7 @@
           if (state.selectedVertexIndices.length > 1) {
             syncSelectedVertexCircles();
           } else {
-            circle.position(state.vertices[vertexIndex]);
+            circle.position(activeVertices()[vertexIndex]);
           }
           redrawPolygonLine();
           redrawLabels();
@@ -2090,11 +2566,11 @@
           state.vertexDragFrom = null;
           state.vertexDragOrigins = null;
           applyVertexGroupDrag(vertexIndex, raw, true);
-          if (!isValidShape(state.vertices, state.closed)) {
+          if (!isValidShape(activeVertices(), isActiveClosed())) {
             var snap = state.undoStack.length ? state.undoStack[state.undoStack.length - 1] : null;
             if (snap) restoreUndoSnapshot(snap);
             setFeedback('That corner position would make the shape cross itself.', true);
-          } else if (dragFrom && dist(dragFrom, state.vertices[vertexIndex]) < 1e-6 && !multi) {
+          } else if (dragFrom && dist(dragFrom, activeVertices()[vertexIndex]) < 1e-6 && !multi) {
             discardLastUndoSnapshot();
           }
           redrawAll();
@@ -2111,7 +2587,7 @@
     if (!labelLayer) return;
     labelLayer.destroyChildren();
 
-    var verts = state.vertices;
+    var verts = activeVertices();
     var ppf = pixelsPerFoot();
     if (!ppf || verts.length === 0) {
       flushKonva();
@@ -2168,8 +2644,8 @@
     }
 
     for (var i = 0; i < count; i++) {
-      var a = state.vertices[i];
-      var b = state.vertices[wallEndIndex(i)];
+      var a = activeVertices()[i];
+      var b = activeVertices()[wallEndIndex(i)];
       var isSelected = state.selectedWallIndex === i;
 
       if (isSelected) {
@@ -2556,22 +3032,30 @@
 
     if (findVertexAtPoint(pos) >= 0) return;
 
-    if (wallCount() > 0) {
-      var wallIdx = findWallAtPoint(pos);
-      if (wallIdx >= 0) {
+    var polygonHit = polygonAtPoint(pos);
+    if (polygonHit) {
+      if (polygonHit.group.id !== state.activeGroupId || polygonHit.polygon.id !== state.activePolygonId) {
+        activatePolygon(polygonHit.group.id, polygonHit.polygon.id);
         return;
       }
+      if (wallCount() > 0) {
+        var wallIdx = findWallAtPoint(pos);
+        if (wallIdx >= 0) return;
+      }
+    } else if (wallCount() > 0) {
+      var wallIdxInactive = findWallAtPoint(pos);
+      if (wallIdxInactive >= 0) return;
     }
 
     clearVertexSelection();
 
-    if (state.closed) {
+    if (isActiveClosed()) {
       clearWallSelection();
       return;
     }
 
-    if (state.vertices.length >= 3) {
-      var first = state.vertices[0];
+    if (activeVertices().length >= 3) {
+      var first = activeVertices()[0];
       if (dist(pos, first) <= hitTolerance(CLOSE_HIT)) {
         closeShape();
         return;
@@ -2580,8 +3064,8 @@
 
     var shiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
     var point = pos;
-    if (state.vertices.length > 0) {
-      var prev = state.vertices[state.vertices.length - 1];
+    if (activeVertices().length > 0) {
+      var prev = activeVertices()[activeVertices().length - 1];
       if (shiftSnap) {
         point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
       } else {
@@ -2589,7 +3073,7 @@
       }
     }
     pushUndoSnapshot();
-    state.vertices.push(clampToCanvas(point));
+    activeVertices().push(clampToCanvas(point));
     redrawAll();
   }
 
@@ -2615,19 +3099,19 @@
       }
     }
 
-    if (!state.closed && state.vertices.length >= 3) {
+    if (!isActiveClosed() && activeVertices().length >= 3) {
       closeShape();
     }
   }
 
   function closeShape() {
-    if (state.vertices.length < 3) return;
-    if (!isSimplePolygon(state.vertices)) {
+    if (activeVertices().length < 3) return;
+    if (!isSimplePolygon(activeVertices())) {
       setFeedback('Shape crosses itself — adjust corners before closing.', true);
       return;
     }
     pushUndoSnapshot();
-    state.closed = true;
+    setActiveClosed(true);
     redrawAll();
   }
 
@@ -2640,8 +3124,8 @@
 
   function resetDraftCanvas() {
     bumpEditorToken();
-    state.vertices = [];
-    state.closed = false;
+    resetCanvasGroups();
+    ensureInitialCanvas();
     state.editingRoomId = null;
     state.selectedVertexIndices = [];
     state.vertexDragOrigins = null;
@@ -2719,26 +3203,56 @@
   }
 
   function updateLiveArea() {
-    var sqft = state.closed ? areaSqFt(state.vertices) : null;
-    if (sqft === null || sqft === undefined) {
+    var activeSqft = isActiveClosed() ? areaSqFt(activeVertices()) : null;
+    var grandTotal = hasAnyClosedPolygon() ? canvasTotalAreaSqFt() : null;
+    if (grandTotal === null) {
       show(els.liveArea, false);
       els.saveRoom.disabled = true;
+      updateGroupChip();
       return;
     }
     show(els.liveArea, true);
-    els.liveSqft.textContent = fmt(sqft, 2);
-    els.liveSqm.textContent = fmt(sqft * SQFT_TO_SQM, 2);
+    if (els.liveActiveShape) {
+      els.liveActiveShape.textContent = activeSqft !== null ? fmt(activeSqft, 2) : '—';
+    }
+    if (els.liveGrandTotal) {
+      els.liveGrandTotal.textContent = fmt(grandTotal, 2);
+    }
+    if (els.liveSqft) els.liveSqft.textContent = fmt(grandTotal, 2);
+    if (els.liveSqm) els.liveSqm.textContent = fmt(grandTotal * SQFT_TO_SQM, 2);
+    if (els.liveGroupList) {
+      els.liveGroupList.innerHTML = '';
+      state.groups.forEach(function (group) {
+        var count = (group.polygons || []).filter(function (p) { return p.closed && p.vertices.length >= 3; }).length;
+        if (!count) return;
+        var li = document.createElement('li');
+        li.className = 'util-ra-live-area-groups__item';
+        li.innerHTML =
+          '<span class="util-ra-live-area-groups__swatch" style="background:' + esc(group.color) + '"></span>' +
+          '<span class="util-ra-live-area-groups__label">Group total:</span>' +
+          '<strong>' + fmt(groupAreaSqFt(group), 2) + '</strong> sq ft' +
+          (count > 1 ? ' <span class="util-ra-live-area-groups__count">(' + count + ' areas)</span>' : '');
+        els.liveGroupList.appendChild(li);
+      });
+    }
+    updateGroupChip();
     els.saveRoom.disabled = !pixelsPerFoot();
   }
 
   function updateToolbar() {
     els.undoVertex.disabled = state.undoStack.length === 0;
-    els.closeShape.disabled = state.vertices.length < 3 || state.closed;
+    els.closeShape.disabled = activeVertices().length < 3 || isActiveClosed();
+    if (els.addArea) els.addArea.disabled = !isActiveClosed();
+    if (els.addAreaNewGroup) els.addAreaNewGroup.disabled = !isActiveClosed();
+    if (els.deleteArea) {
+      var canDelete = hasAnyClosedPolygon() || activeVertices().length > 0;
+      els.deleteArea.disabled = !canDelete;
+    }
     if (els.deleteWall) {
       els.deleteWall.disabled = state.selectedWallIndex === null;
     }
     if (els.deleteVertex) {
-      els.deleteVertex.disabled = state.selectedVertexIndices.length === 0 || state.vertices.length < 2;
+      els.deleteVertex.disabled = state.selectedVertexIndices.length === 0 || activeVertices().length < 2;
     }
     if (els.deleteRuler) {
       els.deleteRuler.disabled = state.selectedRulerId === null;
@@ -2833,7 +3347,7 @@
           },
           body: JSON.stringify({
             name: room.name,
-            vertices: state.vertices,
+            vertices: activeVertices(),
             scale_pixels_per_foot: ppf,
             canvas_width: state.canvasW,
             canvas_height: state.canvasH
@@ -2913,7 +3427,7 @@
     var project = activeProject();
     if (!project) return;
     var room = project.rooms.find(function (r) { return r.id === roomId; });
-    if (!room || !room.vertices || room.vertices.length < 3) {
+    if (!room || !roomHasDrawableData(room)) {
       setFeedback('Could not load that room.', true);
       return;
     }
@@ -2933,7 +3447,7 @@
       var currentProject = activeProject();
       if (!currentProject) return;
       var currentRoom = currentProject.rooms.find(function (r) { return r.id === roomId; });
-      if (!currentRoom || !currentRoom.vertices || currentRoom.vertices.length < 3) {
+      if (!currentRoom || !roomHasDrawableData(currentRoom)) {
         clearShape();
         return;
       }
@@ -2947,8 +3461,7 @@
         scaleActivePixelsPerFoot(factor);
       }
 
-      state.vertices = scalePoints(currentRoom.vertices, source.w, source.h, state.canvasW, state.canvasH);
-      state.closed = true;
+      hydrateCanvas(roomCanvasRaw(currentRoom), source.w, source.h, state.canvasW, state.canvasH);
       clearUndoStack();
       applyViewport();
       redrawAll();
@@ -2978,10 +3491,25 @@
       total += parseFloat(room.area_sqft) || 0;
       var li = document.createElement('li');
       li.className = 'util-ra-rooms-item' + (state.editingRoomId === room.id ? ' is-editing' : '');
+      var breakdownHtml = '';
+      var summaries = room.group_summaries || [];
+      if (summaries.length > 1) {
+        breakdownHtml = '<ul class="util-ra-rooms-item__groups">';
+        summaries.forEach(function (summary) {
+          breakdownHtml +=
+            '<li class="util-ra-rooms-item__group">' +
+              '<span class="util-ra-rooms-item__group-swatch" style="background:' + esc(summary.color) + '"></span>' +
+              '<span>' + fmt(summary.area_sqft, 2) + ' sq ft</span>' +
+              (summary.polygon_count > 1 ? ' <span class="util-ra-rooms-item__group-count">(' + summary.polygon_count + ' areas)</span>' : '') +
+            '</li>';
+        });
+        breakdownHtml += '</ul>';
+      }
       li.innerHTML =
         '<div class="util-ra-rooms-item__info">' +
           '<span class="util-ra-rooms-item__name">' + esc(room.name) + '</span>' +
           '<span class="util-ra-rooms-item__area">' + fmt(room.area_sqft, 2) + ' sq ft</span>' +
+          breakdownHtml +
         '</div>' +
         '<div class="util-ra-rooms-item__actions">' +
           '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-room="' + room.id + '" title="Edit room"><i class="fa fa-pencil"></i></button>' +
@@ -3183,8 +3711,8 @@
 
   function saveRoom() {
     var project = activeProject();
-    if (!project || !state.closed || state.vertices.length < 3) {
-      return Promise.reject(new Error('Complete the room outline before saving.'));
+    if (!project || !hasAnyClosedPolygon()) {
+      return Promise.reject(new Error('Complete at least one closed area before saving.'));
     }
     var name = (els.roomName.value || '').trim();
     if (!name) {
@@ -3217,7 +3745,7 @@
       },
       body: JSON.stringify({
         name: name,
-        vertices: state.vertices,
+        canvas: serializeCanvas(),
         canvas_width: state.canvasW,
         canvas_height: state.canvasH,
         scale_pixels_per_foot: scale
@@ -3262,13 +3790,15 @@
         project.canvas_height = state.canvasH;
         revokeDraftBackground();
         state.draftScale = null;
-        resetDraftCanvas();
+        var saved = result.data.room;
+        if (saved.background_url) loadBackground(saved.background_url);
+        reloadSavedRoomCanvas(saved);
         renderRooms();
         captureSavedSnapshot();
         setFeedback(
           isUpdate
             ? 'Changes saved.'
-            : 'Room saved. Draw another outline or click New room.',
+            : 'Room saved. Add more areas or click New room.',
           false
         );
       })
@@ -3443,6 +3973,9 @@
 
     els.undoVertex.addEventListener('click', undoVertex);
     els.closeShape.addEventListener('click', closeShape);
+    if (els.addArea) els.addArea.addEventListener('click', addAreaSameGroup);
+    if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
+    if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);
     els.clearShape.addEventListener('click', clearShape);
     els.saveRoom.addEventListener('click', function () {
       saveRoom().catch(function () {});

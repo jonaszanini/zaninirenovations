@@ -7,6 +7,7 @@ use App\Models\ClientProject;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Services\PolygonAreaService;
+use App\Services\RoomAreaCanvasData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -91,20 +92,25 @@ class RoomAreaController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function storeRoom(Request $request, RoomAreaProject $room_area_project, PolygonAreaService $areaService)
+    public function storeRoom(Request $request, RoomAreaProject $room_area_project, RoomAreaCanvasData $canvasData)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'vertices' => ['required', 'array', 'min:3'],
-            'vertices.*.x' => ['required', 'numeric'],
-            'vertices.*.y' => ['required', 'numeric'],
+            'canvas' => ['nullable', 'array'],
+            'canvas.v' => ['nullable', 'integer'],
+            'canvas.groups' => ['nullable', 'array'],
+            'vertices' => ['nullable', 'array'],
+            'vertices.*.x' => ['required_with:vertices', 'numeric'],
+            'vertices.*.y' => ['required_with:vertices', 'numeric'],
             'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
         ]);
 
         $scale = (float) ($data['scale_pixels_per_foot'] ?? $room_area_project->scale_pixels_per_foot ?? 0);
-        $validation = $areaService->validateRoom($data['vertices'], $scale);
+        $rawCanvas = $data['canvas'] ?? $data['vertices'] ?? null;
+        $normalized = $canvasData->normalize($rawCanvas);
+        $validation = $canvasData->validate($normalized, $scale);
 
         if (! $validation['valid']) {
             return response()->json(['ok' => false, 'message' => $validation['message']], 422);
@@ -112,7 +118,7 @@ class RoomAreaController extends Controller
 
         $room = $room_area_project->rooms()->create([
             'name' => $data['name'],
-            'vertices' => $data['vertices'],
+            'vertices' => $normalized,
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
             'scale_pixels_per_foot' => $data['scale_pixels_per_foot'] ?? null,
@@ -123,24 +129,29 @@ class RoomAreaController extends Controller
 
         return response()->json([
             'ok' => true,
-            'room' => $this->roomPayload($room),
+            'room' => $this->roomPayload($room, $canvasData),
         ]);
     }
 
-    public function updateRoom(Request $request, RoomAreaRoom $room_area_room, PolygonAreaService $areaService)
+    public function updateRoom(Request $request, RoomAreaRoom $room_area_room, RoomAreaCanvasData $canvasData)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'vertices' => ['required', 'array', 'min:3'],
-            'vertices.*.x' => ['required', 'numeric'],
-            'vertices.*.y' => ['required', 'numeric'],
+            'canvas' => ['nullable', 'array'],
+            'canvas.v' => ['nullable', 'integer'],
+            'canvas.groups' => ['nullable', 'array'],
+            'vertices' => ['nullable', 'array'],
+            'vertices.*.x' => ['required_with:vertices', 'numeric'],
+            'vertices.*.y' => ['required_with:vertices', 'numeric'],
             'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
         ]);
 
         $scale = (float) ($data['scale_pixels_per_foot'] ?? $room_area_room->scale_pixels_per_foot ?? $room_area_room->project->scale_pixels_per_foot ?? 0);
-        $validation = $areaService->validateRoom($data['vertices'], $scale);
+        $rawCanvas = $data['canvas'] ?? $data['vertices'] ?? null;
+        $normalized = $canvasData->normalize($rawCanvas);
+        $validation = $canvasData->validate($normalized, $scale);
 
         if (! $validation['valid']) {
             return response()->json(['ok' => false, 'message' => $validation['message']], 422);
@@ -148,7 +159,7 @@ class RoomAreaController extends Controller
 
         $room_area_room->update([
             'name' => $data['name'],
-            'vertices' => $data['vertices'],
+            'vertices' => $normalized,
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
             'scale_pixels_per_foot' => $data['scale_pixels_per_foot'] ?? $room_area_room->scale_pixels_per_foot,
@@ -159,7 +170,7 @@ class RoomAreaController extends Controller
 
         return response()->json([
             'ok' => true,
-            'room' => $this->roomPayload($room_area_room->fresh()),
+            'room' => $this->roomPayload($room_area_room->fresh(), $canvasData),
         ]);
     }
 
@@ -171,19 +182,21 @@ class RoomAreaController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function validateRoom(Request $request, PolygonAreaService $areaService)
+    public function validateRoom(Request $request, RoomAreaCanvasData $canvasData)
     {
         $data = $request->validate([
-            'vertices' => ['required', 'array', 'min:3'],
-            'vertices.*.x' => ['required', 'numeric'],
-            'vertices.*.y' => ['required', 'numeric'],
+            'canvas' => ['nullable', 'array'],
+            'canvas.v' => ['nullable', 'integer'],
+            'canvas.groups' => ['nullable', 'array'],
+            'vertices' => ['nullable', 'array'],
+            'vertices.*.x' => ['required_with:vertices', 'numeric'],
+            'vertices.*.y' => ['required_with:vertices', 'numeric'],
             'scale_pixels_per_foot' => ['required', 'numeric', 'gt:0'],
         ]);
 
-        $validation = $areaService->validateRoom(
-            $data['vertices'],
-            (float) $data['scale_pixels_per_foot']
-        );
+        $rawCanvas = $data['canvas'] ?? $data['vertices'] ?? null;
+        $normalized = $canvasData->normalize($rawCanvas);
+        $validation = $canvasData->validate($normalized, (float) $data['scale_pixels_per_foot']);
 
         if (! $validation['valid']) {
             return response()->json(['ok' => false, 'message' => $validation['message']], 422);
@@ -193,6 +206,7 @@ class RoomAreaController extends Controller
             'ok' => true,
             'area_sqft' => $validation['area_sqft'],
             'area_sqm' => round($validation['area_sqft'] * 0.092903, 2),
+            'group_summaries' => $validation['group_summaries'],
         ]);
     }
 
@@ -245,12 +259,21 @@ class RoomAreaController extends Controller
         ];
     }
 
-    private function roomPayload(RoomAreaRoom $room): array
+    private function roomPayload(RoomAreaRoom $room, ?RoomAreaCanvasData $canvasData = null): array
     {
+        $canvasData ??= app(RoomAreaCanvasData::class);
+        $canvas = $canvasData->normalize($room->vertices);
+        $scale = (float) ($room->scale_pixels_per_foot ?? $room->project?->scale_pixels_per_foot ?? 0);
+        $groupSummaries = $scale > 0
+            ? $canvasData->groupSummaries($canvas, $scale)
+            : [];
+
         return [
             'id' => $room->id,
             'name' => $room->name,
             'vertices' => $room->vertices,
+            'canvas' => $canvas,
+            'group_summaries' => $groupSummaries,
             'canvas_width' => $room->canvas_width,
             'canvas_height' => $room->canvas_height,
             'scale_pixels_per_foot' => $room->scale_pixels_per_foot,

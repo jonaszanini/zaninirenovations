@@ -154,6 +154,20 @@
             <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-close-shape disabled>
               <i class="fa fa-check-circle"></i> Close
             </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-add-area disabled title="Add another area in the same color group">
+              <i class="fa fa-plus-square"></i> Add area
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-add-area-new-group disabled title="Start a new color group">
+              <i class="fa fa-palette"></i> New group
+            </button>
+            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-area disabled title="Delete the active area">
+              <i class="fa fa-minus-circle"></i> Delete area
+            </button>
+            <span class="util-ra-group-chip" data-ra-group-chip hidden>
+              <span class="util-ra-group-chip__swatch" data-ra-group-chip-swatch></span>
+              <span class="util-ra-group-chip__label">Active group:</span>
+              <strong data-ra-group-chip-total>—</strong>
+            </span>
             <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-clear-shape>
               <i class="fa fa-eraser"></i> Clear
             </button>
@@ -243,11 +257,19 @@
         </div>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Click a corner to select it; hold <strong>Shift</strong> to select multiple corners and drag them together. Double-click a wall to add a corner; click and drag a wall to move it perpendicular (hold Shift to snap). Hold Shift while placing corners to snap walls to 45°/90°. Use <strong>Ruler</strong> to measure distances (calibrate scale first). Shift + scroll to zoom; Space + drag to pan.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Close a shape, then use <strong>Add area</strong> for another outline in the same color, or <strong>New group</strong> for a different color. Click an existing area to edit it. Hold <strong>Shift</strong> to select multiple corners; double-click a wall to add a corner. Calibrate scale before saving.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
-            <span class="util-ra-live-area__label">Current shape:</span>
-            <strong data-ra-live-sqft>—</strong> sq ft
-            <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m²)</span>
+            <div class="util-ra-live-area__row">
+              <span class="util-ra-live-area__label">Active shape:</span>
+              <strong data-ra-live-active-shape>—</strong> sq ft
+            </div>
+            <ul class="util-ra-live-area-groups" data-ra-live-group-list></ul>
+            <div class="util-ra-live-area__row util-ra-live-area__row--total">
+              <span class="util-ra-live-area__label">All areas:</span>
+              <strong data-ra-live-grand-total>—</strong> sq ft
+              <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m²)</span>
+            </div>
+            <span class="util-sr-only" data-ra-live-sqft aria-hidden="true">—</span>
           </div>
         </div>
         <p class="util-ra-feedback" data-ra-feedback hidden></p>
