@@ -10,11 +10,10 @@
   var INCHES_PER_FOOT = 12;
   var SQFT_TO_SQM = 0.092903;
   var MIN_CANVAS_W = 400;
-  var MIN_CANVAS_H = 480;
-  var MAX_CANVAS_H = 960;
-  var WORLD_MIN_W = 1600;
-  var WORLD_MIN_H = 1100;
-  var WORLD_SIZE_FACTOR = 2;
+  var MIN_CANVAS_H = 520;
+  var MAX_CANVAS_H = 1100;
+  var CANVAS_HEIGHT_RATIO = 0.75;
+  var CANVAS_MAX_VH = 0.72;
   var GRID_PX = 20;
   var VERTEX_HIT = 14;
   var CLOSE_HIT = 16;
@@ -158,9 +157,7 @@
     editorToken: 0,
     savedSnapshot: null,
     canvasW: 900,
-    canvasH: 560,
-    worldW: 1400,
-    worldH: 1000
+    canvasH: 640
   };
 
   var resizeTimer = null;
@@ -548,52 +545,25 @@
   function getCanvasDimensions() {
     var wrap = els.canvasWrap;
     if (!wrap || wrap.clientWidth < 1) {
-      return { w: state.canvasW || 900, h: state.canvasH || 560 };
+      return { w: state.canvasW || 900, h: state.canvasH || 640 };
     }
     var w = Math.max(MIN_CANVAS_W, Math.floor(wrap.clientWidth));
-    var wrapH = wrap.clientHeight;
-    if (wrapH < MIN_CANVAS_H) {
-      var minH = parseFloat(window.getComputedStyle(wrap).minHeight);
-      if (minH > 0 && !isNaN(minH)) wrapH = minH;
-    }
-    var h;
-    if (wrapH >= MIN_CANVAS_H) {
-      h = Math.min(MAX_CANVAS_H, Math.floor(wrapH));
-    } else {
-      h = Math.max(MIN_CANVAS_H, Math.min(MAX_CANVAS_H, Math.round(w * 0.65)));
-    }
+    var maxH = Math.min(Math.floor(window.innerHeight * CANVAS_MAX_VH), MAX_CANVAS_H);
+    var h = Math.max(MIN_CANVAS_H, Math.min(maxH, Math.round(w * CANVAS_HEIGHT_RATIO)));
     return { w: w, h: h };
   }
 
-  function viewportW() {
-    return state.canvasW;
-  }
-
-  function viewportH() {
-    return state.canvasH;
-  }
-
-  function worldW() {
-    return state.worldW || state.canvasW;
-  }
-
-  function worldH() {
-    return state.worldH || state.canvasH;
-  }
-
-  function syncWorldDimensions() {
-    var vw = state.canvasW || 900;
-    var vh = state.canvasH || 560;
-    state.worldW = Math.max(Math.round(vw * WORLD_SIZE_FACTOR), WORLD_MIN_W);
-    state.worldH = Math.max(Math.round(vh * WORLD_SIZE_FACTOR), WORLD_MIN_H);
+  function syncCanvasWrapSize(w, h) {
+    if (!els.canvasWrap) return;
+    els.canvasWrap.style.height = h + 'px';
   }
 
   function canvasW() {
-    return worldW();
+    return state.canvasW;
   }
 
   function canvasH() {
-    return worldH();
+    return state.canvasH;
   }
 
   function scalePoints(points, fromW, fromH, toW, toH) {
@@ -657,8 +627,8 @@
 
   function roomSourceCanvas(room, project) {
     return {
-      w: room.canvas_width || project.canvas_width || worldW(),
-      h: room.canvas_height || project.canvas_height || worldH()
+      w: room.canvas_width || project.canvas_width || canvasW(),
+      h: room.canvas_height || project.canvas_height || canvasH()
     };
   }
 
@@ -1964,46 +1934,23 @@
     updateCanvasCursor();
   }
 
-  function fitWorldInView(padding) {
-    if (!state.stage) return;
-    var pad = padding === undefined ? 16 : padding;
-    var cw = viewportW();
-    var ch = viewportH();
-    var ww = worldW();
-    var wh = worldH();
-    var scale = Math.min((cw - pad * 2) / ww, (ch - pad * 2) / wh);
-    scale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, scale));
-    state.viewport.scale = scale;
-    state.viewport.x = (cw - ww * scale) / 2;
-    state.viewport.y = (ch - wh * scale) / 2;
-    state.lastUiScale = 0;
-    applyViewport();
-    updateCanvasCursor();
-  }
-
-  function hasCanvasContent() {
-    return allPolygons().some(function (entry) {
-      return entry.polygon.vertices.length > 0;
-    });
-  }
-
-  function syncDefaultViewport() {
-    if (hasCanvasContent()) {
+  function refreshViewportAfterContentChange() {
+    if (allPolygons().some(function (entry) { return entry.polygon.vertices.length > 0; })) {
       fitViewport();
     } else {
-      fitWorldInView();
+      resetViewport();
     }
   }
 
   function fitViewport() {
     if (!state.stage) return;
     var pad = 32;
-    var cw = viewportW();
-    var ch = viewportH();
+    var cw = canvasW();
+    var ch = canvasH();
     var minX = 0;
     var minY = 0;
-    var maxX = worldW();
-    var maxY = worldH();
+    var maxX = cw;
+    var maxY = ch;
 
     allPolygons().forEach(function (entry) {
       entry.polygon.vertices.forEach(function (v) {
@@ -2048,7 +1995,7 @@
 
   function zoomBy(factor) {
     if (!state.stage) return;
-    zoomAt(viewportW() / 2, viewportH() / 2, state.viewport.scale * factor);
+    zoomAt(canvasW() / 2, canvasH() / 2, state.viewport.scale * factor);
   }
 
   function stageToWorld(pos) {
@@ -2117,39 +2064,41 @@
     var dims = getCanvasDimensions();
     if (dims.w === state.canvasW && dims.h === state.canvasH) return;
 
-    var oldWorldW = worldW();
-    var oldWorldH = worldH();
+    var oldW = state.canvasW;
+    var oldH = state.canvasH;
 
     state.canvasW = dims.w;
     state.canvasH = dims.h;
-    syncWorldDimensions();
+    syncCanvasWrapSize(dims.w, dims.h);
 
-    if (oldWorldW > 0 && oldWorldH > 0) {
-      var factor = canvasScaleFactor(oldWorldW, oldWorldH, worldW(), worldH());
+    if (oldW > 0 && oldH > 0) {
+      var factor = canvasScaleFactor(oldW, oldH, dims.w, dims.h);
       if (state.groups.length && allPolygons().some(function (e) { return e.polygon.vertices.length; })) {
-        scaleAllCanvasPoints(oldWorldW, oldWorldH, worldW(), worldH());
+        scaleAllCanvasPoints(oldW, oldH, dims.w, dims.h);
         clearUndoStack();
       }
       if (state.calibPoints.length) {
-        state.calibPoints = scalePoints(state.calibPoints, oldWorldW, oldWorldH, worldW(), worldH());
+        state.calibPoints = scalePoints(state.calibPoints, oldW, oldH, dims.w, dims.h);
       }
-      scaleProjectRulers(oldWorldW, oldWorldH, worldW(), worldH());
+      scaleProjectRulers(oldW, oldH, dims.w, dims.h);
       if (Math.abs(factor - 1) > 0.0005) {
         scaleActivePixelsPerFoot(factor);
+        state.viewport.x *= dims.w / oldW;
+        state.viewport.y *= dims.h / oldH;
+        applyViewport();
       }
     }
 
     state.stage.width(dims.w);
     state.stage.height(dims.h);
     if (state.bgImage) {
-      if (oldWorldW > 0 && oldWorldH > 0) {
-        scaleBackgroundLayout(oldWorldW, oldWorldH, worldW(), worldH());
+      if (oldW > 0 && oldH > 0) {
+        scaleBackgroundLayout(oldW, oldH, dims.w, dims.h);
       } else {
         layoutBackgroundImage();
       }
     }
     drawGrid();
-    syncDefaultViewport();
     redrawAll();
   }
 
@@ -2169,7 +2118,7 @@
     var dims = getCanvasDimensions();
     state.canvasW = dims.w;
     state.canvasH = dims.h;
-    syncWorldDimensions();
+    syncCanvasWrapSize(dims.w, dims.h);
 
     state.stage = new Konva.Stage({
       container: 'ra-konva-container',
@@ -2201,7 +2150,8 @@
     state.worldGroup.add(state.layers.rulers);
 
     resetViewport();
-    syncDefaultViewport();
+    drawGrid();
+    redrawAll();
 
     state.stage.on('mousedown touchstart', function (e) {
       var evt = e.evt;
@@ -2278,8 +2228,8 @@
     if (!layer) return;
     layer.destroyChildren();
     var step = gridStepPx();
-    var w = worldW();
-    var h = worldH();
+    var w = canvasW();
+    var h = canvasH();
     for (var x = 0; x <= w; x += step) {
       layer.add(new Konva.Line({
         points: [x, 0, x, h],
@@ -2296,15 +2246,6 @@
         listening: false
       }));
     }
-    layer.add(new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: w,
-      height: h,
-      stroke: 'rgba(2, 71, 104, 0.22)',
-      strokeWidth: 1,
-      listening: false
-    }));
     flushKonva();
   }
 
@@ -2450,12 +2391,12 @@
     var project = activeProject();
     if (!project || !room) return;
     var source = roomSourceCanvas(room, project);
-    hydrateCanvas(roomCanvasRaw(room), source.w, source.h, worldW(), worldH());
+    hydrateCanvas(roomCanvasRaw(room), source.w, source.h, canvasW(), canvasH());
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
     clearUndoStack();
     updateEditUI();
-    syncDefaultViewport();
+    refreshViewportAfterContentChange();
     redrawAll();
   }
 
@@ -3506,8 +3447,8 @@
             name: room.name,
             vertices: activeVertices(),
             scale_pixels_per_foot: ppf,
-            canvas_width: worldW(),
-            canvas_height: worldH()
+            canvas_width: canvasW(),
+            canvas_height: canvasH()
           })
         })
           .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
@@ -3613,14 +3554,14 @@
       loadBackground(currentRoom.background_url || null);
 
       var source = roomSourceCanvas(currentRoom, currentProject);
-      var factor = canvasScaleFactor(source.w, source.h, worldW(), worldH());
+      var factor = canvasScaleFactor(source.w, source.h, canvasW(), canvasH());
       if (Math.abs(factor - 1) > 0.0005) {
         scaleActivePixelsPerFoot(factor);
       }
 
-      hydrateCanvas(roomCanvasRaw(currentRoom), source.w, source.h, worldW(), worldH());
+      hydrateCanvas(roomCanvasRaw(currentRoom), source.w, source.h, canvasW(), canvasH());
       clearUndoStack();
-      syncDefaultViewport();
+      refreshViewportAfterContentChange();
       redrawAll();
       captureSavedSnapshot();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
@@ -3765,17 +3706,17 @@
       var factor = canvasScaleFactor(
         currentProject.canvas_width,
         currentProject.canvas_height,
-        worldW(),
-        worldH()
+        canvasW(),
+        canvasH()
       );
       if (Math.abs(factor - 1) > 0.0005) {
         scaleActivePixelsPerFoot(factor);
-        currentProject.canvas_width = worldW();
-        currentProject.canvas_height = worldH();
+        currentProject.canvas_width = canvasW();
+        currentProject.canvas_height = canvasH();
       }
       loadBackground(null);
       updateScaleUI();
-      syncDefaultViewport();
+      refreshViewportAfterContentChange();
       captureSavedSnapshot();
     }, 0);
   }
@@ -3904,8 +3845,8 @@
       body: JSON.stringify({
         name: name,
         canvas: serializeCanvas(),
-        canvas_width: worldW(),
-        canvas_height: worldH(),
+        canvas_width: canvasW(),
+        canvas_height: canvasH(),
         scale_pixels_per_foot: scale
       })
     })
@@ -3944,8 +3885,8 @@
           }
           project.rooms.push(newRoom);
         }
-        project.canvas_width = worldW();
-        project.canvas_height = worldH();
+        project.canvas_width = canvasW();
+        project.canvas_height = canvasH();
         revokeDraftBackground();
         state.draftScale = null;
         var saved = result.data.room;
