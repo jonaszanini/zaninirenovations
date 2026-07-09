@@ -20,7 +20,7 @@
   var CLOSE_HIT = 16;
   var WALL_HIT = 14;
   var RULER_HIT = 12;
-  var MIN_ZOOM = 0.35;
+  var MIN_ZOOM_FLOOR = 0.05;
   var MAX_ZOOM = 5;
   var ZOOM_FACTOR = 1.12;
   var SHIFT_SNAP_THRESHOLD_DEG = 10;
@@ -1925,6 +1925,65 @@
     }
   }
 
+  function getMinZoom() {
+    var vw = viewportW();
+    var vh = viewportH();
+    var pad = 20;
+    var cw = canvasW();
+    var ch = canvasH();
+    if (!vw || !vh || !cw || !ch) return MIN_ZOOM_FLOOR;
+    return Math.max(MIN_ZOOM_FLOOR, Math.min((vw - pad) / cw, (vh - pad) / ch));
+  }
+
+  function clampZoom(scale) {
+    return Math.max(getMinZoom(), Math.min(MAX_ZOOM, scale));
+  }
+
+  function viewportContentBounds() {
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    var has = false;
+
+    function grow(x, y) {
+      if (!isFinite(x) || !isFinite(y)) return;
+      has = true;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+
+    allPolygons().forEach(function (entry) {
+      entry.polygon.vertices.forEach(function (v) {
+        grow(v.x, v.y);
+      });
+    });
+
+    state.calibPoints.forEach(function (p) {
+      grow(p.x, p.y);
+    });
+
+    projectRulers().forEach(function (ruler) {
+      if (ruler.p1) grow(ruler.p1.x, ruler.p1.y);
+      if (ruler.p2) grow(ruler.p2.x, ruler.p2.y);
+    });
+
+    if (state.bgImage) {
+      var bx = state.bgImage.x();
+      var by = state.bgImage.y();
+      grow(bx, by);
+      grow(bx + state.bgImage.width(), by + state.bgImage.height());
+    }
+
+    if (!has) {
+      return { minX: 0, minY: 0, maxX: canvasW(), maxY: canvasH(), hasContent: false };
+    }
+
+    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY, hasContent: true };
+  }
+
   function clampViewportPan() {
     var s = state.viewport.scale;
     var vw = viewportW();
@@ -1934,12 +1993,12 @@
     var minX = vw - cw;
     var minY = vh - ch;
     if (cw <= vw) {
-      state.viewport.x = 0;
+      state.viewport.x = (vw - cw) / 2;
     } else {
       state.viewport.x = Math.max(minX, Math.min(0, state.viewport.x));
     }
     if (ch <= vh) {
-      state.viewport.y = 0;
+      state.viewport.y = (vh - ch) / 2;
     } else {
       state.viewport.y = Math.max(minY, Math.min(0, state.viewport.y));
     }
@@ -2009,24 +2068,16 @@
     var pad = 32;
     var vw = viewportW();
     var vh = viewportH();
-    var minX = 0;
-    var minY = 0;
-    var maxX = canvasW();
-    var maxY = canvasH();
-
-    allPolygons().forEach(function (entry) {
-      entry.polygon.vertices.forEach(function (v) {
-        minX = Math.min(minX, v.x);
-        minY = Math.min(minY, v.y);
-        maxX = Math.max(maxX, v.x);
-        maxY = Math.max(maxY, v.y);
-      });
-    });
+    var bounds = viewportContentBounds();
+    var minX = bounds.minX;
+    var minY = bounds.minY;
+    var maxX = bounds.maxX;
+    var maxY = bounds.maxY;
 
     var contentW = Math.max(maxX - minX, 1);
     var contentH = Math.max(maxY - minY, 1);
     var scale = Math.min((vw - pad * 2) / contentW, (vh - pad * 2) / contentH);
-    scale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, scale));
+    scale = clampZoom(scale);
 
     var cx = (minX + maxX) / 2;
     var cy = (minY + maxY) / 2;
@@ -2045,7 +2096,7 @@
   }
 
   function zoomAt(screenX, screenY, newScale) {
-    newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newScale));
+    newScale = clampZoom(newScale);
     var oldScale = state.viewport.scale;
     var worldX = (screenX - state.viewport.x) / oldScale;
     var worldY = (screenY - state.viewport.y) / oldScale;
