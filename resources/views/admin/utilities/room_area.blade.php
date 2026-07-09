@@ -21,7 +21,7 @@
     class="util-ra"
     data-room-area
     data-projects="{{ json_encode($projectsJson) }}"
-    data-client-projects="{{ json_encode($clientProjects->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])) }}"
+    data-client-projects="{{ json_encode($clientProjects->map(fn ($p) => ['id' => $p->id, 'name' => $p->linkSelectLabel()])) }}"
     data-validate-url="{{ route('admin.utilities.room-area.validate') }}"
     data-project-store-url="{{ route('admin.utilities.room-area.projects.store') }}"
     data-project-update-template="{{ route('admin.utilities.room-area.projects.update', ['room_area_project' => '__ID__']) }}"
@@ -47,7 +47,7 @@
             <select class="admin-input" id="ra-link-client-project" data-ra-link-client-project>
               <option value="">— None —</option>
               @foreach ($clientProjects as $cp)
-                <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+                <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
               @endforeach
             </select>
             <a href="#" data-ra-linked-link class="util-ra-linked__go" hidden>Go to project</a>
@@ -74,7 +74,7 @@
             <select class="admin-input" id="ra-new-client-project" data-ra-new-client-project>
               <option value="">— None —</option>
               @foreach ($clientProjects as $cp)
-                <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+                <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
               @endforeach
             </select>
           </div>

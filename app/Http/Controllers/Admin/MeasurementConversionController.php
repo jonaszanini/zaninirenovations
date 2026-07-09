@@ -24,8 +24,9 @@ class MeasurementConversionController extends Controller
 
         $clientProjects = ClientProject::query()
             ->whereNotIn('status', [ClientProject::STATUS_REJECTED, ClientProject::STATUS_CANCELLED, ClientProject::STATUS_COMPLETED])
+            ->orderBy('client_name')
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'client_name']);
 
         $converter = new MeasurementConversionService;
 

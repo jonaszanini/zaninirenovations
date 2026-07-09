@@ -21,7 +21,7 @@
     class="util-mc"
     data-measurement-conversion
     data-projects="{{ json_encode($projectsJson) }}"
-    data-client-projects="{{ json_encode($clientProjects->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])) }}"
+    data-client-projects="{{ json_encode($clientProjects->map(fn ($p) => ['id' => $p->id, 'name' => $p->linkSelectLabel()])) }}"
     data-preview-url="{{ route('admin.utilities.measurement-conversion.preview') }}"
     data-project-store-url="{{ route('admin.utilities.measurement-conversion.projects.store') }}"
     data-project-update-template="{{ route('admin.utilities.measurement-conversion.projects.update', ['measurement_project' => '__ID__']) }}"
@@ -61,7 +61,7 @@
             <select class="admin-input" id="mc-new-client-project" data-mc-new-client-project>
               <option value="">— None —</option>
               @foreach ($clientProjects as $cp)
-                <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+                <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
               @endforeach
             </select>
           </div>
@@ -79,7 +79,7 @@
           <select class="admin-input" id="mc-link-client-project" data-mc-link-client-project>
             <option value="">— None —</option>
             @foreach ($clientProjects as $cp)
-              <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+              <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
             @endforeach
           </select>
         </div>
