@@ -1540,13 +1540,21 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-calendar-card .fc .fc-day-today .fc-daygrid-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--admin-primary, #024768);
   color: #fff;
   border-radius: 50%;
   width: 1.75em;
   height: 1.75em;
-  line-height: 1.75em;
+  min-width: 1.75em;
+  min-height: 1.75em;
+  line-height: 1;
+  padding: 0;
   margin: 4px;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 /* FullCalendar toolbar — match admin-btn--primary (arrows, active view) and admin-btn--ghost (today, inactive views). */
@@ -5436,13 +5444,21 @@ body.cp-modal-open {
   background: rgba(2, 71, 104, 0.1);
 }
 .cp-date-picker-calendar .fc .fc-day-today .fc-daygrid-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--admin-primary, #024768);
   color: #fff;
   border-radius: 50%;
   width: 1.75em;
   height: 1.75em;
-  line-height: 1.75em;
+  min-width: 1.75em;
+  min-height: 1.75em;
+  line-height: 1;
+  padding: 0;
   margin: 4px;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 @media (max-width: 700px) {
