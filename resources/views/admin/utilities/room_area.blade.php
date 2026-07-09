@@ -311,16 +311,16 @@
             <p class="util-ra-rooms-hint">Each room has its own floor plan and outline. Draw, save, then start another room.</p>
           </div>
           <div class="util-ra-rooms-head__actions">
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm util-ra-action-btn" data-ra-new-room-secondary>
-              <i class="fa fa-plus"></i> New room
-            </button>
             <div class="util-ra-total" data-ra-total hidden>
               <span class="util-ra-total__label">Total</span>
               <span class="util-ra-total__value"><strong data-ra-total-sqft>0</strong> sq ft</span>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-copy-total>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-copy-total title="Copy total">
                 <i class="fa fa-copy"></i> Copy
               </button>
             </div>
+            <button type="button" class="admin-btn admin-btn--primary admin-btn--sm util-ra-action-btn" data-ra-new-room-secondary>
+              <i class="fa fa-plus"></i> New room
+            </button>
           </div>
         </div>
         <p class="util-ra-rooms-empty" data-ra-rooms-empty>No rooms saved yet. Draw a room on the floor plan above, then click Save room.</p>

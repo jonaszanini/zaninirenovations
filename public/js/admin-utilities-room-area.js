@@ -3695,30 +3695,34 @@
       total += parseFloat(room.area_sqft) || 0;
       var li = document.createElement('li');
       li.className = 'util-ra-rooms-item' + (state.editingRoomId === room.id ? ' is-editing' : '');
-      var breakdownHtml = '';
       var summaries = room.group_summaries || [];
+      var breakdownHtml = '';
       if (summaries.length > 1) {
         breakdownHtml = '<ul class="util-ra-rooms-item__groups">';
         summaries.forEach(function (summary) {
           breakdownHtml +=
             '<li class="util-ra-rooms-item__group">' +
               '<span class="util-ra-rooms-item__group-swatch" style="background:' + esc(summary.color) + '"></span>' +
-              '<span>' + fmt(summary.area_sqft, 2) + ' sq ft</span>' +
-              (summary.polygon_count > 1 ? ' <span class="util-ra-rooms-item__group-count">(' + summary.polygon_count + ' areas)</span>' : '') +
+              '<span class="util-ra-rooms-item__group-area">' + fmt(summary.area_sqft, 2) + ' sq ft</span>' +
+              (summary.polygon_count > 1
+                ? '<span class="util-ra-rooms-item__group-count">' + summary.polygon_count + ' areas</span>'
+                : '') +
             '</li>';
         });
         breakdownHtml += '</ul>';
       }
       li.innerHTML =
-        '<div class="util-ra-rooms-item__info">' +
-          '<span class="util-ra-rooms-item__name">' + esc(room.name) + '</span>' +
-          '<span class="util-ra-rooms-item__area">' + fmt(room.area_sqft, 2) + ' sq ft</span>' +
+        '<div class="util-ra-rooms-item__main">' +
+          '<div class="util-ra-rooms-item__title-row">' +
+            '<span class="util-ra-rooms-item__name">' + esc(room.name) + '</span>' +
+            '<span class="util-ra-rooms-item__area">' + fmt(room.area_sqft, 2) + ' sq ft</span>' +
+          '</div>' +
           breakdownHtml +
         '</div>' +
         '<div class="util-ra-rooms-item__actions">' +
-          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-room="' + room.id + '" title="Edit room"><i class="fa fa-pencil"></i></button>' +
-          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-copy-area="' + room.area_sqft + '" title="Copy sq ft"><i class="fa fa-copy"></i></button>' +
-          '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-delete-room="' + room.id + '" title="Delete"><i class="fa fa-trash"></i></button>' +
+          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-room="' + room.id + '" title="Edit room"><i class="fa fa-pencil"></i><span class="util-ra-rooms-item__action-label">Edit</span></button>' +
+          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-copy-area="' + room.area_sqft + '" title="Copy sq ft"><i class="fa fa-copy"></i><span class="util-ra-rooms-item__action-label">Copy</span></button>' +
+          '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-delete-room="' + room.id + '" title="Delete"><i class="fa fa-trash"></i><span class="util-ra-rooms-item__action-label">Delete</span></button>' +
         '</div>';
       els.roomsList.appendChild(li);
     });
