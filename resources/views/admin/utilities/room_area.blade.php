@@ -184,45 +184,52 @@
           </div>
         </div>
 
-        <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
-          <div class="util-ra-wall-edit__inner">
-            <span class="util-ra-wall-edit__label">Ruler</span>
-            <span class="util-ra-ruler-length" data-ra-ruler-length>—</span>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-ruler>
-              <i class="fa fa-trash"></i> Delete ruler
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-cancel aria-label="Deselect ruler">
-              <i class="fa fa-times"></i>
-            </button>
+        <div class="util-ra-edit-dock" data-ra-edit-dock>
+          <div class="util-ra-edit-dock__idle" aria-hidden="true">
+            <span class="util-ra-edit-dock__hint">Select a wall, corner, or ruler to edit it here.</span>
           </div>
-        </div>
-
-        <div class="util-ra-wall-edit util-ra-vertex-edit" data-ra-vertex-edit hidden>
-          <div class="util-ra-wall-edit__inner">
-            <span class="util-ra-wall-edit__label">Corner</span>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-vertex>
-              <i class="fa fa-trash"></i> Delete corner
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-vertex-cancel aria-label="Deselect corner">
-              <i class="fa fa-times"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="util-ra-wall-edit" data-ra-wall-edit hidden>
-          <div class="util-ra-wall-edit__inner">
-            <span class="util-ra-wall-edit__label">Edit wall length</span>
-            <div class="admin-form-group util-ra-wall-edit__input">
-              <label for="ra-wall-length" class="util-sr-only">Wall length in feet</label>
-              <input class="admin-input" type="text" id="ra-wall-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-wall-length>
+          <div class="util-ra-edit-dock__panels">
+            <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
+              <div class="util-ra-wall-edit__inner">
+                <span class="util-ra-wall-edit__label">Ruler</span>
+                <span class="util-ra-ruler-length" data-ra-ruler-length>—</span>
+                <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-ruler>
+                  <i class="fa fa-trash"></i> Delete ruler
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-cancel aria-label="Deselect ruler">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
             </div>
-            <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-wall>
-              <i class="fa fa-trash"></i> Delete wall
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-wall-cancel aria-label="Cancel wall edit">
-              <i class="fa fa-times"></i>
-            </button>
+
+            <div class="util-ra-wall-edit util-ra-vertex-edit" data-ra-vertex-edit hidden>
+              <div class="util-ra-wall-edit__inner">
+                <span class="util-ra-wall-edit__label">Corner</span>
+                <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-vertex>
+                  <i class="fa fa-trash"></i> Delete corner
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-vertex-cancel aria-label="Deselect corner">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="util-ra-wall-edit" data-ra-wall-edit hidden>
+              <div class="util-ra-wall-edit__inner">
+                <span class="util-ra-wall-edit__label">Edit wall length</span>
+                <div class="admin-form-group util-ra-wall-edit__input">
+                  <label for="ra-wall-length" class="util-sr-only">Wall length in feet</label>
+                  <input class="admin-input" type="text" id="ra-wall-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-wall-length>
+                </div>
+                <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
+                <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-wall>
+                  <i class="fa fa-trash"></i> Delete wall
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-wall-cancel aria-label="Cancel wall edit">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

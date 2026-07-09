@@ -1969,6 +1969,53 @@
   background: var(--admin-primary-soft);
 }
 
+.util-ra-edit-dock {
+  position: relative;
+  height: 4.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.util-ra-edit-dock__idle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  border-radius: 10px;
+  border: 1px dashed var(--admin-border);
+  background: #fafbfc;
+  pointer-events: none;
+  user-select: none;
+}
+
+.util-ra-edit-dock__hint {
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+}
+
+.util-ra-edit-dock:has([data-ra-wall-edit]:not([hidden])) .util-ra-edit-dock__idle,
+.util-ra-edit-dock:has([data-ra-vertex-edit]:not([hidden])) .util-ra-edit-dock__idle,
+.util-ra-edit-dock:has([data-ra-ruler-edit]:not([hidden])) .util-ra-edit-dock__idle {
+  visibility: hidden;
+}
+
+.util-ra-edit-dock__panels {
+  position: absolute;
+  inset: 0;
+}
+
+.util-ra-edit-dock__panels > .util-ra-wall-edit {
+  position: absolute;
+  inset: 0;
+  margin-bottom: 0;
+  overflow: visible;
+}
+
+.util-ra-edit-dock__panels > .util-ra-wall-edit:not([hidden]) .util-ra-wall-edit__inner {
+  align-items: center;
+  min-height: 100%;
+}
+
 .util-ra-wall-edit__inner {
   display: flex;
   flex-wrap: wrap;
