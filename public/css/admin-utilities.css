@@ -1854,6 +1854,21 @@
   display: none;
 }
 
+.util-ra-bg-show {
+  margin: 0;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  align-self: center;
+}
+
+.util-ra-canvas-tools .util-ra-bg-show {
+  min-height: auto;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background: #fff;
+}
+
 .util-ra-canvas-card {
   padding-bottom: 1rem;
 }

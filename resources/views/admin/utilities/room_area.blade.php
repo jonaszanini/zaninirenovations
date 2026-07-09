@@ -160,6 +160,11 @@
             <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-toggle title="Measure distances on the floor plan">
               <i class="fa fa-arrows-alt"></i> Ruler
             </button>
+            <label class="admin-checkbox admin-checkbox--sm util-ra-bg-show" data-ra-bg-show-wrap hidden>
+              <input type="checkbox" class="admin-checkbox__input" data-ra-bg-show checked>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">Show image</span>
+            </label>
             <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-bg-delete-canvas hidden title="Remove floor plan image from canvas">
               <i class="fa fa-trash"></i> Delete image
             </button>

@@ -46,6 +46,8 @@
     bgFile: root.querySelector('[data-ra-bg-file]'),
     bgRemove: root.querySelector('[data-ra-bg-remove]'),
     bgDeleteCanvas: root.querySelector('[data-ra-bg-delete-canvas]'),
+    bgShowWrap: root.querySelector('[data-ra-bg-show-wrap]'),
+    bgShowImage: root.querySelector('[data-ra-bg-show]'),
     undoVertex: root.querySelector('[data-ra-undo-vertex]'),
     closeShape: root.querySelector('[data-ra-close-shape]'),
     clearShape: root.querySelector('[data-ra-clear-shape]'),
@@ -99,6 +101,7 @@
     rulerPreview: null,
     draftRulers: [],
     activeBackgroundUrl: null,
+    bgImageVisible: true,
     draftBackground: null,
     draftScale: null,
     stage: null,
@@ -135,6 +138,7 @@
     draggingRuler: false,
     editingRoomId: null,
     editorToken: 0,
+    savedSnapshot: null,
     canvasW: 900,
     canvasH: 560
   };
@@ -230,6 +234,69 @@
       return window.AdminDialog.confirm(message, options);
     }
     return Promise.resolve(window.confirm(message));
+  }
+
+  function normalizeVertices(vertices) {
+    return (vertices || []).map(function (v) {
+      return {
+        x: Math.round(v.x * 1000) / 1000,
+        y: Math.round(v.y * 1000) / 1000
+      };
+    });
+  }
+
+  function buildWorkSnapshot() {
+    return {
+      editingRoomId: state.editingRoomId,
+      name: (els.roomName && els.roomName.value || '').trim(),
+      vertices: normalizeVertices(state.vertices),
+      closed: state.closed,
+      scale: pixelsPerFoot() || null,
+      backgroundUrl: state.activeBackgroundUrl || null,
+      hasDraftBackground: !!(state.draftBackground && state.draftBackground.file),
+      draftScale: state.draftScale ? parseFloat(state.draftScale) : null,
+      rulers: projectRulers().map(function (r) {
+        return {
+          id: r.id,
+          p1: normalizeVertices([r.p1])[0],
+          p2: normalizeVertices([r.p2])[0]
+        };
+      })
+    };
+  }
+
+  function captureSavedSnapshot() {
+    state.savedSnapshot = JSON.stringify(buildWorkSnapshot());
+  }
+
+  function hasUnsavedChanges() {
+    if (!state.savedSnapshot) return false;
+    return state.savedSnapshot !== JSON.stringify(buildWorkSnapshot());
+  }
+
+  function promptUnsavedBeforeAction(action) {
+    if (!hasUnsavedChanges()) {
+      action();
+      return Promise.resolve(true);
+    }
+    return confirmAction(
+      'You have unsaved changes that have not been saved. Do you want to save them before leaving?',
+      {
+        title: 'Unsaved changes',
+        confirmLabel: 'Save changes',
+        cancelLabel: 'Stay on page'
+      }
+    ).then(function (shouldSave) {
+      if (!shouldSave) return false;
+      return saveRoom()
+        .then(function () {
+          action();
+          return true;
+        })
+        .catch(function () {
+          return false;
+        });
+    });
   }
 
   function csrf() {
@@ -1390,6 +1457,7 @@
     }
     updateEditUI();
     updateToolbar();
+    captureSavedSnapshot();
   }
 
   function uiScale() {
@@ -1758,6 +1826,24 @@
     var hasBg = !!state.activeBackgroundUrl || !!state.bgImage;
     show(els.bgRemove, hasBg);
     show(els.bgDeleteCanvas, hasBg);
+    show(els.bgShowWrap, hasBg);
+    if (els.bgShowImage) {
+      els.bgShowImage.checked = state.bgImageVisible;
+    }
+    applyBackgroundImageVisibility();
+  }
+
+  function applyBackgroundImageVisibility() {
+    if (!state.layers.bg) return;
+    var hasBg = !!state.activeBackgroundUrl || !!state.bgImage;
+    state.layers.bg.visible(hasBg && state.bgImageVisible);
+    flushKonva();
+  }
+
+  function setBackgroundImageVisible(visible) {
+    state.bgImageVisible = !!visible;
+    if (els.bgShowImage) els.bgShowImage.checked = state.bgImageVisible;
+    applyBackgroundImageVisibility();
   }
 
   function layoutBackgroundImage() {
@@ -1806,6 +1892,7 @@
     }
 
     state.activeBackgroundUrl = url;
+    state.bgImageVisible = true;
 
     var img = new Image();
     if (url.indexOf('blob:') !== 0 && url.indexOf('data:') !== 0) {
@@ -1825,7 +1912,7 @@
       state.layers.bg.add(kImg);
       state.bgImage = kImg;
       layoutBackgroundImage();
-      flushKonva();
+      applyBackgroundImageVisibility();
       syncBackgroundUI();
     };
     img.onerror = function () {
@@ -2580,6 +2667,7 @@
     updateEditUI();
     redrawAll();
     flushKonva();
+    captureSavedSnapshot();
   }
 
   function clearShape() {
@@ -2591,6 +2679,7 @@
     revokeDraftBackground();
     state.draftScale = null;
     loadBackground(null);
+    captureSavedSnapshot();
     if (els.roomName) {
       els.roomName.focus();
     }
@@ -2598,16 +2687,22 @@
   }
 
   function startNewRoom() {
-    var hasDraft = state.vertices.length > 0
-      || state.closed
-      || !!state.editingRoomId
-      || (els.roomName && els.roomName.value.trim());
-    if (!hasDraft) {
+    if (!hasUnsavedChanges()) {
       beginNewRoom();
       return;
     }
-    confirmAction('Clear the current outline and start a new room?', { title: 'New room' }).then(function (ok) {
-      if (ok) beginNewRoom();
+    confirmAction(
+      'You have unsaved changes that have not been saved. Do you want to save them before starting a new room?',
+      {
+        title: 'Unsaved changes',
+        confirmLabel: 'Save changes',
+        cancelLabel: 'Stay on page'
+      }
+    ).then(function (shouldSave) {
+      if (!shouldSave) return;
+      saveRoom().then(function () {
+        beginNewRoom();
+      }).catch(function () {});
     });
   }
 
@@ -2750,6 +2845,7 @@
             var idx = project.rooms.findIndex(function (r) { return r.id === room.id; });
             if (idx >= 0) project.rooms[idx] = result.data.room;
             updateScaleUI();
+            captureSavedSnapshot();
             setFeedback('Scale calibrated for this room.', false);
           })
           .catch(function (e) {
@@ -2803,11 +2899,11 @@
     var editing = !!state.editingRoomId;
     if (els.saveRoom) {
       els.saveRoom.innerHTML = editing
-        ? '<i class="fa fa-save"></i> Update room'
+        ? '<i class="fa fa-save"></i> Save changes'
         : '<i class="fa fa-save"></i> Save room';
     }
     if (els.saveCardTitle) {
-      els.saveCardTitle.textContent = editing ? 'Update room' : 'Save room';
+      els.saveCardTitle.textContent = editing ? 'Save changes' : 'Save room';
     }
     show(els.cancelEdit, editing);
     renderRooms();
@@ -2856,7 +2952,8 @@
       clearUndoStack();
       applyViewport();
       redrawAll();
-      setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Update room.', false);
+      captureSavedSnapshot();
+      setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
     });
   }
 
@@ -2864,6 +2961,7 @@
     if (!state.editingRoomId) return;
     clearShape();
     loadBackground(null);
+    captureSavedSnapshot();
     setFeedback('Edit cancelled.', false);
   }
 
@@ -2897,7 +2995,11 @@
 
     els.roomsList.querySelectorAll('[data-edit-room]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        loadRoom(parseInt(btn.getAttribute('data-edit-room'), 10));
+        var roomId = parseInt(btn.getAttribute('data-edit-room'), 10);
+        if (roomId === state.editingRoomId) return;
+        promptUnsavedBeforeAction(function () {
+          loadRoom(roomId);
+        });
       });
     });
     els.roomsList.querySelectorAll('[data-copy-area]').forEach(function (btn) {
@@ -2988,6 +3090,7 @@
       }
       loadBackground(null);
       updateScaleUI();
+      captureSavedSnapshot();
     }, 0);
   }
 
@@ -3080,12 +3183,14 @@
 
   function saveRoom() {
     var project = activeProject();
-    if (!project || !state.closed || state.vertices.length < 3) return;
+    if (!project || !state.closed || state.vertices.length < 3) {
+      return Promise.reject(new Error('Complete the room outline before saving.'));
+    }
     var name = (els.roomName.value || '').trim();
     if (!name) {
       els.roomName.focus();
       setFeedback('Enter a room name.', true);
-      return;
+      return Promise.reject(new Error('Enter a room name.'));
     }
 
     var isUpdate = !!state.editingRoomId;
@@ -3097,11 +3202,11 @@
     var scale = pixelsPerFoot();
     if (!scale) {
       els.saveRoom.disabled = true;
-      return;
+      return Promise.reject(new Error('Calibrate scale before saving.'));
     }
 
     els.saveRoom.disabled = true;
-    fetch(url, {
+    return fetch(url, {
       method: method,
       credentials: 'same-origin',
       headers: {
@@ -3159,9 +3264,10 @@
         state.draftScale = null;
         resetDraftCanvas();
         renderRooms();
+        captureSavedSnapshot();
         setFeedback(
           isUpdate
-            ? 'Room updated.'
+            ? 'Changes saved.'
             : 'Room saved. Draw another outline or click New room.',
           false
         );
@@ -3169,6 +3275,7 @@
       .catch(function (e) {
         els.saveRoom.disabled = false;
         setFeedback(e.message, true);
+        throw e;
       });
   }
 
@@ -3234,6 +3341,7 @@
         .then(function (data) {
           room.background_url = data.background_url;
           loadBackground(room.background_url);
+          captureSavedSnapshot();
           setFeedback('Floor plan uploaded for this room.', false);
         })
         .catch(function (e) { setFeedback(e.message, true); });
@@ -3274,6 +3382,7 @@
             if (!data.ok) return;
             room.background_url = null;
             loadBackground(null);
+            captureSavedSnapshot();
             setFeedback('Floor plan image deleted for this room.', false);
           });
       });
@@ -3295,15 +3404,24 @@
 
   function bindEvents() {
     els.projectSelect.addEventListener('change', function () {
-      state.activeProjectId = els.projectSelect.value ? parseInt(els.projectSelect.value, 10) : null;
-      state.calibrating = false;
-      state.calibPoints = [];
-      els.calibrateToggle.classList.remove('is-active');
-      els.knownLength.disabled = true;
-      els.applyScale.disabled = true;
-      stopRulerMode();
-      clearRulerSelection();
-      renderWorkspace();
+      var newId = els.projectSelect.value ? parseInt(els.projectSelect.value, 10) : null;
+      var previousId = state.activeProjectId;
+      if (newId === previousId) return;
+
+      els.projectSelect.value = previousId ? String(previousId) : '';
+
+      promptUnsavedBeforeAction(function () {
+        state.activeProjectId = newId;
+        els.projectSelect.value = newId ? String(newId) : '';
+        state.calibrating = false;
+        state.calibPoints = [];
+        els.calibrateToggle.classList.remove('is-active');
+        els.knownLength.disabled = true;
+        els.applyScale.disabled = true;
+        stopRulerMode();
+        clearRulerSelection();
+        renderWorkspace();
+      });
     });
 
     els.newProjectToggle.addEventListener('click', function () {
@@ -3326,7 +3444,9 @@
     els.undoVertex.addEventListener('click', undoVertex);
     els.closeShape.addEventListener('click', closeShape);
     els.clearShape.addEventListener('click', clearShape);
-    els.saveRoom.addEventListener('click', saveRoom);
+    els.saveRoom.addEventListener('click', function () {
+      saveRoom().catch(function () {});
+    });
     if (els.newRoom) els.newRoom.addEventListener('click', startNewRoom);
     if (els.newRoomSecondary) els.newRoomSecondary.addEventListener('click', startNewRoom);
     if (els.cancelEdit) els.cancelEdit.addEventListener('click', cancelEdit);
@@ -3380,6 +3500,11 @@
 
     els.bgRemove.addEventListener('click', removeBackground);
     if (els.bgDeleteCanvas) els.bgDeleteCanvas.addEventListener('click', removeBackground);
+    if (els.bgShowImage) {
+      els.bgShowImage.addEventListener('change', function () {
+        setBackgroundImageVisible(els.bgShowImage.checked);
+      });
+    }
     els.copyTotal.addEventListener('click', function () {
       copyText(els.totalSqft.textContent);
     });
@@ -3390,6 +3515,12 @@
     if (els.zoomReset) els.zoomReset.addEventListener('click', fitViewport);
 
     window.addEventListener('resize', scheduleStageResize);
+
+    window.addEventListener('beforeunload', function (e) {
+      if (!hasUnsavedChanges()) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
   }
 
   function init() {
