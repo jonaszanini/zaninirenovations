@@ -268,6 +268,9 @@
               @error('length_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
           </div>
+          <p id="ld-area-display" class="admin-form-help cp-form-help-spaced" style="display: none; margin-top: 10px;">
+            Total area: <strong id="ld-area-value">0</strong> sq ft
+          </p>
           <p class="admin-form-help cp-form-help-spaced">
             Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.
           </p>
@@ -519,6 +522,8 @@
 
   var widthInput = document.getElementById('ld-width');
   var lengthInput = document.getElementById('ld-length');
+  var areaDisplay = document.getElementById('ld-area-display');
+  var areaValue = document.getElementById('ld-area-value');
   var labourInput = document.getElementById('ld-labour-rate');
   var wasteInput = document.getElementById('ld-waste-fee');
   var materialWasteInput = document.getElementById('ld-material-waste');
@@ -1171,9 +1176,24 @@
     });
   }
 
+  function updateArea() {
+    var w = parseFloat(widthInput.value) || 0;
+    var l = parseFloat(lengthInput.value) || 0;
+    if (w > 0 && l > 0 && areaDisplay && areaValue) {
+      var sqft = w * l;
+      areaValue.textContent = (Math.round(sqft * 100) / 100).toLocaleString();
+      areaDisplay.style.display = 'block';
+    } else if (areaDisplay) {
+      areaDisplay.style.display = 'none';
+    }
+  }
+
   ['input', 'change'].forEach(function (evt) {
     document.addEventListener(evt, function (e) {
       if (!e.target || !e.target.closest) return;
+      if (e.target === widthInput || e.target === lengthInput) {
+        updateArea();
+      }
       if (e.target.matches('#ld-form input, #ld-form select')) {
         schedulePreview();
       }
@@ -1184,6 +1204,7 @@
     renderCalc(initialCalc);
   }
   schedulePreview();
+  updateArea();
 
   document.addEventListener('commute-expense:change', function (e) {
     var d = e.detail || {};
