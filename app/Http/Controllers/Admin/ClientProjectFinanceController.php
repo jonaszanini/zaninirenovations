@@ -13,6 +13,7 @@ use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use App\Services\ProjectPhotoWebpStorage;
+use App\Services\RecalculateRemainingInstallmentsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 use RuntimeException;
 
 /**
@@ -198,6 +200,78 @@ class ClientProjectFinanceController extends Controller
         }
 
         return back()->with('success', $installment->is_paid ? 'Installment marked paid.' : 'Installment marked unpaid.');
+    }
+
+    /**
+     * JSON preview for recalculating remaining installments after quotation totals change.
+     */
+    public function previewRecalculateInstallments(
+        Request $request,
+        ClientProject $client_project,
+        RecalculateRemainingInstallmentsService $service
+    ) {
+        if (! $client_project->isAccepted() || $client_project->isHourly()) {
+            return response()->json(['error' => 'Recalculation is only available for accepted fixed-price projects.'], 422);
+        }
+
+        $data = $request->validate([
+            'remaining_count' => ['required', 'integer', 'min:0', 'max:4'],
+            'split_mode' => ['nullable', Rule::in(['keep', 'defaults'])],
+        ]);
+
+        try {
+            $preview = $service->preview(
+                $client_project,
+                (int) $data['remaining_count'],
+                (string) ($data['split_mode'] ?? 'defaults')
+            );
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        return response()->json($preview);
+    }
+
+    /**
+     * Apply recalculation of remaining installments and recreate unpaid draft invoices.
+     */
+    public function recalculateInstallments(
+        Request $request,
+        ClientProject $client_project,
+        RecalculateRemainingInstallmentsService $service
+    ) {
+        if (! $client_project->isAccepted() || $client_project->isHourly()) {
+            return back()
+                ->withFragment('financials')
+                ->with('error', 'Recalculation is only available for accepted fixed-price projects.');
+        }
+
+        $data = $request->validate([
+            'remaining_count' => ['required', 'integer', 'min:0', 'max:4'],
+            'split_mode' => ['nullable', Rule::in(['keep', 'defaults'])],
+        ]);
+
+        try {
+            $result = $service->apply(
+                $client_project,
+                (int) $data['remaining_count'],
+                (string) ($data['split_mode'] ?? 'defaults')
+            );
+        } catch (InvalidArgumentException $e) {
+            return back()
+                ->withFragment('financials')
+                ->with('error', $e->getMessage());
+        }
+
+        $msg = sprintf(
+            'Remaining installments recalculated. Deleted %d unpaid invoice(s) and created %d draft invoice(s). Paid installments were left unchanged.',
+            (int) $result['deleted_invoices'],
+            (int) $result['created_invoices']
+        );
+
+        return back()
+            ->withFragment('financials')
+            ->with('success', $msg);
     }
 
     public function storeExpense(Request $request, ClientProject $client_project)

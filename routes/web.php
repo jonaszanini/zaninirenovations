@@ -245,6 +245,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.reopen');
     Route::post('client-projects/{client_project}/installments', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'saveInstallments'])
         ->name('client-projects.installments.save');
+    Route::post('client-projects/{client_project}/installments/recalculate/preview', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'previewRecalculateInstallments'])
+        ->name('client-projects.installments.recalculate-preview');
+    Route::post('client-projects/{client_project}/installments/recalculate', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'recalculateInstallments'])
+        ->name('client-projects.installments.recalculate');
     Route::post('client-projects/{client_project}/installments/{installment}/paid', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'togglePaid'])
         ->name('client-projects.installments.toggle-paid');
     Route::post('client-projects/{client_project}/expenses', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeExpense'])
