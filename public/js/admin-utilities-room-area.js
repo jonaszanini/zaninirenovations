@@ -2404,6 +2404,59 @@
     setFeedback('Draw an area in a new color group.', false);
   }
 
+  function isDrawingOpenShape() {
+    var poly = activePolygon();
+    return !!poly && !poly.closed;
+  }
+
+  function removeLastDrawVertex() {
+    if (!isDrawingOpenShape() || !activeVertices().length) return false;
+    pushUndoSnapshot();
+    activeVertices().pop();
+    clearWallSelection();
+    clearVertexSelection();
+    redrawAll();
+    setFeedback('Last corner removed.', false);
+    return true;
+  }
+
+  function cancelActiveDrawing() {
+    if (!isDrawingOpenShape()) return false;
+
+    var group = activeGroup();
+    var poly = activePolygon();
+    if (!group || !poly) return false;
+
+    pushUndoSnapshot();
+    group.polygons = group.polygons.filter(function (p) { return p.id !== poly.id; });
+    if (!group.polygons.length) {
+      state.groups = state.groups.filter(function (g) { return g.id !== group.id; });
+    }
+
+    var closedEntries = allClosedPolygons();
+    if (closedEntries.length) {
+      var target = closedEntries[closedEntries.length - 1];
+      state.activeGroupId = target.group.id;
+      state.activePolygonId = target.polygon.id;
+    } else {
+      var any = allPolygons()[0];
+      if (any) {
+        state.activeGroupId = any.group.id;
+        state.activePolygonId = any.polygon.id;
+      } else {
+        state.activeGroupId = null;
+        state.activePolygonId = null;
+        ensureInitialCanvas();
+      }
+    }
+
+    clearWallSelection();
+    clearVertexSelection();
+    redrawAll();
+    setFeedback('Drawing cancelled.', false);
+    return true;
+  }
+
   function redrawPolygonLine() {
     var layer = state.layers.draw;
     if (!layer) return;
@@ -4023,9 +4076,24 @@
     document.addEventListener('keydown', function (e) {
       if (e.target && e.target.closest('input, textarea, select')) return;
 
-      if (e.key === 'Escape' && cancelRulerDraft()) {
-        e.preventDefault();
+      if (e.key === 'Escape') {
+        if (cancelRulerDraft()) {
+          e.preventDefault();
+          return;
+        }
+        if (cancelActiveDrawing()) {
+          e.preventDefault();
+          return;
+        }
         return;
+      }
+
+      if (e.key === 'Backspace' && isDrawingOpenShape()) {
+        if (!state.selectedVertexIndices.length && state.selectedWallIndex === null && state.selectedRulerId === null) {
+          e.preventDefault();
+          removeLastDrawVertex();
+          return;
+        }
       }
 
       if (e.key !== 'Delete' && e.key !== 'Backspace') return;
