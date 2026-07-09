@@ -18,6 +18,10 @@
       'material_waste_percent',
       $isEdit ? (float) ($quotation->calculation['inputs']['material_waste_percent'] ?? 10) : 10
   );
+  $initialIncludeUnderDeckGravel = (bool) old(
+      'include_under_deck_gravel',
+      $isEdit ? (bool) ($quotation->calculation['inputs']['include_under_deck_gravel'] ?? true) : true
+  );
   $initialIncludeDiagrams = (bool) old('include_diagrams_on_pdf', $isEdit ? $quotation->include_diagrams_on_pdf : false);
 
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
@@ -274,6 +278,17 @@
           <p class="admin-form-help cp-form-help-spaced">
             Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.
           </p>
+          <div class="admin-form-group cp-form-group-spaced">
+            <label class="admin-checkbox">
+              <input type="hidden" name="include_under_deck_gravel" value="0">
+              <input type="checkbox" class="admin-checkbox__input" id="ld-under-deck-gravel"
+                     name="include_under_deck_gravel" value="1"
+                     @checked($initialIncludeUnderDeckGravel)>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">Gravel under the deck</span>
+            </label>
+            <p class="admin-form-help">Adds 30 kg gravel bags (1 per 8 sq ft), weed-control fabric, and fabric spikes under the deck.</p>
+          </div>
         </div>
 
         {{-- Rates ----------------------------------------------------- --}}
@@ -527,6 +542,7 @@
   var labourInput = document.getElementById('ld-labour-rate');
   var wasteInput = document.getElementById('ld-waste-fee');
   var materialWasteInput = document.getElementById('ld-material-waste');
+  var underDeckGravelInput = document.getElementById('ld-under-deck-gravel');
 
   var statusBadge = document.getElementById('ld-status-badge');
   var geometryEl = document.getElementById('ld-geometry');
@@ -598,7 +614,8 @@
       length_ft: parseFloat(lengthInput.value) || 0,
       labour_rate_per_sqft: parseMoney(labourInput),
       waste_dump_fee_cad: parseMoney(wasteInput),
-      material_waste_percent: materialWasteInput ? (parseFloat(materialWasteInput.value) || 0) : 10
+      material_waste_percent: materialWasteInput ? (parseFloat(materialWasteInput.value) || 0) : 10,
+      include_under_deck_gravel: underDeckGravelInput ? !!underDeckGravelInput.checked : true
     };
   }
 

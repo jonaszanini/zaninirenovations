@@ -46,6 +46,10 @@ class LowDeckQuotationCalculatorTest extends TestCase
             [LowDeckMaterial::KEY_POST_4X4_10, 6.0, null],
             [LowDeckMaterial::KEY_POST_4X4_12, 7.0, null],
             [LowDeckMaterial::KEY_GRAVEL_BAG, 5.0, null],
+            [LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG, 4.0, null],
+            [LowDeckMaterial::KEY_WEED_FABRIC_3X50, 40.0, null],
+            [LowDeckMaterial::KEY_WEED_FABRIC_3X100, 60.0, null],
+            [LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK, 12.0, null],
             [LowDeckMaterial::KEY_JOIST_2X6_8, 6.0, null],
             [LowDeckMaterial::KEY_JOIST_2X6_10, 7.0, null],
             [LowDeckMaterial::KEY_JOIST_2X6_12, 8.0, null],
@@ -91,6 +95,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             'width_ft' => 12,
             'length_ft' => 16,
             'material_waste_percent' => 0,
+            'include_under_deck_gravel' => false,
         ]);
 
         $geom = $result['geometry'];
@@ -147,6 +152,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             'width_ft' => 12,
             'length_ft' => 16,
             'material_waste_percent' => 0,
+            'include_under_deck_gravel' => false,
         ]);
 
         $structural = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_SCREW_STRUCTURAL_6IN);
@@ -168,7 +174,11 @@ class LowDeckQuotationCalculatorTest extends TestCase
     public function test_material_waste_defaults_to_ten_percent_and_inflates_order_quantities(): void
     {
         $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
-        $result = $calc->calculate(['width_ft' => 12, 'length_ft' => 16]);
+        $result = $calc->calculate([
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'include_under_deck_gravel' => false,
+        ]);
 
         $this->assertSame(10.0, $result['inputs']['material_waste_percent']);
         $this->assertSame(10.0, $result['totals']['material_waste_percent']);
@@ -194,6 +204,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             'width_ft' => 12,
             'length_ft' => 16,
             'material_waste_percent' => 0,
+            'include_under_deck_gravel' => false,
         ]);
 
         $blocks = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_BLOCK_4X4);
@@ -209,6 +220,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             'width_ft' => 12,
             'length_ft' => 16,
             'material_waste_percent' => 0,
+            'include_under_deck_gravel' => false,
         ]);
 
         $waste = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WASTE_DUMP_FEE);
@@ -228,6 +240,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             'width_ft' => 12,
             'length_ft' => 16,
             'waste_dump_fee_cad' => 90,
+            'include_under_deck_gravel' => false,
         ]);
 
         $this->assertSame(90.0, $result['totals']['waste_dump_fee']);
@@ -242,6 +255,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             'width_ft' => 12,
             'length_ft' => 16,
             'labour_rate_per_sqft' => 10,
+            'include_under_deck_gravel' => false,
         ]);
 
         $totals = $result['totals'];
@@ -268,7 +282,115 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $calc = new LowDeckQuotationCalculator($this->settings(['max_area_sq_ft' => 592.00]), $this->catalogue());
 
         // 24 × 24 = 576 sq ft, just under the 592 guardrail.
-        $result = $calc->calculate(['width_ft' => 24, 'length_ft' => 24]);
+        $result = $calc->calculate([
+            'width_ft' => 24,
+            'length_ft' => 24,
+            'include_under_deck_gravel' => false,
+        ]);
         $this->assertSame(576.0, $result['geometry']['area_sq_ft']);
+    }
+
+    public function test_under_deck_gravel_defaults_on_and_rounds_bags_up(): void
+    {
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 10,
+            'length_ft' => 10,
+            'material_waste_percent' => 0,
+        ]);
+
+        $this->assertTrue($result['inputs']['include_under_deck_gravel']);
+
+        // 100 sq ft / 8 = 12.5 → 13 bags
+        $gravel = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG);
+        $this->assertNotNull($gravel);
+        $this->assertSame(13, $gravel['quantity']);
+
+        $spikes = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK);
+        $this->assertNotNull($spikes);
+        $this->assertSame(1, $spikes['quantity']);
+    }
+
+    public function test_under_deck_gravel_can_be_disabled(): void
+    {
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 10,
+            'length_ft' => 10,
+            'material_waste_percent' => 0,
+            'include_under_deck_gravel' => false,
+        ]);
+
+        $this->assertFalse($result['inputs']['include_under_deck_gravel']);
+        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG));
+        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X50));
+        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X100));
+        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK));
+    }
+
+    public function test_weed_fabric_uses_50ft_roll_when_deck_is_at_or_below_150_sq_ft(): void
+    {
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 10,
+            'length_ft' => 15,
+            'material_waste_percent' => 0,
+            'include_under_deck_gravel' => true,
+        ]);
+
+        $this->assertSame(150.0, $result['geometry']['area_sq_ft']);
+
+        $fabric50 = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X50);
+        $fabric100 = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X100);
+        $this->assertNotNull($fabric50);
+        $this->assertSame(1, $fabric50['quantity']);
+        $this->assertNull($fabric100);
+    }
+
+    public function test_weed_fabric_prefers_cheaper_100ft_roll_over_two_50ft_rolls(): void
+    {
+        // Catalogue prices: 50 ft = $40, 100 ft = $60 → one 100 is cheaper than two 50s ($80).
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'material_waste_percent' => 0,
+            'include_under_deck_gravel' => true,
+        ]);
+
+        $this->assertSame(192.0, $result['geometry']['area_sq_ft']);
+
+        $fabric50 = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X50);
+        $fabric100 = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X100);
+        $this->assertNull($fabric50);
+        $this->assertNotNull($fabric100);
+        $this->assertSame(1, $fabric100['quantity']);
+
+        // 192 / 8 = 24 bags exactly
+        $gravel = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG);
+        $this->assertNotNull($gravel);
+        $this->assertSame(24, $gravel['quantity']);
+    }
+
+    public function test_weed_fabric_mixes_rolls_for_large_decks_when_cheapest(): void
+    {
+        // 450 sq ft: options include 2×100 ($120) + 1×50 ($40) = $160, or 3×100 = $180, or 1×100 + 3×50 = $180.
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 15,
+            'length_ft' => 30,
+            'material_waste_percent' => 0,
+            'include_under_deck_gravel' => true,
+        ]);
+
+        $this->assertSame(450.0, $result['geometry']['area_sq_ft']);
+
+        $fabric50 = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X50);
+        $fabric100 = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X100);
+        // Cheapest: 1×100 ($60) + 1×50 ($40) = $100 vs 2×100 ($120) or 3×50 ($120).
+        $this->assertNotNull($fabric100);
+        $this->assertSame(1, $fabric100['quantity']);
+        $this->assertNotNull($fabric50);
+        $this->assertSame(1, $fabric50['quantity']);
     }
 }
