@@ -287,7 +287,7 @@
               <span class="admin-checkbox__mark" aria-hidden="true"></span>
               <span class="admin-checkbox__text">Gravel under the deck</span>
             </label>
-            <p class="admin-form-help">Adds 30 kg gravel bags (1 per 8 sq ft), weed-control fabric, and fabric spikes under the deck.</p>
+            <p class="admin-form-help">Adds under-deck gravel bags (1 per 8 sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</p>
           </div>
         </div>
 

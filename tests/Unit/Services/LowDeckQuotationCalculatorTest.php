@@ -46,7 +46,6 @@ class LowDeckQuotationCalculatorTest extends TestCase
             [LowDeckMaterial::KEY_POST_4X4_10, 6.0, null],
             [LowDeckMaterial::KEY_POST_4X4_12, 7.0, null],
             [LowDeckMaterial::KEY_GRAVEL_BAG, 5.0, null],
-            [LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG, 4.0, null],
             [LowDeckMaterial::KEY_WEED_FABRIC_3X50, 40.0, null],
             [LowDeckMaterial::KEY_WEED_FABRIC_3X100, 60.0, null],
             [LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK, 12.0, null],
@@ -301,10 +300,15 @@ class LowDeckQuotationCalculatorTest extends TestCase
 
         $this->assertTrue($result['inputs']['include_under_deck_gravel']);
 
-        // 100 sq ft / 8 = 12.5 → 13 bags
-        $gravel = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG);
+        // Block gravel for 10×10 (actual grid) + under-deck: 100/8 = 12.5 → 13 bags
+        $gravel = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_GRAVEL_BAG);
         $this->assertNotNull($gravel);
-        $this->assertSame(13, $gravel['quantity']);
+        $blockBags = (int) $result['geometry']['blocks']['count'] > 0
+            ? (int) ceil(((12.0 / 12.0) ** 2) * (3.0 / 12.0) * (int) $result['geometry']['blocks']['count'] / 0.5 - 1e-9)
+            : 0;
+        $this->assertSame($blockBags + 13, $gravel['quantity']);
+        $this->assertStringContainsString('under blocks', $gravel['notes']);
+        $this->assertStringContainsString('under deck', $gravel['notes']);
 
         $spikes = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK);
         $this->assertNotNull($spikes);
@@ -322,10 +326,35 @@ class LowDeckQuotationCalculatorTest extends TestCase
         ]);
 
         $this->assertFalse($result['inputs']['include_under_deck_gravel']);
-        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG));
+
+        // Block gravel only remains on the shared line.
+        $gravel = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_GRAVEL_BAG);
+        $this->assertNotNull($gravel);
+        $this->assertSame(5, $gravel['quantity']);
+        $this->assertStringContainsString('under blocks', $gravel['notes']);
+        $this->assertStringNotContainsString('under deck', $gravel['notes']);
+
         $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X50));
         $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X100));
         $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK));
+    }
+
+    public function test_zero_area_does_not_add_orphaned_fabric_spikes(): void
+    {
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 0,
+            'length_ft' => 0,
+            'material_waste_percent' => 0,
+            'include_under_deck_gravel' => true,
+        ]);
+
+        $this->assertTrue($result['inputs']['include_under_deck_gravel']);
+        $this->assertSame(0.0, $result['geometry']['area_sq_ft']);
+        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X50));
+        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_WEED_FABRIC_3X100));
+        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK));
+        $this->assertNull($this->rowByKey($result['materials'], LowDeckMaterial::KEY_GRAVEL_BAG));
     }
 
     public function test_weed_fabric_uses_50ft_roll_when_deck_is_at_or_below_150_sq_ft(): void
@@ -366,10 +395,11 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $this->assertNotNull($fabric100);
         $this->assertSame(1, $fabric100['quantity']);
 
-        // 192 / 8 = 24 bags exactly
-        $gravel = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG);
+        // Block gravel (20 blocks × 0.25 = 5 cu ft → 10 bags) + under-deck (192/8 = 24) = 34
+        $gravel = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_GRAVEL_BAG);
         $this->assertNotNull($gravel);
-        $this->assertSame(24, $gravel['quantity']);
+        $this->assertSame(34, $gravel['quantity']);
+        $this->assertStringContainsString('24 under deck', $gravel['notes']);
     }
 
     public function test_weed_fabric_mixes_rolls_for_large_decks_when_cheapest(): void

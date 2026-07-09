@@ -656,34 +656,52 @@ class LowDeckQuotationCalculator
             $rows[] = $row;
         }
 
-        // -------- GRAVEL (post-hole bags) --------------------------------
+        // -------- GRAVEL (blocks + optional under-deck) -----------------
+        // Same 30kg 1/2in bag for post-hole pads and under-deck fill.
         $footFt = (float) $settings->gravel_footprint_in / 12.0;
         $depthFt = (float) $settings->gravel_depth_in / 12.0;
         $cubicPerBlock = $footFt * $footFt * $depthFt;
         $perBag = max(0.001, (float) $settings->gravel_cubic_ft_per_bag);
         $gravelCubic = $cubicPerBlock * $blocks;
-        $gravelBags = $gravelCubic > 0 ? (int) ceil($gravelCubic / $perBag) : 0;
-        if ($gravelBags > 0) {
+        $blockGravelBags = $gravelCubic > 0 ? (int) ceil($gravelCubic / $perBag - 1e-9) : 0;
+
+        $underDeckBags = 0;
+        $areaSqFt = (float) ($geom['area_sq_ft'] ?? 0);
+        if (! empty($in['include_under_deck_gravel']) && $areaSqFt > 0) {
+            $underDeckBags = (int) ceil($areaSqFt / self::UNDER_DECK_GRAVEL_SQ_FT_PER_BAG - 1e-9);
+        }
+
+        $totalGravelBags = $blockGravelBags + $underDeckBags;
+        if ($totalGravelBags > 0) {
+            $noteParts = [];
+            if ($blockGravelBags > 0) {
+                $noteParts[] = sprintf(
+                    '%d under blocks (%s cu ft @ %s cu ft / bag)',
+                    $blockGravelBags,
+                    rtrim(rtrim(number_format($gravelCubic, 2), '0'), '.'),
+                    rtrim(rtrim(number_format($perBag, 3), '0'), '.')
+                );
+            }
+            if ($underDeckBags > 0) {
+                $noteParts[] = sprintf(
+                    '%d under deck (1 bag per %s sq ft × %s sq ft)',
+                    $underDeckBags,
+                    rtrim(rtrim(number_format(self::UNDER_DECK_GRAVEL_SQ_FT_PER_BAG, 2), '0'), '.'),
+                    rtrim(rtrim(number_format($areaSqFt, 2), '0'), '.')
+                );
+            }
+
             $rows[] = $this->row(
                 LowDeckMaterial::KEY_GRAVEL_BAG,
-                $this->wastefulQuantity($gravelBags, $wastePercent),
+                $this->wastefulQuantity($totalGravelBags, $wastePercent),
                 'bag',
-                sprintf(
-                    '%s cu ft total (%s cu ft / block × %d), %s cu ft / bag',
-                    rtrim(rtrim(number_format($gravelCubic, 2), '0'), '.'),
-                    rtrim(rtrim(number_format($cubicPerBlock, 3), '0'), '.'),
-                    $blocks,
-                    rtrim(rtrim(number_format($perBag, 3), '0'), '.')
-                )
+                implode('; ', $noteParts)
             );
         }
 
-        // -------- UNDER-DECK GRAVEL + WEED FABRIC (optional package) ----
+        // -------- UNDER-DECK WEED FABRIC + SPIKES (optional package) ----
         if (! empty($in['include_under_deck_gravel'])) {
-            foreach ($this->underDeckGravelPackageRows(
-                (float) ($geom['area_sq_ft'] ?? 0),
-                $wastePercent
-            ) as $row) {
+            foreach ($this->underDeckFabricPackageRows($areaSqFt, $wastePercent) as $row) {
                 $rows[] = $row;
             }
         }
@@ -824,31 +842,18 @@ class LowDeckQuotationCalculator
     }
 
     /**
-     * Optional under-deck package: 30 kg gravel bags, weed-control fabric
-     * (cheapest mix of 50 ft / 100 ft rolls), and one pack of fabric spikes.
+     * Optional under-deck package extras: weed-control fabric (cheapest mix
+     * of 50 ft / 100 ft rolls) and one pack of fabric spikes. Gravel bags
+     * for under-deck fill are merged into the shared gravel_bag line.
      *
      * @return list<array<string, mixed>>
      */
-    private function underDeckGravelPackageRows(float $areaSqFt, float $wastePercent): array
+    private function underDeckFabricPackageRows(float $areaSqFt, float $wastePercent): array
     {
         $rows = [];
         $area = max(0.0, $areaSqFt);
-
-        $gravelBags = $area > 0
-            ? (int) ceil($area / self::UNDER_DECK_GRAVEL_SQ_FT_PER_BAG - 1e-9)
-            : 0;
-        if ($gravelBags > 0) {
-            $rows[] = $this->row(
-                LowDeckMaterial::KEY_UNDER_DECK_GRAVEL_30KG,
-                $this->wastefulQuantity($gravelBags, $wastePercent),
-                'bag',
-                sprintf(
-                    '1 bag per %s sq ft of deck (%s sq ft → %d bags)',
-                    rtrim(rtrim(number_format(self::UNDER_DECK_GRAVEL_SQ_FT_PER_BAG, 2), '0'), '.'),
-                    rtrim(rtrim(number_format($area, 2), '0'), '.'),
-                    $gravelBags
-                )
-            );
+        if ($area <= 0) {
+            return $rows;
         }
 
         $fabric = $this->optimalWeedFabricRolls($area);
@@ -869,12 +874,15 @@ class LowDeckQuotationCalculator
             );
         }
 
-        $rows[] = $this->row(
-            LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK,
-            1,
-            'pack',
-            'One 30-pack per project'
-        );
+        // Spikes only make sense when fabric is actually being installed.
+        if ($fabric['rolls_50'] > 0 || $fabric['rolls_100'] > 0) {
+            $rows[] = $this->row(
+                LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK,
+                1,
+                'pack',
+                'One 30-pack per project'
+            );
+        }
 
         return $rows;
     }
