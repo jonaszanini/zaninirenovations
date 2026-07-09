@@ -14,6 +14,7 @@
   var MAX_CANVAS_H = 1100;
   var CANVAS_HEIGHT_RATIO = 0.75;
   var CANVAS_MAX_VH = 0.72;
+  var DRAW_AREA_FACTOR = 6;
   var GRID_PX = 20;
   var VERTEX_HIT = 14;
   var CLOSE_HIT = 16;
@@ -156,8 +157,10 @@
     editingRoomId: null,
     editorToken: 0,
     savedSnapshot: null,
-    canvasW: 900,
-    canvasH: 640
+    viewportW: 900,
+    viewportH: 640,
+    canvasW: 5400,
+    canvasH: 3840
   };
 
   var resizeTimer = null;
@@ -542,10 +545,10 @@
     }
   }
 
-  function getCanvasDimensions() {
+  function getViewportDimensions() {
     var wrap = els.canvasWrap;
     if (!wrap || wrap.clientWidth < 1) {
-      return { w: state.canvasW || 900, h: state.canvasH || 640 };
+      return { w: state.viewportW || 900, h: state.viewportH || 640 };
     }
     var w = Math.max(MIN_CANVAS_W, Math.floor(wrap.clientWidth));
     var maxH = Math.min(Math.floor(window.innerHeight * CANVAS_MAX_VH), MAX_CANVAS_H);
@@ -553,9 +556,27 @@
     return { w: w, h: h };
   }
 
+  function syncDrawableDimensions() {
+    var vp = getViewportDimensions();
+    state.viewportW = vp.w;
+    state.viewportH = vp.h;
+    state.canvasW = Math.round(vp.w * DRAW_AREA_FACTOR);
+    state.canvasH = Math.round(vp.h * DRAW_AREA_FACTOR);
+    syncCanvasWrapSize(vp.w, vp.h);
+    return vp;
+  }
+
   function syncCanvasWrapSize(w, h) {
     if (!els.canvasWrap) return;
     els.canvasWrap.style.height = h + 'px';
+  }
+
+  function viewportW() {
+    return state.viewportW || Math.round(state.canvasW / DRAW_AREA_FACTOR);
+  }
+
+  function viewportH() {
+    return state.viewportH || Math.round(state.canvasH / DRAW_AREA_FACTOR);
   }
 
   function canvasW() {
@@ -1904,8 +1925,29 @@
     }
   }
 
+  function clampViewportPan() {
+    var s = state.viewport.scale;
+    var vw = viewportW();
+    var vh = viewportH();
+    var cw = canvasW() * s;
+    var ch = canvasH() * s;
+    var minX = vw - cw;
+    var minY = vh - ch;
+    if (cw <= vw) {
+      state.viewport.x = 0;
+    } else {
+      state.viewport.x = Math.max(minX, Math.min(0, state.viewport.x));
+    }
+    if (ch <= vh) {
+      state.viewport.y = 0;
+    } else {
+      state.viewport.y = Math.max(minY, Math.min(0, state.viewport.y));
+    }
+  }
+
   function applyViewport() {
     if (!state.worldGroup) return;
+    clampViewportPan();
     state.worldGroup.scale({ x: state.viewport.scale, y: state.viewport.scale });
     state.worldGroup.position({ x: state.viewport.x, y: state.viewport.y });
     if (Math.abs(state.viewport.scale - state.lastUiScale) > 0.0001) {
@@ -1925,6 +1967,30 @@
     redrawCalib();
   }
 
+  function panToWorldPoint(x, y) {
+    var s = state.viewport.scale;
+    state.viewport.x = viewportW() / 2 - x * s;
+    state.viewport.y = viewportH() / 2 - y * s;
+    applyViewport();
+  }
+
+  function panToContentCenter() {
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    allPolygons().forEach(function (entry) {
+      entry.polygon.vertices.forEach(function (v) {
+        minX = Math.min(minX, v.x);
+        minY = Math.min(minY, v.y);
+        maxX = Math.max(maxX, v.x);
+        maxY = Math.max(maxY, v.y);
+      });
+    });
+    if (!isFinite(minX)) return;
+    panToWorldPoint((minX + maxX) / 2, (minY + maxY) / 2);
+  }
+
   function resetViewport() {
     state.viewport.scale = 1;
     state.viewport.x = 0;
@@ -1935,22 +2001,18 @@
   }
 
   function refreshViewportAfterContentChange() {
-    if (allPolygons().some(function (entry) { return entry.polygon.vertices.length > 0; })) {
-      fitViewport();
-    } else {
-      resetViewport();
-    }
+    resetViewport();
   }
 
   function fitViewport() {
     if (!state.stage) return;
     var pad = 32;
-    var cw = canvasW();
-    var ch = canvasH();
+    var vw = viewportW();
+    var vh = viewportH();
     var minX = 0;
     var minY = 0;
-    var maxX = cw;
-    var maxY = ch;
+    var maxX = canvasW();
+    var maxY = canvasH();
 
     allPolygons().forEach(function (entry) {
       entry.polygon.vertices.forEach(function (v) {
@@ -1963,14 +2025,14 @@
 
     var contentW = Math.max(maxX - minX, 1);
     var contentH = Math.max(maxY - minY, 1);
-    var scale = Math.min((cw - pad * 2) / contentW, (ch - pad * 2) / contentH);
+    var scale = Math.min((vw - pad * 2) / contentW, (vh - pad * 2) / contentH);
     scale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, scale));
 
     var cx = (minX + maxX) / 2;
     var cy = (minY + maxY) / 2;
     state.viewport.scale = scale;
-    state.viewport.x = cw / 2 - cx * scale;
-    state.viewport.y = ch / 2 - cy * scale;
+    state.viewport.x = vw / 2 - cx * scale;
+    state.viewport.y = vh / 2 - cy * scale;
     state.lastUiScale = 0;
     applyViewport();
     updateCanvasCursor();
@@ -1995,7 +2057,7 @@
 
   function zoomBy(factor) {
     if (!state.stage) return;
-    zoomAt(canvasW() / 2, canvasH() / 2, state.viewport.scale * factor);
+    zoomAt(viewportW() / 2, viewportH() / 2, state.viewport.scale * factor);
   }
 
   function stageToWorld(pos) {
@@ -2061,39 +2123,34 @@
 
   function resizeStage() {
     if (!state.stage || !els.canvasWrap) return;
-    var dims = getCanvasDimensions();
-    if (dims.w === state.canvasW && dims.h === state.canvasH) return;
+    var vp = getViewportDimensions();
+    if (vp.w === state.viewportW && vp.h === state.viewportH) return;
 
     var oldW = state.canvasW;
     var oldH = state.canvasH;
 
-    state.canvasW = dims.w;
-    state.canvasH = dims.h;
-    syncCanvasWrapSize(dims.w, dims.h);
+    syncDrawableDimensions();
 
     if (oldW > 0 && oldH > 0) {
-      var factor = canvasScaleFactor(oldW, oldH, dims.w, dims.h);
+      var factor = canvasScaleFactor(oldW, oldH, state.canvasW, state.canvasH);
       if (state.groups.length && allPolygons().some(function (e) { return e.polygon.vertices.length; })) {
-        scaleAllCanvasPoints(oldW, oldH, dims.w, dims.h);
+        scaleAllCanvasPoints(oldW, oldH, state.canvasW, state.canvasH);
         clearUndoStack();
       }
       if (state.calibPoints.length) {
-        state.calibPoints = scalePoints(state.calibPoints, oldW, oldH, dims.w, dims.h);
+        state.calibPoints = scalePoints(state.calibPoints, oldW, oldH, state.canvasW, state.canvasH);
       }
-      scaleProjectRulers(oldW, oldH, dims.w, dims.h);
+      scaleProjectRulers(oldW, oldH, state.canvasW, state.canvasH);
       if (Math.abs(factor - 1) > 0.0005) {
         scaleActivePixelsPerFoot(factor);
-        state.viewport.x *= dims.w / oldW;
-        state.viewport.y *= dims.h / oldH;
-        applyViewport();
       }
     }
 
-    state.stage.width(dims.w);
-    state.stage.height(dims.h);
+    state.stage.width(state.viewportW);
+    state.stage.height(state.viewportH);
     if (state.bgImage) {
       if (oldW > 0 && oldH > 0) {
-        scaleBackgroundLayout(oldW, oldH, dims.w, dims.h);
+        scaleBackgroundLayout(oldW, oldH, state.canvasW, state.canvasH);
       } else {
         layoutBackgroundImage();
       }
@@ -2115,15 +2172,12 @@
       state.stage.destroy();
     }
 
-    var dims = getCanvasDimensions();
-    state.canvasW = dims.w;
-    state.canvasH = dims.h;
-    syncCanvasWrapSize(dims.w, dims.h);
+    syncDrawableDimensions();
 
     state.stage = new Konva.Stage({
       container: 'ra-konva-container',
-      width: dims.w,
-      height: dims.h
+      width: state.viewportW,
+      height: state.viewportH
     });
 
     state.worldGroup = new Konva.Group();
@@ -3561,8 +3615,9 @@
 
       hydrateCanvas(roomCanvasRaw(currentRoom), source.w, source.h, canvasW(), canvasH());
       clearUndoStack();
-      refreshViewportAfterContentChange();
+      resetViewport();
       redrawAll();
+      panToContentCenter();
       captureSavedSnapshot();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
     });
