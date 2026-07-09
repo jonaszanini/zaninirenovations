@@ -10,11 +10,11 @@
   var INCHES_PER_FOOT = 12;
   var SQFT_TO_SQM = 0.092903;
   var MIN_CANVAS_W = 400;
-  var MIN_CANVAS_H = 420;
-  var MAX_CANVAS_H = 720;
-  var WORLD_MIN_W = 1400;
-  var WORLD_MIN_H = 1000;
-  var WORLD_SIZE_FACTOR = 1.85;
+  var MIN_CANVAS_H = 480;
+  var MAX_CANVAS_H = 960;
+  var WORLD_MIN_W = 1600;
+  var WORLD_MIN_H = 1100;
+  var WORLD_SIZE_FACTOR = 2;
   var GRID_PX = 20;
   var VERTEX_HIT = 14;
   var CLOSE_HIT = 16;
@@ -551,7 +551,17 @@
       return { w: state.canvasW || 900, h: state.canvasH || 560 };
     }
     var w = Math.max(MIN_CANVAS_W, Math.floor(wrap.clientWidth));
-    var h = Math.max(MIN_CANVAS_H, Math.min(MAX_CANVAS_H, Math.round(w * 0.55)));
+    var wrapH = wrap.clientHeight;
+    if (wrapH < MIN_CANVAS_H) {
+      var minH = parseFloat(window.getComputedStyle(wrap).minHeight);
+      if (minH > 0 && !isNaN(minH)) wrapH = minH;
+    }
+    var h;
+    if (wrapH >= MIN_CANVAS_H) {
+      h = Math.min(MAX_CANVAS_H, Math.floor(wrapH));
+    } else {
+      h = Math.max(MIN_CANVAS_H, Math.min(MAX_CANVAS_H, Math.round(w * 0.65)));
+    }
     return { w: w, h: h };
   }
 
@@ -1954,6 +1964,37 @@
     updateCanvasCursor();
   }
 
+  function fitWorldInView(padding) {
+    if (!state.stage) return;
+    var pad = padding === undefined ? 16 : padding;
+    var cw = viewportW();
+    var ch = viewportH();
+    var ww = worldW();
+    var wh = worldH();
+    var scale = Math.min((cw - pad * 2) / ww, (ch - pad * 2) / wh);
+    scale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, scale));
+    state.viewport.scale = scale;
+    state.viewport.x = (cw - ww * scale) / 2;
+    state.viewport.y = (ch - wh * scale) / 2;
+    state.lastUiScale = 0;
+    applyViewport();
+    updateCanvasCursor();
+  }
+
+  function hasCanvasContent() {
+    return allPolygons().some(function (entry) {
+      return entry.polygon.vertices.length > 0;
+    });
+  }
+
+  function syncDefaultViewport() {
+    if (hasCanvasContent()) {
+      fitViewport();
+    } else {
+      fitWorldInView();
+    }
+  }
+
   function fitViewport() {
     if (!state.stage) return;
     var pad = 32;
@@ -2108,6 +2149,7 @@
       }
     }
     drawGrid();
+    syncDefaultViewport();
     redrawAll();
   }
 
@@ -2159,6 +2201,7 @@
     state.worldGroup.add(state.layers.rulers);
 
     resetViewport();
+    syncDefaultViewport();
 
     state.stage.on('mousedown touchstart', function (e) {
       var evt = e.evt;
@@ -2235,8 +2278,8 @@
     if (!layer) return;
     layer.destroyChildren();
     var step = gridStepPx();
-    var w = canvasW();
-    var h = canvasH();
+    var w = worldW();
+    var h = worldH();
     for (var x = 0; x <= w; x += step) {
       layer.add(new Konva.Line({
         points: [x, 0, x, h],
@@ -2253,6 +2296,15 @@
         listening: false
       }));
     }
+    layer.add(new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: w,
+      height: h,
+      stroke: 'rgba(2, 71, 104, 0.22)',
+      strokeWidth: 1,
+      listening: false
+    }));
     flushKonva();
   }
 
@@ -2403,6 +2455,7 @@
     if (els.roomName) els.roomName.value = room.name;
     clearUndoStack();
     updateEditUI();
+    syncDefaultViewport();
     redrawAll();
   }
 
@@ -3567,7 +3620,7 @@
 
       hydrateCanvas(roomCanvasRaw(currentRoom), source.w, source.h, worldW(), worldH());
       clearUndoStack();
-      applyViewport();
+      syncDefaultViewport();
       redrawAll();
       captureSavedSnapshot();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
@@ -3722,6 +3775,7 @@
       }
       loadBackground(null);
       updateScaleUI();
+      syncDefaultViewport();
       captureSavedSnapshot();
     }, 0);
   }
