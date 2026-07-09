@@ -49,9 +49,6 @@ class LowDeckQuotationCalculator
     /** Additional hangers included on the materials line (edge/corner extras). */
     private const EXTRA_HANGERS_FOR_QUOTE = 8;
 
-    /** Under-deck gravel: one 30 kg bag covers this many square feet. */
-    private const UNDER_DECK_GRAVEL_SQ_FT_PER_BAG = 8.0;
-
     /** Coverage of a 3 ft × 50 ft weed-control fabric roll (sq ft). */
     private const WEED_FABRIC_50_COVERAGE_SQ_FT = 150.0;
 
@@ -667,8 +664,9 @@ class LowDeckQuotationCalculator
 
         $underDeckBags = 0;
         $areaSqFt = (float) ($geom['area_sq_ft'] ?? 0);
+        $underDeckSqFtPerBag = max(0.001, (float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8.0));
         if (! empty($in['include_under_deck_gravel']) && $areaSqFt > 0) {
-            $underDeckBags = (int) ceil($areaSqFt / self::UNDER_DECK_GRAVEL_SQ_FT_PER_BAG - 1e-9);
+            $underDeckBags = (int) ceil($areaSqFt / $underDeckSqFtPerBag - 1e-9);
         }
 
         $totalGravelBags = $blockGravelBags + $underDeckBags;
@@ -686,7 +684,7 @@ class LowDeckQuotationCalculator
                 $noteParts[] = sprintf(
                     '%d under deck (1 bag per %s sq ft × %s sq ft)',
                     $underDeckBags,
-                    rtrim(rtrim(number_format(self::UNDER_DECK_GRAVEL_SQ_FT_PER_BAG, 2), '0'), '.'),
+                    rtrim(rtrim(number_format($underDeckSqFtPerBag, 2), '0'), '.'),
                     rtrim(rtrim(number_format($areaSqFt, 2), '0'), '.')
                 );
             }

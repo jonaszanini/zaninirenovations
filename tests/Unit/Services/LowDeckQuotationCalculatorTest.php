@@ -24,6 +24,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             'gravel_depth_in' => 3.00,
             'gravel_footprint_in' => 12.00,
             'gravel_cubic_ft_per_bag' => 0.500,
+            'under_deck_gravel_sq_ft_per_bag' => 8.00,
             'structural_screws_per_post' => 2,
             'structural_screws_per_corner' => 4,
             'board_screws_per_inch' => 0.2000,
@@ -313,6 +314,27 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $spikes = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK);
         $this->assertNotNull($spikes);
         $this->assertSame(1, $spikes['quantity']);
+    }
+
+    public function test_under_deck_gravel_uses_formula_coverage_setting(): void
+    {
+        $calc = new LowDeckQuotationCalculator(
+            $this->settings(['under_deck_gravel_sq_ft_per_bag' => 10.00]),
+            $this->catalogue()
+        );
+        $result = $calc->calculate([
+            'width_ft' => 10,
+            'length_ft' => 10,
+            'material_waste_percent' => 0,
+        ]);
+
+        $gravel = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_GRAVEL_BAG);
+        $this->assertNotNull($gravel);
+        $blockBags = (int) $result['geometry']['blocks']['count'] > 0
+            ? (int) ceil(((12.0 / 12.0) ** 2) * (3.0 / 12.0) * (int) $result['geometry']['blocks']['count'] / 0.5 - 1e-9)
+            : 0;
+        $this->assertSame($blockBags + 10, $gravel['quantity']);
+        $this->assertStringContainsString('1 bag per 10 sq ft', $gravel['notes']);
     }
 
     public function test_under_deck_gravel_can_be_disabled(): void

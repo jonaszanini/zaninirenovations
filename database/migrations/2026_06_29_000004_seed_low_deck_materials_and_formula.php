@@ -72,6 +72,7 @@ return new class extends Migration {
                 'gravel_depth_in' => 3.00,
                 'gravel_footprint_in' => 12.00,
                 'gravel_cubic_ft_per_bag' => 0.500,
+                'under_deck_gravel_sq_ft_per_bag' => 8.00,
                 'structural_screws_per_post' => 2,
                 'structural_screws_per_corner' => 4,
                 'board_screws_per_inch' => 0.2000,

@@ -287,7 +287,7 @@
               <span class="admin-checkbox__mark" aria-hidden="true"></span>
               <span class="admin-checkbox__text">Gravel under the deck</span>
             </label>
-            <p class="admin-form-help">Adds under-deck gravel bags (1 per 8 sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</p>
+            <p class="admin-form-help">Adds under-deck gravel bags (1 per {{ rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.') }} sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</p>
           </div>
         </div>
 
