@@ -23,6 +23,8 @@
   var SHIFT_SNAP_THRESHOLD_DEG = 10;
   var SHIFT_SNAP_STEP = Math.PI / 4;
   var UNDO_MAX = 50;
+  var WALL_DOUBLE_CLICK_MS = 400;
+  var WALL_SPLIT_DEBOUNCE_MS = 400;
 
   var els = {
     projectSelect: root.querySelector('[data-ra-project-select]'),
@@ -123,6 +125,8 @@
     wallDragOrigB: null,
     wallPointerDown: null,
     wallClickTimer: null,
+    lastWallClick: null,
+    lastWallSplit: null,
     didWallDrag: false,
     vertexDragFrom: null,
     vertexDragOrigins: null,
@@ -473,8 +477,7 @@
     state.selectedVertexIndices = [];
     clearWallSelection();
     clearVertexSelection();
-    cancelPendingWallClick();
-    state.wallPointerDown = null;
+    resetWallClickState();
   }
 
   function pixelsPerFoot() {
@@ -746,6 +749,39 @@
     }
   }
 
+  function resetWallClickState() {
+    cancelPendingWallClick();
+    state.lastWallClick = null;
+    state.wallPointerDown = null;
+  }
+
+  function shouldDebounceWallSplit(wallIndex) {
+    var now = Date.now();
+    if (state.lastWallSplit
+        && state.lastWallSplit.wallIndex === wallIndex
+        && now - state.lastWallSplit.time < WALL_SPLIT_DEBOUNCE_MS) {
+      return true;
+    }
+    state.lastWallSplit = { wallIndex: wallIndex, time: now };
+    return false;
+  }
+
+  function handleWallTap(wallIndex) {
+    if (!canDragWalls() || wallIndex < 0 || wallIndex >= wallCount()) return;
+    cancelPendingWallClick();
+    var now = Date.now();
+    if (state.lastWallClick
+        && state.lastWallClick.wallIndex === wallIndex
+        && now - state.lastWallClick.time < WALL_DOUBLE_CLICK_MS) {
+      state.lastWallClick = null;
+      clearWallSelection();
+      splitWallAtPointer(wallIndex);
+      return;
+    }
+    selectWall(wallIndex);
+    state.lastWallClick = { wallIndex: wallIndex, time: now };
+  }
+
   function clearVertexSelection() {
     if (state.selectedVertexIndices.length === 0 && els.vertexEdit && els.vertexEdit.hasAttribute('hidden')) return;
     state.selectedVertexIndices = [];
@@ -912,11 +948,7 @@
     var wallIndex = state.wallPointerDown.wallIndex;
     state.wallPointerDown = null;
     if (state.didWallDrag) return;
-    cancelPendingWallClick();
-    state.wallClickTimer = setTimeout(function () {
-      state.wallClickTimer = null;
-      if (!state.didWallDrag) selectWall(wallIndex);
-    }, 250);
+    handleWallTap(wallIndex);
   }
 
   function moveWallDrag(pos) {
@@ -1040,6 +1072,7 @@
 
   function splitWallAtPointer(wallIndex) {
     if (!canDragWalls()) return;
+    if (shouldDebounceWallSplit(wallIndex)) return;
     if (state.draggingWall) {
       finishWallDrag(getPointerPos());
       state.didWallDrag = false;
@@ -1067,12 +1100,12 @@
         e.evt.preventDefault();
       }
       e.cancelBubble = true;
-      cancelPendingWallClick();
-      state.wallPointerDown = null;
+      resetWallClickState();
       if (state.draggingWall) {
         finishWallDrag(getPointerPos());
         state.didWallDrag = false;
       }
+      clearWallSelection();
       splitWallAtPointer(wallIndex);
     });
   }
@@ -2412,7 +2445,6 @@
     if (wallCount() > 0) {
       var wallIdx = findWallAtPoint(pos);
       if (wallIdx >= 0) {
-        selectWall(wallIdx);
         return;
       }
     }
@@ -2449,8 +2481,7 @@
 
   function onStageDblClick(e) {
     if (e && e.evt) e.evt.preventDefault();
-    cancelPendingWallClick();
-    state.wallPointerDown = null;
+    resetWallClickState();
     if (state.spaceHeld || state.panning || state.calibrating || state.rulerMode) return;
     if (state.draggingWall) {
       finishWallDrag(getPointerPos());
@@ -2464,6 +2495,7 @@
     if (wallCount() > 0) {
       var wallIdx = findWallAtPoint(pos);
       if (wallIdx >= 0) {
+        clearWallSelection();
         splitWallAtPointer(wallIdx);
         return;
       }
