@@ -854,13 +854,9 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Client-facing supply scope block for PDF and admin preview.
+     * Client-facing supply scope line for PDF and admin preview.
      *
-     * @return array{
-     *   headline: string,
-     *   detail: string,
-     *   items: list<array{label: string, included: bool}>
-     * }
+     * @return array{show: bool, headline_html: string}
      */
     public function supplyScopePdfMeta(): array
     {
@@ -869,41 +865,28 @@ class ClientProjectQuotation extends Model
 
         if ($labour && $material) {
             return [
-                'headline' => 'This quotation includes materials and labour',
-                'detail' => 'All materials and professional labour in the amounts below are included in this quoted price.',
-                'items' => [
-                    ['label' => 'Materials', 'included' => true],
-                    ['label' => 'Labour', 'included' => true],
-                ],
+                'show' => true,
+                'headline_html' => 'This quotation includes <strong>MATERIALS</strong> and <strong>LABOUR</strong> for the following.',
             ];
         }
 
         if ($labour) {
             return [
-                'headline' => 'This quotation is for labour only',
-                'detail' => 'Materials are not included. The client is responsible for supplying all required materials.',
-                'items' => [
-                    ['label' => 'Materials', 'included' => false],
-                    ['label' => 'Labour', 'included' => true],
-                ],
+                'show' => true,
+                'headline_html' => 'This quotation includes <strong>LABOUR</strong> for the following.',
             ];
         }
 
         if ($material) {
             return [
-                'headline' => 'This quotation is for materials only',
-                'detail' => 'Labour and installation are not included in this quoted price.',
-                'items' => [
-                    ['label' => 'Materials', 'included' => true],
-                    ['label' => 'Labour', 'included' => false],
-                ],
+                'show' => true,
+                'headline_html' => 'This quotation includes <strong>MATERIALS</strong> for the following.',
             ];
         }
 
         return [
-            'headline' => 'Quotation scope',
-            'detail' => '',
-            'items' => [],
+            'show' => false,
+            'headline_html' => '',
         ];
     }
 

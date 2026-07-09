@@ -3048,52 +3048,15 @@ a:hover .cp-expense-receipt-pdf {
   margin: 6px 0 14px;
 }
 
-.cp-quotation-supply-scope {
-  margin: 0 0 14px;
-  padding: 12px 14px;
-  background: #eff6ff;
-  border: 2px solid #024768;
-  border-radius: 8px;
-}
 .cp-quotation-supply-scope-headline {
-  margin: 0 0 8px;
-  font-size: 15px;
-  font-weight: 700;
+  margin: 6px 0 14px;
+  font-size: 14px;
+  font-weight: 400;
   color: #024768;
   line-height: 1.35;
 }
-.cp-quotation-supply-scope-item {
-  margin: 0 0 4px;
-  font-size: 14px;
-  line-height: 1.45;
-  font-weight: 400;
-}
-.cp-quotation-supply-scope-item--included {
-  color: #065f46;
-}
-.cp-quotation-supply-scope-item--excluded {
-  color: #6b7280;
-}
-.cp-quotation-supply-scope-mark {
-  display: inline-block;
-  margin-right: 7px;
-  color: #065f46;
-  font-size: 14px;
-  line-height: 1;
-  vertical-align: middle;
-}
-.cp-quotation-supply-scope-label {
+.cp-quotation-supply-scope-headline strong {
   font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.cp-quotation-supply-scope-suffix {
-  font-weight: 400;
-}
-.cp-quotation-supply-scope-detail {
-  margin: 8px 0 0;
-  font-size: 13px;
-  color: #374151;
-  line-height: 1.45;
 }
 
 /* "Description of the work" — collapsed accordion on admin quotation preview. */
