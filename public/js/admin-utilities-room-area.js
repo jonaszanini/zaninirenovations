@@ -128,6 +128,7 @@
     lastWallClick: null,
     lastWallSplit: null,
     didWallDrag: false,
+    didVertexDrag: false,
     vertexDragFrom: null,
     vertexDragOrigins: null,
     undoStack: [],
@@ -472,6 +473,7 @@
     state.wallDragOrigA = null;
     state.wallDragOrigB = null;
     state.didWallDrag = false;
+    state.didVertexDrag = false;
     state.vertexDragFrom = null;
     state.vertexDragOrigins = null;
     state.selectedVertexIndices = [];
@@ -766,6 +768,14 @@
     return false;
   }
 
+  function isShiftKey(e) {
+    return state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+  }
+
+  function wallVertexIndices(wallIndex) {
+    return [wallIndex, wallEndIndex(wallIndex)];
+  }
+
   function handleWallTap(wallIndex) {
     if (!canDragWalls() || wallIndex < 0 || wallIndex >= wallCount()) return;
     cancelPendingWallClick();
@@ -776,6 +786,11 @@
       state.lastWallClick = null;
       clearWallSelection();
       splitWallAtPointer(wallIndex);
+      return;
+    }
+    if (state.shiftHeld) {
+      state.lastWallClick = null;
+      selectVertices(wallVertexIndices(wallIndex), { mode: 'toggle' });
       return;
     }
     selectWall(wallIndex);
@@ -1355,6 +1370,7 @@
     state.wallPointerDown = null;
     cancelPendingWallClick();
     state.didWallDrag = false;
+    state.didVertexDrag = false;
     state.vertexDragFrom = null;
     state.draftScale = null;
     state.draftRulers = [];
@@ -1912,7 +1928,13 @@
             e.target.stopDrag();
             return;
           }
+          var shiftKey = isShiftKey(e);
+          if (shiftKey && !isVertexSelected(vertexIndex)) {
+            e.target.stopDrag();
+            return;
+          }
           e.cancelBubble = true;
+          state.didVertexDrag = false;
           if (!isVertexSelected(vertexIndex)) {
             clearRulerSelection();
             clearWallSelection();
@@ -1937,7 +1959,11 @@
         circle.on('click tap', function (e) {
           e.cancelBubble = true;
           if (state.rulerMode) return;
-          var shiftKey = state.shiftHeld || !!(e.evt && e.evt.shiftKey);
+          if (state.didVertexDrag) {
+            state.didVertexDrag = false;
+            return;
+          }
+          var shiftKey = isShiftKey(e);
           if (vertexIndex === 0 && !state.closed && state.vertices.length >= 3 && !state.draggingVertex && !shiftKey) {
             closeShape();
             return;
@@ -1949,6 +1975,7 @@
         });
         circle.on('dragmove', function (e) {
           e.cancelBubble = true;
+          state.didVertexDrag = true;
           var raw = { x: circle.x(), y: circle.y() };
           applyVertexGroupDrag(vertexIndex, raw, false);
           if (state.selectedVertexIndices.length > 1) {
@@ -2540,6 +2567,7 @@
     state.wallPointerDown = null;
     cancelPendingWallClick();
     state.didWallDrag = false;
+    state.didVertexDrag = false;
     stopCalibrationMode();
     state.draftRulers = [];
     clearWallSelection();
