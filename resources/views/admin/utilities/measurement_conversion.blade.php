@@ -143,14 +143,14 @@
             <thead>
               <tr>
                 <th class="util-mc-col-label">Label</th>
-                <th>mm</th>
-                <th>cm</th>
-                <th>m</th>
-                <th>in (dec)</th>
-                <th>in (frac)</th>
-                <th>ft (dec)</th>
-                <th>ft/in (dec)</th>
-                <th>ft/in (frac)</th>
+                <th class="util-mc-col-value" data-mc-col="1">mm</th>
+                <th class="util-mc-col-value" data-mc-col="2">cm</th>
+                <th class="util-mc-col-value" data-mc-col="3">m</th>
+                <th class="util-mc-col-value" data-mc-col="4">in (dec)</th>
+                <th class="util-mc-col-value" data-mc-col="5">in (frac)</th>
+                <th class="util-mc-col-value" data-mc-col="6">ft (dec)</th>
+                <th class="util-mc-col-value" data-mc-col="7">ft/in (dec)</th>
+                <th class="util-mc-col-value" data-mc-col="8">ft/in (frac)</th>
                 <th class="util-mc-col-actions"><span class="util-sr-only">Actions</span></th>
               </tr>
             </thead>

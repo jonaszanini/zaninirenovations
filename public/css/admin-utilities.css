@@ -752,6 +752,36 @@
   background: rgba(244, 246, 248, 0.6);
 }
 
+/* Measurement Conversion Table Column Selection */
+.util-mc-table thead th.util-mc-col-value {
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.util-mc-table thead th.util-mc-col-value:hover {
+  background: var(--admin-border);
+}
+
+.util-mc-table th.is-selected-1,
+.util-mc-table td.is-selected-1 {
+  background-color: rgba(33, 150, 243, 0.1) !important;
+  box-shadow: inset 1px 0 0 rgba(33, 150, 243, 0.3), inset -1px 0 0 rgba(33, 150, 243, 0.3);
+}
+
+.util-mc-table th.is-selected-2,
+.util-mc-table td.is-selected-2 {
+  background-color: rgba(255, 152, 0, 0.1) !important;
+  box-shadow: inset 1px 0 0 rgba(255, 152, 0, 0.3), inset -1px 0 0 rgba(255, 152, 0, 0.3);
+}
+
+.util-mc-table th.is-selected-3,
+.util-mc-table td.is-selected-3 {
+  background-color: rgba(76, 175, 80, 0.1) !important;
+  box-shadow: inset 1px 0 0 rgba(76, 175, 80, 0.3), inset -1px 0 0 rgba(76, 175, 80, 0.3);
+}
+
+
 .util-mc-col-label {
   font-weight: 600;
   color: var(--admin-primary);
