@@ -24,13 +24,6 @@
                 @method('PUT')
                 
                 <div class="pq-db-stone-card-header">
-                  <div class="pq-db-stone-thumb-wrap pq-db-stone-preview">
-                    @if (filled($st->image_url))
-                      <img src="{{ $st->image_url }}" alt="Stone preview" class="pq-db-stone-preview-img">
-                    @else
-                      <i class="fa fa-cubes pq-db-stone-preview-placeholder" aria-hidden="true"></i>
-                    @endif
-                  </div>
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Name</span>
                     <input class="admin-input" type="text" name="name" value="{{ $st->name }}" required maxlength="120" aria-label="Stone name">
@@ -138,10 +131,6 @@
         @enderror
         
         <div class="pq-db-stone-card-header">
-          <div class="pq-db-stone-thumb-wrap pq-db-stone-preview">
-            <img src="" alt="" class="pq-db-stone-preview-img" style="display:none;">
-            <i class="fa fa-cubes pq-db-stone-preview-placeholder" aria-hidden="true"></i>
-          </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Name</span>
             <input type="text" name="name" placeholder="Name" class="admin-input" required maxlength="120" aria-label="New stone name"
@@ -154,9 +143,6 @@
               <input type="url" name="product_url" placeholder="https://…" class="admin-input" maxlength="500" aria-label="Product link"
                      value="{{ old('add_stone') === '1' ? old('product_url') : '' }}">
             </div>
-          </div>
-          <div class="pq-db-stone-actions">
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add</button>
           </div>
         </div>
 
@@ -212,6 +198,9 @@
             <input type="text" name="additional_cost_description" class="admin-input" placeholder="e.g. Pallet deposit" maxlength="255" aria-label="Additional cost description"
                    value="{{ old('add_stone') === '1' ? old('additional_cost_description') : '' }}">
           </div>
+        </div>
+        <div class="pq-db-add-stone-actions">
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add stone type</button>
         </div>
       </form>
     </div>
@@ -423,12 +412,46 @@
     document.querySelectorAll('.pq-db-stone-editor').forEach(function (editor) {
       var urlInput = editor.querySelector('.pq-db-stone-image-url');
       var fileInput = editor.querySelector('.pq-db-stone-image-file');
+      var fileNameEl = editor.querySelector('.pq-db-file-picker-name');
+      var urlPanel = editor.querySelector('.pq-db-image-panel--url');
+      var uploadPanel = editor.querySelector('.pq-db-image-panel--upload');
+      var modeBtns = editor.querySelectorAll('[data-pq-image-mode]');
+
+      function setImageMode(mode) {
+        modeBtns.forEach(function (btn) {
+          var active = btn.getAttribute('data-pq-image-mode') === mode;
+          btn.classList.toggle('is-active', active);
+        });
+        if (urlPanel) urlPanel.hidden = mode !== 'url';
+        if (uploadPanel) uploadPanel.hidden = mode !== 'upload';
+      }
+
+      modeBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setImageMode(btn.getAttribute('data-pq-image-mode'));
+        });
+      });
+
+      if (urlInput && (urlInput.value || '').trim() !== '') {
+        setImageMode('url');
+      }
+
       if (urlInput) {
         urlInput.addEventListener('input', function () { syncStonePreview(editor); });
         urlInput.addEventListener('change', function () { syncStonePreview(editor); });
       }
       if (fileInput) {
-        fileInput.addEventListener('change', function () { syncStonePreview(editor); });
+        fileInput.addEventListener('change', function () {
+          if (fileNameEl) {
+            fileNameEl.textContent = (fileInput.files && fileInput.files[0])
+              ? fileInput.files[0].name
+              : 'No file selected';
+          }
+          if (fileInput.files && fileInput.files[0]) {
+            setImageMode('upload');
+          }
+          syncStonePreview(editor);
+        });
       }
       syncStonePreview(editor);
     });

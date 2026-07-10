@@ -71,10 +71,10 @@
   }
   .pq-db-stone-card-header {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 16px;
+    grid-template-columns: minmax(120px, 1.1fr) minmax(200px, 1.5fr) minmax(120px, 1fr) auto;
+    gap: 12px 16px;
     margin-bottom: 16px;
-    align-items: start;
+    align-items: end;
   }
   .pq-db-stone-card-body {
     display: grid;
@@ -133,17 +133,109 @@
     gap: 6px;
   }
   .pq-db-stone-sq-wrap .pq-db-stone-sq { flex: 1 1 auto; min-width: 0; }
-  .pq-db-image-upload-row {
+  .pq-db-image-cell { min-width: 0; }
+  .pq-db-image-label-row {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px 12px;
-    margin-top: 6px;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 18px;
   }
-  .pq-db-image-upload-label { cursor: pointer; margin: 0; }
-  .pq-db-image-upload-label input[type="file"] { display: none; }
-  .pq-db-image-upload-hint { font-size: 11px; color: var(--admin-muted); }
+  .pq-db-image-label-row .pq-db-field-label { margin: 0; }
+  .pq-db-image-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .pq-db-image-row .pq-db-stone-thumb-wrap {
+    width: 38px;
+    height: 38px;
+  }
+  .pq-db-image-row .pq-db-stone-thumb-wrap i {
+    font-size: 16px;
+  }
+  .pq-db-image-row .pq-db-image-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .pq-db-image-mode {
+    display: inline-flex;
+    flex-shrink: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .pq-db-image-mode-btn {
+    margin: 0;
+    padding: 3px 10px;
+    border: 0;
+    background: transparent;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #64748b;
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .pq-db-image-mode-btn + .pq-db-image-mode-btn {
+    border-left: 1px solid #cbd5e1;
+  }
+  .pq-db-image-mode-btn.is-active {
+    background: #e8f4f8;
+    color: #024768;
+  }
+  .pq-db-image-mode-btn:focus-visible {
+    outline: 2px solid #024768;
+    outline-offset: -2px;
+  }
+  .pq-db-image-panel .admin-input { width: 100%; min-width: 0; }
+  .pq-db-file-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    width: 100%;
+    margin: 0;
+    cursor: pointer;
+  }
+  .pq-db-file-picker input[type="file"] { display: none; }
+  .pq-db-file-picker-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    line-height: 1.2;
+  }
+  .pq-db-file-picker:hover .pq-db-file-picker-btn {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+  .pq-db-file-picker-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 12px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .pq-db-add-stone.pq-db-add-stone--error { border-color: #f87171; background: #fef2f2; }
+  .pq-db-add-stone-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+  }
   .pq-db-hidden-form { display: none; }
   @media (max-width: 860px) {
     .pq-db-stone-card-header { grid-template-columns: 1fr; }
@@ -241,16 +333,23 @@
   }
   .pq-db-stone-card-header {
     display: grid;
-    grid-template-columns: auto minmax(120px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
-    gap: 16px;
+    grid-template-columns: minmax(120px, 1.1fr) minmax(200px, 1.5fr) minmax(120px, 1fr) auto;
+    gap: 12px 16px;
     align-items: end;
     padding: 16px;
     border-bottom: 1px solid #e2e8f0;
     background: #f8fafc;
   }
-  @media (max-width: 768px) {
+  @media (max-width: 900px) {
     .pq-db-stone-card-header {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr;
     }
+    .pq-db-stone-actions {
+      grid-column: 1 / -1;
+      margin-top: 0;
+    }
+  }
+  @media (max-width: 560px) {
+    .pq-db-stone-card-header { grid-template-columns: 1fr; }
   }
 </style>
