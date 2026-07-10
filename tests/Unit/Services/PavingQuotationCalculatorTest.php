@@ -127,4 +127,88 @@ class PavingQuotationCalculatorTest extends TestCase
 
         return 0;
     }
+
+    public function test_multi_stone_entries_sum_area_for_base_materials(): void
+    {
+        $calc = new PavingQuotationCalculator(collect([]), collect([]));
+        $result = $calc->calculate([
+            'stone_entries' => [
+                [
+                    'stone_type_id' => 1,
+                    'stone_name' => 'Type A',
+                    'input_mode' => 'sqft',
+                    'area_sq_ft' => 100,
+                    'sq_ft_per_stone' => 0.5,
+                    'price_per_stone' => 2,
+                    'height_in' => 2,
+                    'length_in' => 12,
+                    'width_in' => 12,
+                ],
+                [
+                    'stone_type_id' => 2,
+                    'stone_name' => 'Type B',
+                    'input_mode' => 'dimensions',
+                    'length_ft' => 10,
+                    'width_ft' => 8,
+                    'area_sq_ft' => 80,
+                    'sq_ft_per_stone' => 0.5,
+                    'price_per_stone' => 3,
+                    'height_in' => 3,
+                    'length_in' => 6,
+                    'width_in' => 9,
+                ],
+            ],
+            'excavation_depth_in' => 12,
+            'bedding_sand_depth_in' => 1,
+            'add_polymeric_sand' => false,
+            'include_geotextile' => false,
+            'waste_factor' => 0,
+            'hst_rate' => 0.13,
+        ]);
+
+        $this->assertSame(180.0, (float) ($result['areas']['total_sq_ft'] ?? 0));
+
+        $rows = collect($result['materials']['rows'])->keyBy('label');
+        $stoneA = $rows->get('Type A paving stones');
+        $stoneB = $rows->get('Type B paving stones');
+        $this->assertNotNull($stoneA);
+        $this->assertNotNull($stoneB);
+
+        $crushed = $rows->get('Crushed stone base (3/4 in.)');
+        $this->assertNotNull($crushed);
+        $this->assertStringContainsString('3 in. paver', $crushed['note']);
+    }
+
+    public function test_qty_mode_resolves_area_from_stone_count(): void
+    {
+        $calc = new PavingQuotationCalculator(collect([]), collect([]));
+        $result = $calc->calculate([
+            'stone_entries' => [
+                [
+                    'stone_type_id' => 1,
+                    'stone_name' => 'Pavers',
+                    'input_mode' => 'qty',
+                    'qty' => 200,
+                    'area_sq_ft' => 100,
+                    'sq_ft_per_stone' => 0.5,
+                    'price_per_stone' => 1.5,
+                    'height_in' => 2,
+                    'length_in' => 6,
+                    'width_in' => 9,
+                ],
+            ],
+            'excavation_depth_in' => 11,
+            'bedding_sand_depth_in' => 1,
+            'add_polymeric_sand' => false,
+            'include_geotextile' => false,
+            'waste_factor' => 0,
+            'hst_rate' => 0.13,
+        ]);
+
+        $this->assertSame(100.0, (float) ($result['areas']['total_sq_ft'] ?? 0));
+        $rows = collect($result['materials']['rows'])->keyBy('label');
+        $stone = $rows->get('Pavers paving stones');
+        $this->assertNotNull($stone);
+        $this->assertSame(200, (int) $stone['qty']);
+    }
 }

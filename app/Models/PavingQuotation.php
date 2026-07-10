@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PavingStoneEntryResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -53,24 +54,19 @@ class PavingQuotation extends Model
     {
         $inputs = is_array($this->inputs) ? $this->inputs : [];
         $area = (float) ($inputs['total_area_sq_ft'] ?? 0);
-        $stoneId = $inputs['paving_stone_type_id'] ?? null;
-        $stoneName = 'Paving stones';
-        if ($stoneId) {
-            $st = PavingStoneType::query()->find($stoneId);
-            if ($st) {
-                $stoneName = $st->name;
-            }
-        }
-        $marble = filter_var($inputs['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $marblePart = $marble && ($inputs['marble_area_sq_ft'] ?? 0) > 0
-            ? ' with marble inlay'
-            : '';
+        $entries = PavingStoneEntryResolver::normalize($inputs);
+        $stoneNames = array_values(array_filter(array_map(
+            static fn (array $entry) => trim((string) ($entry['stone_name'] ?? '')),
+            $entries
+        )));
+        $stoneLabel = $stoneNames !== []
+            ? implode(' + ', $stoneNames)
+            : 'Paving stones';
 
         return sprintf(
-            'Paving Stones — %s sq ft %s%s',
+            'Paving Stones — %s sq ft %s',
             rtrim(rtrim(number_format($area, 2), '0'), '.'),
-            $stoneName,
-            $marblePart
+            $stoneLabel
         );
     }
 
