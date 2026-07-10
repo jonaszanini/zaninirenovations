@@ -285,7 +285,7 @@
         </div>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. The grid is 6× larger than the view — hold <strong>Space</strong> and drag to pan, <strong>Shift</strong>+scroll to zoom. Close a shape, then use <strong>Add area</strong> or <strong>New group</strong>. Calibrate scale before saving.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Hold <strong>Space</strong> and drag to pan into extra space beyond the screen; <strong>Shift</strong>+scroll to zoom. Close a shape, then use <strong>Add area</strong> or <strong>New group</strong>. Calibrate scale before saving.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <div class="util-ra-live-area__row">
               <span class="util-ra-live-area__label">Active shape:</span>

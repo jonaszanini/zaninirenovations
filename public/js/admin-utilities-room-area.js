@@ -20,9 +20,10 @@
   var CLOSE_HIT = 16;
   var WALL_HIT = 14;
   var RULER_HIT = 12;
-  var MIN_ZOOM_FLOOR = 0.05;
-  var MAX_ZOOM = 5;
-  var ZOOM_FACTOR = 1.12;
+  var MIN_ZOOM_PERCENT = 8;
+  var MAX_ZOOM_PERCENT = 500;
+  var ZOOM_STEP = 1.12;
+  var ZOOM_FIT_PAD = 32;
   var SHIFT_SNAP_THRESHOLD_DEG = 10;
   var SHIFT_SNAP_STEP = Math.PI / 4;
   var UNDO_MAX = 50;
@@ -124,7 +125,7 @@
     draftScale: null,
     stage: null,
     worldGroup: null,
-    viewport: { scale: 1, x: 0, y: 0 },
+    viewport: { scale: 1, x: 0, y: 0, zoomPercent: 100 },
     panning: false,
     didPan: false,
     lastPanScreen: null,
@@ -587,6 +588,15 @@
     return state.canvasH;
   }
 
+  /** Natural drawing density: one screen pixel at 100% zoom. Extra world beyond this is pan space. */
+  function contentW() {
+    return viewportW();
+  }
+
+  function contentH() {
+    return viewportH();
+  }
+
   function scalePoints(points, fromW, fromH, toW, toH) {
     if (!points || !points.length) return [];
     var sx = toW / fromW;
@@ -648,9 +658,50 @@
 
   function roomSourceCanvas(room, project) {
     return {
-      w: room.canvas_width || project.canvas_width || canvasW(),
-      h: room.canvas_height || project.canvas_height || canvasH()
+      w: room.canvas_width || project.canvas_width || contentW(),
+      h: room.canvas_height || project.canvas_height || contentH()
     };
+  }
+
+  function canvasExtentsFromRaw(raw) {
+    var maxX = 0;
+    var maxY = 0;
+    var data = normalizeCanvasInput(raw);
+    data.groups.forEach(function (group) {
+      (group.polygons || []).forEach(function (poly) {
+        (poly.vertices || []).forEach(function (v) {
+          maxX = Math.max(maxX, parseFloat(v.x) || 0);
+          maxY = Math.max(maxY, parseFloat(v.y) || 0);
+        });
+      });
+    });
+    return { w: Math.max(maxX, 1), h: Math.max(maxY, 1) };
+  }
+
+  /**
+   * Map saved coordinates into viewport-density content space.
+   */
+  function hydrateScaleTarget(raw, sourceW, sourceH) {
+    var toW = contentW();
+    var toH = contentH();
+    var ext = canvasExtentsFromRaw(raw);
+    var fromW = Math.max(sourceW || 0, ext.w);
+    var fromH = Math.max(sourceH || 0, ext.h);
+
+    if (!fromW || !fromH || fromW < 1 || fromH < 1) {
+      return { fromW: toW, fromH: toH, toW: toW, toH: toH };
+    }
+
+    if (Math.abs(fromW - toW) < 3 && Math.abs(fromH - toH) < 3) {
+      return { fromW: toW, fromH: toH, toW: toW, toH: toH };
+    }
+
+    // Oversized canvas metadata but geometry only occupies the content viewport.
+    if (fromW > toW * 1.4 && ext.w <= toW * 1.35 && ext.h <= toH * 1.35) {
+      return { fromW: toW, fromH: toH, toW: toW, toH: toH };
+    }
+
+    return { fromW: fromW, fromH: fromH, toW: toW, toH: toH };
   }
 
   function confirmAction(message, options) {
@@ -699,17 +750,18 @@
     return state.savedSnapshot !== JSON.stringify(buildWorkSnapshot());
   }
 
-  function promptUnsavedBeforeAction(action) {
+  function promptUnsavedBeforeAction(action, options) {
+    options = options || {};
     if (!hasUnsavedChanges()) {
       action();
       return Promise.resolve(true);
     }
     return confirmAction(
-      'You have unsaved changes that have not been saved. Do you want to save them before leaving?',
+      options.message || 'You have unsaved changes. Save them before continuing?',
       {
         title: 'Unsaved changes',
-        confirmLabel: 'Save changes',
-        cancelLabel: 'Stay on page'
+        confirmLabel: options.confirmLabel || 'Save changes',
+        cancelLabel: options.cancelLabel || 'Stay on page'
       }
     ).then(function (shouldSave) {
       if (!shouldSave) return false;
@@ -718,10 +770,27 @@
           action();
           return true;
         })
-        .catch(function () {
+        .catch(function (err) {
+          setFeedback((err && err.message) || 'Could not save changes.', true);
           return false;
         });
     });
+  }
+
+  function saveErrorMessage(data, fallback) {
+    if (!data) return fallback;
+    if (data.message && (!data.errors || typeof data.errors !== 'object')) {
+      return data.message;
+    }
+    if (data.errors && typeof data.errors === 'object') {
+      var keys = Object.keys(data.errors);
+      for (var i = 0; i < keys.length; i++) {
+        var msgs = data.errors[keys[i]];
+        if (Array.isArray(msgs) && msgs.length) return msgs[0];
+        if (typeof msgs === 'string' && msgs) return msgs;
+      }
+    }
+    return data.message || fallback;
   }
 
   function csrf() {
@@ -1925,18 +1994,63 @@
     }
   }
 
-  function getMinZoom() {
+  function naturalWorldScale() {
+    return 1;
+  }
+
+  function zoomPercentFromScale(scale) {
+    return Math.round((scale / naturalWorldScale()) * 100);
+  }
+
+  function scaleFromZoomPercent(percent) {
+    return (percent / 100) * naturalWorldScale();
+  }
+
+  function minZoomPercent() {
     var vw = viewportW();
     var vh = viewportH();
     var pad = 20;
     var cw = canvasW();
     var ch = canvasH();
-    if (!vw || !vh || !cw || !ch) return MIN_ZOOM_FLOOR;
-    return Math.max(MIN_ZOOM_FLOOR, Math.min((vw - pad) / cw, (vh - pad) / ch));
+    if (!vw || !vh || !cw || !ch) return MIN_ZOOM_PERCENT;
+    var fitWorldScale = Math.min((vw - pad) / cw, (vh - pad) / ch);
+    return Math.max(MIN_ZOOM_PERCENT, zoomPercentFromScale(fitWorldScale));
   }
 
-  function clampZoom(scale) {
-    return Math.max(getMinZoom(), Math.min(MAX_ZOOM, scale));
+  function clampZoomPercent(percent) {
+    return Math.max(minZoomPercent(), Math.min(MAX_ZOOM_PERCENT, Math.round(percent)));
+  }
+
+  function clampWorldScale(scale) {
+    return scaleFromZoomPercent(clampZoomPercent(zoomPercentFromScale(scale)));
+  }
+
+  function setWorldScale(scale, screenX, screenY) {
+    var nextScale = clampWorldScale(scale);
+    if (screenX != null && screenY != null && state.viewport.scale > 0) {
+      var oldScale = state.viewport.scale;
+      var worldX = (screenX - state.viewport.x) / oldScale;
+      var worldY = (screenY - state.viewport.y) / oldScale;
+      state.viewport.scale = nextScale;
+      state.viewport.x = screenX - worldX * nextScale;
+      state.viewport.y = screenY - worldY * nextScale;
+    } else {
+      state.viewport.scale = nextScale;
+    }
+    state.viewport.zoomPercent = zoomPercentFromScale(state.viewport.scale);
+    applyViewport();
+  }
+
+  function setZoomPercent(percent, screenX, screenY) {
+    setWorldScale(scaleFromZoomPercent(clampZoomPercent(percent)), screenX, screenY);
+  }
+
+  function zoomIn() {
+    setZoomPercent(state.viewport.zoomPercent * ZOOM_STEP, viewportW() / 2, viewportH() / 2);
+  }
+
+  function zoomOut() {
+    setZoomPercent(state.viewport.zoomPercent / ZOOM_STEP, viewportW() / 2, viewportH() / 2);
   }
 
   function viewportContentBounds() {
@@ -1978,7 +2092,7 @@
     }
 
     if (!has) {
-      return { minX: 0, minY: 0, maxX: canvasW(), maxY: canvasH(), hasContent: false };
+      return { minX: 0, minY: 0, maxX: contentW(), maxY: contentH(), hasContent: false };
     }
 
     return { minX: minX, minY: minY, maxX: maxX, maxY: maxY, hasContent: true };
@@ -2034,24 +2148,14 @@
   }
 
   function panToContentCenter() {
-    var minX = Infinity;
-    var minY = Infinity;
-    var maxX = -Infinity;
-    var maxY = -Infinity;
-    allPolygons().forEach(function (entry) {
-      entry.polygon.vertices.forEach(function (v) {
-        minX = Math.min(minX, v.x);
-        minY = Math.min(minY, v.y);
-        maxX = Math.max(maxX, v.x);
-        maxY = Math.max(maxY, v.y);
-      });
-    });
-    if (!isFinite(minX)) return;
-    panToWorldPoint((minX + maxX) / 2, (minY + maxY) / 2);
+    var bounds = viewportContentBounds();
+    if (!bounds.hasContent) return;
+    panToWorldPoint((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
   }
 
   function resetViewport() {
-    state.viewport.scale = 1;
+    state.viewport.zoomPercent = 100;
+    state.viewport.scale = naturalWorldScale();
     state.viewport.x = 0;
     state.viewport.y = 0;
     state.lastUiScale = 0;
@@ -2060,28 +2164,28 @@
   }
 
   function refreshViewportAfterContentChange() {
-    resetViewport();
+    if (viewportContentBounds().hasContent) {
+      fitViewport();
+    } else {
+      resetViewport();
+    }
   }
 
   function fitViewport() {
     if (!state.stage) return;
-    var pad = 32;
+    var pad = ZOOM_FIT_PAD;
     var vw = viewportW();
     var vh = viewportH();
     var bounds = viewportContentBounds();
-    var minX = bounds.minX;
-    var minY = bounds.minY;
-    var maxX = bounds.maxX;
-    var maxY = bounds.maxY;
+    var bw = Math.max(bounds.maxX - bounds.minX, 1);
+    var bh = Math.max(bounds.maxY - bounds.minY, 1);
+    var scale = Math.min((vw - pad * 2) / bw, (vh - pad * 2) / bh);
+    scale = clampWorldScale(scale);
 
-    var contentW = Math.max(maxX - minX, 1);
-    var contentH = Math.max(maxY - minY, 1);
-    var scale = Math.min((vw - pad * 2) / contentW, (vh - pad * 2) / contentH);
-    scale = clampZoom(scale);
-
-    var cx = (minX + maxX) / 2;
-    var cy = (minY + maxY) / 2;
+    var cx = (bounds.minX + bounds.maxX) / 2;
+    var cy = (bounds.minY + bounds.maxY) / 2;
     state.viewport.scale = scale;
+    state.viewport.zoomPercent = zoomPercentFromScale(scale);
     state.viewport.x = vw / 2 - cx * scale;
     state.viewport.y = vh / 2 - cy * scale;
     state.lastUiScale = 0;
@@ -2091,24 +2195,17 @@
 
   function updateZoomUI() {
     if (els.zoomLabel) {
-      els.zoomLabel.textContent = Math.round(state.viewport.scale * 100) + '%';
+      els.zoomLabel.textContent = state.viewport.zoomPercent + '%';
     }
   }
 
   function zoomAt(screenX, screenY, newScale) {
-    newScale = clampZoom(newScale);
-    var oldScale = state.viewport.scale;
-    var worldX = (screenX - state.viewport.x) / oldScale;
-    var worldY = (screenY - state.viewport.y) / oldScale;
-    state.viewport.scale = newScale;
-    state.viewport.x = screenX - worldX * newScale;
-    state.viewport.y = screenY - worldY * newScale;
-    applyViewport();
+    setWorldScale(newScale, screenX, screenY);
   }
 
   function zoomBy(factor) {
     if (!state.stage) return;
-    zoomAt(viewportW() / 2, viewportH() / 2, state.viewport.scale * factor);
+    setZoomPercent(state.viewport.zoomPercent * factor, viewportW() / 2, viewportH() / 2);
   }
 
   function stageToWorld(pos) {
@@ -2128,8 +2225,8 @@
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
       var dir = e.deltaY < 0 ? 1 : -1;
-      var factor = dir > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-      zoomAt(x, y, state.viewport.scale * factor);
+      var factor = dir > 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+      setZoomPercent(state.viewport.zoomPercent * factor, x, y);
     }, { passive: false });
 
     document.addEventListener('keydown', function (e) {
@@ -2177,21 +2274,23 @@
     var vp = getViewportDimensions();
     if (vp.w === state.viewportW && vp.h === state.viewportH) return;
 
-    var oldW = state.canvasW;
-    var oldH = state.canvasH;
+    var oldContentW = state.viewportW;
+    var oldContentH = state.viewportH;
+    var oldWorldW = state.canvasW;
+    var oldWorldH = state.canvasH;
 
     syncDrawableDimensions();
 
-    if (oldW > 0 && oldH > 0) {
-      var factor = canvasScaleFactor(oldW, oldH, state.canvasW, state.canvasH);
+    if (oldContentW > 0 && oldContentH > 0) {
+      var factor = canvasScaleFactor(oldContentW, oldContentH, contentW(), contentH());
       if (state.groups.length && allPolygons().some(function (e) { return e.polygon.vertices.length; })) {
-        scaleAllCanvasPoints(oldW, oldH, state.canvasW, state.canvasH);
+        scaleAllCanvasPoints(oldContentW, oldContentH, contentW(), contentH());
         clearUndoStack();
       }
       if (state.calibPoints.length) {
-        state.calibPoints = scalePoints(state.calibPoints, oldW, oldH, state.canvasW, state.canvasH);
+        state.calibPoints = scalePoints(state.calibPoints, oldContentW, oldContentH, contentW(), contentH());
       }
-      scaleProjectRulers(oldW, oldH, state.canvasW, state.canvasH);
+      scaleProjectRulers(oldContentW, oldContentH, contentW(), contentH());
       if (Math.abs(factor - 1) > 0.0005) {
         scaleActivePixelsPerFoot(factor);
       }
@@ -2200,14 +2299,18 @@
     state.stage.width(state.viewportW);
     state.stage.height(state.viewportH);
     if (state.bgImage) {
-      if (oldW > 0 && oldH > 0) {
-        scaleBackgroundLayout(oldW, oldH, state.canvasW, state.canvasH);
+      if (oldContentW > 0 && oldContentH > 0) {
+        scaleBackgroundLayout(oldContentW, oldContentH, contentW(), contentH());
       } else {
         layoutBackgroundImage();
       }
     }
     drawGrid();
     redrawAll();
+    // Keep pan within the new world bounds after a resize.
+    if (oldWorldW !== state.canvasW || oldWorldH !== state.canvasH) {
+      applyViewport();
+    }
   }
 
   function scheduleStageResize() {
@@ -2380,8 +2483,8 @@
 
   function layoutBackgroundImage() {
     if (!state.bgImage || !state.bgNaturalW || !state.bgNaturalH) return;
-    var cw = canvasW();
-    var ch = canvasH();
+    var cw = contentW();
+    var ch = contentH();
     var scale = Math.min(cw / state.bgNaturalW, ch / state.bgNaturalH);
     var w = state.bgNaturalW * scale;
     var h = state.bgNaturalH * scale;
@@ -2496,7 +2599,8 @@
     var project = activeProject();
     if (!project || !room) return;
     var source = roomSourceCanvas(room, project);
-    hydrateCanvas(roomCanvasRaw(room), source.w, source.h, canvasW(), canvasH());
+    var target = hydrateScaleTarget(roomCanvasRaw(room), source.w, source.h);
+    hydrateCanvas(roomCanvasRaw(room), target.fromW, target.fromH, target.toW, target.toH);
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
     clearUndoStack();
@@ -3379,17 +3483,22 @@
       return;
     }
     confirmAction(
-      'You have unsaved changes that have not been saved. Do you want to save them before starting a new room?',
+      'You have unsaved changes. Save them before starting a new room, or discard them?',
       {
         title: 'Unsaved changes',
         confirmLabel: 'Save changes',
-        cancelLabel: 'Stay on page'
+        cancelLabel: 'Discard & continue'
       }
     ).then(function (shouldSave) {
-      if (!shouldSave) return;
-      saveRoom().then(function () {
+      if (!shouldSave) {
         beginNewRoom();
-      }).catch(function () {});
+        return;
+      }
+      return saveRoom().then(function () {
+        beginNewRoom();
+      }).catch(function (err) {
+        setFeedback((err && err.message) || 'Could not save changes.', true);
+      });
     });
   }
 
@@ -3552,8 +3661,8 @@
             name: room.name,
             vertices: activeVertices(),
             scale_pixels_per_foot: ppf,
-            canvas_width: canvasW(),
-            canvas_height: canvasH()
+            canvas_width: contentW(),
+            canvas_height: contentH()
           })
         })
           .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
@@ -3659,16 +3768,16 @@
       loadBackground(currentRoom.background_url || null);
 
       var source = roomSourceCanvas(currentRoom, currentProject);
-      var factor = canvasScaleFactor(source.w, source.h, canvasW(), canvasH());
+      var target = hydrateScaleTarget(roomCanvasRaw(currentRoom), source.w, source.h);
+      var factor = canvasScaleFactor(target.fromW, target.fromH, target.toW, target.toH);
       if (Math.abs(factor - 1) > 0.0005) {
         scaleActivePixelsPerFoot(factor);
       }
 
-      hydrateCanvas(roomCanvasRaw(currentRoom), source.w, source.h, canvasW(), canvasH());
+      hydrateCanvas(roomCanvasRaw(currentRoom), target.fromW, target.fromH, target.toW, target.toH);
       clearUndoStack();
-      resetViewport();
       redrawAll();
-      panToContentCenter();
+      fitViewport();
       captureSavedSnapshot();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
     });
@@ -3816,13 +3925,13 @@
       var factor = canvasScaleFactor(
         currentProject.canvas_width,
         currentProject.canvas_height,
-        canvasW(),
-        canvasH()
+        contentW(),
+        contentH()
       );
       if (Math.abs(factor - 1) > 0.0005) {
         scaleActivePixelsPerFoot(factor);
-        currentProject.canvas_width = canvasW();
-        currentProject.canvas_height = canvasH();
+        currentProject.canvas_width = contentW();
+        currentProject.canvas_height = contentH();
       }
       loadBackground(null);
       updateScaleUI();
@@ -3938,8 +4047,9 @@
 
     var scale = pixelsPerFoot();
     if (!scale) {
-      els.saveRoom.disabled = true;
-      return Promise.reject(new Error('Calibrate scale before saving.'));
+      var scaleErr = new Error('Calibrate scale before saving.');
+      setFeedback(scaleErr.message, true);
+      return Promise.reject(scaleErr);
     }
 
     els.saveRoom.disabled = true;
@@ -3955,14 +4065,25 @@
       body: JSON.stringify({
         name: name,
         canvas: serializeCanvas(),
-        canvas_width: canvasW(),
-        canvas_height: canvasH(),
+        canvas_width: contentW(),
+        canvas_height: contentH(),
         scale_pixels_per_foot: scale
       })
     })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, status: res.status, data: data };
+        }).catch(function () {
+          return { ok: false, status: res.status, data: { message: 'Could not read server response.' } };
+        });
+      })
       .then(function (result) {
-        if (!result.ok) throw new Error(result.data.message || (isUpdate ? 'Could not update room.' : 'Could not save room.'));
+        if (!result.ok) {
+          throw new Error(saveErrorMessage(
+            result.data,
+            isUpdate ? 'Could not update room.' : 'Could not save room.'
+          ));
+        }
         var savedRoom = result.data.room;
         if (!isUpdate && state.draftBackground && state.draftBackground.file) {
           return uploadRoomBackgroundFile(savedRoom.id, state.draftBackground.file).then(function (bgResult) {
@@ -3995,8 +4116,8 @@
           }
           project.rooms.push(newRoom);
         }
-        project.canvas_width = canvasW();
-        project.canvas_height = canvasH();
+        project.canvas_width = contentW();
+        project.canvas_height = contentH();
         revokeDraftBackground();
         state.draftScale = null;
         var saved = result.data.room;
@@ -4266,8 +4387,8 @@
       copyText(els.totalSqft.textContent);
     });
 
-    if (els.zoomIn) els.zoomIn.addEventListener('click', function () { zoomBy(ZOOM_FACTOR); });
-    if (els.zoomOut) els.zoomOut.addEventListener('click', function () { zoomBy(1 / ZOOM_FACTOR); });
+    if (els.zoomIn) els.zoomIn.addEventListener('click', zoomIn);
+    if (els.zoomOut) els.zoomOut.addEventListener('click', zoomOut);
     if (els.zoom100) els.zoom100.addEventListener('click', resetViewport);
     if (els.zoomReset) els.zoomReset.addEventListener('click', fitViewport);
 

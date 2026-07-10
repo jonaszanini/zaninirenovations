@@ -63,8 +63,8 @@ class RoomAreaController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:120'],
             'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
-            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
-            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
+            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:20000'],
+            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
         ]);
 
         $room_area_project->fill($data);
@@ -102,8 +102,8 @@ class RoomAreaController extends Controller
             'vertices' => ['nullable', 'array'],
             'vertices.*.x' => ['required_with:vertices', 'numeric'],
             'vertices.*.y' => ['required_with:vertices', 'numeric'],
-            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
-            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
+            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:20000'],
+            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
         ]);
 
@@ -143,8 +143,8 @@ class RoomAreaController extends Controller
             'vertices' => ['nullable', 'array'],
             'vertices.*.x' => ['required_with:vertices', 'numeric'],
             'vertices.*.y' => ['required_with:vertices', 'numeric'],
-            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:4096'],
-            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:4096'],
+            'canvas_width' => ['nullable', 'integer', 'min:1', 'max:20000'],
+            'canvas_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
         ]);
 
