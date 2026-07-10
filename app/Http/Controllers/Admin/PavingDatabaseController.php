@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\PavingMaterialRate;
 use App\Models\PavingPricingTier;
 use App\Models\PavingStoneType;
+use App\Services\ProjectPhotoWebpStorage;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Editable price database for paving quotations (stones, fixed rates, pricing tiers).
@@ -37,7 +41,8 @@ class PavingDatabaseController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'product_url' => ['nullable', 'string', 'max:500', 'url'],
-            'image_url' => ['nullable', 'string', 'max:500', 'url'],
+            'image_url' => ['nullable', 'string', 'max:500'],
+            'image' => ['nullable', 'file', 'image', 'max:5120'],
             'length_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'width_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'height_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
@@ -54,7 +59,7 @@ class PavingDatabaseController extends Controller
         }
 
         $max = (int) PavingStoneType::query()->max('sort_order');
-        PavingStoneType::create($this->stonePayloadFromValidated($data) + [
+        PavingStoneType::create($this->stonePayloadFromValidated($data, $this->resolveStoneImageUrl($request)) + [
             'sort_order' => $max + 1,
         ]);
 
@@ -69,7 +74,8 @@ class PavingDatabaseController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'product_url' => ['nullable', 'string', 'max:500', 'url'],
-            'image_url' => ['nullable', 'string', 'max:500', 'url'],
+            'image_url' => ['nullable', 'string', 'max:500'],
+            'image' => ['nullable', 'file', 'image', 'max:5120'],
             'length_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'width_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
             'height_in' => ['nullable', 'numeric', 'min:0.01', 'max:999'],
@@ -85,7 +91,10 @@ class PavingDatabaseController extends Controller
             return back()->withInput()->withErrors(['price_per_sq_ft' => 'You must provide either Price/sq ft or both Sq ft/stone and $/stone.']);
         }
 
-        $paving_stone_type->update($this->stonePayloadFromValidated($data));
+        $paving_stone_type->update($this->stonePayloadFromValidated(
+            $data,
+            $this->resolveStoneImageUrl($request, $paving_stone_type->image_url)
+        ));
 
         return back()->with('success', 'Stone type updated.');
     }
@@ -95,6 +104,7 @@ class PavingDatabaseController extends Controller
         if (PavingStoneType::query()->count() <= 1) {
             return back()->with('error', 'Keep at least one stone type.');
         }
+        $this->deleteLocalStoneImageByUrl($paving_stone_type->image_url);
         $paving_stone_type->delete();
 
         return back()->with('success', 'Stone type deleted.');
@@ -166,16 +176,105 @@ class PavingDatabaseController extends Controller
     protected function normalizeStoneUrlOnRequest(Request $request): void
     {
         foreach (['product_url', 'image_url'] as $key) {
-            if ($request->has($key)) {
-                $url = trim((string) $request->input($key));
-                if ($url === '') {
-                    $request->merge([$key => null]);
-                } elseif (! preg_match('#^https?://#i', $url)) {
-                    $request->merge([$key => 'https://'.$url]);
-                } else {
-                    $request->merge([$key => $url]);
-                }
+            if (! $request->has($key)) {
+                continue;
             }
+            $url = trim((string) $request->input($key));
+            if ($url === '') {
+                $request->merge([$key => null]);
+
+                continue;
+            }
+            if (str_starts_with($url, '/')) {
+                $request->merge([$key => $url]);
+
+                continue;
+            }
+            if (! preg_match('#^https?://#i', $url)) {
+                $request->merge([$key => 'https://'.$url]);
+            } else {
+                $request->merge([$key => $url]);
+            }
+        }
+    }
+
+    protected function resolveStoneImageUrl(Request $request, ?string $existingUrl = null): ?string
+    {
+        $file = $request->file('image');
+        if ($file instanceof UploadedFile && $file->isValid()) {
+            return $this->storeStoneImage($file, $existingUrl);
+        }
+
+        if (! $request->exists('image_url')) {
+            return $existingUrl;
+        }
+
+        $url = trim((string) $request->input('image_url'));
+        if ($url === '') {
+            if ($existingUrl && $this->isLocalStoneImageUrl($existingUrl)) {
+                $this->deleteLocalStoneImageByUrl($existingUrl);
+            }
+
+            return null;
+        }
+
+        if ($existingUrl && $existingUrl !== $url && $this->isLocalStoneImageUrl($existingUrl)) {
+            $this->deleteLocalStoneImageByUrl($existingUrl);
+        }
+
+        return $url;
+    }
+
+    protected function storeStoneImage(UploadedFile $file, ?string $previousUrl = null): string
+    {
+        Storage::disk('public')->makeDirectory('paving-stones');
+
+        $path = $file->store('paving-stones', 'public');
+        if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
+            throw ValidationException::withMessages([
+                'image' => 'Could not save the stone image. Check that storage/app/public is writable.',
+            ]);
+        }
+
+        app(ProjectPhotoWebpStorage::class)->syncPublicMirror($path);
+
+        if ($previousUrl && $this->isLocalStoneImageUrl($previousUrl)) {
+            $this->deleteLocalStoneImageByUrl($previousUrl);
+        }
+
+        return Storage::disk('public')->url($path);
+    }
+
+    protected function isLocalStoneImageUrl(?string $url): bool
+    {
+        if (! filled($url)) {
+            return false;
+        }
+
+        return str_contains($url, '/storage/paving-stones/');
+    }
+
+    protected function deleteLocalStoneImageByUrl(?string $url): void
+    {
+        if (! $this->isLocalStoneImageUrl($url)) {
+            return;
+        }
+
+        $path = parse_url((string) $url, PHP_URL_PATH);
+        if (! is_string($path) || $path === '') {
+            return;
+        }
+
+        $relative = ltrim(str_replace('/storage/', '', $path), '/');
+        if ($relative === '') {
+            return;
+        }
+
+        Storage::disk('public')->delete($relative);
+
+        $mirror = public_path('storage/'.str_replace('\\', '/', $relative));
+        if (is_file($mirror)) {
+            @unlink($mirror);
         }
     }
 
@@ -183,10 +282,10 @@ class PavingDatabaseController extends Controller
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function stonePayloadFromValidated(array $data): array
+    protected function stonePayloadFromValidated(array $data, ?string $imageUrlOverride = null): array
     {
         $url = trim((string) ($data['product_url'] ?? ''));
-        $imgUrl = trim((string) ($data['image_url'] ?? ''));
+        $imgUrl = $imageUrlOverride ?? trim((string) ($data['image_url'] ?? ''));
         $length = isset($data['length_in']) && $data['length_in'] !== '' ? (float) $data['length_in'] : null;
         $width = isset($data['width_in']) && $data['width_in'] !== '' ? (float) $data['width_in'] : null;
         $height = isset($data['height_in']) && $data['height_in'] !== '' ? (float) $data['height_in'] : null;

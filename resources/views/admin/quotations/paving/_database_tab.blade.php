@@ -14,31 +14,28 @@
   <div id="pq-db-panel-stones" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-stones">
     <div class="admin-card">
       <h4 class="cp-form-help-spaced">Stone types</h4>
-      <p class="admin-form-help">Used by the main and marble stone dropdowns. Length × width (in) ÷ 144 = sq ft per stone — use the fill button or enter sq ft manually.</p>
+      <p class="admin-form-help">Used by the paving stone dropdowns. Enter length × width (in), click <strong>Fill</strong> (or tab out of width) to compute sq ft per stone, or enter sq ft manually. Provide either <strong>Price/sq ft</strong> or both <strong>Sq ft/stone</strong> and <strong>$/stone</strong>.</p>
       <div class="admin-table-scroll">
         <div class="pq-db-stone-list" style="margin-top:12px;">
           @foreach ($stoneTypes as $st)
             <div class="pq-db-stone-card">
-              <form method="post" action="{{ route('admin.quotations.paving.database.stones.update', $st) }}" class="pq-db-stone-form">
+              <form method="post" action="{{ route('admin.quotations.paving.database.stones.update', $st) }}" class="pq-db-stone-form pq-db-stone-editor" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 
                 <div class="pq-db-stone-card-header">
-                  <div class="pq-db-stone-thumb-wrap">
+                  <div class="pq-db-stone-thumb-wrap pq-db-stone-preview">
                     @if (filled($st->image_url))
-                      <img src="{{ $st->image_url }}" alt="Stone preview">
+                      <img src="{{ $st->image_url }}" alt="Stone preview" class="pq-db-stone-preview-img">
                     @else
-                      <i class="fa fa-cubes" aria-hidden="true"></i>
+                      <i class="fa fa-cubes pq-db-stone-preview-placeholder" aria-hidden="true"></i>
                     @endif
                   </div>
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Name</span>
                     <input class="admin-input" type="text" name="name" value="{{ $st->name }}" required maxlength="120" aria-label="Stone name">
                   </div>
-                  <div class="pq-db-field-group">
-                    <span class="pq-db-field-label">Image URL</span>
-                    <input class="admin-input" type="url" name="image_url" value="{{ $st->image_url }}" maxlength="500" placeholder="https://…" aria-label="Image URL">
-                  </div>
+                  @include('admin.quotations.paving._database_stone_image', ['imageUrl' => $st->image_url])
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Product link</span>
                     <div class="pq-db-stone-link-wrap">
@@ -124,26 +121,38 @@
         </div>
       </div>
       
-      <form method="post" action="{{ route('admin.quotations.paving.database.stones.store') }}" class="admin-card pq-db-add-stone" style="margin-top:24px;padding:16px;border:1px dashed #cbd5e1;background:#f8fafc;">
+      @php
+        $addStoneOpen = old('add_stone') === '1' || $errors->has('price_per_sq_ft') || $errors->has('image') || $errors->has('name');
+      @endphp
+      <form method="post" action="{{ route('admin.quotations.paving.database.stones.store') }}" id="pq-add-stone-form"
+            class="admin-card pq-db-add-stone pq-db-stone-editor{{ $addStoneOpen && $errors->any() ? ' pq-db-add-stone--error' : '' }}"
+            style="margin-top:24px;padding:16px;border:1px dashed #cbd5e1;background:#f8fafc;" enctype="multipart/form-data">
         @csrf
+        <input type="hidden" name="add_stone" value="1">
         <h5 class="cp-breakdown-intro" style="margin-bottom:16px;">Add new stone type</h5>
+        @error('price_per_sq_ft')
+          <p class="admin-form-error" style="margin-bottom:12px;">{{ $message }}</p>
+        @enderror
+        @error('image')
+          <p class="admin-form-error" style="margin-bottom:12px;">{{ $message }}</p>
+        @enderror
         
         <div class="pq-db-stone-card-header">
-          <div class="pq-db-stone-thumb-wrap">
-            <i class="fa fa-cubes" aria-hidden="true"></i>
+          <div class="pq-db-stone-thumb-wrap pq-db-stone-preview">
+            <img src="" alt="" class="pq-db-stone-preview-img" style="display:none;">
+            <i class="fa fa-cubes pq-db-stone-preview-placeholder" aria-hidden="true"></i>
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Name</span>
-            <input type="text" name="name" placeholder="Name" class="admin-input" required maxlength="120" aria-label="New stone name">
+            <input type="text" name="name" placeholder="Name" class="admin-input" required maxlength="120" aria-label="New stone name"
+                   value="{{ old('add_stone') === '1' ? old('name') : '' }}">
           </div>
-          <div class="pq-db-field-group">
-            <span class="pq-db-field-label">Image URL</span>
-            <input type="url" name="image_url" placeholder="https://…" class="admin-input" maxlength="500" aria-label="Image URL">
-          </div>
+          @include('admin.quotations.paving._database_stone_image', ['imageUrl' => old('add_stone') === '1' ? old('image_url') : ''])
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Product link</span>
             <div class="pq-db-stone-link-wrap">
-              <input type="url" name="product_url" placeholder="https://…" class="admin-input" maxlength="500" aria-label="Product link">
+              <input type="url" name="product_url" placeholder="https://…" class="admin-input" maxlength="500" aria-label="Product link"
+                     value="{{ old('add_stone') === '1' ? old('product_url') : '' }}">
             </div>
           </div>
           <div class="pq-db-stone-actions">
@@ -154,45 +163,54 @@
         <div class="pq-db-stone-card-body">
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Length (in)</span>
-            <input type="number" name="length_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-len" aria-label="Length in inches">
+            <input type="number" name="length_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-len" aria-label="Length in inches"
+                   value="{{ old('add_stone') === '1' ? old('length_in') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Width (in)</span>
-            <input type="number" name="width_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-wid" aria-label="Width in inches">
+            <input type="number" name="width_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-wid" aria-label="Width in inches"
+                   value="{{ old('add_stone') === '1' ? old('width_in') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Height (in)</span>
-            <input type="number" name="height_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-hgt" aria-label="Height in inches">
+            <input type="number" name="height_in" placeholder="—" step="0.01" min="0.01" max="999" class="admin-input pq-db-stone-hgt" aria-label="Height in inches"
+                   value="{{ old('add_stone') === '1' ? old('height_in') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Sq ft / stone</span>
             <div class="pq-db-stone-sq-wrap">
-              <input type="number" name="sq_ft_per_stone" placeholder="—" step="0.0001" min="0.0001" class="admin-input pq-db-stone-sq" aria-label="Sq ft per stone">
+              <input type="number" name="sq_ft_per_stone" placeholder="—" step="0.0001" min="0.0001" class="admin-input pq-db-stone-sq" aria-label="Sq ft per stone"
+                     value="{{ old('add_stone') === '1' ? old('sq_ft_per_stone') : '' }}">
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--xs pq-db-stone-fill-sq" title="Fill sq ft from length × width ÷ 144">Fill</button>
             </div>
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">$/stone (CAD)</span>
-            <input type="text" name="price_per_stone" placeholder="—" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD">
+            <input type="text" name="price_per_stone" placeholder="—" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD"
+                   value="{{ old('add_stone') === '1' ? old('price_per_stone') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Price/sq ft</span>
-            <input type="text" name="price_per_sq_ft" placeholder="Auto" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD">
+            <input type="text" name="price_per_sq_ft" placeholder="Auto" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD"
+                   value="{{ old('add_stone') === '1' ? old('price_per_sq_ft') : '' }}">
           </div>
         </div>
 
         <div class="pq-db-stone-card-footer" style="background:transparent;padding:0;border:none;">
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Delivery Cost (CAD)</span>
-            <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost">
+            <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost"
+                   value="{{ old('add_stone') === '1' ? old('delivery_cost') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Additional Cost (CAD)</span>
-            <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost">
+            <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost"
+                   value="{{ old('add_stone') === '1' ? old('additional_cost') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Additional Cost Description</span>
-            <input type="text" name="additional_cost_description" class="admin-input" placeholder="e.g. Pallet deposit" maxlength="255" aria-label="Additional cost description">
+            <input type="text" name="additional_cost_description" class="admin-input" placeholder="e.g. Pallet deposit" maxlength="255" aria-label="Additional cost description"
+                   value="{{ old('add_stone') === '1' ? old('additional_cost_description') : '' }}">
           </div>
         </div>
       </form>
@@ -314,8 +332,12 @@
       return Math.round((len * wid / 144) * 10000) / 10000;
     }
 
+    function stoneEditorRoot(el) {
+      return el && el.closest ? el.closest('.pq-db-stone-editor') : null;
+    }
+
     function fillSqFtFromRow(row) {
-      if (!row) return;
+      if (!row) return false;
       var lenInput = row.querySelector('.pq-db-stone-len');
       var widInput = row.querySelector('.pq-db-stone-wid');
       var sqInput = row.querySelector('.pq-db-stone-sq');
@@ -323,7 +345,9 @@
       if (sq !== null && sqInput) {
         sqInput.value = String(sq);
         sqInput.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
       }
+      return false;
     }
 
     function autoCalcPriceSqFt(row) {
@@ -346,17 +370,74 @@
 
     document.querySelectorAll('.pq-db-stone-fill-sq').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var row = btn.closest('.pq-db-stone-grid');
-        fillSqFtFromRow(row);
-        autoCalcPriceSqFt(row);
+        var row = stoneEditorRoot(btn);
+        if (!fillSqFtFromRow(row)) {
+          btn.title = 'Enter length and width (in) first';
+          btn.classList.add('pq-db-fill-missed');
+          setTimeout(function () { btn.classList.remove('pq-db-fill-missed'); }, 1200);
+        } else {
+          autoCalcPriceSqFt(row);
+        }
+      });
+    });
+
+    document.querySelectorAll('.pq-db-stone-len, .pq-db-stone-wid').forEach(function (input) {
+      input.addEventListener('blur', function () {
+        var row = stoneEditorRoot(input);
+        if (row && row.querySelector('.pq-db-stone-sq') && !row.querySelector('.pq-db-stone-sq').value) {
+          fillSqFtFromRow(row);
+          autoCalcPriceSqFt(row);
+        }
       });
     });
 
     document.querySelectorAll('.pq-db-stone-sq, .pq-db-stone-price').forEach(function (input) {
       input.addEventListener('input', function () {
-        autoCalcPriceSqFt(input.closest('.pq-db-stone-grid'));
+        autoCalcPriceSqFt(stoneEditorRoot(input));
       });
     });
+
+    function syncStonePreview(editor) {
+      if (!editor) return;
+      var wrap = editor.querySelector('.pq-db-stone-preview');
+      if (!wrap) return;
+      var img = wrap.querySelector('.pq-db-stone-preview-img');
+      var placeholder = wrap.querySelector('.pq-db-stone-preview-placeholder');
+      var urlInput = editor.querySelector('.pq-db-stone-image-url');
+      var fileInput = editor.querySelector('.pq-db-stone-image-file');
+      var src = urlInput ? (urlInput.value || '').trim() : '';
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        src = URL.createObjectURL(fileInput.files[0]);
+      }
+      if (src && img) {
+        img.src = src;
+        img.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+      } else if (img) {
+        img.style.display = 'none';
+        img.removeAttribute('src');
+        if (placeholder) placeholder.style.display = 'block';
+      }
+    }
+
+    document.querySelectorAll('.pq-db-stone-editor').forEach(function (editor) {
+      var urlInput = editor.querySelector('.pq-db-stone-image-url');
+      var fileInput = editor.querySelector('.pq-db-stone-image-file');
+      if (urlInput) {
+        urlInput.addEventListener('input', function () { syncStonePreview(editor); });
+        urlInput.addEventListener('change', function () { syncStonePreview(editor); });
+      }
+      if (fileInput) {
+        fileInput.addEventListener('change', function () { syncStonePreview(editor); });
+      }
+      syncStonePreview(editor);
+    });
+
+    var addForm = document.getElementById('pq-add-stone-form');
+    if (addForm && (addForm.classList.contains('pq-db-add-stone--error') || (addForm.querySelector('[name="name"]') && addForm.querySelector('[name="name"]').value))) {
+      addForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showDbSubtab('stones');
+    }
 
     var tierBtn = document.getElementById('pq-tier-add-row');
     var tb = document.getElementById('pq-tier-rows');

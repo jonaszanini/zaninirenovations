@@ -133,6 +133,17 @@
     gap: 6px;
   }
   .pq-db-stone-sq-wrap .pq-db-stone-sq { flex: 1 1 auto; min-width: 0; }
+  .pq-db-image-upload-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin-top: 6px;
+  }
+  .pq-db-image-upload-label { cursor: pointer; margin: 0; }
+  .pq-db-image-upload-label input[type="file"] { display: none; }
+  .pq-db-image-upload-hint { font-size: 11px; color: var(--admin-muted); }
+  .pq-db-add-stone.pq-db-add-stone--error { border-color: #f87171; background: #fef2f2; }
   .pq-db-hidden-form { display: none; }
   @media (max-width: 860px) {
     .pq-db-stone-card-header { grid-template-columns: 1fr; }
