@@ -71,12 +71,14 @@
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">$/stone (CAD)</span>
                     <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
+                           data-cp-money-entry="direct"
                            value="{{ $st->price_per_stone !== null ? number_format((float) $st->price_per_stone, 2, '.', '') : '' }}"
                            class="admin-input cp-money-input pq-db-stone-price" placeholder="—" aria-label="Price per stone CAD">
                   </div>
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Price/sq ft</span>
                     <input type="text" name="price_per_sq_ft" inputmode="decimal" autocomplete="off"
+                           data-cp-money-entry="direct" data-cp-money-places="4"
                            value="{{ $st->price_per_sq_ft !== null ? number_format((float) $st->price_per_sq_ft, 4, '.', '') : '' }}"
                            class="admin-input cp-money-input pq-db-stone-price-sqft" placeholder="Auto" aria-label="Price per sq ft CAD">
                   </div>
@@ -172,12 +174,16 @@
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">$/stone (CAD)</span>
-            <input type="text" name="price_per_stone" placeholder="—" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD"
+            <input type="text" name="price_per_stone" placeholder="—" inputmode="decimal" autocomplete="off"
+                   data-cp-money-entry="direct"
+                   class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD"
                    value="{{ old('add_stone') === '1' ? old('price_per_stone') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Price/sq ft</span>
-            <input type="text" name="price_per_sq_ft" placeholder="Auto" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD"
+            <input type="text" name="price_per_sq_ft" placeholder="Auto" inputmode="decimal" autocomplete="off"
+                   data-cp-money-entry="direct" data-cp-money-places="4"
+                   class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD"
                    value="{{ old('add_stone') === '1' ? old('price_per_sq_ft') : '' }}">
           </div>
         </div>
@@ -339,23 +345,38 @@
       return false;
     }
 
+    function parseMoneyInput(input) {
+      if (!input) return NaN;
+      var raw = (input.value || '').trim();
+      if (!raw) return NaN;
+      if (window.cpMoneyMask) {
+        var parsed = window.cpMoneyMask.parse(raw);
+        return isFinite(parsed) ? parsed : NaN;
+      }
+      var n = parseFloat(raw.replace(/,/g, ''));
+      return isFinite(n) ? n : NaN;
+    }
+
     function autoCalcPriceSqFt(row) {
       if (!row) return;
       var sqInput = row.querySelector('.pq-db-stone-sq');
       var priceInput = row.querySelector('.pq-db-stone-price');
       var priceSqFtInput = row.querySelector('.pq-db-stone-price-sqft');
-      
+
       if (!sqInput || !priceInput || !priceSqFtInput) return;
-      
+
       var sq = parseFloat(sqInput.value);
-      var price = parseFloat(priceInput.value.replace(/,/g, ''));
-      
-      if (isFinite(sq) && sq > 0 && isFinite(price)) {
+      var price = parseMoneyInput(priceInput);
+
+      if (isFinite(sq) && sq > 0 && isFinite(price) && price >= 0) {
         var calc = price / sq;
         priceSqFtInput.value = (Math.round(calc * 10000) / 10000).toFixed(4);
-        if (window.cpMoneyMask) window.cpMoneyMask.wire(priceSqFtInput);
       }
     }
+
+    document.querySelectorAll('.pq-db-stone-editor').forEach(function (editor) {
+      autoCalcPriceSqFt(editor);
+    });
 
     document.querySelectorAll('.pq-db-stone-fill-sq').forEach(function (btn) {
       btn.addEventListener('click', function () {

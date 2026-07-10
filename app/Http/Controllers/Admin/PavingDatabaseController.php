@@ -292,9 +292,9 @@ class PavingDatabaseController extends Controller
 
         $sqFt = isset($data['sq_ft_per_stone']) && $data['sq_ft_per_stone'] !== '' ? (float) $data['sq_ft_per_stone'] : null;
         $price = isset($data['price_per_stone']) && $data['price_per_stone'] !== '' ? (float) $data['price_per_stone'] : null;
-        
+
         $pricePerSqFt = isset($data['price_per_sq_ft']) && $data['price_per_sq_ft'] !== '' ? (float) $data['price_per_sq_ft'] : null;
-        if ($pricePerSqFt === null && $sqFt > 0 && $price !== null) {
+        if ($sqFt > 0 && $price !== null) {
             $pricePerSqFt = round($price / $sqFt, 4);
         }
 

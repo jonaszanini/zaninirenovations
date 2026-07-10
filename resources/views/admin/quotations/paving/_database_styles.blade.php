@@ -228,6 +228,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .pq-db-stone-price-sqft:not(:placeholder-shown) {
+    background: #f8fafc;
+  }
   .pq-db-add-stone.pq-db-add-stone--error { border-color: #f87171; background: #fef2f2; }
   .pq-db-add-stone-actions {
     display: flex;
