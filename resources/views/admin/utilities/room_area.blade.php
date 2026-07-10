@@ -214,6 +214,18 @@
             </div>
           </div>
 
+          <div class="util-ra-tool-group util-ra-tool-group--units">
+            <span class="util-ra-tool-group__label">Units</span>
+            <div class="util-ra-tool-group__actions">
+              <select class="admin-input util-ra-measure-unit" data-ra-measure-unit aria-label="Measurement units">
+                <option value="meter">Meter</option>
+                <option value="inch">Inch</option>
+                <option value="feet_decimal">Feet Decimal</option>
+                <option value="feet_inch_frac" selected>Feet Inch Frac</option>
+              </select>
+            </div>
+          </div>
+
           <div class="util-ra-tool-group util-ra-tool-group--zoom">
             <span class="util-ra-tool-group__label">Zoom</span>
             <div class="util-ra-tool-group__actions util-ra-zoom-controls">

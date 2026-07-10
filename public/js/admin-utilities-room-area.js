@@ -9,6 +9,14 @@
 
   var INCHES_PER_FOOT = 12;
   var SQFT_TO_SQM = 0.092903;
+  var FEET_TO_METERS = 0.3048;
+  var MEASURE_UNIT_STORAGE_KEY = 'room-area-measure-unit';
+  var MEASURE_UNITS = {
+    meter: 'meter',
+    inch: 'inch',
+    feet_decimal: 'feet_decimal',
+    feet_inch_frac: 'feet_inch_frac'
+  };
   var MIN_CANVAS_W = 400;
   var MIN_CANVAS_H = 520;
   var MAX_CANVAS_H = 1100;
@@ -101,7 +109,8 @@
     zoomOut: root.querySelector('[data-ra-zoom-out]'),
     zoom100: root.querySelector('[data-ra-zoom-100]'),
     zoomReset: root.querySelector('[data-ra-zoom-reset]'),
-    zoomLabel: root.querySelector('[data-ra-zoom-label]')
+    zoomLabel: root.querySelector('[data-ra-zoom-label]'),
+    measureUnit: root.querySelector('[data-ra-measure-unit]')
   };
 
   var state = {
@@ -162,6 +171,7 @@
     editingRoomId: null,
     editorToken: 0,
     savedSnapshot: null,
+    measureUnit: MEASURE_UNITS.feet_inch_frac,
     viewportW: 900,
     viewportH: 640,
     canvasW: 5400,
@@ -932,7 +942,7 @@
   function rulerLengthLabel(ruler) {
     var feet = rulerLengthFeet(ruler);
     if (feet === null) return 'Scale not set';
-    return fmtFeetInches(feet);
+    return fmtLengthFromFeet(feet);
   }
 
   function findRulerAtPoint(pos) {
@@ -986,6 +996,12 @@
     s = s.replace(/\s+/g, ' ').trim();
 
     var m;
+    if ((m = s.match(/^([\d.]+)\s*['′]\s*([\d.]+)\s+(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
+      return parseFloat(m[1]) + (parseFloat(m[2]) + parseFloat(m[3]) / parseFloat(m[4])) / INCHES_PER_FOOT;
+    }
+    if ((m = s.match(/^([\d.]+)\s*['′]\s*(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
+      return parseFloat(m[1]) + (parseFloat(m[2]) / parseFloat(m[3])) / INCHES_PER_FOOT;
+    }
     if ((m = s.match(/^([\d.]+)\s*['′]\s*([\d.]+)\s*["″]?$/))) {
       return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
     }
@@ -1015,6 +1031,157 @@
 
   function fmt(n, d) {
     return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d).replace(/\.?0+$/, '');
+  }
+
+  function loadMeasureUnit() {
+    try {
+      var saved = localStorage.getItem(MEASURE_UNIT_STORAGE_KEY);
+      if (saved && MEASURE_UNITS[saved]) return saved;
+    } catch (e) { /* ignore */ }
+    return MEASURE_UNITS.feet_inch_frac;
+  }
+
+  function reduceFraction(num, den) {
+    function gcd(a, b) { return b ? gcd(b, a % b) : Math.abs(a); }
+    var g = gcd(num, den);
+    return { num: num / g, den: den / g };
+  }
+
+  function formatSixteenthInches(sixteenths) {
+    if (!sixteenths) return '';
+    var parts = reduceFraction(sixteenths, 16);
+    if (parts.num === parts.den) return '1';
+    return parts.num + '/' + parts.den;
+  }
+
+  function fmtFeetInchesFrac(lenFt) {
+    var totalInches = lenFt * INCHES_PER_FOOT;
+    var rounded = Math.round(totalInches * 16) / 16;
+    if (rounded < 1 / 16) return '0"';
+    var feet = Math.floor(rounded / 12);
+    var rem = rounded - feet * 12;
+    var whole = Math.floor(rem);
+    var frac = Math.round((rem - whole) * 16);
+    if (frac === 16) { whole += 1; frac = 0; }
+    if (whole === 12) { feet += 1; whole = 0; }
+    var fracStr = formatSixteenthInches(frac);
+
+    if (feet === 0) {
+      if (fracStr === '') return whole + '"';
+      if (whole === 0) return fracStr + '"';
+      return whole + ' ' + fracStr + '"';
+    }
+    if (whole === 0 && fracStr === '') return feet + "'";
+    if (whole === 0) return feet + "' " + fracStr + '"';
+    if (fracStr === '') return feet + "' " + whole + '"';
+    return feet + "' " + whole + ' ' + fracStr + '"';
+  }
+
+  function fmtFeetDecimal(lenFt) {
+    return fmt(Math.round(lenFt * 1000) / 1000, 3) + ' ft';
+  }
+
+  function fmtInchesOnly(lenFt) {
+    var inches = lenFt * INCHES_PER_FOOT;
+    var decimals = inches >= 100 ? 1 : 2;
+    return fmt(inches, decimals) + '"';
+  }
+
+  function fmtMeters(lenFt) {
+    var meters = lenFt * FEET_TO_METERS;
+    var decimals = meters >= 10 ? 2 : 3;
+    return fmt(meters, decimals) + ' m';
+  }
+
+  function fmtLengthFromFeet(lenFt) {
+    if (lenFt == null || !isFinite(lenFt)) return '—';
+    switch (state.measureUnit) {
+      case MEASURE_UNITS.meter:
+        return fmtMeters(lenFt);
+      case MEASURE_UNITS.inch:
+        return fmtInchesOnly(lenFt);
+      case MEASURE_UNITS.feet_decimal:
+        return fmtFeetDecimal(lenFt);
+      case MEASURE_UNITS.feet_inch_frac:
+      default:
+        return fmtFeetInchesFrac(lenFt);
+    }
+  }
+
+  function measureUnitPlaceholder() {
+    switch (state.measureUnit) {
+      case MEASURE_UNITS.meter:
+        return 'e.g. 3.5 m';
+      case MEASURE_UNITS.inch:
+        return 'e.g. 150"';
+      case MEASURE_UNITS.feet_decimal:
+        return 'e.g. 12.5 ft';
+      default:
+        return 'e.g. 12\' 6 1/2"';
+    }
+  }
+
+  function updateMeasureUnitPlaceholders() {
+    if (els.wallLength) els.wallLength.placeholder = measureUnitPlaceholder();
+  }
+
+  function setMeasureUnit(unit) {
+    if (!MEASURE_UNITS[unit]) return;
+    state.measureUnit = unit;
+    try { localStorage.setItem(MEASURE_UNIT_STORAGE_KEY, unit); } catch (e) { /* ignore */ }
+    if (els.measureUnit) els.measureUnit.value = unit;
+    updateMeasureUnitPlaceholders();
+    redrawLabels();
+    redrawRulers();
+    refreshWallLengthInput();
+    if (state.selectedRulerId !== null && els.rulerLength) {
+      var ruler = findRulerById(state.selectedRulerId);
+      if (ruler) els.rulerLength.textContent = rulerLengthLabel(ruler);
+    }
+  }
+
+  function refreshWallLengthInput() {
+    if (state.selectedWallIndex === null || !els.wallLength || !pixelsPerFoot()) return;
+    var lenFt = wallLengthFeet(state.selectedWallIndex);
+    if (lenFt !== null) els.wallLength.value = fmtLengthFromFeet(lenFt);
+  }
+
+  function parseMetersInput(raw) {
+    var s = String(raw).trim().replace(/\s*m(eters?)?\s*$/i, '').trim();
+    if (!s) throw new Error('Enter a length in meters.');
+    var n = parseFloat(s.replace(/,/g, ''));
+    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
+    return n / FEET_TO_METERS;
+  }
+
+  function parseInchesOnlyInput(raw) {
+    var s = String(raw).trim();
+    s = s.replace(/["″]\s*$/, '').replace(/\s*in(ch(es)?)?\s*$/i, '').trim();
+    if (!s) throw new Error('Enter a length in inches.');
+    var n = parseFloat(s.replace(/,/g, ''));
+    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
+    return n / INCHES_PER_FOOT;
+  }
+
+  function parseFeetDecimalInput(raw) {
+    var s = String(raw).trim().replace(/\s*(ft|feet|foot)\s*$/i, '').trim();
+    if (!s) throw new Error('Enter a length in feet.');
+    var n = parseFloat(s.replace(/,/g, ''));
+    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
+    return n;
+  }
+
+  function parseLengthInput(raw) {
+    switch (state.measureUnit) {
+      case MEASURE_UNITS.meter:
+        return parseMetersInput(raw);
+      case MEASURE_UNITS.inch:
+        return parseInchesOnlyInput(raw);
+      case MEASURE_UNITS.feet_decimal:
+        return parseFeetDecimalInput(raw);
+      default:
+        return parseFeetInput(raw);
+    }
   }
 
   function shoelaceArea(vertices) {
@@ -1276,11 +1443,7 @@
   }
 
   function fmtFeetInches(lenFt) {
-    var feet = Math.floor(lenFt);
-    var inches = Math.round((lenFt - feet) * INCHES_PER_FOOT);
-    if (inches === 12) { feet += 1; inches = 0; }
-    if (inches === 0) return String(feet) + "'";
-    return feet + "' " + inches + '"';
+    return fmtLengthFromFeet(lenFt);
   }
 
   function wallCount() {
@@ -1957,7 +2120,7 @@
 
     var newFeet;
     try {
-      newFeet = parseFeetInput(els.wallLength.value);
+      newFeet = parseLengthInput(els.wallLength.value);
     } catch (e) {
       setFeedback(e.message, true);
       return;
@@ -1980,7 +2143,7 @@
     }
 
     redrawAll();
-    els.wallLength.value = fmtFeetInches(newFeet);
+    els.wallLength.value = fmtLengthFromFeet(newFeet);
     setFeedback('Wall length updated.', false);
   }
 
@@ -3063,7 +3226,7 @@
       var midX = (a.x + b.x) / 2;
       var midY = (a.y + b.y) / 2;
       var lenFt = dist(a, b) / ppf;
-      var lenLabel = fmtFeetInches(lenFt);
+      var lenLabel = fmtLengthFromFeet(lenFt);
       var isSelected = state.selectedWallIndex === i;
       (function (wallIndex) {
         var kLabel = new Konva.Label({
@@ -4579,6 +4742,12 @@
     if (els.zoom100) els.zoom100.addEventListener('click', resetViewport);
     if (els.zoomReset) els.zoomReset.addEventListener('click', fitViewport);
 
+    if (els.measureUnit) {
+      els.measureUnit.addEventListener('change', function () {
+        setMeasureUnit(els.measureUnit.value);
+      });
+    }
+
     window.addEventListener('resize', scheduleStageResize);
 
     window.addEventListener('beforeunload', function (e) {
@@ -4590,6 +4759,9 @@
 
   function init() {
     state.projects = parseJson('data-projects', []);
+    state.measureUnit = loadMeasureUnit();
+    if (els.measureUnit) els.measureUnit.value = state.measureUnit;
+    updateMeasureUnitPlaceholders();
     bindEvents();
     bindViewportEvents();
     refreshProjectSelect();

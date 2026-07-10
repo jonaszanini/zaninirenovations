@@ -2506,6 +2506,19 @@
   min-width: 4rem;
 }
 
+.util-ra-measure-unit {
+  min-width: 8.5rem;
+  max-width: 10.5rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+.util-ra-tool-group--units .util-ra-tool-group__actions {
+  align-items: center;
+}
+
 .util-ra-canvas-wrap.is-bg-move {
   cursor: grab;
 }
