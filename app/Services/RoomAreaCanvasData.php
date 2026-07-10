@@ -133,9 +133,40 @@ class RoomAreaCanvasData
             return $this->emptyCanvas();
         }
 
-        return [
+        $canvas = [
             'v' => 2,
             'groups' => $groups,
+        ];
+
+        $background = $this->normalizeBackground($input['background'] ?? null);
+        if ($background !== null) {
+            $canvas['background'] = $background;
+        }
+
+        return $canvas;
+    }
+
+    /**
+     * @param  array<mixed>|null  $background
+     * @return array{x: float, y: float, width: float, height: float}|null
+     */
+    private function normalizeBackground(?array $background): ?array
+    {
+        if ($background === null || ! isset($background['x'], $background['y'], $background['width'], $background['height'])) {
+            return null;
+        }
+
+        $width = (float) $background['width'];
+        $height = (float) $background['height'];
+        if ($width <= 0 || $height <= 0) {
+            return null;
+        }
+
+        return [
+            'x' => round((float) $background['x'], 3),
+            'y' => round((float) $background['y'], 3),
+            'width' => round($width, 3),
+            'height' => round($height, 3),
         ];
     }
 

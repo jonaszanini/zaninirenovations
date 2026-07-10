@@ -204,6 +204,9 @@
                   <span class="admin-checkbox__mark" aria-hidden="true"></span>
                   <span class="admin-checkbox__text">Show image</span>
                 </label>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-bg-move hidden title="Drag the floor plan to reposition it">
+                  <i class="fa fa-arrows"></i> Move image
+                </button>
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-bg-delete-canvas hidden title="Remove floor plan image from canvas">
                   <i class="fa fa-trash"></i> Delete image
                 </button>

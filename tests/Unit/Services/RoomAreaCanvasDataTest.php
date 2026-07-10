@@ -119,6 +119,39 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertStringContainsString('At least one closed area', $result['message']);
     }
 
+    public function test_normalizes_v2_background_layout(): void
+    {
+        $raw = [
+            'v' => 2,
+            'groups' => [
+                [
+                    'id' => 'g1',
+                    'color' => '#024768',
+                    'polygons' => [
+                        ['id' => 'p1', 'vertices' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 10, 'y' => 0],
+                            ['x' => 10, 'y' => 10],
+                        ]],
+                    ],
+                ],
+            ],
+            'background' => [
+                'x' => 12.5,
+                'y' => 40,
+                'width' => 800,
+                'height' => 600,
+            ],
+        ];
+
+        $canvas = $this->service->normalize($raw);
+
+        $this->assertSame(12.5, $canvas['background']['x']);
+        $this->assertSame(40.0, $canvas['background']['y']);
+        $this->assertSame(800.0, $canvas['background']['width']);
+        $this->assertSame(600.0, $canvas['background']['height']);
+    }
+
     public function test_rejects_self_intersecting_polygon_in_canvas(): void
     {
         $canvas = [

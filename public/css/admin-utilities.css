@@ -2506,6 +2506,20 @@
   min-width: 4rem;
 }
 
+.util-ra-canvas-wrap.is-bg-move {
+  cursor: grab;
+}
+
+.util-ra-canvas-wrap.is-bg-move.is-bg-dragging {
+  cursor: grabbing;
+}
+
+[data-ra-bg-move].is-active {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+
 .util-ra-canvas-wrap.is-ruler-edit {
   outline: 2px solid rgba(106, 27, 154, 0.35);
   outline-offset: -2px;

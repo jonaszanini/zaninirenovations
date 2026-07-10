@@ -55,6 +55,7 @@
     bgDeleteCanvas: root.querySelector('[data-ra-bg-delete-canvas]'),
     bgShowWrap: root.querySelector('[data-ra-bg-show-wrap]'),
     bgShowImage: root.querySelector('[data-ra-bg-show]'),
+    bgMoveToggle: root.querySelector('[data-ra-bg-move]'),
     undoVertex: root.querySelector('[data-ra-undo-vertex]'),
     closeShape: root.querySelector('[data-ra-close-shape]'),
     addArea: root.querySelector('[data-ra-add-area]'),
@@ -121,6 +122,9 @@
     draftRulers: [],
     activeBackgroundUrl: null,
     bgImageVisible: true,
+    bgLayout: null,
+    bgMoveMode: false,
+    draggingBg: false,
     draftBackground: null,
     draftScale: null,
     stage: null,
@@ -445,7 +449,75 @@
         });
       }
     });
-    return { v: 2, groups: groups };
+    var payload = { v: 2, groups: groups };
+    var bg = captureBackgroundLayoutForSave();
+    if (bg) payload.background = bg;
+    return payload;
+  }
+
+  function captureBackgroundLayoutForSave() {
+    syncBackgroundLayoutFromKonva();
+    if (!state.bgLayout) return null;
+    return {
+      x: Math.round(state.bgLayout.x * 1000) / 1000,
+      y: Math.round(state.bgLayout.y * 1000) / 1000,
+      width: Math.round(state.bgLayout.width * 1000) / 1000,
+      height: Math.round(state.bgLayout.height * 1000) / 1000
+    };
+  }
+
+  function syncBackgroundLayoutFromKonva() {
+    if (!state.bgImage) return;
+    state.bgLayout = {
+      x: state.bgImage.x(),
+      y: state.bgImage.y(),
+      width: state.bgImage.width(),
+      height: state.bgImage.height()
+    };
+  }
+
+  function applyBackgroundLayoutToKonva() {
+    if (!state.bgImage || !state.bgLayout) return;
+    state.bgImage.position({ x: state.bgLayout.x, y: state.bgLayout.y });
+    state.bgImage.width(state.bgLayout.width);
+    state.bgImage.height(state.bgLayout.height);
+    flushKonva();
+  }
+
+  function hydrateBackgroundLayout(bg, scaleFromW, scaleFromH, scaleToW, scaleToH) {
+    if (!bg || bg.x == null || bg.y == null || !bg.width || !bg.height) {
+      state.bgLayout = null;
+      return;
+    }
+    if (!scaleFromW || !scaleFromH || scaleFromW < 1 || scaleFromH < 1) {
+      state.bgLayout = {
+        x: parseFloat(bg.x),
+        y: parseFloat(bg.y),
+        width: parseFloat(bg.width),
+        height: parseFloat(bg.height)
+      };
+      return;
+    }
+    var sx = scaleToW / scaleFromW;
+    var sy = scaleToH / scaleFromH;
+    state.bgLayout = {
+      x: parseFloat(bg.x) * sx,
+      y: parseFloat(bg.y) * sy,
+      width: parseFloat(bg.width) * sx,
+      height: parseFloat(bg.height) * sy
+    };
+  }
+
+  function scaleBgLayoutState(fromW, fromH, toW, toH) {
+    if (!state.bgLayout || !fromW || !fromH || fromW < 1 || fromH < 1) return;
+    var sx = toW / fromW;
+    var sy = toH / fromH;
+    state.bgLayout = {
+      x: state.bgLayout.x * sx,
+      y: state.bgLayout.y * sy,
+      width: state.bgLayout.width * sx,
+      height: state.bgLayout.height * sy
+    };
   }
 
   function normalizeCanvasInput(raw) {
@@ -460,7 +532,11 @@
         }]
       };
     }
-    if (raw.v === 2 && Array.isArray(raw.groups)) return raw;
+    if (raw.v === 2 && Array.isArray(raw.groups)) {
+      var out = { v: 2, groups: raw.groups };
+      if (raw.background) out.background = raw.background;
+      return out;
+    }
     return { v: 2, groups: [] };
   }
 
@@ -505,6 +581,11 @@
       state.activePolygonId = first.polygon.id;
     } else {
       ensureInitialCanvas();
+    }
+    if (data.background) {
+      hydrateBackgroundLayout(data.background, scaleFromW, scaleFromH, scaleToW, scaleToH);
+    } else {
+      state.bgLayout = null;
     }
   }
 
@@ -737,7 +818,15 @@
           p1: normalizeVertices([r.p1])[0],
           p2: normalizeVertices([r.p2])[0]
         };
-      })
+      }),
+      bgLayout: state.bgLayout
+        ? {
+          x: Math.round(state.bgLayout.x * 1000) / 1000,
+          y: Math.round(state.bgLayout.y * 1000) / 1000,
+          width: Math.round(state.bgLayout.width * 1000) / 1000,
+          height: Math.round(state.bgLayout.height * 1000) / 1000
+        }
+        : null
     };
   }
 
@@ -1769,6 +1858,7 @@
     }
 
     if (state.calibrating) stopCalibrationMode();
+    stopBgMoveMode();
     clearRulerSelection();
     clearWallSelection();
     state.rulerMode = true;
@@ -1950,6 +2040,8 @@
     state.draftScale = null;
     state.draftRulers = [];
     revokeDraftBackground();
+    state.bgLayout = null;
+    stopBgMoveMode();
     resetCalibrationUI();
     clearWallSelection();
     clearVertexSelection();
@@ -1989,6 +2081,10 @@
       el.style.cursor = wallDragCursorFor(state.wallDragIndex);
     } else if (state.draggingRuler) {
       el.style.cursor = 'grabbing';
+    } else if (state.draggingBg) {
+      el.style.cursor = 'grabbing';
+    } else if (state.bgMoveMode) {
+      el.style.cursor = 'grab';
     } else {
       el.style.cursor = '';
     }
@@ -2291,6 +2387,7 @@
         state.calibPoints = scalePoints(state.calibPoints, oldContentW, oldContentH, contentW(), contentH());
       }
       scaleProjectRulers(oldContentW, oldContentH, contentW(), contentH());
+      scaleBgLayoutState(oldContentW, oldContentH, contentW(), contentH());
       if (Math.abs(factor - 1) > 0.0005) {
         scaleActivePixelsPerFoot(factor);
       }
@@ -2300,9 +2397,9 @@
     state.stage.height(state.viewportH);
     if (state.bgImage) {
       if (oldContentW > 0 && oldContentH > 0) {
-        scaleBackgroundLayout(oldContentW, oldContentH, contentW(), contentH());
+        applyBackgroundLayoutToKonva();
       } else {
-        layoutBackgroundImage();
+        layoutBackgroundImage(true);
       }
     }
     drawGrid();
@@ -2462,9 +2559,11 @@
     show(els.bgRemove, hasBg);
     show(els.bgDeleteCanvas, hasBg);
     show(els.bgShowWrap, hasBg);
+    show(els.bgMoveToggle, hasBg);
     if (els.bgShowImage) {
       els.bgShowImage.checked = state.bgImageVisible;
     }
+    if (!hasBg) stopBgMoveMode();
     applyBackgroundImageVisibility();
   }
 
@@ -2481,26 +2580,101 @@
     applyBackgroundImageVisibility();
   }
 
-  function layoutBackgroundImage() {
+  function layoutBackgroundImage(forceCenter) {
     if (!state.bgImage || !state.bgNaturalW || !state.bgNaturalH) return;
+    if (!forceCenter && state.bgLayout) {
+      applyBackgroundLayoutToKonva();
+      return;
+    }
     var cw = contentW();
     var ch = contentH();
     var scale = Math.min(cw / state.bgNaturalW, ch / state.bgNaturalH);
     var w = state.bgNaturalW * scale;
     var h = state.bgNaturalH * scale;
-    state.bgImage.position({ x: (cw - w) / 2, y: (ch - h) / 2 });
-    state.bgImage.width(w);
-    state.bgImage.height(h);
+    state.bgLayout = {
+      x: (cw - w) / 2,
+      y: (ch - h) / 2,
+      width: w,
+      height: h
+    };
+    applyBackgroundLayoutToKonva();
   }
 
   function scaleBackgroundLayout(fromW, fromH, toW, toH) {
-    if (!state.bgImage || !fromW || !fromH || fromW < 1 || fromH < 1) return;
-    var sx = toW / fromW;
-    var sy = toH / fromH;
-    state.bgImage.x(state.bgImage.x() * sx);
-    state.bgImage.y(state.bgImage.y() * sy);
-    state.bgImage.width(state.bgImage.width() * sx);
-    state.bgImage.height(state.bgImage.height() * sy);
+    scaleBgLayoutState(fromW, fromH, toW, toH);
+    applyBackgroundLayoutToKonva();
+  }
+
+  function bindBackgroundImageEvents(kImg) {
+    if (kImg._raBgBound) return;
+    kImg._raBgBound = true;
+    kImg.on('dragstart', function () {
+      if (!state.bgMoveMode) return;
+      state.draggingBg = true;
+      if (els.canvasWrap) els.canvasWrap.classList.add('is-bg-dragging');
+      updateCanvasCursor();
+    });
+    kImg.on('dragmove', function () {
+      if (!state.bgMoveMode) return;
+      var pos = clampBgPosition(kImg.x(), kImg.y(), kImg.width(), kImg.height());
+      kImg.position(pos);
+    });
+    kImg.on('dragend', function () {
+      if (!state.draggingBg) return;
+      state.draggingBg = false;
+      if (els.canvasWrap) els.canvasWrap.classList.remove('is-bg-dragging');
+      syncBackgroundLayoutFromKonva();
+      updateCanvasCursor();
+    });
+  }
+
+  function clampBgPosition(x, y, w, h) {
+    var margin = 40;
+    return {
+      x: Math.max(-w + margin, Math.min(canvasW() - margin, x)),
+      y: Math.max(-h + margin, Math.min(canvasH() - margin, y))
+    };
+  }
+
+  function updateBackgroundInteraction() {
+    if (!state.bgImage) return;
+    var canMove = state.bgMoveMode && !state.spaceHeld && !state.panning;
+    state.bgImage.draggable(canMove);
+    state.bgImage.listening(canMove);
+    flushKonva();
+  }
+
+  function stopBgMoveMode() {
+    state.bgMoveMode = false;
+    state.draggingBg = false;
+    if (els.bgMoveToggle) els.bgMoveToggle.classList.remove('is-active');
+    if (els.canvasWrap) {
+      els.canvasWrap.classList.remove('is-bg-move', 'is-bg-dragging');
+    }
+    updateBackgroundInteraction();
+    updateCanvasCursor();
+  }
+
+  function toggleBgMoveMode() {
+    if (!state.bgImage) return;
+    if (state.bgMoveMode) {
+      stopBgMoveMode();
+      setFeedback('Image move mode off.', false);
+      return;
+    }
+    stopRulerMode();
+    if (state.calibrating) {
+      state.calibrating = false;
+      state.calibPoints = [];
+      resetCalibrationUI();
+    }
+    clearWallSelection();
+    clearVertexSelection();
+    state.bgMoveMode = true;
+    if (els.bgMoveToggle) els.bgMoveToggle.classList.add('is-active');
+    if (els.canvasWrap) els.canvasWrap.classList.add('is-bg-move');
+    updateBackgroundInteraction();
+    setFeedback('Drag the floor plan to reposition it. Click Move image again when done.', false);
   }
 
   function ensureStage() {
@@ -2520,6 +2694,8 @@
     state.bgNaturalW = 0;
     state.bgNaturalH = 0;
     state.activeBackgroundUrl = null;
+    state.bgLayout = null;
+    stopBgMoveMode();
     if (!url) {
       flushKonva();
       syncBackgroundUI();
@@ -2546,7 +2722,13 @@
       });
       state.layers.bg.add(kImg);
       state.bgImage = kImg;
-      layoutBackgroundImage();
+      bindBackgroundImageEvents(kImg);
+      if (state.bgLayout) {
+        applyBackgroundLayoutToKonva();
+      } else {
+        layoutBackgroundImage(true);
+      }
+      updateBackgroundInteraction();
       applyBackgroundImageVisibility();
       syncBackgroundUI();
     };
@@ -2754,8 +2936,8 @@
           fill: isSelected ? '#f9a825' : (isFirst ? '#c62828' : groupColor),
           stroke: isSelected ? '#f57f17' : '#fff',
           strokeWidth: uiSize(isSelected ? 3 : 2),
-          draggable: !state.spaceHeld && !state.rulerMode,
-          listening: !state.spaceHeld && !state.rulerMode,
+          draggable: !state.spaceHeld && !state.rulerMode && !state.bgMoveMode,
+          listening: !state.spaceHeld && !state.rulerMode && !state.bgMoveMode,
           dragDistance: uiSize(3)
         });
         circle.on('mouseenter', function () {
@@ -3269,7 +3451,7 @@
   }
 
   function onStageClick(e) {
-    if (state.spaceHeld || state.panning) return;
+    if (state.spaceHeld || state.panning || state.bgMoveMode || state.draggingBg) return;
     var pos = getPointerPos();
     if (!pos) return;
     if (state.didPan) {
@@ -3468,6 +3650,8 @@
   function beginNewRoom() {
     resetDraftCanvas();
     revokeDraftBackground();
+    state.bgLayout = null;
+    stopBgMoveMode();
     state.draftScale = null;
     loadBackground(null);
     captureSavedSnapshot();
@@ -3617,6 +3801,7 @@
     }
 
     if (state.rulerMode) stopRulerMode();
+    stopBgMoveMode();
     clearRulerSelection();
 
     state.calibrating = true;
@@ -4192,6 +4377,7 @@
 
   function uploadBackground(file) {
     if (!file) return;
+    state.bgLayout = null;
 
     if (state.editingRoomId) {
       var room = activeRoom();
@@ -4383,6 +4569,7 @@
         setBackgroundImageVisible(els.bgShowImage.checked);
       });
     }
+    if (els.bgMoveToggle) els.bgMoveToggle.addEventListener('click', toggleBgMoveMode);
     els.copyTotal.addEventListener('click', function () {
       copyText(els.totalSqft.textContent);
     });
