@@ -125,10 +125,17 @@ class PavingQuotationController extends Controller
 
     public function preview(Request $request)
     {
-        $inputs = $this->gatherInputsFromRequest($request);
-        $calc = (new PavingQuotationCalculator)->calculate($inputs);
+        try {
+            $inputs = $this->gatherInputsFromRequest($request);
+            $calc = (new PavingQuotationCalculator)->calculate($inputs);
 
-        return response()->json($calc);
+            return response()->json($calc);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
+        }
     }
 
     /**
@@ -370,6 +377,7 @@ class PavingQuotationController extends Controller
     protected function gatherInputsFromRequest(Request $request): array
     {
         $this->normalizeCadMoneyStringsOnRequest($request);
+        $this->normalizeMarbleInputsOnRequest($request);
 
         $data = $request->validate([
             'stone_entries' => ['required', 'array', 'min:1', 'max:'.PavingStoneEntryResolver::MAX_ENTRIES],
@@ -391,7 +399,7 @@ class PavingQuotationController extends Controller
             'manual_price_override' => ['nullable', 'numeric', 'min:0'],
             'marble_enabled' => ['nullable'],
             'marble_type_id' => ['nullable', 'integer', 'exists:paving_marble_types,id'],
-            'marble_area_sq_ft' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
+            'marble_area_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'marble_depth_in' => ['nullable', 'numeric', 'min:0.5', 'max:12'],
             'marble_include_geotextile' => ['nullable'],
         ]);
@@ -506,9 +514,26 @@ class PavingQuotationController extends Controller
     }
 
     /**
-     * Strip thousands separators from CAD calculator inputs before validation.
-     * Preview uses fetch(FormData) without running submit handlers that strip commas.
+     * Clear marble fields when the bed is disabled so preview/save validation does not fail on empty defaults.
      */
+    protected function normalizeMarbleInputsOnRequest(Request $request): void
+    {
+        if ($request->input('marble_type_id') === '' || $request->input('marble_type_id') === null) {
+            $request->merge(['marble_type_id' => null]);
+        }
+
+        if ($request->boolean('marble_enabled')) {
+            return;
+        }
+
+        $request->merge([
+            'marble_type_id' => null,
+            'marble_area_sq_ft' => null,
+            'marble_depth_in' => 2,
+            'marble_include_geotextile' => true,
+        ]);
+    }
+
     protected function normalizeCadMoneyStringsOnRequest(Request $request): void
     {
         $moneyKeys = ['helper_hourly_rate', 'owner_hourly_rate', 'manual_price_override'];

@@ -294,6 +294,20 @@
       margin-top: 12px;
     }
     .pq-total-area-line { margin: 0; font-weight: 600; }
+    .pq-preview-status { margin: 0; }
+    .pq-preview-status__title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #92400e;
+    }
+    .pq-preview-status__list {
+      margin: 0;
+      padding-left: 1.15rem;
+      font-size: 13px;
+      color: #475569;
+    }
+    .pq-preview-status__list li + li { margin-top: 4px; }
   </style>
 @endpush
 
@@ -1008,14 +1022,127 @@
 
         root.innerHTML = html;
       }
+
+      function collectMissingPreviewInputs() {
+        var missing = [];
+        var stoneRows = document.querySelectorAll('.pq-stone-entry');
+        if (!stoneRows.length) {
+          missing.push('Stone types — add at least one stone type');
+        }
+        stoneRows.forEach(function (row, idx) {
+          var num = idx + 1;
+          var sel = row.querySelector('.pq-stone-entry-select');
+          if (!sel || !sel.value) {
+            missing.push('Stone ' + num + ' — select a stone type');
+            return;
+          }
+          var modeEl = row.querySelector('.pq-stone-mode-radio:checked');
+          var modeVal = modeEl ? modeEl.value : 'sqft';
+          if (modeVal === 'qty') {
+            var qty = parseFloat((row.querySelector('.pq-stone-qty-in') || {}).value);
+            if (!isFinite(qty) || qty < 1) missing.push('Stone ' + num + ' — enter number of stones');
+          } else if (modeVal === 'dimensions') {
+            var len = parseFloat((row.querySelector('.pq-stone-len-in') || {}).value);
+            var wid = parseFloat((row.querySelector('.pq-stone-wid-in') || {}).value);
+            if (!isFinite(len) || len <= 0 || !isFinite(wid) || wid <= 0) {
+              missing.push('Stone ' + num + ' — enter length and width (ft)');
+            }
+          } else {
+            var area = parseFloat((row.querySelector('.pq-stone-area-in') || {}).value);
+            if (!isFinite(area) || area <= 0) missing.push('Stone ' + num + ' — enter area (sq ft)');
+          }
+        });
+
+        var marbleEnabled = document.getElementById('pq-marble-enabled');
+        if (marbleEnabled && marbleEnabled.checked) {
+          var marbleType = document.getElementById('pq-marble-type');
+          if (!marbleType || !marbleType.value) missing.push('Marble — select a marble type');
+          var marbleArea = parseFloat((document.getElementById('pq-marble-area') || {}).value);
+          if (!isFinite(marbleArea) || marbleArea < 0.1) missing.push('Marble — enter area (sq ft)');
+          var marbleDepth = parseFloat((document.getElementById('pq-marble-depth') || {}).value);
+          if (!isFinite(marbleDepth) || marbleDepth < 0.5) missing.push('Marble — enter bed depth (in)');
+        }
+
+        var excav = parseFloat((document.getElementById('pq-depth') || {}).value);
+        if (!isFinite(excav) || excav < 1) missing.push('Excavation depth (in)');
+
+        return missing;
+      }
+
+      function flattenValidationErrors(payload) {
+        var list = [];
+        if (!payload || !payload.errors) return list;
+        Object.keys(payload.errors).forEach(function (key) {
+          var msgs = payload.errors[key];
+          if (!Array.isArray(msgs)) return;
+          msgs.forEach(function (msg) {
+            if (msg && list.indexOf(msg) === -1) list.push(msg);
+          });
+        });
+        return list;
+      }
+
+      function renderMissingSummary(items) {
+        if (!items.length) {
+          root.innerHTML = '<p class="admin-form-help">Adjust inputs to refresh totals…</p>';
+          return;
+        }
+        root.innerHTML =
+          '<div class="pq-preview-status">' +
+            '<p class="pq-preview-status__title">Complete these Project inputs to see totals:</p>' +
+            '<ul class="pq-preview-status__list">' +
+              items.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join('') +
+            '</ul>' +
+          '</div>';
+      }
+
+      function appendPreviewFormData(fd) {
+        if (!fd.get('marble_enabled')) {
+          fd.delete('marble_type_id');
+          fd.delete('marble_area_sq_ft');
+          fd.delete('marble_depth_in');
+          fd.delete('marble_include_geotextile');
+        }
+      }
+
       function runPreview() {
         normalizeLabourRateFields();
+        var missing = collectMissingPreviewInputs();
+        if (missing.length) {
+          renderMissingSummary(missing);
+          lastPreviewCalc = null;
+          return;
+        }
         var fd = new FormData(form);
         fd.delete('_method');
+        appendPreviewFormData(fd);
         fetch(previewUrl, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(function (r) { return r.json(); })
-          .then(render)
-          .catch(function () { root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>'; });
+          .then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              var errItems = flattenValidationErrors(result.data);
+              if (!errItems.length && result.data && result.data.message) {
+                errItems.push(result.data.message);
+              }
+              renderMissingSummary(errItems.length ? errItems : ['Could not calculate — check your inputs.']);
+              lastPreviewCalc = null;
+              return;
+            }
+            if (!result.data || !result.data.summary) {
+              renderMissingSummary(['Calculator did not return a summary.']);
+              lastPreviewCalc = null;
+              return;
+            }
+            render(result.data);
+          })
+          .catch(function () {
+            root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>';
+            lastPreviewCalc = null;
+          });
       }
       form.addEventListener('input', schedule);
       form.addEventListener('change', schedule);
