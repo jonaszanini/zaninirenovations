@@ -2155,6 +2155,23 @@
   margin-bottom: 0;
 }
 
+.util-ra-wall-edit__scale-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--admin-text);
+  align-self: center;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.util-ra-wall-edit__scale-option input {
+  margin: 0;
+}
+
 .util-ra-konva {
   display: block;
   touch-action: none;

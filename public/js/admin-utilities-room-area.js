@@ -103,6 +103,7 @@
     copyTotal: root.querySelector('[data-ra-copy-total]'),
     wallEdit: root.querySelector('[data-ra-wall-edit]'),
     wallLength: root.querySelector('[data-ra-wall-length]'),
+    wallScaleProject: root.querySelector('[data-ra-wall-scale-project]'),
     wallApply: root.querySelector('[data-ra-wall-apply]'),
     wallCancel: root.querySelector('[data-ra-wall-cancel]'),
     zoomIn: root.querySelector('[data-ra-zoom-in]'),
@@ -1260,8 +1261,36 @@
     return {
       groups: cloneGroups(state.groups),
       activeGroupId: state.activeGroupId,
-      activePolygonId: state.activePolygonId
+      activePolygonId: state.activePolygonId,
+      scalePixelsPerFoot: captureScaleSnapshot()
     };
+  }
+
+  function captureScaleSnapshot() {
+    var room = activeRoom();
+    if (room && room.scale_pixels_per_foot) {
+      return parseFloat(room.scale_pixels_per_foot);
+    }
+    if (!state.editingRoomId && state.draftScale) {
+      return parseFloat(state.draftScale);
+    }
+    var project = activeProject();
+    return project && project.scale_pixels_per_foot ? parseFloat(project.scale_pixels_per_foot) : null;
+  }
+
+  function restoreScaleSnapshot(ppf) {
+    if (ppf == null || !isFinite(ppf) || ppf <= 0) return;
+    var room = activeRoom();
+    if (room) {
+      room.scale_pixels_per_foot = ppf;
+      return;
+    }
+    if (!state.editingRoomId) {
+      state.draftScale = ppf;
+      return;
+    }
+    var project = activeProject();
+    if (project) project.scale_pixels_per_foot = ppf;
   }
 
   function pushUndoSnapshot() {
@@ -1307,6 +1336,9 @@
     state.didVertexDrag = false;
     state.vertexDragFrom = null;
     state.vertexDragOrigins = null;
+    if (snap.scalePixelsPerFoot != null) {
+      restoreScaleSnapshot(snap.scalePixelsPerFoot);
+    }
     state.selectedVertexIndices = [];
     clearWallSelection();
     clearVertexSelection();
@@ -1958,6 +1990,8 @@
     show(els.wallEdit, false);
     if (els.canvasWrap) els.canvasWrap.classList.remove('is-wall-edit');
     if (els.wallLength) els.wallLength.value = '';
+    if (els.wallScaleProject) els.wallScaleProject.checked = false;
+    if (els.wallScaleProject) els.wallScaleProject.checked = false;
     if (state.layers.draw) {
       redrawLabels();
       redrawWalls();
@@ -2109,20 +2143,25 @@
     }
 
     var wallIndex = state.selectedWallIndex;
+    var newFeet;
+    try {
+      newFeet = parseLengthInput(els.wallLength.value);
+    } catch (e) {
+      setFeedback(e.message, true);
+      return;
+    }
+
+    if (els.wallScaleProject && els.wallScaleProject.checked) {
+      applyWallLengthScaleProject(wallIndex, newFeet);
+      return;
+    }
+
     var endIdx = wallEndIndex(wallIndex);
     var start = activeVertices()[wallIndex];
     var end = activeVertices()[endIdx];
     var currentPx = dist(start, end);
     if (currentPx < 1e-6) {
       setFeedback('Wall has no length to adjust.', true);
-      return;
-    }
-
-    var newFeet;
-    try {
-      newFeet = parseLengthInput(els.wallLength.value);
-    } catch (e) {
-      setFeedback(e.message, true);
       return;
     }
 
@@ -2145,6 +2184,32 @@
     redrawAll();
     els.wallLength.value = fmtLengthFromFeet(newFeet);
     setFeedback('Wall length updated.', false);
+  }
+
+  function applyWallLengthScaleProject(wallIndex, newFeet) {
+    var currentFeet = wallLengthFeet(wallIndex);
+    if (currentFeet === null || currentFeet < 1e-6) {
+      setFeedback('Wall has no length to scale from.', true);
+      return;
+    }
+    if (newFeet < 1e-6) {
+      setFeedback('Enter a positive wall length.', true);
+      return;
+    }
+    if (Math.abs(newFeet - currentFeet) < 1 / 192) {
+      setFeedback('Length unchanged.', false);
+      return;
+    }
+
+    var factor = currentFeet / newFeet;
+    pushUndoSnapshot();
+    scaleActivePixelsPerFoot(factor);
+    updateScaleUI();
+    if (els.wallLength) {
+      var updatedFeet = wallLengthFeet(wallIndex);
+      els.wallLength.value = updatedFeet !== null ? fmtLengthFromFeet(updatedFeet) : fmtLengthFromFeet(newFeet);
+    }
+    setFeedback('Project scale updated — all measurements rescaled from this wall.', false);
   }
 
   function gridStepPx() {

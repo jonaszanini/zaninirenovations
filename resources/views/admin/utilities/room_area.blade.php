@@ -283,6 +283,10 @@
                   <label for="ra-wall-length" class="util-sr-only">Wall length in feet</label>
                   <input class="admin-input" type="text" id="ra-wall-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-wall-length>
                 </div>
+                <label class="util-ra-wall-edit__scale-option" title="Recalibrate scale so this wall matches the value you enter; all other wall lengths and areas update proportionally. The drawing shape stays the same.">
+                  <input type="checkbox" data-ra-wall-scale-project>
+                  <span>Scale entire project</span>
+                </label>
                 <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
                 <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-wall>
                   <i class="fa fa-trash"></i> Delete wall
