@@ -8,6 +8,7 @@ use App\Models\PavingMaterialRate;
 use App\Models\PavingPricingTier;
 use App\Models\PavingStoneType;
 use App\Services\ProjectPhotoWebpStorage;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -58,7 +59,7 @@ class PavingDatabaseController extends Controller
         ]);
 
         if (empty($data['price_per_sq_ft']) && (empty($data['sq_ft_per_stone']) || empty($data['price_per_stone']))) {
-            return back()->withInput()->withErrors(['price_per_sq_ft' => 'You must provide either Price/sq ft or both Sq ft/stone and $/stone.']);
+            return $this->backToPriceConfig($request, 'stones')->withInput()->withErrors(['price_per_sq_ft' => 'You must provide either Price/sq ft or both Sq ft/stone and $/stone.']);
         }
 
         $max = (int) PavingStoneType::query()->max('sort_order');
@@ -66,7 +67,7 @@ class PavingDatabaseController extends Controller
             'sort_order' => $max + 1,
         ]);
 
-        return back()->with('success', 'Stone type added.');
+        return $this->backToPriceConfig($request, 'stones', ['success' => 'Stone type added.']);
     }
 
     public function updateStone(Request $request, PavingStoneType $paving_stone_type)
@@ -91,7 +92,7 @@ class PavingDatabaseController extends Controller
         ]);
 
         if (empty($data['price_per_sq_ft']) && (empty($data['sq_ft_per_stone']) || empty($data['price_per_stone']))) {
-            return back()->withInput()->withErrors(['price_per_sq_ft' => 'You must provide either Price/sq ft or both Sq ft/stone and $/stone.']);
+            return $this->backToPriceConfig($request, 'stones')->withInput()->withErrors(['price_per_sq_ft' => 'You must provide either Price/sq ft or both Sq ft/stone and $/stone.']);
         }
 
         $paving_stone_type->update($this->stonePayloadFromValidated(
@@ -99,18 +100,18 @@ class PavingDatabaseController extends Controller
             $this->resolveStoneImageUrl($request, $paving_stone_type->image_url)
         ));
 
-        return back()->with('success', 'Stone type updated.');
+        return $this->backToPriceConfig($request, 'stones', ['success' => 'Stone type updated.']);
     }
 
     public function destroyStone(PavingStoneType $paving_stone_type)
     {
         if (PavingStoneType::query()->count() <= 1) {
-            return back()->with('error', 'Keep at least one stone type.');
+            return $this->backToPriceConfig($request, 'stones', ['error' => 'Keep at least one stone type.']);
         }
         $this->deleteLocalStoneImageByUrl($paving_stone_type->image_url);
         $paving_stone_type->delete();
 
-        return back()->with('success', 'Stone type deleted.');
+        return $this->backToPriceConfig($request, 'stones', ['success' => 'Stone type deleted.']);
     }
 
     public function storeMarble(Request $request)
@@ -139,7 +140,7 @@ class PavingDatabaseController extends Controller
             'sort_order' => $max + 1,
         ]);
 
-        return back()->with('success', 'Marble type added.');
+        return $this->backToPriceConfig($request, 'marbles', ['success' => 'Marble type added.']);
     }
 
     public function updateMarble(Request $request, PavingMarbleType $paving_marble_type)
@@ -168,7 +169,7 @@ class PavingDatabaseController extends Controller
             $this->resolveMarbleImageUrl($request, $paving_marble_type->image_url)
         ));
 
-        return back()->with('success', 'Marble type updated.');
+        return $this->backToPriceConfig($request, 'marbles', ['success' => 'Marble type updated.']);
     }
 
     public function destroyMarble(PavingMarbleType $paving_marble_type)
@@ -176,7 +177,7 @@ class PavingDatabaseController extends Controller
         $this->deleteLocalMarbleImageByUrl($paving_marble_type->image_url);
         $paving_marble_type->delete();
 
-        return back()->with('success', 'Marble type deleted.');
+        return $this->backToPriceConfig($request, 'marbles', ['success' => 'Marble type deleted.']);
     }
 
     public function updateRate(Request $request, PavingMaterialRate $paving_material_rate)
@@ -195,7 +196,7 @@ class PavingDatabaseController extends Controller
             'unit' => array_key_exists('unit', $data) ? ($data['unit'] !== null && $data['unit'] !== '' ? trim((string) $data['unit']) : null) : $paving_material_rate->unit,
         ])->save();
 
-        return back()->with('success', 'Rate updated.');
+        return $this->backToPriceConfig($request, 'rates', ['success' => 'Rate updated.']);
     }
 
     public function syncTiers(Request $request)
@@ -239,7 +240,32 @@ class PavingDatabaseController extends Controller
             }
         });
 
-        return back()->with('success', 'Pricing tiers saved.');
+        return $this->backToPriceConfig($request, 'tiers', ['success' => 'Pricing tiers saved.']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $with
+     */
+    protected function backToPriceConfig(Request $request, string $tab, array $with = []): RedirectResponse
+    {
+        $validTabs = ['stones', 'marbles', 'rates', 'tiers'];
+        if (! in_array($tab, $validTabs, true)) {
+            $tab = 'stones';
+        }
+
+        $params = ['db' => $tab];
+        if ($request->filled('project')) {
+            $params['project'] = (int) $request->input('project');
+        } elseif ($request->query('project')) {
+            $params['project'] = (int) $request->query('project');
+        }
+
+        $redirect = redirect()->route('admin.quotations.paving.price-configuration', $params);
+        foreach ($with as $key => $value) {
+            $redirect = $redirect->with($key, $value);
+        }
+
+        return $redirect;
     }
 
     protected function normalizeStoneUrlOnRequest(Request $request): void

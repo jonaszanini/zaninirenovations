@@ -1,20 +1,23 @@
 <div class="pq-db-wrap">
+  @php
+    $activeDbTab = in_array(request('db'), ['stones', 'marbles', 'rates', 'tiers'], true) ? request('db') : 'stones';
+  @endphp
   <ul class="nav nav-tabs pq-nav-tabs pq-nav-tabs--secondary" role="tablist" aria-label="Price database sections">
     <li class="nav-item" role="presentation">
-      <button type="button" class="nav-link active" data-pq-db="stones" role="tab" aria-selected="true" id="pq-db-tab-stones" aria-controls="pq-db-panel-stones">Stone types</button>
+      <button type="button" class="nav-link{{ $activeDbTab === 'stones' ? ' active' : '' }}" data-pq-db="stones" role="tab" aria-selected="{{ $activeDbTab === 'stones' ? 'true' : 'false' }}" id="pq-db-tab-stones" aria-controls="pq-db-panel-stones">Stone types</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button type="button" class="nav-link" data-pq-db="marbles" role="tab" aria-selected="false" id="pq-db-tab-marbles" aria-controls="pq-db-panel-marbles">Marble types</button>
+      <button type="button" class="nav-link{{ $activeDbTab === 'marbles' ? ' active' : '' }}" data-pq-db="marbles" role="tab" aria-selected="{{ $activeDbTab === 'marbles' ? 'true' : 'false' }}" id="pq-db-tab-marbles" aria-controls="pq-db-panel-marbles">Marble types</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button type="button" class="nav-link" data-pq-db="rates" role="tab" aria-selected="false" id="pq-db-tab-rates" aria-controls="pq-db-panel-rates">Fixed costs &amp; equipment</button>
+      <button type="button" class="nav-link{{ $activeDbTab === 'rates' ? ' active' : '' }}" data-pq-db="rates" role="tab" aria-selected="{{ $activeDbTab === 'rates' ? 'true' : 'false' }}" id="pq-db-tab-rates" aria-controls="pq-db-panel-rates">Fixed costs &amp; equipment</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button type="button" class="nav-link" data-pq-db="tiers" role="tab" aria-selected="false" id="pq-db-tab-tiers" aria-controls="pq-db-panel-tiers">Pricing engine</button>
+      <button type="button" class="nav-link{{ $activeDbTab === 'tiers' ? ' active' : '' }}" data-pq-db="tiers" role="tab" aria-selected="{{ $activeDbTab === 'tiers' ? 'true' : 'false' }}" id="pq-db-tab-tiers" aria-controls="pq-db-panel-tiers">Pricing engine</button>
     </li>
   </ul>
 
-  <div id="pq-db-panel-stones" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-stones">
+  <div id="pq-db-panel-stones" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-stones"@if($activeDbTab !== 'stones') hidden @endif>
     <div class="admin-card">
       <h4 class="cp-form-help-spaced">Stone types</h4>
       <p class="admin-form-help">Used by the paving stone dropdowns. Enter length × width (in), click <strong>Fill</strong> (or tab out of width) to compute sq ft per stone, or enter sq ft manually. Provide either <strong>Price/sq ft</strong> or both <strong>Sq ft/stone</strong> and <strong>$/stone</strong>.</p>
@@ -217,7 +220,7 @@
 
   @include('admin.quotations.paving._database_marble_tab')
 
-  <div id="pq-db-panel-rates" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-rates" hidden>
+  <div id="pq-db-panel-rates" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-rates"@if($activeDbTab !== 'rates') hidden @endif>
     <div class="admin-card">
       <h4 style="margin:0 0 8px;">Fixed costs &amp; equipment</h4>
       <p class="admin-form-help" style="margin:0 0 16px;">Unit prices used by the calculator. Equipment day rates pair with rental days on the Calculator tab.</p>
@@ -256,7 +259,7 @@
     </div>
   </div>
 
-  <div id="pq-db-panel-tiers" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-tiers" hidden>
+  <div id="pq-db-panel-tiers" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-tiers"@if($activeDbTab !== 'tiers') hidden @endif>
     <div class="admin-card pq-db-tiers">
       <h4 class="cp-form-help-spaced">Pricing engine — $/sq ft by area</h4>
       <p class="admin-form-help">Interpolated linearly between rows (matches Excel reference table). Keep rows sorted by area.</p>
@@ -316,6 +319,11 @@
           if (panel) panel.hidden = !active;
         }
       });
+      try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('db', key);
+        window.history.replaceState(null, '', url.toString());
+      } catch (e) { /* ignore */ }
     }
 
     document.querySelectorAll('[data-pq-db]').forEach(function (btn) {
