@@ -297,31 +297,6 @@
       margin-bottom: 16px;
     }
     .fq-form-toolbar-right { display: flex; gap: 8px; flex-wrap: wrap; }
-    .fq-link-project-card {
-      border: 1px dashed #c9d3e0;
-      background: #fbfcfd;
-      border-radius: 10px;
-      padding: 18px 20px;
-      margin-top: 20px;
-    }
-    .fq-link-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 0;
-      margin-top: 14px;
-      align-items: start;
-    }
-    .fq-link-divider {
-      border: 0;
-      border-top: 1px solid #d7e4ef;
-      margin: 16px 0;
-    }
-    .fq-link-col h5 {
-      margin: 0 0 8px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #024768;
-    }
     .fq-link-existing-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -566,90 +541,21 @@
         @php
           $linkable = $linkableProjects ?? collect();
         @endphp
-        <div class="admin-card fq-link-project-card">
-          <h4 class="cp-heading-md">Connect to a project</h4>
-          <p class="admin-form-help cp-form-help-flush">
-            Add this fence estimate as a line on a project <strong>Quotation</strong> (pre-tax materials + labour — the project quotation adds HST).
-          </p>
-
-          <div class="fq-link-grid">
-            <div class="fq-link-col">
-              <h5><i class="fa fa-link"></i> Existing project</h5>
-              @if ($linkable->isNotEmpty())
-                <form method="post" action="{{ route('admin.quotations.fence.link', $quotation) }}" class="fq-link-existing-form">
-                  @csrf
-                  <div class="fq-link-existing-row">
-                    @include('admin.quotations._link_project_picker', [
-                        'projects' => $linkable,
-                        'id' => 'fq-link-project',
-                    ])
-                    <button type="submit" class="admin-btn admin-btn--primary">
-                      <i class="fa fa-link"></i> Link
-                    </button>
-                  </div>
-                </form>
-              @else
-                <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below, or finish a rejected/completed project first.</p>
-              @endif
-            </div>
-
-            <hr class="fq-link-divider">
-
-            <div class="fq-link-col">
-              <h5><i class="fa fa-plus-circle"></i> New project</h5>
-              <p class="admin-form-help cp-form-help-spaced">
-                Always <strong>fixed price</strong>. Only client name is required. No automated client email is sent from here.
-              </p>
-              <form method="post"
-                    action="{{ route('admin.quotations.fence.create-project', $quotation) }}"
-                    class="fq-create-project-form">
-                @csrf
-                <div class="admin-form-group">
-                  <label for="fq-new-project-name">Project name <span class="admin-form-help">(optional)</span></label>
-                  <input type="text" id="fq-new-project-name" name="fp_project_name" class="admin-input" maxlength="255"
-                         value="{{ old('fp_project_name') }}"
-                         placeholder="Defaults to: Client name — Fence">
-                </div>
-                <div class="admin-form-group">
-                  <label for="fq-new-client-name">Client name <span class="admin-required">*</span></label>
-                  @include('admin.quotations._fp_client_picker', [
-                      'clientsSearchUrl' => route('admin.clients.search'),
-                      'pickerId'         => 'fq-fp-client-picker',
-                      'nameInputId'      => 'fq-new-client-name',
-                      'emailInputId'     => 'fq-new-client-email',
-                      'phoneInputId'     => 'fq-new-client-phone',
-                      'addressInputId'   => 'fq-new-client-address',
-                  ])
-                  <input type="text" id="fq-new-client-name" name="fp_client_name" class="admin-input @error('fp_client_name') is-invalid @enderror"
-                         maxlength="255" required value="{{ old('fp_client_name') }}">
-                  @error('fp_client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-                </div>
-                <div class="admin-form-group">
-                  <label for="fq-new-client-email">Email</label>
-                  <input type="email" id="fq-new-client-email" name="fp_client_email" class="admin-input @error('fp_client_email') is-invalid @enderror"
-                         maxlength="255" value="{{ old('fp_client_email') }}">
-                  @error('fp_client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
-                </div>
-                <div class="admin-form-group">
-                  <label for="fq-new-client-phone">Phone</label>
-                  <input type="text" id="fq-new-client-phone" name="fp_client_phone"
-                         class="admin-input cp-phone-input @error('fp_client_phone') is-invalid @enderror"
-                         inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx"
-                         value="{{ old('fp_client_phone') ? \App\Models\ClientProject::formatPhone(old('fp_client_phone')) : '' }}">
-                  @error('fp_client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
-                </div>
-                <div class="admin-form-group">
-                  <label for="fq-new-client-address">Address</label>
-                  <input type="text" id="fq-new-client-address" name="fp_client_address" class="admin-input" maxlength="500"
-                         value="{{ old('fp_client_address') }}">
-                </div>
-                <button type="submit" class="admin-btn admin-btn--primary">
-                  <i class="fa fa-briefcase"></i> Create project &amp; add to quotation
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
+        @include('admin.quotations._link_to_project_card', [
+            'quotation' => $quotation,
+            'linkUrl' => route('admin.quotations.fence.link', $quotation),
+            'createProjectUrl' => route('admin.quotations.fence.create-project', $quotation),
+            'idPrefix' => 'fq',
+            'projectNamePlaceholder' => 'Defaults to: Client name — Fence',
+            'linkableProjects' => $linkable,
+            'wrapAdminCard' => true,
+            'title' => 'Connect to a project',
+            'helpText' => 'Add this fence estimate as a line on a project <strong>Quotation</strong> (pre-tax materials + labour — the project quotation adds HST).',
+            'showExistingLineDescription' => false,
+            'createLineDescription' => 'hidden',
+            'emptyProjectsMessage' => 'No active projects to link. Create a new one below, or finish a rejected/completed project first.',
+            'projectPickerId' => 'fq-link-project',
+        ])
       @endif
     </div>
 

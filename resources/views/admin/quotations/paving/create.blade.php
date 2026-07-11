@@ -468,65 +468,14 @@
         </form>
 
         @if ($isEdit && !$quotation->isLinked())
-          <div class="fq-link-project-card">
-            <h4 style="margin:0 0 8px;">Link to project</h4>
-            <div class="fq-link-grid">
-              <div>
-                <h5>Existing project</h5>
-                <form method="post" action="{{ route('admin.quotations.paving.link', $quotation) }}">
-                  @csrf
-                  @if ($linkableProjects->isNotEmpty())
-                  <div class="fq-link-existing-row">
-                    @include('admin.quotations._link_project_picker', ['projects' => $linkableProjects])
-                    <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
-                  </div>
-                  @else
-                  <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below.</p>
-                  @endif
-                  <div class="admin-form-group cp-form-group-spaced">
-                    <label>Line description (optional)</label>
-                    <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
-                  </div>
-                </form>
-              </div>
-              <div class="fq-link-col fq-link-col--stack">
-                <h5>Create project &amp; link</h5>
-                <form method="post" action="{{ route('admin.quotations.paving.create-project', $quotation) }}" class="fq-create-project-form">
-                  @csrf
-                  <input type="hidden" name="link_line_description" value="">
-                  <div class="admin-form-group">
-                    <label>Project name</label>
-                    <input type="text" name="fp_project_name" class="admin-input" maxlength="255" placeholder="Defaults to client + Paving">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pv-new-client-name">Client name <span class="cp-required">*</span></label>
-                    @include('admin.quotations._fp_client_picker', [
-                        'clientsSearchUrl' => route('admin.clients.search'),
-                        'pickerId'         => 'pv-fp-client-picker',
-                        'nameInputId'      => 'pv-new-client-name',
-                        'emailInputId'     => 'pv-new-client-email',
-                        'phoneInputId'     => 'pv-new-client-phone',
-                        'addressInputId'   => 'pv-new-client-address',
-                    ])
-                    <input type="text" id="pv-new-client-name" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pv-new-client-email">Email</label>
-                    <input type="email" id="pv-new-client-email" name="fp_client_email" class="admin-input" maxlength="255">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pv-new-client-phone">Phone (10 digits)</label>
-                    <input type="text" id="pv-new-client-phone" name="fp_client_phone" class="admin-input" maxlength="14" placeholder="(613) 555-0100">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pv-new-client-address">Address</label>
-                    <input type="text" id="pv-new-client-address" name="fp_client_address" class="admin-input" maxlength="500">
-                  </div>
-                  <button type="submit" class="admin-btn admin-btn--primary">Create project &amp; link</button>
-                </form>
-              </div>
-            </div>
-          </div>
+          @include('admin.quotations._link_to_project_card', [
+              'quotation' => $quotation,
+              'linkUrl' => route('admin.quotations.paving.link', $quotation),
+              'createProjectUrl' => route('admin.quotations.paving.create-project', $quotation),
+              'idPrefix' => 'pv',
+              'projectNamePlaceholder' => 'Defaults to client + Paving',
+              'linkableProjects' => $linkableProjects,
+          ])
         @endif
       </div>
 

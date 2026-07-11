@@ -83,31 +83,6 @@
       line-height: 1;
     }
     @media (max-width: 800px) { .pt-excluded-row, .pt-excluded-row--sqf { grid-template-columns: 1fr; } }
-    .fq-link-project-card {
-      border: 1px dashed #c9d3e0;
-      background: #fbfcfd;
-      border-radius: 10px;
-      padding: 18px 20px;
-      margin-top: 20px;
-    }
-    .fq-link-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-      margin-top: 14px;
-      align-items: start;
-    }
-    @media (min-width: 900px) {
-      .fq-link-grid { grid-template-columns: 1fr 1fr; }
-    }
-    .fq-link-col h5 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #024768; }
-    .fq-link-existing-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: end;
-    }
-    .fq-create-project-form .admin-form-group { margin-bottom: 12px; }
     .pt-net-banner {
       margin-top: 12px;
       padding: 10px 12px;
@@ -318,81 +293,21 @@
       </form>
 
       @if (! $isEdit)
-        <div class="admin-card fq-link-project-card">
-          <h4 style="margin:0 0 8px;">Link to project</h4>
-          <p class="admin-form-help" style="margin:0;">
-            <strong>Save the quotation first</strong> (use <em>Save quotation</em>, not draft) with a total greater than zero.
-            Then this page will show options to link an existing project or create a new one.
-            @if ($linkProject)
-              <span class="cp-form-help-flush" style="display:block;margin-top:8px;">
-                You opened this from <strong>{{ $linkProject->name }}</strong> — a published save will attach automatically when possible.
-              </span>
-            @endif
-          </p>
-        </div>
+        @include('admin.quotations._link_to_project_save_first', [
+            'linkProject' => $linkProject ?? null,
+            'wrapAdminCard' => true,
+        ])
       @elseif (! $quotation->isLinked())
-        <div class="admin-card fq-link-project-card">
-          <h4 style="margin:0 0 8px;">Link to project</h4>
-          <p class="admin-form-help cp-form-help-flush" style="margin:0 0 12px;">
-            Add this painting estimate as a line on the project <strong>Quotation</strong> tab (pre-tax labour + materials — HST is added on the client PDF).
-          </p>
-          <div class="fq-link-grid">
-            <div>
-              <h5>Existing project</h5>
-              <form method="post" action="{{ route('admin.quotations.painting.link', $quotation) }}">
-                @csrf
-                @if ($linkableProjects->isNotEmpty())
-                <div class="fq-link-existing-row">
-                  @include('admin.quotations._link_project_picker', ['projects' => $linkableProjects])
-                  <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
-                </div>
-                @else
-                <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below.</p>
-                @endif
-                <div class="admin-form-group cp-form-group-spaced">
-                  <label>Line description (optional)</label>
-                  <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
-                </div>
-              </form>
-            </div>
-            <div class="fq-link-col fq-link-col--stack">
-              <h5>Create project &amp; link</h5>
-              <form method="post" action="{{ route('admin.quotations.painting.create-project', $quotation) }}" class="fq-create-project-form">
-                @csrf
-                <input type="hidden" name="link_line_description" value="">
-                <div class="admin-form-group">
-                  <label>Project name</label>
-                  <input type="text" name="fp_project_name" class="admin-input" maxlength="255" placeholder="Defaults to client + Painting">
-                </div>
-                <div class="admin-form-group">
-                  <label for="pt-new-client-name">Client name <span class="cp-required">*</span></label>
-                  @include('admin.quotations._fp_client_picker', [
-                      'clientsSearchUrl' => route('admin.clients.search'),
-                      'pickerId'         => 'pt-fp-client-picker',
-                      'nameInputId'      => 'pt-new-client-name',
-                      'emailInputId'     => 'pt-new-client-email',
-                      'phoneInputId'     => 'pt-new-client-phone',
-                      'addressInputId'   => 'pt-new-client-address',
-                  ])
-                  <input type="text" id="pt-new-client-name" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
-                </div>
-                <div class="admin-form-group">
-                  <label for="pt-new-client-email">Email</label>
-                  <input type="email" id="pt-new-client-email" name="fp_client_email" class="admin-input" maxlength="255">
-                </div>
-                <div class="admin-form-group">
-                  <label for="pt-new-client-phone">Phone (10 digits)</label>
-                  <input type="text" id="pt-new-client-phone" name="fp_client_phone" class="admin-input" maxlength="14" placeholder="(613) 555-0100">
-                </div>
-                <div class="admin-form-group">
-                  <label for="pt-new-client-address">Address</label>
-                  <input type="text" id="pt-new-client-address" name="fp_client_address" class="admin-input" maxlength="500">
-                </div>
-                <button type="submit" class="admin-btn admin-btn--primary">Create project &amp; link</button>
-              </form>
-            </div>
-          </div>
-        </div>
+        @include('admin.quotations._link_to_project_card', [
+            'quotation' => $quotation,
+            'linkUrl' => route('admin.quotations.painting.link', $quotation),
+            'createProjectUrl' => route('admin.quotations.painting.create-project', $quotation),
+            'idPrefix' => 'pt',
+            'projectNamePlaceholder' => 'Defaults to client + Painting',
+            'linkableProjects' => $linkableProjects,
+            'wrapAdminCard' => true,
+            'helpText' => 'Add this painting estimate as a line on the project <strong>Quotation</strong> tab (pre-tax labour + materials — HST is added on the client PDF).',
+        ])
       @endif
     </div>
 

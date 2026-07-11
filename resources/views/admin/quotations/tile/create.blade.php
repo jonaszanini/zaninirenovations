@@ -288,87 +288,18 @@
   </form>
 
   @if ($isEdit && ! $quotation->isLinked())
-    <div class="admin-card fq-link-project-card" style="margin-top:16px;">
-      <h4 style="margin:0 0 8px;">Link to project</h4>
-      <p class="admin-form-help cp-form-help-flush" style="margin:0 0 12px;">
-        Add this tile estimate as a line on the project <strong>Quotation</strong> tab.
-      </p>
-      <div class="fq-link-grid">
-        <div>
-          <h5>Existing project</h5>
-          <form method="post" action="{{ route('admin.quotations.tile.link', $quotation) }}">
-            @csrf
-            @if (isset($linkableProjects) && $linkableProjects->isNotEmpty())
-              <div class="fq-link-existing-row">
-                @include('admin.quotations._link_project_picker', ['projects' => $linkableProjects])
-                <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
-              </div>
-            @else
-              <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below.</p>
-            @endif
-          </form>
-        </div>
-        <div class="fq-link-col fq-link-col--stack">
-          <h5>Create project &amp; link</h5>
-          <form method="post" action="{{ route('admin.quotations.tile.create-project', $quotation) }}" class="fq-create-project-form">
-            @csrf
-            <div class="admin-form-grid-2">
-              <div class="admin-form-group">
-                <label for="tl-new-project-name">Project name</label>
-                <input type="text" id="tl-new-project-name" name="fp_project_name" class="admin-input" maxlength="255"
-                       value="{{ old('fp_project_name') }}" placeholder="Defaults to client + Tile">
-              </div>
-              <div class="admin-form-group">
-                <label for="tl-new-client-name">Client name <span class="cp-required">*</span></label>
-                @include('admin.quotations._fp_client_picker', [
-                    'clientsSearchUrl' => route('admin.clients.search'),
-                    'pickerId'         => 'tl-fp-client-picker',
-                    'nameInputId'      => 'tl-new-client-name',
-                    'emailInputId'     => 'tl-new-client-email',
-                    'phoneInputId'     => 'tl-new-client-phone',
-                    'addressInputId'   => 'tl-new-client-address',
-                ])
-                <input type="text" id="tl-new-client-name" name="fp_client_name"
-                       class="admin-input @error('fp_client_name') is-invalid @enderror"
-                       required maxlength="255"
-                       value="{{ old('fp_client_name', $quotation->client_name) }}">
-                @error('fp_client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-              </div>
-            </div>
-            <div class="fq-create-project-contact">
-              <div class="admin-form-group">
-                <label for="tl-new-client-email">Email</label>
-                <input type="email" id="tl-new-client-email" name="fp_client_email"
-                       class="admin-input @error('fp_client_email') is-invalid @enderror"
-                       maxlength="255" value="{{ old('fp_client_email') }}">
-                @error('fp_client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
-              </div>
-              <div class="admin-form-group">
-                <label for="tl-new-client-phone">Phone</label>
-                <input type="text" id="tl-new-client-phone" name="fp_client_phone"
-                       class="admin-input cp-phone-input @error('fp_client_phone') is-invalid @enderror"
-                       inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx"
-                       value="{{ old('fp_client_phone') ? \App\Models\ClientProject::formatPhone(old('fp_client_phone')) : '' }}">
-                @error('fp_client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
-              </div>
-              @include('admin.partials.places_address_field', [
-                'inputId' => 'tl-new-client-address',
-                'addressName' => 'fp_client_address',
-                'label' => 'Address',
-                'value' => old('fp_client_address'),
-                'placeIdName' => 'fp_client_address_place_id',
-                'placeIdValue' => old('fp_client_address_place_id'),
-                'latName' => 'fp_client_address_latitude',
-                'latValue' => old('fp_client_address_latitude'),
-                'lngName' => 'fp_client_address_longitude',
-                'lngValue' => old('fp_client_address_longitude'),
-              ])
-            </div>
-            <button type="submit" class="admin-btn admin-btn--primary">Create project &amp; link</button>
-          </form>
-        </div>
-      </div>
-    </div>
+    @include('admin.quotations._link_to_project_card', [
+        'quotation' => $quotation,
+        'linkUrl' => route('admin.quotations.tile.link', $quotation),
+        'createProjectUrl' => route('admin.quotations.tile.create-project', $quotation),
+        'idPrefix' => 'tl',
+        'projectNamePlaceholder' => 'Defaults to client + Tile',
+        'linkableProjects' => $linkableProjects ?? collect(),
+        'wrapAdminCard' => true,
+        'cardStyle' => 'margin-top:16px;',
+        'helpText' => 'Add this tile estimate as a line on the project <strong>Quotation</strong> tab.',
+        'usePlacesAddress' => true,
+    ])
   @endif
 @endsection
 

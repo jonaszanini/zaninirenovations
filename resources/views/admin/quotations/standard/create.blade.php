@@ -494,94 +494,30 @@
 
   @if ($isEdit && !$quotation->project)
     @php $linkable = $linkableProjects ?? collect(); @endphp
-    <div class="admin-card fq-link-project-card">
-      <h4 class="cp-heading-md">Connect to a project</h4>
-      <p class="admin-form-help cp-form-help-spaced">
-        Adds the <strong>pre-HST</strong> amounts to the project's <strong>Quotation</strong>. The project quotation's "Apply HST" toggle will then add HST to the taxable portion (no double taxation). If some materials are HST-exempt, two lines are added — one taxable, one exempt.
-      </p>
-
-      <div class="admin-form-group" style="max-width:520px;">
-        <label for="sq-link-line-desc">Line description on project quotation</label>
-        <input type="text" id="sq-link-line-desc" name="link_line_description" class="admin-input" maxlength="500"
-               form="sq-link-existing-form"
-               value="{{ old('link_line_description', 'Standard quotation') }}"
-               placeholder="Standard quotation">
-        <p class="admin-form-help">Shown as the line item text (quote number is appended automatically).</p>
-      </div>
-
-      <div class="fq-link-grid">
-        <div class="fq-link-col">
-          <h5><i class="fa fa-link"></i> Existing project</h5>
-          @if ($linkable->isNotEmpty())
-            <form method="post" action="{{ route('admin.quotations.standard.link', $quotation) }}" class="fq-link-existing-form" id="sq-link-existing-form">
-              @csrf
-              <div class="fq-link-existing-row">
-                @include('admin.quotations._link_project_picker', [
-                    'projects' => $linkable,
-                    'id' => 'sq-link-project',
-                ])
-                <button type="submit" class="admin-btn admin-btn--primary">
-                  <i class="fa fa-link"></i> Link to project
-                </button>
-              </div>
-            </form>
-          @else
-            <p class="admin-form-help cp-form-help-flush">No active projects to link.</p>
-          @endif
-        </div>
-
-        <hr class="sq-link-divider" aria-hidden="true">
-
-        <div class="fq-link-col fq-link-col--stack">
-          <h5><i class="fa fa-plus-circle"></i> New project</h5>
-          <p class="admin-form-help cp-form-help-spaced">
-            Creates a <strong>fixed price</strong> project (status: Visit scheduled). Client name required. No client email is sent from here.
-          </p>
-          <form method="post" action="{{ route('admin.quotations.standard.create-project', $quotation) }}" class="fq-create-project-form"
-                onsubmit="document.getElementById('sq-create-project-line-desc').value=(document.getElementById('sq-link-line-desc')&&document.getElementById('sq-link-line-desc').value)||'Standard quotation';">
-            @csrf
-            <div class="admin-form-group">
-              <label for="sq-new-project-name">Project name <span class="admin-form-help">(optional)</span></label>
-              <input type="text" id="sq-new-project-name" name="fp_project_name" class="admin-input" maxlength="255"
-                     value="{{ old('fp_project_name') }}" placeholder="Defaults to: Client name — Standard">
-            </div>
-            <div class="admin-form-group">
-              <label for="sq-new-client-name">Client name <span class="admin-required">*</span></label>
-              @include('admin.quotations._fp_client_picker', [
-                  'clientsSearchUrl' => route('admin.clients.search'),
-                  'pickerId'         => 'sq-fp-client-picker',
-                  'nameInputId'      => 'sq-new-client-name',
-                  'emailInputId'     => 'sq-new-client-email',
-                  'phoneInputId'     => 'sq-new-client-phone',
-                  'addressInputId'   => 'sq-new-client-address',
-              ])
-              <input type="text" id="sq-new-client-name" name="fp_client_name" class="admin-input @error('fp_client_name') is-invalid @enderror"
-                     maxlength="255" required value="{{ old('fp_client_name', $quotation->client_name) }}">
-              @error('fp_client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-            </div>
-            <div class="admin-form-group">
-              <label for="sq-new-client-email">Email</label>
-              <input type="email" id="sq-new-client-email" name="fp_client_email" class="admin-input" maxlength="255" value="{{ old('fp_client_email') }}">
-            </div>
-            <div class="admin-form-group">
-              <label for="sq-new-client-phone">Phone</label>
-              <input type="text" id="sq-new-client-phone" name="fp_client_phone" class="admin-input cp-phone-input"
-                     inputmode="tel" maxlength="14" placeholder="(xxx) xxx-xxxx"
-                     value="{{ old('fp_client_phone') ? \App\Models\ClientProject::formatPhone(old('fp_client_phone')) : '' }}">
-              @error('fp_client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
-            </div>
-            <div class="admin-form-group">
-              <label for="sq-new-client-address">Address</label>
-              <input type="text" id="sq-new-client-address" name="fp_client_address" class="admin-input" maxlength="500" value="{{ old('fp_client_address') }}">
-            </div>
-            <input type="hidden" name="link_line_description" value="" id="sq-create-project-line-desc">
-            <button type="submit" class="admin-btn admin-btn--primary">
-              <i class="fa fa-briefcase"></i> Create new project &amp; link
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
+    @include('admin.quotations._link_to_project_card', [
+        'quotation' => $quotation,
+        'linkUrl' => route('admin.quotations.standard.link', $quotation),
+        'createProjectUrl' => route('admin.quotations.standard.create-project', $quotation),
+        'idPrefix' => 'sq',
+        'projectNamePlaceholder' => 'Defaults to: Client name — Standard',
+        'linkableProjects' => $linkable,
+        'wrapAdminCard' => true,
+        'title' => 'Connect to a project',
+        'helpText' => 'Adds the <strong>pre-HST</strong> amounts to the project\'s <strong>Quotation</strong>. The project quotation\'s "Apply HST" toggle will then add HST to the taxable portion (no double taxation). If some materials are HST-exempt, two lines are added — one taxable, one exempt.',
+        'emptyProjectsMessage' => 'No active projects to link.',
+        'projectPickerId' => 'sq-link-project',
+        'existingFormId' => 'sq-link-existing-form',
+        'createHiddenLineDescriptionId' => 'sq-create-project-line-desc',
+        'createFormOnsubmit' => "document.getElementById('sq-create-project-line-desc').value=(document.getElementById('sq-link-line-desc')&&document.getElementById('sq-link-line-desc').value)||'Standard quotation';",
+        'sharedLineDescription' => [
+            'id' => 'sq-link-line-desc',
+            'form' => 'sq-link-existing-form',
+            'label' => 'Line description on project quotation',
+            'value' => old('link_line_description', 'Standard quotation'),
+            'placeholder' => 'Standard quotation',
+            'help' => 'Shown as the line item text (quote number is appended automatically).',
+        ],
+    ])
   @endif
 
   <template id="sq-material-template">
