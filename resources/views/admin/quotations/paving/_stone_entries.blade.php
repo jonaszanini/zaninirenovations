@@ -11,7 +11,7 @@
 <div class="admin-form-group pq-stone-entries-block">
   <div class="pq-stone-entries-head">
     <span class="admin-form-group-label">Stone types <span class="cp-required">*</span></span>
-    <p class="pq-hint pq-hint--inline">Add up to {{ PavingStoneEntryResolver::MAX_ENTRIES }} stone types. Total project area is the sum of all stone areas (used for base, sand, disposal, labour, etc.).</p>
+    <p class="pq-hint pq-hint--inline">Add up to {{ PavingStoneEntryResolver::MAX_ENTRIES }} stone types. <strong>Total paving stone area</strong> is the sum of all paver stone areas (crushed base, sand, disposal, paver labour, etc.). Decorative marble is separate and additive.</p>
   </div>
 
   <div id="pq-stone-entries" class="pq-stone-entries">

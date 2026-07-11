@@ -779,7 +779,7 @@
         });
         sum = Math.round(sum * 100) / 100;
         line.textContent = sum > 0
-          ? 'Total project area: ' + sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' sq ft'
+          ? 'Total paving stone area: ' + sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' sq ft'
           : '';
       }
 
