@@ -148,6 +148,47 @@
   </div>
 @endif
 
+@php
+  $marbleEnabled = filter_var($inp['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+  $legacyMarbleStoneId = $inp['marble_stone_type_id'] ?? null;
+@endphp
+@if ($marbleEnabled && ! empty($inp['marble_area_sq_ft']) && (! empty($inp['marble_name']) || ! empty($inp['marble_type_id'])))
+  <div class="cp-vd-section">
+    <div class="cp-vd-section__title">Decorative marble</div>
+    <div class="cp-vd-grid">
+      <div class="cp-vd-field cp-vd-field--full">
+        <span class="cp-vd-field__label">Marble type</span>
+        <span class="cp-vd-field__value">{{ $inp['marble_name'] ?? 'Marble bed' }}</span>
+      </div>
+      <div class="cp-vd-field">
+        <span class="cp-vd-field__label">Area</span>
+        <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format((float) $inp['marble_area_sq_ft'], 2), '0'), '.') }} sq ft</span>
+      </div>
+      <div class="cp-vd-field">
+        <span class="cp-vd-field__label">Depth</span>
+        <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format((float) ($inp['marble_depth_in'] ?? 2), 2), '0'), '.') }} in.</span>
+      </div>
+      @if (! empty($inp['marble_bags']))
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Bags</span>
+          <span class="cp-vd-field__value">{{ (int) $inp['marble_bags'] }}</span>
+        </div>
+      @endif
+    </div>
+  </div>
+@elseif ($marbleEnabled && $legacyMarbleStoneId && ! empty($inp['marble_area_sq_ft']))
+  <div class="cp-vd-section">
+    <div class="cp-vd-section__title">Decorative marble (legacy)</div>
+    <p class="admin-form-help">This quote used the old marble-as-paver setting. Re-open the quotation and pick a marble type from the new catalog to recalculate.</p>
+    <div class="cp-vd-grid">
+      <div class="cp-vd-field">
+        <span class="cp-vd-field__label">Area</span>
+        <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format((float) $inp['marble_area_sq_ft'], 2), '0'), '.') }} sq ft</span>
+      </div>
+    </div>
+  </div>
+@endif
+
 {{-- Calculator summary (from stored calculation) --}}
 @if (!empty($summary))
   <div class="cp-vd-section">

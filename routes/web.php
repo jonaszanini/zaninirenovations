@@ -500,6 +500,12 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.paving.database.stones.update');
     Route::delete('quotations/paving/database/stones/{paving_stone_type}', [PavingDatabaseController::class, 'destroyStone'])
         ->name('quotations.paving.database.stones.destroy');
+    Route::post('quotations/paving/database/marbles', [PavingDatabaseController::class, 'storeMarble'])
+        ->name('quotations.paving.database.marbles.store');
+    Route::put('quotations/paving/database/marbles/{paving_marble_type}', [PavingDatabaseController::class, 'updateMarble'])
+        ->name('quotations.paving.database.marbles.update');
+    Route::delete('quotations/paving/database/marbles/{paving_marble_type}', [PavingDatabaseController::class, 'destroyMarble'])
+        ->name('quotations.paving.database.marbles.destroy');
     Route::put('quotations/paving/database/rates/{paving_material_rate}', [PavingDatabaseController::class, 'updateRate'])
         ->name('quotations.paving.database.rates.update');
     Route::post('quotations/paving/database/tiers/sync', [PavingDatabaseController::class, 'syncTiers'])

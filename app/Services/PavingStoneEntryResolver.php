@@ -60,37 +60,15 @@ class PavingStoneEntryResolver
     {
         $entries = [];
         $total = max(0.0, (float) ($inputs['total_area_sq_ft'] ?? 0));
-        $marbleOn = filter_var($inputs['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $marbleArea = $marbleOn
-            ? min(max(0.0, (float) ($inputs['marble_area_sq_ft'] ?? 0)), $total)
-            : 0.0;
-        $regularArea = max(0.0, $total - $marbleArea);
 
         if (! empty($inputs['paving_stone_type_id'])) {
             $stone = PavingStoneType::query()->find($inputs['paving_stone_type_id']);
             if ($stone) {
-                $area = $regularArea > 0 ? $regularArea : $total;
                 $entries[] = self::finalizeEntry(array_merge(
                     self::catalogFields($stone),
                     [
                         'input_mode' => 'sqft',
-                        'area_sq_ft' => round($area, 2),
-                        'qty' => null,
-                        'length_ft' => null,
-                        'width_ft' => null,
-                    ]
-                ));
-            }
-        }
-
-        if ($marbleOn && $marbleArea > 0 && ! empty($inputs['marble_stone_type_id'])) {
-            $marble = PavingStoneType::query()->find($inputs['marble_stone_type_id']);
-            if ($marble) {
-                $entries[] = self::finalizeEntry(array_merge(
-                    self::catalogFields($marble),
-                    [
-                        'input_mode' => 'sqft',
-                        'area_sq_ft' => round($marbleArea, 2),
+                        'area_sq_ft' => round($total, 2),
                         'qty' => null,
                         'length_ft' => null,
                         'width_ft' => null,

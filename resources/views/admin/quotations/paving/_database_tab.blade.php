@@ -4,6 +4,9 @@
       <button type="button" class="nav-link active" data-pq-db="stones" role="tab" aria-selected="true" id="pq-db-tab-stones" aria-controls="pq-db-panel-stones">Stone types</button>
     </li>
     <li class="nav-item" role="presentation">
+      <button type="button" class="nav-link" data-pq-db="marbles" role="tab" aria-selected="false" id="pq-db-tab-marbles" aria-controls="pq-db-panel-marbles">Marble types</button>
+    </li>
+    <li class="nav-item" role="presentation">
       <button type="button" class="nav-link" data-pq-db="rates" role="tab" aria-selected="false" id="pq-db-tab-rates" aria-controls="pq-db-panel-rates">Fixed costs &amp; equipment</button>
     </li>
     <li class="nav-item" role="presentation">
@@ -212,6 +215,8 @@
     </div>
   </div>
 
+  @include('admin.quotations.paving._database_marble_tab')
+
   <div id="pq-db-panel-rates" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-rates" hidden>
     <div class="admin-card">
       <h4 style="margin:0 0 8px;">Fixed costs &amp; equipment</h4>
@@ -299,7 +304,7 @@
 <script>
   (function () {
     function showDbSubtab(key) {
-      var map = { stones: 'pq-db-panel-stones', rates: 'pq-db-panel-rates', tiers: 'pq-db-panel-tiers' };
+      var map = { stones: 'pq-db-panel-stones', marbles: 'pq-db-panel-marbles', rates: 'pq-db-panel-rates', tiers: 'pq-db-panel-tiers' };
       document.querySelectorAll('[data-pq-db]').forEach(function (b) {
         var k = b.getAttribute('data-pq-db');
         var active = k === key;
@@ -374,7 +379,7 @@
       }
     }
 
-    document.querySelectorAll('.pq-db-stone-editor').forEach(function (editor) {
+    document.querySelectorAll('.pq-db-stone-editor, .pq-db-marble-editor').forEach(function (editor) {
       autoCalcPriceSqFt(editor);
     });
 
@@ -430,7 +435,7 @@
       }
     }
 
-    document.querySelectorAll('.pq-db-stone-editor').forEach(function (editor) {
+    document.querySelectorAll('.pq-db-stone-editor, .pq-db-marble-editor').forEach(function (editor) {
       var urlInput = editor.querySelector('.pq-db-stone-image-url');
       var fileInput = editor.querySelector('.pq-db-stone-image-file');
       var fileNameEl = editor.querySelector('.pq-db-file-picker-name');
@@ -476,6 +481,12 @@
       }
       syncStonePreview(editor);
     });
+
+    var addMarbleForm = document.getElementById('pq-add-marble-form');
+    if (addMarbleForm && (addMarbleForm.classList.contains('pq-db-add-stone--error') || (addMarbleForm.querySelector('[name="name"]') && addMarbleForm.querySelector('[name="name"]').value))) {
+      addMarbleForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showDbSubtab('marbles');
+    }
 
     var addForm = document.getElementById('pq-add-stone-form');
     if (addForm && (addForm.classList.contains('pq-db-add-stone--error') || (addForm.querySelector('[name="name"]') && addForm.querySelector('[name="name"]').value))) {

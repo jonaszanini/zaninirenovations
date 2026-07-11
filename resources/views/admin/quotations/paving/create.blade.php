@@ -214,8 +214,11 @@
       padding-top: 4px;
       border-top: 1px solid #e8edf2;
     }
-    .pq-marble-price-field { max-width: 280px; }
-    @media (max-width: 700px) { .pq-marble-price-field { max-width: none; } }
+    .pq-marble-section { margin-top: 16px; padding-top: 14px; border-top: 1px dashed #e2e8f0; }
+    .pq-marble-section__head { margin-bottom: 12px; }
+    .pq-marble-section__fields { display: flex; flex-direction: column; gap: 12px; }
+    .pq-marble-preview { margin: 0; font-size: 15px; font-weight: 600; color: #024768; padding-top: 6px; }
+    .pq-marble-preview-wrap .admin-form-group-label { margin-bottom: 0; }
     .pq-area-block { grid-column: 1 / -1; }
     .pq-area-mode { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 10px; }
     .pq-area-mode label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer; }
@@ -359,6 +362,7 @@
             </div>
             <div class="pq-form-sections">
               @include('admin.quotations.paving._stone_entries', ['inputs' => $inputs, 'stoneTypes' => $stoneTypes])
+              @include('admin.quotations.paving._marble_section', ['inputs' => $inputs, 'marbleTypes' => $marbleTypes])
 
               <div class="pq-field-box">
                 <span class="pq-field-box-title">Labour rates</span>
@@ -820,6 +824,66 @@
       }
       initStoneEntries();
 
+      (function initMarbleSection() {
+        var enabled = document.getElementById('pq-marble-enabled');
+        var fields = document.getElementById('pq-marble-fields');
+        var typeSel = document.getElementById('pq-marble-type');
+        var areaIn = document.getElementById('pq-marble-area');
+        var depthIn = document.getElementById('pq-marble-depth');
+        var preview = document.getElementById('pq-marble-bags-preview');
+        if (!enabled || !fields) return;
+
+        function wasteFactor() {
+          var wf = form.querySelector('[name="waste_factor"]');
+          var w = wf ? parseFloat(wf.value) : 0.05;
+          if (!isFinite(w)) w = 0.05;
+          if (w > 1) w /= 100;
+          return w;
+        }
+
+        function syncMarbleRequired(on) {
+          [typeSel, areaIn, depthIn].forEach(function (el) {
+            if (el) el.required = !!on;
+          });
+        }
+
+        function updateMarbleBagPreview() {
+          if (!preview || !enabled.checked) {
+            if (preview) preview.textContent = '—';
+            return;
+          }
+          if (!typeSel || typeSel.selectedIndex < 0) {
+            preview.textContent = '—';
+            return;
+          }
+          var opt = typeSel.options[typeSel.selectedIndex];
+          var cuFt = parseFloat(opt.getAttribute('data-cuft-bag'));
+          var area = areaIn ? parseFloat(areaIn.value) : 0;
+          var depth = depthIn ? parseFloat(depthIn.value) : 2;
+          if (!isFinite(cuFt) || cuFt <= 0 || !isFinite(area) || area <= 0 || !isFinite(depth) || depth <= 0) {
+            preview.textContent = '—';
+            return;
+          }
+          var volume = area * (depth / 12) * (1 + wasteFactor());
+          var bags = Math.ceil(volume / cuFt - 1e-9);
+          preview.textContent = bags + ' bag' + (bags === 1 ? '' : 's');
+        }
+
+        function syncMarbleVisibility() {
+          var on = enabled.checked;
+          fields.hidden = !on;
+          syncMarbleRequired(on);
+          updateMarbleBagPreview();
+          schedule();
+        }
+
+        enabled.addEventListener('change', syncMarbleVisibility);
+        [typeSel, areaIn, depthIn].forEach(function (el) {
+          if (el) el.addEventListener('input', updateMarbleBagPreview);
+        });
+        syncMarbleVisibility();
+      })();
+
       function syncBaseDepthDisplay() {
         var display = document.getElementById('pq-base-depth-display');
         var depthInput = document.getElementById('pq-depth');
@@ -923,6 +987,15 @@
           html += section('Reference', [
             row('Market tier estimate', fmt(s.market_reference_total), 'pq-row--muted'),
             '<div class="pq-row pq-row--note"><span>From pricing table — not added to the quote.</span></div>',
+          ].join(''));
+        }
+
+        if (c.marble && c.marble.enabled) {
+          var mb = c.marble;
+          html += section('Decorative marble', [
+            row(mb.marble_name || 'Marble bed', mb.area_sq_ft + ' sq ft @ ' + mb.depth_in + ' in.'),
+            row('Bags', String(mb.bags || 0)),
+            row('Marble subtotal <span class="admin-form-help">(incl. HST + labour)</span>', fmt(mb.subtotal_with_tax_and_labour || 0)),
           ].join(''));
         }
 

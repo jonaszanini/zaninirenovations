@@ -211,4 +211,80 @@ class PavingQuotationCalculatorTest extends TestCase
         $this->assertNotNull($stone);
         $this->assertSame(200, (int) $stone['qty']);
     }
+
+    /**
+     * @param  array<string, mixed>  $marbleOverrides
+     * @return array<string, mixed>
+     */
+    private function marbleInputs(array $marbleOverrides = []): array
+    {
+        return array_merge([
+            'marble_enabled' => true,
+            'marble_area_sq_ft' => 50,
+            'marble_depth_in' => 2,
+            'marble_include_geotextile' => true,
+            'marble_name' => 'Test marble',
+            'marble_reference_depth_in' => 2,
+            'marble_sq_ft_per_bag_at_reference_depth' => 9,
+            'marble_price_per_bag' => 9.98,
+            'marble_bulk_min_bags' => 70,
+            'marble_bulk_discount_pct' => 10,
+        ], $marbleOverrides);
+    }
+
+    public function test_marble_disabled_adds_no_marble_section(): void
+    {
+        $calc = new PavingQuotationCalculator(collect([]), collect([]));
+        $result = $calc->calculate($this->minimalInputs(['marble_enabled' => false]));
+
+        $this->assertNull($result['marble'] ?? null);
+    }
+
+    public function test_marble_enabled_does_not_increase_main_stone_area(): void
+    {
+        $calc = new PavingQuotationCalculator(collect([]), collect([]));
+        $base = $this->minimalInputs();
+        $withMarble = $calc->calculate(array_merge($base, $this->marbleInputs()));
+        $withoutMarble = $calc->calculate($base);
+
+        $this->assertSame(
+            (float) ($withoutMarble['areas']['total_sq_ft'] ?? 0),
+            (float) ($withMarble['areas']['total_sq_ft'] ?? 0)
+        );
+        $this->assertNotNull($withMarble['marble']);
+        $this->assertSame(50.0, (float) ($withMarble['areas']['marble_area_sq_ft'] ?? 0));
+    }
+
+    public function test_marble_geotextile_off_skips_geo_material_rows_qty(): void
+    {
+        $calc = new PavingQuotationCalculator(collect([]), collect([]));
+        $result = $calc->calculate(array_merge(
+            $this->minimalInputs(),
+            $this->marbleInputs(['marble_include_geotextile' => false])
+        ));
+
+        $geoRow = collect($result['materials']['rows'])->firstWhere('label', 'Marble bed geotextile fabric');
+        $this->assertNotNull($geoRow);
+        $this->assertSame(0, (int) $geoRow['qty']);
+    }
+
+    public function test_marble_bulk_discount_applied_in_calculation(): void
+    {
+        $calc = new PavingQuotationCalculator(collect([]), collect([]));
+        $result = $calc->calculate(array_merge(
+            $this->minimalInputs(['waste_factor' => 0]),
+            $this->marbleInputs([
+                'marble_area_sq_ft' => 700,
+                'marble_sq_ft_per_bag_at_reference_depth' => 10,
+                'marble_price_per_bag' => 10,
+                'marble_bulk_min_bags' => 70,
+                'marble_bulk_discount_pct' => 10,
+            ])
+        ));
+
+        $bagRow = collect($result['materials']['rows'])->first(fn ($row) => str_contains($row['label'] ?? '', '(bags)'));
+        $this->assertNotNull($bagRow);
+        $this->assertGreaterThanOrEqual(70, (int) $bagRow['qty']);
+        $this->assertSame(9.0, (float) $bagRow['unit_price']);
+    }
 }

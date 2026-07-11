@@ -307,6 +307,48 @@ class PavingQuotationCalculator
         $helperCostSum = round($helperCostSum, 2);
         $labourTotal = round($ownerCostSum + $helperCostSum, 2);
 
+        $marbleSection = PavingMarbleCalculator::calculate(
+            $inputs,
+            $this->rates,
+            $waste,
+            $hst,
+            $ownerRate,
+            $helperRate,
+        );
+
+        if ($marbleSection !== null) {
+            $materialRows = array_merge($materialRows, $marbleSection['material_rows']);
+            $labourRows = array_merge($labourRows, $marbleSection['labour_rows']);
+
+            $matPre = 0.0;
+            $matHst = 0.0;
+            foreach ($materialRows as $row) {
+                $matPre += $row['before_tax'];
+                $matHst += $row['hst'];
+            }
+            $matPre = round($matPre, 2);
+            $matHst = round($matHst, 2);
+            $matWithTax = round($matPre + $matHst, 2);
+
+            $ownerHrsSum = 0.0;
+            $helperHrsSum = 0.0;
+            $ownerCostSum = 0.0;
+            $helperCostSum = 0.0;
+            foreach ($labourRows as $row) {
+                $ownerHrsSum += (float) ($row['owner_hrs'] ?? 0);
+                $helperHrsSum += (float) ($row['helper_hrs'] ?? 0);
+                $ownerCostSum += (float) ($row['owner_cost'] ?? 0);
+                $helperCostSum += (float) ($row['helper_cost'] ?? 0);
+            }
+            $ownerHrsSum = round($ownerHrsSum, 2);
+            $helperHrsSum = round($helperHrsSum, 2);
+            $ownerCostSum = round($ownerCostSum, 2);
+            $helperCostSum = round($helperCostSum, 2);
+            $labourTotal = round($ownerCostSum + $helperCostSum, 2);
+
+            $inputs = array_merge($inputs, self::marbleInputSnapshot($marbleSection));
+        }
+
         $preTaxMatFix = round($matPre + $fixPre, 2);
         $hstMatFix = round($matHst + $fixHst, 2);
         $withTaxMatFix = round($matWithTax + $fixWithTax, 2);
@@ -345,7 +387,9 @@ class PavingQuotationCalculator
                     'area_sq_ft' => PavingStoneEntryResolver::resolvedArea($entry),
                     'input_mode' => $entry['input_mode'] ?? 'sqft',
                 ], $stoneEntries),
+                'marble_area_sq_ft' => $marbleSection ? (float) ($marbleSection['area_sq_ft'] ?? 0) : 0.0,
             ],
+            'marble' => $marbleSection,
             'materials' => [
                 'rows' => $materialRows,
                 'subtotal_before_tax' => $matPre,
@@ -578,6 +622,34 @@ class PavingQuotationCalculator
     }
 
     /**
+     * @param  array<string, mixed>  $marbleSection
+     * @return array<string, mixed>
+     */
+    protected static function marbleInputSnapshot(array $marbleSection): array
+    {
+        $resolved = $marbleSection['resolved'] ?? [];
+
+        return [
+            'marble_enabled' => true,
+            'marble_type_id' => $marbleSection['marble_type_id'] ?? null,
+            'marble_area_sq_ft' => $marbleSection['area_sq_ft'] ?? 0,
+            'marble_depth_in' => $marbleSection['depth_in'] ?? 2,
+            'marble_include_geotextile' => $marbleSection['include_geotextile'] ?? true,
+            'marble_name' => $marbleSection['marble_name'] ?? '',
+            'marble_reference_depth_in' => $resolved['reference_depth_in'] ?? null,
+            'marble_sq_ft_per_bag_at_reference_depth' => $resolved['sq_ft_per_bag_at_reference_depth'] ?? null,
+            'marble_price_per_bag' => $resolved['price_per_bag'] ?? null,
+            'marble_effective_price_per_bag' => $marbleSection['effective_price_per_bag'] ?? null,
+            'marble_bulk_min_bags' => $resolved['bulk_min_bags'] ?? null,
+            'marble_bulk_discount_pct' => $resolved['bulk_discount_pct'] ?? null,
+            'marble_delivery_cost' => $resolved['delivery_cost'] ?? null,
+            'marble_additional_cost' => $resolved['additional_cost'] ?? null,
+            'marble_additional_cost_description' => $resolved['additional_cost_description'] ?? null,
+            'marble_bags' => $marbleSection['bags'] ?? 0,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function defaultInputs(?PavingStoneType $defaultStone = null): array
@@ -609,11 +681,10 @@ class PavingQuotationCalculator
             'include_old_surface_removal' => false,
             'include_geotextile' => true,
             'marble_enabled' => false,
-            'marble_stone_type_id' => null,
+            'marble_type_id' => null,
             'marble_area_sq_ft' => 0,
-            'marble_sq_ft_per_stone' => null,
-            'marble_price_per_stone' => null,
-            'marble_price_per_sq_ft' => null,
+            'marble_depth_in' => 2,
+            'marble_include_geotextile' => true,
             'manual_price_override' => null,
         ];
     }

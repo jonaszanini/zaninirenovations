@@ -8,10 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
 use App\Models\PavingQuotation;
+use App\Models\PavingMarbleType;
 use App\Models\PavingStoneType;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientProjectContactService;
 use App\Services\CommuteExpenseService;
+use App\Services\PavingMarbleCalculator;
 use App\Services\PavingQuotationCalculator;
 use App\Services\PavingStoneEntryResolver;
 use Illuminate\Http\Request;
@@ -305,6 +307,7 @@ class PavingQuotationController extends Controller
         $request = $request ?? request();
 
         $stoneTypes = PavingStoneType::query()->orderBy('sort_order')->get();
+        $marbleTypes = PavingMarbleType::query()->orderBy('sort_order')->get();
 
         $linkableProjects = ClientProject::query()
             ->whereNotIn('status', ClientProject::statusesClosedToNewQuotations())
@@ -319,6 +322,7 @@ class PavingQuotationController extends Controller
         return view('admin.quotations.paving.create', [
             'quotation' => $quotation,
             'stoneTypes' => $stoneTypes,
+            'marbleTypes' => $marbleTypes,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
         ]);
@@ -385,7 +389,21 @@ class PavingQuotationController extends Controller
             'bedding_sand_depth_in' => ['nullable', 'numeric', 'min:0.25', 'max:6'],
             'hst_rate' => ['required', 'numeric', 'min:0', 'max:30'],
             'manual_price_override' => ['nullable', 'numeric', 'min:0'],
+            'marble_enabled' => ['nullable'],
+            'marble_type_id' => ['nullable', 'integer', 'exists:paving_marble_types,id'],
+            'marble_area_sq_ft' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
+            'marble_depth_in' => ['nullable', 'numeric', 'min:0.5', 'max:12'],
+            'marble_include_geotextile' => ['nullable'],
         ]);
+
+        $marbleEnabled = $request->boolean('marble_enabled');
+        if ($marbleEnabled) {
+            $request->validate([
+                'marble_type_id' => ['required', 'integer', 'exists:paving_marble_types,id'],
+                'marble_area_sq_ft' => ['required', 'numeric', 'min:0.1', 'max:1000000'],
+                'marble_depth_in' => ['required', 'numeric', 'min:0.5', 'max:12'],
+            ]);
+        }
 
         $profitMargin = (float) $data['profit_margin'];
         if ($profitMargin > 1) {
@@ -422,7 +440,40 @@ class PavingQuotationController extends Controller
 
         $primaryEntry = PavingStoneEntryResolver::primaryEntryForCoverage($stoneEntries);
 
-        return [
+        $marblePayload = [
+            'marble_enabled' => $marbleEnabled,
+            'marble_type_id' => null,
+            'marble_area_sq_ft' => 0,
+            'marble_depth_in' => 2,
+            'marble_include_geotextile' => true,
+        ];
+
+        if ($marbleEnabled) {
+            $marbleType = PavingMarbleType::query()->findOrFail($data['marble_type_id']);
+            $marbleArea = (float) $data['marble_area_sq_ft'];
+            $marbleDepth = (float) $data['marble_depth_in'];
+            $marbleGeo = $request->boolean('marble_include_geotextile');
+            $snapshot = PavingMarbleCalculator::snapshotFromType($marbleType, $marbleArea, $marbleDepth, $marbleGeo);
+
+            $marblePayload = [
+                'marble_enabled' => true,
+                'marble_type_id' => (int) $marbleType->id,
+                'marble_area_sq_ft' => $marbleArea,
+                'marble_depth_in' => $marbleDepth,
+                'marble_include_geotextile' => $marbleGeo,
+                'marble_name' => $snapshot['marble_name'],
+                'marble_reference_depth_in' => $snapshot['reference_depth_in'],
+                'marble_sq_ft_per_bag_at_reference_depth' => $snapshot['sq_ft_per_bag_at_reference_depth'],
+                'marble_price_per_bag' => $snapshot['price_per_bag'],
+                'marble_bulk_min_bags' => $snapshot['bulk_min_bags'],
+                'marble_bulk_discount_pct' => $snapshot['bulk_discount_pct'],
+                'marble_delivery_cost' => $snapshot['delivery_cost'],
+                'marble_additional_cost' => $snapshot['additional_cost'],
+                'marble_additional_cost_description' => $snapshot['additional_cost_description'],
+            ];
+        }
+
+        return array_merge([
             'stone_entries' => $stoneEntries,
             'total_area_sq_ft' => $totalAreaSqFt,
             'paving_stone_type_id' => $primaryEntry['stone_type_id'] ?? null,
@@ -451,7 +502,7 @@ class PavingQuotationController extends Controller
             'manual_price_override' => isset($data['manual_price_override']) && $data['manual_price_override'] !== ''
                 ? (float) $data['manual_price_override']
                 : null,
-        ];
+        ], $marblePayload);
     }
 
     /**
