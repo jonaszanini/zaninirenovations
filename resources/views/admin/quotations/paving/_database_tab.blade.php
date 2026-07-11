@@ -223,7 +223,7 @@
   <div id="pq-db-panel-rates" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-rates"@if($activeDbTab !== 'rates') hidden @endif>
     <div class="admin-card">
       <h4 style="margin:0 0 8px;">Fixed costs &amp; equipment</h4>
-      <p class="admin-form-help" style="margin:0 0 16px;">Unit prices used by the calculator. Equipment day rates pair with rental days on the Calculator tab.</p>
+      <p class="admin-form-help" style="margin:0 0 16px;">Unit prices used by the calculator. <strong>Labour</strong> rates are defaults for new quotations (you can still override them on each quote). Equipment day rates pair with rental days on the quotation form.</p>
       <div class="pq-db-rates-groups">
         @foreach ($materialRateGroups as $category => $rates)
           <section class="pq-db-rates-group">

@@ -25,7 +25,31 @@ class PavingMaterialRate extends Model
         'Materials',
         'Disposal & site',
         'Equipment',
+        'Labour',
     ];
+
+    /** @var list<string> */
+    public const LABOUR_RATE_KEYS = [
+        'helper_hourly_rate',
+        'owner_hourly_rate',
+    ];
+
+    /**
+     * Default helper/owner rates for new paving quotations (editable per quote).
+     *
+     * @return array{helper_hourly_rate: float, owner_hourly_rate: float}
+     */
+    public static function defaultQuotationLabourRates(): array
+    {
+        $rows = static::query()
+            ->whereIn('rate_key', self::LABOUR_RATE_KEYS)
+            ->pluck('price_before_tax', 'rate_key');
+
+        return [
+            'helper_hourly_rate' => (float) ($rows['helper_hourly_rate'] ?? 21),
+            'owner_hourly_rate' => (float) ($rows['owner_hourly_rate'] ?? 65),
+        ];
+    }
 
     public function category(): string
     {
@@ -41,6 +65,8 @@ class PavingMaterialRate extends Model
             'disposal_clean_fill_ton' => 'Disposal & site',
             'mini_skid_steer_day',
             'plate_compactor_day' => 'Equipment',
+            'helper_hourly_rate',
+            'owner_hourly_rate' => 'Labour',
             default => 'Other',
         };
     }

@@ -394,7 +394,7 @@
                            value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
                   </div>
                 </div>
-                <p class="pq-hint">Set helper to 0 to disable helper hours on labour tasks.</p>
+                <p class="pq-hint">Set helper to 0 to disable helper hours on labour tasks. Defaults come from <a href="{{ route('admin.quotations.paving.price-configuration', ['db' => 'rates']) }}">Price configuration → Fixed costs &amp; equipment → Labour</a>.</p>
               </div>
 
               <div class="pq-field-box">

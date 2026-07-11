@@ -72,12 +72,13 @@ class PavingQuotationCalculator
         $waste = (float) ($inputs['waste_factor'] ?? 0.05);
         $depthIn = max(0.0, (float) ($inputs['excavation_depth_in'] ?? 12));
         $hst = (float) ($inputs['hst_rate'] ?? 0.13);
+        $labourDefaults = PavingMaterialRate::defaultQuotationLabourRates();
         $helperRate = array_key_exists('helper_hourly_rate', $inputs)
             ? max(0.0, (float) $inputs['helper_hourly_rate'])
-            : 21.0;
+            : $labourDefaults['helper_hourly_rate'];
         $ownerRate = array_key_exists('owner_hourly_rate', $inputs)
             ? max(0.0, (float) $inputs['owner_hourly_rate'])
-            : 65.0;
+            : $labourDefaults['owner_hourly_rate'];
         $miniDays = max(0.0, (float) ($inputs['mini_skid_days'] ?? 0));
         $plateDays = max(0.0, (float) ($inputs['plate_compactor_days'] ?? 0));
         $profitMargin = max(0.0, (float) ($inputs['profit_margin'] ?? 0.05));
@@ -655,6 +656,7 @@ class PavingQuotationCalculator
     public static function defaultInputs(?PavingStoneType $defaultStone = null): array
     {
         $stone = $defaultStone ?? PavingStoneType::query()->orderBy('sort_order')->first();
+        $labour = PavingMaterialRate::defaultQuotationLabourRates();
 
         return [
             'total_area_sq_ft' => 168,
@@ -665,8 +667,8 @@ class PavingQuotationCalculator
             'stone_sq_ft_per_stone' => $stone && $stone->sq_ft_per_stone ? (float) $stone->sq_ft_per_stone : null,
             'stone_price_per_stone' => $stone && $stone->price_per_stone ? (float) $stone->price_per_stone : null,
             'stone_price_per_sq_ft' => $stone && $stone->price_per_sq_ft ? (float) $stone->price_per_sq_ft : null,
-            'helper_hourly_rate' => 21,
-            'owner_hourly_rate' => 65,
+            'helper_hourly_rate' => $labour['helper_hourly_rate'],
+            'owner_hourly_rate' => $labour['owner_hourly_rate'],
             'mini_skid_days' => 1,
             'plate_compactor_days' => 1,
             'profit_margin' => 0.05,
