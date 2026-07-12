@@ -1138,6 +1138,7 @@
     initCreateVisitFields();
     initCreateScheduleFields();
     initEditScheduleFields();
+    initRecalculateInstallmentsModal();
 
     var planSelect = document.getElementById('cp-plan');
     if (!planSelect) return;
@@ -1156,4 +1157,199 @@
       recalc();
     }
   });
+
+  function formatCad(n) {
+    var v = Number(n || 0);
+    return 'CA$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
+    });
+  }
+
+  function initRecalculateInstallmentsModal() {
+    var modal = document.getElementById('cp-recalc-modal');
+    if (!modal) return;
+
+    var openBtns = document.querySelectorAll('[data-cp-recalc-open]');
+    var closeBtns = modal.querySelectorAll('[data-cp-recalc-close]');
+    var countSelect = document.getElementById('cp-recalc-remaining-count');
+    var splitSelect = document.getElementById('cp-recalc-split-mode');
+    var previewEl = document.getElementById('cp-recalc-preview');
+    var errorEl = document.getElementById('cp-recalc-error');
+    var confirmBtn = document.getElementById('cp-recalc-confirm');
+    var previewTimer = null;
+    var lastPreview = null;
+
+    function openModal() {
+      modal.hidden = false;
+      document.body.classList.add('cp-modal-open');
+      schedulePreview();
+    }
+
+    function closeModal() {
+      modal.hidden = true;
+      document.body.classList.remove('cp-modal-open');
+    }
+
+    openBtns.forEach(function (btn) {
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        openModal();
+      });
+    });
+    closeBtns.forEach(function (btn) {
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        closeModal();
+      });
+    });
+    modal.addEventListener('click', function (ev) {
+      if (ev.target === modal) closeModal();
+    });
+
+    function schedulePreview() {
+      if (previewTimer) clearTimeout(previewTimer);
+      previewTimer = setTimeout(runPreview, 180);
+    }
+
+    if (countSelect) countSelect.addEventListener('change', schedulePreview);
+    if (splitSelect) splitSelect.addEventListener('change', schedulePreview);
+
+    function runPreview() {
+      if (!previewEl || !confirmBtn) return;
+      confirmBtn.disabled = true;
+      lastPreview = null;
+      if (errorEl) {
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+      }
+      previewEl.innerHTML = '<p class="admin-form-help">Calculating preview…</p>';
+
+      var payload = {
+        remaining_count: countSelect ? parseInt(countSelect.value, 10) : 1,
+        split_mode: splitSelect ? splitSelect.value : 'defaults'
+      };
+
+      fetch(modal.getAttribute('data-preview-url'), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': modal.getAttribute('data-csrf') || '',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(payload)
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, status: res.status, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            var msg = (result.data && result.data.error) ? result.data.error : 'Could not build preview.';
+            previewEl.innerHTML = '';
+            if (errorEl) {
+              errorEl.hidden = false;
+              errorEl.textContent = msg;
+            }
+            return;
+          }
+          lastPreview = result.data;
+          renderPreview(result.data);
+          confirmBtn.disabled = false;
+        })
+        .catch(function () {
+          previewEl.innerHTML = '';
+          if (errorEl) {
+            errorEl.hidden = false;
+            errorEl.textContent = 'Network error while loading preview.';
+          }
+        });
+    }
+
+    function renderPreview(data) {
+      var rows = (data && data.rows) || [];
+      var analysis = (data && data.analysis) || {};
+      var html = '';
+      html += '<p class="admin-form-help" style="margin-top:0;">';
+      html += 'New plan: <strong>' + (data.new_plan || 0) + '</strong> installment(s). ';
+      html += 'Will delete <strong>' + (data.unpaid_invoices_to_delete || 0) + '</strong> unpaid invoice(s) ';
+      html += 'and create <strong>' + (data.drafts_to_create || 0) + '</strong> draft(s).';
+      html += '</p>';
+      html += '<table><thead><tr>';
+      html += '<th>#</th><th>Label</th><th class="num">%</th><th class="num">Amount (incl. HST)</th><th>Status</th>';
+      html += '</tr></thead><tbody>';
+      rows.forEach(function (row, idx) {
+        html += '<tr class="' + (row.is_paid ? 'is-paid' : '') + '">';
+        html += '<td>' + (idx + 1) + '</td>';
+        html += '<td>' + escapeHtml(row.label || ('Installment ' + (idx + 1))) + '</td>';
+        html += '<td class="num">' + Number(row.percentage || 0).toFixed(2) + '%</td>';
+        html += '<td class="num">' + formatCad(row.total_incl_hst) + '</td>';
+        html += '<td>' + (row.is_paid ? 'Paid (kept)' : 'New / unpaid') + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      html += '<p class="admin-form-help" style="margin-bottom:0;">';
+      html += 'Quotation total ' + formatCad(analysis.quotation_grand);
+      html += ' − paid ' + formatCad(analysis.paid_grand);
+      html += ' = remaining ' + formatCad(analysis.remaining_grand) + '.';
+      html += '</p>';
+      previewEl.innerHTML = html;
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', function () {
+        if (!lastPreview) return;
+        var remaining = countSelect ? parseInt(countSelect.value, 10) : 1;
+        var msg = 'Recalculate remaining installments?\n\n'
+          + 'This will delete unpaid installment invoices and create new drafts.\n'
+          + 'Paid installments will not be changed.';
+
+        var doSubmit = function () {
+          var form = document.createElement('form');
+          form.method = 'POST';
+          form.action = modal.getAttribute('data-apply-url');
+          form.style.display = 'none';
+
+          var csrf = document.createElement('input');
+          csrf.type = 'hidden';
+          csrf.name = '_token';
+          csrf.value = modal.getAttribute('data-csrf') || '';
+          form.appendChild(csrf);
+
+          var countInput = document.createElement('input');
+          countInput.type = 'hidden';
+          countInput.name = 'remaining_count';
+          countInput.value = String(remaining);
+          form.appendChild(countInput);
+
+          var splitInput = document.createElement('input');
+          splitInput.type = 'hidden';
+          splitInput.name = 'split_mode';
+          splitInput.value = splitSelect ? splitSelect.value : 'defaults';
+          form.appendChild(splitInput);
+
+          document.body.appendChild(form);
+          form.submit();
+        };
+
+        if (window.AdminDialog && window.AdminDialog.confirm) {
+          window.AdminDialog.confirm(msg, {
+            title: 'Confirm recalculation',
+            danger: true,
+            confirmLabel: 'Recalculate'
+          }).then(function (ok) {
+            if (ok) doSubmit();
+          });
+        } else if (window.confirm(msg)) {
+          doSubmit();
+        }
+      });
+    }
+  }
 })();

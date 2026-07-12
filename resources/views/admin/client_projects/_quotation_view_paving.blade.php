@@ -1,34 +1,14 @@
 {{-- Paving quotation — read-only detail partial for the View drawer.
      Expects: $sourceModel (PavingQuotation) --}}
 @php
-  use App\Models\PavingStoneType;
+  use App\Services\PavingStoneEntryResolver;
+
   $inp  = is_array($sourceModel->inputs) ? $sourceModel->inputs : [];
   $calc = is_array($sourceModel->calculation) ? $sourceModel->calculation : [];
   $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
 
-  // Stone type
-  $stoneId   = (int) ($inp['paving_stone_type_id'] ?? 0);
-  $stoneName = '—';
-  if ($stoneId > 0) {
-      $st = PavingStoneType::query()->find($stoneId);
-      if ($st) $stoneName = $st->name;
-  }
-
-  // Area
-  $areaMode   = $inp['area_input_mode'] ?? 'total';
-  $areaTotal  = (float) ($inp['total_area_sq_ft'] ?? 0);
-  $areaLen    = (float) ($inp['area_length_ft'] ?? 0);
-  $areaWid    = (float) ($inp['area_width_ft'] ?? 0);
-
-  // Marble
-  $marbleOn   = filter_var($inp['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
-  $marbleArea = (float) ($inp['marble_area_sq_ft'] ?? 0);
-  $marbleStoneId = (int) ($inp['marble_stone_type_id'] ?? 0);
-  $marbleStoneName = '—';
-  if ($marbleOn && $marbleStoneId > 0) {
-      $mst = PavingStoneType::query()->find($marbleStoneId);
-      if ($mst) $marbleStoneName = $mst->name;
-  }
+  $stoneEntries = PavingStoneEntryResolver::normalize($inp);
+  $areaTotal = (float) ($inp['total_area_sq_ft'] ?? PavingStoneEntryResolver::totalArea($stoneEntries));
 
   // Rates & params
   $helperRate   = (float) ($inp['helper_hourly_rate'] ?? 0);
@@ -66,21 +46,9 @@
       </div>
     @endif
 
-    <div class="cp-vd-field">
-      <span class="cp-vd-field__label">Stone type</span>
-      <span class="cp-vd-field__value">{{ $stoneName }}</span>
-    </div>
-
-    <div class="cp-vd-field">
+    <div class="cp-vd-field cp-vd-field--full">
       <span class="cp-vd-field__label">Total area</span>
-      <span class="cp-vd-field__value">
-        @if ($areaMode === 'dimensions' && $areaLen > 0 && $areaWid > 0)
-          {{ rtrim(rtrim(number_format($areaLen, 2), '0'), '.') }} × {{ rtrim(rtrim(number_format($areaWid, 2), '0'), '.') }} ft
-          <span style="color:#9ca3af;font-size:12px;">({{ rtrim(rtrim(number_format($areaTotal, 2), '0'), '.') }} sq ft)</span>
-        @else
-          {{ rtrim(rtrim(number_format($areaTotal, 2), '0'), '.') }} sq ft
-        @endif
-      </span>
+      <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format($areaTotal, 2), '0'), '.') }} sq ft</span>
     </div>
 
     <div class="cp-vd-field">
@@ -147,17 +115,75 @@
   @endif
 </div>
 
-@if ($marbleOn)
+@if ($stoneEntries !== [])
   <div class="cp-vd-section">
-    <div class="cp-vd-section__title">Marble / accent stones</div>
+    <div class="cp-vd-section__title">Stone types</div>
     <div class="cp-vd-grid">
-      <div class="cp-vd-field">
-        <span class="cp-vd-field__label">Marble stone</span>
-        <span class="cp-vd-field__value">{{ $marbleStoneName }}</span>
+      @foreach ($stoneEntries as $entry)
+        @php
+          $mode = $entry['input_mode'] ?? 'sqft';
+          $entryArea = PavingStoneEntryResolver::resolvedArea($entry);
+          $modeLabel = match ($mode) {
+              'qty' => isset($entry['qty']) ? number_format((int) $entry['qty']).' stones' : 'Quantity',
+              'dimensions' => (isset($entry['length_ft'], $entry['width_ft'])
+                  ? rtrim(rtrim(number_format((float) $entry['length_ft'], 2), '0'), '.')
+                    .' × '
+                    .rtrim(rtrim(number_format((float) $entry['width_ft'], 2), '0'), '.')
+                    .' ft'
+                  : 'L × W'),
+              default => rtrim(rtrim(number_format($entryArea, 2), '0'), '.').' sq ft',
+          };
+        @endphp
+        <div class="cp-vd-field cp-vd-field--full">
+          <span class="cp-vd-field__label">{{ $entry['stone_name'] ?? 'Stone' }}</span>
+          <span class="cp-vd-field__value">
+            {{ $modeLabel }}
+            @if ($mode !== 'sqft')
+              <span style="color:#9ca3af;font-size:12px;">({{ rtrim(rtrim(number_format($entryArea, 2), '0'), '.') }} sq ft)</span>
+            @endif
+          </span>
+        </div>
+      @endforeach
+    </div>
+  </div>
+@endif
+
+@php
+  $marbleEnabled = filter_var($inp['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+  $legacyMarbleStoneId = $inp['marble_stone_type_id'] ?? null;
+@endphp
+@if ($marbleEnabled && ! empty($inp['marble_area_sq_ft']) && (! empty($inp['marble_name']) || ! empty($inp['marble_type_id'])))
+  <div class="cp-vd-section">
+    <div class="cp-vd-section__title">Decorative marble</div>
+    <div class="cp-vd-grid">
+      <div class="cp-vd-field cp-vd-field--full">
+        <span class="cp-vd-field__label">Marble type</span>
+        <span class="cp-vd-field__value">{{ $inp['marble_name'] ?? 'Marble bed' }}</span>
       </div>
       <div class="cp-vd-field">
-        <span class="cp-vd-field__label">Marble area</span>
-        <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format($marbleArea, 2), '0'), '.') }} sq ft</span>
+        <span class="cp-vd-field__label">Area</span>
+        <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format((float) $inp['marble_area_sq_ft'], 2), '0'), '.') }} sq ft</span>
+      </div>
+      <div class="cp-vd-field">
+        <span class="cp-vd-field__label">Depth</span>
+        <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format((float) ($inp['marble_depth_in'] ?? 2), 2), '0'), '.') }} in.</span>
+      </div>
+      @if (! empty($inp['marble_bags']))
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Bags</span>
+          <span class="cp-vd-field__value">{{ (int) $inp['marble_bags'] }}</span>
+        </div>
+      @endif
+    </div>
+  </div>
+@elseif ($marbleEnabled && $legacyMarbleStoneId && ! empty($inp['marble_area_sq_ft']))
+  <div class="cp-vd-section">
+    <div class="cp-vd-section__title">Decorative marble (legacy)</div>
+    <p class="admin-form-help">This quote used the old marble-as-paver setting. Re-open the quotation and pick a marble type from the new catalog to recalculate.</p>
+    <div class="cp-vd-grid">
+      <div class="cp-vd-field">
+        <span class="cp-vd-field__label">Area</span>
+        <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format((float) $inp['marble_area_sq_ft'], 2), '0'), '.') }} sq ft</span>
       </div>
     </div>
   </div>
@@ -168,22 +194,6 @@
   <div class="cp-vd-section">
     <div class="cp-vd-section__title">Calculator summary</div>
     <div class="cp-vd-grid">
-      @php
-        $matRows = $calc['materials']['rows'] ?? [];
-        $stoneQty = null;
-        foreach ($matRows as $mr) {
-            if (isset($mr['label']) && str_contains(strtolower((string)$mr['label']), 'stone')) {
-                $stoneQty = (float) ($mr['qty'] ?? 0);
-                break;
-            }
-        }
-      @endphp
-      @if ($stoneQty !== null && $stoneQty > 0)
-        <div class="cp-vd-field">
-          <span class="cp-vd-field__label">Stone quantity</span>
-          <span class="cp-vd-field__value">{{ number_format((int) ceil($stoneQty)) }} stones</span>
-        </div>
-      @endif
       @if (isset($summary['materials_pre_hst']))
         <div class="cp-vd-field">
           <span class="cp-vd-field__label">Materials (pre-tax)</span>

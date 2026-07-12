@@ -8,6 +8,9 @@
     $emailInputId      — id= of the fp_client_email <input>
     $phoneInputId      — id= of the fp_client_phone <input>
     $addressInputId    — id= of the fp_client_address <input>
+
+  Optional:
+    $hideDivider       — when true, omit the "or fill manually" divider (render it after a sibling grid row)
 --}}
 
 @push('head')
@@ -15,6 +18,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css">
     <style>
       .fp-cp-wrap { margin-bottom: 14px; }
+      .fp-cp-wrap--inline { margin-bottom: 0; min-width: 0; }
       .fp-cp-label {
         display: block;
         font-size: 12px;
@@ -22,11 +26,6 @@
         color: #374151;
         margin-bottom: 5px;
         letter-spacing: .01em;
-      }
-      .fp-cp-label-hint {
-        font-weight: 400;
-        color: #9ca3af;
-        margin-left: 4px;
       }
       .fp-cp-divider {
         display: flex;
@@ -44,10 +43,9 @@
   @endonce
 @endpush
 
-<div class="fp-cp-wrap">
+<div class="fp-cp-wrap{{ ! empty($hideDivider) ? ' fp-cp-wrap--inline' : '' }}">
   <label class="fp-cp-label" for="{{ $pickerId }}">
     Autofill from client directory
-    <span class="fp-cp-label-hint">— type a name or email to search</span>
   </label>
   <select id="{{ $pickerId }}"
           name="fp_client_id"
@@ -62,7 +60,9 @@
     <option value="">— Type to search —</option>
   </select>
 </div>
+@if (empty($hideDivider))
 <div class="fp-cp-divider">or fill manually</div>
+@endif
 
 @push('scripts')
   @once

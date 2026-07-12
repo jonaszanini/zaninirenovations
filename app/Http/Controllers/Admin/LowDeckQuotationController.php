@@ -137,10 +137,14 @@ class LowDeckQuotationController extends Controller
             'labour_rate_per_sqft' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'waste_dump_fee_cad' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
             'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'include_under_deck_gravel' => ['nullable', 'boolean'],
         ]);
         $data['material_waste_percent'] = $this->normaliseMaterialWastePercent(
             $request->input('material_waste_percent')
         );
+        $data['include_under_deck_gravel'] = $request->has('include_under_deck_gravel')
+            ? $request->boolean('include_under_deck_gravel')
+            : true;
 
         try {
             $calc = (new LowDeckQuotationCalculator())->calculate($data);
@@ -505,6 +509,7 @@ class LowDeckQuotationController extends Controller
             'labour_rate_per_sqft' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'waste_dump_fee_cad' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
             'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'include_under_deck_gravel' => ['nullable', 'boolean'],
             'include_diagrams_on_pdf' => ['nullable', 'boolean'],
             ...CommuteExpenseService::commuteValidationRules(),
         ];
@@ -528,6 +533,9 @@ class LowDeckQuotationController extends Controller
             'material_waste_percent' => $this->normaliseMaterialWastePercent(
                 $request->input('material_waste_percent')
             ),
+            'include_under_deck_gravel' => $request->has('include_under_deck_gravel')
+                ? $request->boolean('include_under_deck_gravel')
+                : true,
         ];
     }
 

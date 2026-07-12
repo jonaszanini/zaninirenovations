@@ -73,6 +73,10 @@
       fn (string $hint) => ! str_contains(strtolower($hint), 'payment due date')
   ));
 
+  $needsInvoiceEdit = count($contentBlockers) > 0;
+  $needsProjectEdit = count($contactBlockersForEmail) > 0
+      || ($invoice && \App\Models\ClientProject::phoneDigitsForSms($project->client_phone) === null);
+
   $clientEmail = $project->clientEmailRecipientsLabel();
   $clientSms = $project->clientSmsRecipientsLabel();
   $sendConfirm = "This will generate a new PDF, email it to {$clientEmail}, and save it on the server. Continue?";
@@ -116,10 +120,18 @@
           @endforeach
         </ul>
         <p class="cp-invoice-send-warning-actions">
-          <a href="{{ route('admin.client-projects.edit', $project) }}"
-             class="admin-btn admin-btn--ghost admin-btn--sm cp-invoice-send-warning-link">
-            <i class="fa fa-pencil"></i> Edit project info
-          </a>
+          @if ($needsInvoiceEdit)
+            <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}"
+               class="admin-btn admin-btn--ghost admin-btn--sm cp-invoice-send-warning-link">
+              <i class="fa fa-pencil"></i> Edit invoice
+            </a>
+          @endif
+          @if ($needsProjectEdit)
+            <a href="{{ route('admin.client-projects.edit', $project) }}"
+               class="admin-btn admin-btn--ghost admin-btn--sm cp-invoice-send-warning-link">
+              <i class="fa fa-pencil"></i> Edit project info
+            </a>
+          @endif
         </p>
       </div>
     </div>

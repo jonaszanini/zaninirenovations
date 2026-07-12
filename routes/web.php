@@ -245,6 +245,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('client-projects.reopen');
     Route::post('client-projects/{client_project}/installments', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'saveInstallments'])
         ->name('client-projects.installments.save');
+    Route::post('client-projects/{client_project}/installments/recalculate/preview', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'previewRecalculateInstallments'])
+        ->name('client-projects.installments.recalculate-preview');
+    Route::post('client-projects/{client_project}/installments/recalculate', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'recalculateInstallments'])
+        ->name('client-projects.installments.recalculate');
     Route::post('client-projects/{client_project}/installments/{installment}/paid', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'togglePaid'])
         ->name('client-projects.installments.toggle-paid');
     Route::post('client-projects/{client_project}/expenses', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'storeExpense'])
@@ -496,6 +500,12 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.paving.database.stones.update');
     Route::delete('quotations/paving/database/stones/{paving_stone_type}', [PavingDatabaseController::class, 'destroyStone'])
         ->name('quotations.paving.database.stones.destroy');
+    Route::post('quotations/paving/database/marbles', [PavingDatabaseController::class, 'storeMarble'])
+        ->name('quotations.paving.database.marbles.store');
+    Route::put('quotations/paving/database/marbles/{paving_marble_type}', [PavingDatabaseController::class, 'updateMarble'])
+        ->name('quotations.paving.database.marbles.update');
+    Route::delete('quotations/paving/database/marbles/{paving_marble_type}', [PavingDatabaseController::class, 'destroyMarble'])
+        ->name('quotations.paving.database.marbles.destroy');
     Route::put('quotations/paving/database/rates/{paving_material_rate}', [PavingDatabaseController::class, 'updateRate'])
         ->name('quotations.paving.database.rates.update');
     Route::post('quotations/paving/database/tiers/sync', [PavingDatabaseController::class, 'syncTiers'])

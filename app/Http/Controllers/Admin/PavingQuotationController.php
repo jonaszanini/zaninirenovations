@@ -8,11 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
 use App\Models\PavingQuotation;
+use App\Models\PavingMarbleType;
 use App\Models\PavingStoneType;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientProjectContactService;
 use App\Services\CommuteExpenseService;
+use App\Services\PavingMarbleCalculator;
 use App\Services\PavingQuotationCalculator;
+use App\Services\PavingStoneEntryResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -122,10 +125,17 @@ class PavingQuotationController extends Controller
 
     public function preview(Request $request)
     {
-        $inputs = $this->gatherInputsFromRequest($request);
-        $calc = (new PavingQuotationCalculator)->calculate($inputs);
+        try {
+            $inputs = $this->gatherInputsFromRequest($request);
+            $calc = (new PavingQuotationCalculator)->calculate($inputs);
 
-        return response()->json($calc);
+            return response()->json($calc);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
+        }
     }
 
     /**
@@ -304,6 +314,7 @@ class PavingQuotationController extends Controller
         $request = $request ?? request();
 
         $stoneTypes = PavingStoneType::query()->orderBy('sort_order')->get();
+        $marbleTypes = PavingMarbleType::query()->orderBy('sort_order')->get();
 
         $linkableProjects = ClientProject::query()
             ->whereNotIn('status', ClientProject::statusesClosedToNewQuotations())
@@ -318,6 +329,7 @@ class PavingQuotationController extends Controller
         return view('admin.quotations.paving.create', [
             'quotation' => $quotation,
             'stoneTypes' => $stoneTypes,
+            'marbleTypes' => $marbleTypes,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
         ]);
@@ -365,15 +377,16 @@ class PavingQuotationController extends Controller
     protected function gatherInputsFromRequest(Request $request): array
     {
         $this->normalizeCadMoneyStringsOnRequest($request);
+        $this->normalizeMarbleInputsOnRequest($request);
 
         $data = $request->validate([
-            'area_input_mode' => ['nullable', Rule::in(['total', 'dimensions'])],
-            'area_length_ft' => ['nullable', 'numeric', 'min:0.01', 'max:10000'],
-            'area_width_ft' => ['nullable', 'numeric', 'min:0.01', 'max:10000'],
-            'total_area_sq_ft' => ['nullable', 'numeric', 'min:1', 'max:1000000'],
-            'paving_stone_type_id' => ['required', 'integer', 'exists:paving_stone_types,id'],
-            'stone_sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
-            'stone_price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'stone_entries' => ['required', 'array', 'min:1', 'max:'.PavingStoneEntryResolver::MAX_ENTRIES],
+            'stone_entries.*.stone_type_id' => ['required', 'integer', 'exists:paving_stone_types,id'],
+            'stone_entries.*.input_mode' => ['required', Rule::in(PavingStoneEntryResolver::INPUT_MODES)],
+            'stone_entries.*.qty' => ['nullable', 'integer', 'min:1', 'max:999999'],
+            'stone_entries.*.area_sq_ft' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
+            'stone_entries.*.length_ft' => ['nullable', 'numeric', 'min:0.01', 'max:10000'],
+            'stone_entries.*.width_ft' => ['nullable', 'numeric', 'min:0.01', 'max:10000'],
             'helper_hourly_rate' => ['required', 'numeric', 'min:0', 'max:500'],
             'owner_hourly_rate' => ['required', 'numeric', 'min:0', 'max:500'],
             'mini_skid_days' => ['required', 'integer', 'min:0', 'max:365'],
@@ -383,13 +396,22 @@ class PavingQuotationController extends Controller
             'excavation_depth_in' => ['required', 'numeric', 'min:1', 'max:48'],
             'bedding_sand_depth_in' => ['nullable', 'numeric', 'min:0.25', 'max:6'],
             'hst_rate' => ['required', 'numeric', 'min:0', 'max:30'],
-            'marble_stone_type_id' => ['nullable', 'integer', 'exists:paving_stone_types,id'],
-            'marble_area_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
-            'marble_sq_ft_per_stone' => ['nullable', 'numeric', 'min:0.0001', 'max:100'],
-            'marble_price_per_stone' => ['nullable', 'numeric', 'min:0', 'max:99999'],
-            'marble_price_per_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'manual_price_override' => ['nullable', 'numeric', 'min:0'],
+            'marble_enabled' => ['nullable'],
+            'marble_type_id' => ['nullable', 'integer', 'exists:paving_marble_types,id'],
+            'marble_area_sq_ft' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'marble_depth_in' => ['nullable', 'numeric', 'min:0.5', 'max:12'],
+            'marble_include_geotextile' => ['nullable'],
         ]);
+
+        $marbleEnabled = $request->boolean('marble_enabled');
+        if ($marbleEnabled) {
+            $request->validate([
+                'marble_type_id' => ['required', 'integer', 'exists:paving_marble_types,id'],
+                'marble_area_sq_ft' => ['required', 'numeric', 'min:0.1', 'max:1000000'],
+                'marble_depth_in' => ['required', 'numeric', 'min:0.5', 'max:12'],
+            ]);
+        }
 
         $profitMargin = (float) $data['profit_margin'];
         if ($profitMargin > 1) {
@@ -404,54 +426,14 @@ class PavingQuotationController extends Controller
             $hst /= 100;
         }
 
-        $marbleOn = filter_var($data['marble_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        if ($marbleOn && (float) ($data['marble_area_sq_ft'] ?? 0) > 0 && empty($data['marble_stone_type_id'])) {
-            throw ValidationException::withMessages([
-                'marble_stone_type_id' => 'Select a marble / accent stone type when marble area is greater than zero.',
-            ]);
-        }
-
-        $areaMode = in_array($data['area_input_mode'] ?? 'total', ['total', 'dimensions'], true)
-            ? ($data['area_input_mode'] ?? 'total')
-            : 'total';
-
-        if ($areaMode === 'dimensions') {
-            $length = isset($data['area_length_ft']) ? (float) $data['area_length_ft'] : 0.0;
-            $width = isset($data['area_width_ft']) ? (float) $data['area_width_ft'] : 0.0;
-            if ($length <= 0 || $width <= 0) {
-                throw ValidationException::withMessages([
-                    'area_length_ft' => 'Enter length and width when using length × width mode.',
-                ]);
-            }
-            $totalAreaSqFt = round($length * $width, 2);
-        } else {
-            if (! isset($data['total_area_sq_ft']) || (float) $data['total_area_sq_ft'] < 1) {
-                throw ValidationException::withMessages([
-                    'total_area_sq_ft' => 'Enter the total project area in square feet.',
-                ]);
-            }
-            $totalAreaSqFt = (float) $data['total_area_sq_ft'];
-            $length = null;
-            $width = null;
-        }
-
-        if ($totalAreaSqFt < 1) {
-            throw ValidationException::withMessages([
-                'total_area_sq_ft' => 'Project area must be at least 1 sq ft.',
-            ]);
-        }
-
-        $mainStone = PavingStoneType::query()->findOrFail($data['paving_stone_type_id']);
-
-        $marbleStone = ! empty($data['marble_stone_type_id'])
-            ? PavingStoneType::query()->find($data['marble_stone_type_id'])
-            : null;
+        $stoneEntries = PavingStoneEntryResolver::resolveFromRequest($data['stone_entries']);
+        $totalAreaSqFt = PavingStoneEntryResolver::totalArea($stoneEntries);
 
         $excavationDepthIn = (float) $data['excavation_depth_in'];
         $sandDepthIn = isset($data['bedding_sand_depth_in']) && $data['bedding_sand_depth_in'] !== ''
             ? (float) $data['bedding_sand_depth_in']
             : 1.0;
-        $stoneHeightIn = $mainStone->height_in ? (float) $mainStone->height_in : 2.0;
+        $stoneHeightIn = PavingStoneEntryResolver::maxPaverHeightIn($stoneEntries);
         $crushedBaseDepthIn = max(0.0, $excavationDepthIn - $stoneHeightIn - $sandDepthIn);
 
         if ($crushedBaseDepthIn < 0.5) {
@@ -464,18 +446,51 @@ class PavingQuotationController extends Controller
             ]);
         }
 
-        return [
-            'area_input_mode' => $areaMode,
-            'area_length_ft' => $areaMode === 'dimensions' ? $length : null,
-            'area_width_ft' => $areaMode === 'dimensions' ? $width : null,
+        $primaryEntry = PavingStoneEntryResolver::primaryEntryForCoverage($stoneEntries);
+
+        $marblePayload = [
+            'marble_enabled' => $marbleEnabled,
+            'marble_type_id' => null,
+            'marble_area_sq_ft' => 0,
+            'marble_depth_in' => 2,
+            'marble_include_geotextile' => true,
+        ];
+
+        if ($marbleEnabled) {
+            $marbleType = PavingMarbleType::query()->findOrFail($data['marble_type_id']);
+            $marbleArea = (float) $data['marble_area_sq_ft'];
+            $marbleDepth = (float) $data['marble_depth_in'];
+            $marbleGeo = $request->boolean('marble_include_geotextile');
+            $snapshot = PavingMarbleCalculator::snapshotFromType($marbleType, $marbleArea, $marbleDepth, $marbleGeo);
+
+            $marblePayload = [
+                'marble_enabled' => true,
+                'marble_type_id' => (int) $marbleType->id,
+                'marble_area_sq_ft' => $marbleArea,
+                'marble_depth_in' => $marbleDepth,
+                'marble_include_geotextile' => $marbleGeo,
+                'marble_name' => $snapshot['marble_name'],
+                'marble_reference_depth_in' => $snapshot['reference_depth_in'],
+                'marble_sq_ft_per_bag_at_reference_depth' => $snapshot['sq_ft_per_bag_at_reference_depth'],
+                'marble_price_per_bag' => $snapshot['price_per_bag'],
+                'marble_bulk_min_bags' => $snapshot['bulk_min_bags'],
+                'marble_bulk_discount_pct' => $snapshot['bulk_discount_pct'],
+                'marble_delivery_cost' => $snapshot['delivery_cost'],
+                'marble_additional_cost' => $snapshot['additional_cost'],
+                'marble_additional_cost_description' => $snapshot['additional_cost_description'],
+            ];
+        }
+
+        return array_merge([
+            'stone_entries' => $stoneEntries,
             'total_area_sq_ft' => $totalAreaSqFt,
-            'paving_stone_type_id' => (int) $mainStone->id,
-            'stone_sq_ft_per_stone' => $mainStone->sq_ft_per_stone ? (float) $mainStone->sq_ft_per_stone : null,
-            'stone_price_per_stone' => $mainStone->price_per_stone ? (float) $mainStone->price_per_stone : null,
-            'stone_price_per_sq_ft' => $mainStone->price_per_sq_ft ? (float) $mainStone->price_per_sq_ft : null,
-            'stone_delivery_cost' => $mainStone->delivery_cost ? (float) $mainStone->delivery_cost : null,
-            'stone_additional_cost' => $mainStone->additional_cost ? (float) $mainStone->additional_cost : null,
-            'stone_additional_cost_description' => $mainStone->additional_cost_description,
+            'paving_stone_type_id' => $primaryEntry['stone_type_id'] ?? null,
+            'stone_sq_ft_per_stone' => $primaryEntry['sq_ft_per_stone'] ?? null,
+            'stone_price_per_stone' => $primaryEntry['price_per_stone'] ?? null,
+            'stone_price_per_sq_ft' => $primaryEntry['price_per_sq_ft'] ?? null,
+            'stone_delivery_cost' => $primaryEntry['delivery_cost'] ?? null,
+            'stone_additional_cost' => $primaryEntry['additional_cost'] ?? null,
+            'stone_additional_cost_description' => $primaryEntry['additional_cost_description'] ?? null,
             'helper_hourly_rate' => (float) $data['helper_hourly_rate'],
             'owner_hourly_rate' => (float) $data['owner_hourly_rate'],
             'mini_skid_days' => (int) $data['mini_skid_days'],
@@ -486,41 +501,43 @@ class PavingQuotationController extends Controller
             'bedding_sand_depth_in' => $sandDepthIn,
             'stone_height_in' => $stoneHeightIn,
             'crushed_base_depth_in' => $crushedBaseDepthIn,
-            'stone_length_in' => $mainStone->length_in ? (float) $mainStone->length_in : null,
-            'stone_width_in' => $mainStone->width_in ? (float) $mainStone->width_in : null,
+            'stone_length_in' => $primaryEntry['length_in'] ?? null,
+            'stone_width_in' => $primaryEntry['width_in'] ?? null,
             'hst_rate' => $hst,
             'add_polymeric_sand' => $request->boolean('add_polymeric_sand'),
             'include_old_surface_removal' => $request->boolean('include_old_surface_removal'),
             'include_geotextile' => $request->boolean('include_geotextile'),
-            'marble_enabled' => $request->boolean('marble_enabled'),
-            'marble_stone_type_id' => $data['marble_stone_type_id'] ?? null,
-            'marble_area_sq_ft' => isset($data['marble_area_sq_ft']) ? (float) $data['marble_area_sq_ft'] : 0,
-            'marble_sq_ft_per_stone' => isset($data['marble_sq_ft_per_stone']) && $data['marble_sq_ft_per_stone'] !== ''
-                ? (float) $data['marble_sq_ft_per_stone']
-                : ($marbleStone && $marbleStone->sq_ft_per_stone ? (float) $marbleStone->sq_ft_per_stone : null),
-            'marble_price_per_stone' => isset($data['marble_price_per_stone']) && $data['marble_price_per_stone'] !== ''
-                ? (float) $data['marble_price_per_stone']
-                : ($marbleStone && $marbleStone->price_per_stone ? (float) $marbleStone->price_per_stone : null),
-            'marble_price_per_sq_ft' => isset($data['marble_price_per_sq_ft']) && $data['marble_price_per_sq_ft'] !== ''
-                ? (float) $data['marble_price_per_sq_ft']
-                : ($marbleStone && $marbleStone->price_per_sq_ft ? (float) $marbleStone->price_per_sq_ft : null),
-            'marble_delivery_cost' => $marbleStone && $marbleStone->delivery_cost ? (float) $marbleStone->delivery_cost : null,
-            'marble_additional_cost' => $marbleStone && $marbleStone->additional_cost ? (float) $marbleStone->additional_cost : null,
-            'marble_additional_cost_description' => $marbleStone ? $marbleStone->additional_cost_description : null,
             'manual_price_override' => isset($data['manual_price_override']) && $data['manual_price_override'] !== ''
                 ? (float) $data['manual_price_override']
                 : null,
-        ];
+        ], $marblePayload);
     }
 
     /**
-     * Strip thousands separators from CAD calculator inputs before validation.
-     * Preview uses fetch(FormData) without running submit handlers that strip commas.
+     * Clear marble fields when the bed is disabled so preview/save validation does not fail on empty defaults.
      */
+    protected function normalizeMarbleInputsOnRequest(Request $request): void
+    {
+        if ($request->input('marble_type_id') === '' || $request->input('marble_type_id') === null) {
+            $request->merge(['marble_type_id' => null]);
+        }
+
+        if ($request->boolean('marble_enabled')) {
+            return;
+        }
+
+        $request->merge([
+            'marble_type_id' => null,
+            'marble_area_sq_ft' => null,
+            'marble_depth_in' => 2,
+            'marble_include_geotextile' => true,
+        ]);
+    }
+
     protected function normalizeCadMoneyStringsOnRequest(Request $request): void
     {
-        $moneyKeys = ['stone_price_per_stone', 'stone_price_per_sq_ft', 'helper_hourly_rate', 'owner_hourly_rate', 'marble_price_per_stone', 'marble_price_per_sq_ft', 'manual_price_override'];
-        $optionalEmptyToNull = ['marble_price_per_stone', 'marble_price_per_sq_ft', 'manual_price_override', 'stone_price_per_stone', 'stone_price_per_sq_ft'];
+        $moneyKeys = ['helper_hourly_rate', 'owner_hourly_rate', 'manual_price_override'];
+        $optionalEmptyToNull = ['manual_price_override'];
         $emptyMeansZero = ['helper_hourly_rate', 'owner_hourly_rate'];
 
         foreach ($moneyKeys as $key) {
@@ -708,19 +725,16 @@ class PavingQuotationController extends Controller
         $inputs = is_array($quotation->inputs) ? $quotation->inputs : [];
         $links = [];
 
-        $mainId = $inputs['paving_stone_type_id'] ?? null;
-        if ($mainId) {
-            $stone = PavingStoneType::query()->find($mainId);
-            if ($stone && filled($stone->product_url)) {
-                $links['Main paving stones'] = $stone->product_url;
+        $entries = PavingStoneEntryResolver::normalize($inputs);
+        foreach ($entries as $entry) {
+            $stoneId = $entry['stone_type_id'] ?? null;
+            if (! $stoneId) {
+                continue;
             }
-        }
-
-        $marbleId = $inputs['marble_stone_type_id'] ?? null;
-        if ($marbleId) {
-            $stone = PavingStoneType::query()->find($marbleId);
+            $stone = PavingStoneType::query()->find($stoneId);
             if ($stone && filled($stone->product_url)) {
-                $links['Marble / accent paving stones'] = $stone->product_url;
+                $label = ($entry['stone_name'] ?? 'Paving stones').' paving stones';
+                $links[$label] = $stone->product_url;
             }
         }
 

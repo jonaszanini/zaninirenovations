@@ -338,68 +338,16 @@
         </form>
 
         @if ($isEdit && ! $quotation->isLinked())
-          <div class="fq-link-project-card">
-            <h4 style="margin:0 0 8px;">Link to project</h4>
-            <div class="fq-link-grid">
-              <div>
-                <h5>Existing project</h5>
-                <form method="post" action="{{ route('admin.quotations.stairs.link', $quotation) }}">
-                  @csrf
-                  @if ($linkableProjects->isNotEmpty())
-                  <div class="fq-link-existing-row">
-                    @include('admin.quotations._link_project_picker', ['projects' => $linkableProjects])
-                    <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
-                  </div>
-                  @else
-                  <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below.</p>
-                  @endif
-                  <div class="admin-form-group cp-form-group-spaced">
-                    <label>Line description (optional)</label>
-                    <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
-                  </div>
-                </form>
-              </div>
-              <div class="fq-link-col fq-link-col--stack">
-                <h5>Create project &amp; link</h5>
-                <form method="post" action="{{ route('admin.quotations.stairs.create-project', $quotation) }}" class="fq-create-project-form">
-                  @csrf
-                  <div class="admin-form-group">
-                    <label>Project name</label>
-                    <input type="text" name="fp_project_name" class="admin-input" maxlength="255" placeholder="Defaults to client + Stairs">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="st-new-client-name">Client name <span class="cp-required">*</span></label>
-                    @include('admin.quotations._fp_client_picker', [
-                        'clientsSearchUrl' => route('admin.clients.search'),
-                        'pickerId'         => 'st-fp-client-picker',
-                        'nameInputId'      => 'st-new-client-name',
-                        'emailInputId'     => 'st-new-client-email',
-                        'phoneInputId'     => 'st-new-client-phone',
-                        'addressInputId'   => 'st-new-client-address',
-                    ])
-                    <input type="text" id="st-new-client-name" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="st-new-client-email">Email</label>
-                    <input type="email" id="st-new-client-email" name="fp_client_email" class="admin-input" maxlength="255">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="st-new-client-phone">Phone (10 digits)</label>
-                    <input type="text" id="st-new-client-phone" name="fp_client_phone" class="admin-input" maxlength="14">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="st-new-client-address">Address</label>
-                    <input type="text" id="st-new-client-address" name="fp_client_address" class="admin-input" maxlength="500">
-                  </div>
-                  <div class="admin-form-group">
-                    <label>Line description (optional)</label>
-                    <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
-                  </div>
-                  <button type="submit" class="admin-btn admin-btn--primary">Create project &amp; link</button>
-                </form>
-              </div>
-            </div>
-          </div>
+          @include('admin.quotations._link_to_project_card', [
+              'quotation' => $quotation,
+              'linkUrl' => route('admin.quotations.stairs.link', $quotation),
+              'createProjectUrl' => route('admin.quotations.stairs.create-project', $quotation),
+              'idPrefix' => 'st',
+              'projectNamePlaceholder' => 'Defaults to client + Stairs',
+              'linkableProjects' => $linkableProjects,
+              'createLineDescription' => 'field',
+              'validateCreateProject' => false,
+          ])
         @endif
       </div>
 

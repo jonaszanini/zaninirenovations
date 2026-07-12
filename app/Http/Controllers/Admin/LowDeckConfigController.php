@@ -197,6 +197,7 @@ class LowDeckConfigController extends Controller
             'gravel_depth_in' => ['required', 'numeric', 'min:0', 'max:24'],
             'gravel_footprint_in' => ['required', 'numeric', 'min:1', 'max:48'],
             'gravel_cubic_ft_per_bag' => ['required', 'numeric', 'min:0.05', 'max:5'],
+            'under_deck_gravel_sq_ft_per_bag' => ['required', 'numeric', 'min:0.5', 'max:100'],
             'structural_screws_per_post' => ['required', 'integer', 'min:0', 'max:50'],
             'structural_screws_per_corner' => ['required', 'integer', 'min:0', 'max:50'],
             'board_screws_per_inch' => ['required', 'numeric', 'min:0', 'max:5'],

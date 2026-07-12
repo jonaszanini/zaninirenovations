@@ -229,9 +229,8 @@
               </div>
 
               @php $supplyScope = $quotation->supplyScopePdfMeta(); @endphp
-              @if (($supplyScope['items'] ?? []) !== [])
+              @if ($supplyScope['show'] ?? false)
                 @include('admin.client_projects._quotation_supply_scope', ['quotation' => $quotation])
-                <p class="cp-quotation-intro">Breakdown of quoted work:</p>
               @else
                 <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
               @endif
@@ -383,9 +382,8 @@
           </div>
 
           @php $supplyScope = $quotation->supplyScopePdfMeta(); @endphp
-          @if (($supplyScope['items'] ?? []) !== [])
+          @if ($supplyScope['show'] ?? false)
             @include('admin.client_projects._quotation_supply_scope', ['quotation' => $quotation])
-            <p class="cp-quotation-intro">Breakdown of quoted work:</p>
           @else
             <p class="cp-quotation-intro">{{ $quotation->introPhrase() }}</p>
           @endif

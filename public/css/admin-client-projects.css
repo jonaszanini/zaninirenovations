@@ -1551,13 +1551,21 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-calendar-card .fc .fc-day-today .fc-daygrid-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--admin-primary, #024768);
   color: #fff;
   border-radius: 50%;
   width: 1.75em;
   height: 1.75em;
-  line-height: 1.75em;
+  min-width: 1.75em;
+  min-height: 1.75em;
+  line-height: 1;
+  padding: 0;
   margin: 4px;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 /* FullCalendar toolbar — match admin-btn--primary (arrows, active view) and admin-btn--ghost (today, inactive views). */
@@ -2117,6 +2125,61 @@ a:hover .cp-expense-receipt-pdf {
 .cp-contract-warning .fa {
   font-size: 16px;
   margin-top: 1px;
+}
+.cp-recalc-banner__title {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+.cp-recalc-banner__body p {
+  margin: 0;
+}
+.cp-recalc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.cp-recalc-modal {
+  max-width: 640px;
+  width: min(640px, 96vw);
+}
+.cp-recalc-preview {
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafbfc;
+  padding: 12px 14px;
+}
+.cp-recalc-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.cp-recalc-preview th,
+.cp-recalc-preview td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+.cp-recalc-preview th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+}
+.cp-recalc-preview .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.cp-recalc-preview tr.is-paid td {
+  color: #15803d;
+}
+.cp-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #e5e7eb;
 }
 
 /* On-screen preview of the contract body (mirrors the PDF look). */
@@ -3004,52 +3067,15 @@ a:hover .cp-expense-receipt-pdf {
   margin: 6px 0 14px;
 }
 
-.cp-quotation-supply-scope {
-  margin: 0 0 14px;
-  padding: 12px 14px;
-  background: #eff6ff;
-  border: 2px solid #024768;
-  border-radius: 8px;
-}
 .cp-quotation-supply-scope-headline {
-  margin: 0 0 8px;
-  font-size: 15px;
-  font-weight: 700;
+  margin: 6px 0 14px;
+  font-size: 14px;
+  font-weight: 400;
   color: #024768;
   line-height: 1.35;
 }
-.cp-quotation-supply-scope-item {
-  margin: 0 0 4px;
-  font-size: 14px;
-  line-height: 1.45;
-  font-weight: 400;
-}
-.cp-quotation-supply-scope-item--included {
-  color: #065f46;
-}
-.cp-quotation-supply-scope-item--excluded {
-  color: #6b7280;
-}
-.cp-quotation-supply-scope-mark {
-  display: inline-block;
-  margin-right: 7px;
-  color: #065f46;
-  font-size: 14px;
-  line-height: 1;
-  vertical-align: middle;
-}
-.cp-quotation-supply-scope-label {
+.cp-quotation-supply-scope-headline strong {
   font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.cp-quotation-supply-scope-suffix {
-  font-weight: 400;
-}
-.cp-quotation-supply-scope-detail {
-  margin: 8px 0 0;
-  font-size: 13px;
-  color: #374151;
-  line-height: 1.45;
 }
 
 /* "Description of the work" — collapsed accordion on admin quotation preview. */
@@ -3310,6 +3336,9 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-invoice-send-warning-actions {
   margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .cp-invoice-send-warning-link {
   font-weight: 600 !important;
@@ -4849,6 +4878,90 @@ body.cp-modal-open {
   display: flex;
 }
 
+/* =================================================================
+   Quotation — link to project card (shared across quotation types)
+   ================================================================= */
+.fq-link-project-card {
+  border: 1px dashed #c9d3e0;
+  background: #fbfcfd;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-top: 20px;
+}
+.fq-link-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: 14px;
+  align-items: start;
+}
+.fq-link-shared-line-desc {
+  max-width: 520px;
+}
+@media (min-width: 900px) {
+  .fq-link-grid {
+    grid-template-columns: minmax(0, 2fr) auto minmax(0, 3.5fr);
+    gap: 0 20px;
+  }
+}
+.fq-link-col {
+  min-width: 0;
+}
+.fq-link-project-card .fq-link-existing-row > .admin-form-group {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fq-link-col h5 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #024768;
+}
+.fq-link-divider {
+  border: 0;
+  border-top: 1px solid #d7e4ef;
+  margin: 16px 0;
+}
+@media (min-width: 900px) {
+  .fq-link-divider {
+    margin: 0;
+    border-top: 0;
+    border-left: 1px solid #d7e4ef;
+    align-self: stretch;
+    width: 0;
+    height: auto;
+  }
+}
+.fq-create-project-form .admin-form-grid-2 {
+  margin-bottom: 12px;
+}
+.fq-create-project-form .admin-form-grid-2 .admin-form-group {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.fq-create-project-top .admin-form-group {
+  margin-bottom: 0;
+}
+.fq-create-project-form .admin-form-group {
+  margin-bottom: 12px;
+}
+.fq-create-project-contact {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.55fr) minmax(0, 1.45fr);
+  gap: 12px 16px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+.fq-create-project-contact .admin-form-group {
+  margin-bottom: 0;
+  min-width: 0;
+}
+@media (max-width: 700px) {
+  .fq-create-project-contact {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* "Connect to a project" — existing project row.
    Project select on the left, Link-to-project button on the right
    with breathing room between them. Wraps to two lines on narrow
@@ -5426,13 +5539,21 @@ body.cp-modal-open {
   background: rgba(2, 71, 104, 0.1);
 }
 .cp-date-picker-calendar .fc .fc-day-today .fc-daygrid-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--admin-primary, #024768);
   color: #fff;
   border-radius: 50%;
   width: 1.75em;
   height: 1.75em;
-  line-height: 1.75em;
+  min-width: 1.75em;
+  min-height: 1.75em;
+  line-height: 1;
+  padding: 0;
   margin: 4px;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 @media (max-width: 700px) {

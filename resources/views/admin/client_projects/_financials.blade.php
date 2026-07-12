@@ -24,9 +24,14 @@
   // (e.g. supplied material vs labour). The effective rate is the
   // quotation's HST ÷ subtotal, so it equals 13% only when every line
   // had HST applied. See ClientProjectInstallment::effectiveHst().
-  $effectiveHstRate = $hasQuot && $quotSub> 0
+  $effectiveHstRate = $hasQuot && $quotSub > 0
       ? (float) $project->acceptedQuotationsFinancialAggregateHst() / (float) $quotSub
       : \App\Models\ClientProject::HST_RATE;
+
+  $recalcAnalysis = null;
+  if (! $isHourly && $hasQuot) {
+      $recalcAnalysis = app(\App\Services\RecalculateRemainingInstallmentsService::class)->analyze($project);
+  }
 @endphp
 
 @if ($isHourly)
@@ -79,6 +84,50 @@
   {{-- PAYMENT PLAN FORM ----------------------------------------------------- --}}
   <div class="admin-card">
     <h3>Payment plan</h3>
+
+    @if ($recalcAnalysis && ($recalcAnalysis['has_discrepancy'] || $recalcAnalysis['blocked']))
+      <div class="cp-contract-warning cp-recalc-banner" role="status">
+        <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+        <div class="cp-recalc-banner__body">
+          @if ($recalcAnalysis['blocked'] && $recalcAnalysis['block_reason'])
+            <p class="cp-recalc-banner__title">Cannot recalculate remaining installments</p>
+            <p>{{ $recalcAnalysis['block_reason'] }}</p>
+          @else
+            <p class="cp-recalc-banner__title">Project total has changed</p>
+            <p>
+              Current payment plan total:
+              <strong>{{ \App\Models\ClientProject::formatMoney($recalcAnalysis['plan_grand']) }}</strong>
+              &nbsp;|&nbsp;
+              Accepted quotations total:
+              <strong>{{ \App\Models\ClientProject::formatMoney($recalcAnalysis['quotation_grand']) }}</strong>
+            </p>
+            <p class="admin-form-help" style="margin:6px 0 0;">
+              Paid so far: {{ \App\Models\ClientProject::formatMoney($recalcAnalysis['paid_grand']) }}.
+              Remaining to allocate: {{ \App\Models\ClientProject::formatMoney($recalcAnalysis['remaining_grand']) }}.
+              @if ($recalcAnalysis['unpaid_invoice_count'] > 0)
+                {{ $recalcAnalysis['unpaid_invoice_count'] }} unpaid installment invoice(s) will be replaced with new drafts.
+              @endif
+            </p>
+            <button type="button"
+                    class="admin-btn admin-btn--primary admin-btn--sm cp-recalc-open"
+                    style="margin-top:10px;"
+                    data-cp-recalc-open>
+              <i class="fa fa-refresh" aria-hidden="true"></i>
+              Recalculate Remaining Installments
+            </button>
+          @endif
+        </div>
+      </div>
+    @elseif ($planIsLocked && $hasQuot)
+      <div class="cp-recalc-actions" style="margin-bottom:12px;">
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-recalc-open>
+          <i class="fa fa-refresh" aria-hidden="true"></i>
+          Recalculate Remaining Installments
+        </button>
+        <span class="admin-form-help">Use this if you updated accepted quotations and need to refresh unpaid installments.</span>
+      </div>
+    @endif
+
     <form action="{{ route('admin.client-projects.installments.save', $project) }}"
           method="post"
           id="cp-installments-form"
@@ -521,3 +570,87 @@
     @endif
   </div>
 </div>
+
+@if (! $isHourly && $recalcAnalysis && $recalcAnalysis['applicable'] && ! $recalcAnalysis['blocked'])
+  @php
+    $recalcDefaultRemaining = max(
+        1,
+        min(
+            (int) $recalcAnalysis['max_remaining'],
+            (int) ($recalcAnalysis['unpaid_count'] > 0 ? $recalcAnalysis['unpaid_count'] : $recalcAnalysis['max_remaining'])
+        )
+    );
+    if ((float) $recalcAnalysis['remaining_pre_tax'] <= 0.01) {
+        $recalcDefaultRemaining = 0;
+    }
+  @endphp
+  <div class="cp-modal-backdrop" id="cp-recalc-modal" hidden
+       data-preview-url="{{ route('admin.client-projects.installments.recalculate-preview', $project) }}"
+       data-apply-url="{{ route('admin.client-projects.installments.recalculate', $project) }}"
+       data-paid-count="{{ (int) $recalcAnalysis['paid_count'] }}"
+       data-max-remaining="{{ (int) $recalcAnalysis['max_remaining'] }}"
+       data-remaining-pre-tax="{{ number_format((float) $recalcAnalysis['remaining_pre_tax'], 2, '.', '') }}"
+       data-quotation-grand="{{ number_format((float) $recalcAnalysis['quotation_grand'], 2, '.', '') }}"
+       data-plan-grand="{{ number_format((float) $recalcAnalysis['plan_grand'], 2, '.', '') }}"
+       data-paid-grand="{{ number_format((float) $recalcAnalysis['paid_grand'], 2, '.', '') }}"
+       data-csrf="{{ csrf_token() }}">
+    <div class="cp-modal cp-recalc-modal" role="dialog" aria-labelledby="cp-recalc-title" aria-modal="true">
+      <div class="cp-modal-header">
+        <h3 id="cp-recalc-title">Recalculate remaining installments</h3>
+        <button type="button" class="cp-modal-close" data-cp-recalc-close aria-label="Close">&times;</button>
+      </div>
+      <div class="cp-modal-body">
+        <p class="admin-form-help" style="margin-top:0;">
+          New project total (accepted quotations):
+          <strong>{{ \App\Models\ClientProject::formatMoney($recalcAnalysis['quotation_grand']) }}</strong>.
+          Already paid:
+          <strong>{{ \App\Models\ClientProject::formatMoney($recalcAnalysis['paid_grand']) }}</strong>.
+          Remaining balance:
+          <strong>{{ \App\Models\ClientProject::formatMoney($recalcAnalysis['remaining_grand']) }}</strong>.
+        </p>
+        <p class="admin-form-help">
+          Paid installments and paid invoices stay unchanged. Unpaid installment invoices will be deleted and replaced with new drafts.
+        </p>
+
+        <div class="admin-form-grid-2">
+          <div class="admin-form-group">
+            <label for="cp-recalc-remaining-count">Remaining installments</label>
+            <select id="cp-recalc-remaining-count" class="admin-input">
+              @for ($n = ($recalcAnalysis['remaining_pre_tax'] > 0.01 ? 1 : 0); $n <= (int) $recalcAnalysis['max_remaining']; $n++)
+                <option value="{{ $n }}" @selected($n === $recalcDefaultRemaining)>
+                  @if ($n === 0)
+                    None (balance already covered by paid installments)
+                  @elseif ($n === 1)
+                    1 remaining installment (lump sum)
+                  @else
+                    {{ $n }} remaining installments
+                  @endif
+                </option>
+              @endfor
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="cp-recalc-split-mode">How to split the remaining balance</label>
+            <select id="cp-recalc-split-mode" class="admin-input">
+              <option value="defaults" selected>Standard split (e.g. 30/30/40)</option>
+              @if ($recalcAnalysis['unpaid_count'] > 0)
+                <option value="keep">Keep current unpaid proportions</option>
+              @endif
+            </select>
+          </div>
+        </div>
+
+        <div id="cp-recalc-preview" class="cp-recalc-preview" aria-live="polite">
+          <p class="admin-form-help">Choose options above to preview the new breakdown.</p>
+        </div>
+        <p id="cp-recalc-error" class="admin-form-error" hidden></p>
+      </div>
+      <div class="cp-modal-footer">
+        <button type="button" class="admin-btn admin-btn--ghost" data-cp-recalc-close>Cancel</button>
+        <button type="button" class="admin-btn admin-btn--primary" id="cp-recalc-confirm" disabled>
+          Confirm recalculation
+        </button>
+      </div>
+    </div>
+  </div>
+@endif

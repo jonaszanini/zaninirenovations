@@ -27,6 +27,12 @@ class LowDeckMaterial extends Model
 
     public const KEY_GRAVEL_BAG = 'gravel_bag';
 
+    public const KEY_WEED_FABRIC_3X50 = 'weed_fabric_3x50';
+
+    public const KEY_WEED_FABRIC_3X100 = 'weed_fabric_3x100';
+
+    public const KEY_FABRIC_SPIKES_30PACK = 'fabric_spikes_30pack';
+
     // Framing
     public const KEY_JOIST_2X6_8 = 'joist_2x6_8';
 
@@ -101,6 +107,9 @@ class LowDeckMaterial extends Model
         self::KEY_POST_4X4_10,
         self::KEY_POST_4X4_12,
         self::KEY_GRAVEL_BAG,
+        self::KEY_WEED_FABRIC_3X50,
+        self::KEY_WEED_FABRIC_3X100,
+        self::KEY_FABRIC_SPIKES_30PACK,
         self::KEY_JOIST_2X6_8,
         self::KEY_JOIST_2X6_10,
         self::KEY_JOIST_2X6_12,

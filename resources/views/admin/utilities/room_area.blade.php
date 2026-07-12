@@ -21,7 +21,7 @@
     class="util-ra"
     data-room-area
     data-projects="{{ json_encode($projectsJson) }}"
-    data-client-projects="{{ json_encode($clientProjects->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])) }}"
+    data-client-projects="{{ json_encode($clientProjects->map(fn ($p) => ['id' => $p->id, 'name' => $p->linkSelectLabel()])) }}"
     data-validate-url="{{ route('admin.utilities.room-area.validate') }}"
     data-project-store-url="{{ route('admin.utilities.room-area.projects.store') }}"
     data-project-update-template="{{ route('admin.utilities.room-area.projects.update', ['room_area_project' => '__ID__']) }}"
@@ -43,21 +43,23 @@
         </div>
         <div class="util-ra-linked" data-ra-linked hidden>
           <div class="admin-form-group util-ra-link-edit">
-            <label for="ra-link-client-project">Link to client project</label>
+            <div class="util-ra-link-edit__label-row">
+              <label for="ra-link-client-project">Link to client project</label>
+              <a href="#" data-ra-linked-link class="util-ra-linked__go" hidden>Go to project</a>
+            </div>
             <select class="admin-input" id="ra-link-client-project" data-ra-link-client-project>
               <option value="">— None —</option>
               @foreach ($clientProjects as $cp)
-                <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+                <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
               @endforeach
             </select>
-            <a href="#" data-ra-linked-link class="util-ra-linked__go" hidden>Go to project</a>
           </div>
         </div>
         <div class="util-ra-project-bar__actions">
           <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-project-toggle>
             <i class="fa fa-plus"></i> New project
           </button>
-          <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-project hidden>
+          <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-delete-project hidden>
             <i class="fa fa-trash"></i> Delete project
           </button>
         </div>
@@ -74,7 +76,7 @@
             <select class="admin-input" id="ra-new-client-project" data-ra-new-client-project>
               <option value="">— None —</option>
               @foreach ($clientProjects as $cp)
-                <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+                <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
               @endforeach
             </select>
           </div>
@@ -147,26 +149,86 @@
       {{-- Full-width drawing area --}}
       <section class="admin-card util-ra-canvas-card">
         <div class="util-ra-canvas-toolbar">
-          <div class="util-ra-canvas-tools">
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-undo-vertex disabled>
-              <i class="fa fa-undo"></i> Undo
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-close-shape disabled>
-              <i class="fa fa-check-circle"></i> Close
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-clear-shape>
-              <i class="fa fa-eraser"></i> Clear
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-toggle title="Measure distances on the floor plan">
-              <i class="fa fa-arrows-alt"></i> Ruler
-            </button>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-bg-delete-canvas hidden title="Remove floor plan image from canvas">
-              <i class="fa fa-trash"></i> Delete image
-            </button>
+          <div class="util-ra-toolbar__groups">
+            <div class="util-ra-tool-group">
+              <span class="util-ra-tool-group__label">Shape</span>
+              <div class="util-ra-tool-group__actions">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-undo-vertex disabled>
+                  <i class="fa fa-undo"></i> Undo
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-close-shape disabled>
+                  <i class="fa fa-check-circle"></i> Close
+                </button>
+              </div>
+            </div>
+
+            <div class="util-ra-tool-group util-ra-tool-group--areas">
+              <span class="util-ra-tool-group__label">Areas</span>
+              <div class="util-ra-tool-group__actions">
+                <div class="util-ra-btn-cluster" role="group" aria-label="Add area options">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-add-area disabled title="Add another area in the same color group">
+                    <i class="fa fa-plus-square"></i> Add area
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn-cluster__secondary" data-ra-add-area-new-group disabled title="Start a new color group">
+                    <i class="fa fa-palette"></i> New group
+                  </button>
+                </div>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-delete-area disabled title="Delete the active area">
+                  <i class="fa fa-minus-circle"></i> Delete area
+                </button>
+                <span class="util-ra-group-chip" data-ra-group-chip hidden>
+                  <span class="util-ra-group-chip__swatch" data-ra-group-chip-swatch></span>
+                  <span class="util-ra-group-chip__label">Group</span>
+                  <strong data-ra-group-chip-total>—</strong>
+                </span>
+              </div>
+            </div>
+
+            <div class="util-ra-tool-group">
+              <span class="util-ra-tool-group__label">Tools</span>
+              <div class="util-ra-tool-group__actions">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-clear-shape>
+                  <i class="fa fa-eraser"></i> Clear all
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-toggle title="Measure distances on the floor plan">
+                  <i class="fa fa-arrows-alt"></i> Ruler
+                </button>
+              </div>
+            </div>
+
+            <div class="util-ra-tool-group util-ra-tool-group--floor-plan">
+              <span class="util-ra-tool-group__label">Floor plan</span>
+              <div class="util-ra-tool-group__actions">
+                <label class="admin-checkbox admin-checkbox--sm util-ra-bg-show" data-ra-bg-show-wrap hidden>
+                  <input type="checkbox" class="admin-checkbox__input" data-ra-bg-show checked>
+                  <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                  <span class="admin-checkbox__text">Show image</span>
+                </label>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-bg-move hidden title="Drag the floor plan to reposition it">
+                  <i class="fa fa-arrows"></i> Move image
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-bg-delete-canvas hidden title="Remove floor plan image from canvas">
+                  <i class="fa fa-trash"></i> Delete image
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="util-ra-canvas-tools util-ra-canvas-tools--zoom">
-            <span class="util-ra-tool-label">Zoom</span>
-            <div class="util-ra-zoom-controls">
+
+          <div class="util-ra-tool-group util-ra-tool-group--units">
+            <span class="util-ra-tool-group__label">Units</span>
+            <div class="util-ra-tool-group__actions">
+              <select class="admin-input util-ra-measure-unit" data-ra-measure-unit aria-label="Measurement units">
+                <option value="meter">Meter</option>
+                <option value="inch">Inch</option>
+                <option value="feet_decimal">Feet Decimal</option>
+                <option value="feet_inch_frac" selected>Feet Inch Frac</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="util-ra-tool-group util-ra-tool-group--zoom">
+            <span class="util-ra-tool-group__label">Zoom</span>
+            <div class="util-ra-tool-group__actions util-ra-zoom-controls">
               <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-zoom-btn" data-ra-zoom-out title="Zoom out" aria-label="Zoom out">
                 <i class="fa fa-minus"></i>
               </button>
@@ -184,45 +246,56 @@
           </div>
         </div>
 
-        <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
-          <div class="util-ra-wall-edit__inner">
-            <span class="util-ra-wall-edit__label">Ruler</span>
-            <span class="util-ra-ruler-length" data-ra-ruler-length>—</span>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-ruler>
-              <i class="fa fa-trash"></i> Delete ruler
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-cancel aria-label="Deselect ruler">
-              <i class="fa fa-times"></i>
-            </button>
+        <div class="util-ra-edit-dock" data-ra-edit-dock>
+          <div class="util-ra-edit-dock__idle" aria-hidden="true">
+            <span class="util-ra-edit-dock__hint">Select a wall, corner, or ruler to edit it here.</span>
           </div>
-        </div>
-
-        <div class="util-ra-wall-edit util-ra-vertex-edit" data-ra-vertex-edit hidden>
-          <div class="util-ra-wall-edit__inner">
-            <span class="util-ra-wall-edit__label">Corner</span>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-vertex>
-              <i class="fa fa-trash"></i> Delete corner
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-vertex-cancel aria-label="Deselect corner">
-              <i class="fa fa-times"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="util-ra-wall-edit" data-ra-wall-edit hidden>
-          <div class="util-ra-wall-edit__inner">
-            <span class="util-ra-wall-edit__label">Edit wall length</span>
-            <div class="admin-form-group util-ra-wall-edit__input">
-              <label for="ra-wall-length" class="util-sr-only">Wall length in feet</label>
-              <input class="admin-input" type="text" id="ra-wall-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-wall-length>
+          <div class="util-ra-edit-dock__panels">
+            <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
+              <div class="util-ra-wall-edit__inner">
+                <span class="util-ra-wall-edit__label">Ruler</span>
+                <span class="util-ra-ruler-length" data-ra-ruler-length>—</span>
+                <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-ruler>
+                  <i class="fa fa-trash"></i> Delete ruler
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-ruler-cancel aria-label="Deselect ruler">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
             </div>
-            <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
-            <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-wall>
-              <i class="fa fa-trash"></i> Delete wall
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-wall-cancel aria-label="Cancel wall edit">
-              <i class="fa fa-times"></i>
-            </button>
+
+            <div class="util-ra-wall-edit util-ra-vertex-edit" data-ra-vertex-edit hidden>
+              <div class="util-ra-wall-edit__inner">
+                <span class="util-ra-wall-edit__label">Corner</span>
+                <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-vertex>
+                  <i class="fa fa-trash"></i> Delete corner
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-vertex-cancel aria-label="Deselect corner">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="util-ra-wall-edit" data-ra-wall-edit hidden>
+              <div class="util-ra-wall-edit__inner">
+                <span class="util-ra-wall-edit__label">Edit wall length</span>
+                <div class="admin-form-group util-ra-wall-edit__input">
+                  <label for="ra-wall-length" class="util-sr-only">Wall length in feet</label>
+                  <input class="admin-input" type="text" id="ra-wall-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-wall-length>
+                </div>
+                <label class="util-ra-wall-edit__scale-option" title="Recalibrate scale so this wall matches the value you enter; all other wall lengths and areas update proportionally. The drawing shape stays the same.">
+                  <input type="checkbox" data-ra-wall-scale-project>
+                  <span>Scale entire project</span>
+                </label>
+                <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
+                <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-wall>
+                  <i class="fa fa-trash"></i> Delete wall
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-wall-cancel aria-label="Cancel wall edit">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -231,11 +304,19 @@
         </div>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Click a corner to select it; hold <strong>Shift</strong> to select multiple corners and drag them together. Double-click a wall to add a corner; click and drag a wall to move it perpendicular (hold Shift to snap). Hold Shift while placing corners to snap walls to 45°/90°. Use <strong>Ruler</strong> to measure distances (calibrate scale first). Shift + scroll to zoom; Space + drag to pan.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Hold <strong>Space</strong> and drag to pan into extra space beyond the screen; <strong>Shift</strong>+scroll to zoom. Close a shape, then use <strong>Add area</strong> or <strong>New group</strong>. Calibrate scale before saving.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
-            <span class="util-ra-live-area__label">Current shape:</span>
-            <strong data-ra-live-sqft>—</strong> sq ft
-            <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m²)</span>
+            <div class="util-ra-live-area__row">
+              <span class="util-ra-live-area__label">Active shape:</span>
+              <strong data-ra-live-active-shape>—</strong> sq ft
+            </div>
+            <ul class="util-ra-live-area-groups" data-ra-live-group-list></ul>
+            <div class="util-ra-live-area__row util-ra-live-area__row--total">
+              <span class="util-ra-live-area__label">All areas:</span>
+              <strong data-ra-live-grand-total>—</strong> sq ft
+              <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m²)</span>
+            </div>
+            <span class="util-sr-only" data-ra-live-sqft aria-hidden="true">—</span>
           </div>
         </div>
         <p class="util-ra-feedback" data-ra-feedback hidden></p>
@@ -249,16 +330,16 @@
             <p class="util-ra-rooms-hint">Each room has its own floor plan and outline. Draw, save, then start another room.</p>
           </div>
           <div class="util-ra-rooms-head__actions">
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm util-ra-action-btn" data-ra-new-room-secondary>
-              <i class="fa fa-plus"></i> New room
-            </button>
             <div class="util-ra-total" data-ra-total hidden>
               <span class="util-ra-total__label">Total</span>
               <span class="util-ra-total__value"><strong data-ra-total-sqft>0</strong> sq ft</span>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-copy-total>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-copy-total title="Copy total">
                 <i class="fa fa-copy"></i> Copy
               </button>
             </div>
+            <button type="button" class="admin-btn admin-btn--primary admin-btn--sm util-ra-action-btn" data-ra-new-room-secondary>
+              <i class="fa fa-plus"></i> New room
+            </button>
           </div>
         </div>
         <p class="util-ra-rooms-empty" data-ra-rooms-empty>No rooms saved yet. Draw a room on the floor plan above, then click Save room.</p>

@@ -18,6 +18,10 @@
       'material_waste_percent',
       $isEdit ? (float) ($quotation->calculation['inputs']['material_waste_percent'] ?? 10) : 10
   );
+  $initialIncludeUnderDeckGravel = (bool) old(
+      'include_under_deck_gravel',
+      $isEdit ? (bool) ($quotation->calculation['inputs']['include_under_deck_gravel'] ?? true) : true
+  );
   $initialIncludeDiagrams = (bool) old('include_diagrams_on_pdf', $isEdit ? $quotation->include_diagrams_on_pdf : false);
 
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
@@ -135,19 +139,6 @@
       }
     }
     .ld-section { margin-top: 4px; padding-top: 16px; border-top: 1px dashed #e0e4ea; }
-    .ld-link-project-card {
-      border: 1px dashed #c9d3e0; background: #fbfcfd; border-radius: 10px; padding: 18px 20px; margin-top: 20px;
-    }
-    .ld-link-existing-row {
-      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end;
-    }
-    @media (max-width: 640px) {
-      .ld-link-existing-row { grid-template-columns: 1fr; }
-      .ld-link-existing-row .admin-btn { width: 100%; min-height: 46px; }
-    }
-    .ld-link-divider { border: 0; border-top: 1px solid #d7e4ef; margin: 16px 0; }
-    .ld-create-project-form .admin-form-group { margin-bottom: 12px; }
-    .ld-create-project-form .admin-btn--primary { width: 100%; margin-top: 4px; min-height: 46px; }
   </style>
 @endpush
 
@@ -157,6 +148,9 @@
       <i class="fa fa-arrow-left"></i> Back to low deck quotations
     </a>
     <div class="ld-form-toolbar-right">
+      <a href="{{ route('admin.quotations.low-deck.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-cog"></i> Configuration
+      </a>
       <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       @if ($isEdit)
         <a href="{{ route('admin.quotations.low-deck.purchase-list', $quotation) }}"
@@ -268,9 +262,23 @@
               @error('length_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
           </div>
+          <p id="ld-area-display" class="admin-form-help cp-form-help-spaced" style="display: none; margin-top: 10px;">
+            Total area: <strong id="ld-area-value">0</strong> sq ft
+          </p>
           <p class="admin-form-help cp-form-help-spaced">
             Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.
           </p>
+          <div class="admin-form-group cp-form-group-spaced">
+            <label class="admin-checkbox">
+              <input type="hidden" name="include_under_deck_gravel" value="0">
+              <input type="checkbox" class="admin-checkbox__input" id="ld-under-deck-gravel"
+                     name="include_under_deck_gravel" value="1"
+                     @checked($initialIncludeUnderDeckGravel)>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">Gravel under the deck</span>
+            </label>
+            <p class="admin-form-help">Adds under-deck gravel bags (1 per {{ rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.') }} sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</p>
+          </div>
         </div>
 
         {{-- Rates ----------------------------------------------------- --}}
@@ -321,86 +329,21 @@
 
       @if ($isEdit && !$quotation->project)
         @php $linkable = $linkableProjects ?? collect(); @endphp
-        <div class="admin-card ld-link-project-card">
-          <h4 class="cp-heading-md">Connect to a project</h4>
-          <p class="admin-form-help cp-form-help-flush">
-            Add this deck estimate as a line on a project <strong>Quotation</strong> (pre-tax materials + labour — the project quotation adds HST).
-          </p>
-
-          <div style="margin-top:14px;">
-            <h5><i class="fa fa-link"></i> Existing project</h5>
-            @if ($linkable->isNotEmpty())
-              <form method="post" action="{{ route('admin.quotations.low-deck.link', $quotation) }}">
-                @csrf
-                <div class="ld-link-existing-row">
-                  @include('admin.quotations._link_project_picker', [
-                      'projects' => $linkable,
-                      'id' => 'ld-link-project',
-                  ])
-                  <button type="submit" class="admin-btn admin-btn--primary">
-                    <i class="fa fa-link"></i> Link
-                  </button>
-                </div>
-              </form>
-            @else
-              <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below, or finish a rejected/completed project first.</p>
-            @endif
-
-            <hr class="ld-link-divider">
-
-            <h5><i class="fa fa-plus-circle"></i> New project</h5>
-            <p class="admin-form-help cp-form-help-spaced">
-              Always <strong>fixed price</strong>. Only client name is required. No automated client email is sent from here.
-            </p>
-            <form method="post"
-                  action="{{ route('admin.quotations.low-deck.create-project', $quotation) }}"
-                  class="ld-create-project-form">
-              @csrf
-              <div class="admin-form-group">
-                <label for="ld-new-project-name">Project name <span class="admin-form-help">(optional)</span></label>
-                <input type="text" id="ld-new-project-name" name="fp_project_name" class="admin-input" maxlength="255"
-                       value="{{ old('fp_project_name') }}"
-                       placeholder="Defaults to: Client name — Low deck">
-              </div>
-              <div class="admin-form-group">
-                <label for="ld-new-client-name">Client name <span class="admin-required">*</span></label>
-                @include('admin.quotations._fp_client_picker', [
-                    'clientsSearchUrl' => route('admin.clients.search'),
-                    'pickerId'         => 'ld-fp-client-picker',
-                    'nameInputId'      => 'ld-new-client-name',
-                    'emailInputId'     => 'ld-new-client-email',
-                    'phoneInputId'     => 'ld-new-client-phone',
-                    'addressInputId'   => 'ld-new-client-address',
-                ])
-                <input type="text" id="ld-new-client-name" name="fp_client_name" class="admin-input @error('fp_client_name') is-invalid @enderror"
-                       maxlength="255" required value="{{ old('fp_client_name') }}">
-                @error('fp_client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-              </div>
-              <div class="admin-form-group">
-                <label for="ld-new-client-email">Email</label>
-                <input type="email" id="ld-new-client-email" name="fp_client_email" class="admin-input @error('fp_client_email') is-invalid @enderror"
-                       maxlength="255" value="{{ old('fp_client_email') }}">
-                @error('fp_client_email') <p class="admin-form-error">{{ $message }}</p> @enderror
-              </div>
-              <div class="admin-form-group">
-                <label for="ld-new-client-phone">Phone</label>
-                <input type="text" id="ld-new-client-phone" name="fp_client_phone"
-                       class="admin-input cp-phone-input @error('fp_client_phone') is-invalid @enderror"
-                       inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(xxx) xxx-xxxx"
-                       value="{{ old('fp_client_phone') ? \App\Models\ClientProject::formatPhone(old('fp_client_phone')) : '' }}">
-                @error('fp_client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
-              </div>
-              <div class="admin-form-group">
-                <label for="ld-new-client-address">Address</label>
-                <input type="text" id="ld-new-client-address" name="fp_client_address" class="admin-input" maxlength="500"
-                       value="{{ old('fp_client_address') }}">
-              </div>
-              <button type="submit" class="admin-btn admin-btn--primary">
-                <i class="fa fa-briefcase"></i> Create project &amp; add to quotation
-              </button>
-            </form>
-          </div>
-        </div>
+        @include('admin.quotations._link_to_project_card', [
+            'quotation' => $quotation,
+            'linkUrl' => route('admin.quotations.low-deck.link', $quotation),
+            'createProjectUrl' => route('admin.quotations.low-deck.create-project', $quotation),
+            'idPrefix' => 'ld',
+            'projectNamePlaceholder' => 'Defaults to: Client name — Low deck',
+            'linkableProjects' => $linkable,
+            'wrapAdminCard' => true,
+            'title' => 'Connect to a project',
+            'helpText' => 'Add this deck estimate as a line on a project <strong>Quotation</strong> (pre-tax materials + labour — the project quotation adds HST).',
+            'showExistingLineDescription' => false,
+            'createLineDescription' => 'hidden',
+            'emptyProjectsMessage' => 'No active projects to link. Create a new one below, or finish a rejected/completed project first.',
+            'projectPickerId' => 'ld-link-project',
+        ])
       @endif
     </div>
 
@@ -519,9 +462,12 @@
 
   var widthInput = document.getElementById('ld-width');
   var lengthInput = document.getElementById('ld-length');
+  var areaDisplay = document.getElementById('ld-area-display');
+  var areaValue = document.getElementById('ld-area-value');
   var labourInput = document.getElementById('ld-labour-rate');
   var wasteInput = document.getElementById('ld-waste-fee');
   var materialWasteInput = document.getElementById('ld-material-waste');
+  var underDeckGravelInput = document.getElementById('ld-under-deck-gravel');
 
   var statusBadge = document.getElementById('ld-status-badge');
   var geometryEl = document.getElementById('ld-geometry');
@@ -593,7 +539,8 @@
       length_ft: parseFloat(lengthInput.value) || 0,
       labour_rate_per_sqft: parseMoney(labourInput),
       waste_dump_fee_cad: parseMoney(wasteInput),
-      material_waste_percent: materialWasteInput ? (parseFloat(materialWasteInput.value) || 0) : 10
+      material_waste_percent: materialWasteInput ? (parseFloat(materialWasteInput.value) || 0) : 10,
+      include_under_deck_gravel: underDeckGravelInput ? !!underDeckGravelInput.checked : true
     };
   }
 
@@ -1171,9 +1118,24 @@
     });
   }
 
+  function updateArea() {
+    var w = parseFloat(widthInput.value) || 0;
+    var l = parseFloat(lengthInput.value) || 0;
+    if (w > 0 && l > 0 && areaDisplay && areaValue) {
+      var sqft = w * l;
+      areaValue.textContent = (Math.round(sqft * 100) / 100).toLocaleString();
+      areaDisplay.style.display = 'block';
+    } else if (areaDisplay) {
+      areaDisplay.style.display = 'none';
+    }
+  }
+
   ['input', 'change'].forEach(function (evt) {
     document.addEventListener(evt, function (e) {
       if (!e.target || !e.target.closest) return;
+      if (e.target === widthInput || e.target === lengthInput) {
+        updateArea();
+      }
       if (e.target.matches('#ld-form input, #ld-form select')) {
         schedulePreview();
       }
@@ -1184,6 +1146,7 @@
     renderCalc(initialCalc);
   }
   schedulePreview();
+  updateArea();
 
   document.addEventListener('commute-expense:change', function (e) {
     var d = e.detail || {};

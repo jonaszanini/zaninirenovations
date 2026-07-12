@@ -112,21 +112,34 @@
   }
 
   function collectPavingContext(form) {
-    var areaMode = form.querySelector('input[name="area_input_mode"]:checked');
-    var areaSummary = '';
-    if (areaMode && areaMode.value === 'dimensions') {
-      var len = formValue(form, 'area_length_ft');
-      var wid = formValue(form, 'area_width_ft');
-      var computed = panelText('pq-area-computed');
-      areaSummary = (len && wid ? len + ' ft × ' + wid + ' ft' : '') + (computed ? ' (' + computed + ')' : '');
-    } else {
-      areaSummary = formValue(form, 'total_area_sq_ft') ? formValue(form, 'total_area_sq_ft') + ' sq ft' : '';
-    }
+    var stoneLines = [];
+    form.querySelectorAll('.pq-stone-entry').forEach(function (row, idx) {
+      var sel = row.querySelector('.pq-stone-entry-select');
+      var stoneName = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].textContent.trim() : '';
+      var modeRadio = row.querySelector('.pq-stone-mode-radio:checked');
+      var mode = modeRadio ? modeRadio.value : 'sqft';
+      var detail = '';
+      if (mode === 'qty') {
+        var qtyIn = row.querySelector('.pq-stone-qty-in');
+        detail = qtyIn && qtyIn.value ? qtyIn.value + ' stones' : '';
+      } else if (mode === 'dimensions') {
+        var lenIn = row.querySelector('.pq-stone-len-in');
+        var widIn = row.querySelector('.pq-stone-wid-in');
+        detail = (lenIn && widIn && lenIn.value && widIn.value) ? lenIn.value + ' ft × ' + widIn.value + ' ft' : '';
+      } else {
+        var areaIn = row.querySelector('.pq-stone-area-in');
+        detail = areaIn && areaIn.value ? areaIn.value + ' sq ft' : '';
+      }
+      if (stoneName || detail) {
+        stoneLines.push((stoneName || 'Stone ' + (idx + 1)) + (detail ? ': ' + detail : ''));
+      }
+    });
+    var totalAreaLine = panelText('pq-total-area-line');
 
     return {
       client_name: formValue(form, 'client_name'),
-      total_area_sq_ft: areaSummary,
-      stone_type: formValue(form, 'paving_stone_type_id'),
+      total_area_sq_ft: totalAreaLine || stoneLines.join('; '),
+      stone_types: stoneLines.join('; '),
       waste_factor: formValue(form, 'waste_factor') ? formValue(form, 'waste_factor') + '%' : '',
       excavation_depth_in: formValue(form, 'excavation_depth_in') ? formValue(form, 'excavation_depth_in') + ' in' : '',
       profit_margin: formValue(form, 'profit_margin') ? formValue(form, 'profit_margin') + '%' : '',
@@ -134,7 +147,6 @@
       plate_compactor_days: formValue(form, 'plate_compactor_days'),
       helper_hourly_rate: formValue(form, 'helper_hourly_rate'),
       owner_hourly_rate: formValue(form, 'owner_hourly_rate'),
-      stone_meta: panelText('pq-stone-meta'),
       breakdown_summary: panelText('pq-live-root'),
     };
   }

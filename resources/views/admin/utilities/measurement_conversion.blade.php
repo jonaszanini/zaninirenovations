@@ -21,7 +21,7 @@
     class="util-mc"
     data-measurement-conversion
     data-projects="{{ json_encode($projectsJson) }}"
-    data-client-projects="{{ json_encode($clientProjects->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])) }}"
+    data-client-projects="{{ json_encode($clientProjects->map(fn ($p) => ['id' => $p->id, 'name' => $p->linkSelectLabel()])) }}"
     data-preview-url="{{ route('admin.utilities.measurement-conversion.preview') }}"
     data-project-store-url="{{ route('admin.utilities.measurement-conversion.projects.store') }}"
     data-project-update-template="{{ route('admin.utilities.measurement-conversion.projects.update', ['measurement_project' => '__ID__']) }}"
@@ -61,7 +61,7 @@
             <select class="admin-input" id="mc-new-client-project" data-mc-new-client-project>
               <option value="">— None —</option>
               @foreach ($clientProjects as $cp)
-                <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+                <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
               @endforeach
             </select>
           </div>
@@ -79,7 +79,7 @@
           <select class="admin-input" id="mc-link-client-project" data-mc-link-client-project>
             <option value="">— None —</option>
             @foreach ($clientProjects as $cp)
-              <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+              <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
             @endforeach
           </select>
         </div>
@@ -143,14 +143,14 @@
             <thead>
               <tr>
                 <th class="util-mc-col-label">Label</th>
-                <th>mm</th>
-                <th>cm</th>
-                <th>m</th>
-                <th>in (dec)</th>
-                <th>in (frac)</th>
-                <th>ft (dec)</th>
-                <th>ft/in (dec)</th>
-                <th>ft/in (frac)</th>
+                <th class="util-mc-col-value" data-mc-col="1">mm</th>
+                <th class="util-mc-col-value" data-mc-col="2">cm</th>
+                <th class="util-mc-col-value" data-mc-col="3">m</th>
+                <th class="util-mc-col-value" data-mc-col="4">in (dec)</th>
+                <th class="util-mc-col-value" data-mc-col="5">in (frac)</th>
+                <th class="util-mc-col-value" data-mc-col="6">ft (dec)</th>
+                <th class="util-mc-col-value" data-mc-col="7">ft/in (dec)</th>
+                <th class="util-mc-col-value" data-mc-col="8">ft/in (frac)</th>
                 <th class="util-mc-col-actions"><span class="util-sr-only">Actions</span></th>
               </tr>
             </thead>

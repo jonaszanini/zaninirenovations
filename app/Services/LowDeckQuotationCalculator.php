@@ -18,6 +18,7 @@ use App\Support\LowDeckLumberPacker;
  *   - labour_rate_per_sqft: float (optional, falls back to settings)
  *   - waste_dump_fee_cad  : float (optional, falls back to settings)
  *   - material_waste_percent: float (optional, default 10 — admin-only ordering buffer)
+ *   - include_under_deck_gravel: bool (optional, default true — under-deck gravel + weed fabric package)
  *
  * Output (`calculate()`):
  *   {
@@ -47,6 +48,12 @@ class LowDeckQuotationCalculator
 
     /** Additional hangers included on the materials line (edge/corner extras). */
     private const EXTRA_HANGERS_FOR_QUOTE = 8;
+
+    /** Coverage of a 3 ft × 50 ft weed-control fabric roll (sq ft). */
+    private const WEED_FABRIC_50_COVERAGE_SQ_FT = 150.0;
+
+    /** Coverage of a 3 ft × 100 ft weed-control fabric roll (sq ft). */
+    private const WEED_FABRIC_100_COVERAGE_SQ_FT = 300.0;
 
     private LowDeckFormulaSetting $settings;
 
@@ -113,12 +120,17 @@ class LowDeckQuotationCalculator
             $materialWastePercent *= 100;
         }
 
+        $includeUnderDeckGravel = array_key_exists('include_under_deck_gravel', $inputs)
+            ? filter_var($inputs['include_under_deck_gravel'], FILTER_VALIDATE_BOOLEAN)
+            : true;
+
         return [
             'width_ft' => $width,
             'length_ft' => $length,
             'labour_rate_per_sqft' => $labourRate,
             'waste_dump_fee_cad' => $wasteFee,
             'material_waste_percent' => $materialWastePercent,
+            'include_under_deck_gravel' => $includeUnderDeckGravel,
         ];
     }
 
@@ -641,26 +653,55 @@ class LowDeckQuotationCalculator
             $rows[] = $row;
         }
 
-        // -------- GRAVEL -------------------------------------------------
+        // -------- GRAVEL (blocks + optional under-deck) -----------------
+        // Same 30kg 1/2in bag for post-hole pads and under-deck fill.
         $footFt = (float) $settings->gravel_footprint_in / 12.0;
         $depthFt = (float) $settings->gravel_depth_in / 12.0;
         $cubicPerBlock = $footFt * $footFt * $depthFt;
         $perBag = max(0.001, (float) $settings->gravel_cubic_ft_per_bag);
         $gravelCubic = $cubicPerBlock * $blocks;
-        $gravelBags = $gravelCubic > 0 ? (int) ceil($gravelCubic / $perBag) : 0;
-        if ($gravelBags > 0) {
+        $blockGravelBags = $gravelCubic > 0 ? (int) ceil($gravelCubic / $perBag - 1e-9) : 0;
+
+        $underDeckBags = 0;
+        $areaSqFt = (float) ($geom['area_sq_ft'] ?? 0);
+        $underDeckSqFtPerBag = max(0.001, (float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8.0));
+        if (! empty($in['include_under_deck_gravel']) && $areaSqFt > 0) {
+            $underDeckBags = (int) ceil($areaSqFt / $underDeckSqFtPerBag - 1e-9);
+        }
+
+        $totalGravelBags = $blockGravelBags + $underDeckBags;
+        if ($totalGravelBags > 0) {
+            $noteParts = [];
+            if ($blockGravelBags > 0) {
+                $noteParts[] = sprintf(
+                    '%d under blocks (%s cu ft @ %s cu ft / bag)',
+                    $blockGravelBags,
+                    rtrim(rtrim(number_format($gravelCubic, 2), '0'), '.'),
+                    rtrim(rtrim(number_format($perBag, 3), '0'), '.')
+                );
+            }
+            if ($underDeckBags > 0) {
+                $noteParts[] = sprintf(
+                    '%d under deck (1 bag per %s sq ft × %s sq ft)',
+                    $underDeckBags,
+                    rtrim(rtrim(number_format($underDeckSqFtPerBag, 2), '0'), '.'),
+                    rtrim(rtrim(number_format($areaSqFt, 2), '0'), '.')
+                );
+            }
+
             $rows[] = $this->row(
                 LowDeckMaterial::KEY_GRAVEL_BAG,
-                $this->wastefulQuantity($gravelBags, $wastePercent),
+                $this->wastefulQuantity($totalGravelBags, $wastePercent),
                 'bag',
-                sprintf(
-                    '%s cu ft total (%s cu ft / block × %d), %s cu ft / bag',
-                    rtrim(rtrim(number_format($gravelCubic, 2), '0'), '.'),
-                    rtrim(rtrim(number_format($cubicPerBlock, 3), '0'), '.'),
-                    $blocks,
-                    rtrim(rtrim(number_format($perBag, 3), '0'), '.')
-                )
+                implode('; ', $noteParts)
             );
+        }
+
+        // -------- UNDER-DECK WEED FABRIC + SPIKES (optional package) ----
+        if (! empty($in['include_under_deck_gravel'])) {
+            foreach ($this->underDeckFabricPackageRows($areaSqFt, $wastePercent) as $row) {
+                $rows[] = $row;
+            }
         }
 
         // -------- JOISTS / RIMS / BEAMS (packed) ------------------------
@@ -796,6 +837,124 @@ class LowDeckQuotationCalculator
         }
 
         return $rows;
+    }
+
+    /**
+     * Optional under-deck package extras: weed-control fabric (cheapest mix
+     * of 50 ft / 100 ft rolls) and one pack of fabric spikes. Gravel bags
+     * for under-deck fill are merged into the shared gravel_bag line.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function underDeckFabricPackageRows(float $areaSqFt, float $wastePercent): array
+    {
+        $rows = [];
+        $area = max(0.0, $areaSqFt);
+        if ($area <= 0) {
+            return $rows;
+        }
+
+        $fabric = $this->optimalWeedFabricRolls($area);
+        if ($fabric['rolls_50'] > 0) {
+            $rows[] = $this->row(
+                LowDeckMaterial::KEY_WEED_FABRIC_3X50,
+                $this->wastefulQuantity($fabric['rolls_50'], $wastePercent),
+                'roll',
+                $fabric['notes']
+            );
+        }
+        if ($fabric['rolls_100'] > 0) {
+            $rows[] = $this->row(
+                LowDeckMaterial::KEY_WEED_FABRIC_3X100,
+                $this->wastefulQuantity($fabric['rolls_100'], $wastePercent),
+                'roll',
+                $fabric['notes']
+            );
+        }
+
+        // Spikes only make sense when fabric is actually being installed.
+        if ($fabric['rolls_50'] > 0 || $fabric['rolls_100'] > 0) {
+            $rows[] = $this->row(
+                LowDeckMaterial::KEY_FABRIC_SPIKES_30PACK,
+                1,
+                'pack',
+                'One 30-pack per project'
+            );
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Choose the cheapest mix of 3×50 and 3×100 weed-fabric rolls that
+     * covers the deck area. One 100 ft roll is preferred over two 50 ft
+     * rolls when it is cheaper (or equal coverage cost).
+     *
+     * @return array{rolls_50: int, rolls_100: int, notes: string}
+     */
+    private function optimalWeedFabricRolls(float $areaSqFt): array
+    {
+        if ($areaSqFt <= 0) {
+            return ['rolls_50' => 0, 'rolls_100' => 0, 'notes' => ''];
+        }
+
+        $cover50 = self::WEED_FABRIC_50_COVERAGE_SQ_FT;
+        $cover100 = self::WEED_FABRIC_100_COVERAGE_SQ_FT;
+
+        $price50 = $this->catalogue->get(LowDeckMaterial::KEY_WEED_FABRIC_3X50)?->effectivePriceCad() ?? 0.0;
+        $price100 = $this->catalogue->get(LowDeckMaterial::KEY_WEED_FABRIC_3X100)?->effectivePriceCad() ?? 0.0;
+
+        // If prices are unset, treat 100 ft as half the unit cost of two 50s
+        // so the optimizer still prefers fewer larger rolls.
+        if ($price50 <= 0 && $price100 <= 0) {
+            $price50 = 2.0;
+            $price100 = 3.0;
+        } elseif ($price50 <= 0) {
+            $price50 = $price100;
+        } elseif ($price100 <= 0) {
+            $price100 = $price50 * 1.5;
+        }
+
+        $max100 = (int) ceil($areaSqFt / $cover100 - 1e-9) + 1;
+        $best = null;
+
+        for ($n100 = 0; $n100 <= $max100; $n100++) {
+            $coveredBy100 = $n100 * $cover100;
+            $remaining = max(0.0, $areaSqFt - $coveredBy100);
+            $n50 = $remaining > 1e-9 ? (int) ceil($remaining / $cover50 - 1e-9) : 0;
+            $cost = ($n100 * $price100) + ($n50 * $price50);
+            $totalRolls = $n100 + $n50;
+
+            if ($best === null
+                || $cost < $best['cost'] - 1e-9
+                || (abs($cost - $best['cost']) < 1e-9 && $totalRolls < $best['total_rolls'])
+            ) {
+                $best = [
+                    'rolls_50' => $n50,
+                    'rolls_100' => $n100,
+                    'cost' => $cost,
+                    'total_rolls' => $totalRolls,
+                ];
+            }
+        }
+
+        $parts = [];
+        if ($best['rolls_100'] > 0) {
+            $parts[] = sprintf('%d × 3×100 ft (%s sq ft each)', $best['rolls_100'], (int) $cover100);
+        }
+        if ($best['rolls_50'] > 0) {
+            $parts[] = sprintf('%d × 3×50 ft (%s sq ft each)', $best['rolls_50'], (int) $cover50);
+        }
+
+        return [
+            'rolls_50' => (int) $best['rolls_50'],
+            'rolls_100' => (int) $best['rolls_100'],
+            'notes' => sprintf(
+                'Covers %s sq ft deck — cheapest mix: %s',
+                rtrim(rtrim(number_format($areaSqFt, 2), '0'), '.'),
+                implode(' + ', $parts)
+            ),
+        ];
     }
 
     /**

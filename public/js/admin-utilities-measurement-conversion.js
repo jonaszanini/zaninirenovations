@@ -51,7 +51,8 @@
 
   var state = {
     projects: [],
-    activeProjectId: null
+    activeProjectId: null,
+    selectedCols: []
   };
 
   var previewTimer = null;
@@ -209,6 +210,41 @@
     els.linkClientProject.value = project.client_project_id ? String(project.client_project_id) : '';
   }
 
+  function handleColClick(e) {
+    var th = e.currentTarget;
+    var colId = th.getAttribute('data-mc-col');
+    if (!colId) return;
+
+    var idx = state.selectedCols.indexOf(colId);
+    if (idx > -1) {
+      state.selectedCols.splice(idx, 1);
+    } else {
+      state.selectedCols.push(colId);
+      if (state.selectedCols.length > 3) {
+        state.selectedCols.shift();
+      }
+    }
+    renderSelectedCols();
+  }
+
+  function renderSelectedCols() {
+    var table = root.querySelector('.util-mc-table');
+    if (!table) return;
+
+    var all = table.querySelectorAll('.is-selected-1, .is-selected-2, .is-selected-3');
+    for (var i = 0; i < all.length; i++) {
+      all[i].classList.remove('is-selected-1', 'is-selected-2', 'is-selected-3');
+    }
+
+    state.selectedCols.forEach(function (colId, i) {
+      var cls = 'is-selected-' + (i + 1);
+      var cells = table.querySelectorAll('[data-mc-col="' + colId + '"]');
+      for (var j = 0; j < cells.length; j++) {
+        cells[j].classList.add(cls);
+      }
+    });
+  }
+
   function renderTable() {
     var project = activeProject();
     var rows = project ? project.rows : [];
@@ -223,9 +259,10 @@
       labelTd.textContent = row.label || '—';
       tr.appendChild(labelTd);
 
-      COLUMN_KEYS.forEach(function (key) {
+      COLUMN_KEYS.forEach(function (key, idx) {
         var td = document.createElement('td');
         td.textContent = row.formats[key] || '—';
+        td.setAttribute('data-mc-col', String(idx + 1));
         tr.appendChild(td);
       });
 
@@ -242,6 +279,8 @@
 
       els.tableBody.appendChild(tr);
     });
+
+    renderSelectedCols();
   }
 
   function renderWorkspace() {
@@ -480,6 +519,11 @@
   els.value.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); addRow(); }
   });
+
+  var colHeaders = root.querySelectorAll('th.util-mc-col-value');
+  for (var i = 0; i < colHeaders.length; i++) {
+    colHeaders[i].addEventListener('click', handleColClick);
+  }
 
   // Init
   state.projects = parseJson('data-projects', []);

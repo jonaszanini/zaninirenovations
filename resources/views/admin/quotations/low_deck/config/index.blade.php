@@ -249,6 +249,14 @@
       </div>
 
       <div class="admin-form-group">
+        <label for="ld-under-deck-gravel-coverage">Under-deck gravel coverage (sq ft / bag)</label>
+        <input id="ld-under-deck-gravel-coverage" type="number" min="0.5" step="0.1"
+               name="under_deck_gravel_sq_ft_per_bag" class="admin-input"
+               value="{{ old('under_deck_gravel_sq_ft_per_bag', (float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8)) }}">
+        <p class="admin-form-help">Deck area covered by one under-deck gravel bag when “Gravel under the deck” is enabled.</p>
+      </div>
+
+      <div class="admin-form-group">
         <label for="ld-struct-post">6" structural screws / standard post</label>
         <input id="ld-struct-post" type="number" min="0" step="1" name="structural_screws_per_post"
                class="admin-input" value="{{ old('structural_screws_per_post', $settings->structural_screws_per_post) }}">

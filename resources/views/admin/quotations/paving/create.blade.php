@@ -214,8 +214,11 @@
       padding-top: 4px;
       border-top: 1px solid #e8edf2;
     }
-    .pq-marble-price-field { max-width: 280px; }
-    @media (max-width: 700px) { .pq-marble-price-field { max-width: none; } }
+    .pq-marble-section { margin-top: 16px; padding-top: 14px; border-top: 1px dashed #e2e8f0; }
+    .pq-marble-section__head { margin-bottom: 12px; }
+    .pq-marble-section__fields { display: flex; flex-direction: column; gap: 12px; }
+    .pq-marble-preview { margin: 0; font-size: 15px; font-weight: 600; color: #024768; padding-top: 6px; }
+    .pq-marble-preview-wrap .admin-form-group-label { margin-bottom: 0; }
     .pq-area-block { grid-column: 1 / -1; }
     .pq-area-mode { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 10px; }
     .pq-area-mode label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer; }
@@ -223,7 +226,88 @@
     .pq-area-dimensions .admin-form-group { flex: 1 1 120px; min-width: 100px; margin: 0; }
     .pq-area-dimensions-sep { padding-bottom: 10px; font-weight: 600; color: #64748b; }
     .pq-area-computed { margin-top: 8px; font-size: 13px; color: #024768; }
-    .pq-marble-box { border: 1px dashed #94a3b8; border-radius: 8px; padding: 14px; margin-top: 12px; background: #f8fafc; }
+    .pq-stone-entries-block { grid-column: 1 / -1; }
+    .pq-stone-entries-head { margin-bottom: 10px; }
+    .pq-hint--inline { margin: 4px 0 0; }
+    .pq-stone-entries { display: flex; flex-direction: column; gap: 14px; }
+    .pq-stone-entry {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+    .pq-stone-entry__toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .pq-stone-entry__title { font-weight: 600; font-size: 13px; color: #334155; }
+    .pq-stone-entry__stone {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .pq-stone-entry-thumb {
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+      border: 2px solid #1e293b;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .pq-stone-entry-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .pq-stone-entry-thumb .fa { font-size: 28px; color: #cbd5e1; }
+    .pq-stone-entry__select-wrap { flex: 1; min-width: 0; }
+    .pq-stone-entry__label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #475569; }
+    .pq-stone-entry__mode {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .pq-stone-entry__mode label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .pq-stone-entry__fields .pq-stone-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #475569;
+    }
+    .pq-stone-entries-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 20px;
+      margin-top: 12px;
+    }
+    .pq-total-area-line { margin: 0; font-weight: 600; }
+    .pq-preview-status { margin: 0; }
+    .pq-preview-status__title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #92400e;
+    }
+    .pq-preview-status__list {
+      margin: 0;
+      padding-left: 1.15rem;
+      font-size: 13px;
+      color: #475569;
+    }
+    .pq-preview-status__list li + li { margin-top: 4px; }
   </style>
 @endpush
 
@@ -290,91 +374,9 @@
               <p class="pq-hint">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
               @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
-            @php
-              $pqAreaMode = old('area_input_mode', $inputs['area_input_mode'] ?? 'total');
-              $pqAreaLength = old('area_length_ft', $inputs['area_length_ft'] ?? '');
-              $pqAreaWidth = old('area_width_ft', $inputs['area_width_ft'] ?? '');
-              $pqAreaDimensions = $pqAreaMode === 'dimensions';
-            @endphp
             <div class="pq-form-sections">
-              <div class="admin-form-group pq-area-block">
-                <span class="admin-form-group-label">Total project area (sq ft) <span class="cp-required">*</span></span>
-                <div class="pq-area-mode" role="radiogroup" aria-label="How to enter project area">
-                  <label>
-                    <input type="radio" name="area_input_mode" value="total" data-pq-area-mode
-                      @checked(! $pqAreaDimensions)>
-                    Enter total sq ft
-                  </label>
-                  <label>
-                    <input type="radio" name="area_input_mode" value="dimensions" data-pq-area-mode
-                      @checked($pqAreaDimensions)>
-                    Length × width (ft)
-                  </label>
-                </div>
-                <div id="pq-area-total-wrap" @if ($pqAreaDimensions) hidden @endif>
-                  <input type="number" id="pq-area" name="total_area_sq_ft" class="admin-input pq-calc-in pq-area-total-in"
-                         min="1" step="0.01" @unless($pqAreaDimensions) required @endunless
-                         value="{{ old('total_area_sq_ft', $inputs['total_area_sq_ft']) }}">
-                </div>
-                <div id="pq-area-dimensions-wrap" @unless($pqAreaDimensions) hidden @endunless>
-                  <div class="pq-area-dimensions">
-                    <div class="admin-form-group">
-                      <label for="pq-area-length">Length (ft)</label>
-                      <input type="number" id="pq-area-length" name="area_length_ft" class="admin-input pq-area-dim-in"
-                             min="0.01" step="0.01" @if($pqAreaDimensions) required @endif
-                             value="{{ $pqAreaLength !== '' && $pqAreaLength !== null ? $pqAreaLength : '' }}"
-                             placeholder="e.g. 10">
-                    </div>
-                    <span class="pq-area-dimensions-sep" aria-hidden="true">×</span>
-                    <div class="admin-form-group">
-                      <label for="pq-area-width">Width (ft)</label>
-                      <input type="number" id="pq-area-width" name="area_width_ft" class="admin-input pq-area-dim-in"
-                             min="0.01" step="0.01" @if($pqAreaDimensions) required @endif
-                             value="{{ $pqAreaWidth !== '' && $pqAreaWidth !== null ? $pqAreaWidth : '' }}"
-                             placeholder="e.g. 10">
-                    </div>
-                  </div>
-                  <p class="pq-area-computed" id="pq-area-computed" aria-live="polite"></p>
-                  <input type="hidden" id="pq-area-from-dimensions" class="pq-calc-in"
-                         @unless($pqAreaDimensions) disabled @endunless
-                         value="{{ old('total_area_sq_ft', $inputs['total_area_sq_ft']) }}">
-                </div>
-              </div>
-
-              <div class="admin-form-group pq-stone-group">
-                <label for="pq-stone">Stone type <span class="cp-required">*</span></label>
-                <div style="display:flex; gap:16px; align-items:flex-start;">
-                  <div class="pq-stone-thumb-wrap" style="width:80px; height:80px; flex-shrink:0; border:2px solid #1e293b; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                    <img id="pq-stone-thumb" src="" alt="Stone preview" style="width:100%; height:100%; object-fit:cover; display:none;">
-                    <i id="pq-stone-thumb-placeholder" class="fa fa-cubes" aria-hidden="true" style="font-size:32px; color:#cbd5e1;"></i>
-                  </div>
-                  <div style="flex-grow:1;">
-                    <select id="pq-stone" name="paving_stone_type_id" class="admin-input pq-calc-in" required>
-                      @foreach ($stoneTypes as $st)
-                        <option value="{{ $st->id }}"
-                          data-sq="{{ $st->sq_ft_per_stone }}"
-                          data-pr="{{ $st->price_per_stone }}"
-                          data-psq="{{ $st->price_per_sq_ft }}"
-                          data-len="{{ $st->length_in }}"
-                          data-wid="{{ $st->width_in }}"
-                          data-hgt="{{ $st->height_in }}"
-                          data-url="{{ $st->product_url }}"
-                          data-img="{{ $st->image_url }}"
-                          @selected((int) old('paving_stone_type_id', $inputs['paving_stone_type_id'] ?? 0) === (int) $st->id)>
-                          {{ $st->name }}
-                        </option>
-                      @endforeach
-                    </select>
-                    <div class="pq-stone-meta" id="pq-stone-meta" aria-live="polite" style="margin-top:8px;"></div>
-                  </div>
-                </div>
-                <input type="hidden" id="pq-sqft" name="stone_sq_ft_per_stone" class="pq-calc-in" required
-                       value="{{ old('stone_sq_ft_per_stone', $inputs['stone_sq_ft_per_stone']) }}">
-                <input type="hidden" id="pq-stprice" name="stone_price_per_stone" class="pq-calc-in" required
-                       value="{{ old('stone_price_per_stone', number_format((float) ($inputs['stone_price_per_stone'] ?? 0), 2, '.', '')) }}">
-                <input type="hidden" id="pq-stpricesq" name="stone_price_per_sq_ft" class="pq-calc-in" required
-                       value="{{ old('stone_price_per_sq_ft', number_format((float) ($inputs['stone_price_per_sq_ft'] ?? 0), 4, '.', '')) }}">
-              </div>
+              @include('admin.quotations.paving._stone_entries', ['inputs' => $inputs, 'stoneTypes' => $stoneTypes])
+              @include('admin.quotations.paving._marble_section', ['inputs' => $inputs, 'marbleTypes' => $marbleTypes])
 
               <div class="pq-field-box">
                 <span class="pq-field-box-title">Labour rates</span>
@@ -392,7 +394,7 @@
                            value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
                   </div>
                 </div>
-                <p class="pq-hint">Set helper to 0 to disable helper hours on labour tasks.</p>
+                <p class="pq-hint">Set helper to 0 to disable helper hours on labour tasks. Defaults come from <a href="{{ route('admin.quotations.paving.price-configuration', ['db' => 'rates']) }}">Price configuration → Fixed costs &amp; equipment → Labour</a>.</p>
               </div>
 
               <div class="pq-field-box">
@@ -453,59 +455,6 @@
               </div>
             </div>
 
-            <div class="pq-marble-box">
-              <label class="admin-checkbox admin-checkbox--block">
-                <input type="checkbox" name="marble_enabled" value="1" class="admin-checkbox__input pq-calc-in" id="pq-marble-on"
-                  @checked(old('marble_enabled', $inputs['marble_enabled'] ?? false))>
-                <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">Part of this area will use marble / accent stones?</span>
-              </label>
-              <div id="pq-marble-fields" style="margin-top:12px;{{ old('marble_enabled', $inputs['marble_enabled'] ?? false) ? '' : 'display:none;' }}">
-                <div class="pq-form-row">
-                  <div class="admin-form-group" style="flex-grow:1;">
-                    <label for="pq-marble-stone">Marble stone type</label>
-                    <div style="display:flex; gap:16px; align-items:flex-start;">
-                      <div class="pq-stone-thumb-wrap" style="width:80px; height:80px; flex-shrink:0; border:2px solid #1e293b; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                        <img id="pq-marble-stone-thumb" src="" alt="Marble stone preview" style="width:100%; height:100%; object-fit:cover; display:none;">
-                        <i id="pq-marble-stone-thumb-placeholder" class="fa fa-cubes" aria-hidden="true" style="font-size:32px; color:#cbd5e1;"></i>
-                      </div>
-                      <div style="flex-grow:1;">
-                        <select id="pq-marble-stone" name="marble_stone_type_id" class="admin-input pq-calc-in">
-                          <option value="" data-img="">—</option>
-                          @foreach ($stoneTypes as $st)
-                            <option value="{{ $st->id }}" data-sq="{{ $st->sq_ft_per_stone }}" data-pr="{{ $st->price_per_stone }}" data-psq="{{ $st->price_per_sq_ft }}" data-img="{{ $st->image_url }}"
-                              @selected((int) old('marble_stone_type_id', $inputs['marble_stone_type_id'] ?? 0) === (int) $st->id)>{{ $st->name }}</option>
-                          @endforeach
-                        </select>
-                        <p class="pq-stone-meta" id="pq-marble-stone-meta" aria-live="polite" style="margin-top:8px;"></p>
-                      </div>
-                    </div>
-                    <input type="hidden" id="pq-marble-sqft" name="marble_sq_ft_per_stone" class="pq-calc-in"
-                           value="{{ old('marble_sq_ft_per_stone', $inputs['marble_sq_ft_per_stone'] ?? '') }}">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pq-marble-area">Marble area (sq ft)</label>
-                    <input type="number" id="pq-marble-area" name="marble_area_sq_ft" class="admin-input pq-calc-in" min="0" step="0.01"
-                           value="{{ old('marble_area_sq_ft', $inputs['marble_area_sq_ft'] ?? 0) }}">
-                  </div>
-                </div>
-                <div class="pq-form-row">
-                  <div class="admin-form-group pq-marble-price-field" style="margin-top:12px;">
-                    <label for="pq-marble-price">Marble $/stone (before tax)</label>
-                    <input type="text" id="pq-marble-price" name="marble_price_per_stone" class="admin-input pq-calc-in cp-money-input"
-                           inputmode="decimal" autocomplete="off" placeholder="Auto from type"
-                           value="{{ old('marble_price_per_stone', isset($inputs['marble_price_per_stone']) && $inputs['marble_price_per_stone'] !== null && $inputs['marble_price_per_stone'] !== '' ? number_format((float) $inputs['marble_price_per_stone'], 2, '.', '') : '') }}">
-                  </div>
-                  <div class="admin-form-group pq-marble-price-field" style="margin-top:12px;">
-                    <label for="pq-marble-price-sq">Marble $/sq ft (before tax)</label>
-                    <input type="text" id="pq-marble-price-sq" name="marble_price_per_sq_ft" class="admin-input pq-calc-in cp-money-input"
-                           inputmode="decimal" autocomplete="off" placeholder="Auto from type"
-                           value="{{ old('marble_price_per_sq_ft', isset($inputs['marble_price_per_sq_ft']) && $inputs['marble_price_per_sq_ft'] !== null && $inputs['marble_price_per_sq_ft'] !== '' ? number_format((float) $inputs['marble_price_per_sq_ft'], 4, '.', '') : '') }}">
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div class="pq-options-row" style="margin-top:16px;">
               <label class="admin-checkbox">
                 <input type="checkbox" name="add_polymeric_sand" value="1" class="admin-checkbox__input pq-calc-in" @checked(old('add_polymeric_sand', $inputs['add_polymeric_sand'] ?? true))>
@@ -537,65 +486,14 @@
         </form>
 
         @if ($isEdit && !$quotation->isLinked())
-          <div class="fq-link-project-card">
-            <h4 style="margin:0 0 8px;">Link to project</h4>
-            <div class="fq-link-grid">
-              <div>
-                <h5>Existing project</h5>
-                <form method="post" action="{{ route('admin.quotations.paving.link', $quotation) }}">
-                  @csrf
-                  @if ($linkableProjects->isNotEmpty())
-                  <div class="fq-link-existing-row">
-                    @include('admin.quotations._link_project_picker', ['projects' => $linkableProjects])
-                    <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Link</button>
-                  </div>
-                  @else
-                  <p class="admin-form-help cp-form-help-flush">No active projects to link. Create a new one below.</p>
-                  @endif
-                  <div class="admin-form-group cp-form-group-spaced">
-                    <label>Line description (optional)</label>
-                    <input type="text" name="link_line_description" class="admin-input" maxlength="500" placeholder="{{ $quotation->summaryDescription() }}">
-                  </div>
-                </form>
-              </div>
-              <div class="fq-link-col fq-link-col--stack">
-                <h5>Create project &amp; link</h5>
-                <form method="post" action="{{ route('admin.quotations.paving.create-project', $quotation) }}" class="fq-create-project-form">
-                  @csrf
-                  <input type="hidden" name="link_line_description" value="">
-                  <div class="admin-form-group">
-                    <label>Project name</label>
-                    <input type="text" name="fp_project_name" class="admin-input" maxlength="255" placeholder="Defaults to client + Paving">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pv-new-client-name">Client name <span class="cp-required">*</span></label>
-                    @include('admin.quotations._fp_client_picker', [
-                        'clientsSearchUrl' => route('admin.clients.search'),
-                        'pickerId'         => 'pv-fp-client-picker',
-                        'nameInputId'      => 'pv-new-client-name',
-                        'emailInputId'     => 'pv-new-client-email',
-                        'phoneInputId'     => 'pv-new-client-phone',
-                        'addressInputId'   => 'pv-new-client-address',
-                    ])
-                    <input type="text" id="pv-new-client-name" name="fp_client_name" class="admin-input" required maxlength="255" value="{{ $quotation->client_name }}">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pv-new-client-email">Email</label>
-                    <input type="email" id="pv-new-client-email" name="fp_client_email" class="admin-input" maxlength="255">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pv-new-client-phone">Phone (10 digits)</label>
-                    <input type="text" id="pv-new-client-phone" name="fp_client_phone" class="admin-input" maxlength="14" placeholder="(613) 555-0100">
-                  </div>
-                  <div class="admin-form-group">
-                    <label for="pv-new-client-address">Address</label>
-                    <input type="text" id="pv-new-client-address" name="fp_client_address" class="admin-input" maxlength="500">
-                  </div>
-                  <button type="submit" class="admin-btn admin-btn--primary">Create project &amp; link</button>
-                </form>
-              </div>
-            </div>
-          </div>
+          @include('admin.quotations._link_to_project_card', [
+              'quotation' => $quotation,
+              'linkUrl' => route('admin.quotations.paving.link', $quotation),
+              'createProjectUrl' => route('admin.quotations.paving.create-project', $quotation),
+              'idPrefix' => 'pv',
+              'projectNamePlaceholder' => 'Defaults to client + Paving',
+              'linkableProjects' => $linkableProjects,
+          ])
         @endif
       </div>
 
@@ -746,23 +644,20 @@
         }
       }
 
-      function wireStoneSelect(sel, sqEl, prEl, psqEl, metaEl, thumbEl, placeholderEl, includePrice) {
-        if (!sel || (!sqEl && !psqEl)) return;
-        function applyFromOption() {
+      function wireStoneEntryRow(row) {
+        if (!row) return;
+        var sel = row.querySelector('.pq-stone-entry-select');
+        var metaEl = row.querySelector('.pq-stone-entry-meta');
+        var thumbEl = row.querySelector('.pq-stone-entry-img');
+        var placeholderEl = row.querySelector('.pq-stone-entry-placeholder');
+
+        function applyStoneVisual() {
+          if (!sel) return;
           var opt = sel.options[sel.selectedIndex];
-          if (!opt || !opt.value) {
-            syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice);
-            if (thumbEl) thumbEl.style.display = 'none';
-            if (placeholderEl) placeholderEl.style.display = 'block';
-            return;
-          }
-          var sq = opt.getAttribute('data-sq');
-          var pr = opt.getAttribute('data-pr');
-          var psq = opt.getAttribute('data-psq');
-          var img = opt.getAttribute('data-img');
-          
+          renderMainStoneMeta(metaEl, opt);
           if (thumbEl && placeholderEl) {
-            if (img && img.trim() !== '') {
+            var img = opt ? (opt.getAttribute('data-img') || '').trim() : '';
+            if (img) {
               thumbEl.src = img;
               thumbEl.style.display = 'block';
               placeholderEl.style.display = 'none';
@@ -771,86 +666,254 @@
               placeholderEl.style.display = 'block';
             }
           }
-
-          if (sq) {
-            if(sqEl) {
-              sqEl.value = sq;
-              sqEl.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-          } else if (sqEl) {
-              sqEl.value = '';
-              sqEl.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-          
-          if (pr) {
-            if(prEl) {
-              prEl.value = pr;
-              prEl.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-          } else if (prEl) {
-              prEl.value = '';
-              prEl.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-          
-          if (psq) {
-            if(psqEl) {
-              psqEl.value = psq;
-              psqEl.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-          } else if (psqEl) {
-              psqEl.value = '';
-              psqEl.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-          
-          syncStoneMeta(sel, metaEl, sqEl, prEl, psqEl, includePrice);
+          syncBaseDepthDisplay();
+          syncTotalAreaLine();
         }
-        sel.addEventListener('change', applyFromOption);
-        applyFromOption();
-      }
-      wireStoneSelect(
-        document.getElementById('pq-stone'),
-        document.getElementById('pq-sqft'),
-        document.getElementById('pq-stprice'),
-        document.getElementById('pq-stpricesq'),
-        document.getElementById('pq-stone-meta'),
-        document.getElementById('pq-stone-thumb'),
-        document.getElementById('pq-stone-thumb-placeholder'),
-        true
-      );
-      wireStoneSelect(
-        document.getElementById('pq-marble-stone'),
-        document.getElementById('pq-marble-sqft'),
-        document.getElementById('pq-marble-price'),
-        document.getElementById('pq-marble-price-sq'),
-        document.getElementById('pq-marble-stone-meta'),
-        document.getElementById('pq-marble-stone-thumb'),
-        document.getElementById('pq-marble-stone-thumb-placeholder'),
-        false
-      );
 
-      var marbleChk = document.getElementById('pq-marble-on');
-      var marbleFields = document.getElementById('pq-marble-fields');
-      function syncMarbleFields() {
-        if (marbleFields && marbleChk) marbleFields.style.display = marbleChk.checked ? '' : 'none';
+        if (sel) {
+          sel.addEventListener('change', function () {
+            applyStoneVisual();
+            schedule();
+          });
+          applyStoneVisual();
+        }
+
+        row.querySelectorAll('.pq-stone-mode-radio').forEach(function (radio) {
+          radio.addEventListener('change', function () {
+            syncStoneEntryMode(row);
+            syncTotalAreaLine();
+            schedule();
+          });
+        });
+
+        var qtyIn = row.querySelector('.pq-stone-qty-in');
+        var areaIn = row.querySelector('.pq-stone-area-in');
+        var lenIn = row.querySelector('.pq-stone-len-in');
+        var widIn = row.querySelector('.pq-stone-wid-in');
+        [qtyIn, areaIn, lenIn, widIn].forEach(function (el) {
+          if (el) el.addEventListener('input', function () {
+            syncStoneEntryDimComputed(row);
+            syncTotalAreaLine();
+            schedule();
+          });
+        });
+
+        syncStoneEntryMode(row);
+        syncStoneEntryDimComputed(row);
       }
-      if (marbleChk) marbleChk.addEventListener('change', syncMarbleFields);
-      syncMarbleFields();
+
+      function entryMode(row) {
+        var checked = row.querySelector('.pq-stone-mode-radio:checked');
+        return checked ? checked.value : 'sqft';
+      }
+
+      function syncStoneEntryMode(row) {
+        var mode = entryMode(row);
+        var qtyWrap = row.querySelector('.pq-stone-field--qty');
+        var sqftWrap = row.querySelector('.pq-stone-field--sqft');
+        var dimWrap = row.querySelector('.pq-stone-field--dimensions');
+        var qtyIn = row.querySelector('.pq-stone-qty-in');
+        var areaIn = row.querySelector('.pq-stone-area-in');
+        var lenIn = row.querySelector('.pq-stone-len-in');
+        var widIn = row.querySelector('.pq-stone-wid-in');
+
+        if (qtyWrap) qtyWrap.hidden = mode !== 'qty';
+        if (sqftWrap) sqftWrap.hidden = mode !== 'sqft';
+        if (dimWrap) dimWrap.hidden = mode !== 'dimensions';
+        if (qtyIn) qtyIn.required = mode === 'qty';
+        if (areaIn) areaIn.required = mode === 'sqft';
+        if (lenIn) lenIn.required = mode === 'dimensions';
+        if (widIn) widIn.required = mode === 'dimensions';
+        syncStoneEntryDimComputed(row);
+      }
+
+      function syncStoneEntryDimComputed(row) {
+        if (entryMode(row) !== 'dimensions') return;
+        var lenIn = row.querySelector('.pq-stone-len-in');
+        var widIn = row.querySelector('.pq-stone-wid-in');
+        var computedEl = row.querySelector('.pq-stone-dim-computed');
+        if (!lenIn || !widIn || !computedEl) return;
+        var len = parseFloat(lenIn.value);
+        var wid = parseFloat(widIn.value);
+        if (!isFinite(len) || !isFinite(wid) || len <= 0 || wid <= 0) {
+          computedEl.textContent = '';
+          return;
+        }
+        var area = Math.round(len * wid * 100) / 100;
+        computedEl.textContent = '= ' + area.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' sq ft';
+      }
+
+      function entryResolvedArea(row) {
+        var mode = entryMode(row);
+        if (mode === 'qty') {
+          var sel = row.querySelector('.pq-stone-entry-select');
+          var qtyIn = row.querySelector('.pq-stone-qty-in');
+          if (!sel || !qtyIn) return 0;
+          var opt = sel.options[sel.selectedIndex];
+          var sq = opt ? parseFloat(opt.getAttribute('data-sq')) : NaN;
+          var qty = parseInt(qtyIn.value, 10);
+          if (!isFinite(sq) || sq <= 0 || !isFinite(qty) || qty <= 0) return 0;
+          return Math.round(qty * sq * 100) / 100;
+        }
+        if (mode === 'dimensions') {
+          var lenIn = row.querySelector('.pq-stone-len-in');
+          var widIn = row.querySelector('.pq-stone-wid-in');
+          if (!lenIn || !widIn) return 0;
+          var len = parseFloat(lenIn.value);
+          var wid = parseFloat(widIn.value);
+          if (!isFinite(len) || !isFinite(wid) || len <= 0 || wid <= 0) return 0;
+          return Math.round(len * wid * 100) / 100;
+        }
+        var areaIn = row.querySelector('.pq-stone-area-in');
+        if (!areaIn) return 0;
+        var area = parseFloat(areaIn.value);
+        return isFinite(area) && area > 0 ? area : 0;
+      }
+
+      function syncTotalAreaLine() {
+        var line = document.getElementById('pq-total-area-line');
+        if (!line) return;
+        var sum = 0;
+        document.querySelectorAll('.pq-stone-entry').forEach(function (row) {
+          sum += entryResolvedArea(row);
+        });
+        sum = Math.round(sum * 100) / 100;
+        line.textContent = sum > 0
+          ? 'Total paving stone area: ' + sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' sq ft'
+          : '';
+      }
+
+      function reindexStoneEntries() {
+        document.querySelectorAll('.pq-stone-entry').forEach(function (row, idx) {
+          row.dataset.index = String(idx);
+          var title = row.querySelector('.pq-stone-entry__title');
+          if (title) title.textContent = 'Stone ' + (idx + 1);
+          row.querySelectorAll('[name]').forEach(function (el) {
+            if (!el.name) return;
+            el.name = el.name.replace(/stone_entries\[\d+\]/, 'stone_entries[' + idx + ']');
+          });
+        });
+      }
+
+      function initStoneEntries() {
+        var container = document.getElementById('pq-stone-entries');
+        var addBtn = document.getElementById('pq-add-stone-entry');
+        var template = document.getElementById('pq-stone-entry-template');
+        var maxEntries = 3;
+        if (!container) return;
+
+        container.querySelectorAll('.pq-stone-entry').forEach(wireStoneEntryRow);
+
+        container.addEventListener('click', function (e) {
+          var btn = e.target.closest('.pq-stone-entry-remove');
+          if (!btn) return;
+          var row = btn.closest('.pq-stone-entry');
+          if (!row || container.querySelectorAll('.pq-stone-entry').length <= 1) return;
+          row.remove();
+          reindexStoneEntries();
+          if (addBtn) addBtn.hidden = container.querySelectorAll('.pq-stone-entry').length >= maxEntries;
+          syncBaseDepthDisplay();
+          syncTotalAreaLine();
+          schedule();
+        });
+
+        if (addBtn && template) {
+          addBtn.addEventListener('click', function () {
+            var count = container.querySelectorAll('.pq-stone-entry').length;
+            if (count >= maxEntries) return;
+            var html = template.innerHTML.replace(/__INDEX__/g, String(count)).replace(/__NUM__/g, String(count + 1));
+            var wrap = document.createElement('div');
+            wrap.innerHTML = html.trim();
+            var row = wrap.firstElementChild;
+            container.appendChild(row);
+            wireStoneEntryRow(row);
+            reindexStoneEntries();
+            addBtn.hidden = container.querySelectorAll('.pq-stone-entry').length >= maxEntries;
+            syncTotalAreaLine();
+            schedule();
+          });
+        }
+
+        syncTotalAreaLine();
+      }
+      initStoneEntries();
+
+      (function initMarbleSection() {
+        var enabled = document.getElementById('pq-marble-enabled');
+        var fields = document.getElementById('pq-marble-fields');
+        var typeSel = document.getElementById('pq-marble-type');
+        var areaIn = document.getElementById('pq-marble-area');
+        var depthIn = document.getElementById('pq-marble-depth');
+        var preview = document.getElementById('pq-marble-bags-preview');
+        if (!enabled || !fields) return;
+
+        function wasteFactor() {
+          var wf = form.querySelector('[name="waste_factor"]');
+          var w = wf ? parseFloat(wf.value) : 0.05;
+          if (!isFinite(w)) w = 0.05;
+          if (w > 1) w /= 100;
+          return w;
+        }
+
+        function syncMarbleRequired(on) {
+          [typeSel, areaIn, depthIn].forEach(function (el) {
+            if (el) el.required = !!on;
+          });
+        }
+
+        function updateMarbleBagPreview() {
+          if (!preview || !enabled.checked) {
+            if (preview) preview.textContent = '—';
+            return;
+          }
+          if (!typeSel || typeSel.selectedIndex < 0) {
+            preview.textContent = '—';
+            return;
+          }
+          var opt = typeSel.options[typeSel.selectedIndex];
+          var cuFt = parseFloat(opt.getAttribute('data-cuft-bag'));
+          var area = areaIn ? parseFloat(areaIn.value) : 0;
+          var depth = depthIn ? parseFloat(depthIn.value) : 2;
+          if (!isFinite(cuFt) || cuFt <= 0 || !isFinite(area) || area <= 0 || !isFinite(depth) || depth <= 0) {
+            preview.textContent = '—';
+            return;
+          }
+          var volume = area * (depth / 12) * (1 + wasteFactor());
+          var bags = Math.ceil(volume / cuFt - 1e-9);
+          preview.textContent = bags + ' bag' + (bags === 1 ? '' : 's');
+        }
+
+        function syncMarbleVisibility() {
+          var on = enabled.checked;
+          fields.hidden = !on;
+          syncMarbleRequired(on);
+          updateMarbleBagPreview();
+          schedule();
+        }
+
+        enabled.addEventListener('change', syncMarbleVisibility);
+        [typeSel, areaIn, depthIn].forEach(function (el) {
+          if (el) el.addEventListener('input', updateMarbleBagPreview);
+        });
+        syncMarbleVisibility();
+      })();
 
       function syncBaseDepthDisplay() {
         var display = document.getElementById('pq-base-depth-display');
         var depthInput = document.getElementById('pq-depth');
         var sandInput = document.getElementById('pq-sand-depth');
-        var stoneSel = document.getElementById('pq-stone');
         if (!display || !depthInput) return;
 
         var excav = parseFloat(depthInput.value) || 0;
         var sand = sandInput ? (parseFloat(sandInput.value) || 1) : 1;
-        var hgt = 2;
-        if (stoneSel && stoneSel.selectedIndex >= 0) {
-          var opt = stoneSel.options[stoneSel.selectedIndex];
+        var hgt = 0;
+        document.querySelectorAll('.pq-stone-entry-select').forEach(function (sel) {
+          if (sel.selectedIndex < 0) return;
+          var opt = sel.options[sel.selectedIndex];
           var parsed = parseFloat(opt.getAttribute('data-hgt'));
-          if (isFinite(parsed) && parsed > 0) hgt = parsed;
-        }
+          if (isFinite(parsed) && parsed > hgt) hgt = parsed;
+        });
+        if (hgt <= 0) hgt = 2;
         var base = Math.max(0, excav - hgt - sand);
         if (excav <= 0) {
           display.textContent = '—';
@@ -863,11 +926,6 @@
         var el = document.getElementById(id);
         if (el) el.addEventListener('input', syncBaseDepthDisplay);
       });
-      var stoneSelect = document.getElementById('pq-stone');
-      if (stoneSelect) {
-        stoneSelect.addEventListener('change', syncBaseDepthDisplay);
-        stoneSelect.addEventListener('input', syncBaseDepthDisplay);
-      }
       syncBaseDepthDisplay();
 
       var root = document.getElementById('pq-live-root');
@@ -946,6 +1004,15 @@
           ].join(''));
         }
 
+        if (c.marble && c.marble.enabled) {
+          var mb = c.marble;
+          html += section('Decorative marble', [
+            row(mb.marble_name || 'Marble bed', mb.area_sq_ft + ' sq ft @ ' + mb.depth_in + ' in.'),
+            row('Bags', String(mb.bags || 0)),
+            row('Marble subtotal <span class="admin-form-help">(incl. HST + labour)</span>', fmt(mb.subtotal_with_tax_and_labour || 0)),
+          ].join(''));
+        }
+
         var gp = Number(s.gross_profit || 0);
         html += section('Profitability', [
           row('Gross profit', fmt(gp), '', gp>= 0 ? 'pq-profit-pos' : 'pq-profit-neg'),
@@ -955,14 +1022,127 @@
 
         root.innerHTML = html;
       }
+
+      function collectMissingPreviewInputs() {
+        var missing = [];
+        var stoneRows = document.querySelectorAll('.pq-stone-entry');
+        if (!stoneRows.length) {
+          missing.push('Stone types — add at least one stone type');
+        }
+        stoneRows.forEach(function (row, idx) {
+          var num = idx + 1;
+          var sel = row.querySelector('.pq-stone-entry-select');
+          if (!sel || !sel.value) {
+            missing.push('Stone ' + num + ' — select a stone type');
+            return;
+          }
+          var modeEl = row.querySelector('.pq-stone-mode-radio:checked');
+          var modeVal = modeEl ? modeEl.value : 'sqft';
+          if (modeVal === 'qty') {
+            var qty = parseFloat((row.querySelector('.pq-stone-qty-in') || {}).value);
+            if (!isFinite(qty) || qty < 1) missing.push('Stone ' + num + ' — enter number of stones');
+          } else if (modeVal === 'dimensions') {
+            var len = parseFloat((row.querySelector('.pq-stone-len-in') || {}).value);
+            var wid = parseFloat((row.querySelector('.pq-stone-wid-in') || {}).value);
+            if (!isFinite(len) || len <= 0 || !isFinite(wid) || wid <= 0) {
+              missing.push('Stone ' + num + ' — enter length and width (ft)');
+            }
+          } else {
+            var area = parseFloat((row.querySelector('.pq-stone-area-in') || {}).value);
+            if (!isFinite(area) || area <= 0) missing.push('Stone ' + num + ' — enter area (sq ft)');
+          }
+        });
+
+        var marbleEnabled = document.getElementById('pq-marble-enabled');
+        if (marbleEnabled && marbleEnabled.checked) {
+          var marbleType = document.getElementById('pq-marble-type');
+          if (!marbleType || !marbleType.value) missing.push('Marble — select a marble type');
+          var marbleArea = parseFloat((document.getElementById('pq-marble-area') || {}).value);
+          if (!isFinite(marbleArea) || marbleArea < 0.1) missing.push('Marble — enter area (sq ft)');
+          var marbleDepth = parseFloat((document.getElementById('pq-marble-depth') || {}).value);
+          if (!isFinite(marbleDepth) || marbleDepth < 0.5) missing.push('Marble — enter bed depth (in)');
+        }
+
+        var excav = parseFloat((document.getElementById('pq-depth') || {}).value);
+        if (!isFinite(excav) || excav < 1) missing.push('Excavation depth (in)');
+
+        return missing;
+      }
+
+      function flattenValidationErrors(payload) {
+        var list = [];
+        if (!payload || !payload.errors) return list;
+        Object.keys(payload.errors).forEach(function (key) {
+          var msgs = payload.errors[key];
+          if (!Array.isArray(msgs)) return;
+          msgs.forEach(function (msg) {
+            if (msg && list.indexOf(msg) === -1) list.push(msg);
+          });
+        });
+        return list;
+      }
+
+      function renderMissingSummary(items) {
+        if (!items.length) {
+          root.innerHTML = '<p class="admin-form-help">Adjust inputs to refresh totals…</p>';
+          return;
+        }
+        root.innerHTML =
+          '<div class="pq-preview-status">' +
+            '<p class="pq-preview-status__title">Complete these Project inputs to see totals:</p>' +
+            '<ul class="pq-preview-status__list">' +
+              items.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join('') +
+            '</ul>' +
+          '</div>';
+      }
+
+      function appendPreviewFormData(fd) {
+        if (!fd.get('marble_enabled')) {
+          fd.delete('marble_type_id');
+          fd.delete('marble_area_sq_ft');
+          fd.delete('marble_depth_in');
+          fd.delete('marble_include_geotextile');
+        }
+      }
+
       function runPreview() {
         normalizeLabourRateFields();
+        var missing = collectMissingPreviewInputs();
+        if (missing.length) {
+          renderMissingSummary(missing);
+          lastPreviewCalc = null;
+          return;
+        }
         var fd = new FormData(form);
         fd.delete('_method');
+        appendPreviewFormData(fd);
         fetch(previewUrl, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(function (r) { return r.json(); })
-          .then(render)
-          .catch(function () { root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>'; });
+          .then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              var errItems = flattenValidationErrors(result.data);
+              if (!errItems.length && result.data && result.data.message) {
+                errItems.push(result.data.message);
+              }
+              renderMissingSummary(errItems.length ? errItems : ['Could not calculate — check your inputs.']);
+              lastPreviewCalc = null;
+              return;
+            }
+            if (!result.data || !result.data.summary) {
+              renderMissingSummary(['Calculator did not return a summary.']);
+              lastPreviewCalc = null;
+              return;
+            }
+            render(result.data);
+          })
+          .catch(function () {
+            root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>';
+            lastPreviewCalc = null;
+          });
       }
       form.addEventListener('input', schedule);
       form.addEventListener('change', schedule);
@@ -979,77 +1159,6 @@
         el.addEventListener('change', snapWholeDays);
         el.addEventListener('blur', snapWholeDays);
       });
-
-      (function initPavingAreaInput() {
-        var modeRadios = document.querySelectorAll('[data-pq-area-mode]');
-        var totalWrap = document.getElementById('pq-area-total-wrap');
-        var dimWrap = document.getElementById('pq-area-dimensions-wrap');
-        var totalInput = document.getElementById('pq-area');
-        var lenInput = document.getElementById('pq-area-length');
-        var widInput = document.getElementById('pq-area-width');
-        var hiddenArea = document.getElementById('pq-area-from-dimensions');
-        var computedEl = document.getElementById('pq-area-computed');
-        if (!modeRadios.length || !totalWrap || !dimWrap || !totalInput) return;
-
-        function isDimensionsMode() {
-          var checked = document.querySelector('[data-pq-area-mode]:checked');
-          return checked && checked.value === 'dimensions';
-        }
-
-        function syncComputedArea() {
-          if (!isDimensionsMode() || !lenInput || !widInput || !hiddenArea) return;
-          var len = parseFloat(lenInput.value);
-          var wid = parseFloat(widInput.value);
-          if (!isFinite(len) || !isFinite(wid) || len <= 0 || wid <= 0) {
-            hiddenArea.value = '';
-            if (computedEl) computedEl.textContent = '';
-            return;
-          }
-          var area = Math.round(len * wid * 100) / 100;
-          hiddenArea.value = String(area);
-          if (computedEl) {
-            computedEl.textContent = '= ' + area.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' sq ft';
-          }
-        }
-
-        function syncAreaMode() {
-          var dimMode = isDimensionsMode();
-          totalWrap.hidden = dimMode;
-          dimWrap.hidden = !dimMode;
-          totalInput.required = !dimMode;
-          totalInput.disabled = dimMode;
-          if (lenInput) lenInput.required = dimMode;
-          if (widInput) widInput.required = dimMode;
-          if (hiddenArea) {
-            hiddenArea.disabled = !dimMode;
-            if (dimMode) {
-              hiddenArea.setAttribute('name', 'total_area_sq_ft');
-              totalInput.removeAttribute('name');
-            } else {
-              totalInput.setAttribute('name', 'total_area_sq_ft');
-              hiddenArea.removeAttribute('name');
-            }
-          }
-          if (dimMode) {
-            syncComputedArea();
-          } else {
-            if (hiddenArea && hiddenArea.value) {
-              totalInput.value = hiddenArea.value;
-            }
-            if (computedEl) computedEl.textContent = '';
-          }
-        }
-
-        modeRadios.forEach(function (r) {
-          r.addEventListener('change', function () {
-            syncAreaMode();
-            schedule();
-          });
-        });
-        if (lenInput) lenInput.addEventListener('input', function () { syncComputedArea(); schedule(); });
-        if (widInput) widInput.addEventListener('input', function () { syncComputedArea(); schedule(); });
-        syncAreaMode();
-      })();
 
       var initial = @json($initialCalc);
       if (initial) { render(initial); } else { runPreview(); }
