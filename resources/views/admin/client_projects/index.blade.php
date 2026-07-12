@@ -78,6 +78,32 @@
     </div>
   </form>
 
+  @php
+    $quickStatusKeys = [
+      \App\Models\ClientProject::STATUS_QUOTE_PENDING,
+      \App\Models\ClientProject::STATUS_SCHEDULED,
+      \App\Models\ClientProject::STATUS_QUOTE_SENT,
+    ];
+    $quickStatusQuery = fn (string $status) => array_merge(
+        \Illuminate\Support\Arr::except(request()->query(), ['page']),
+        ['status' => $status],
+    );
+  @endphp
+  <div class="cp-projects-quick-status" role="toolbar" aria-label="Quick status filters">
+    @foreach ($quickStatusKeys as $statusKey)
+      @php
+        $statusColor = $statusColors[$statusKey] ?? '#6b7280';
+        $isQuickStatusActive = ($filters['status'] ?? '') === $statusKey;
+      @endphp
+      <a href="{{ route('admin.client-projects.index', $quickStatusQuery($statusKey)) }}"
+         class="cp-badge cp-projects-quick-status-btn @if ($isQuickStatusActive) cp-projects-quick-status-btn--active @endif"
+         style="background: {{ $statusColor }}20; color: {{ $statusColor }};"
+         @if ($isQuickStatusActive) aria-current="true" @endif>
+        {{ $statusLabels[$statusKey] }}
+      </a>
+    @endforeach
+  </div>
+
   @if ($projects->isEmpty())
     <div class="admin-table-wrap">
       <div class="admin-empty">

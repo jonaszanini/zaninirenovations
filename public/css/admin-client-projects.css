@@ -52,6 +52,28 @@
   }
 }
 
+.cp-projects-quick-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+.cp-projects-quick-status-btn {
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.cp-projects-quick-status-btn:hover {
+  text-decoration: none;
+  filter: brightness(0.96);
+}
+.cp-projects-quick-status-btn--active {
+  border-color: currentColor;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
 /* Ongoing vs All — list scope (client projects index) */
 .cp-projects-scope-bar {
   margin-bottom: 14px;

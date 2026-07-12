@@ -85,7 +85,8 @@
     }
     .pq-sidebar-actions {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
+      flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 12px;
       padding: 12px;
@@ -94,16 +95,10 @@
       background: #fff;
     }
     .pq-sidebar-actions .admin-btn {
-      width: 100%;
-      justify-content: center;
-    }
-    .pq-sidebar-actions-row {
-      display: flex;
-      gap: 8px;
-    }
-    .pq-sidebar-actions-row .admin-btn {
-      flex: 1 1 0;
+      flex: 1 1 auto;
       min-width: 0;
+      width: auto;
+      justify-content: center;
     }
     .pq-summary-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; background: #fafbfc; }
     .pq-summary-section { margin-bottom: 14px; }
@@ -502,10 +497,8 @@
           <button type="submit" form="pq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pq-btn-publish">
             <i class="fa fa-save"></i> Save quotation
           </button>
-          <div class="pq-sidebar-actions-row">
-            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
-            <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-          </div>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
+          <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
         </div>
         @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
         <div class="pq-summary-card">

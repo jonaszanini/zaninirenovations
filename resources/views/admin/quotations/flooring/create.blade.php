@@ -45,8 +45,8 @@
     .fl-addon-fields { flex: 1; min-width: 140px; max-width: 200px; }
     .fl-addon-fields[hidden] { display: none !important; }
     .fl-section-toggle[hidden] { display: none !important; }
-    .pq-sidebar-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-    .pq-sidebar-actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pq-sidebar-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .pq-sidebar-actions .admin-btn { flex: 1 1 auto; min-width: 0; width: auto; justify-content: center; }
     .fl-breakdown-section { margin-top: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
     .fl-material-summary {
       margin-top: 14px;
@@ -322,10 +322,8 @@
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="fl-btn-publish">
           <i class="fa fa-save"></i> Save quotation
         </button>
-        <div class="pq-sidebar-actions-row">
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fl-btn-draft">Save as draft</button>
-          <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        </div>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fl-btn-draft">Save as draft</button>
+        <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       <div class="pq-summary-card">
