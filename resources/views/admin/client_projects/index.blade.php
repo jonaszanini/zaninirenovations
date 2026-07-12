@@ -64,6 +64,14 @@
       <label for="cp-filter-to">To</label>
       <input class="admin-input" type="date" id="cp-filter-to" name="to" value="{{ $filters['to'] }}">
     </div>
+    <div class="cp-filter">
+      <label for="cp-filter-per-page">Show</label>
+      <select class="admin-input" id="cp-filter-per-page" name="per_page" aria-label="Rows per page" onchange="this.form.submit()">
+        @foreach ($perPageOptions as $option)
+          <option value="{{ $option }}" @selected((int) $perPage === $option)>{{ $option }}</option>
+        @endforeach
+      </select>
+    </div>
     <div class="cp-filter cp-filter--actions">
       <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
       <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
@@ -104,7 +112,7 @@
             @php $url = route('admin.client-projects.show', $project); @endphp
             <tr class="cp-row-link" data-href="{{ $url }}" tabindex="0" role="link" aria-label="Open project {{ $project->name }}">
               <td>
-                <strong>{{ $project->client_name }}</strong>
+                <strong>{{ $project->clientNameForProjectList() }}</strong>
                 @if ($project->client_email)
                   <div class="cp-subtle">{{ $project->client_email }}</div>
                 @endif
@@ -113,7 +121,6 @@
                 <div class="cp-table-project-cell">
                   <div class="cp-table-project-ref">{{ $project->referenceCode() }}</div>
                   <strong class="cp-table-project-name">{{ $project->name }}</strong>
-                  @include('admin.client_projects._contacted_via_display', ['project' => $project, 'compact' => true])
                 </div>
               </td>
               <td>

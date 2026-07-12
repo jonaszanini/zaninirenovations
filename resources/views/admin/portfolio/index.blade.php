@@ -18,7 +18,7 @@
     </div>
   </div>
 
-  <form method="get" action="{{ route('admin.portfolio.index') }}" class="cp-filters portfolio-admin-filters">
+  <form method="get" action="{{ route('admin.portfolio.index') }}" class="cp-filters cp-filters--3col portfolio-admin-filters">
     <div class="cp-filter">
       <label for="portfolio-filter-q">Search</label>
       <input class="admin-input" type="search" id="portfolio-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project title or description">

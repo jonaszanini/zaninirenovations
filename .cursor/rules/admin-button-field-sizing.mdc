@@ -1,0 +1,31 @@
+---
+description: Admin buttons must match form field height; filter-bar layout rules
+globs: resources/views/admin/**/*.blade.php,public/css/admin*.css
+alwaysApply: true
+---
+
+# Admin button and field sizing
+
+## Height
+
+- `.admin-input` and `.admin-btn` share `--admin-control-height` (44px) in `public/css/admin.css`.
+- `.admin-btn--sm` is **not** shorter — it only reduces horizontal padding/font for compact toolbars.
+- Only `.admin-btn--lg` may be taller (hero CTAs).
+
+## Filter bars
+
+- Use `.cp-filters` grid with **one `.cp-filter` per control** (label + field).
+- Put Apply/Reset in a separate `.cp-filter.cp-filter--actions` column — never in the same flex row as a labeled select (stretch made buttons too tall).
+- Grid variants: default 6-col (projects list with Show), `.cp-filters--5col`, `.cp-filters--3col`.
+
+## Inline rows
+
+- `.admin-list-filters` and `.cp-filters .cp-filter--actions` use `align-items: flex-end`.
+- Buttons get `align-self: flex-end` and `flex-shrink: 0`.
+
+## Do not
+
+- Add page-specific `min-height` on buttons unless it equals `--admin-control-height`.
+- Invent new button size classes; extend `admin-btn` modifiers in `admin.css` instead.
+
+See `docs/UI_GUIDELINES.md` § Buttons.

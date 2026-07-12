@@ -25,6 +25,16 @@ class AdminPaginatedList
         return in_array($int, [10, 25, 50, 100], true) ? $int : $default;
     }
 
+    /**
+     * @param  list<int>  $allowed
+     */
+    public static function perPageFrom(Request $request, array $allowed, int $default): int
+    {
+        $int = (int) $request->query('per_page', $default);
+
+        return in_array($int, $allowed, true) ? $int : $default;
+    }
+
     public static function paginateOrAll(Builder $query, int|string $perPage): LengthAwarePaginator
     {
         if ($perPage === 'all') {

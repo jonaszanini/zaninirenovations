@@ -16,6 +16,7 @@ use App\Services\ClientProjectPhotoStorage;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientProjectContactService;
 use App\Services\ClientProjectLinkedUtilitiesService;
+use App\Support\AdminPaginatedList;
 use App\Support\EasternStandardTimeDisplay;
 use App\Services\GoogleCalendarLink;
 use Illuminate\Http\Request;
@@ -33,6 +34,9 @@ use Illuminate\Validation\Rule;
  */
 class ClientProjectController extends Controller
 {
+  /** @var list<int> */
+    public const LIST_PER_PAGE_OPTIONS = [25, 35, 50];
+
     public function index(Request $request)
     {
         $validStatuses = ClientProject::statuses();
@@ -118,12 +122,25 @@ class ClientProjectController extends Controller
             }
         }
 
-        $projects = $query->paginate(15)->withQueryString();
+        $perPage = AdminPaginatedList::perPageFrom(
+            $request,
+            self::LIST_PER_PAGE_OPTIONS,
+            self::LIST_PER_PAGE_OPTIONS[0],
+        );
+
+        $projects = $query->paginate($perPage)->withQueryString();
 
         $statusLabels = ClientProject::statusLabels();
         $statusColors = ClientProject::statusColors();
 
-        return view('admin.client_projects.index', compact('projects', 'filters', 'statusLabels', 'statusColors'));
+        return view('admin.client_projects.index', [
+            'projects' => $projects,
+            'filters' => $filters,
+            'statusLabels' => $statusLabels,
+            'statusColors' => $statusColors,
+            'perPage' => $perPage,
+            'perPageOptions' => self::LIST_PER_PAGE_OPTIONS,
+        ]);
     }
 
     public function create()

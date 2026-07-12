@@ -25,6 +25,10 @@
   --admin-shadow-sm: 0 1px 3px rgba(55, 52, 53, 0.06);
   --admin-shadow-md: 0 8px 30px rgba(55, 52, 53, 0.08);
   --admin-shadow-lg: 0 20px 50px rgba(2, 71, 104, 0.12);
+  --admin-control-height: 44px;
+  --admin-control-font-size: 0.95rem;
+  --admin-control-padding-y: 0.65rem;
+  --admin-control-padding-x: 0.9rem;
 }
 
 *,
@@ -370,7 +374,10 @@ body.admin-body {
   cursor: pointer;
   text-decoration: none;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
-  min-height: 44px;
+  min-height: var(--admin-control-height);
+  box-sizing: border-box;
+  line-height: 1.2;
+  flex-shrink: 0;
 }
 
 .admin-btn--primary {
@@ -406,9 +413,9 @@ body.admin-body {
 }
 
 .admin-btn--sm {
-  padding: 0.35rem 0.85rem;
-  font-size: 0.8rem;
-  min-height: 38px;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.875rem;
+  min-height: var(--admin-control-height);
 }
 
 .admin-btn--lg {
@@ -489,7 +496,13 @@ body.admin-body {
 }
 
 .admin-list-filters {
+  display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+.admin-list-filters .admin-btn {
+  align-self: flex-end;
 }
 .admin-list-filters__per-page {
   display: inline-flex;
@@ -508,7 +521,7 @@ body.admin-body {
 .admin-list-filters__per-page-select {
   width: auto;
   min-width: 5.5rem;
-  min-height: 44px;
+  min-height: var(--admin-control-height);
   padding-right: 2rem;
 }
 .admin-list-footer {
@@ -698,9 +711,10 @@ body.admin-body {
   background: #fff;
   color: var(--admin-text);
   font-family: inherit;
-  font-size: 0.95rem;
-  min-height: 44px;
+  font-size: var(--admin-control-font-size);
+  min-height: var(--admin-control-height);
   box-sizing: border-box;
+  line-height: 1.2;
 }
 
 textarea.admin-input,

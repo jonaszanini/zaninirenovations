@@ -9,7 +9,7 @@
    ================================================================= */
 .cp-filters {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 1fr minmax(4.5rem, 0.55fr) auto;
   gap: 12px;
   margin-bottom: 16px;
   padding: 14px 16px;
@@ -17,6 +17,12 @@
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   align-items: end;
+}
+.cp-filters.cp-filters--5col {
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+}
+.cp-filters.cp-filters--3col {
+  grid-template-columns: 2fr 1fr auto;
 }
 .cp-filters .cp-filter label {
   display: block;
@@ -31,6 +37,11 @@
 .cp-filters .cp-filter--actions {
   display: flex;
   gap: 6px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.cp-filters .cp-filter--actions > .admin-btn {
+  align-self: flex-end;
 }
 @media (max-width: 900px) {
   .cp-filters {
