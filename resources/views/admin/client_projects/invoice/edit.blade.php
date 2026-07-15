@@ -94,7 +94,7 @@
           Hourly invoice — prefilled from {{ $invoice->timeEntries->count() }} unbilled time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}.
           You can edit the descriptions and amounts freely before sending. Deleting this draft will release the entries back to "unbilled".
           Material lines are tax-included (no extra HST on materials); HST applies to labour only.
-          Use <strong>Labour credit</strong> for a pre-tax deduction (e.g. deposit already paid toward an estimate). Enter the credit as a <strong>positive</strong> amount; it reduces labour before HST is calculated.
+          Use <strong>Credit</strong> for a pre-tax deduction (e.g. deposit already paid toward an estimate). Enter the credit as a <strong>positive</strong> amount; it reduces labour before HST is calculated.
         @elseif ($isManual)
           Manual invoice — no installment link. Enter the pre-HST total and optionally itemise the work below.
         @else
@@ -187,7 +187,7 @@
           @else
             <div class="admin-form-group">
                 <span class="admin-form-help cp-invoice-help-block">
-                  Mark each line as Labour (pre-tax), <strong>Labour credit</strong> (pre-tax deduction — enter a positive amount), or Materials/Gas (<strong>amount includes HST</strong>). Invoice HST applies to net labour only — materials and gas pass through tax-included.
+                  Mark each line as Labour (pre-tax), <strong>Credit</strong> (pre-tax deduction — enter a positive amount), or Materials/Gas (<strong>amount includes HST</strong>). Invoice HST applies to net labour only — materials and gas pass through tax-included.
                 </span>
             </div>
           @endunless
@@ -273,7 +273,7 @@
                     @else
                       <select name="items[{{ $i }}][line_kind]" class="admin-input cp-invoice-line-kind" aria-label="Line type">
                         <option value="labour" @selected($lk === 'labour')>Labour</option>
-                        <option value="labour_credit" @selected($lk === 'labour_credit')>Labour credit</option>
+                        <option value="labour_credit" @selected($lk === 'labour_credit')>Credit</option>
                         <option value="materials" @selected($lk === 'materials')>Materials</option>
                         <option value="gas" @selected($lk === 'gas')>Gas</option>
                       </select>
@@ -312,7 +312,7 @@
                     id="cp-invoice-add-labour-credit"
                     class="cp-quotation-add-row-btn"
                     title="Pre-tax deduction (e.g. prepaid toward estimate)">
-              <i class="fa fa-minus-circle"></i> Add labour credit
+              <i class="fa fa-minus-circle"></i> Add credit
             </button>
           @endif
         </div>
@@ -463,7 +463,7 @@
         <td class="col-line-kind">
           <select name="items[__INDEX__][line_kind]" class="admin-input cp-invoice-line-kind" aria-label="Line type">
             <option value="labour" selected>Labour</option>
-            <option value="labour_credit">Labour credit</option>
+            <option value="labour_credit">Credit</option>
             <option value="materials">Materials</option>
             <option value="gas">Gas</option>
           </select>

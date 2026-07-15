@@ -206,7 +206,7 @@ class ClientProjectInvoiceController extends Controller
             if ($invoice->total < 0.01) {
                 return back()
                     ->withErrors([
-                        'items' => 'Invoice total must be at least CA$0.01. Reduce the labour credit or add more billable lines.',
+                        'items' => 'Invoice total must be at least CA$0.01. Reduce the credit or add more billable lines.',
                     ])
                     ->withInput();
             }
