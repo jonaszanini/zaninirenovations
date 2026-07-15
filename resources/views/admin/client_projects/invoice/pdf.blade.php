@@ -8,8 +8,9 @@
     $fontDir = str_replace('\\', '/', public_path('fonts/roboto'));
     $items = $invoice->cleanItems();
     $hourlyPdf = ($isHourlyManual ?? false);
-    $labourRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => !in_array(($r['line_kind'] ?? 'labour'), ['materials', 'gas']))) : $items;
+    $labourRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => !in_array(($r['line_kind'] ?? 'labour'), ['materials', 'gas', 'labour_credit']))) : $items;
     $materialsRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => in_array(($r['line_kind'] ?? ''), ['materials', 'gas']))) : [];
+    $creditRows = $hourlyPdf ? array_values(array_filter($items, fn ($r) => ($r['line_kind'] ?? '') === 'labour_credit')) : [];
 
     $subtotal = (float) $invoice->subtotal;
     $hst = (float) $invoice->hst;
@@ -361,25 +362,12 @@
         </thead>
         <tbody>
           @foreach ($labourRows as $row)
-            @php
-              $pdfLineKind = strtolower((string) ($row['line_kind'] ?? 'labour'));
-              $isPdfCredit = $pdfLineKind === \App\Models\ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT;
-              $creditAbs = $isPdfCredit ? round(abs((float) ($row['amount'] ?? 0)), 2) : null;
-            @endphp
-            <tr class="{{ $isPdfCredit ? 'item-row-credit' : '' }}">
+            <tr>
               <td>
-                @if ($isPdfCredit)
-                  <span class="item-credit-tag">Credit</span>
-                @endif
                 {{ $row['description'] }}
               </td>
               <td class="amount">
-                @if ($isPdfCredit)
-                  {{-- Unicode minus (U+2212) before currency reads clearer than CA$-312.00 --}}
-                  <span class="item-credit-amount">−CA${{ number_format($creditAbs, 2, '.', ',') }}</span>
-                @else
-                  {{ $fmt((float) ($row['amount'] ?? 0)) }}
-                @endif
+                {{ $fmt((float) ($row['amount'] ?? 0)) }}
               </td>
             </tr>
           @endforeach
@@ -387,7 +375,35 @@
       </table>
     @endif
 
-    @if (count($materialsRows)> 0)
+    @if (count($creditRows) > 0)
+      <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Credits</p>
+      <table class="items" style="margin-bottom:16pt;">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="amount">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach ($creditRows as $row)
+            @php
+              $creditAbs = round(abs((float) ($row['amount'] ?? 0)), 2);
+            @endphp
+            <tr class="item-row-credit">
+              <td>
+                <span class="item-credit-tag">Credit</span>
+                {{ $row['description'] }}
+              </td>
+              <td class="amount">
+                <span class="item-credit-amount">−CA${{ number_format($creditAbs, 2, '.', ',') }}</span>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endif
+
+    @if (count($materialsRows) > 0)
       <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Materials / Gas (amounts include HST)</p>
       <p style="margin:0 0 8pt;font-size:9.5pt;color:#4b5563;font-style:italic;">No additional HST is charged on materials or gas — amounts below are the final client prices (tax-included).</p>
       <table class="items" style="margin-bottom:12pt;">
@@ -408,7 +424,7 @@
       </table>
     @endif
 
-    @if (count($labourRows) === 0 && count($materialsRows) === 0)
+    @if (count($labourRows) === 0 && count($materialsRows) === 0 && count($creditRows) === 0)
       <table class="items">
         <tbody>
           <tr>
