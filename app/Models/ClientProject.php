@@ -412,6 +412,31 @@ class ClientProject extends Model
         return $project !== '' ? $project : $client;
     }
 
+    /** Compact client name for the admin project list (first two name parts only). */
+    public function clientNameForProjectList(): string
+    {
+        return self::shortClientNameForList($this->client_name);
+    }
+
+    /**
+     * When a client name has three or more parts, keep only the first two
+     * (e.g. "Patricia Oliveira Garcia" → "Patricia Oliveira").
+     */
+    public static function shortClientNameForList(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return '';
+        }
+
+        $parts = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (count($parts) >= 3) {
+            return $parts[0].' '.$parts[1];
+        }
+
+        return $name;
+    }
+
     /** Returns a list of human labels for the missing client contact fields. */
     public function missingClientContactFields(): array
     {

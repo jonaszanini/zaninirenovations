@@ -41,8 +41,8 @@
     .pq-summary-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; background: #fafbfc; }
     .fl-step-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 16px; background: #fff; }
     .fl-step-card h4 { margin: 0 0 12px; color: #024768; }
-    .pq-sidebar-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-    .pq-sidebar-actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pq-sidebar-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .pq-sidebar-actions .admin-btn { flex: 1 1 auto; min-width: 0; width: auto; justify-content: center; }
     
     /* Toolbar */
     .fq-form-toolbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px 20px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -268,10 +268,8 @@
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="tl-btn-publish">
           <i class="fa fa-save"></i> Save quotation
         </button>
-        <div class="pq-sidebar-actions-row">
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tl-btn-draft">Save as draft</button>
-          <a href="{{ $returnToProject ? route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        </div>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tl-btn-draft">Save as draft</button>
+        <a href="{{ $returnToProject ? route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
       
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])

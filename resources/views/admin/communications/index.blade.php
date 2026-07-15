@@ -11,7 +11,7 @@
     </p>
   </div>
 
-  <form method="get" action="{{ route('admin.communications.index') }}" class="cp-filters">
+  <form method="get" action="{{ route('admin.communications.index') }}" class="cp-filters cp-filters--5col">
     <div class="cp-filter">
       <label for="comm-filter-q">Search</label>
       <input class="admin-input" type="text" id="comm-filter-q" name="q" value="{{ $filters['q'] }}"

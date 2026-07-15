@@ -93,8 +93,9 @@
       color: #1e3a5f;
     }
     .pt-net-banner strong { color: #024768; }
-    .pq-sidebar-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-    .pq-sidebar-actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pq-sidebar-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .pq-sidebar-actions .admin-btn { flex: 1 1 auto; min-width: 0; width: auto; justify-content: center; }
+    .pq-sidebar-send { margin-bottom: 12px; }
     .pt-readiness {
       margin-bottom: 12px;
       padding: 10px 12px;
@@ -316,23 +317,22 @@
         <button type="submit" form="pt-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pt-btn-publish">
           <i class="fa fa-save"></i> Save quotation
         </button>
-        @if ($isEdit && $linkedCpq && $quotation->project && ! $quotation->is_draft)
-          @php
-            $paintingSendConfirm = 'This will generate a new PDF and email it to '.$quotation->project->clientEmailRecipientsLabel().'. Continue?';
-          @endphp
-          <form method="post" action="{{ route('admin.client-projects.quotation.send', [$quotation->project, $linkedCpq]) }}"
-                onsubmit="return confirm(@json($paintingSendConfirm));">
-            @csrf
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" style="width:100%;">
-              <i class="fa fa-paper-plane"></i> Send to client
-            </button>
-          </form>
-        @endif
-        <div class="pq-sidebar-actions-row">
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pt-btn-draft">Save as draft</button>
-          <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        </div>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pt-btn-draft">Save as draft</button>
+        <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
+      @if ($isEdit && $linkedCpq && $quotation->project && ! $quotation->is_draft)
+        @php
+          $paintingSendConfirm = 'This will generate a new PDF and email it to '.$quotation->project->clientEmailRecipientsLabel().'. Continue?';
+        @endphp
+        <form method="post" action="{{ route('admin.client-projects.quotation.send', [$quotation->project, $linkedCpq]) }}"
+              class="pq-sidebar-send"
+              onsubmit="return confirm(@json($paintingSendConfirm));">
+          @csrf
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" style="width:100%;">
+            <i class="fa fa-paper-plane"></i> Send to client
+          </button>
+        </form>
+      @endif
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       <div class="pq-summary-card">
         <h4 class="cp-form-help-spaced">Live breakdown</h4>

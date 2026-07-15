@@ -167,7 +167,7 @@ Every authenticated admin page:
 
 ### Buttons
 
-Base: `.admin-btn` (min-height 44px). **Only use documented modifiers:**
+Base: `.admin-btn` uses `--admin-control-height` (44px) — **the same height as `.admin-input`**. **Only use documented modifiers:**
 
 | Class | Purpose |
 |-------|---------|
@@ -175,8 +175,13 @@ Base: `.admin-btn` (min-height 44px). **Only use documented modifiers:**
 | `.admin-btn--secondary` | Secondary filled action (Refresh, Remind) |
 | `.admin-btn--ghost` | Cancel, Back, low-emphasis |
 | `.admin-btn--danger` | Delete, irreversible |
-| `.admin-btn--sm` | Tables, toolbars, compact rows |
-| `.admin-btn--lg` | Hero CTAs (contract sign, generate) |
+| `.admin-btn--sm` | Tables, toolbars, filter bars — **same height as fields**, tighter horizontal padding |
+| `.admin-btn--lg` | Hero CTAs (contract sign, generate) — intentionally taller |
+
+**Rules:**
+- Buttons beside inputs/selects must use `.admin-btn` (or `--sm`); never a taller one-off class.
+- In filter bars (`.cp-filters`, `.admin-list-filters`), put action buttons in `.cp-filter--actions` — not in the same flex row as a labeled field (prevents stretch).
+- Do **not** set a custom `min-height` on buttons unless it matches `--admin-control-height`.
 
 ```html
 <a href="..." class="admin-btn admin-btn--ghost admin-btn--sm">
