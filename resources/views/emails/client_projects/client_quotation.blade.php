@@ -25,8 +25,7 @@
   <p>I look forward to the possibility of working together to bring this project to life.</p>
 
   @php
-    use App\Services\QuotationPaymentSchedule;
-    $paymentTerms = QuotationPaymentSchedule::terms($quotation->payment_installments ?? null);
+    $paymentTerms = \App\Services\QuotationPaymentSchedule::terms($quotation->payment_installments ?? null);
   @endphp
   <p style="margin:20px 0 8px 0;"><strong>Payment Schedule &amp; Terms</strong></p>
   <ul style="margin:0 0 16px 20px;padding:0;">

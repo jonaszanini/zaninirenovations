@@ -608,8 +608,7 @@
   @endif
 
   @php
-    use App\Services\QuotationPaymentSchedule;
-    $paymentTerms = QuotationPaymentSchedule::terms($quotation->payment_installments ?? null);
+    $paymentTerms = \App\Services\QuotationPaymentSchedule::terms($quotation->payment_installments ?? null);
   @endphp
   <div class="quote-payment-schedule">
     <p class="quote-payment-schedule-title">Payment Schedule &amp; Terms</p>
