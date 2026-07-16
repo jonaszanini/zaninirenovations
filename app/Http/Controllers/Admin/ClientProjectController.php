@@ -75,9 +75,9 @@ class ClientProjectController extends Controller
 
         if ($filters['status'] !== '') {
             $query->where('status', $filters['status']);
-        } elseif ($filters['list'] === 'ongoing' && $referenceId === null) {
+        } elseif ($filters['list'] === 'ongoing' && $filters['q'] === '') {
             // Emphasise active pipeline: exclude terminal states unless viewing "All"
-            // or searching by an explicit project reference (PRJ00047).
+            // or searching (which implies looking for any project matching the query).
             $query->whereNotIn('status', ClientProject::statusesHiddenFromOngoingList());
         }
 
