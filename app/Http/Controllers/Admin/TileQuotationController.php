@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
+use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
@@ -9,12 +11,14 @@ use App\Models\TileGroutType;
 use App\Models\TileMortarType;
 use App\Models\TileProduct;
 use App\Models\TileQuotation;
+use App\Services\QuotationPaymentSchedule;
 use App\Services\TileQuotationCalculator;
 use Illuminate\Http\Request;
 
 class TileQuotationController extends Controller
 {
-    use \App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
+    use HandlesQuotationPaymentSchedule;
+    use ResolvesQuotationProjectLink;
 
     public function index(Request $request)
     {
@@ -46,7 +50,7 @@ class TileQuotationController extends Controller
 
     public function store(Request $request, TileQuotationCalculator $calculator)
     {
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'client_name' => ['nullable', 'string', 'max:160'],
             'work_description' => ['nullable', 'string'],
@@ -67,7 +71,7 @@ class TileQuotationController extends Controller
             'include_disposal_fee' => ['nullable', 'boolean'],
 
             'is_draft' => ['nullable', 'string'],
-        ]);
+        ], QuotationPaymentSchedule::validationRules()), QuotationPaymentSchedule::validationMessages());
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
@@ -95,6 +99,7 @@ class TileQuotationController extends Controller
         $quotation->client_name = $data['client_name'] ?? null;
         $quotation->is_draft = $request->input('is_draft') === '1';
         $quotation->work_description = $data['work_description'] ?? null;
+        $quotation->payment_installments = (int) $data['payment_installments'];
         
         $quotation->inputs = [
             'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),
@@ -151,7 +156,7 @@ class TileQuotationController extends Controller
 
     public function update(Request $request, TileQuotation $quotation, TileQuotationCalculator $calculator)
     {
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'client_name' => ['nullable', 'string', 'max:160'],
             'work_description' => ['nullable', 'string'],
             'total_area_sqft' => ['nullable', 'numeric', 'min:0'],
@@ -170,7 +175,7 @@ class TileQuotationController extends Controller
             'custom_demolition_rate' => ['nullable', 'numeric', 'min:0'],
             'include_disposal_fee' => ['nullable', 'boolean'],
             'is_draft' => ['nullable', 'string'],
-        ]);
+        ], QuotationPaymentSchedule::validationRules()), QuotationPaymentSchedule::validationMessages());
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
@@ -197,6 +202,7 @@ class TileQuotationController extends Controller
         }
         $quotation->is_draft = $request->input('is_draft') === '1';
         $quotation->work_description = $data['work_description'] ?? null;
+        $quotation->payment_installments = (int) $data['payment_installments'];
         
         $quotation->inputs = [
             'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),
@@ -465,6 +471,7 @@ class TileQuotationController extends Controller
         $row->title = $quotation->displayTitle();
         $row->items = $items;
         $row->work_description = $quotation->scopeDescriptionForPdf();
+        $this->applyPaymentScheduleToProjectQuotation($row, $quotation);
         $row->source_snapshot = $snapshot;
 
         $row->save();

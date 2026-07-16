@@ -478,6 +478,7 @@
           </div>
 
           @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+          @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
         </form>
 
         @if ($isEdit && !$quotation->isLinked())

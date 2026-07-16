@@ -18,6 +18,7 @@ class FlooringQuotation extends Model
         'calculation',
         'final_quote_total',
         'work_description',
+        'payment_installments',
         'version',
         'linked_at',
     ];
@@ -27,6 +28,7 @@ class FlooringQuotation extends Model
         'calculation' => 'array',
         'is_draft' => 'boolean',
         'final_quote_total' => 'decimal:2',
+        'payment_installments' => 'integer',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];

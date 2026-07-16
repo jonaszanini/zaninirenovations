@@ -429,6 +429,7 @@
 
     {{-- Grand summary -------------------------------------------- --}}
     @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+    @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
     <div class="admin-card sq-grand-card">
       <h3 class="sq-grand-card__title">Totals</h3>

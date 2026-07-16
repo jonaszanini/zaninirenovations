@@ -309,6 +309,8 @@
         </div>
       </div>
 
+      @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
+
       @if (! $isEdit)
         @include('admin.quotations._link_to_project_save_first', [
             'linkProject' => $linkProject ?? null,

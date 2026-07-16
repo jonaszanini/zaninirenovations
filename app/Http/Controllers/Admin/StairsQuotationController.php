@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -12,6 +13,7 @@ use App\Models\StairsQuotation;
 use App\Models\StairsSettings;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
+use App\Services\QuotationPaymentSchedule;
 use App\Services\StairsQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +24,7 @@ use Illuminate\Validation\ValidationException;
 class StairsQuotationController extends Controller
 {
     use HandlesQuotationCommuteExpense;
+    use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
     public function index(Request $request)
@@ -311,9 +314,10 @@ class StairsQuotationController extends Controller
         $request->validate(array_merge([
             'client_name' => $clientRules,
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], CommuteExpenseService::commuteValidationRules()), [
+            ...QuotationPaymentSchedule::validationRules(),
+        ], CommuteExpenseService::commuteValidationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ]);
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft);
         if (! $draft) {
@@ -334,6 +338,7 @@ class StairsQuotationController extends Controller
 
         $base = [
             'client_name' => trim((string) $request->input('client_name')) ?: null,
+            'payment_installments' => (int) $request->input('payment_installments'),
             'is_draft' => $draft,
             'inputs' => $rawInputs,
             'calculation' => $calc,
@@ -575,6 +580,7 @@ class StairsQuotationController extends Controller
         $row->material = $stairsQuotation->includesMaterialCharge();
         $row->title = $stairsQuotation->displayTitle();
         $row->items = $items;
+        $this->applyPaymentScheduleToProjectQuotation($row, $stairsQuotation);
         $row->source_snapshot = $snapshot;
         $row->save();
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -13,6 +14,7 @@ use App\Models\FenceQuotation;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\FenceQuotationCalculator;
+use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -32,6 +34,7 @@ use Illuminate\Validation\Rule;
 class FenceQuotationController extends Controller
 {
     use HandlesQuotationCommuteExpense;
+    use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
     /** The Fence hub: list of existing fence quotes + "New" button. */
@@ -421,6 +424,7 @@ class FenceQuotationController extends Controller
 
         $row->items = $items;
         $row->work_description = $fence_quotation->work_description;
+        $this->applyPaymentScheduleToProjectQuotation($row, $fence_quotation);
         $row->source_snapshot = $snapshot;
         $row->save();
 
@@ -628,10 +632,14 @@ class FenceQuotationController extends Controller
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            ...QuotationPaymentSchedule::validationRules(),
             ...CommuteExpenseService::commuteValidationRules(),
         ];
 
-        return $request->validate($rules);
+        return $request->validate($rules, array_merge(
+            QuotationPaymentSchedule::validationMessages(),
+            CommuteExpenseService::commuteValidationMessages()
+        ));
     }
 
     /**
@@ -648,6 +656,7 @@ class FenceQuotationController extends Controller
         $base = [
             'client_name' => $data['client_name'],
             'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
+            'payment_installments' => (int) $data['payment_installments'],
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
             'post_size' => $calc['inputs']['post_size'],
             'board_style' => $calc['inputs']['board_style'],

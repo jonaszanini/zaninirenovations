@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\LowDeckAreaExceededException;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -14,6 +15,7 @@ use App\Models\LowDeckQuotation;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\LowDeckQuotationCalculator;
+use App\Services\QuotationPaymentSchedule;
 use App\Support\LowDeckWorkDescriptionGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +32,7 @@ use Illuminate\Support\Str;
 class LowDeckQuotationController extends Controller
 {
     use HandlesQuotationCommuteExpense;
+    use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
     public function index(Request $request)
@@ -465,6 +468,7 @@ class LowDeckQuotationController extends Controller
 
         $row->items = $items;
         $row->work_description = $low_deck_quotation->work_description;
+        $this->applyPaymentScheduleToProjectQuotation($row, $low_deck_quotation);
         $row->source_snapshot = $snapshot;
         $row->save();
 
@@ -511,10 +515,14 @@ class LowDeckQuotationController extends Controller
             'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'include_under_deck_gravel' => ['nullable', 'boolean'],
             'include_diagrams_on_pdf' => ['nullable', 'boolean'],
+            ...QuotationPaymentSchedule::validationRules(),
             ...CommuteExpenseService::commuteValidationRules(),
         ];
 
-        $validator = validator($request->all(), $rules);
+        $validator = validator($request->all(), $rules, array_merge(
+            QuotationPaymentSchedule::validationMessages(),
+            CommuteExpenseService::commuteValidationMessages()
+        ));
         $validator->after(function ($validator) use ($request, $maxArea) {
             $area = (float) $request->input('width_ft') * (float) $request->input('length_ft');
             if ($area > $maxArea + 1e-6) {
@@ -564,6 +572,7 @@ class LowDeckQuotationController extends Controller
         $base = [
             'client_name' => $data['client_name'],
             'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
+            'payment_installments' => (int) $data['payment_installments'],
             'width_ft' => $calc['inputs']['width_ft'],
             'length_ft' => $calc['inputs']['length_ft'],
             'joist_spacing_in' => (int) round((float) ($calc['geometry']['joist_spacing_in'] ?? 0)),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -10,6 +11,7 @@ use App\Models\FlooringQuotation;
 use App\Models\FlooringType;
 use App\Services\ClientProjectStatusService;
 use App\Services\FlooringQuotationCalculator;
+use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,6 +19,7 @@ use Illuminate\Validation\ValidationException;
 
 class FlooringQuotationController extends Controller
 {
+    use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
     public function index(Request $request)
@@ -318,13 +321,13 @@ class FlooringQuotationController extends Controller
             ? ['nullable', 'string', 'max:160']
             : ['required', 'string', 'max:160'];
 
-        $request->validate([
+        $request->validate(array_merge([
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], [
+        ], QuotationPaymentSchedule::validationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ]);
+        ], QuotationPaymentSchedule::validationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft);
         if (! $draft) {
@@ -384,6 +387,7 @@ class FlooringQuotationController extends Controller
         return [
             'client_name' => trim((string) $request->input('client_name')) ?: null,
             'work_description' => $workDescription === '' ? null : $workDescription,
+            'payment_installments' => (int) $request->input('payment_installments'),
             'is_draft' => $draft,
             'inputs' => $rawInputs,
             'calculation' => $calc,
@@ -543,6 +547,7 @@ class FlooringQuotationController extends Controller
         $row->title = $flooringQuotation->displayTitle();
         $row->items = $items;
         $row->work_description = $flooringQuotation->scopeDescriptionForPdf();
+        $this->applyPaymentScheduleToProjectQuotation($row, $flooringQuotation);
         $row->source_snapshot = $snapshot;
         $row->save();
 

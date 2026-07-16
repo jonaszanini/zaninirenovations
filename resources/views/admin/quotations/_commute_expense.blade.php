@@ -7,12 +7,12 @@
     ?? ($isEdit ? $quotation->client_project_id : null)
     ?? (request()->filled('project') ? (int) request('project') : null);
 
-  if (old('include_commute') !== null) {
-      $includeCommute = filter_var(old('include_commute'), FILTER_VALIDATE_BOOLEAN);
+  // Forced Yes/No — no default on create. Edit keeps the saved choice.
+  $includeCommuteChoice = null;
+  if (old('include_commute') !== null && old('include_commute') !== '') {
+      $includeCommuteChoice = old('include_commute') === '1' || old('include_commute') === 1 || old('include_commute') === true;
   } elseif ($isEdit) {
-      $includeCommute = (bool) ($quotation->include_commute ?? true);
-  } else {
-      $includeCommute = true;
+      $includeCommuteChoice = (bool) ($quotation->include_commute ?? false);
   }
 
   $commutePercent = old('commute_trip_percent');
@@ -41,19 +41,29 @@
      data-travel-url-template="{{ url('admin/client-projects/__ID__/travel-estimate') }}"
      data-initial-project-id="{{ $travelProjectId ?: '' }}"
      data-saved-round-trip="{{ $savedRoundTrip ?? '' }}">
-  <h3 class="q-commute-card__title"><i class="fa fa-road" aria-hidden="true"></i> Commute expense</h3>
+  <h3 class="q-commute-card__title"><i class="fa fa-road" aria-hidden="true"></i> Commute expense <span class="cp-required">*</span></h3>
   <p class="admin-form-help q-commute-card__intro">
-    Add fuel cost for trips to the job site. Uses the same round-trip estimate as the project overview (home → site → home). The amount added includes 13% HST.
+    Choose whether to charge fuel (gas) for trips to the job site. Uses the same round-trip estimate as the project overview (home → site → home). Amounts include 13% HST.
   </p>
 
-  <label class="admin-checkbox admin-checkbox--block q-commute-card__toggle">
-    <input type="hidden" name="include_commute" value="0">
-    <input type="checkbox" name="include_commute" value="1" class="admin-checkbox__input" data-cp-commute-include @checked($includeCommute)>
-    <span class="admin-checkbox__mark" aria-hidden="true"></span>
-    <span class="admin-checkbox__text">Include commute fuel in this quotation</span>
-  </label>
+  <fieldset class="q-commute-choice" role="radiogroup" aria-label="Include commute fuel">
+    <legend class="util-sr-only">Include commute fuel in this quotation?</legend>
+    <label class="q-commute-choice__option{{ $includeCommuteChoice === true ? ' is-selected' : '' }}">
+      <input type="radio" name="include_commute" value="1" class="q-commute-choice__input" data-cp-commute-include-yes
+             @checked($includeCommuteChoice === true) required>
+      <span class="q-commute-choice__text"><strong>Yes</strong> — charge commute fuel</span>
+    </label>
+    <label class="q-commute-choice__option{{ $includeCommuteChoice === false ? ' is-selected' : '' }}">
+      <input type="radio" name="include_commute" value="0" class="q-commute-choice__input" data-cp-commute-include-no
+             @checked($includeCommuteChoice === false) required>
+      <span class="q-commute-choice__text"><strong>No</strong> — do not charge</span>
+    </label>
+  </fieldset>
+  @error('include_commute')
+    <p class="admin-form-error" style="margin-top:8px;">{{ $message }}</p>
+  @enderror
 
-  <div class="q-commute-card__body" data-cp-commute-body @if (!$includeCommute) hidden @endif>
+  <div class="q-commute-card__body" data-cp-commute-body @if ($includeCommuteChoice !== true) hidden @endif>
     <div class="q-commute-card__metrics">
       <div class="q-commute-metric">
         <span class="q-commute-metric__label">Round trip (fuel)</span>
@@ -79,23 +89,52 @@
       </div>
       <div class="admin-form-group q-commute-field">
         <label for="q-commute-trips">Estimated trips</label>
-        <input type="text" inputmode="numeric" id="q-commute-trips" name="commute_estimated_trips"
-               class="admin-input" maxlength="3" autocomplete="off"
-               value="{{ $commuteTrips }}" data-cp-commute-trips>
-        <p class="admin-form-help">How many round trips you expect for this job.</p>
+        <input type="number" id="q-commute-trips" name="commute_estimated_trips" class="admin-input"
+               min="1" max="999" step="1" value="{{ $commuteTrips }}" data-cp-commute-trips>
       </div>
     </div>
-
-    <input type="hidden" name="commute_round_trip_cost" value="{{ $savedRoundTrip ?? '' }}" data-cp-commute-round-trip-hidden>
-    <p class="admin-form-help q-commute-card__status" data-cp-commute-status aria-live="polite"></p>
   </div>
+
+  <input type="hidden" name="commute_round_trip_cost" value="{{ $savedRoundTrip ?? '' }}" data-cp-commute-round-trip-hidden>
 </div>
 
-@once
-  @push('head')
-    <link rel="stylesheet" href="{{ asset('css/admin-vehicles.css') }}?v={{ @filemtime(public_path('css/admin-vehicles.css')) ?: time() }}">
-  @endpush
-  @push('scripts')
-    <script src="{{ asset('js/admin-commute-expense.js') }}?v={{ @filemtime(public_path('js/admin-commute-expense.js')) ?: time() }}"></script>
-  @endpush
-@endonce
+<style>
+  .q-commute-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 0;
+    border: 0;
+  }
+  .q-commute-choice__option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .q-commute-choice__option.is-selected,
+  .q-commute-choice__option:has(:checked) {
+    border-color: var(--admin-primary, #024768);
+    background: #f0f9ff;
+    box-shadow: 0 0 0 1px var(--admin-primary, #024768);
+  }
+  .q-commute-choice__input { margin: 0; }
+  .q-commute-choice__text { font-size: 0.9rem; color: #0f172a; }
+  .util-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

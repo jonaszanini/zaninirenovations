@@ -261,6 +261,8 @@
             </div>
         </div>
       </div>
+
+      @include('admin.quotations._payment_schedule', ['quotation' => $quotation ?? null])
     </div>
 
     <aside class="pq-sticky">

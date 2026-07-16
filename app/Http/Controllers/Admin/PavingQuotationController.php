@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -16,6 +17,7 @@ use App\Services\CommuteExpenseService;
 use App\Services\PavingMarbleCalculator;
 use App\Services\PavingQuotationCalculator;
 use App\Services\PavingStoneEntryResolver;
+use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -25,6 +27,7 @@ use Illuminate\Validation\ValidationException;
 class PavingQuotationController extends Controller
 {
     use HandlesQuotationCommuteExpense;
+    use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
     public function index(Request $request)
@@ -348,9 +351,10 @@ class PavingQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], CommuteExpenseService::commuteValidationRules()), [
+            ...QuotationPaymentSchedule::validationRules(),
+        ], CommuteExpenseService::commuteValidationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ]);
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
 
         $inputs = $this->gatherInputsFromRequest($request);
         $calc = (new PavingQuotationCalculator)->calculate($inputs);
@@ -360,6 +364,7 @@ class PavingQuotationController extends Controller
         $base = [
             'client_name' => trim((string) $request->input('client_name')) ?: null,
             'work_description' => $workDescription === '' ? null : $workDescription,
+            'payment_installments' => (int) $request->input('payment_installments'),
             'is_draft' => $intent === 'draft',
             'inputs' => $inputs,
             'calculation' => $calc,
@@ -648,6 +653,7 @@ class PavingQuotationController extends Controller
 
         $row->items = $items;
         $row->work_description = $pavingQuotation->work_description;
+        $this->applyPaymentScheduleToProjectQuotation($row, $pavingQuotation);
         $row->source_snapshot = $snapshot;
         $row->save();
 

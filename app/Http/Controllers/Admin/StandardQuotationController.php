@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
@@ -10,6 +11,7 @@ use App\Models\ClientProjectQuotation;
 use App\Models\StandardQuotation;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
+use App\Services\QuotationPaymentSchedule;
 use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
@@ -24,6 +26,7 @@ use Illuminate\Validation\ValidationException;
 class StandardQuotationController extends Controller
 {
     use HandlesQuotationCommuteExpense;
+    use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
     public function index(Request $request)
@@ -402,8 +405,9 @@ class StandardQuotationController extends Controller
             ],
             'contingency_enabled' => ['nullable'],
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            ...QuotationPaymentSchedule::validationRules(),
             ...CommuteExpenseService::commuteValidationRules(),
-        ], [
+        ], array_merge([
             'client_name.required' => 'Client name is required.',
             'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',
@@ -412,7 +416,7 @@ class StandardQuotationController extends Controller
             'labour_quantity.required' => 'Enter estimated hours/days, or enable flat labour fee.',
             'contingency_percent.numeric' => 'Contingency percent must be a number.',
             'contingency_percent.max' => 'Contingency percent cannot exceed 100.',
-        ]);
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
 
         $includesMaterial = $request->boolean('includes_material');
         $includesLabour = $request->boolean('includes_labour');
@@ -486,6 +490,7 @@ class StandardQuotationController extends Controller
                 'includes_labour' => $includesLabour,
                 'pdf_detail_mode' => $data['pdf_detail_mode'],
                 'work_description' => $workDescription === '' ? null : $workDescription,
+                'payment_installments' => (int) $data['payment_installments'],
                 'materials' => $materialsForStorage,
                 'labour_mode' => $data['labour_mode'] ?? 'hours',
                 'labour_quantity' => round((float) ($data['labour_quantity'] ?? 0), 2),
@@ -633,6 +638,7 @@ class StandardQuotationController extends Controller
 
         $row->items = $sqLines;
         $row->work_description = $standardQuotation->work_description;
+        $this->applyPaymentScheduleToProjectQuotation($row, $standardQuotation);
         $row->source_snapshot = $standardQuotation->only($standardQuotation->getFillable());
         $row->save();
 

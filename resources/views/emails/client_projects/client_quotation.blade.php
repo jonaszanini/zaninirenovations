@@ -24,17 +24,17 @@
 
   <p>I look forward to the possibility of working together to bring this project to life.</p>
 
+  @php
+    use App\Services\QuotationPaymentSchedule;
+    $paymentTerms = QuotationPaymentSchedule::terms($quotation->payment_installments ?? null);
+  @endphp
   <p style="margin:20px 0 8px 0;"><strong>Payment Schedule &amp; Terms</strong></p>
   <ul style="margin:0 0 16px 20px;padding:0;">
-    <li style="margin:8px 0;">
-      <strong>30% Secure Booking Deposit:</strong> Required to reserve your project dates in our schedule.
-    </li>
-    <li style="margin:8px 0;">
-      <strong>30% Commencement Payment:</strong> Due one day prior to the project start date.
-    </li>
-    <li style="margin:8px 0;">
-      <strong>40% Completion Payment:</strong> Due upon final completion of the work.
-    </li>
+    @foreach ($paymentTerms as [$title, $detail])
+      <li style="margin:8px 0;">
+        <strong>{{ $title }}:</strong> {{ $detail }}
+      </li>
+    @endforeach
   </ul>
 
   <p style="margin-top:24px;">

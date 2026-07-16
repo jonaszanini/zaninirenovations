@@ -63,6 +63,7 @@ class ClientProjectQuotation extends Model
         'material',
         'items',
         'work_description',
+        'payment_installments',
         'pdf_photo_ids',
         'quotation_number',
         'pdf_path',
@@ -80,6 +81,7 @@ class ClientProjectQuotation extends Model
         'version' => 'integer',
         'total_amount' => 'decimal:2',
         'subtotal_override' => 'decimal:2',
+        'payment_installments' => 'integer',
     ];
 
     public function project(): BelongsTo

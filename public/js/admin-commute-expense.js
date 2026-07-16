@@ -21,6 +21,9 @@
   }
 
   function initCommuteExpense(card) {
+    var includeYes = card.querySelector('[data-cp-commute-include-yes]');
+    var includeNo = card.querySelector('[data-cp-commute-include-no]');
+    // Back-compat: older checkbox markup
     var includeCb = card.querySelector('[data-cp-commute-include]');
     var bodyEl = card.querySelector('[data-cp-commute-body]');
     var percentInput = card.querySelector('[data-cp-commute-percent]');
@@ -34,6 +37,12 @@
     var projectId = card.getAttribute('data-initial-project-id') || '';
     var roundTripCost = null;
     var loading = false;
+
+    function isIncluded() {
+      if (includeYes) return !!includeYes.checked;
+      if (includeCb) return !!includeCb.checked;
+      return false;
+    }
 
     function travelUrl(id) {
       if (!urlTemplate || !id) return '';
@@ -56,7 +65,7 @@
     }
 
     function computeAmount() {
-      if (!includeCb || !includeCb.checked) return 0;
+      if (!isIncluded()) return 0;
       if (roundTripCost === null || roundTripCost <= 0) return 0;
       var pct = parseDecimal(percentInput ? percentInput.value : 100);
       pct = Math.max(0, Math.min(999, pct));
@@ -68,7 +77,7 @@
       var amount = computeAmount();
       var detail = {
         amount: amount,
-        included: includeCb ? includeCb.checked : false,
+        included: isIncluded(),
         roundTrip: roundTripCost,
         percent: parseDecimal(percentInput ? percentInput.value : 100),
         trips: parseIntTrips(tripsInput ? tripsInput.value : 1)
@@ -144,8 +153,12 @@
     }
 
     function syncBodyVisibility() {
-      if (!bodyEl || !includeCb) return;
-      bodyEl.hidden = !includeCb.checked;
+      if (!bodyEl) return;
+      bodyEl.hidden = !isIncluded();
+      card.querySelectorAll('.q-commute-choice__option').forEach(function (opt) {
+        var input = opt.querySelector('input');
+        opt.classList.toggle('is-selected', !!(input && input.checked));
+      });
     }
 
     function bindNumericInput(input, sanitizer) {
@@ -158,12 +171,14 @@
       input.addEventListener('change', emitChange);
     }
 
-    if (includeCb) {
-      includeCb.addEventListener('change', function () {
-        syncBodyVisibility();
-        emitChange();
-      });
+    function onIncludeChange() {
+      syncBodyVisibility();
+      emitChange();
     }
+
+    if (includeYes) includeYes.addEventListener('change', onIncludeChange);
+    if (includeNo) includeNo.addEventListener('change', onIncludeChange);
+    if (includeCb) includeCb.addEventListener('change', onIncludeChange);
 
     bindNumericInput(percentInput, function (v) {
       var s = String(v).replace(/[^\d.]/g, '');
@@ -186,13 +201,13 @@
 
     window.CommuteExpense = window.CommuteExpense || {
       getAmount: function () { return computeAmount(); },
-      isIncluded: function () { return includeCb ? includeCb.checked : false; },
+      isIncluded: function () { return isIncluded(); },
       _notify: null,
       onChange: function (fn) {
         this._notify = fn;
         fn({
           amount: computeAmount(),
-          included: includeCb ? includeCb.checked : false,
+          included: isIncluded(),
           roundTrip: roundTripCost,
           percent: parseDecimal(percentInput ? percentInput.value : 100),
           trips: parseIntTrips(tripsInput ? tripsInput.value : 1)

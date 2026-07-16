@@ -148,10 +148,11 @@ class CommuteExpenseService
             if (is_array($includeRaw)) {
                 $include = in_array('1', $includeRaw, true) || in_array(1, $includeRaw, true);
             } else {
-                $include = filter_var($includeRaw, FILTER_VALIDATE_BOOLEAN);
+                // Accept "0" / "1" strings from radios (FILTER_VALIDATE_BOOLEAN treats "0" as false).
+                $include = $includeRaw === true || $includeRaw === 1 || $includeRaw === '1';
             }
         } else {
-            $include = $isNew;
+            $include = false;
         }
 
         $percentRaw = $request->input('commute_trip_percent', 100);
@@ -202,11 +203,21 @@ class CommuteExpenseService
         ];
     }
 
+    /** @return array<string, string> */
+    public static function commuteValidationMessages(): array
+    {
+        return [
+            'include_commute.required' => 'Choose whether to include commute (gas) fuel in this quotation.',
+            'include_commute.in' => 'Choose whether to include commute (gas) fuel in this quotation.',
+        ];
+    }
+
     /** @return array<string, mixed> */
     public static function commuteValidationRules(): array
     {
         return [
-            'include_commute' => ['nullable'],
+            // Explicit Yes/No required (radio) — do not default-include without a choice.
+            'include_commute' => ['required', 'in:0,1'],
             'commute_trip_percent' => ['nullable', 'numeric', 'min:0', 'max:999'],
             'commute_estimated_trips' => ['nullable', 'integer', 'min:1', 'max:999'],
             'commute_round_trip_cost' => ['nullable', 'numeric', 'min:0'],
