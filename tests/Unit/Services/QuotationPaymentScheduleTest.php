@@ -34,4 +34,12 @@ class QuotationPaymentScheduleTest extends TestCase
         $invalidCount = [20, 30, 50];
         $this->assertEquals([50.0, 50.0], QuotationPaymentSchedule::percentages(2, $invalidCount));
     }
+
+    public function test_validation_rules_support_nested_percentages(): void
+    {
+        $rules = QuotationPaymentSchedule::validationRules();
+        $this->assertArrayHasKey('payment_percentages', $rules);
+        $this->assertArrayHasKey('payment_percentages.*', $rules);
+        $this->assertArrayHasKey('payment_percentages.*.*', $rules);
+    }
 }

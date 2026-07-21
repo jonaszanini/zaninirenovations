@@ -138,7 +138,8 @@ class QuotationPaymentSchedule
         return [
             'payment_installments' => ['required', 'integer', 'in:'.implode(',', self::ALLOWED)],
             'payment_percentages' => ['nullable', 'array'],
-            'payment_percentages.*' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
+            'payment_percentages.*' => ['nullable', 'array'],
+            'payment_percentages.*.*' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
         ];
     }
 
