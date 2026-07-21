@@ -39,7 +39,7 @@
       @php
         $n = (int) $opt['value'];
         $optPcts = QuotationPaymentSchedule::percentages($n, $savedPercentages[$n] ?? null);
-        $summaryText = implode(' / ', array_map(fn ($p) => rtrim(rtrim(number_format($p, 1, '.', ''), '0'), '.').'%', $optPcts));
+        $summaryText = implode(' / ', array_map(fn ($p) => ((float) round((float) $p, 2)).'%', $optPcts));
       @endphp
       <label class="q-payment-schedule-option{{ $selectedPlan === $n ? ' is-selected' : '' }}" data-plan-card="{{ $n }}">
         <input type="radio"
@@ -77,7 +77,7 @@
                        step="0.01"
                        min="0"
                        max="100"
-                       value="{{ rtrim(rtrim(number_format((float) ($currentPcts[$idx] ?? $defaults[$idx]), 2, '.', ''), '0'), '.') }}"
+                       value="{{ (float) round((float) ($currentPcts[$idx] ?? $defaults[$idx]), 2) }}"
                        data-plan="{{ $n }}"
                        data-index="{{ $idx }}">
                 <span class="q-pct-suffix">%</span>
@@ -248,7 +248,7 @@
 
           function formatPctVal(v) {
             var rounded = Math.round(v * 100) / 100;
-            return rounded.toString().replace(/\.?0+$/, '');
+            return rounded.toString();
           }
 
           // Auto-updating percentages logic
