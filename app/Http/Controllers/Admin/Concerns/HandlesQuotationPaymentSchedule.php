@@ -21,7 +21,11 @@ trait HandlesQuotationPaymentSchedule
         if (is_array($percentagesRaw) && isset($percentagesRaw[$installments])) {
             $planPcts = $percentagesRaw[$installments];
             if (is_array($planPcts) && count($planPcts) === $installments) {
-                $percentages = array_values(array_map(fn ($v) => round((float) $v, 2), $planPcts));
+                $parsed = array_values(array_map(fn ($v) => round((float) $v, 2), $planPcts));
+                $sum = array_sum($parsed);
+                if (abs($sum - 100.0) < 0.1 && ! array_filter($parsed, fn ($v) => $v <= 0)) {
+                    $percentages = $parsed;
+                }
             }
         }
 

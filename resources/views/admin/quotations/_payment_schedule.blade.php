@@ -38,10 +38,7 @@
     @foreach ($paymentOptions as $opt)
       @php
         $n = (int) $opt['value'];
-        $optPcts = QuotationPaymentSchedule::percentages($n);
-        if (isset($savedPercentages[$n]) && is_array($savedPercentages[$n]) && count($savedPercentages[$n]) === $n) {
-            $optPcts = array_map('floatval', $savedPercentages[$n]);
-        }
+        $optPcts = QuotationPaymentSchedule::percentages($n, $savedPercentages[$n] ?? null);
         $summaryText = implode(' / ', array_map(fn ($p) => rtrim(rtrim(number_format($p, 1, '.', ''), '0'), '.').'%', $optPcts));
       @endphp
       <label class="q-payment-schedule-option{{ $selectedPlan === $n ? ' is-selected' : '' }}" data-plan-card="{{ $n }}">
@@ -63,10 +60,7 @@
     @foreach ([2, 3, 4] as $n)
       @php
         $defaults = QuotationPaymentSchedule::percentages($n);
-        $currentPcts = $defaults;
-        if (isset($savedPercentages[$n]) && is_array($savedPercentages[$n]) && count($savedPercentages[$n]) === $n) {
-            $currentPcts = array_map('floatval', $savedPercentages[$n]);
-        }
+        $currentPcts = QuotationPaymentSchedule::percentages($n, $savedPercentages[$n] ?? null);
         $labels = $installmentLabels[$n];
       @endphp
       <div class="q-payment-schedule-panel" data-plan-panel="{{ $n }}" @if($selectedPlan !== $n) hidden @endif>
@@ -83,7 +77,7 @@
                        step="0.01"
                        min="0"
                        max="100"
-                       value="{{ number_format((float) ($currentPcts[$idx] ?? $defaults[$idx]), 2, '.', '') }}"
+                       value="{{ rtrim(rtrim(number_format((float) ($currentPcts[$idx] ?? $defaults[$idx]), 2, '.', ''), '0'), '.') }}"
                        data-plan="{{ $n }}"
                        data-index="{{ $idx }}">
                 <span class="q-pct-suffix">%</span>
@@ -203,8 +197,16 @@
     align-items: center;
   }
   .q-pct-input {
-    padding-right: 24px;
+    padding-right: 28px;
     font-weight: 600;
+  }
+  .q-pct-input::-webkit-outer-spin-button,
+  .q-pct-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .q-pct-input[type=number] {
+    -moz-appearance: textfield;
   }
   .q-pct-suffix {
     position: absolute;
@@ -244,6 +246,11 @@
             }
           });
 
+          function formatPctVal(v) {
+            var rounded = Math.round(v * 100) / 100;
+            return rounded.toString().replace(/\.?0+$/, '');
+          }
+
           // Auto-updating percentages logic
           card.querySelectorAll('.q-payment-schedule-panel').forEach(function (panel) {
             var plan = parseInt(panel.getAttribute('data-plan-panel'), 10);
@@ -254,7 +261,7 @@
               if (!summaryEl) return;
               var parts = inputs.map(function (inp) {
                 var v = parseFloat(inp.value) || 0;
-                return (Math.round(v * 100) / 100).toString().replace(/\.?0+$/, '') + '%';
+                return formatPctVal(v) + '%';
               });
               summaryEl.textContent = parts.join(' / ');
             }
@@ -275,20 +282,19 @@
                 });
 
                 var remainder = Math.max(0, Math.round((100 - otherSum) * 100) / 100);
-                inputs[targetIdx].value = remainder.toFixed(2).replace(/\.?0+$/, function(m) {
-                  // keeps format clean if whole or 2 decimals
-                  return m.indexOf('.') !== -1 && m.length > 2 ? m : m;
-                });
+                inputs[targetIdx].value = formatPctVal(remainder);
 
                 syncSummary();
               });
 
               inp.addEventListener('change', function () {
                 var v = parseFloat(inp.value) || 0;
-                inp.value = v.toFixed(2).replace(/\.00$/, '');
+                inp.value = formatPctVal(v);
                 syncSummary();
               });
             });
+
+            syncSummary();
           });
 
           updatePanels();
