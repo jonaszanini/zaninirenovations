@@ -67,6 +67,8 @@ class ClientProjectQuotation extends Model
         'pdf_photo_ids',
         'quotation_number',
         'pdf_path',
+        'payment_installments',
+        'payment_percentages',
         'sent_at',
         'version',
     ];
@@ -78,10 +80,10 @@ class ClientProjectQuotation extends Model
         'source_snapshot' => 'array',
         'pdf_photo_ids' => 'array',
         'sent_at' => 'datetime',
-        'version' => 'integer',
+        'payment_installments' => 'integer',
+        'payment_percentages' => 'array',
         'total_amount' => 'decimal:2',
         'subtotal_override' => 'decimal:2',
-        'payment_installments' => 'integer',
     ];
 
     public function project(): BelongsTo
