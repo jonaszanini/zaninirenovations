@@ -353,7 +353,7 @@ class StandardQuotationController extends Controller
             'display_title' => trim((string) $request->input('display_title', '')),
         ]);
 
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'client_name' => ['required', 'string', 'max:160'],
             'display_title' => ['required', 'string', 'max:255'],
             'document_type' => ['required', Rule::in([
@@ -399,9 +399,7 @@ class StandardQuotationController extends Controller
             ],
             'contingency_enabled' => ['nullable'],
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            ...QuotationPaymentSchedule::validationRules(),
-            ...CommuteExpenseService::commuteValidationRules(),
-        ], array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules()), array_merge([
             'client_name.required' => 'Client name is required.',
             'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',

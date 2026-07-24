@@ -126,6 +126,17 @@ class StandardQuotation extends Model
     }
 
     /**
+     * Short human-readable line used as the placeholder text when linking
+     * this quotation to a project (see _link_to_project_card.blade.php).
+     */
+    public function summaryDescription(): string
+    {
+        $title = trim((string) ($this->display_title ?? ''));
+
+        return $title !== '' ? $title : 'Standard quotation';
+    }
+
+    /**
      * Summary-mode PDF line label from Includes (PDF wording) checkboxes.
      */
     public function pdfSummaryLineDescription(): string

@@ -592,7 +592,7 @@ class FenceQuotationController extends Controller
     /** Shared validation rules for store() and update(). */
     protected function validateFenceInputs(Request $request): array
     {
-        $rules = [
+        $rules = array_merge([
             'client_name' => ['required', 'string', 'max:160'],
             'work_description' => ['nullable', 'string', 'max:5000'],
             'sides' => ['required', 'array', 'min:1', 'max:4'],
@@ -612,9 +612,7 @@ class FenceQuotationController extends Controller
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
-            ...QuotationPaymentSchedule::validationRules(),
-            ...CommuteExpenseService::commuteValidationRules(),
-        ];
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules());
 
         return $request->validate($rules, array_merge(
             QuotationPaymentSchedule::validationMessages(),

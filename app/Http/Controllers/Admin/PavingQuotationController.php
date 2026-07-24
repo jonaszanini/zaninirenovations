@@ -344,8 +344,7 @@ class PavingQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-            ...QuotationPaymentSchedule::validationRules(),
-        ], CommuteExpenseService::commuteValidationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
 

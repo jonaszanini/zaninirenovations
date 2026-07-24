@@ -112,6 +112,10 @@ class NotifyClientProjectCommencementEveTest extends IntegrationTestCase
 
         $project = ClientProject::factory()->create([
             'start_date' => '2026-06-11',
+            // No client_email: the client channel under test here is SMS
+            // only, so the (mocked, always-throwing) Mail::to() call is hit
+            // exactly once — for the optional admin email — not twice.
+            'client_email' => null,
             'client_phone' => '6135550100',
             'status' => ClientProject::STATUS_IN_PROGRESS,
             'day_before_start_sent_for_date' => null,

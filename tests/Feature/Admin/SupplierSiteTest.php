@@ -36,8 +36,10 @@ class SupplierSiteTest extends IntegrationTestCase
         $this->assertSame('orders@debline.com', $site->email);
         $this->assertSame('100 Industrial Rd, Carleton Place, ON', $site->address);
         $this->assertTrue($site->is_favorite);
+        // MySQL's default utf8mb4_unicode_ci collation sorts case-insensitively,
+        // so "bedding" < "Bin" (e < i) regardless of case.
         $this->assertSame(
-            ['Bin Rental', 'bedding sand', 'crushed stone'],
+            ['bedding sand', 'Bin Rental', 'crushed stone'],
             $site->tags()->orderBy('name')->pluck('name')->all()
         );
     }
@@ -137,8 +139,10 @@ class SupplierSiteTest extends IntegrationTestCase
         $site->refresh();
         $this->assertSame('Debline Landscaping', $site->name);
         $this->assertSame('https://www.debline.com/shop', $site->url);
+        // MySQL's default utf8mb4_unicode_ci collation sorts case-insensitively,
+        // so "bedding" < "Bin" (e < i) regardless of case.
         $this->assertSame(
-            ['Bin Rental', 'bedding sand'],
+            ['bedding sand', 'Bin Rental'],
             $site->tags()->orderBy('name')->pluck('name')->all()
         );
     }

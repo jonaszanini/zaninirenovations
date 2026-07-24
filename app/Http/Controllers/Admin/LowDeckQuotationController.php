@@ -484,7 +484,7 @@ class LowDeckQuotationController extends Controller
         $settings = LowDeckFormulaSetting::current();
         $maxArea = (float) $settings->max_area_sq_ft;
 
-        $rules = [
+        $rules = array_merge([
             'client_name' => ['required', 'string', 'max:160'],
             'work_description' => ['nullable', 'string', 'max:5000'],
             'width_ft' => ['required', 'numeric', 'min:1', 'max:500'],
@@ -494,9 +494,7 @@ class LowDeckQuotationController extends Controller
             'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'include_under_deck_gravel' => ['nullable', 'boolean'],
             'include_diagrams_on_pdf' => ['nullable', 'boolean'],
-            ...QuotationPaymentSchedule::validationRules(),
-            ...CommuteExpenseService::commuteValidationRules(),
-        ];
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules());
 
         $validator = validator($request->all(), $rules, array_merge(
             QuotationPaymentSchedule::validationMessages(),

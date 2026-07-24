@@ -51,6 +51,8 @@ class LowDeckQuotationTest extends IntegrationTestCase
             'width_ft' => 12,
             'length_ft' => 16,
             'labour_rate_per_sqft' => 10,
+            'payment_installments' => 3,
+            'include_commute' => 0,
         ]);
 
         $response->assertRedirect();
@@ -98,6 +100,8 @@ class LowDeckQuotationTest extends IntegrationTestCase
             'width_ft' => 12,
             'length_ft' => 16,
             'labour_rate_per_sqft' => 10,
+            'payment_installments' => 3,
+            'include_commute' => 0,
         ]);
 
         $quote = LowDeckQuotation::query()->latest('id')->firstOrFail();

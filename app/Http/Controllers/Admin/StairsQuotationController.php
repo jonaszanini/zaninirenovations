@@ -308,8 +308,7 @@ class StairsQuotationController extends Controller
         $request->validate(array_merge([
             'client_name' => $clientRules,
             'save_intent' => ['nullable', 'in:draft,publish'],
-            ...QuotationPaymentSchedule::validationRules(),
-        ], CommuteExpenseService::commuteValidationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
 
