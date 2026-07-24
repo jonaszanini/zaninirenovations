@@ -3,10 +3,75 @@
 namespace App\Http\Controllers\Admin\Concerns;
 
 use App\Models\ClientProject;
+use App\Services\ClientProjectContactService;
+use App\Services\ClientProjectStatusService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 trait ResolvesQuotationProjectLink
 {
+    /**
+     * Strip a "create project" phone field down to digits before validation
+     * (`digits:10` rejects formatted input like "(123) 456-7890" otherwise).
+     * Was copy-pasted per-controller under names like
+     * normaliseFenceProjectPhoneOnRequest; every quotation type needs the
+     * exact same normalisation.
+     */
+    protected function normalisePhoneOnRequest(Request $request, string $field = 'fp_client_phone'): void
+    {
+        if (! $request->has($field)) {
+            return;
+        }
+
+        $digits = preg_replace('/\D/', '', (string) $request->input($field));
+
+        $request->merge([
+            $field => $digits === '' ? null : $digits,
+        ]);
+    }
+
+    /** Guard for the top of linkToProject/createProjectAndLink: bail out if already linked. */
+    protected function guardQuotationAlreadyLinked(object $quotation, string $label): ?RedirectResponse
+    {
+        if ($quotation->isLinked()) {
+            return back()->with('error', "This {$label} quotation is already linked to a project.");
+        }
+
+        return null;
+    }
+
+    /** Guard used before linking to an existing project: its status must still accept new quotations. */
+    protected function guardProjectClosedToNewQuotations(ClientProject $project): ?RedirectResponse
+    {
+        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
+            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
+        }
+
+        return null;
+    }
+
+    /** "New project" title: use what was typed, else "{client} — {suffix}", capped to the column length. */
+    protected function resolveNewProjectTitle(?string $requestedTitle, string $clientName, string $suffix): string
+    {
+        $title = trim((string) $requestedTitle);
+        if ($title === '') {
+            $title = $clientName.' — '.$suffix;
+        }
+
+        return Str::limit($title, 255, '');
+    }
+
+    /**
+     * Shared tail of createProjectAndLink once the project row exists:
+     * apply status-change side effects and make sure it's linked into the
+     * client directory (Client model), same as every other project entry point.
+     */
+    protected function finalizeCreatedProjectFromQuotation(ClientProject $project, ClientProjectStatusService $statusService): void
+    {
+        $statusService->onCreated($project, false);
+        app(ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+    }
     /** Optional FK from query string (?project=) or POST body (`link_client_project_id`). */
     protected function quotationLinkProjectRawId(Request $request): ?int
     {

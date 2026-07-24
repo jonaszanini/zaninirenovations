@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\ClientTag;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -13,9 +14,11 @@ class ClientController extends Controller
     public function index(Request $request): View
     {
         $q = trim((string) $request->get('q', ''));
+        $tagId = (int) $request->get('tag', 0);
 
         $clients = Client::query()
             ->withCount('projects')
+            ->with('tags')
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', '%'.$q.'%')
@@ -24,18 +27,24 @@ class ClientController extends Controller
                         ->orWhere('address', 'like', '%'.$q.'%');
                 });
             })
+            ->when($tagId > 0, function ($query) use ($tagId) {
+                $query->whereHas('tags', fn ($t) => $t->where('client_tags.id', $tagId));
+            })
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
 
         $totalClients = Client::query()->count();
+        $tags = ClientTag::query()->orderBy('name')->get();
 
-        return view('admin.clients.index', compact('clients', 'q', 'totalClients'));
+        return view('admin.clients.index', compact('clients', 'q', 'tagId', 'totalClients', 'tags'));
     }
 
     public function create(): View
     {
-        return view('admin.clients.create');
+        $tags = ClientTag::query()->orderBy('name')->get();
+
+        return view('admin.clients.create', compact('tags'));
     }
 
     public function store(Request $request)
@@ -53,11 +62,27 @@ class ClientController extends Controller
             'address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['integer', 'exists:client_tags,id'],
         ], [
             'email_secondary.different' => 'The secondary email must differ from the primary email.',
         ]);
 
+        if (! $request->boolean('confirm_duplicate')) {
+            $duplicates = Client::findDuplicateCandidates($data['name'], $data['email'] ?? null, $data['phone'] ?? null);
+            if ($duplicates->isNotEmpty()) {
+                return back()
+                    ->withInput($request->except('confirm_duplicate'))
+                    ->with('duplicate_candidates', $duplicates)
+                    ->with('warning', 'A client with a matching name, email, or phone already exists. Review below, or click "Save anyway" to create this as a new, separate client.');
+            }
+        }
+
+        $tagIds = $data['tags'] ?? [];
+        unset($data['tags']);
+
         $client = Client::create($data);
+        $client->tags()->sync($tagIds);
 
         return redirect()
             ->route('admin.clients.edit', $client)
@@ -66,7 +91,10 @@ class ClientController extends Controller
 
     public function edit(Client $client): View
     {
-        return view('admin.clients.edit', compact('client'));
+        $client->load('tags');
+        $tags = ClientTag::query()->orderBy('name')->get();
+
+        return view('admin.clients.edit', compact('client', 'tags'));
     }
 
     public function update(Request $request, Client $client)
@@ -84,11 +112,17 @@ class ClientController extends Controller
             'address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['integer', 'exists:client_tags,id'],
         ], [
             'email_secondary.different' => 'The secondary email must differ from the primary email.',
         ]);
 
+        $tagIds = $data['tags'] ?? [];
+        unset($data['tags']);
+
         $client->update($data);
+        $client->tags()->sync($tagIds);
 
         return redirect()
             ->route('admin.clients.edit', $client)

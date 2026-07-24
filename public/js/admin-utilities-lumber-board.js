@@ -600,6 +600,11 @@
         '<button type="button" class="util-lb-bt-toggle" data-lb-bt-toggle aria-expanded="' + (!data.collapsed) + '"><i class="fa fa-chevron-down"></i></button>' +
         '<input type="text" class="util-lb-bt-name" data-lb-bt-name maxlength="80" placeholder="Board type name (e.g. 2×6 Joists)" value="' + escapeAttr(data.name || '') + '">' +
         '<div class="util-lb-bt-head-actions">' +
+          // Drag-and-drop (via [data-lb-bt-drag]) only works with a mouse —
+          // HTML5 DnD is not reliably touch-capable (notably iOS Safari).
+          // These arrow buttons give touch users an equivalent reorder path.
+          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-bt-move-up title="Move up" aria-label="Move board type up"><i class="fa fa-arrow-up"></i></button>' +
+          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-bt-move-down title="Move down" aria-label="Move board type down"><i class="fa fa-arrow-down"></i></button>' +
           '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-bt-duplicate title="Duplicate"><i class="fa fa-copy"></i></button>' +
           '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-lb-bt-remove title="Remove"><i class="fa fa-times"></i></button>' +
         '</div>' +
@@ -692,6 +697,22 @@
         card.remove();
         scheduleRender();
       });
+    });
+
+    card.querySelector('[data-lb-bt-move-up]').addEventListener('click', function () {
+      var prev = card.previousElementSibling;
+      if (prev) {
+        els.boardTypes.insertBefore(card, prev);
+        scheduleRender();
+      }
+    });
+
+    card.querySelector('[data-lb-bt-move-down]').addEventListener('click', function () {
+      var next = card.nextElementSibling;
+      if (next) {
+        els.boardTypes.insertBefore(next, card);
+        scheduleRender();
+      }
     });
 
     card.querySelector('[data-lb-bt-duplicate]').addEventListener('click', function () {

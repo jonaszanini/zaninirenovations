@@ -58,6 +58,23 @@
         @error('notes') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
+      <div class="admin-form-group">
+        <label>Tags <a href="{{ route('admin.client-tags.index') }}" class="cl-tag-picker__manage">Manage tags</a></label>
+        @if ($tags->isEmpty())
+          <p class="admin-form-help">No tags yet. <a href="{{ route('admin.client-tags.create') }}">Create one</a>.</p>
+        @else
+          @php $selectedTagIds = old('tags', $client->tags->pluck('id')->all()); @endphp
+          <div class="cl-tag-picker">
+            @foreach ($tags as $tag)
+              <label class="cl-tag-picker__option">
+                <input type="checkbox" name="tags[]" value="{{ $tag->id }}" @checked(in_array($tag->id, $selectedTagIds))>
+                <span class="admin-badge" style="background:{{ $tag->color }}1a;color:{{ $tag->color }};border:1px solid {{ $tag->color }}55;">{{ $tag->name }}</span>
+              </label>
+            @endforeach
+          </div>
+        @endif
+      </div>
+
       <p class="admin-form-help">
         Linked to <strong>{{ $client->projects()->count() }}</strong> project(s).
         Edits here update the central directory; active projects can sync these details when saved (see the &ldquo;Update central client record&rdquo; option on each project).

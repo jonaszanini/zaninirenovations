@@ -283,8 +283,8 @@ class TileQuotationController extends Controller
         TileQuotation $quotation,
         \App\Services\ClientProjectStatusService $statusService
     ) {
-        if ($quotation->isLinked()) {
-            return back()->with('error', 'This tile quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($quotation, 'tile')) {
+            return $resp;
         }
         if ($quotation->is_draft) {
             return back()->with('error', 'Publish the quotation before creating a project.');
@@ -319,11 +319,7 @@ class TileQuotationController extends Controller
         ]);
 
         $clientName = trim($data['fp_client_name']);
-        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
-        if ($projectTitle === '') {
-            $projectTitle = $clientName.' — Tile';
-        }
-        $projectTitle = \Illuminate\Support\Str::limit($projectTitle, 255, '');
+        $projectTitle = $this->resolveNewProjectTitle($data['fp_project_name'] ?? null, $clientName, 'Tile');
 
         $project = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $projectTitle, $clientName, $quotation) {
             $project = ClientProject::create([
@@ -351,25 +347,11 @@ class TileQuotationController extends Controller
             return $project;
         });
 
-        $statusService->onCreated($project, false);
-        app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+        $this->finalizeCreatedProjectFromQuotation($project, $statusService);
 
         return redirect()
             ->to(route('admin.client-projects.show', ['client_project' => $project->id]).'#quotation')
             ->with('success', 'Project created. The tile quotation was added to the Quotation tab.');
-    }
-
-    protected function normalisePhoneOnRequest(Request $request): void
-    {
-        if (! $request->has('fp_client_phone')) {
-            return;
-        }
-
-        $raw = (string) $request->input('fp_client_phone');
-        $digits = preg_replace('/\D/', '', $raw);
-        $request->merge([
-            'fp_client_phone' => $digits === '' ? null : $digits,
-        ]);
     }
 
     public function calculateLive(Request $request, TileQuotationCalculator $calculator)

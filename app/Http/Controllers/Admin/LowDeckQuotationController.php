@@ -19,8 +19,6 @@ use App\Services\QuotationPaymentSchedule;
 use App\Support\LowDeckWorkDescriptionGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-
 /**
  * LowDeckQuotationController — standalone low floating deck calculator quotes.
  *
@@ -162,8 +160,8 @@ class LowDeckQuotationController extends Controller
 
     public function linkToProject(Request $request, LowDeckQuotation $low_deck_quotation)
     {
-        if ($low_deck_quotation->isLinked()) {
-            return back()->with('error', 'This low deck quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($low_deck_quotation, 'low deck')) {
+            return $resp;
         }
 
         $data = $request->validate([
@@ -174,8 +172,8 @@ class LowDeckQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($low_deck_quotation, $project);
 
-        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
-            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
+        if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
+            return $resp;
         }
 
         DB::transaction(function () use ($project, $low_deck_quotation) {
@@ -192,11 +190,11 @@ class LowDeckQuotationController extends Controller
         LowDeckQuotation $low_deck_quotation,
         ClientProjectStatusService $statusService
     ) {
-        if ($low_deck_quotation->isLinked()) {
-            return back()->with('error', 'This low deck quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($low_deck_quotation, 'low deck')) {
+            return $resp;
         }
 
-        $this->normaliseLowDeckProjectPhoneOnRequest($request);
+        $this->normalisePhoneOnRequest($request);
 
         $data = $request->validate([
             'fp_project_name' => ['nullable', 'string', 'max:255'],
@@ -211,11 +209,7 @@ class LowDeckQuotationController extends Controller
         ]);
 
         $clientName = trim($data['fp_client_name']);
-        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
-        if ($projectTitle === '') {
-            $projectTitle = $clientName.' — Low deck';
-        }
-        $projectTitle = Str::limit($projectTitle, 255, '');
+        $projectTitle = $this->resolveNewProjectTitle($data['fp_project_name'] ?? null, $clientName, 'Low deck');
 
         $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $low_deck_quotation) {
             $project = ClientProject::create([
@@ -236,8 +230,7 @@ class LowDeckQuotationController extends Controller
             return $project;
         });
 
-        $statusService->onCreated($project, false);
-        app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+        $this->finalizeCreatedProjectFromQuotation($project, $statusService);
 
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')
@@ -484,20 +477,6 @@ class LowDeckQuotationController extends Controller
             'client_project_id' => $project->id,
             'linked_at' => now(),
         ], $this->quotationLinkClientNameAttributes($project)));
-    }
-
-    protected function normaliseLowDeckProjectPhoneOnRequest(Request $request): void
-    {
-        if (! $request->has('fp_client_phone')) {
-            return;
-        }
-
-        $raw = (string) $request->input('fp_client_phone');
-        $digits = preg_replace('/\D/', '', $raw);
-
-        $request->merge([
-            'fp_client_phone' => $digits === '' ? null : $digits,
-        ]);
     }
 
     protected function validateLowDeckInputs(Request $request): array

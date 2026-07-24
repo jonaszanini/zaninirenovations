@@ -17,7 +17,6 @@ use App\Services\FenceQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -233,8 +232,8 @@ class FenceQuotationController extends Controller
      */
     public function linkToProject(Request $request, FenceQuotation $fence_quotation)
     {
-        if ($fence_quotation->isLinked()) {
-            return back()->with('error', 'This fence quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($fence_quotation, 'fence')) {
+            return $resp;
         }
 
         $data = $request->validate([
@@ -245,8 +244,8 @@ class FenceQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($fence_quotation, $project);
 
-        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
-            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
+        if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
+            return $resp;
         }
 
         DB::transaction(function () use ($project, $fence_quotation) {
@@ -269,11 +268,11 @@ class FenceQuotationController extends Controller
         FenceQuotation $fence_quotation,
         ClientProjectStatusService $statusService
     ) {
-        if ($fence_quotation->isLinked()) {
-            return back()->with('error', 'This fence quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($fence_quotation, 'fence')) {
+            return $resp;
         }
 
-        $this->normaliseFenceProjectPhoneOnRequest($request);
+        $this->normalisePhoneOnRequest($request);
 
         $data = $request->validate([
             'fp_project_name' => ['nullable', 'string', 'max:255'],
@@ -288,11 +287,7 @@ class FenceQuotationController extends Controller
         ]);
 
         $clientName = trim($data['fp_client_name']);
-        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
-        if ($projectTitle === '') {
-            $projectTitle = $clientName.' — Fence';
-        }
-        $projectTitle = Str::limit($projectTitle, 255, '');
+        $projectTitle = $this->resolveNewProjectTitle($data['fp_project_name'] ?? null, $clientName, 'Fence');
 
         $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $fence_quotation) {
             $project = ClientProject::create([
@@ -313,8 +308,7 @@ class FenceQuotationController extends Controller
             return $project;
         });
 
-        $statusService->onCreated($project, false);
-        app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+        $this->finalizeCreatedProjectFromQuotation($project, $statusService);
 
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')
@@ -451,20 +445,6 @@ class FenceQuotationController extends Controller
      * Strip non-digits from the "new project" phone field before validation
      * (same behaviour as ClientProjectController::normalisePhoneOnRequest).
      */
-    protected function normaliseFenceProjectPhoneOnRequest(Request $request): void
-    {
-        if (!$request->has('fp_client_phone')) {
-            return;
-        }
-
-        $raw = (string) $request->input('fp_client_phone');
-        $digits = preg_replace('/\D/', '', $raw);
-
-        $request->merge([
-            'fp_client_phone' => $digits === '' ? null : $digits,
-        ]);
-    }
-
     public function destroy(FenceQuotation $fence_quotation)
     {
         $cpq = ClientProjectQuotation::query()

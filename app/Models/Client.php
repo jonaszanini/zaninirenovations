@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -36,6 +37,11 @@ class Client extends Model
         return $this->hasMany(ClientProject::class, 'client_id');
     }
 
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(ClientTag::class)->orderBy('name');
+    }
+
     /**
      * Directory client for a project (linked id, or phone match on denormalised
      * project contact fields).
@@ -59,11 +65,58 @@ class Client extends Model
             return null;
         }
 
+        // Compare on the last 10 digits (matches phoneDigitsForSms, which
+        // treats a bare 10-digit number and a "1"-prefixed 11-digit number
+        // as the same SMS destination). Filtering happens in SQL — with a
+        // formatting-agnostic strip of common punctuation — instead of
+        // pulling every client row into PHP to compare one by one.
+        $last10 = substr($digits, -10);
+
         return static::query()
             ->whereNotNull('phone')
             ->where('phone', '!=', '')
-            ->get()
-            ->first(fn (self $client) => ClientProject::phoneDigitsForSms($client->phone) === $digits);
+            ->whereRaw(
+                "RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', ''), 10) = ?",
+                [$last10]
+            )
+            ->first();
+    }
+
+    /**
+     * Existing directory clients that look like the same person as the
+     * given name/email/phone: exact email match, exact 10-digit phone
+     * match, or an exact (case/whitespace-insensitive) name match. Used to
+     * warn an admin before they create an obvious duplicate directory entry.
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function findDuplicateCandidates(?string $name, ?string $email, ?string $phone, ?int $excludeId = null): \Illuminate\Support\Collection
+    {
+        $emailNorm = strtolower(trim((string) $email));
+        $phoneDigits = preg_replace('/\D/', '', (string) $phone);
+        $nameNorm = strtolower(trim((string) $name));
+
+        if ($emailNorm === '' && $phoneDigits === '' && $nameNorm === '') {
+            return collect();
+        }
+
+        return static::query()
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->where(function ($q) use ($emailNorm, $phoneDigits, $nameNorm) {
+                $q->whereRaw('1 = 0');
+                if ($emailNorm !== '') {
+                    $q->orWhereRaw('LOWER(TRIM(email)) = ?', [$emailNorm]);
+                }
+                if (strlen($phoneDigits) === 10) {
+                    $q->orWhere('phone', $phoneDigits);
+                }
+                if ($nameNorm !== '') {
+                    $q->orWhereRaw('LOWER(TRIM(name)) = ?', [$nameNorm]);
+                }
+            })
+            ->orderBy('name')
+            ->limit(5)
+            ->get();
     }
 
     /** Single-line label for search dropdowns (Tom Select, etc.). */

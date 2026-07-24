@@ -52,6 +52,10 @@ class ContactFormMailer
 
         $data = $validator->validated();
 
+        // Independent of whether the notification email below succeeds —
+        // a transient SMTP hiccup should never mean a real inquiry gets lost.
+        app(WebsiteLeadIntakeService::class)->createLeadFromSubmission($data);
+
         $detailHtml = self::submissionDetailHtml($data, $extended);
 
         $to = config('mail.contact_to');

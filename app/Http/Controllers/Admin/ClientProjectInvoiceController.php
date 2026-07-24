@@ -7,16 +7,15 @@ use App\Mail\ClientProjectInvoiceClient;
 use App\Mail\ClientProjectInvoiceReceiptClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
-use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInvoice;
-use App\Models\ClientProjectQuotation;
-use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectInvoiceReminderService;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientSmsService;
+use App\Services\Invoice\InvoiceCreationService;
+use App\Services\Invoice\InvoicePdfService;
+use App\Services\Invoice\InvoiceTotalsCalculator;
 use App\Services\MoceanSmsService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -49,6 +48,13 @@ use Illuminate\Validation\ValidationException;
  */
 class ClientProjectInvoiceController extends Controller
 {
+    public function __construct(
+        protected InvoicePdfService $pdfService,
+        protected InvoiceTotalsCalculator $totals,
+        protected InvoiceCreationService $creationService,
+    ) {
+    }
+
     /**
      * Create a new invoice and redirect to its editor. Three modes:
      *   - installment: linked to the N-th installment in the payment plan
@@ -119,14 +125,14 @@ class ClientProjectInvoiceController extends Controller
                 return back()->with('error', 'There are no unbilled time entries to invoice. Log some hours on the Time Tracking tab first.');
             }
 
-            $invoice = $this->createHourlyInvoice($client_project, $unbilled);
+            $invoice = $this->creationService->createHourlyInvoice($client_project, $unbilled);
 
             return redirect()
                 ->route('admin.client-projects.invoices.edit', [$client_project, $invoice])
                 ->with('success', 'Invoice draft created from '.$unbilled->count().' unbilled time entr'.($unbilled->count() === 1 ? 'y' : 'ies').'. Review and adjust the line items as needed.');
         }
 
-        $invoice = $this->createInvoice($client_project, $installmentNumber);
+        $invoice = $this->creationService->createInvoice($client_project, $installmentNumber);
 
         return redirect()
             ->route('admin.client-projects.invoices.edit', [$client_project, $invoice]);
@@ -139,9 +145,9 @@ class ClientProjectInvoiceController extends Controller
         return view('admin.client_projects.invoice.edit', [
             'project' => $client_project,
             'invoice' => $invoice,
-            'lockedTotalWithHst' => $this->lockedTotalWithHst($client_project, $invoice),
-            'lockedSubtotal' => $this->lockedSubtotal($client_project, $invoice),
-            'lockedHst' => $this->lockedHst($client_project, $invoice),
+            'lockedTotalWithHst' => $this->totals->lockedTotalWithHst($client_project, $invoice),
+            'lockedSubtotal' => $this->totals->lockedSubtotal($client_project, $invoice),
+            'lockedHst' => $this->totals->lockedHst($client_project, $invoice),
         ]);
     }
 
@@ -181,8 +187,8 @@ class ClientProjectInvoiceController extends Controller
         $isHourlyManual = $client_project->isHourly() && $invoice->isManual();
 
         $items = $isHourlyManual
-            ? $this->normaliseHourlyInvoiceItems($client_project, $data['items'] ?? [])
-            : $this->normaliseItems($data['items'] ?? []);
+            ? $this->totals->normaliseHourlyInvoiceItems($client_project, $data['items'] ?? [])
+            : $this->totals->normaliseItems($data['items'] ?? []);
 
         // For manual invoices, the user sets the pre-HST total directly
         // via the manual_total field; we only persist it when present.
@@ -192,7 +198,7 @@ class ClientProjectInvoiceController extends Controller
         }
 
         if ($isHourlyManual) {
-            [$labour, $materials] = $this->partitionHourlyLineAmounts($items);
+            [$labour, $materials] = $this->totals->partitionHourlyLineAmounts($items);
             $invoice->items = $items;
             $invoice->discount_percent = null;
             $invoice->discount_amount = null;
@@ -210,27 +216,27 @@ class ClientProjectInvoiceController extends Controller
                     ])
                     ->withInput();
             }
-            $this->syncHourlyExpenseLinks($client_project, $invoice, $items);
+            $this->totals->syncHourlyExpenseLinks($client_project, $invoice, $items);
         } else {
             $invoice->items = $items;
             $gross = round((float) array_sum(array_column($items, 'amount')), 2);
 
             if (!$invoice->isManual()) {
-                [$pctStored, $amtStored, $discountVal] = $this->resolveInstallmentDiscountFromRequest($request, $gross);
+                [$pctStored, $amtStored, $discountVal] = $this->totals->resolveInstallmentDiscountFromRequest($request, $gross);
                 $invoice->discount_percent = $pctStored;
                 $invoice->discount_amount = $amtStored;
                 $comment = trim((string) ($data['discount_comment'] ?? ''));
                 $invoice->discount_comment = $comment !== '' ? Str::limit($comment, 120, '') : null;
                 $net = round(max(0.0, $gross - $discountVal), 2);
                 $invoice->subtotal = $net;
-                $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $net);
+                $invoice->hst = $this->totals->computeInvoiceHst($client_project, $invoice, $net);
                 $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
             } else {
                 $invoice->discount_percent = null;
                 $invoice->discount_amount = null;
                 $invoice->discount_comment = null;
                 $invoice->subtotal = $gross;
-                $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
+                $invoice->hst = $this->totals->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
                 $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
 
                 if ($data['manual_total'] !== null && ! $client_project->isHourly()) {
@@ -239,14 +245,14 @@ class ClientProjectInvoiceController extends Controller
                     // UI surfaces a validation warning. For the "send" action this
                     // mismatch is a hard stop (see send()).
                     $invoice->subtotal = (float) $data['manual_total'];
-                    $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
+                    $invoice->hst = $this->totals->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
                     $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
 
                     if (abs((float) array_sum(array_column($items, 'amount')) - (float) $data['manual_total']) > 0.01 && count($items)) {
                         // Fall back to items-sum as the authoritative subtotal if
                         // the user actually typed line items (prefer item sum).
                         $invoice->subtotal = (float) array_sum(array_column($items, 'amount'));
-                        $invoice->hst = $this->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
+                        $invoice->hst = $this->totals->computeInvoiceHst($client_project, $invoice, $invoice->subtotal);
                         $invoice->total = round($invoice->subtotal + $invoice->hst, 2);
                     }
                 }
@@ -281,9 +287,9 @@ class ClientProjectInvoiceController extends Controller
             return back()->with('error', 'There is no invoice content to download yet. Please add at least one line item first.');
         }
 
-        $pdf = $this->renderInvoicePdf($client_project, $invoice);
+        $pdf = $this->pdfService->renderInvoicePdf($client_project, $invoice);
 
-        return $pdf->stream($this->invoicePdfFilename($client_project, $invoice));
+        return $pdf->stream($this->pdfService->invoicePdfFilename($client_project, $invoice));
     }
 
     /**
@@ -298,9 +304,9 @@ class ClientProjectInvoiceController extends Controller
             abort(404, 'Invoice not available.');
         }
 
-        $pdf = $this->renderInvoicePdf($client_project, $invoice);
+        $pdf = $this->pdfService->renderInvoicePdf($client_project, $invoice);
 
-        return $pdf->stream($this->invoicePdfFilename($client_project, $invoice));
+        return $pdf->stream($this->pdfService->invoicePdfFilename($client_project, $invoice));
     }
 
     /**
@@ -318,13 +324,13 @@ class ClientProjectInvoiceController extends Controller
         if (filled($invoice->receipt_pdf_path) && $disk->exists($invoice->receipt_pdf_path)) {
             return response($disk->get($invoice->receipt_pdf_path), 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$this->receiptPdfFilename($client_project, $invoice).'"',
+                'Content-Disposition' => 'inline; filename="'.$this->pdfService->receiptPdfFilename($client_project, $invoice).'"',
             ]);
         }
 
-        $pdf = $this->renderReceiptPdf($client_project, $invoice);
+        $pdf = $this->pdfService->renderReceiptPdf($client_project, $invoice);
 
-        return $pdf->stream($this->receiptPdfFilename($client_project, $invoice));
+        return $pdf->stream($this->pdfService->receiptPdfFilename($client_project, $invoice));
     }
 
     /**
@@ -343,13 +349,13 @@ class ClientProjectInvoiceController extends Controller
         if (filled($invoice->receipt_pdf_path) && $disk->exists($invoice->receipt_pdf_path)) {
             return response($disk->get($invoice->receipt_pdf_path), 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$this->receiptPdfFilename($client_project, $invoice).'"',
+                'Content-Disposition' => 'inline; filename="'.$this->pdfService->receiptPdfFilename($client_project, $invoice).'"',
             ]);
         }
 
-        $pdf = $this->renderReceiptPdf($client_project, $invoice);
+        $pdf = $this->pdfService->renderReceiptPdf($client_project, $invoice);
 
-        return $pdf->stream($this->receiptPdfFilename($client_project, $invoice));
+        return $pdf->stream($this->pdfService->receiptPdfFilename($client_project, $invoice));
     }
 
     public function send(ClientProject $client_project, ClientProjectInvoice $invoice, ClientProjectStatusService $statusService)
@@ -388,10 +394,10 @@ class ClientProjectInvoiceController extends Controller
             $invoice->version = (int) $invoice->version + 1;
         }
 
-        $pdf = $this->renderInvoicePdf($client_project, $invoice);
+        $pdf = $this->pdfService->renderInvoicePdf($client_project, $invoice);
         $bytes = $pdf->output();
 
-        $relativePath = $this->invoicePdfStoragePath($client_project, $invoice);
+        $relativePath = $this->pdfService->invoicePdfStoragePath($client_project, $invoice);
         Storage::disk('local')->put($relativePath, $bytes);
 
         $invoice->invoice_pdf_path = $relativePath;
@@ -402,7 +408,7 @@ class ClientProjectInvoiceController extends Controller
 
         $invoice->save();
 
-        $filename = $this->invoicePdfFilename($client_project, $invoice);
+        $filename = $this->pdfService->invoicePdfFilename($client_project, $invoice);
 
         $cc = $client_project->secondaryClientEmail();
         $invoiceSubject = "Invoice {$invoice->invoice_number} from Zanini Renovations";
@@ -615,9 +621,9 @@ class ClientProjectInvoiceController extends Controller
 
             // Generate + persist the Receipt PDF BEFORE saving status so
             // the receipt_pdf_path is committed atomically with the paid state.
-            $pdf = $this->renderReceiptPdf($client_project, $invoice);
+            $pdf = $this->pdfService->renderReceiptPdf($client_project, $invoice);
             $bytes = $pdf->output();
-            $relativePath = $this->receiptPdfStoragePath($client_project, $invoice);
+            $relativePath = $this->pdfService->receiptPdfStoragePath($client_project, $invoice);
             Storage::disk('local')->put($relativePath, $bytes);
             $invoice->receipt_pdf_path = $relativePath;
 
@@ -658,7 +664,7 @@ class ClientProjectInvoiceController extends Controller
         $disk = Storage::disk('local');
         $receiptBytes = $disk->exists($invoice->receipt_pdf_path)
             ? $disk->get($invoice->receipt_pdf_path)
-            : $this->renderReceiptPdf($client_project, $invoice)->output();
+            : $this->pdfService->renderReceiptPdf($client_project, $invoice)->output();
 
         $sendEmail = $request->boolean('also_email_receipt');
         $sendSms = $request->boolean('also_sms_receipt');
@@ -681,7 +687,7 @@ class ClientProjectInvoiceController extends Controller
                     $client_project,
                     $invoice,
                     $receiptBytes,
-                    $this->receiptPdfFilename($client_project, $invoice)
+                    $this->pdfService->receiptPdfFilename($client_project, $invoice)
                 ));
                 $emailSent = true;
 
@@ -914,617 +920,4 @@ class ClientProjectInvoiceController extends Controller
         abort_unless($invoice->client_project_id === $project->id, 404);
     }
 
-    /**
-     * Snapshot the canonical installment description into the invoice at
-     * creation time. We deliberately don't keep it perfectly in sync with
-     * the Financials tab afterwards, because the number has already been
-     * emailed to the client — changing wording on a paid/sent invoice
-     * would be misleading.
-     */
-    protected function createInvoice(ClientProject $project, ?int $installmentNumber): ClientProjectInvoice
-    {
-        $plan = (int) $project->payment_plan ?: 1;
-        $description = null;
-        $items = [];
-        $subtotal = 0.0;
-
-        // Installment-linked invoices get seeded with a single pre-filled
-        // line item that mirrors the installment (description + pre-HST
-        // amount), so the user usually just hits "Send" — no retyping.
-        // Manual invoices stay empty and let the user enter everything.
-        $hst = 0.0;
-
-        if ($installmentNumber !== null) {
-            $description = ClientProjectInvoice::installmentDescriptionFor($plan, $installmentNumber);
-
-            $installment = $project->installments()
-                ->orderBy('sort_order')
-                ->get()
-                ->values()
-                ->get($installmentNumber - 1);
-
-            if ($installment) {
-                $subtotal = round((float) $installment->amount, 2);
-                $items = [[
-                    'description' => $description ?: 'Installment '.$installmentNumber,
-                    'amount' => $subtotal,
-                ]];
-                // HST for installment-linked invoices comes from the
-                // quotation's actual HST share, NOT a flat 13% — see
-                // ClientProjectInstallment::effectiveHst() for the rationale.
-                $hst = round((float) $installment->effectiveHst(), 2);
-            } else {
-                $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
-            }
-        } else {
-            // Manual invoice: seed pre-tax / HST from accepted quotations on fixed-price jobs.
-            if (!$project->isHourly()) {
-                $qSub = $project->quotationSubtotalForFinancials();
-                if ($qSub !== null && $qSub >= 0.01) {
-                    $subtotal = $qSub;
-                    $hst = round((float) $project->acceptedQuotationsFinancialAggregateHst(), 2);
-                } else {
-                    $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
-                }
-            } else {
-                $hst = round($subtotal * ClientProjectInvoice::HST_RATE, 2);
-            }
-        }
-
-        $snap = $this->buildAcceptedQuotationsSnapshot($project);
-
-        return $project->invoices()->create([
-            'installment_number' => $installmentNumber,
-            'installment_description' => $description,
-            'invoice_number' => ClientProjectInvoice::generateNumber(),
-            'items' => $items,
-            'subtotal' => $subtotal,
-            'hst' => $hst,
-            'hst_exempt' => false,
-            'total' => round($subtotal + $hst, 2),
-            'status' => ClientProjectInvoice::STATUS_DRAFT,
-            'version' => 1,
-            'included_project_quotation_ids' => $snap['ids'],
-            'included_quotations_snapshot' => $snap['rows'],
-        ]);
-    }
-
-    /**
-     * @return array{ids: list<int>, rows: list<array<string, mixed>>}
-     */
-    protected function buildAcceptedQuotationsSnapshot(ClientProject $project): array
-    {
-        $accepted = ClientProjectQuotation::query()
-            ->where('client_project_id', $project->id)
-            ->where('status', ClientProjectQuotation::STATUS_ACCEPTED)
-            ->orderBy('id')
-            ->get(['id', 'title', 'quotation_number', 'status', 'total_amount']);
-
-        return [
-            'ids' => $accepted->pluck('id')->values()->all(),
-            'rows' => $accepted->map(static fn (ClientProjectQuotation $q) => [
-                'id' => $q->id,
-                'title' => $q->title,
-                'quotation_number' => $q->quotation_number,
-                'status' => $q->status,
-                'total_amount' => $q->total_amount !== null ? (float) $q->total_amount : null,
-            ])->values()->all(),
-        ];
-    }
-
-    /**
-     * Build a draft invoice for an hourly project from its unbilled,
-     * closed time entries. Each entry becomes one editable line item
-     * (description = "DD/MM/YYYY — note (or 'Hourly work')", amount =
-     * hours × hourly_rate). Every entry is linked back to the new
-     * invoice so it's excluded from the next "Create invoice from hours".
-     *
-     * If the admin deletes the draft later (destroy()), the FK's
-     * ON DELETE SET NULL releases the entries back to "unbilled".
-     */
-    protected function createHourlyInvoice(ClientProject $project, $unbilledEntries): ClientProjectInvoice
-    {
-        $rate = round((float) ($project->hourly_rate ?? 0), 2);
-        $items = [];
-
-        foreach ($unbilledEntries as $entry) {
-            $hours = round((float) ($entry->hours ?? 0), 2);
-            if ($hours <= 0) {
-                continue; // defensive: scopeClosed should already exclude these
-            }
-
-            // Build a parts list and join with " · ". Each component is
-            // only appended when it has real content, so we never end up
-            // with dangling separators.
-            //
-            //   [date] · [start – end] · [X.XX h @ $Y/h] · [note]
-            //
-            // The time range is only included when BOTH start_time and
-            // end_time are set on the entry — i.e. the admin clocked in
-            // and out. Legacy or bulk-entered rows (hours only) fall
-            // back to date + total hours, per the user's explicit ask.
-            $parts = [];
-
-            if ($entry->occurred_on) {
-                $parts[] = ClientProject::formatDate($entry->occurred_on);
-            }
-
-            if (!empty($entry->start_time) && !empty($entry->end_time)) {
-                $parts[] = sprintf(
-                    '%s – %s',
-                    ClientProjectTimeEntry::formatTimeForDisplay($entry->start_time, $entry->occurred_on),
-                    ClientProjectTimeEntry::formatTimeForDisplay($entry->end_time, $entry->occurred_on)
-                );
-            }
-
-            $parts[] = sprintf('%.2f h @ %s/h', $hours, ClientProject::formatMoney($rate));
-
-            $note = trim((string) ($entry->note ?? ''));
-            if ($note !== '') {
-                $parts[] = $note;
-            }
-
-            $items[] = [
-                'description' => implode(' · ', $parts),
-                'amount' => round($hours * $rate, 2),
-                'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR,
-            ];
-        }
-
-        $unbilledExpenses = $project->expenses()
-            ->whereNull('client_project_invoice_id')
-            ->orderBy('occurred_on')
-            ->get();
-
-        foreach ($unbilledExpenses as $exp) {
-            $items[] = [
-                'description' => sprintf(
-                    'Materials · %s (%s)',
-                    $exp->description,
-                    $exp->occurred_on->format('M j, Y')
-                ),
-                // Amount entered on Financials tab is tax-included (Ontario POS style).
-                'amount' => round((float) $exp->amount, 2),
-                'line_kind' => ClientProjectInvoice::LINE_KIND_MATERIALS,
-                'expense_id' => $exp->id,
-            ];
-        }
-
-        [$labour, $materials] = $this->partitionHourlyLineAmounts($items);
-        $hst = round($labour * ClientProjectInvoice::HST_RATE, 2);
-        $grand = round($labour + $hst + $materials, 2);
-
-        // Use a transaction so the link-back to time entries is atomic
-        // with the invoice insert — an exception anywhere rolls back
-        // and leaves the entries unbilled.
-        return DB::transaction(function () use ($project, $items, $labour, $hst, $grand, $unbilledEntries) {
-            $snap = $this->buildAcceptedQuotationsSnapshot($project);
-
-            $invoice = $project->invoices()->create([
-                'installment_number' => null,
-                'installment_description' => 'Hourly work',
-                'invoice_number' => ClientProjectInvoice::generateNumber(),
-                'items' => $items,
-                'subtotal' => $labour,
-                'hst' => $hst,
-                'hst_exempt' => false,
-                'total' => $grand,
-                'status' => ClientProjectInvoice::STATUS_DRAFT,
-                'version' => 1,
-                'included_project_quotation_ids' => $snap['ids'],
-                'included_quotations_snapshot' => $snap['rows'],
-            ]);
-
-            // Attach the time entries to this invoice so they're treated
-            // as "billed" for future hourly invoice creation.
-            $project->timeEntries()
-                ->whereIn('id', $unbilledEntries->pluck('id'))
-                ->update(['client_project_invoice_id' => $invoice->id]);
-
-            $this->syncHourlyExpenseLinks($project, $invoice, $items);
-
-            return $invoice;
-        });
-    }
-
-    /**
-     * The pre-HST amount the invoice's line items must sum to. For
-     * installment-linked invoices this is the installment's pre-tax
-     * amount (already persisted on the installment row as `amount`).
-     * For manual invoices there is no lock — return whatever the user
-     * passed (or the invoice's own subtotal as a fallback).
-     */
-    protected function lockedSubtotal(ClientProject $project, ClientProjectInvoice $invoice, $manualOverride = null): float
-    {
-        if ($invoice->isManual()) {
-            if ($manualOverride !== null && is_numeric($manualOverride)) {
-                return round((float) $manualOverride, 2);
-            }
-
-            return round((float) $invoice->subtotal, 2);
-        }
-
-        $installment = $project->installments()
-            ->orderBy('sort_order')
-            ->get()
-            ->values()
-            ->get($invoice->installment_number - 1);
-
-        return round((float) ($installment->amount ?? 0), 2);
-    }
-
-    /**
-     * HST that the invoice should bill, given a subtotal.
-     *
-     * Installment-linked invoices: HST is sliced proportionally from the
-     * quotation's actual HST (some quotation lines may have been HST-exempt,
-     * so 13% × subtotal would over-charge). The split is anchored on the
-     * locked installment subtotal. When the billed subtotal differs (discount),
-     * HST scales by the same ratio so the quotation's tax mix is preserved.
-     *
-     * Manual / hourly invoices: standard 13% on the supplied subtotal.
-     */
-    protected function computeInvoiceHst(ClientProject $project, ClientProjectInvoice $invoice, float $subtotal): float
-    {
-        // Cash-paid invoices: no HST charged regardless of installment vs manual.
-        if ($invoice->isHstExempt()) {
-            return 0.0;
-        }
-
-        if ($invoice->isManual()) {
-            return round($subtotal * ClientProjectInvoice::HST_RATE, 2);
-        }
-
-        $installment = $project->installments()
-            ->orderBy('sort_order')
-            ->get()
-            ->values()
-            ->get($invoice->installment_number - 1);
-
-        if (!$installment) {
-            return round($subtotal * ClientProjectInvoice::HST_RATE, 2);
-        }
-
-        $lockedBase = round((float) ($installment->amount ?? 0), 2);
-        $lockedHst = round((float) $installment->effectiveHst(), 2);
-
-        if ($lockedBase <= 0.00001) {
-            return round($subtotal * ClientProjectInvoice::HST_RATE, 2);
-        }
-
-        return round($lockedHst * ($subtotal / $lockedBase), 2);
-    }
-
-    /**
-     * The HST amount the invoice will bill (matches whatever
-     * computeInvoiceHst() resolves to at the locked subtotal). Used by
-     * the editor to show the locked HST breakdown alongside the locked
-     * subtotal/total without having to re-derive it on the front end.
-     */
-    protected function lockedHst(ClientProject $project, ClientProjectInvoice $invoice): float
-    {
-        if ($invoice->isHstExempt()) {
-            return 0.0;
-        }
-
-        if ($invoice->isManual()) {
-            $sub = $this->lockedSubtotal($project, $invoice);
-
-            return round($sub * ClientProjectInvoice::HST_RATE, 2);
-        }
-
-        return $this->computeInvoiceHst($project, $invoice, $this->lockedSubtotal($project, $invoice));
-    }
-
-    protected function lockedTotalWithHst(ClientProject $project, ClientProjectInvoice $invoice): float
-    {
-        return round($this->lockedSubtotal($project, $invoice) + $this->lockedHst($project, $invoice), 2);
-    }
-
-    /**
-     * Resolve installment invoice discount: percentage takes precedence over a fixed amount.
-     *
-     * @return array{0: float|null, 1: float|null, 2: float} Stored percent, stored amount column, dollars discounted.
-     */
-    protected function resolveInstallmentDiscountFromRequest(Request $request, float $grossLineSubtotal): array
-    {
-        $rawPct = $request->input('discount_percent');
-        $rawAmt = $request->input('discount_amount');
-        $pct = is_numeric($rawPct) ? (float) $rawPct : 0.0;
-        $amt = $this->parseHybridDiscountCadInput($rawAmt, $grossLineSubtotal);
-
-        if ($pct > 0.00001) {
-            $d = round(min($grossLineSubtotal * $pct / 100, $grossLineSubtotal), 2);
-
-            return [round($pct, 4), null, $d];
-        }
-
-        if ($amt > 0.00001) {
-            $d = round(min($amt, $grossLineSubtotal), 2);
-
-            return [null, $d, $d];
-        }
-
-        return [null, null, 0.0];
-    }
-
-    /**
-     * Matches JS cpMoneyMask.parseHybridCadMoney: no "." → digits are minor units / 100;
-     * includes "." → plain decimal dollars.
-     */
-    protected function parseHybridDiscountCadInput(mixed $raw, float $grossLineSubtotal): float
-    {
-        if ($raw === null || $raw === '') {
-            return 0.0;
-        }
-
-        $s = preg_replace('/\s+/u', '', str_replace(',', '', trim((string) $raw)));
-        if ($s === '') {
-            return 0.0;
-        }
-
-        if (str_contains($s, '.')) {
-            if (! is_numeric($s)) {
-                return 0.0;
-            }
-
-            return round(min(max(0.0, (float) $s), $grossLineSubtotal), 2);
-        }
-
-        $digits = preg_replace('/\D+/', '', $s);
-        if ($digits === '') {
-            return 0.0;
-        }
-
-        $digits = ltrim($digits, '0');
-        if ($digits === '') {
-            $digits = '0';
-        }
-
-        $minor = (int) $digits;
-
-        return round(min($minor / 100.0, $grossLineSubtotal), 2);
-    }
-
-    protected function normaliseItems(array $rows): array
-    {
-        $clean = [];
-        foreach ($rows as $row) {
-            $description = trim((string) ($row['description'] ?? ''));
-            $amount = (float) ($row['amount'] ?? 0);
-            if ($description === '' && $amount == 0.0) {
-                continue;
-            }
-            $clean[] = [
-                'description' => $description,
-                'amount' => round($amount, 2),
-            ];
-        }
-
-        return $clean;
-    }
-
-    /** @return array{0: float, 1: float} Labour (pre-HST) and materials (tax-included) totals. */
-    protected function partitionHourlyLineAmounts(array $items): array
-    {
-        $labour = 0.0;
-        $materials = 0.0;
-        foreach ($items as $row) {
-            $amt = round((float) ($row['amount'] ?? 0), 2);
-            $kind = $row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR;
-            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS || $kind === ClientProjectInvoice::LINE_KIND_GAS) {
-                $materials += $amt;
-            } elseif ($kind === ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
-                $labour -= abs($amt);
-            } else {
-                $labour += $amt;
-            }
-        }
-
-        return [round($labour, 2), round($materials, 2)];
-    }
-
-    /**
-     * Normalise hourly invoice rows + validate materials lines that reference
-     * a project expense snapshot.
-     *
-     * @return array<int, array{description: string, amount: float, line_kind: string, expense_id?: int}>
-     */
-    protected function normaliseHourlyInvoiceItems(ClientProject $project, array $rows): array
-    {
-        $clean = [];
-        foreach ($rows as $row) {
-            $description = trim((string) ($row['description'] ?? ''));
-            $amount = (float) ($row['amount'] ?? 0);
-            $kind = strtolower(trim((string) ($row['line_kind'] ?? ClientProjectInvoice::LINE_KIND_LABOUR)));
-            if ($kind === ClientProjectInvoice::LINE_KIND_MATERIALS || $kind === ClientProjectInvoice::LINE_KIND_GAS) {
-                // keep
-            } elseif ($kind === ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
-                $kind = ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT;
-            } else {
-                $kind = ClientProjectInvoice::LINE_KIND_LABOUR;
-            }
-            if ($description === '' && $amount == 0.0) {
-                continue;
-            }
-
-            if ($kind === ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT) {
-                $amount = abs($amount);
-                if ($amount < 0.0001) {
-                    continue;
-                }
-            }
-            if (($kind === ClientProjectInvoice::LINE_KIND_MATERIALS || $kind === ClientProjectInvoice::LINE_KIND_GAS) && $amount < 0) {
-                continue;
-            }
-
-            $out = [
-                'description' => $description,
-                'amount' => round($amount, 2),
-                'line_kind' => $kind,
-            ];
-
-            $eid = isset($row['expense_id']) ? (int) $row['expense_id'] : null;
-            if ($eid && $kind === ClientProjectInvoice::LINE_KIND_MATERIALS) {
-                $owns = ClientProjectExpense::query()
-                    ->where('client_project_id', $project->id)
-                    ->where('id', $eid)
-                    ->exists();
-                if ($owns) {
-                    $out['expense_id'] = $eid;
-                }
-            }
-
-            $clean[] = $out;
-        }
-
-        return $clean;
-    }
-
-    /**
-     * Keep client_project_expenses.client_project_invoice_id aligned with
-     * materials lines that reference an expense snapshot.
-     */
-    protected function syncHourlyExpenseLinks(ClientProject $project, ClientProjectInvoice $invoice, array $items): void
-    {
-        $wanted = [];
-        foreach ($items as $row) {
-            if (($row['line_kind'] ?? '') === ClientProjectInvoice::LINE_KIND_MATERIALS && ! empty($row['expense_id'])) {
-                $wanted[] = (int) $row['expense_id'];
-            }
-        }
-        $wanted = array_values(array_unique($wanted));
-
-        $clear = ClientProjectExpense::query()
-            ->where('client_project_id', $project->id)
-            ->where('client_project_invoice_id', $invoice->id);
-
-        if (count($wanted) > 0) {
-            $clear->whereNotIn('id', $wanted);
-        }
-
-        $clear->update(['client_project_invoice_id' => null]);
-
-        foreach ($wanted as $id) {
-            ClientProjectExpense::query()
-                ->where('client_project_id', $project->id)
-                ->where('id', $id)
-                ->update(['client_project_invoice_id' => $invoice->id]);
-        }
-    }
-
-    // --- PDF rendering ---------------------------------------------------
-
-    protected function renderInvoicePdf(ClientProject $project, ClientProjectInvoice $invoice)
-    {
-        $pdf = Pdf::loadView('admin.client_projects.invoice.pdf', [
-            'project' => $project,
-            'invoice' => $invoice,
-            'isHourlyManual' => $project->isHourly() && $invoice->isManual(),
-            'hourlyLabourTotal' => $invoice->hourlyLabourTotalFromItems(),
-            'hourlyMaterialsTotal' => $invoice->hourlyMaterialsTotalFromItems(),
-        ])
-            ->setPaper('a4')
-            ->setOption('isRemoteEnabled', true)
-            ->setOption('isHtml5ParserEnabled', true)
-            ->setOption('defaultFont', 'Roboto');
-
-        $pdf->render();
-        $this->stampPageNumbers($pdf);
-
-        return $pdf;
-    }
-
-    protected function renderReceiptPdf(ClientProject $project, ClientProjectInvoice $invoice)
-    {
-        $pdf = Pdf::loadView('admin.client_projects.invoice.receipt', [
-            'project' => $project,
-            'invoice' => $invoice,
-            'isHourlyManual' => $project->isHourly() && $invoice->isManual(),
-            'hourlyLabourTotal' => $invoice->hourlyLabourTotalFromItems(),
-            'hourlyMaterialsTotal' => $invoice->hourlyMaterialsTotalFromItems(),
-        ])
-            ->setPaper('a4')
-            ->setOption('isRemoteEnabled', true)
-            ->setOption('isHtml5ParserEnabled', true)
-            ->setOption('defaultFont', 'Roboto');
-
-        $pdf->render();
-        $this->stampPageNumbers($pdf);
-
-        return $pdf;
-    }
-
-    protected function stampPageNumbers($pdf): void
-    {
-        $dompdf = $pdf->getDomPDF();
-        $canvas = $dompdf->getCanvas();
-        $fontMetrics = $dompdf->getFontMetrics();
-
-        $font = $fontMetrics->getFont('Roboto', 'normal') ?: $fontMetrics->getFont('Helvetica', 'normal');
-        $size = 9;
-        $color = [0.42, 0.45, 0.50]; // #6b7280
-
-        $text = 'Page {PAGE_NUM} of {PAGE_COUNT}';
-        $reservedWidth = $fontMetrics->getTextWidth('Page 99 of 99', $font, $size);
-
-        $x = $canvas->get_width() - 60 - $reservedWidth;
-        $y = $canvas->get_height() - 50;
-
-        $canvas->page_text($x, $y, $text, $font, $size, $color);
-    }
-
-    // --- Path / filename helpers -----------------------------------------
-
-    protected function invoicePdfStoragePath(ClientProject $project, ClientProjectInvoice $invoice): string
-    {
-        if ($invoice->isManual()) {
-            return sprintf(
-                'invoices/project-%d-manual-%d-v%d.pdf',
-                $project->id,
-                $invoice->id,
-                $invoice->version
-            );
-        }
-
-        return sprintf(
-            'invoices/project-%d-installment-%d-v%d.pdf',
-            $project->id,
-            $invoice->installment_number,
-            $invoice->version
-        );
-    }
-
-    protected function receiptPdfStoragePath(ClientProject $project, ClientProjectInvoice $invoice): string
-    {
-        if ($invoice->isManual()) {
-            return sprintf(
-                'receipts/project-%d-manual-%d-v%d.pdf',
-                $project->id,
-                $invoice->id,
-                $invoice->version
-            );
-        }
-
-        return sprintf(
-            'receipts/project-%d-installment-%d-v%d.pdf',
-            $project->id,
-            $invoice->installment_number,
-            $invoice->version
-        );
-    }
-
-    protected function invoicePdfFilename(ClientProject $project, ClientProjectInvoice $invoice): string
-    {
-        $slug = Str::slug($project->name) ?: 'project-'.$project->id;
-
-        return "invoice-{$invoice->invoice_number}-{$slug}.pdf";
-    }
-
-    protected function receiptPdfFilename(ClientProject $project, ClientProjectInvoice $invoice): string
-    {
-        $slug = Str::slug($project->name) ?: 'project-'.$project->id;
-
-        return "receipt-{$invoice->invoice_number}-{$slug}.pdf";
-    }
 }

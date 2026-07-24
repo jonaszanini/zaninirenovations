@@ -14,6 +14,9 @@ class User extends Authenticatable
     use HasFactory;
     use Notifiable;
 
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_STAFF = 'staff';
+
     /**
      * @var list<string>
      */
@@ -21,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -41,5 +45,16 @@ class User extends Authenticatable
     public function googlePhotosToken(): HasOne
     {
         return $this->hasOne(GooglePhotosToken::class);
+    }
+
+    /**
+     * 'admin' (default, full access incl. deleting records) vs 'staff'
+     * (day-to-day use, blocked from destructive actions). New accounts
+     * default to 'admin' at the DB level — this is opt-in restriction,
+     * not opt-in access.
+     */
+    public function isAdmin(): bool
+    {
+        return ($this->role ?? self::ROLE_ADMIN) === self::ROLE_ADMIN;
     }
 }

@@ -39,7 +39,7 @@
   </form>
 
   @if ($projects->isEmpty())
-    <div class="admin-table-wrap">
+    <div class="admin-card">
       <div class="admin-empty">
         <p>{{ ($filters['q'] !== '' || $filters['category'] !== '')
           ? 'No portfolio projects match these filters.'

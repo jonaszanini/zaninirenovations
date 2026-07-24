@@ -129,7 +129,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->get('/dashboard', [DashboardController::class, 'index'])
     ->name('admin.dashboard');
 
-Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::get('/', function () {
         return redirect()->route('admin.dashboard');
@@ -166,6 +166,22 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     // Client directory (shared contacts for new projects).
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class)->except(['show']);
+    Route::resource('client-tags', \App\Http\Controllers\Admin\ClientTagController::class)
+        ->except(['show']);
+
+    // Team / role management (admin vs staff — see RestrictDestructiveActions).
+    Route::resource('users', \App\Http\Controllers\Admin\UserController::class)
+        ->only(['index', 'edit', 'update']);
+
+    // Global search — one box across clients, projects, and quotations.
+    Route::get('search', [\App\Http\Controllers\Admin\GlobalSearchController::class, 'index'])
+        ->name('search.index');
+
+    // Task / reminder inbox.
+    Route::patch('tasks/{task}/toggle', [\App\Http\Controllers\Admin\TaskController::class, 'toggle'])
+        ->name('tasks.toggle');
+    Route::resource('tasks', \App\Http\Controllers\Admin\TaskController::class)
+        ->only(['index', 'store', 'update', 'destroy']);
 
     Route::get('materials/vendor-link/amazon/{asin}', [\App\Http\Controllers\Admin\MaterialVendorLinkController::class, 'amazon'])
         ->name('materials.vendor-link.amazon')

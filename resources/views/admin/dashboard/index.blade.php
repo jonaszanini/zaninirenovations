@@ -159,7 +159,7 @@
         @if (count($d['upcoming']) === 0)
           <p class="dash-empty">No project start or end dates in the next 30 days.</p>
         @else
-          <div style="overflow-x:auto;">
+          <div class="admin-table-scroll">
             <table class="dash-table">
               <thead>
                 <tr>
@@ -223,7 +223,7 @@
         @if (count($d['overdue_invoices']) === 0)
           <p class="dash-empty">No overdue sent invoices with a due date.</p>
         @else
-          <div style="overflow-x:auto;">
+          <div class="admin-table-scroll">
             <table class="dash-table">
               <thead>
                 <tr>

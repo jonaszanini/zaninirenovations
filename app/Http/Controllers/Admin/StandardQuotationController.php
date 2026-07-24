@@ -16,7 +16,6 @@ use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -185,8 +184,8 @@ class StandardQuotationController extends Controller
 
     public function linkToProject(Request $request, StandardQuotation $standard_quotation)
     {
-        if ($standard_quotation->isLinked()) {
-            return back()->with('error', 'This standard quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($standard_quotation, 'standard')) {
+            return $resp;
         }
 
         if ((float) $standard_quotation->grand_total <= 0) {
@@ -202,8 +201,8 @@ class StandardQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($standard_quotation, $project);
 
-        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
-            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
+        if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
+            return $resp;
         }
 
         $lineDesc = trim((string) ($data['link_line_description'] ?? ''));
@@ -227,8 +226,8 @@ class StandardQuotationController extends Controller
         StandardQuotation $standard_quotation,
         ClientProjectStatusService $statusService
     ) {
-        if ($standard_quotation->isLinked()) {
-            return back()->with('error', 'This standard quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($standard_quotation, 'standard')) {
+            return $resp;
         }
 
         if ((float) $standard_quotation->grand_total <= 0) {
@@ -256,11 +255,7 @@ class StandardQuotationController extends Controller
         }
 
         $clientName = trim($data['fp_client_name']);
-        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
-        if ($projectTitle === '') {
-            $projectTitle = $clientName.' — Standard';
-        }
-        $projectTitle = Str::limit($projectTitle, 255, '');
+        $projectTitle = $this->resolveNewProjectTitle($data['fp_project_name'] ?? null, $clientName, 'Standard');
 
         $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $standard_quotation, $lineDesc) {
             $project = ClientProject::create([
@@ -281,8 +276,7 @@ class StandardQuotationController extends Controller
             return $project;
         });
 
-        $statusService->onCreated($project, false);
-        app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+        $this->finalizeCreatedProjectFromQuotation($project, $statusService);
 
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')
@@ -711,17 +705,4 @@ class StandardQuotationController extends Controller
         return round($contingency * ($taxableSub / $matSub), 2);
     }
 
-    protected function normalisePhoneOnRequest(Request $request): void
-    {
-        if (!$request->has('fp_client_phone')) {
-            return;
-        }
-
-        $raw = (string) $request->input('fp_client_phone');
-        $digits = preg_replace('/\D/', '', $raw);
-
-        $request->merge([
-            'fp_client_phone' => $digits === '' ? null : $digits,
-        ]);
-    }
 }
