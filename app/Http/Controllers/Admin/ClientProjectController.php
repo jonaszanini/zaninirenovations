@@ -313,6 +313,7 @@ class ClientProjectController extends Controller
             'calendarLink' => $calendarLink,
             'scheduleEvents' => $scheduleEvents,
             'activeHelpers' => \App\Models\Helper::query()->active()->orderBy('name')->get(),
+            'inactiveHelpers' => \App\Models\Helper::query()->where('is_active', false)->orderBy('name')->get(),
             'linkedUtilities' => $linkedUtilities,
         ]);
     }

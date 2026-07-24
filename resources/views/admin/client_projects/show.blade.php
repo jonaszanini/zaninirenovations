@@ -1002,7 +1002,7 @@
       </div>
     @else
       @include('admin.client_projects._time', ['project' => $project])
-      @include('admin.client_projects._helper_time', ['project' => $project, 'activeHelpers' => $activeHelpers ?? collect()])
+      @include('admin.client_projects._helper_time', ['project' => $project, 'activeHelpers' => $activeHelpers ?? collect(), 'inactiveHelpers' => $inactiveHelpers ?? collect()])
     @endif
   </section>
 
