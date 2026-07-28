@@ -107,13 +107,14 @@
   .q-payment-schedule-card__intro { margin: 0 0 14px; }
   .q-payment-schedule-options {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* auto-fit (not a fixed 4-up viewport breakpoint) so this stays
+       readable even when squeezed by a sidebar-and-preview-panel layout
+       (e.g. the fence/paving calculators) where the viewport is wide but
+       the actual space available to this card is narrow. */
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 10px;
   }
-  @media (max-width: 900px) {
-    .q-payment-schedule-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-  @media (max-width: 520px) {
+  @media (max-width: 480px) {
     .q-payment-schedule-options { grid-template-columns: 1fr; }
   }
   .q-payment-schedule-option {
