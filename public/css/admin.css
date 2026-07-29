@@ -335,15 +335,20 @@ body.admin-body {
 .admin-global-search__icon {
   position: absolute;
   left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--admin-muted);
   font-size: 0.85rem;
   pointer-events: none;
+  z-index: 1;
 }
 
-.admin-global-search__input {
+/* Must beat `.admin-input { padding: … }` (defined later in this file),
+   otherwise the magnifier sits on top of the placeholder. */
+.admin-global-search .admin-input.admin-global-search__input {
   width: 100%;
   height: var(--admin-control-height, 44px);
-  padding-left: 32px;
+  padding-left: 2.35rem;
 }
 
 @media (max-width: 700px) {
