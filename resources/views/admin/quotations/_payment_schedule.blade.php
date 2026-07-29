@@ -184,13 +184,18 @@
     .q-pct-grid-2, .q-pct-grid-3, .q-pct-grid-4 { grid-template-columns: 1fr; }
   }
 
-  .q-pct-group { margin-bottom: 0; }
+  .q-pct-group {
+    margin-bottom: 0;
+    min-width: 0;
+  }
   .q-pct-group label {
-    font-size: 0.82rem;
+    font-size: 0.7rem;
     font-weight: 600;
     color: #475569;
     margin-bottom: 4px;
     display: block;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
   }
   .q-pct-input-wrap {
     position: relative;
