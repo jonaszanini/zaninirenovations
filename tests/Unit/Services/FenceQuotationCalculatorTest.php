@@ -78,6 +78,37 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertArrayHasKey('totals', $result);
         $this->assertGreaterThan(0, $result['geometry']['total_linear_ft']);
         $this->assertSame(FenceQuotation::HST_RATE, $result['totals']['hst_rate']);
+        $this->assertTrue($result['totals']['include_labour_hst']);
+        $this->assertGreaterThan(0, $result['totals']['labour_hst']);
+    }
+
+    public function test_labour_hst_can_be_excluded(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+
+        $withHst = $calculator->calculate([
+            'sides' => [['length_ft' => 24]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'include_labour_hst' => true,
+        ]);
+        $withoutHst = $calculator->calculate([
+            'sides' => [['length_ft' => 24]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'include_labour_hst' => false,
+        ]);
+
+        $this->assertFalse($withoutHst['totals']['include_labour_hst']);
+        $this->assertSame(0.0, $withoutHst['totals']['labour_hst']);
+        $this->assertSame(
+            round($withHst['totals']['grand_total'] - $withHst['totals']['labour_hst'], 2),
+            $withoutHst['totals']['grand_total']
+        );
     }
 
     public function test_nails_row_uses_box_quantity_from_catalogue(): void

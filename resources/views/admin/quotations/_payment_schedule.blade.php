@@ -41,7 +41,9 @@
         $optPcts = QuotationPaymentSchedule::percentages($n, $savedPercentages[$n] ?? null);
         $summaryText = implode(' / ', array_map(fn ($p) => ((float) round((float) $p, 2)).'%', $optPcts));
       @endphp
-      <label class="q-payment-schedule-option{{ $selectedPlan === $n ? ' is-selected' : '' }}" data-plan-card="{{ $n }}">
+      <label class="q-payment-schedule-option{{ $selectedPlan === $n ? ' is-selected' : '' }}"
+             data-plan-card="{{ $n }}"
+             title="{{ $n === 1 ? '1 installment' : $n.' installments' }}">
         <input type="radio"
                name="payment_installments"
                value="{{ $n }}"

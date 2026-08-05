@@ -34,6 +34,9 @@
       'labour_rate_8ft_per_ft',
       $isEdit ? (float) ($quotation->labour_rate_8ft_per_ft ?? $defaultLabour8) : $defaultLabour8
   );
+  $initialIncludeLabourHst = old('include_labour_hst') !== null
+      ? filter_var(old('include_labour_hst'), FILTER_VALIDATE_BOOLEAN)
+      : ($isEdit ? (bool) ($quotation->include_labour_hst ?? true) : true);
 
   // Initial breakdown (if editing, use the stored snapshot so the page
   // renders with real data before the first preview XHR returns).
@@ -213,6 +216,18 @@
       font-size: 17px;
       font-weight: 700;
       color: #024768;
+    }
+    .fq-labour-hst-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .fq-totals-row--labour-hst-excluded .fq-labour-hst-toggle .admin-checkbox__text,
+    .fq-totals-row--labour-hst-excluded #fq-t-labour-hst {
+      text-decoration: line-through;
+      color: #9ca3af;
     }
     .fq-materials-preview {
       width: 100%;
@@ -602,8 +617,20 @@
           <span>Total</span>
           <span id="fq-t-total">CA$0.00</span>
         </div>
-        <div class="fq-totals-row">
-          <span>HST on labour (13%)</span>
+        <div class="fq-totals-row{{ $initialIncludeLabourHst ? '' : ' fq-totals-row--labour-hst-excluded' }}" id="fq-t-labour-hst-row">
+          <label class="admin-checkbox admin-checkbox--sm fq-labour-hst-toggle" for="fq-include-labour-hst">
+            <input type="hidden" name="include_labour_hst" value="0" form="fq-form">
+            <input type="checkbox"
+                   name="include_labour_hst"
+                   value="1"
+                   id="fq-include-labour-hst"
+                   class="admin-checkbox__input"
+                   form="fq-form"
+                   title="Uncheck to exclude HST on labour."
+                   @checked($initialIncludeLabourHst)>
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text">HST on labour (13%)</span>
+          </label>
           <span id="fq-t-labour-hst">CA$0.00</span>
         </div>
         <div class="fq-totals-row is-hidden" id="fq-t-commute-row">
@@ -650,6 +677,8 @@
   var tLabourRate = document.getElementById('fq-t-labour-rate');
   var tTotal = document.getElementById('fq-t-total');
   var tLabourHst = document.getElementById('fq-t-labour-hst');
+  var tLabourHstRow = document.getElementById('fq-t-labour-hst-row');
+  var includeLabourHstInput = document.getElementById('fq-include-labour-hst');
   var tGrand = document.getElementById('fq-t-grand');
   var tCommuteRow = document.getElementById('fq-t-commute-row');
   var tCommute = document.getElementById('fq-t-commute');
@@ -841,7 +870,8 @@
       board_style: styleSelect.value,
       gate_count: gateCount,
       labour_rate_per_ft: parseLabourRate(labourRate6Input),
-      labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input)
+      labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input),
+      include_labour_hst: includeLabourHstInput ? !!includeLabourHstInput.checked : true
     };
   }
 
@@ -1010,6 +1040,12 @@
     tLabour.textContent = money(t.labour_subtotal);
     tTotal.textContent = money(t.total);
     tLabourHst.textContent = money(t.labour_hst);
+    if (tLabourHstRow) {
+      tLabourHstRow.classList.toggle(
+        'fq-totals-row--labour-hst-excluded',
+        t.include_labour_hst === false || (includeLabourHstInput && !includeLabourHstInput.checked)
+      );
+    }
     if (tCommuteRow) tCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount> 0));
     if (tCommute) tCommute.textContent = money(lastCommuteAmount);
     tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount);
@@ -1046,7 +1082,7 @@
       if (e.target.matches('#fq-gates')) {
         updateGateCheckboxState();
       }
-      if (e.target.matches('#fq-labour-rate-6, #fq-labour-rate-8, #fq-form input, #fq-form select')) {
+      if (e.target.matches('#fq-labour-rate-6, #fq-labour-rate-8, #fq-include-labour-hst, #fq-form input, #fq-form select')) {
         schedulePreview();
       }
     });
@@ -1054,9 +1090,8 @@
 
   if (initialCalc) {
     renderCalc(initialCalc);
-  } else {
-    schedulePreview();
   }
+  schedulePreview();
 
   document.addEventListener('commute-expense:change', function (e) {
     var d = e.detail || {};

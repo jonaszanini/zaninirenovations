@@ -39,6 +39,7 @@ class LowDeckQuotation extends Model
         'hst',
         'labour_total',
         'labour_hst',
+        'include_labour_hst',
         'grand_total',
         'include_commute',
         'commute_trip_percent',
@@ -61,6 +62,7 @@ class LowDeckQuotation extends Model
         'hst' => 'decimal:2',
         'labour_total' => 'decimal:2',
         'labour_hst' => 'decimal:2',
+        'include_labour_hst' => 'boolean',
         'grand_total' => 'decimal:2',
         'payment_installments' => 'integer',
         'payment_percentages' => 'array',
@@ -107,6 +109,49 @@ class LowDeckQuotation extends Model
             $area,
             $this->formatJoistSpacingLabel()
         );
+    }
+
+    /**
+     * Line items for the project Quotation PDF. When labour HST is excluded,
+     * materials and labour are split so only materials remain taxable.
+     *
+     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     */
+    public function projectQuotationLineItems(): array
+    {
+        $summary = $this->summaryDescription();
+        $materials = round((float) $this->materials_subtotal, 2);
+        $labour = round((float) $this->labour_total, 2);
+
+        if ($this->include_labour_hst !== false) {
+            return [[
+                'description' => $summary,
+                'amount' => round($materials + $labour, 2),
+                'apply_hst' => true,
+            ]];
+        }
+
+        $items = [];
+        if ($materials > 0.00001) {
+            $items[] = [
+                'description' => $summary.' — materials',
+                'amount' => $materials,
+                'apply_hst' => true,
+            ];
+        }
+        if ($labour > 0.00001) {
+            $items[] = [
+                'description' => $summary.' — labour',
+                'amount' => $labour,
+                'apply_hst' => false,
+            ];
+        }
+
+        return $items !== [] ? $items : [[
+            'description' => $summary,
+            'amount' => 0.0,
+            'apply_hst' => true,
+        ]];
     }
 
     private function formatJoistSpacingLabel(): string

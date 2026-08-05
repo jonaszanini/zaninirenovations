@@ -22,6 +22,9 @@
       'include_under_deck_gravel',
       $isEdit ? (bool) ($quotation->calculation['inputs']['include_under_deck_gravel'] ?? true) : true
   );
+  $initialIncludeLabourHst = old('include_labour_hst') !== null
+      ? filter_var(old('include_labour_hst'), FILTER_VALIDATE_BOOLEAN)
+      : ($isEdit ? (bool) ($quotation->include_labour_hst ?? true) : true);
   $initialIncludeDiagrams = (bool) old('include_diagrams_on_pdf', $isEdit ? $quotation->include_diagrams_on_pdf : false);
 
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
@@ -59,6 +62,18 @@
     .ld-totals { margin-top: 14px; border-top: 1px solid #e0e4ea; padding-top: 12px; }
     .ld-totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
     .ld-totals-row--total { border-top: 1px solid #d8dee4; margin-top: 6px; padding-top: 10px; font-weight: 600; }
+    .ld-labour-hst-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .ld-totals-row--labour-hst-excluded .ld-labour-hst-toggle .admin-checkbox__text,
+    .ld-totals-row--labour-hst-excluded #ld-t-labour-hst {
+      text-decoration: line-through;
+      color: #9ca3af;
+    }
     .ld-totals-row--grand {
       border-top: 1px solid #d8dee4; margin-top: 6px; padding-top: 10px;
       font-size: 17px; font-weight: 700; color: #024768;
@@ -394,8 +409,20 @@
           <span>Total</span>
           <span id="ld-t-total">CA$0.00</span>
         </div>
-        <div class="ld-totals-row">
-          <span>HST on labour (13%)</span>
+        <div class="ld-totals-row{{ $initialIncludeLabourHst ? '' : ' ld-totals-row--labour-hst-excluded' }}" id="ld-t-labour-hst-row">
+          <label class="admin-checkbox admin-checkbox--sm ld-labour-hst-toggle" for="ld-include-labour-hst">
+            <input type="hidden" name="include_labour_hst" value="0" form="ld-form">
+            <input type="checkbox"
+                   name="include_labour_hst"
+                   value="1"
+                   id="ld-include-labour-hst"
+                   class="admin-checkbox__input"
+                   form="ld-form"
+                   title="Uncheck to exclude HST on labour."
+                   @checked($initialIncludeLabourHst)>
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text">HST on labour (13%)</span>
+          </label>
           <span id="ld-t-labour-hst">CA$0.00</span>
         </div>
         <div class="ld-totals-row is-hidden" id="ld-t-commute-row">
@@ -482,6 +509,8 @@
   var tLabourRate = document.getElementById('ld-t-labour-rate');
   var tTotal = document.getElementById('ld-t-total');
   var tLabourHst = document.getElementById('ld-t-labour-hst');
+  var tLabourHstRow = document.getElementById('ld-t-labour-hst-row');
+  var includeLabourHstInput = document.getElementById('ld-include-labour-hst');
   var tGrand = document.getElementById('ld-t-grand');
   var tCommuteRow = document.getElementById('ld-t-commute-row');
   var tCommute = document.getElementById('ld-t-commute');
@@ -541,7 +570,8 @@
       labour_rate_per_sqft: parseMoney(labourInput),
       waste_dump_fee_cad: parseMoney(wasteInput),
       material_waste_percent: materialWasteInput ? (parseFloat(materialWasteInput.value) || 0) : 10,
-      include_under_deck_gravel: underDeckGravelInput ? !!underDeckGravelInput.checked : true
+      include_under_deck_gravel: underDeckGravelInput ? !!underDeckGravelInput.checked : true,
+      include_labour_hst: includeLabourHstInput ? !!includeLabourHstInput.checked : true
     };
   }
 
@@ -690,6 +720,12 @@
     tLabour.textContent = money(t.labour_subtotal);
     tTotal.textContent = money(t.total);
     tLabourHst.textContent = money(t.labour_hst);
+    if (tLabourHstRow) {
+      tLabourHstRow.classList.toggle(
+        'ld-totals-row--labour-hst-excluded',
+        t.include_labour_hst === false || (includeLabourHstInput && !includeLabourHstInput.checked)
+      );
+    }
     if (tCommuteRow) tCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount > 0));
     if (tCommute) tCommute.textContent = money(lastCommuteAmount);
     tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount);
@@ -1137,7 +1173,7 @@
       if (e.target === widthInput || e.target === lengthInput) {
         updateArea();
       }
-      if (e.target.matches('#ld-form input, #ld-form select')) {
+      if (e.target.matches('#ld-include-labour-hst, #ld-form input, #ld-form select')) {
         schedulePreview();
       }
     });

@@ -139,12 +139,16 @@ class LowDeckQuotationController extends Controller
             'waste_dump_fee_cad' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
             'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'include_under_deck_gravel' => ['nullable', 'boolean'],
+            'include_labour_hst' => ['nullable', 'boolean'],
         ]);
         $data['material_waste_percent'] = $this->normaliseMaterialWastePercent(
             $request->input('material_waste_percent')
         );
         $data['include_under_deck_gravel'] = $request->has('include_under_deck_gravel')
             ? $request->boolean('include_under_deck_gravel')
+            : true;
+        $data['include_labour_hst'] = $request->has('include_labour_hst')
+            ? $request->boolean('include_labour_hst')
             : true;
 
         try {
@@ -403,16 +407,7 @@ class LowDeckQuotationController extends Controller
 
     protected function syncLowDeckLineToProjectQuotation(ClientProject $project, LowDeckQuotation $low_deck_quotation): void
     {
-        $lineAmount = round(
-            (float) $low_deck_quotation->materials_subtotal + (float) $low_deck_quotation->labour_total,
-            2
-        );
-
-        $items = [[
-            'description' => $low_deck_quotation->summaryDescription(),
-            'amount' => $lineAmount,
-            'apply_hst' => true,
-        ]];
+        $items = $low_deck_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $low_deck_quotation);
 
         $snapshot = $low_deck_quotation->only([
@@ -430,6 +425,7 @@ class LowDeckQuotationController extends Controller
             'hst',
             'labour_total',
             'labour_hst',
+            'include_labour_hst',
             'grand_total',
             'include_commute',
             'commute_trip_percent',
@@ -493,6 +489,7 @@ class LowDeckQuotationController extends Controller
             'waste_dump_fee_cad' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
             'material_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'include_under_deck_gravel' => ['nullable', 'boolean'],
+            'include_labour_hst' => ['nullable', 'boolean'],
             'include_diagrams_on_pdf' => ['nullable', 'boolean'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules());
 
@@ -520,6 +517,9 @@ class LowDeckQuotationController extends Controller
             ),
             'include_under_deck_gravel' => $request->has('include_under_deck_gravel')
                 ? $request->boolean('include_under_deck_gravel')
+                : true,
+            'include_labour_hst' => $request->has('include_labour_hst')
+                ? $request->boolean('include_labour_hst')
                 : true,
         ];
     }
@@ -561,6 +561,7 @@ class LowDeckQuotationController extends Controller
             'hst' => $calc['totals']['hst'],
             'labour_total' => $calc['totals']['labour_subtotal'],
             'labour_hst' => $calc['totals']['labour_hst'],
+            'include_labour_hst' => (bool) ($calc['inputs']['include_labour_hst'] ?? true),
             'grand_total' => $calc['totals']['grand_total'],
         ];
 

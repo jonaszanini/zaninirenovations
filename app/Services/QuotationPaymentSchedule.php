@@ -124,7 +124,7 @@ class QuotationPaymentSchedule
             $pct = self::percentages($n);
             $options[] = [
                 'value' => $n,
-                'label' => $n === 1 ? '1 installment' : $n.' installments',
+                'label' => $n.' inst.',
                 'summary' => implode(' / ', array_map(fn ($p) => self::pctLabel($p), $pct)),
             ];
         }

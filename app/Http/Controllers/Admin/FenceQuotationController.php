@@ -214,7 +214,11 @@ class FenceQuotationController extends Controller
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'include_labour_hst' => ['nullable', 'boolean'],
         ]);
+        $data['include_labour_hst'] = $request->has('include_labour_hst')
+            ? $request->boolean('include_labour_hst')
+            : true;
 
         $calc = (new FenceQuotationCalculator())->calculate($data);
 
@@ -359,16 +363,7 @@ class FenceQuotationController extends Controller
      */
     protected function syncFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
-        $lineAmount = round(
-            (float) $fence_quotation->materials_subtotal + (float) $fence_quotation->labour_total,
-            2
-        );
-
-        $items = [[
-            'description' => $fence_quotation->summaryDescription(),
-            'amount' => $lineAmount,
-            'apply_hst' => true,
-        ]];
+        $items = $fence_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $fence_quotation);
 
         $snapshot = $fence_quotation->only([
@@ -387,6 +382,7 @@ class FenceQuotationController extends Controller
             'hst',
             'labour_total',
             'labour_hst',
+            'include_labour_hst',
             'grand_total',
             'include_commute',
             'commute_trip_percent',
@@ -612,12 +608,18 @@ class FenceQuotationController extends Controller
             'gate_count' => ['required', 'integer', 'min:0', 'max:10'],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'include_labour_hst' => ['nullable', 'boolean'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules());
 
-        return $request->validate($rules, array_merge(
+        $data = $request->validate($rules, array_merge(
             QuotationPaymentSchedule::validationMessages(),
             CommuteExpenseService::commuteValidationMessages()
         ));
+        $data['include_labour_hst'] = $request->has('include_labour_hst')
+            ? $request->boolean('include_labour_hst')
+            : true;
+
+        return $data;
     }
 
     /**
@@ -647,6 +649,7 @@ class FenceQuotationController extends Controller
             'hst' => $calc['totals']['hst'],
             'labour_total' => $calc['totals']['labour_subtotal'],
             'labour_hst' => $calc['totals']['labour_hst'],
+            'include_labour_hst' => (bool) ($calc['inputs']['include_labour_hst'] ?? true),
             'grand_total' => $calc['totals']['grand_total'],
         ];
 

@@ -131,6 +131,9 @@ class LowDeckQuotationCalculator
             'waste_dump_fee_cad' => $wasteFee,
             'material_waste_percent' => $materialWastePercent,
             'include_under_deck_gravel' => $includeUnderDeckGravel,
+            'include_labour_hst' => array_key_exists('include_labour_hst', $inputs)
+                ? filter_var($inputs['include_labour_hst'], FILTER_VALIDATE_BOOLEAN)
+                : true,
         ];
     }
 
@@ -1063,7 +1066,8 @@ class LowDeckQuotationCalculator
         $area = (float) $geom['area_sq_ft'];
         $labourRate = (float) $in['labour_rate_per_sqft'];
         $labour = round($area * $labourRate, 2);
-        $labourHst = round($labour * LowDeckQuotation::HST_RATE, 2);
+        $includeLabourHst = (bool) ($in['include_labour_hst'] ?? true);
+        $labourHst = $includeLabourHst ? round($labour * LowDeckQuotation::HST_RATE, 2) : 0.0;
 
         $total = round($materialsSubtotal + $hst + $labour, 2);
         $wasteFee = round((float) $in['waste_dump_fee_cad'], 2);
@@ -1075,6 +1079,7 @@ class LowDeckQuotationCalculator
             'labour_subtotal' => $labour,
             'total' => $total,
             'labour_hst' => $labourHst,
+            'include_labour_hst' => $includeLabourHst,
             'grand_total' => round($total + $labourHst, 2),
             'hst_rate' => LowDeckQuotation::HST_RATE,
             'labour_rate_per_sqft' => round($labourRate, 2),

@@ -261,12 +261,39 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $totals = $result['totals'];
         $this->assertSame(1920.0, $totals['labour_subtotal']); // 192 sq ft × CA$10
         $this->assertSame(round(1920.0 * 0.13, 2), $totals['labour_hst']);
+        $this->assertTrue($totals['include_labour_hst']);
 
         $expectedGrand = round(
             $totals['materials_subtotal'] + $totals['hst'] + $totals['labour_subtotal'] + $totals['labour_hst'],
             2
         );
         $this->assertSame($expectedGrand, $totals['grand_total']);
+    }
+
+    public function test_labour_hst_can_be_excluded(): void
+    {
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $withHst = $calc->calculate([
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'labour_rate_per_sqft' => 10,
+            'include_under_deck_gravel' => false,
+            'include_labour_hst' => true,
+        ]);
+        $withoutHst = $calc->calculate([
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'labour_rate_per_sqft' => 10,
+            'include_under_deck_gravel' => false,
+            'include_labour_hst' => false,
+        ]);
+
+        $this->assertFalse($withoutHst['totals']['include_labour_hst']);
+        $this->assertSame(0.0, $withoutHst['totals']['labour_hst']);
+        $this->assertSame(
+            round($withHst['totals']['grand_total'] - $withHst['totals']['labour_hst'], 2),
+            $withoutHst['totals']['grand_total']
+        );
     }
 
     public function test_area_over_guardrail_is_rejected(): void

@@ -118,6 +118,9 @@ class FenceQuotationCalculator
             'labour_rate_per_ft' => round(max(0, (float) ($inputs['labour_rate_per_ft'] ?? $defaultLabour6)), 2),
             'labour_rate_8ft_per_ft' => round(max(0, (float) ($inputs['labour_rate_8ft_per_ft'] ?? $defaultLabour8)), 2),
             'post_size' => $this->normalisePostSize($inputs['post_size'] ?? null),
+            'include_labour_hst' => array_key_exists('include_labour_hst', $inputs)
+                ? filter_var($inputs['include_labour_hst'], FILTER_VALIDATE_BOOLEAN)
+                : true,
         ];
     }
 
@@ -653,7 +656,8 @@ class FenceQuotationCalculator
         $linearLabour = (float) $geom['total_linear_ft'] * $labourRatePerFt;
         $additionalGateLabour = $additionalGates * $labourPerAdditionalGate;
         $labour = round($linearLabour + $additionalGateLabour, 2);
-        $labourHst = round($labour * FenceQuotation::HST_RATE, 2);
+        $includeLabourHst = (bool) ($in['include_labour_hst'] ?? true);
+        $labourHst = $includeLabourHst ? round($labour * FenceQuotation::HST_RATE, 2) : 0.0;
         $total = round($materialsSubtotal + $hst + $labour, 2);
 
         return [
@@ -662,6 +666,7 @@ class FenceQuotationCalculator
             'labour_subtotal' => $labour,
             'total' => $total,
             'labour_hst' => $labourHst,
+            'include_labour_hst' => $includeLabourHst,
             'grand_total' => round($total + $labourHst, 2),
             'hst_rate' => FenceQuotation::HST_RATE,
             'labour_rate_per_ft' => $labourRatePerFt,
