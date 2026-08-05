@@ -85,7 +85,7 @@
   <div class="admin-card">
     <h3>Payment plan</h3>
 
-    @if ($recalcAnalysis && ($recalcAnalysis['has_discrepancy'] || $recalcAnalysis['blocked']))
+    @if ($recalcAnalysis && ($recalcAnalysis['has_discrepancy'] || ($recalcAnalysis['blocked'] && ! empty($recalcAnalysis['finance_committed']))))
       <div class="cp-contract-warning cp-recalc-banner" role="status">
         <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
         <div class="cp-recalc-banner__body">

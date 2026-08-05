@@ -387,8 +387,10 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
         ->name('quotations.fence.config');
     Route::put('quotations/fence/config/materials', [\App\Http\Controllers\Admin\FenceConfigController::class, 'updateMaterials'])
         ->name('quotations.fence.config.materials.update');
-    Route::post('quotations/fence/config/materials/sync', [\App\Http\Controllers\Admin\FenceConfigController::class, 'syncMaterials'])
-        ->name('quotations.fence.config.materials.sync');
+    Route::post('quotations/fence/config/materials/sync/start', [\App\Http\Controllers\Admin\FenceConfigController::class, 'syncMaterialsStart'])
+        ->name('quotations.fence.config.materials.sync.start');
+    Route::post('quotations/fence/config/materials/sync/step', [\App\Http\Controllers\Admin\FenceConfigController::class, 'syncMaterialsStep'])
+        ->name('quotations.fence.config.materials.sync.step');
     Route::put('quotations/fence/config/formula', [\App\Http\Controllers\Admin\FenceConfigController::class, 'updateFormula'])
         ->name('quotations.fence.config.formula.update');
 

@@ -47,18 +47,20 @@
   <label class="fp-cp-label" for="{{ $pickerId }}">
     Autofill from client directory
   </label>
-  <select id="{{ $pickerId }}"
-          name="fp_client_id"
-          class="admin-input"
-          aria-label="Search clients from directory"
-          data-fp-client-picker
-          data-search-url="{{ $clientsSearchUrl }}"
-          data-name-id="{{ $nameInputId }}"
-          data-email-id="{{ $emailInputId }}"
-          data-phone-id="{{ $phoneInputId }}"
-          data-address-id="{{ $addressInputId }}">
-    <option value="">— Type to search —</option>
-  </select>
+  <div class="fq-catalog-picker">
+    <select id="{{ $pickerId }}"
+            name="fp_client_id"
+            class="fq-catalog-picker__select"
+            aria-label="Search clients from directory"
+            data-fp-client-picker
+            data-search-url="{{ $clientsSearchUrl }}"
+            data-name-id="{{ $nameInputId }}"
+            data-email-id="{{ $emailInputId }}"
+            data-phone-id="{{ $phoneInputId }}"
+            data-address-id="{{ $addressInputId }}">
+      <option value=""></option>
+    </select>
+  </div>
 </div>
 @if (empty($hideDivider))
 <div class="fp-cp-divider">or fill manually</div>
@@ -130,7 +132,8 @@
                   '</div>';
               },
               item: function (data, escape) {
-                return '<div>' + escape(data.label || data.name || '') + '</div>';
+                if (!data.id) return '';
+                return '<div class="fq-catalog-picker__item">' + escape(data.label || data.name || '') + '</div>';
               }
             },
             load: function (query, callback) {

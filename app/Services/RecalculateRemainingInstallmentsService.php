@@ -57,6 +57,8 @@ class RecalculateRemainingInstallmentsService
      *   current_plan: int,
      *   max_remaining: int,
      *   unpaid_invoice_count: int,
+     *   installment_invoice_count: int,
+     *   finance_committed: bool,
      * }
      */
     public function analyze(ClientProject $project): array
@@ -79,6 +81,8 @@ class RecalculateRemainingInstallmentsService
             'current_plan' => (int) ($project->payment_plan ?? 1),
             'max_remaining' => 4,
             'unpaid_invoice_count' => 0,
+            'installment_invoice_count' => 0,
+            'finance_committed' => false,
         ];
 
         if ($project->isHourly() || ! $project->isAccepted()) {
@@ -114,13 +118,25 @@ class RecalculateRemainingInstallmentsService
         $unpaidCount = $unpaid->count();
         $maxRemaining = max(0, 4 - $paidCount);
 
+        $installmentInvoiceCount = $project->invoices()
+            ->whereNotNull('installment_number')
+            ->count();
+
         $unpaidInvoiceCount = $project->invoices()
             ->whereNotNull('installment_number')
             ->where('status', '!=', ClientProjectInvoice::STATUS_PAID)
             ->count();
 
-        $hasDiscrepancy = abs((float) $quotSub - $planPreTax) > 0.01
+        // Only treat quotation vs plan mismatch as a "project total has changed"
+        // situation once finance is committed — installment invoices generated
+        // and/or at least one installment already paid. First-time payment-plan
+        // setup after accepting a proposal must not show that warning.
+        $financeCommitted = $paidCount > 0 || $installmentInvoiceCount > 0;
+
+        $amountsDiffer = abs((float) $quotSub - $planPreTax) > 0.01
             || abs((float) $quotGrand - $planGrand) > 0.01;
+
+        $hasDiscrepancy = $financeCommitted && $amountsDiffer;
 
         $blocked = false;
         $blockReason = null;
@@ -154,6 +170,8 @@ class RecalculateRemainingInstallmentsService
             'current_plan' => (int) ($project->payment_plan ?? max(1, $installments->count())),
             'max_remaining' => $maxRemaining,
             'unpaid_invoice_count' => $unpaidInvoiceCount,
+            'installment_invoice_count' => $installmentInvoiceCount,
+            'finance_committed' => $financeCommitted,
         ];
     }
 

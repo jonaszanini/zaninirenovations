@@ -4256,8 +4256,14 @@ body.cp-modal-open {
   min-width: 240px;
 }
 
+/*
+ * Tom Select search fields — one outer border only.
+ * Do not style both .ts-wrapper and .ts-control with borders (double-box look).
+ * Neutralize .admin-input if it was copied onto the wrapper from the <select>.
+ */
 .fq-catalog-picker .ts-wrapper,
-.fq-catalog-picker-wrap.fq-catalog-picker .ts-wrapper {
+.fq-catalog-picker-wrap.fq-catalog-picker .ts-wrapper,
+.fp-cp-wrap .ts-wrapper {
   flex: 1;
   min-width: 0;
   width: 100%;
@@ -4265,43 +4271,67 @@ body.cp-modal-open {
   border-radius: 8px;
   background: #fff;
   box-shadow: none;
+  padding: 0;
+  min-height: var(--admin-control-height, 44px);
+  box-sizing: border-box;
 }
 
 .fq-catalog-picker > select.tomselected,
-.fq-catalog-picker-wrap > select.tomselected {
+.fq-catalog-picker-wrap > select.tomselected,
+.fp-cp-wrap > select.tomselected {
   display: none !important;
 }
 
 .fq-catalog-picker .ts-control,
-.fq-catalog-picker-wrap.fq-catalog-picker .ts-control {
+.fq-catalog-picker-wrap.fq-catalog-picker .ts-control,
+.fp-cp-wrap .ts-control {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 4px;
-  min-height: 42px;
-  border: none;
+  min-height: calc(var(--admin-control-height, 44px) - 2px);
+  border: none !important;
   border-radius: 8px;
   padding: 6px 10px;
   background: transparent;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 .fq-catalog-picker .ts-wrapper.focus,
-.fq-catalog-picker-wrap.fq-catalog-picker .ts-wrapper.focus {
+.fq-catalog-picker-wrap.fq-catalog-picker .ts-wrapper.focus,
+.fp-cp-wrap .ts-wrapper.focus {
   border-color: var(--admin-primary, #1e5a8a);
   box-shadow: 0 0 0 3px var(--admin-primary-ring, rgba(30, 90, 138, 0.2));
 }
 
-.fq-catalog-picker .ts-control .item {
+.fq-catalog-picker .ts-control .item,
+.fp-cp-wrap .ts-control .item {
   flex: 0 1 auto;
   max-width: calc(100% - 2.5rem);
   margin: 0;
 }
 
-.fq-catalog-picker .ts-control > input {
+/* Empty-value option must not sit beside the search input (looks like a stuck placeholder). */
+.fq-catalog-picker .ts-control .item[data-value=""],
+.fp-cp-wrap .ts-control .item[data-value=""],
+.fq-catalog-picker .ts-wrapper.single.input-active .ts-control .item,
+.fp-cp-wrap .ts-wrapper.single.input-active .ts-control .item {
+  display: none !important;
+}
+
+.fq-catalog-picker .ts-control > input,
+.fp-cp-wrap .ts-control > input {
   flex: 1 1 auto;
   min-width: 5rem;
   width: auto !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0;
+  min-height: 0;
+  font-size: var(--admin-control-font-size, 0.95rem);
+  color: var(--admin-text, #373435);
 }
 
 .fq-catalog-picker .ts-dropdown {
@@ -5616,30 +5646,6 @@ body.cp-modal-open {
 .cp-client-directory-picker.fq-catalog-picker .ts-wrapper,
 .cp-client-directory-picker .fq-catalog-picker .ts-wrapper {
   width: 100%;
-}
-
-.cp-client-directory-picker .ts-control {
-  min-height: 44px;
-  border-radius: 8px;
-  border: 1px solid var(--admin-border, #d8dee4);
-  padding: 6px 10px;
-  background: #fff;
-}
-
-.cp-client-directory-picker .ts-dropdown {
-  z-index: 40;
-  border-radius: 8px;
-  border: 1px solid var(--admin-border, #d8dee4);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-}
-
-.cp-client-directory-picker .ts-dropdown .option {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid var(--admin-border, #e8edf2);
-}
-
-.cp-client-directory-picker .ts-dropdown .option:last-child {
-  border-bottom: 0;
 }
 
 /* Edit project — form + Save/Cancel column beside the narrow card */

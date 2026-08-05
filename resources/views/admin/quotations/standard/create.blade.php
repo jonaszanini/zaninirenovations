@@ -886,6 +886,7 @@
             '</div>';
         },
         item: function (data, escape) {
+          if (!data.id) return '';
           return '<span class="fq-catalog-picker__item">' + escape(data.label) + '</span>';
         }
       },

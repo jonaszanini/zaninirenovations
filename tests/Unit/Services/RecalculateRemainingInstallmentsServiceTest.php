@@ -45,6 +45,46 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
         $this->assertEqualsWithDelta(6780.00, $analysis['quotation_grand'], 0.01);
     }
 
+    public function test_analyze_ignores_discrepancy_before_invoices_or_payments(): void
+    {
+        $project = $this->mockProject([
+            'quot_sub' => 250.00,
+            'quot_grand' => 282.50,
+            'total_amount' => 0,
+            'payment_plan' => 1,
+            'installments' => [],
+            'unpaid_invoice_count' => 0,
+            'installment_invoice_count' => 0,
+        ]);
+
+        $analysis = (new RecalculateRemainingInstallmentsService)->analyze($project);
+
+        $this->assertTrue($analysis['applicable']);
+        $this->assertFalse($analysis['has_discrepancy']);
+        $this->assertFalse($analysis['finance_committed']);
+        $this->assertFalse($analysis['blocked']);
+    }
+
+    public function test_analyze_detects_discrepancy_when_installment_invoices_exist(): void
+    {
+        $unpaid = $this->installment(250.00, 100, false, 282.50);
+
+        $project = $this->mockProject([
+            'quot_sub' => 400.00,
+            'quot_grand' => 452.00,
+            'total_amount' => 250.00,
+            'payment_plan' => 1,
+            'installments' => [$unpaid],
+            'unpaid_invoice_count' => 1,
+            'installment_invoice_count' => 1,
+        ]);
+
+        $analysis = (new RecalculateRemainingInstallmentsService)->analyze($project);
+
+        $this->assertTrue($analysis['finance_committed']);
+        $this->assertTrue($analysis['has_discrepancy']);
+    }
+
     public function test_analyze_blocks_when_new_total_is_below_paid(): void
     {
         $paid = $this->installment(3000.00, 50, true, 3390.00);
@@ -163,7 +203,9 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
         $invoiceRelation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
         $invoiceRelation->shouldReceive('whereNotNull')->with('installment_number')->andReturnSelf();
         $invoiceRelation->shouldReceive('where')->with('status', '!=', ClientProjectInvoice::STATUS_PAID)->andReturnSelf();
-        $invoiceRelation->shouldReceive('count')->andReturn((int) ($opts['unpaid_invoice_count'] ?? 0));
+        $unpaidInvoices = (int) ($opts['unpaid_invoice_count'] ?? 0);
+        $installmentInvoices = (int) ($opts['installment_invoice_count'] ?? $unpaidInvoices);
+        $invoiceRelation->shouldReceive('count')->andReturn($installmentInvoices, $unpaidInvoices);
         $project->shouldReceive('invoices')->andReturn($invoiceRelation);
 
         return $project;

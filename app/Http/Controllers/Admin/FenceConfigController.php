@@ -8,7 +8,8 @@ use App\Models\FenceMaterial;
 use App\Models\Material;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
-use App\Services\MaterialScraping\MaterialPriceSyncService;
+use App\Services\MaterialScraping\SteppedMaterialPriceSync;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
@@ -18,6 +19,8 @@ use Illuminate\Http\Request;
  */
 class FenceConfigController extends Controller
 {
+    private const SYNC_SESSION_PREFIX = 'fence_config_sync.';
+
     public function index()
     {
         $materials = FenceMaterial::query()
@@ -31,11 +34,7 @@ class FenceConfigController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'short_name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor_id', 'quantity_per_package']);
 
-        $linkedSyncCount = $materials
-            ->filter(fn (FenceMaterial $row) => $row->material_id !== null
-                && $row->material !== null
-                && $row->material->isSerpApiSyncable())
-            ->count();
+        $linkedSyncCount = count($this->linkedSyncableMaterialIds($materials));
 
         return view('admin.quotations.fence.config.index', [
             'materials' => $materials,
@@ -69,76 +68,24 @@ class FenceConfigController extends Controller
             ->with('success', 'Fence materials linked to the catalog.');
     }
 
-    public function syncMaterials(
-        MaterialPriceSyncService $syncService,
-        HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher,
-    ) {
-        if (! $localizedPriceFetcher->usesSerpApi()) {
-            return redirect()
-                ->route('admin.quotations.fence.config')
-                ->with('error', 'SerpApi is not configured. Set MATERIALS_SCRAPER_SERPAPI_KEY on the server to sync fence material prices online.');
-        }
-
-        $fenceRows = FenceMaterial::query()
-            ->whereNotNull('material_id')
+    public function syncMaterialsStart(Request $request, SteppedMaterialPriceSync $steppedSync): JsonResponse
+    {
+        $materials = FenceMaterial::query()
             ->with('material')
             ->orderBy('sort_order')
             ->get();
 
-        if ($fenceRows->isEmpty()) {
-            return redirect()
-                ->route('admin.quotations.fence.config')
-                ->with('error', 'No fence materials are linked to the catalog yet. Select a material for each row and save.');
-        }
+        return $steppedSync->start(
+            $request,
+            $this->linkedSyncableMaterialIds($materials),
+            self::SYNC_SESSION_PREFIX,
+            'No linked fence materials are eligible for price sync. Link each row to a Home Depot or Amazon catalog material, then save.',
+        );
+    }
 
-        $ok = 0;
-        $failed = 0;
-        $skipped = 0;
-        $errors = [];
-        $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
-
-        foreach ($fenceRows as $index => $fenceRow) {
-            if ($index > 0 && $delayMs > 0) {
-                usleep($delayMs * 1000);
-            }
-
-            $catalog = $fenceRow->material;
-            if ($catalog === null) {
-                $skipped++;
-                $errors[] = $fenceRow->name.': linked catalog material not found.';
-
-                continue;
-            }
-
-            if (! $catalog->isSerpApiSyncable()) {
-                $skipped++;
-                $errors[] = $catalog->name.': not syncable (Home Depot + homedepot.ca URL, or Amazon vendor + ASIN in SKU).';
-
-                continue;
-            }
-
-            $result = $syncService->syncOne($catalog);
-            if ($result['status'] === Material::SCRAPE_OK) {
-                $ok++;
-            } elseif ($result['status'] === Material::SCRAPE_SKIPPED) {
-                $skipped++;
-            } else {
-                $failed++;
-                $errors[] = $catalog->name.': '.($result['error'] ?? 'Sync failed.');
-            }
-        }
-
-        $message = sprintf('Fence sync: %d ok, %d failed, %d skipped.', $ok, $failed, $skipped);
-        if ($errors !== []) {
-            $message .= ' '.implode(' ', array_slice($errors, 0, 3));
-            if (count($errors) > 3) {
-                $message .= ' …';
-            }
-        }
-
-        return redirect()
-            ->route('admin.quotations.fence.config')
-            ->with($failed > 0 ? 'error' : 'success', $message);
+    public function syncMaterialsStep(Request $request, SteppedMaterialPriceSync $steppedSync): JsonResponse
+    {
+        return $steppedSync->step($request, self::SYNC_SESSION_PREFIX);
     }
 
     public function updateFormula(Request $request)
@@ -161,5 +108,27 @@ class FenceConfigController extends Controller
         return redirect()
             ->route('admin.quotations.fence.config')
             ->with('success', 'Formula parameters updated.');
+    }
+
+    /**
+     * Unique catalog material IDs linked from fence rows and eligible for price sync.
+     *
+     * @param  \Illuminate\Support\Collection<int, FenceMaterial>  $materials
+     * @return list<int>
+     */
+    private function linkedSyncableMaterialIds($materials): array
+    {
+        $ids = [];
+
+        foreach ($materials as $row) {
+            $catalog = $row->material;
+            if ($catalog === null || ! $catalog->isSerpApiSyncable()) {
+                continue;
+            }
+
+            $ids[(int) $catalog->id] = (int) $catalog->id;
+        }
+
+        return array_values($ids);
     }
 }

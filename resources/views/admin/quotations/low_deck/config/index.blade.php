@@ -117,7 +117,7 @@
                             @if (filled($pickerUrl)) data-store-url="{{ $pickerUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
                             @if ($storeAsin) data-store-asin="{{ $storeAsin }}" @endif
                             aria-label="Catalog material for {{ $m->effectiveName() }}">
-                    <option value="">— Search name or SKU —</option>
+                    <option value=""></option>
                   </select>
                 </div>
               </td>
@@ -424,6 +424,7 @@
                 '</div>';
             },
             item: function (data, escape) {
+              if (!data.id) return '';
               return '<span class="fq-catalog-picker__item">' + escape(data.label) + '</span>';
             }
           },

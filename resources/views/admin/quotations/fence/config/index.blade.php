@@ -4,6 +4,7 @@
 
 @push('head')
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css">
+  <link rel="stylesheet" href="{{ asset('css/admin-materials.css') }}?v={{ @filemtime(public_path('css/admin-materials.css')) ?: time() }}">
 @endpush
 
 @section('content')
@@ -33,32 +34,35 @@
         </p>
       </div>
       <div class="fq-config-header__actions">
-        @if ($usesSerpApi)
-          <button type="submit"
-                  form="fq-sync-materials-form"
-                  class="admin-btn admin-btn--ghost"
-                  @disabled($linkedSyncCount === 0)>
-            <i class="fa fa-refresh"></i> Sync fence prices
-          </button>
-        @endif
+        <button type="button"
+                id="fq-sync-prices-btn"
+                class="admin-btn admin-btn--ghost"
+                data-start-url="{{ route('admin.quotations.fence.config.materials.sync.start') }}"
+                data-step-url="{{ route('admin.quotations.fence.config.materials.sync.step') }}"
+                @disabled($linkedSyncCount === 0)>
+          <i class="fa fa-refresh"></i> Sync fence prices
+        </button>
         <button type="submit" class="admin-btn admin-btn--primary">
           <i class="fa fa-save"></i> Save links
         </button>
       </div>
     </div>
 
-    @if ($usesSerpApi)
-      <p class="admin-form-help fq-sync-hint">
-        <strong>Sync fence prices</strong> updates linked catalog materials via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU) ({{ number_format($linkedSyncCount) }} syncable).
-        <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
+    <p class="admin-form-help fq-sync-hint">
+      <strong>Sync fence prices</strong> refreshes every linked catalog material listed below
+      @if ($usesSerpApi)
+        via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU)
+      @else
+        via the store price API
+      @endif
+      ({{ number_format($linkedSyncCount) }} syncable).
+      <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
+      @if ($usesSerpApi)
         · <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>
-      </p>
-    @else
-      <p class="admin-form-help fq-sync-hint">
-        Online sync requires SerpApi on the server. Update linked materials from your PC with
-        <code>php artisan materials:sync-prices</code> (see <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>).
-      </p>
-    @endif
+      @else
+        · On production, set <code>MATERIALS_SCRAPER_SERPAPI_KEY</code> for online sync.
+      @endif
+    </p>
 
     <div class="admin-table-scroll">
       <table class="admin-table fq-materials-table">
@@ -124,7 +128,7 @@
                             @if (filled($pickerUrl)) data-store-url="{{ $pickerUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
                             @if ($storeAsin) data-store-asin="{{ $storeAsin }}" @endif
                             aria-label="Catalog material for {{ $m->effectiveName() }}">
-                    <option value="">— Search name or SKU —</option>
+                    <option value=""></option>
                   </select>
                 </div>
               </td>
@@ -172,11 +176,27 @@
     </div>
   </form>
 
-  @if ($usesSerpApi)
-    <form id="fq-sync-materials-form" method="post" action="{{ route('admin.quotations.fence.config.materials.sync') }}" class="fq-sync-form">
-      @csrf
-    </form>
-  @endif
+  <div id="fq-sync-progress" class="admin-card admin-card--narrow mat-bulk-progress mat-sync-all-progress" hidden aria-live="polite" style="margin-top:16px;">
+    <div class="mat-bulk-progress__head">
+      <h3 class="mat-bulk-progress__title" id="fq-sync-phase-label">Sync in progress</h3>
+      <span class="mat-bulk-progress__counter" id="fq-sync-counter">0 / 0</span>
+    </div>
+    <div class="mat-bulk-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="fq-sync-progressbar">
+      <div class="mat-bulk-progress__bar" id="fq-sync-bar" style="width:0%"></div>
+    </div>
+    <p class="mat-bulk-progress__message" id="fq-sync-message">Preparing…</p>
+    <dl class="mat-bulk-progress__stats" id="fq-sync-stats">
+      <div><dt>Synced</dt><dd id="fq-sync-ok">0</dd></div>
+      <div><dt>Failed</dt><dd id="fq-sync-failed">0</dd></div>
+      <div><dt>Skipped</dt><dd id="fq-sync-skipped">0</dd></div>
+      <div><dt>Remaining</dt><dd id="fq-sync-remaining">0</dd></div>
+    </dl>
+    <ul class="mat-bulk-progress__log" id="fq-sync-log"></ul>
+    <div class="mat-bulk-progress__done" id="fq-sync-done" hidden>
+      <p class="mat-bulk-progress__summary" id="fq-sync-summary"></p>
+      <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="fq-sync-reload">Reload page</button>
+    </div>
+  </div>
 
   <form method="post" action="{{ route('admin.quotations.fence.config.formula.update') }}" class="admin-card fq-config-card" style="margin-top:16px;">
     @csrf
@@ -463,6 +483,141 @@
         updateNailsPerBox(selectEl, value, optionMap);
       }
 
+      (function initFencePriceSync() {
+        var syncBtn = document.getElementById('fq-sync-prices-btn');
+        if (!syncBtn) return;
+
+        var progressEl = document.getElementById('fq-sync-progress');
+        var phaseLabel = document.getElementById('fq-sync-phase-label');
+        var counterEl = document.getElementById('fq-sync-counter');
+        var barEl = document.getElementById('fq-sync-bar');
+        var progressbarEl = document.getElementById('fq-sync-progressbar');
+        var messageEl = document.getElementById('fq-sync-message');
+        var logEl = document.getElementById('fq-sync-log');
+        var doneEl = document.getElementById('fq-sync-done');
+        var summaryEl = document.getElementById('fq-sync-summary');
+        var reloadBtn = document.getElementById('fq-sync-reload');
+        var okEl = document.getElementById('fq-sync-ok');
+        var failedEl = document.getElementById('fq-sync-failed');
+        var skippedEl = document.getElementById('fq-sync-skipped');
+        var remainingEl = document.getElementById('fq-sync-remaining');
+
+        function csrfToken() {
+          var meta = document.querySelector('meta[name="csrf-token"]');
+          return meta ? meta.getAttribute('content') : '';
+        }
+
+        function postJson(url, body) {
+          return fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': csrfToken()
+            },
+            body: JSON.stringify(body || {})
+          }).then(function (res) {
+            return res.json().then(function (data) {
+              if (!res.ok) {
+                var err = new Error(data.message || ('Request failed (' + res.status + ')'));
+                err.status = res.status;
+                throw err;
+              }
+              return data;
+            });
+          });
+        }
+
+        function updateProgress(data) {
+          var total = data.phase_total || 1;
+          var current = data.current || 0;
+          var pct = total > 0 ? Math.round((current / total) * 100) : 0;
+
+          if (phaseLabel) phaseLabel.textContent = data.phase_label || 'Syncing…';
+          if (counterEl) {
+            counterEl.textContent = data.phase === 'done'
+              ? (current + ' / ' + total + ' complete')
+              : (current + ' / ' + total + ' · ' + (data.remaining ?? (total - current)) + ' remaining');
+          }
+          if (barEl) barEl.style.width = pct + '%';
+          if (progressbarEl) progressbarEl.setAttribute('aria-valuenow', String(pct));
+          if (messageEl) {
+            messageEl.textContent = data.message || '';
+            messageEl.classList.remove('mat-bulk-progress__message--error');
+          }
+          if (data.stats) {
+            if (okEl) okEl.textContent = String(data.stats.ok || 0);
+            if (failedEl) failedEl.textContent = String(data.stats.failed || 0);
+            if (skippedEl) skippedEl.textContent = String(data.stats.skipped || 0);
+            if (remainingEl) remainingEl.textContent = String(data.remaining ?? Math.max(0, total - current));
+          }
+          if (logEl && Array.isArray(data.log)) {
+            logEl.innerHTML = '';
+            data.log.slice().reverse().forEach(function (line) {
+              var li = document.createElement('li');
+              li.textContent = line;
+              logEl.appendChild(li);
+            });
+          }
+        }
+
+        function setRunning(running) {
+          syncBtn.disabled = running || syncBtn.getAttribute('data-empty') === '1';
+          syncBtn.innerHTML = running
+            ? '<i class="fa fa-refresh"></i> Syncing…'
+            : '<i class="fa fa-refresh"></i> Sync fence prices';
+        }
+
+        if (syncBtn.disabled) {
+          syncBtn.setAttribute('data-empty', '1');
+        }
+
+        syncBtn.addEventListener('click', function () {
+          var startUrl = syncBtn.getAttribute('data-start-url');
+          var stepUrl = syncBtn.getAttribute('data-step-url');
+          if (!startUrl || !stepUrl || !progressEl) return;
+
+          progressEl.hidden = false;
+          if (doneEl) doneEl.hidden = true;
+          if (logEl) logEl.innerHTML = '';
+          setRunning(true);
+
+          postJson(startUrl, {})
+            .then(function (startData) {
+              updateProgress(startData);
+
+              function runStep(token) {
+                return postJson(stepUrl, { token: token }).then(function (stepData) {
+                  updateProgress(stepData);
+                  if (stepData.done) {
+                    setRunning(false);
+                    if (doneEl) doneEl.hidden = false;
+                    if (summaryEl) summaryEl.textContent = stepData.summary || stepData.message || 'Done.';
+                    return stepData;
+                  }
+                  return runStep(token);
+                });
+              }
+
+              return runStep(startData.token);
+            })
+            .catch(function (err) {
+              setRunning(false);
+              if (messageEl) {
+                messageEl.textContent = err.message || 'Sync failed.';
+                messageEl.classList.add('mat-bulk-progress__message--error');
+              }
+            });
+        });
+
+        if (reloadBtn) {
+          reloadBtn.addEventListener('click', function () {
+            window.location.reload();
+          });
+        }
+      })();
+
       if (typeof TomSelect === 'undefined') return;
 
       var optionMap = {};
@@ -492,6 +647,7 @@
                 '</div>';
             },
             item: function (data, escape) {
+              if (!data.id) return '';
               return '<span class="fq-catalog-picker__item">' + escape(data.label) + '</span>';
             }
           },

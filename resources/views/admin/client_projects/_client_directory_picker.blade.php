@@ -15,12 +15,13 @@
       <div class="fq-catalog-picker cp-client-directory-picker__field">
         <select id="cp-client-directory"
                 name="client_id"
-                class="admin-input fq-catalog-picker__select"
+                class="fq-catalog-picker__select"
                 data-preview-target="cp-client-preview"
                 data-search-url="{{ $clientsSearchUrl }}"
                 data-initial="{{ (int) old('client_id', ($initialClientForPicker ?? [])['id'] ?? 0) }}"
                 aria-label="Client from directory">
-          <option value="">— Type to search name or email —</option>
+          {{-- Blank option: Tom Select placeholder handles empty state (option text would stick while typing). --}}
+          <option value=""></option>
         </select>
       </div>
       <a href="{{ route('admin.clients.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-client-directory-picker__manage">
@@ -205,6 +206,7 @@
               '</div>';
           },
           item: function (data, escape) {
+            if (!data.id) return '';
             return '<div class="fq-catalog-picker__item">' + escape(data.label || data.display || data.name || '') + '</div>';
           }
         },

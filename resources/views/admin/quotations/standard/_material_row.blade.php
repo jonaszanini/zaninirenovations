@@ -33,10 +33,10 @@
         <label class="sq-mat-catalog-label" for="sq-mat-catalog-{{ $i }}">Search materials</label>
         <div class="fq-catalog-picker">
           <select id="sq-mat-catalog-{{ $i }}" name="materials[{{ $i }}][catalog_material_id]"
-                  class="admin-input fq-catalog-picker__select sq-mat-catalog-select"
+                  class="fq-catalog-picker__select sq-mat-catalog-select"
                   data-initial="{{ (int) $catalogMaterialId }}"
                   aria-label="Search materials database">
-            <option value="">— Search name or SKU —</option>
+            <option value=""></option>
           </select>
         </div>
       </div>
