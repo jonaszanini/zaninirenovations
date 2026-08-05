@@ -3,9 +3,32 @@
 @section('heading', 'New client')
 
 @section('content')
+  @if (session('duplicate_candidates') && session('duplicate_candidates')->isNotEmpty())
+    <div class="admin-card cl-duplicate-warning">
+      <p class="cl-duplicate-warning__title">
+        <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+        Possible duplicate {{ session('duplicate_candidates')->count() === 1 ? 'client' : 'clients' }}
+      </p>
+      <p class="admin-form-help">These existing clients share the same name, email, or phone number:</p>
+      <ul class="cl-duplicate-warning__list">
+        @foreach (session('duplicate_candidates') as $dup)
+          <li>
+            <a href="{{ route('admin.clients.edit', $dup) }}" target="_blank" rel="noopener">{{ $dup->name }}</a>
+            <span class="cl-duplicate-warning__meta">
+              {{ collect([$dup->email, $dup->phone ? \App\Models\ClientProject::formatPhone($dup->phone) : null])->filter()->implode(' · ') ?: '—' }}
+            </span>
+          </li>
+        @endforeach
+      </ul>
+    </div>
+  @endif
+
   <div class="admin-card">
     <form action="{{ route('admin.clients.store') }}" method="post">
       @csrf
+      @if (session('duplicate_candidates'))
+        <input type="hidden" name="confirm_duplicate" value="1">
+      @endif
 
       <div class="admin-form-group">
         <label for="cl-name">Name <span class="cp-required">*</span></label>
@@ -52,9 +75,26 @@
         @error('notes') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
+      <div class="admin-form-group">
+        <label>Tags <a href="{{ route('admin.client-tags.index') }}" class="cl-tag-picker__manage">Manage tags</a></label>
+        @if ($tags->isEmpty())
+          <p class="admin-form-help">No tags yet. <a href="{{ route('admin.client-tags.create') }}">Create one</a>.</p>
+        @else
+          @php $selectedTagIds = old('tags', []); @endphp
+          <div class="cl-tag-picker">
+            @foreach ($tags as $tag)
+              <label class="cl-tag-picker__option">
+                <input type="checkbox" name="tags[]" value="{{ $tag->id }}" @checked(in_array($tag->id, $selectedTagIds))>
+                <span class="admin-badge" style="background:{{ $tag->color }}1a;color:{{ $tag->color }};border:1px solid {{ $tag->color }}55;">{{ $tag->name }}</span>
+              </label>
+            @endforeach
+          </div>
+        @endif
+      </div>
+
       <div class="admin-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary">
-          <i class="fa fa-check"></i> Save client
+          <i class="fa fa-check"></i> {{ session('duplicate_candidates') ? 'Save anyway' : 'Save client' }}
         </button>
         <a href="{{ route('admin.clients.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>

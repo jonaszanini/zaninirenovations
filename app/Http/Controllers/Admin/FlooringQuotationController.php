@@ -14,7 +14,6 @@ use App\Services\FlooringQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class FlooringQuotationController extends Controller
@@ -137,8 +136,8 @@ class FlooringQuotationController extends Controller
 
     public function linkToProject(Request $request, FlooringQuotation $flooring_quotation)
     {
-        if ($flooring_quotation->isLinked()) {
-            return back()->with('error', 'This flooring quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($flooring_quotation, 'flooring')) {
+            return $resp;
         }
 
         $data = $request->validate([
@@ -155,8 +154,8 @@ class FlooringQuotationController extends Controller
         if ((float) $flooring_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');
         }
-        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
-            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
+        if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
+            return $resp;
         }
 
         DB::transaction(function () use ($project, $flooring_quotation) {
@@ -173,8 +172,8 @@ class FlooringQuotationController extends Controller
         FlooringQuotation $flooring_quotation,
         ClientProjectStatusService $statusService
     ) {
-        if ($flooring_quotation->isLinked()) {
-            return back()->with('error', 'This flooring quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($flooring_quotation, 'flooring')) {
+            return $resp;
         }
         if ($flooring_quotation->is_draft) {
             return back()->with('error', 'Publish the quotation before creating a project.');
@@ -209,11 +208,7 @@ class FlooringQuotationController extends Controller
         ]);
 
         $clientName = trim($data['fp_client_name']);
-        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
-        if ($projectTitle === '') {
-            $projectTitle = $clientName.' — Flooring';
-        }
-        $projectTitle = Str::limit($projectTitle, 255, '');
+        $projectTitle = $this->resolveNewProjectTitle($data['fp_project_name'] ?? null, $clientName, 'Flooring');
 
         $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $flooring_quotation) {
             $project = ClientProject::create([
@@ -237,8 +232,7 @@ class FlooringQuotationController extends Controller
             return $project;
         });
 
-        $statusService->onCreated($project, false);
-        app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+        $this->finalizeCreatedProjectFromQuotation($project, $statusService);
 
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')
@@ -573,18 +567,5 @@ class FlooringQuotationController extends Controller
 
         return $request->input('return') === 'project'
             || $request->query('return') === 'project';
-    }
-
-    protected function normalisePhoneOnRequest(Request $request): void
-    {
-        if (! $request->has('fp_client_phone')) {
-            return;
-        }
-
-        $raw = (string) $request->input('fp_client_phone');
-        $digits = preg_replace('/\D/', '', $raw);
-        $request->merge([
-            'fp_client_phone' => $digits === '' ? null : $digits,
-        ]);
     }
 }

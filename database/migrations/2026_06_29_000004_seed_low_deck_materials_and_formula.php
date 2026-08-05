@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Seed the fixed list of low deck materials and a single formula-settings
@@ -59,34 +60,39 @@ return new class extends Migration {
             );
         }
 
-        DB::table('low_deck_formula_settings')->updateOrInsert(
-            ['id' => 1],
-            [
-                'max_area_sq_ft' => 592.00,
-                'block_spacing_ft' => 5.00,
-                'default_joist_spacing_in' => 16,
-                'max_joist_span_in' => 112.00,
-                'board_width_in' => 5.500,
-                'board_gap_in' => 0.125,
-                'post_length_per_block_ft' => 2.00,
-                'gravel_depth_in' => 3.00,
-                'gravel_footprint_in' => 12.00,
-                'gravel_cubic_ft_per_bag' => 0.500,
-                'under_deck_gravel_sq_ft_per_bag' => 8.00,
-                'structural_screws_per_post' => 2,
-                'structural_screws_per_corner' => 4,
-                'board_screws_per_inch' => 0.2000,
-                'frame_screws_per_t_joint' => 3,
-                'frame_screws_per_cross_joint' => 6,
-                'joist_tape_roll_length_ft' => 50.00,
-                'joist_tape_overlap_in' => 2.00,
-                'kerf_in' => 0.125,
-                'labour_rate_per_sqft' => 12.00,
-                'waste_dump_fee_cad' => 60.00,
-                'updated_at' => $now,
-                'created_at' => $now,
-            ]
-        );
+        $settings = [
+            'max_area_sq_ft' => 592.00,
+            'block_spacing_ft' => 5.00,
+            'default_joist_spacing_in' => 16,
+            'max_joist_span_in' => 112.00,
+            'board_width_in' => 5.500,
+            'board_gap_in' => 0.125,
+            'post_length_per_block_ft' => 2.00,
+            'gravel_depth_in' => 3.00,
+            'gravel_footprint_in' => 12.00,
+            'gravel_cubic_ft_per_bag' => 0.500,
+            'structural_screws_per_post' => 2,
+            'structural_screws_per_corner' => 4,
+            'board_screws_per_inch' => 0.2000,
+            'frame_screws_per_t_joint' => 3,
+            'frame_screws_per_cross_joint' => 6,
+            'joist_tape_roll_length_ft' => 50.00,
+            'joist_tape_overlap_in' => 2.00,
+            'kerf_in' => 0.125,
+            'labour_rate_per_sqft' => 12.00,
+            'waste_dump_fee_cad' => 60.00,
+            'updated_at' => $now,
+            'created_at' => $now,
+        ];
+
+        // Column added later (2026_07_08_...) — on a fresh install this
+        // migration runs before that one exists, so only set it when
+        // it's already there. The later migration backfills it either way.
+        if (Schema::hasColumn('low_deck_formula_settings', 'under_deck_gravel_sq_ft_per_bag')) {
+            $settings['under_deck_gravel_sq_ft_per_bag'] = 8.00;
+        }
+
+        DB::table('low_deck_formula_settings')->updateOrInsert(['id' => 1], $settings);
     }
 
     public function down(): void

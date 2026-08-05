@@ -28,11 +28,12 @@ class PaintingQuotationCalculatorTest extends TestCase
             'surface_prep_description' => 'Prep text',
         ], $settings);
 
-        $this->assertSame(1880.0, $calc['scope']['net_painting_area_sqf']);
-        $this->assertSame(27, $calc['scope']['gallons_needed']);
+        // 2000 total - 120 (10x12 bedroom) - 100 (bathrooms) = 1780 net sq ft.
+        $this->assertSame(1780.0, $calc['scope']['net_painting_area_sqf']);
+        $this->assertSame(26, $calc['scope']['gallons_needed']);
 
-        $labor = round(1880 * 2.51, 2);
-        $materials = round(27 * 55 + 100, 2);
+        $labor = round(1780 * 2.51, 2);
+        $materials = round(26 * 55 + 100, 2);
         $subtotal = round($labor + $materials, 2);
         $hst = round($subtotal * 0.13, 2);
 

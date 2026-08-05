@@ -100,6 +100,16 @@
           </a>
         </li>
 
+        <li>
+          <a href="{{ route('admin.tasks.index') }}" class="{{ request()->routeIs('admin.tasks.*') ? 'is-active' : '' }}">
+            <i class="fa fa-check-square-o"></i>
+            Tasks
+            @if ($sidebarOpenTaskCount > 0)
+              <span class="admin-nav-badge">{{ $sidebarOpenTaskCount }}</span>
+            @endif
+          </a>
+        </li>
+
         <li class="admin-nav-group">
           <details class="admin-nav-details" {{ $isBlog ? 'open' : '' }}>
             <summary class="admin-nav-parent {{ $isBlog ? 'is-active' : '' }}">
@@ -232,6 +242,15 @@
             </ul>
           </details>
         </li>
+
+        @if (auth()->user()?->isAdmin())
+          <li>
+            <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
+              <i class="fa fa-users"></i>
+              Team
+            </a>
+          </li>
+        @endif
       </ul>
       <div class="admin-sidebar-footer">
         <div class="admin-sidebar-user">{{ auth()->user()->email }}</div>
@@ -249,6 +268,12 @@
             <i class="fa fa-times admin-menu-icon-close" aria-hidden="true"></i>
           </button>
           <h1>@yield('heading')</h1>
+          <form action="{{ route('admin.search.index') }}" method="get" class="admin-global-search" role="search">
+            <label for="admin-global-search-input" class="sr-only">Search clients, projects, quotations</label>
+            <i class="fa fa-search admin-global-search__icon" aria-hidden="true"></i>
+            <input type="search" id="admin-global-search-input" name="q" class="admin-input admin-global-search__input"
+                   placeholder="Search clients, projects, quotations…" value="{{ request('q') }}" minlength="2">
+          </form>
         </div>
       </header>
       <main class="admin-content">

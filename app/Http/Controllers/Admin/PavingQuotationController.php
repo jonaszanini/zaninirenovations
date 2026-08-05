@@ -12,7 +12,6 @@ use App\Models\PavingQuotation;
 use App\Models\PavingMarbleType;
 use App\Models\PavingStoneType;
 use App\Services\ClientProjectStatusService;
-use App\Services\ClientProjectContactService;
 use App\Services\CommuteExpenseService;
 use App\Services\PavingMarbleCalculator;
 use App\Services\PavingQuotationCalculator;
@@ -20,7 +19,6 @@ use App\Services\PavingStoneEntryResolver;
 use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -190,8 +188,8 @@ class PavingQuotationController extends Controller
 
     public function linkToProject(Request $request, PavingQuotation $paving_quotation)
     {
-        if ($paving_quotation->isLinked()) {
-            return back()->with('error', 'This paving quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($paving_quotation, 'paving')) {
+            return $resp;
         }
 
         $data = $request->validate([
@@ -208,8 +206,8 @@ class PavingQuotationController extends Controller
         if ((float) $paving_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');
         }
-        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
-            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
+        if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
+            return $resp;
         }
 
         $lineDesc = trim((string) ($data['link_line_description'] ?? ''));
@@ -231,8 +229,8 @@ class PavingQuotationController extends Controller
         PavingQuotation $paving_quotation,
         ClientProjectStatusService $statusService
     ) {
-        if ($paving_quotation->isLinked()) {
-            return back()->with('error', 'This paving quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($paving_quotation, 'paving')) {
+            return $resp;
         }
         if ($paving_quotation->is_draft) {
             return back()->with('error', 'Publish the quotation before creating a project.');
@@ -261,11 +259,7 @@ class PavingQuotationController extends Controller
         }
 
         $clientName = trim($data['fp_client_name']);
-        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
-        if ($projectTitle === '') {
-            $projectTitle = $clientName.' — Paving';
-        }
-        $projectTitle = Str::limit($projectTitle, 255, '');
+        $projectTitle = $this->resolveNewProjectTitle($data['fp_project_name'] ?? null, $clientName, 'Paving');
 
         $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $paving_quotation, $lineDesc) {
             $project = ClientProject::create([
@@ -286,8 +280,7 @@ class PavingQuotationController extends Controller
             return $project;
         });
 
-        $statusService->onCreated($project, false);
-        app(ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+        $this->finalizeCreatedProjectFromQuotation($project, $statusService);
 
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')
@@ -351,8 +344,7 @@ class PavingQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-            ...QuotationPaymentSchedule::validationRules(),
-        ], CommuteExpenseService::commuteValidationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
 
@@ -711,18 +703,6 @@ class PavingQuotationController extends Controller
         ];
 
         return $items;
-    }
-
-    protected function normalisePhoneOnRequest(Request $request): void
-    {
-        if (! $request->has('fp_client_phone')) {
-            return;
-        }
-        $raw = (string) $request->input('fp_client_phone');
-        $digits = preg_replace('/\D/', '', $raw);
-        $request->merge([
-            'fp_client_phone' => $digits === '' ? null : $digits,
-        ]);
     }
 
     /** @return array<string, string> Calculator row label => product URL */

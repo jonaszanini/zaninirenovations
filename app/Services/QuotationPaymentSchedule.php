@@ -23,12 +23,21 @@ class QuotationPaymentSchedule
     }
 
     /**
+     * @param array<int|string, float|int|string>|null $customPercentages
      * @return list<float>
      */
-    public static function percentages(int $installments): array
+    public static function percentages(int $installments, ?array $customPercentages = null): array
     {
-        $map = self::percentagesByPlan();
         $plan = self::normalize($installments);
+        if (is_array($customPercentages) && count($customPercentages) === $plan) {
+            $parsed = array_map(fn ($v) => (float) $v, array_values($customPercentages));
+            $sum = array_sum($parsed);
+            if (abs($sum - 100.0) < 0.1 && ! array_filter($parsed, fn ($v) => $v <= 0)) {
+                return $parsed;
+            }
+        }
+
+        $map = self::percentagesByPlan();
 
         return $map[$plan] ?? $map[self::DEFAULT_INSTALLMENTS];
     }
@@ -43,12 +52,13 @@ class QuotationPaymentSchedule
     /**
      * PDF / email bullet lines: [title, detail] pairs.
      *
+     * @param array<int|string, float|int|string>|null $customPercentages
      * @return list<array{0: string, 1: string}>
      */
-    public static function terms(?int $installments): array
+    public static function terms(?int $installments, ?array $customPercentages = null): array
     {
         $plan = self::normalize($installments);
-        $pct = self::percentages($plan);
+        $pct = self::percentages($plan, $customPercentages);
 
         return match ($plan) {
             1 => [
@@ -127,6 +137,9 @@ class QuotationPaymentSchedule
     {
         return [
             'payment_installments' => ['required', 'integer', 'in:'.implode(',', self::ALLOWED)],
+            'payment_percentages' => ['nullable', 'array'],
+            'payment_percentages.*' => ['nullable', 'array'],
+            'payment_percentages.*.*' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
         ];
     }
 

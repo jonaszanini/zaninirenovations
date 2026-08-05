@@ -29,6 +29,7 @@ class StandardQuotation extends Model
         'display_title',
         'work_description',
         'payment_installments',
+        'payment_percentages',
         'includes_material',
         'includes_labour',
         'pdf_detail_mode',
@@ -80,6 +81,7 @@ class StandardQuotation extends Model
         'contingency_amount' => 'decimal:2',
         'contingency_hst' => 'decimal:2',
         'payment_installments' => 'integer',
+        'payment_percentages' => 'array',
         'include_commute' => 'boolean',
         'commute_trip_percent' => 'decimal:2',
         'commute_estimated_trips' => 'integer',
@@ -121,6 +123,17 @@ class StandardQuotation extends Model
     public function usesDetailedPdf(): bool
     {
         return ($this->pdf_detail_mode ?? self::PDF_DETAIL_SUMMARY) === self::PDF_DETAIL_DETAILED;
+    }
+
+    /**
+     * Short human-readable line used as the placeholder text when linking
+     * this quotation to a project (see _link_to_project_card.blade.php).
+     */
+    public function summaryDescription(): string
+    {
+        $title = trim((string) ($this->display_title ?? ''));
+
+        return $title !== '' ? $title : 'Standard quotation';
     }
 
     /**

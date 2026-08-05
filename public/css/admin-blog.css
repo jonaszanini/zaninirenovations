@@ -68,6 +68,18 @@
   flex: 0 1 320px;
 }
 
+@media (max-width: 700px) {
+  .cp-clients-toolbar-search {
+    flex-wrap: wrap;
+  }
+  .cp-clients-toolbar-search__input,
+  .cp-clients-toolbar-search select {
+    flex: 1 1 160px;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
 .blog-admin-gemini-status {
   font-size: 12px;
   color: #15803d;

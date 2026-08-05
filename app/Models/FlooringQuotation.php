@@ -19,6 +19,7 @@ class FlooringQuotation extends Model
         'final_quote_total',
         'work_description',
         'payment_installments',
+        'payment_percentages',
         'version',
         'linked_at',
     ];
@@ -29,6 +30,7 @@ class FlooringQuotation extends Model
         'is_draft' => 'boolean',
         'final_quote_total' => 'decimal:2',
         'payment_installments' => 'integer',
+        'payment_percentages' => 'array',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];

@@ -17,7 +17,6 @@ use App\Services\PaintingQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -153,8 +152,8 @@ class PaintingQuotationController extends Controller
 
     public function linkToProject(Request $request, PaintingQuotation $painting_quotation)
     {
-        if ($painting_quotation->isLinked()) {
-            return back()->with('error', 'This painting quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($painting_quotation, 'painting')) {
+            return $resp;
         }
 
         $data = $request->validate([
@@ -171,8 +170,8 @@ class PaintingQuotationController extends Controller
         if ((float) $painting_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');
         }
-        if (in_array($project->status, ClientProject::statusesClosedToNewQuotations(), true)) {
-            return back()->with('error', 'Cannot link to this project — it no longer accepts new quotations.');
+        if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
+            return $resp;
         }
 
         $lineDesc = trim((string) ($data['link_line_description'] ?? ''));
@@ -194,8 +193,8 @@ class PaintingQuotationController extends Controller
         PaintingQuotation $painting_quotation,
         ClientProjectStatusService $statusService
     ) {
-        if ($painting_quotation->isLinked()) {
-            return back()->with('error', 'This painting quotation is already linked to a project.');
+        if ($resp = $this->guardQuotationAlreadyLinked($painting_quotation, 'painting')) {
+            return $resp;
         }
         if ($painting_quotation->is_draft) {
             return back()->with('error', 'Publish the quotation before creating a project.');
@@ -224,11 +223,7 @@ class PaintingQuotationController extends Controller
         }
 
         $clientName = trim($data['fp_client_name']);
-        $projectTitle = trim((string) ($data['fp_project_name'] ?? ''));
-        if ($projectTitle === '') {
-            $projectTitle = $clientName.' — Painting';
-        }
-        $projectTitle = Str::limit($projectTitle, 255, '');
+        $projectTitle = $this->resolveNewProjectTitle($data['fp_project_name'] ?? null, $clientName, 'Painting');
 
         $project = DB::transaction(function () use ($data, $projectTitle, $clientName, $painting_quotation, $lineDesc) {
             $project = ClientProject::create([
@@ -249,8 +244,7 @@ class PaintingQuotationController extends Controller
             return $project;
         });
 
-        $statusService->onCreated($project, false);
-        app(\App\Services\ClientProjectContactService::class)->ensureProjectLinkedToDirectory($project->fresh());
+        $this->finalizeCreatedProjectFromQuotation($project, $statusService);
 
         return redirect()
             ->to(route('admin.client-projects.show', $project).'#quotation')
@@ -324,8 +318,7 @@ class PaintingQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-            ...QuotationPaymentSchedule::validationRules(),
-        ], CommuteExpenseService::commuteValidationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
 
@@ -571,16 +564,4 @@ class PaintingQuotationController extends Controller
         ], $this->quotationLinkClientNameAttributes($project)));
     }
 
-    protected function normalisePhoneOnRequest(Request $request): void
-    {
-        if (! $request->has('fp_client_phone')) {
-            return;
-        }
-
-        $raw = (string) $request->input('fp_client_phone');
-        $digits = preg_replace('/\D/', '', $raw);
-        $request->merge([
-            'fp_client_phone' => $digits === '' ? null : $digits,
-        ]);
-    }
 }

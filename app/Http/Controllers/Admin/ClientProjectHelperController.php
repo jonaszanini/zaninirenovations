@@ -475,9 +475,13 @@ class ClientProjectHelperController extends Controller
 
     public function bulkMarkHelperPaymentsAcknowledged(Request $request, ClientProject $client_project)
     {
+        // Note: a single payment can cover several time entries, and the
+        // checkbox for acknowledgement is rendered once per entry (all
+        // sharing that payment's id) — so duplicate values here are
+        // expected, not invalid. They're deduped below via array_unique().
         $data = $request->validate([
             'payment_ids' => ['required', 'array', 'min:1'],
-            'payment_ids.*' => ['integer', 'distinct'],
+            'payment_ids.*' => ['integer'],
         ], [
             'payment_ids.required' => 'Select at least one payment to acknowledge.',
         ]);

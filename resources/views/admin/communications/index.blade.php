@@ -49,97 +49,99 @@
   </form>
 
   @if ($logs->isEmpty())
-    <div class="admin-table-wrap">
+    <div class="admin-card">
       <div class="admin-empty">
         <p>No communications match these filters yet.</p>
       </div>
     </div>
   @else
-    <div class="admin-table-wrap">
-      <table class="admin-table cp-table">
-        <thead>
-          <tr>
-            <th>Client</th>
-            <th>Project</th>
-            <th>Type</th>
-            <th>Reason</th>
-            <th>Description</th>
-            <th>Recipient</th>
-            <th>Status</th>
-            <th>Date &amp; time</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach ($logs as $log)
-            @php
-              $isSms = $log->channel === \App\Models\ClientCommunicationLog::CHANNEL_SMS;
-              $isAdminBound = $log->direction === \App\Models\ClientCommunicationLog::DIRECTION_TO_ADMIN;
-              $isFailed = $log->isFailed();
-              $reasonColor = $log->reasonColor();
-              $projectUrl = $log->client_project_id
-                ? route('admin.client-projects.show', $log->client_project_id)
-                : null;
-            @endphp
-            <tr @class(['admin-input', 'cp-comm-row-failed' => $isFailed])>
-              <td>
-                <strong>{{ $log->clientNameLabel() }}</strong>
-                @if ($isAdminBound)
-                  <div class="cp-subtle"><i class="fa fa-user-secret" aria-hidden="true"></i> Internal</div>
-                @endif
-              </td>
-              <td>
-                @if ($projectUrl)
-                  <a href="{{ $projectUrl }}">{{ $log->projectNameLabel() }}</a>
-                @else
-                  {{ $log->projectNameLabel() }}
-                @endif
-              </td>
-              <td>
-                <span class="cp-badge" style="background: {{ $isSms ? '#10b98120' : '#3b82f620' }}; color: {{ $isSms ? '#10b981' : '#3b82f6' }};">
-                  <i class="fa fa-{{ $isSms ? 'comment' : 'envelope' }}" aria-hidden="true"></i>
-                  {{ $log->channelLabel() }}
-                </span>
-              </td>
-              <td>
-                <span class="cp-badge" style="background: {{ $reasonColor }}20; color: {{ $reasonColor }};">
-                  {{ $log->reasonLabel() }}
-                </span>
-              </td>
-              <td>
-                @if ($log->subject)
-                  <div><strong>{{ $log->subject }}</strong></div>
-                @endif
-                <div>{{ $log->description }}</div>
-                @if ($log->error)
-                  <div class="cp-subtle" style="color:#b45309;">
-                    <i class="fa fa-exclamation-triangle"></i> {{ $log->error }}
-                  </div>
-                @endif
-              </td>
-              <td>
-                <div>{{ $log->recipient }}</div>
-                @if ($log->cc)
-                  <div class="cp-subtle">cc: {{ $log->cc }}</div>
-                @endif
-              </td>
-              <td>
-                @if ($isFailed)
-                  <span class="cp-badge" style="background:#ef444420; color:#ef4444;">
-                    <i class="fa fa-times-circle"></i> Failed
-                  </span>
-                @else
-                  <span class="cp-badge" style="background:#22c55e20; color:#22c55e;">
-                    <i class="fa fa-check-circle"></i> Sent
-                  </span>
-                @endif
-              </td>
-              <td>
-                {{ \App\Models\ClientProject::formatDateTime($log->sent_at) }}
-              </td>
+    <div class="admin-card">
+      <div class="admin-table-scroll">
+        <table class="admin-table cp-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Project</th>
+              <th>Type</th>
+              <th>Reason</th>
+              <th>Description</th>
+              <th>Recipient</th>
+              <th>Status</th>
+              <th>Date &amp; time</th>
             </tr>
-          @endforeach
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @foreach ($logs as $log)
+              @php
+                $isSms = $log->channel === \App\Models\ClientCommunicationLog::CHANNEL_SMS;
+                $isAdminBound = $log->direction === \App\Models\ClientCommunicationLog::DIRECTION_TO_ADMIN;
+                $isFailed = $log->isFailed();
+                $reasonColor = $log->reasonColor();
+                $projectUrl = $log->client_project_id
+                  ? route('admin.client-projects.show', $log->client_project_id)
+                  : null;
+              @endphp
+              <tr @class(['admin-input', 'cp-comm-row-failed' => $isFailed])>
+                <td>
+                  <strong>{{ $log->clientNameLabel() }}</strong>
+                  @if ($isAdminBound)
+                    <div class="cp-subtle"><i class="fa fa-user-secret" aria-hidden="true"></i> Internal</div>
+                  @endif
+                </td>
+                <td>
+                  @if ($projectUrl)
+                    <a href="{{ $projectUrl }}">{{ $log->projectNameLabel() }}</a>
+                  @else
+                    {{ $log->projectNameLabel() }}
+                  @endif
+                </td>
+                <td>
+                  <span class="cp-badge" style="background: {{ $isSms ? '#10b98120' : '#3b82f620' }}; color: {{ $isSms ? '#10b981' : '#3b82f6' }};">
+                    <i class="fa fa-{{ $isSms ? 'comment' : 'envelope' }}" aria-hidden="true"></i>
+                    {{ $log->channelLabel() }}
+                  </span>
+                </td>
+                <td>
+                  <span class="cp-badge" style="background: {{ $reasonColor }}20; color: {{ $reasonColor }};">
+                    {{ $log->reasonLabel() }}
+                  </span>
+                </td>
+                <td>
+                  @if ($log->subject)
+                    <div><strong>{{ $log->subject }}</strong></div>
+                  @endif
+                  <div>{{ $log->description }}</div>
+                  @if ($log->error)
+                    <div class="cp-subtle" style="color:#b45309;">
+                      <i class="fa fa-exclamation-triangle"></i> {{ $log->error }}
+                    </div>
+                  @endif
+                </td>
+                <td>
+                  <div>{{ $log->recipient }}</div>
+                  @if ($log->cc)
+                    <div class="cp-subtle">cc: {{ $log->cc }}</div>
+                  @endif
+                </td>
+                <td>
+                  @if ($isFailed)
+                    <span class="cp-badge" style="background:#ef444420; color:#ef4444;">
+                      <i class="fa fa-times-circle"></i> Failed
+                    </span>
+                  @else
+                    <span class="cp-badge" style="background:#22c55e20; color:#22c55e;">
+                      <i class="fa fa-check-circle"></i> Sent
+                    </span>
+                  @endif
+                </td>
+                <td>
+                  {{ \App\Models\ClientProject::formatDateTime($log->sent_at) }}
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
     </div>
     <div class="admin-pagination">
       {{ $logs->links('pagination.admin') }}

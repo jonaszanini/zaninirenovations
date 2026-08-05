@@ -148,6 +148,10 @@
 
       {{-- Full-width drawing area --}}
       <section class="admin-card util-ra-canvas-card">
+        <p class="util-ra-desktop-notice">
+          <i class="fa fa-desktop" aria-hidden="true"></i>
+          Precise drawing works best on a larger screen. On a phone, use two fingers to pan/zoom and expect finer edits (moving corners, walls) to be harder to tap accurately.
+        </p>
         <div class="util-ra-canvas-toolbar">
           <div class="util-ra-toolbar__groups">
             <div class="util-ra-tool-group">

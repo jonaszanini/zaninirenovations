@@ -11,7 +11,8 @@ use App\Models\ClientCommunicationLog;
 use App\Models\AdminCalendarEvent;
 use App\Models\ClientProject;
 use App\Models\ClientProjectPhoto;
-use App\Services\ClientCommunicationLogger;
+use App\Services\ClientProjectCalendarService;
+use App\Services\ClientProjectClientMailer;
 use App\Services\ClientProjectPhotoStorage;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientProjectContactService;
@@ -22,7 +23,6 @@ use App\Services\GoogleCalendarLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -36,6 +36,10 @@ class ClientProjectController extends Controller
 {
   /** @var list<int> */
     public const LIST_PER_PAGE_OPTIONS = [25, 35, 50];
+
+    public function __construct(protected ClientProjectCalendarService $calendarService, protected ClientProjectClientMailer $clientMailer)
+    {
+    }
 
     public function index(Request $request)
     {
@@ -300,7 +304,7 @@ class ClientProjectController extends Controller
         // Calendar tab so the admin can see what days are already taken
         // before choosing a start/end. Excludes the current project so its
         // own dates don't show up as "conflicts".
-        $scheduleEvents = $this->buildSchedulePickerEvents($client_project);
+        $scheduleEvents = $this->calendarService->schedulePickerEvents($client_project);
 
         $linkedUtilities = app(ClientProjectLinkedUtilitiesService::class)->forProject($client_project);
 
@@ -311,73 +315,6 @@ class ClientProjectController extends Controller
             'activeHelpers' => \App\Models\Helper::query()->active()->orderBy('name')->get(),
             'linkedUtilities' => $linkedUtilities,
         ]);
-    }
-
-    /**
-     * Build calendar events (job spans + visit days) for every active project
-     * EXCEPT the given one. Used by the start/end date-picker modal so the
-     * admin can pick dates without overlapping other scheduled work.
-     */
-    protected function buildSchedulePickerEvents(ClientProject $current): array
-    {
-        $projects = ClientProject::query()
-            ->where('id', '!=', $current->id)
-            ->whereNotIn('status', ClientProject::terminalStatuses())
-            ->where(function ($q) {
-                $q->where(function ($sub) {
-                    $sub->whereNotNull('start_date')->whereNotNull('end_date');
-                })->orWhereNotNull('visit_date');
-            })
-            ->get();
-
-        $events = [];
-
-        foreach ($projects as $p) {
-            if ($p->start_date && $p->end_date) {
-                $events[] = [
-                    'id' => 'job-'.$p->id,
-                    'title' => $p->name.' — '.$p->client_name,
-                    'start' => $p->start_date->toDateString(),
-                    // FullCalendar treats `end` as exclusive for all-day events.
-                    'end' => \Illuminate\Support\Carbon::parse($p->end_date)->addDay()->toDateString(),
-                    'allDay' => true,
-                    'backgroundColor' => $p->statusColor(),
-                    'borderColor' => $p->statusColor(),
-                    'extendedProps' => [
-                        'kind' => 'job',
-                        'status' => $p->statusLabel(),
-                    ],
-                ];
-            }
-
-            if ($p->visit_date) {
-                $visitDone = (bool) $p->visit_done;
-                $visitColor = $visitDone ? '#94a3b8' : $p->statusColor();
-                $events[] = [
-                    'id' => 'visit-'.$p->id,
-                    'title' => ($visitDone ? 'Visit (done): ' : 'Visit: ').$p->name.' — '.$p->client_name,
-                    'start' => $p->visit_date->toDateString(),
-                    'end' => \Illuminate\Support\Carbon::parse($p->visit_date)->addDay()->toDateString(),
-                    'allDay' => true,
-                    'backgroundColor' => $visitColor,
-                    'borderColor' => $visitColor,
-                    'extendedProps' => [
-                        'kind' => 'visit',
-                        'status' => $visitDone ? 'Visit (completed)' : 'Visit — '.$p->statusLabel(),
-                    ],
-                ];
-            }
-        }
-
-        // Personal / holiday events block the schedule too, so surface them in
-        // the date picker (and its conflict warning) the same as project jobs.
-        foreach (AdminCalendarEvent::query()->whereNotNull('start_date')->whereNotNull('end_date')->get() as $event) {
-            $payload = $event->toFullCalendarEvent();
-            $payload['extendedProps']['status'] = 'Personal event';
-            $events[] = $payload;
-        }
-
-        return $events;
     }
 
     public function storePhotos(Request $request, ClientProject $client_project, ClientProjectPhotoStorage $photoStorage)
@@ -708,46 +645,22 @@ class ClientProjectController extends Controller
             return back()->with('error', "Cannot send the service confirmation — missing client info: {$missing}.");
         }
 
-        $cc = $client_project->secondaryClientEmail();
         $confirmationSubject = 'Service confirmation from Zanini Renovations';
         $confirmationDescription = 'Service booking confirmed — '
             .EasternStandardTimeDisplay::formatCalendarMediumDate($client_project->start_date)
             .' to '.EasternStandardTimeDisplay::formatCalendarMediumDate($client_project->end_date);
 
-        try {
-            $mailer = Mail::to($client_project->client_email, $client_project->client_name);
-            if ($cc) {
-                $mailer->cc($cc);
-            }
-            $mailer->send(new ClientProjectServiceConfirmationClient($client_project));
+        $failure = $this->clientMailer->send(
+            $client_project,
+            new ClientProjectServiceConfirmationClient($client_project),
+            ClientCommunicationLog::REASON_SERVICE_CONFIRMATION,
+            $confirmationSubject,
+            $confirmationDescription,
+            'service confirmation',
+        );
 
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_SERVICE_CONFIRMATION,
-                $client_project->client_email,
-                $cc,
-                $confirmationSubject,
-                $confirmationDescription,
-            );
-        } catch (\Throwable $e) {
-            Log::error('Failed to email service confirmation', [
-                'project_id' => $client_project->id,
-                'message' => $e->getMessage(),
-            ]);
-
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_SERVICE_CONFIRMATION,
-                $client_project->client_email,
-                $cc,
-                $confirmationSubject,
-                $confirmationDescription,
-                ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                false,
-                $e->getMessage(),
-            );
-
-            return back()->with('error', 'Failed to send the service confirmation: '.$e->getMessage());
+        if ($failure !== null) {
+            return back()->with('error', 'Failed to send the service confirmation: '.$failure);
         }
 
         $client_project->service_confirmation_sent_at = now();
@@ -810,46 +723,22 @@ class ClientProjectController extends Controller
             return back()->with('error', "Cannot send the schedule — missing client info: {$missing}.");
         }
 
-        $cc = $client_project->secondaryClientEmail();
         $subject = 'Your project dates with Zanini Renovations';
         $description = 'Schedule dates emailed manually — '
             .EasternStandardTimeDisplay::formatCalendarMediumDate($client_project->start_date)
             .' to '.EasternStandardTimeDisplay::formatCalendarMediumDate($client_project->end_date);
 
-        try {
-            $mailer = Mail::to($client_project->client_email, $client_project->client_name);
-            if ($cc) {
-                $mailer->cc($cc);
-            }
-            $mailer->send(new ClientProjectScheduleDatesClient($client_project));
+        $failure = $this->clientMailer->send(
+            $client_project,
+            new ClientProjectScheduleDatesClient($client_project),
+            ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL,
+            $subject,
+            $description,
+            'manual schedule dates',
+        );
 
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL,
-                $client_project->client_email,
-                $cc,
-                $subject,
-                $description,
-            );
-        } catch (\Throwable $e) {
-            Log::error('Failed to email manual schedule dates', [
-                'project_id' => $client_project->id,
-                'message' => $e->getMessage(),
-            ]);
-
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_SCHEDULE_DATES_MANUAL,
-                $client_project->client_email,
-                $cc,
-                $subject,
-                $description,
-                ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                false,
-                $e->getMessage(),
-            );
-
-            return back()->with('error', 'Failed to send the schedule email: '.$e->getMessage());
+        if ($failure !== null) {
+            return back()->with('error', 'Failed to send the schedule email: '.$failure);
         }
 
         $sendNote = "Schedule dates emailed to {$client_project->clientEmailRecipientsLabel()}.";
@@ -921,48 +810,24 @@ class ClientProjectController extends Controller
                 ->with('error', 'Cannot send the time summary — the client name is missing. Edit the project to add it.');
         }
 
-        $cc = $client_project->secondaryClientEmail();
         $timeSummarySubject = 'Your time tracking summary — Zanini Renovations';
         $timeSummaryDescription = 'Time tracking summary — '.$closedCount.' '
             .Str::plural('entry', $closedCount).', '
             .number_format($client_project->totalHours(), 2).' hours total';
 
-        try {
-            $mailer = Mail::to($client_project->client_email, $client_project->client_name);
-            if ($cc) {
-                $mailer->cc($cc);
-            }
-            $mailer->send(new ClientProjectTimeTrackingSummaryClient($client_project));
+        $failure = $this->clientMailer->send(
+            $client_project,
+            new ClientProjectTimeTrackingSummaryClient($client_project),
+            ClientCommunicationLog::REASON_TIME_TRACKING_SUMMARY,
+            $timeSummarySubject,
+            $timeSummaryDescription,
+            'time tracking summary',
+        );
 
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_TIME_TRACKING_SUMMARY,
-                $client_project->client_email,
-                $cc,
-                $timeSummarySubject,
-                $timeSummaryDescription,
-            );
-        } catch (\Throwable $e) {
-            Log::error('Failed to email time tracking summary', [
-                'project_id' => $client_project->id,
-                'message' => $e->getMessage(),
-            ]);
-
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_TIME_TRACKING_SUMMARY,
-                $client_project->client_email,
-                $cc,
-                $timeSummarySubject,
-                $timeSummaryDescription,
-                ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                false,
-                $e->getMessage(),
-            );
-
+        if ($failure !== null) {
             return back()
                 ->withFragment('time')
-                ->with('error', 'Failed to send the time summary: '.$e->getMessage());
+                ->with('error', 'Failed to send the time summary: '.$failure);
         }
 
         $sendNote = "Time tracking summary emailed to {$client_project->clientEmailRecipientsLabel()}.";
@@ -988,71 +853,8 @@ class ClientProjectController extends Controller
      */
     public function calendar()
     {
-        $projects = ClientProject::query()
-            ->whereNotIn('status', ClientProject::terminalStatuses())
-            ->where(function ($q) {
-                $q->where(function ($sub) {
-                    $sub->whereNotNull('start_date')->whereNotNull('end_date');
-                })->orWhereNotNull('visit_date');
-            })
-            ->orderByRaw('COALESCE(start_date, visit_date)')
-            ->orderByDesc('id')
-            ->get();
-
-        $events = collect();
-
-        foreach ($projects as $p) {
-            if ($p->start_date && $p->end_date) {
-                $endExclusive = \Illuminate\Support\Carbon::parse($p->end_date)->addDay()->toDateString();
-
-                $events->push([
-                    'id' => 'job-'.$p->id,
-                    'title' => $p->name.' — '.$p->client_name,
-                    'start' => $p->start_date->toDateString(),
-                    'end' => $endExclusive,
-                    'allDay' => true,
-                    'url' => route('admin.client-projects.show', $p),
-                    'backgroundColor' => $p->statusColor(),
-                    'borderColor' => $p->statusColor(),
-                    'extendedProps' => [
-                        'kind' => 'job',
-                        'status' => $p->statusLabel(),
-                    ],
-                ]);
-            }
-
-            if ($p->visit_date) {
-                $visitDay = $p->visit_date->toDateString();
-                $visitEndExclusive = \Illuminate\Support\Carbon::parse($p->visit_date)->addDay()->toDateString();
-                $visitDone = (bool) $p->visit_done;
-                $visitColor = $visitDone ? '#94a3b8' : $p->statusColor();
-                $visitStatusLabel = $visitDone
-                    ? 'Visit (completed)'
-                    : 'Visit — '.$p->statusLabel();
-
-                $events->push([
-                    'id' => 'visit-'.$p->id,
-                    'title' => ($visitDone ? 'Visit (done): ' : 'Visit: ').$p->name.' — '.$p->client_name,
-                    'start' => $visitDay,
-                    'end' => $visitEndExclusive,
-                    'allDay' => true,
-                    'url' => route('admin.client-projects.show', $p),
-                    'backgroundColor' => $visitColor,
-                    'borderColor' => $visitColor,
-                    'extendedProps' => [
-                        'kind' => 'visit',
-                        'status' => $visitStatusLabel,
-                    ],
-                ]);
-            }
-        }
-
-        foreach (AdminCalendarEvent::query()->orderBy('start_date')->orderBy('id')->get() as $personal) {
-            $events->push($personal->toFullCalendarEvent());
-        }
-
         return view('admin.client_projects.calendar', [
-            'events' => $events->values(),
+            'events' => $this->calendarService->fullCalendarEvents(),
             'statusLabels' => ClientProject::statusLabels(),
             'statusColors' => ClientProject::statusColors(),
             'personalEventColor' => AdminCalendarEvent::CALENDAR_COLOR,

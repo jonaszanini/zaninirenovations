@@ -105,7 +105,7 @@
   </div>
 
   @if ($projects->isEmpty())
-    <div class="admin-table-wrap">
+    <div class="admin-card">
       <div class="admin-empty">
         <p>{{ (($filters['list'] ?? 'ongoing') === 'ongoing') && ($filters['status'] ?? '') === ''
           ? 'No ongoing pipeline projects match these filters. Try All projects or adjust search and dates.'
@@ -120,70 +120,72 @@
       </div>
     </div>
   @else
-    <div class="admin-table-wrap">
-      <table class="admin-table cp-table">
-        <thead>
-          <tr>
-            <th>Client</th>
-            <th>Project</th>
-            <th>Status</th>
-            <th>Dates</th>
-            <th class="cp-col-amount">Total</th>
-            <th class="cp-col-amount">Paid</th>
-            <th>Last updated</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach ($projects as $project)
-            @php $url = route('admin.client-projects.show', $project); @endphp
-            <tr class="cp-row-link" data-href="{{ $url }}" tabindex="0" role="link" aria-label="Open project {{ $project->name }}">
-              <td>
-                <strong>{{ $project->clientNameForProjectList() }}</strong>
-                @if ($project->client_email)
-                  <div class="cp-subtle">{{ $project->client_email }}</div>
-                @endif
-              </td>
-              <td>
-                <div class="cp-table-project-cell">
-                  <div class="cp-table-project-ref">{{ $project->referenceCode() }}</div>
-                  <strong class="cp-table-project-name">{{ $project->name }}</strong>
-                </div>
-              </td>
-              <td>
-                <span class="cp-badge" style="background: {{ $statusColors[$project->status] ?? '#6b7280' }}20; color: {{ $statusColors[$project->status] ?? '#6b7280' }};">
-                  {{ $statusLabels[$project->status] ?? $project->status }}
-                </span>
-              </td>
-              <td>
-                @if ($project->showsVisitLayoutInProjectList())
-                  @if ($project->showsVisitRequiredInProjectList())
-                    <div class="cp-subtle">Visit required</div>
-                  @else
-                    <div>{{ \App\Models\ClientProject::formatDate($project->visit_date) }}</div>
-                    <div class="cp-subtle">Visit</div>
-                  @endif
-                @else
-                  <div>{{ \App\Models\ClientProject::formatDate($project->start_date) }}</div>
-                  <div class="cp-subtle">→ {{ \App\Models\ClientProject::formatDate($project->end_date) }}</div>
-                @endif
-              </td>
-              <td class="cp-col-amount">
-                @if ($project->isHourly())
-                  @php
-                    $hourlyTotal = round((float) ($project->hours_logged ?? 0) * (float) ($project->hourly_rate ?? 0), 2);
-                  @endphp
-                  {{ \App\Models\ClientProject::formatMoney($hourlyTotal) }}
-                  <div class="cp-subtle">{{ number_format((float) ($project->hours_logged ?? 0), 2) }} h @ {{ \App\Models\ClientProject::formatMoney((float) ($project->hourly_rate ?? 0)) }}/h</div>
-                @else
-                  {{ \App\Models\ClientProject::formatMoney($project->total_amount) }}
-                @endif
-              </td>
-              <td class="cp-col-amount">{{ number_format($project->percentPaid(), 0) }}%</td>
-              <td>{{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</td>
+    <div class="admin-card">
+      <div class="admin-table-scroll">
+        <table class="admin-table cp-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Project</th>
+              <th>Status</th>
+              <th>Dates</th>
+              <th class="cp-col-amount">Total</th>
+              <th class="cp-col-amount">Paid</th>
+              <th>Last updated</th>
             </tr>
-          @endforeach
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @foreach ($projects as $project)
+              @php $url = route('admin.client-projects.show', $project); @endphp
+              <tr class="cp-row-link" data-href="{{ $url }}" tabindex="0" role="link" aria-label="Open project {{ $project->name }}">
+                <td>
+                  <strong>{{ $project->clientNameForProjectList() }}</strong>
+                  @if ($project->client_email)
+                    <div class="cp-subtle">{{ $project->client_email }}</div>
+                  @endif
+                </td>
+                <td>
+                  <div class="cp-table-project-cell">
+                    <div class="cp-table-project-ref">{{ $project->referenceCode() }}</div>
+                    <strong class="cp-table-project-name">{{ $project->name }}</strong>
+                  </div>
+                </td>
+                <td>
+                  <span class="cp-badge" style="background: {{ $statusColors[$project->status] ?? '#6b7280' }}20; color: {{ $statusColors[$project->status] ?? '#6b7280' }};">
+                    {{ $statusLabels[$project->status] ?? $project->status }}
+                  </span>
+                </td>
+                <td>
+                  @if ($project->showsVisitLayoutInProjectList())
+                    @if ($project->showsVisitRequiredInProjectList())
+                      <div class="cp-subtle">Visit required</div>
+                    @else
+                      <div>{{ \App\Models\ClientProject::formatDate($project->visit_date) }}</div>
+                      <div class="cp-subtle">Visit</div>
+                    @endif
+                  @else
+                    <div>{{ \App\Models\ClientProject::formatDate($project->start_date) }}</div>
+                    <div class="cp-subtle">→ {{ \App\Models\ClientProject::formatDate($project->end_date) }}</div>
+                  @endif
+                </td>
+                <td class="cp-col-amount">
+                  @if ($project->isHourly())
+                    @php
+                      $hourlyTotal = round((float) ($project->hours_logged ?? 0) * (float) ($project->hourly_rate ?? 0), 2);
+                    @endphp
+                    {{ \App\Models\ClientProject::formatMoney($hourlyTotal) }}
+                    <div class="cp-subtle">{{ number_format((float) ($project->hours_logged ?? 0), 2) }} h @ {{ \App\Models\ClientProject::formatMoney((float) ($project->hourly_rate ?? 0)) }}/h</div>
+                  @else
+                    {{ \App\Models\ClientProject::formatMoney($project->total_amount) }}
+                  @endif
+                </td>
+                <td class="cp-col-amount">{{ number_format($project->percentPaid(), 0) }}%</td>
+                <td>{{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
     </div>
     <div class="admin-pagination">
       {{ $projects->links('pagination.admin') }}

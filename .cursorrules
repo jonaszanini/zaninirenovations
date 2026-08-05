@@ -1,0 +1,31 @@
+# Zanini Renovations — Project Rules
+
+## Mobile-first responsive design (mandatory)
+
+All present and future UI work — admin panel pages, components, partials, and
+public site sections — MUST be designed mobile-first:
+
+1. Design and implement the small-viewport (≤480px phone, ≤900px admin drawer
+   breakpoint) layout FIRST, then progressively enhance for tablet/desktop
+   with `min-width` media queries. Do not build desktop-only and "fix" mobile
+   later.
+2. Every new table must be wrapped in `.admin-table-scroll` inside an
+   `.admin-card` (see `docs/UI_GUIDELINES.md` §4) — never a bare
+   `.admin-table-wrap` without the scroll behavior. For data-dense tables,
+   consider a stacked card layout below 640px instead of relying solely on
+   horizontal scroll.
+3. All interactive controls (buttons, tabs, checkboxes) must meet the 44px
+   minimum touch target already mandated in `docs/UI_GUIDELINES.md` §1.5 and
+   `.cursor/rules/admin-button-field-sizing.mdc`.
+4. Any drag-and-drop or canvas-based interaction must support touch events
+   (`touchstart`/`touchmove`/`touchend` or a pointer-events abstraction), not
+   HTML5 `dragstart`/`dragover` alone.
+5. Reuse the documented breakpoints in `docs/UI_GUIDELINES.md` §5
+   (900 / 700 / 768px) instead of introducing new one-off breakpoints per
+   page.
+6. Before marking any UI task complete, verify the layout at a phone-width
+   viewport (~375-414px) in addition to desktop.
+
+See `docs/UI_GUIDELINES.md` and `.cursor/rules/admin-layout-compact.mdc` /
+`admin-button-field-sizing.mdc` for full detail — this file is the
+top-level mandate; those files are the implementation reference.

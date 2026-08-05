@@ -1823,6 +1823,32 @@
   line-height: 1.45;
 }
 
+/* Konva drawing/editing is precision-pointer work; nudge phone users
+   toward a larger screen instead of silently degrading. Desktop/tablet
+   stays untouched. */
+.util-ra-desktop-notice {
+  display: none;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  background: #fff8e6;
+  border: 1px solid #f2d693;
+  border-radius: 8px;
+  color: #7a5b0a;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.util-ra-desktop-notice i {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+@media (max-width: 700px) {
+  .util-ra-desktop-notice {
+    display: flex;
+  }
+}
+
 .util-ra-hint--inline {
   flex: 1;
   min-width: 0;
