@@ -60,14 +60,7 @@
       var sel = document.getElementById('cp-client-directory');
       if (!sel || typeof TomSelect === 'undefined') return;
 
-      var nameEl = document.getElementById('cp-client-name');
-      var emailEl = document.getElementById('cp-client-email');
-      var email2El = document.getElementById('cp-client-email-secondary');
-      var phoneEl = document.getElementById('cp-client-phone');
-      var addrEl = document.getElementById('cp-client-address');
-      var placeIdEl = document.getElementById('cp-client-address-place-id');
-      var latEl = document.getElementById('cp-client-address-lat');
-      var lngEl = document.getElementById('cp-client-address-lng');
+      var ts = null;
       var hintEl = document.getElementById('cp-client-address-directory-hint');
       var addressInputId = 'cp-client-address';
       var clientEditBase = @json(url('admin/clients'));
@@ -107,7 +100,7 @@
           return;
         }
 
-        var html = '<span class="fq-material-preview__name">' + escapeHtml(option.name || '') + '</span>';
+        var html = '<span class="fq-material-preview__name">' + escapeHtml(option.name || (option.label ? String(option.label).split(' — ')[0].trim() : '') || '') + '</span>';
         if (option.email) {
           html += '<span class="admin-form-help">' + escapeHtml(option.email) + '</span>';
         }
@@ -123,56 +116,127 @@
         previewEl.innerHTML = html;
       }
 
+      function field(id) {
+        return document.getElementById(id);
+      }
+
       function applyClient(o) {
         if (!o) return;
-        if (nameEl) nameEl.value = o.name || '';
-        if (emailEl) emailEl.value = o.email || '';
-        if (email2El) email2El.value = o.email_secondary || '';
-        if (addrEl) addrEl.value = o.address || '';
-        if (placeIdEl) placeIdEl.value = o.address_place_id || '';
-        if (latEl) latEl.value = o.address_latitude != null && o.address_latitude !== '' ? String(o.address_latitude) : '';
-        if (lngEl) lngEl.value = o.address_longitude != null && o.address_longitude !== '' ? String(o.address_longitude) : '';
-        if (phoneEl) {
-          phoneEl.value = o.phone_display || o.phone || '';
-          phoneEl.dispatchEvent(new Event('input', { bubbles: true }));
+        // Re-query fields on each apply — do not rely on nodes cached at init.
+        var nameInput = field('cp-client-name');
+        var emailInput = field('cp-client-email');
+        var email2Input = field('cp-client-email-secondary');
+        var phoneInput = field('cp-client-phone');
+        var addrInput = field('cp-client-address');
+        var placeIdInput = field('cp-client-address-place-id');
+        var latInput = field('cp-client-address-lat');
+        var lngInput = field('cp-client-address-lng');
+
+        var name = o.name || '';
+        if (!name && o.label) {
+          name = String(o.label).split(' — ')[0].trim();
+        }
+
+        if (nameInput) nameInput.value = name;
+        if (emailInput) emailInput.value = o.email || '';
+        if (email2Input) email2Input.value = o.email_secondary || '';
+        if (addrInput) addrInput.value = o.address || '';
+        if (placeIdInput) placeIdInput.value = o.address_place_id || '';
+        if (latInput) latInput.value = o.address_latitude != null && o.address_latitude !== '' ? String(o.address_latitude) : '';
+        if (lngInput) lngInput.value = o.address_longitude != null && o.address_longitude !== '' ? String(o.address_longitude) : '';
+        if (phoneInput) {
+          phoneInput.value = o.phone_display || o.phone || '';
+          phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
         updateDirectoryHint(o);
         syncPlacesAddress();
+        syncClientNameRequired();
+      }
+
+      function syncClientNameRequired() {
+        var nameInput = field('cp-client-name');
+        if (!nameInput) return;
+        // Directory client selected → server hydrates blank contact fields.
+        // Do not block submit with HTML5 "required" on Client name.
+        var directoryId = '';
+        if (typeof ts !== 'undefined' && ts && typeof ts.getValue === 'function') {
+          directoryId = ts.getValue();
+        } else if (sel) {
+          directoryId = sel.value;
+        }
+        nameInput.required = !directoryId;
+      }
+
+      function csrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? (meta.getAttribute('content') || '') : '';
       }
 
       function fetchClientById(id, callback) {
-        var url = searchUrl + (searchUrl.indexOf('?')>= 0 ? '&' : '?') + 'id=' + encodeURIComponent(id);
+        var url = searchUrl + (searchUrl.indexOf('?') >= 0 ? '&' : '?') + 'id=' + encodeURIComponent(id);
         fetch(url, {
           headers: {
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            'X-CSRF-TOKEN': csrfToken()
           }
         })
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            if (!r.ok) throw new Error('client search failed');
+            return r.json();
+          })
           .then(function (rows) { callback(rows && rows[0] ? rows[0] : null); })
           .catch(function () { callback(null); });
       }
 
-      function onClientSelected(id, option) {
+      function optionHasClientData(option) {
+        return !!(option && (option.name || option.email || option.phone || option.phone_display || option.label));
+      }
+
+      function resolveOption(instance, id) {
+        if (!instance || id === null || id === undefined || id === '') return null;
+        var key = String(id);
+        return instance.options[key] || instance.options[id] || null;
+      }
+
+      function normalizeCachedOption(option) {
+        if (!option) return null;
+        if (option.name) return option;
+        if (option.label) {
+          return Object.assign({}, option, {
+            name: String(option.label).split(' — ')[0].trim()
+          });
+        }
+        return option;
+      }
+
+      function onClientSelected(id, option, instance) {
         if (!id) {
           updatePreview(null);
           updateDirectoryHint(null);
+          syncClientNameRequired();
           return;
         }
 
-        function handle(row) {
-          if (!row) return;
-          updatePreview(row);
-          applyClient(row);
+        var cached = normalizeCachedOption(
+          optionHasClientData(option) ? option : resolveOption(instance, id)
+        );
+        if (cached) {
+          updatePreview(cached);
+          applyClient(cached);
+        } else {
+          // Still waive HTML5 required — server will hydrate from client_id.
+          syncClientNameRequired();
         }
 
-        if (option && option.name !== undefined) {
-          handle(option);
-          return;
-        }
-
-        fetchClientById(id, handle);
+        // Refresh from the API so email/phone/address are complete even when
+        // Tom Select only retained label/value on the selected option.
+        fetchClientById(id, function (row) {
+          if (row) {
+            updatePreview(row);
+            applyClient(row);
+          }
+        });
       }
 
       document.addEventListener('zr-places-ready', function (e) {
@@ -211,12 +275,12 @@
           }
         },
         load: function (query, callback) {
-          var url = searchUrl + (searchUrl.indexOf('?')>= 0 ? '&' : '?') + 'q=' + encodeURIComponent(query || '');
+          var url = searchUrl + (searchUrl.indexOf('?') >= 0 ? '&' : '?') + 'q=' + encodeURIComponent(query || '');
           fetch(url, {
             headers: {
               'Accept': 'application/json',
               'X-Requested-With': 'XMLHttpRequest',
-              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+              'X-CSRF-TOKEN': csrfToken()
             }
           })
             .then(function (r) { return r.json(); })
@@ -224,7 +288,10 @@
             .catch(function () { callback(); });
         },
         onChange: function (val) {
-          onClientSelected(val, val ? this.options[val] : null);
+          onClientSelected(val, val ? resolveOption(this, val) : null, this);
+        },
+        onItemAdd: function (val) {
+          onClientSelected(val, resolveOption(this, val), this);
         }
       };
 
@@ -233,10 +300,46 @@
         opts.items = [String(initial.id)];
       }
 
-      var ts = new TomSelect(sel, opts);
+      ts = new TomSelect(sel, opts);
+
+      function ensureClientFieldsFilled() {
+        var nameInput = field('cp-client-name');
+        var clientId = ts.getValue();
+        syncClientNameRequired();
+        if (!clientId || !nameInput || String(nameInput.value || '').trim() !== '') {
+          return;
+        }
+        var opt = normalizeCachedOption(resolveOption(ts, clientId));
+        if (!opt) return;
+        updatePreview(opt);
+        applyClient(opt);
+      }
+
+      // Fill empty contact fields / waive required before HTML5 blocks submit
+      // (primary action buttons often live outside the <form> via form="…").
+      document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest
+          ? e.target.closest(
+              'button[type="submit"][form="cp-create-project-form"],' +
+              'button[type="submit"][form="cp-edit-project-form"],' +
+              '#cp-create-project-form button[type="submit"],' +
+              '#cp-edit-project-form button[type="submit"]'
+            )
+          : null;
+        if (btn) {
+          ensureClientFieldsFilled();
+        }
+      }, true);
+
+      // Tom Select syncs the underlying <select>; listen as a reliable backup.
+      sel.addEventListener('change', function () {
+        onClientSelected(sel.value, resolveOption(ts, sel.value), ts);
+      });
+
+      syncClientNameRequired();
 
       if (initial && initial.id) {
-        onClientSelected(String(initial.id), initial);
+        onClientSelected(String(initial.id), initial, ts);
       }
     })();
   </script>

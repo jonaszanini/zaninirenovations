@@ -159,6 +159,7 @@ class ClientProjectController extends Controller
 
     public function store(Request $request, ClientProjectStatusService $service, ClientProjectPhotoStorage $photoStorage, ClientProjectContactService $contactService)
     {
+        $this->hydrateClientContactFromDirectory($request);
         $this->normalisePhoneOnRequest($request);
         $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
@@ -367,6 +368,7 @@ class ClientProjectController extends Controller
 
     public function update(Request $request, ClientProject $client_project, ClientProjectStatusService $service, ClientProjectContactService $contactService)
     {
+        $this->hydrateClientContactFromDirectory($request);
         $this->normalisePhoneOnRequest($request);
         $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
@@ -862,6 +864,48 @@ class ClientProjectController extends Controller
             'personalEventUpdateUrlTemplate' => route('admin.calendar.personal-events.update', ['admin_calendar_event' => '__ID__']),
             'personalEventDestroyUrlTemplate' => route('admin.calendar.personal-events.destroy', ['admin_calendar_event' => '__ID__']),
         ]);
+    }
+
+    /**
+     * When a directory client is selected but contact fields were left blank
+     * (e.g. the Tom Select autofill JS did not run), copy them from the client
+     * record before validation so create/update can proceed.
+     */
+    private function hydrateClientContactFromDirectory(Request $request): void
+    {
+        $clientId = (int) $request->input('client_id', 0);
+        if ($clientId <= 0) {
+            return;
+        }
+
+        $client = Client::query()->find($clientId);
+        if (! $client) {
+            return;
+        }
+
+        $merge = [];
+        if (! filled(trim((string) $request->input('client_name', '')))) {
+            $merge['client_name'] = $client->name;
+        }
+        if (! filled(trim((string) $request->input('client_email', ''))) && filled($client->email)) {
+            $merge['client_email'] = $client->email;
+        }
+        if (! filled(trim((string) $request->input('client_email_secondary', ''))) && filled($client->email_secondary)) {
+            $merge['client_email_secondary'] = $client->email_secondary;
+        }
+        if (! filled(trim((string) $request->input('client_phone', ''))) && filled($client->phone)) {
+            $merge['client_phone'] = $client->phone;
+        }
+        if (! filled(trim((string) $request->input('client_address', ''))) && filled($client->address)) {
+            $merge['client_address'] = $client->address;
+            $merge['client_address_place_id'] = $client->address_place_id;
+            $merge['client_address_latitude'] = $client->address_latitude;
+            $merge['client_address_longitude'] = $client->address_longitude;
+        }
+
+        if ($merge !== []) {
+            $request->merge($merge);
+        }
     }
 
     /** @return array<string, mixed>|null */
