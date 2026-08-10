@@ -48,9 +48,7 @@
      data-initial-project-id="{{ $travelProjectId ?: '' }}"
      data-saved-round-trip="{{ $savedRoundTrip ?? '' }}">
   <h3 class="q-commute-card__title"><i class="fa fa-road" aria-hidden="true"></i> Commute expense <span class="cp-required">*</span></h3>
-  <p class="admin-form-help q-commute-card__intro">
-    Choose whether to charge fuel (gas) for trips to the job site. Uses the same round-trip estimate as the project overview (home → site → home). Amounts include 13% HST.
-  </p>
+
 
   <fieldset class="q-commute-choice" role="radiogroup" aria-label="Include commute fuel">
     <legend class="util-sr-only">Include commute fuel in this quotation?</legend>

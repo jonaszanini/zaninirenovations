@@ -27,9 +27,6 @@
 
 <div class="admin-card q-debris-card" id="q-debris-removal" data-cp-debris-removal>
   <h3 class="q-debris-card__title"><i class="fa fa-trash" aria-hidden="true"></i> Debris removal <span class="cp-required">*</span></h3>
-  <p class="admin-form-help q-debris-card__intro">
-    Optional charge for hauling away debris. Added to the quotation total for you, but not shown as its own line on the client PDF.
-  </p>
 
   <fieldset class="q-commute-choice" role="radiogroup" aria-label="Include debris removal">
     <legend class="util-sr-only">Include debris removal in this quotation?</legend>
