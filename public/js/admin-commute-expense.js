@@ -219,7 +219,17 @@
     loadEstimate();
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('[data-cp-commute-expense]').forEach(initCommuteExpense);
-  });
+  function boot() {
+    document.querySelectorAll('[data-cp-commute-expense]').forEach(function (card) {
+      if (card.dataset.cpCommuteReady === '1') return;
+      card.dataset.cpCommuteReady = '1';
+      initCommuteExpense(card);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
 })();

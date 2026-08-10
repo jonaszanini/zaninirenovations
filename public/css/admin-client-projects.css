@@ -6062,3 +6062,94 @@ body.cp-modal-open {
     width: 100%;
   }
 }
+
+/* Quotation editors — commute expense (shown when “Yes — charge commute fuel” is selected) */
+.q-commute-card {
+  margin-bottom: 16px;
+}
+
+.q-commute-card__title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.q-commute-card__intro {
+  margin: 0 0 12px;
+}
+
+.q-commute-card__body[hidden] {
+  display: none !important;
+}
+
+.q-commute-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 4px 0 16px;
+}
+
+.q-commute-metric {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.q-commute-metric__label {
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.q-commute-metric__value {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #111827;
+}
+
+.q-commute-metric__value--hl {
+  color: var(--admin-primary, #024768);
+}
+
+.q-commute-card__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.q-commute-field__inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.q-commute-field--pct .admin-input {
+  max-width: 120px;
+}
+
+.q-commute-field__suffix {
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.q-commute-card__status {
+  margin: 12px 0 0;
+}
+
+@media (max-width: 700px) {
+  .q-commute-choice {
+    flex-direction: column;
+  }
+
+  .q-commute-choice__option {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .q-commute-card__fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -7,6 +7,44 @@
 @endpush
 
 @section('content')
+  <nav class="mat-edit-nav" aria-label="Material navigation">
+    @if ($previousMaterial)
+      <a href="{{ route('admin.materials.edit', $previousMaterial) }}"
+         class="admin-btn admin-btn--ghost mat-edit-nav__btn"
+         title="Previous: {{ $previousMaterial->displayName() }}">
+        <i class="fa fa-chevron-left" aria-hidden="true"></i>
+        <span class="mat-edit-nav__btn-label">Previous</span>
+      </a>
+    @else
+      <span class="admin-btn admin-btn--ghost mat-edit-nav__btn is-disabled" aria-disabled="true">
+        <i class="fa fa-chevron-left" aria-hidden="true"></i>
+        <span class="mat-edit-nav__btn-label">Previous</span>
+      </span>
+    @endif
+
+    <p class="mat-edit-nav__position">
+      @if ($materialTotal > 0 && $materialPosition > 0)
+        {{ number_format($materialPosition) }} of {{ number_format($materialTotal) }}
+      @else
+        —
+      @endif
+    </p>
+
+    @if ($nextMaterial)
+      <a href="{{ route('admin.materials.edit', $nextMaterial) }}"
+         class="admin-btn admin-btn--ghost mat-edit-nav__btn"
+         title="Next: {{ $nextMaterial->displayName() }}">
+        <span class="mat-edit-nav__btn-label">Next</span>
+        <i class="fa fa-chevron-right" aria-hidden="true"></i>
+      </a>
+    @else
+      <span class="admin-btn admin-btn--ghost mat-edit-nav__btn is-disabled" aria-disabled="true">
+        <span class="mat-edit-nav__btn-label">Next</span>
+        <i class="fa fa-chevron-right" aria-hidden="true"></i>
+      </span>
+    @endif
+  </nav>
+
   <div class="admin-card mat-form-card">
     <form action="{{ route('admin.materials.update', $material) }}" method="post">
       @csrf

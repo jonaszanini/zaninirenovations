@@ -116,11 +116,49 @@ class MaterialController extends Controller
 
     public function edit(Material $material): View
     {
+        [$previousMaterial, $nextMaterial, $position, $total] = $this->adjacentMaterials($material);
+
         return view('admin.materials.edit', [
             'material' => $material->load('category'),
             'vendors' => $this->vendorsForSelect(),
             'categories' => $this->categoriesForSelect(),
+            'previousMaterial' => $previousMaterial,
+            'nextMaterial' => $nextMaterial,
+            'materialPosition' => $position,
+            'materialTotal' => $total,
         ]);
+    }
+
+    /**
+     * Previous / next materials in the same order as the materials list
+     * (sort_order, name, id).
+     *
+     * @return array{0: ?Material, 1: ?Material, 2: int, 3: int}
+     */
+    private function adjacentMaterials(Material $material): array
+    {
+        $ids = Material::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->pluck('id');
+
+        $total = $ids->count();
+        $index = $ids->search(fn ($id) => (int) $id === (int) $material->id);
+
+        if ($index === false) {
+            return [null, null, 0, $total];
+        }
+
+        $previousId = $index > 0 ? (int) $ids[$index - 1] : null;
+        $nextId = $index < $total - 1 ? (int) $ids[$index + 1] : null;
+
+        return [
+            $previousId ? Material::query()->find($previousId) : null,
+            $nextId ? Material::query()->find($nextId) : null,
+            $index + 1,
+            $total,
+        ];
     }
 
     public function syncPrice(Material $material, MaterialPriceSyncService $syncService, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher)
