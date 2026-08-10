@@ -11,42 +11,23 @@
   </label>
 
   <div class="cp-client-assign">
-    <div class="cp-client-assign__picker">
-      <div class="fq-catalog-picker cp-client-directory-picker__field">
-        <select id="cp-client-directory"
-                name="client_id"
-                class="fq-catalog-picker__select"
-                data-preview-target="cp-client-preview"
-                data-search-url="{{ $clientsSearchUrl }}"
-                data-initial="{{ (int) old('client_id', ($initialClientForPicker ?? [])['id'] ?? 0) }}"
-                aria-label="Client from directory">
-          {{-- Blank option: Tom Select placeholder handles empty state (option text would stick while typing). --}}
-          <option value=""></option>
-        </select>
-      </div>
-      <a href="{{ route('admin.clients.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-client-directory-picker__manage">
-        <i class="fa fa-users" aria-hidden="true"></i> Manage clients
-      </a>
+    <div class="fq-catalog-picker cp-client-directory-picker__field">
+      <select id="cp-client-directory"
+              name="client_id"
+              class="fq-catalog-picker__select"
+              data-search-url="{{ $clientsSearchUrl }}"
+              data-initial="{{ (int) old('client_id', ($initialClientForPicker ?? [])['id'] ?? 0) }}"
+              aria-label="Client from directory">
+        {{-- Blank option: Tom Select placeholder handles empty state (option text would stick while typing). --}}
+        <option value=""></option>
+      </select>
     </div>
-    <div class="cp-client-assign__preview">
-      <div id="cp-client-preview" class="fq-material-preview cp-client-preview">
-        @if (! empty($initialClientForPicker))
-          <span class="fq-material-preview__name">{{ $initialClientForPicker['name'] }}</span>
-          @if (! empty($initialClientForPicker['email']))
-            <span class="admin-form-help">{{ $initialClientForPicker['email'] }}</span>
-          @endif
-          @if (! empty($initialClientForPicker['phone_display']))
-            <span class="admin-form-help">{{ $initialClientForPicker['phone_display'] }}</span>
-          @endif
-          @if (! empty($initialClientForPicker['address']))
-            <span class="admin-form-help">{{ $initialClientForPicker['address'] }}</span>
-          @endif
-          <a href="{{ route('admin.clients.edit', $initialClientForPicker['id']) }}" class="admin-text-link fq-material-preview__link">Client record</a>
-        @else
-          <span class="admin-form-help">Select a client from the directory.</span>
-        @endif
-      </div>
-    </div>
+    <a href="{{ route('admin.clients.index') }}"
+       class="admin-btn admin-btn--ghost admin-btn--sm cp-client-directory-picker__manage"
+       title="Manage clients"
+       aria-label="Manage clients">
+      <i class="fa fa-users" aria-hidden="true"></i>
+    </a>
   </div>
 </div>
 
@@ -63,15 +44,6 @@
       var ts = null;
       var hintEl = document.getElementById('cp-client-address-directory-hint');
       var addressInputId = 'cp-client-address';
-      var clientEditBase = @json(url('admin/clients'));
-
-      function escapeHtml(text) {
-        return String(text)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
-      }
 
       function updateDirectoryHint(o) {
         if (!hintEl) return;
@@ -89,31 +61,6 @@
         if (window.ZR_GOOGLE_MAPS && typeof window.ZR_GOOGLE_MAPS.syncAddressFromHidden === 'function') {
           window.ZR_GOOGLE_MAPS.syncAddressFromHidden(addressInputId);
         }
-      }
-
-      function updatePreview(option) {
-        var previewEl = document.getElementById('cp-client-preview');
-        if (!previewEl) return;
-
-        if (!option) {
-          previewEl.innerHTML = '<span class="admin-form-help">Select a client from the directory.</span>';
-          return;
-        }
-
-        var html = '<span class="fq-material-preview__name">' + escapeHtml(option.name || (option.label ? String(option.label).split(' — ')[0].trim() : '') || '') + '</span>';
-        if (option.email) {
-          html += '<span class="admin-form-help">' + escapeHtml(option.email) + '</span>';
-        }
-        if (option.phone_display || option.phone) {
-          html += '<span class="admin-form-help">' + escapeHtml(option.phone_display || option.phone) + '</span>';
-        }
-        if (option.address) {
-          html += '<span class="admin-form-help">' + escapeHtml(option.address) + '</span>';
-        }
-        if (option.id) {
-          html += '<a href="' + escapeHtml(clientEditBase + '/' + option.id + '/edit') + '" class="admin-text-link fq-material-preview__link">Client record</a>';
-        }
-        previewEl.innerHTML = html;
       }
 
       function field(id) {
@@ -185,7 +132,11 @@
             if (!r.ok) throw new Error('client search failed');
             return r.json();
           })
-          .then(function (rows) { callback(rows && rows[0] ? rows[0] : null); })
+          .then(function (rows) {
+            var row = rows && rows[0] ? rows[0] : null;
+            if (row && row.id != null) row.id = String(row.id);
+            callback(row);
+          })
           .catch(function () { callback(null); });
       }
 
@@ -212,7 +163,6 @@
 
       function onClientSelected(id, option, instance) {
         if (!id) {
-          updatePreview(null);
           updateDirectoryHint(null);
           syncClientNameRequired();
           return;
@@ -222,7 +172,6 @@
           optionHasClientData(option) ? option : resolveOption(instance, id)
         );
         if (cached) {
-          updatePreview(cached);
           applyClient(cached);
         } else {
           // Still waive HTML5 required — server will hydrate from client_id.
@@ -233,7 +182,6 @@
         // Tom Select only retained label/value on the selected option.
         fetchClientById(id, function (row) {
           if (row) {
-            updatePreview(row);
             applyClient(row);
           }
         });
@@ -284,14 +232,21 @@
             }
           })
             .then(function (r) { return r.json(); })
-            .then(function (json) { callback(json); })
+            .then(function (json) {
+              // String ids avoid Tom Select option-lookup mismatches (number vs string keys).
+              var rows = Array.isArray(json) ? json : [];
+              rows.forEach(function (row) {
+                if (row && row.id != null) row.id = String(row.id);
+              });
+              callback(rows);
+            })
             .catch(function () { callback(); });
         },
         onChange: function (val) {
-          onClientSelected(val, val ? resolveOption(this, val) : null, this);
+          onClientSelected(val ? String(val) : '', val ? resolveOption(this, val) : null, this);
         },
         onItemAdd: function (val) {
-          onClientSelected(val, resolveOption(this, val), this);
+          onClientSelected(val ? String(val) : '', resolveOption(this, val), this);
         }
       };
 
@@ -311,7 +266,6 @@
         }
         var opt = normalizeCachedOption(resolveOption(ts, clientId));
         if (!opt) return;
-        updatePreview(opt);
         applyClient(opt);
       }
 
