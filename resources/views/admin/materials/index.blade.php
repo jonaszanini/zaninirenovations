@@ -152,6 +152,7 @@
                     {{ $material->last_scrape_status }}
                   </span>
                   <br><small class="admin-form-help">{{ \App\Support\EasternStandardTimeDisplay::formatInstantCalendarDate($material->last_scraped_at) }}</small>
+                  <br><small class="admin-form-help">{{ $material->last_scraped_at->diffForHumans() }}</small>
                 @else
                   <span class="admin-form-help">—</span>
                 @endif
