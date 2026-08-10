@@ -212,13 +212,33 @@ class MaterialController extends Controller
             ->with('success', 'Material deleted.');
     }
 
-    public function syncAllStart(Request $request, MaterialPriceSyncService $syncService, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher): JsonResponse
+    public function syncAllStart(Request $request, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher): JsonResponse
     {
-        $materialIds = $syncService->serpApiMaterialsToSync()->pluck('id')->all();
+        $data = $request->validate([
+            'ids' => ['nullable', 'array', 'max:500'],
+            'ids.*' => ['integer', 'distinct', 'exists:materials,id'],
+        ]);
+
+        $selectedIds = array_values(array_unique(array_map('intval', $data['ids'] ?? [])));
+        $selectedOnly = $selectedIds !== [];
+
+        $query = Material::query()
+            ->serpApiSyncable()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id');
+
+        if ($selectedOnly) {
+            $query->whereIn('id', $selectedIds);
+        }
+
+        $materialIds = $query->pluck('id')->all();
 
         if ($materialIds === []) {
             return response()->json([
-                'message' => 'No active Home Depot or Amazon materials eligible for price sync.',
+                'message' => $selectedOnly
+                    ? 'None of the selected materials are eligible for price sync (need Home Depot + URL, or Amazon + ASIN).'
+                    : 'No active Home Depot or Amazon materials eligible for price sync.',
             ], 422);
         }
 
@@ -236,6 +256,7 @@ class MaterialController extends Controller
         ]);
 
         $via = $localizedPriceFetcher->usesSerpApi() ? 'SerpApi' : 'Home Depot store API';
+        $scope = $selectedOnly ? 'selected' : 'all eligible';
 
         return response()->json([
             'token' => $token,
@@ -244,7 +265,7 @@ class MaterialController extends Controller
             'current' => 0,
             'phase_total' => $total,
             'remaining' => $total,
-            'message' => 'Starting sync of '.$total.' material(s) via '.$via.'.',
+            'message' => 'Starting sync of '.$total.' '.$scope.' material(s) via '.$via.'.',
             'stats' => $this->syncAllStats(['ok' => 0, 'failed' => 0, 'skipped' => 0]),
             'log' => [],
             'done' => false,

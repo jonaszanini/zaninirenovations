@@ -87,6 +87,14 @@
       @csrf
       <div class="mat-bulk-actions" id="mat-bulk-actions" hidden>
         <span class="mat-bulk-actions__count" id="mat-selected-count">0 selected</span>
+        <button type="button"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                id="mat-bulk-sync-btn"
+                disabled
+                data-start-url="{{ route('admin.materials.sync-all.start') }}"
+                data-step-url="{{ route('admin.materials.sync-all.step') }}">
+          <i class="fa fa-refresh"></i> Sync selected
+        </button>
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-bulk-delete-btn" disabled>
           <i class="fa fa-trash"></i> Delete selected
         </button>
@@ -122,7 +130,8 @@
               <td class="mat-col-select">
                 <label class="admin-checkbox mat-row-select-label">
                   <input type="checkbox" form="mat-bulk-delete-form" name="ids[]" value="{{ $material->id }}" class="admin-checkbox__input mat-row-select"
-                         aria-label="Select {{ $material->displayName() }}">
+                         aria-label="Select {{ $material->displayName() }}"
+                         @if ($material->isSerpApiSyncable()) data-syncable="1" @endif>
                   <span class="admin-checkbox__mark" aria-hidden="true"></span>
                 </label>
               </td>
@@ -265,7 +274,9 @@
         });
       }
 
+      var syncIsRunning = false;
       var syncAllBtn = document.getElementById('mat-sync-all-btn');
+      var bulkSyncBtn = document.getElementById('mat-bulk-sync-btn');
       if (syncAllBtn) {
         var syncProgressEl = document.getElementById('mat-sync-all-progress');
         var syncPhaseLabel = document.getElementById('mat-sync-all-phase-label');
@@ -328,10 +339,17 @@
         }
 
         function setSyncAllRunning(running) {
-          syncAllBtn.disabled = running;
-          syncAllBtn.innerHTML = running
+          syncIsRunning = !!running;
+          syncAllBtn.disabled = syncIsRunning;
+          syncAllBtn.innerHTML = syncIsRunning
             ? '<i class="fa fa-refresh"></i> Syncing…'
             : '<i class="fa fa-refresh"></i> Sync all';
+          if (bulkSyncBtn) {
+            bulkSyncBtn.disabled = syncIsRunning || bulkSyncBtn.getAttribute('data-can-sync') !== '1';
+            bulkSyncBtn.innerHTML = syncIsRunning
+              ? '<i class="fa fa-refresh"></i> Syncing…'
+              : '<i class="fa fa-refresh"></i> Sync selected';
+          }
         }
 
         function showResume(show) {
@@ -355,7 +373,7 @@
           });
         }
 
-        syncAllBtn.addEventListener('click', function () {
+        function startSync(ids) {
           var startUrl = syncAllBtn.getAttribute('data-start-url');
           var stepUrl = syncAllBtn.getAttribute('data-step-url');
           if (!startUrl || !stepUrl || !syncProgressEl) return;
@@ -367,8 +385,16 @@
           showResume(false);
           if (syncLogEl) syncLogEl.innerHTML = '';
           setSyncAllRunning(true);
+          if (syncProgressEl.scrollIntoView) {
+            syncProgressEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
 
-          postJson(startUrl, {}, csrf)
+          var body = {};
+          if (ids && ids.length) {
+            body.ids = ids;
+          }
+
+          postJson(startUrl, body, csrf)
             .then(function (startData) {
               activeToken = startData.token;
               updateSyncAllProgress(startData);
@@ -382,8 +408,22 @@
               }
               showResume(!!activeToken);
             });
+        }
+
+        syncAllBtn.addEventListener('click', function () {
+          startSync(null);
         });
 
+        if (bulkSyncBtn) {
+          bulkSyncBtn.addEventListener('click', function () {
+            var ids = [];
+            document.querySelectorAll('.mat-row-select:checked').forEach(function (cb) {
+              if (cb.value) ids.push(parseInt(cb.value, 10));
+            });
+            if (!ids.length) return;
+            startSync(ids);
+          });
+        }
         if (syncResumeBtn) {
           syncResumeBtn.addEventListener('click', function () {
             if (!activeToken || !stepUrlActive) return;
@@ -419,6 +459,7 @@
         var actionsBar = document.getElementById('mat-bulk-actions');
         var countEl = document.getElementById('mat-selected-count');
         var deleteBtn = document.getElementById('mat-bulk-delete-btn');
+        var syncSelectedBtn = bulkSyncBtn || document.getElementById('mat-bulk-sync-btn');
 
         function selectedCount() {
           var n = 0;
@@ -428,8 +469,17 @@
           return n;
         }
 
+        function selectedSyncableCount() {
+          var n = 0;
+          rowChecks.forEach(function (cb) {
+            if (cb.checked && cb.getAttribute('data-syncable') === '1') n++;
+          });
+          return n;
+        }
+
         function updateBulkActions() {
           var n = selectedCount();
+          var syncable = selectedSyncableCount();
           if (actionsBar) {
             actionsBar.hidden = n === 0;
           }
@@ -438,6 +488,11 @@
           }
           if (deleteBtn) {
             deleteBtn.disabled = n === 0;
+          }
+          if (syncSelectedBtn) {
+            var canSync = syncable > 0;
+            syncSelectedBtn.setAttribute('data-can-sync', canSync ? '1' : '0');
+            syncSelectedBtn.disabled = syncIsRunning || !canSync;
           }
           if (selectAll && rowChecks.length > 0) {
             selectAll.checked = n > 0 && n === rowChecks.length;
