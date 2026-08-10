@@ -116,11 +116,49 @@ class MaterialController extends Controller
 
     public function edit(Material $material): View
     {
+        [$previousMaterial, $nextMaterial, $position, $total] = $this->adjacentMaterials($material);
+
         return view('admin.materials.edit', [
             'material' => $material->load('category'),
             'vendors' => $this->vendorsForSelect(),
             'categories' => $this->categoriesForSelect(),
+            'previousMaterial' => $previousMaterial,
+            'nextMaterial' => $nextMaterial,
+            'materialPosition' => $position,
+            'materialTotal' => $total,
         ]);
+    }
+
+    /**
+     * Previous / next materials in the same order as the materials list
+     * (sort_order, name, id).
+     *
+     * @return array{0: ?Material, 1: ?Material, 2: int, 3: int}
+     */
+    private function adjacentMaterials(Material $material): array
+    {
+        $ids = Material::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->pluck('id');
+
+        $total = $ids->count();
+        $index = $ids->search(fn ($id) => (int) $id === (int) $material->id);
+
+        if ($index === false) {
+            return [null, null, 0, $total];
+        }
+
+        $previousId = $index > 0 ? (int) $ids[$index - 1] : null;
+        $nextId = $index < $total - 1 ? (int) $ids[$index + 1] : null;
+
+        return [
+            $previousId ? Material::query()->find($previousId) : null,
+            $nextId ? Material::query()->find($nextId) : null,
+            $index + 1,
+            $total,
+        ];
     }
 
     public function syncPrice(Material $material, MaterialPriceSyncService $syncService, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher)
@@ -174,13 +212,33 @@ class MaterialController extends Controller
             ->with('success', 'Material deleted.');
     }
 
-    public function syncAllStart(Request $request, MaterialPriceSyncService $syncService, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher): JsonResponse
+    public function syncAllStart(Request $request, HomeDepotCaLocalizedPriceFetcher $localizedPriceFetcher): JsonResponse
     {
-        $materialIds = $syncService->serpApiMaterialsToSync()->pluck('id')->all();
+        $data = $request->validate([
+            'ids' => ['nullable', 'array', 'max:500'],
+            'ids.*' => ['integer', 'distinct', 'exists:materials,id'],
+        ]);
+
+        $selectedIds = array_values(array_unique(array_map('intval', $data['ids'] ?? [])));
+        $selectedOnly = $selectedIds !== [];
+
+        $query = Material::query()
+            ->serpApiSyncable()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id');
+
+        if ($selectedOnly) {
+            $query->whereIn('id', $selectedIds);
+        }
+
+        $materialIds = $query->pluck('id')->all();
 
         if ($materialIds === []) {
             return response()->json([
-                'message' => 'No active Home Depot or Amazon materials eligible for price sync.',
+                'message' => $selectedOnly
+                    ? 'None of the selected materials are eligible for price sync (need Home Depot + URL, or Amazon + ASIN).'
+                    : 'No active Home Depot or Amazon materials eligible for price sync.',
             ], 422);
         }
 
@@ -198,6 +256,7 @@ class MaterialController extends Controller
         ]);
 
         $via = $localizedPriceFetcher->usesSerpApi() ? 'SerpApi' : 'Home Depot store API';
+        $scope = $selectedOnly ? 'selected' : 'all eligible';
 
         return response()->json([
             'token' => $token,
@@ -206,7 +265,7 @@ class MaterialController extends Controller
             'current' => 0,
             'phase_total' => $total,
             'remaining' => $total,
-            'message' => 'Starting sync of '.$total.' material(s) via '.$via.'.',
+            'message' => 'Starting sync of '.$total.' '.$scope.' material(s) via '.$via.'.',
             'stats' => $this->syncAllStats(['ok' => 0, 'failed' => 0, 'skipped' => 0]),
             'log' => [],
             'done' => false,
@@ -215,6 +274,12 @@ class MaterialController extends Controller
 
     public function syncAllStep(Request $request, MaterialPriceSyncService $syncService): JsonResponse
     {
+        // Shared hosting (Hostinger) returns HTML 503 pages when PHP workers
+        // stay busy too long. Keep each step short — pacing lives in the browser.
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(120);
+        }
+
         $data = $request->validate([
             'token' => ['required', 'string', 'max:64'],
         ]);
@@ -234,13 +299,6 @@ class MaterialController extends Controller
             session()->forget($sessionKey);
 
             return $this->syncAllProgressResponse($state, 'Sync complete.', true);
-        }
-
-        if ($state['index'] > 0) {
-            $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
-            if ($delayMs > 0) {
-                usleep($delayMs * 1000);
-            }
         }
 
         $materialId = $state['material_ids'][$state['index']];

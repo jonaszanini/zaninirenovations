@@ -1,3 +1,9 @@
+@once
+  @push('scripts')
+    <script src="{{ asset('js/admin-commute-expense.js') }}?v={{ @filemtime(public_path('js/admin-commute-expense.js')) ?: time() }}"></script>
+  @endpush
+@endonce
+
 @php
   $quotation = $quotation ?? null;
   $linkProject = $linkProject ?? null;

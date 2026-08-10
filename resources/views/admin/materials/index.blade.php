@@ -58,6 +58,11 @@
       <p class="mat-bulk-progress__summary" id="mat-sync-all-summary"></p>
       <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-sync-all-reload">Reload page</button>
     </div>
+    <div class="mat-bulk-progress__done" id="mat-sync-all-resume-wrap" hidden>
+      <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-sync-all-resume">
+        <i class="fa fa-play" aria-hidden="true"></i> Continue sync
+      </button>
+    </div>
   </div>
 
   <div class="admin-card">
@@ -82,6 +87,14 @@
       @csrf
       <div class="mat-bulk-actions" id="mat-bulk-actions" hidden>
         <span class="mat-bulk-actions__count" id="mat-selected-count">0 selected</span>
+        <button type="button"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                id="mat-bulk-sync-btn"
+                disabled
+                data-start-url="{{ route('admin.materials.sync-all.start') }}"
+                data-step-url="{{ route('admin.materials.sync-all.step') }}">
+          <i class="fa fa-refresh"></i> Sync selected
+        </button>
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-bulk-delete-btn" disabled>
           <i class="fa fa-trash"></i> Delete selected
         </button>
@@ -117,7 +130,8 @@
               <td class="mat-col-select">
                 <label class="admin-checkbox mat-row-select-label">
                   <input type="checkbox" form="mat-bulk-delete-form" name="ids[]" value="{{ $material->id }}" class="admin-checkbox__input mat-row-select"
-                         aria-label="Select {{ $material->displayName() }}">
+                         aria-label="Select {{ $material->displayName() }}"
+                         @if ($material->isSerpApiSyncable()) data-syncable="1" @endif>
                   <span class="admin-checkbox__mark" aria-hidden="true"></span>
                 </label>
               </td>
@@ -147,6 +161,7 @@
                     {{ $material->last_scrape_status }}
                   </span>
                   <br><small class="admin-form-help">{{ \App\Support\EasternStandardTimeDisplay::formatInstantCalendarDate($material->last_scraped_at) }}</small>
+                  <br><small class="admin-form-help">{{ $material->last_scraped_at->diffForHumans() }}</small>
                 @else
                   <span class="admin-form-help">—</span>
                 @endif
@@ -186,12 +201,22 @@
 @push('scripts')
   <script>
     (function () {
+      var STEP_DELAY_MS = {{ (int) config('materials.scraper.admin_step_delay_ms', 800) }};
+      var MAX_RETRIES = 5;
+
       function getCsrfToken() {
         var el = document.querySelector('#mat-bulk-delete-form input[name="_token"]');
-        return el ? el.value : '';
+        if (el && el.value) return el.value;
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
       }
 
-      function postJson(url, body, csrf) {
+      function sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+      }
+
+      function postJson(url, body, csrf, attempt) {
+        attempt = attempt || 0;
         return fetch(url, {
           method: 'POST',
           headers: {
@@ -203,19 +228,55 @@
           body: JSON.stringify(body),
           credentials: 'same-origin'
         }).then(function (res) {
-          return res.json().then(function (data) {
-            if (!res.ok) {
-              var err = new Error(data.message || 'Request failed');
-              err.data = data;
+          return res.text().then(function (text) {
+            var data = null;
+            var trimmed = (text || '').trim();
+            if (trimmed.charAt(0) === '{' || trimmed.charAt(0) === '[') {
+              try { data = JSON.parse(trimmed); } catch (e) { data = null; }
+            }
+
+            if (!data) {
+              var err = new Error(
+                res.status === 503 || res.status === 502 || res.status === 429
+                  ? 'Server busy (HTTP ' + res.status + '). Retrying…'
+                  : 'Server returned a non-JSON response (HTTP ' + res.status + '). The host may be rate-limiting long syncs.'
+              );
               err.status = res.status;
+              err.retryable = res.status === 503 || res.status === 502 || res.status === 429 || res.status === 408 || res.status === 0;
               throw err;
             }
+
+            if (!res.ok) {
+              var fail = new Error(data.message || ('Request failed (HTTP ' + res.status + ')'));
+              fail.status = res.status;
+              fail.data = data;
+              fail.retryable = res.status === 503 || res.status === 502 || res.status === 429;
+              throw fail;
+            }
+
             return data;
           });
+        }).catch(function (err) {
+          if (!err.status && err.name === 'TypeError') {
+            err.retryable = true;
+            err.message = 'Network error. Retrying…';
+          }
+          if (err.retryable && attempt < MAX_RETRIES) {
+            var wait = Math.min(30000, 1500 * Math.pow(2, attempt));
+            return sleep(wait).then(function () {
+              return postJson(url, body, csrf, attempt + 1);
+            });
+          }
+          if (err.retryable) {
+            err.message = 'Server kept returning errors after ' + MAX_RETRIES + ' retries (last HTTP ' + (err.status || 'network') + '). Click Continue sync to resume.';
+          }
+          throw err;
         });
       }
 
+      var syncIsRunning = false;
       var syncAllBtn = document.getElementById('mat-sync-all-btn');
+      var bulkSyncBtn = document.getElementById('mat-bulk-sync-btn');
       if (syncAllBtn) {
         var syncProgressEl = document.getElementById('mat-sync-all-progress');
         var syncPhaseLabel = document.getElementById('mat-sync-all-phase-label');
@@ -227,15 +288,19 @@
         var syncDoneEl = document.getElementById('mat-sync-all-done');
         var syncSummaryEl = document.getElementById('mat-sync-all-summary');
         var syncReloadBtn = document.getElementById('mat-sync-all-reload');
+        var syncResumeWrap = document.getElementById('mat-sync-all-resume-wrap');
+        var syncResumeBtn = document.getElementById('mat-sync-all-resume');
         var syncOkEl = document.getElementById('mat-sync-all-ok');
         var syncFailedEl = document.getElementById('mat-sync-all-failed');
         var syncSkippedEl = document.getElementById('mat-sync-all-skipped');
         var syncRemainingEl = document.getElementById('mat-sync-all-remaining');
+        var activeToken = null;
+        var stepUrlActive = null;
 
         function updateSyncAllProgress(data) {
           var total = data.phase_total || 1;
           var current = data.current || 0;
-          var pct = total> 0 ? Math.round((current / total) * 100) : 0;
+          var pct = total > 0 ? Math.round((current / total) * 100) : 0;
 
           if (syncPhaseLabel) {
             syncPhaseLabel.textContent = data.phase_label || 'Syncing…';
@@ -274,41 +339,66 @@
         }
 
         function setSyncAllRunning(running) {
-          syncAllBtn.disabled = running;
-          syncAllBtn.innerHTML = running
+          syncIsRunning = !!running;
+          syncAllBtn.disabled = syncIsRunning;
+          syncAllBtn.innerHTML = syncIsRunning
             ? '<i class="fa fa-refresh"></i> Syncing…'
             : '<i class="fa fa-refresh"></i> Sync all';
+          if (bulkSyncBtn) {
+            bulkSyncBtn.disabled = syncIsRunning || bulkSyncBtn.getAttribute('data-can-sync') !== '1';
+            bulkSyncBtn.innerHTML = syncIsRunning
+              ? '<i class="fa fa-refresh"></i> Syncing…'
+              : '<i class="fa fa-refresh"></i> Sync selected';
+          }
         }
 
-        syncAllBtn.addEventListener('click', function () {
+        function showResume(show) {
+          if (syncResumeWrap) syncResumeWrap.hidden = !show;
+        }
+
+        function runStep(token, csrf) {
+          return postJson(stepUrlActive, { token: token }, csrf).then(function (stepData) {
+            updateSyncAllProgress(stepData);
+            if (stepData.done) {
+              activeToken = null;
+              setSyncAllRunning(false);
+              showResume(false);
+              if (syncDoneEl) syncDoneEl.hidden = false;
+              if (syncSummaryEl) syncSummaryEl.textContent = stepData.summary || stepData.message || 'Done.';
+              return stepData;
+            }
+            return sleep(STEP_DELAY_MS).then(function () {
+              return runStep(token, csrf);
+            });
+          });
+        }
+
+        function startSync(ids) {
           var startUrl = syncAllBtn.getAttribute('data-start-url');
           var stepUrl = syncAllBtn.getAttribute('data-step-url');
           if (!startUrl || !stepUrl || !syncProgressEl) return;
 
           var csrf = getCsrfToken();
+          stepUrlActive = stepUrl;
           syncProgressEl.hidden = false;
           if (syncDoneEl) syncDoneEl.hidden = true;
+          showResume(false);
           if (syncLogEl) syncLogEl.innerHTML = '';
           setSyncAllRunning(true);
+          if (syncProgressEl.scrollIntoView) {
+            syncProgressEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
 
-          postJson(startUrl, {}, csrf)
+          var body = {};
+          if (ids && ids.length) {
+            body.ids = ids;
+          }
+
+          postJson(startUrl, body, csrf)
             .then(function (startData) {
+              activeToken = startData.token;
               updateSyncAllProgress(startData);
-
-              function runStep(token) {
-                return postJson(stepUrl, { token: token }, csrf).then(function (stepData) {
-                  updateSyncAllProgress(stepData);
-                  if (stepData.done) {
-                    setSyncAllRunning(false);
-                    if (syncDoneEl) syncDoneEl.hidden = false;
-                    if (syncSummaryEl) syncSummaryEl.textContent = stepData.summary || stepData.message || 'Done.';
-                    return stepData;
-                  }
-                  return runStep(token);
-                });
-              }
-
-              return runStep(startData.token);
+              return runStep(startData.token, csrf);
             })
             .catch(function (err) {
               setSyncAllRunning(false);
@@ -316,8 +406,44 @@
                 syncMessageEl.textContent = err.message || 'Sync failed.';
                 syncMessageEl.classList.add('mat-bulk-progress__message--error');
               }
+              showResume(!!activeToken);
             });
+        }
+
+        syncAllBtn.addEventListener('click', function () {
+          startSync(null);
         });
+
+        if (bulkSyncBtn) {
+          bulkSyncBtn.addEventListener('click', function () {
+            var ids = [];
+            document.querySelectorAll('.mat-row-select:checked').forEach(function (cb) {
+              if (cb.value) ids.push(parseInt(cb.value, 10));
+            });
+            if (!ids.length) return;
+            startSync(ids);
+          });
+        }
+        if (syncResumeBtn) {
+          syncResumeBtn.addEventListener('click', function () {
+            if (!activeToken || !stepUrlActive) return;
+            var csrf = getCsrfToken();
+            showResume(false);
+            setSyncAllRunning(true);
+            if (syncMessageEl) {
+              syncMessageEl.classList.remove('mat-bulk-progress__message--error');
+              syncMessageEl.textContent = 'Resuming…';
+            }
+            runStep(activeToken, csrf).catch(function (err) {
+              setSyncAllRunning(false);
+              if (syncMessageEl) {
+                syncMessageEl.textContent = err.message || 'Sync failed.';
+                syncMessageEl.classList.add('mat-bulk-progress__message--error');
+              }
+              showResume(!!activeToken);
+            });
+          });
+        }
 
         if (syncReloadBtn) {
           syncReloadBtn.addEventListener('click', function () {
@@ -333,6 +459,7 @@
         var actionsBar = document.getElementById('mat-bulk-actions');
         var countEl = document.getElementById('mat-selected-count');
         var deleteBtn = document.getElementById('mat-bulk-delete-btn');
+        var syncSelectedBtn = bulkSyncBtn || document.getElementById('mat-bulk-sync-btn');
 
         function selectedCount() {
           var n = 0;
@@ -342,8 +469,17 @@
           return n;
         }
 
+        function selectedSyncableCount() {
+          var n = 0;
+          rowChecks.forEach(function (cb) {
+            if (cb.checked && cb.getAttribute('data-syncable') === '1') n++;
+          });
+          return n;
+        }
+
         function updateBulkActions() {
           var n = selectedCount();
+          var syncable = selectedSyncableCount();
           if (actionsBar) {
             actionsBar.hidden = n === 0;
           }
@@ -353,9 +489,14 @@
           if (deleteBtn) {
             deleteBtn.disabled = n === 0;
           }
-          if (selectAll && rowChecks.length> 0) {
-            selectAll.checked = n> 0 && n === rowChecks.length;
-            selectAll.indeterminate = n> 0 && n < rowChecks.length;
+          if (syncSelectedBtn) {
+            var canSync = syncable > 0;
+            syncSelectedBtn.setAttribute('data-can-sync', canSync ? '1' : '0');
+            syncSelectedBtn.disabled = syncIsRunning || !canSync;
+          }
+          if (selectAll && rowChecks.length > 0) {
+            selectAll.checked = n > 0 && n === rowChecks.length;
+            selectAll.indeterminate = n > 0 && n < rowChecks.length;
           }
         }
 

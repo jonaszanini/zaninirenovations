@@ -40,8 +40,12 @@ return [
 
         'delay_after_load_ms' => (int) env('MATERIALS_SCRAPER_DELAY_AFTER_LOAD_MS', 5000),
 
-        // Pause between product requests during local artisan sync.
+        // Pause between product requests during local artisan sync only.
+        // Admin “Sync all” paces in the browser to avoid shared-host 503s.
         'delay_ms' => (int) env('MATERIALS_SCRAPER_DELAY_MS', 1500),
+
+        // Browser delay between admin sync-all steps (milliseconds).
+        'admin_step_delay_ms' => (int) env('MATERIALS_SCRAPER_ADMIN_STEP_DELAY_MS', 800),
 
         'homedepot_store_id' => env('MATERIALS_SCRAPER_HD_STORE_ID'),
 
