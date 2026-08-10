@@ -72,6 +72,9 @@
 </div>
 
 <style>
+  .q-debris-card {
+    margin-bottom: 16px;
+  }
   .q-debris-card__title {
     margin: 0 0 6px;
     font-size: 1.05rem;
@@ -88,21 +91,21 @@
   }
   .q-debris-amount-group { margin-bottom: 0; }
   .q-debris-amount-wrap {
-    position: relative;
     display: flex;
     align-items: center;
-    max-width: 220px;
+    gap: 8px;
+    max-width: 240px;
   }
   .q-debris-amount-prefix {
-    position: absolute;
-    left: 12px;
+    flex: 0 0 auto;
     font-size: 0.9rem;
     font-weight: 600;
     color: #64748b;
-    pointer-events: none;
   }
-  .q-debris-amount-input {
-    padding-left: 2.75rem;
+  /* Beat `.admin-input { padding: … }` so the value/placeholder is not cramped. */
+  .q-debris-amount-wrap .admin-input.q-debris-amount-input {
+    flex: 1 1 auto;
+    min-width: 0;
     font-weight: 600;
   }
 </style>

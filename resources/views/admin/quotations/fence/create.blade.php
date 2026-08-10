@@ -489,7 +489,6 @@
               <option value="6" @selected((int) $initialHeight === 6)>6 feet</option>
               <option value="8" @selected((int) $initialHeight === 8)>8 feet</option>
             </select>
-            <p class="admin-form-help">6' uses 10' posts + 6' boards. 8' uses 12' + 8'.</p>
           </div>
 
           <div class="admin-form-group">
@@ -504,7 +503,6 @@
                 6×6
               </option>
             </select>
-            <p class="admin-form-help">Cross-section of the fence posts for layout and PDF description.</p>
           </div>
 
           <div class="admin-form-group">
@@ -512,7 +510,6 @@
             <input id="fq-gates" type="number" min="0" max="10" step="1"
                    name="gate_count" class="admin-input"
                    value="{{ old('gate_count', $initialGates) }}">
-            <p class="admin-form-help">Each gate adds 1 post and {{ $settings->gate_rails }} rails.</p>
           </div>
 
           <div class="admin-form-group">
