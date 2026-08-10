@@ -58,6 +58,11 @@
       <p class="mat-bulk-progress__summary" id="mat-sync-all-summary"></p>
       <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-sync-all-reload">Reload page</button>
     </div>
+    <div class="mat-bulk-progress__done" id="mat-sync-all-resume-wrap" hidden>
+      <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mat-sync-all-resume">
+        <i class="fa fa-play" aria-hidden="true"></i> Continue sync
+      </button>
+    </div>
   </div>
 
   <div class="admin-card">
@@ -186,12 +191,22 @@
 @push('scripts')
   <script>
     (function () {
+      var STEP_DELAY_MS = {{ (int) config('materials.scraper.admin_step_delay_ms', 800) }};
+      var MAX_RETRIES = 5;
+
       function getCsrfToken() {
         var el = document.querySelector('#mat-bulk-delete-form input[name="_token"]');
-        return el ? el.value : '';
+        if (el && el.value) return el.value;
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
       }
 
-      function postJson(url, body, csrf) {
+      function sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+      }
+
+      function postJson(url, body, csrf, attempt) {
+        attempt = attempt || 0;
         return fetch(url, {
           method: 'POST',
           headers: {
@@ -203,15 +218,49 @@
           body: JSON.stringify(body),
           credentials: 'same-origin'
         }).then(function (res) {
-          return res.json().then(function (data) {
-            if (!res.ok) {
-              var err = new Error(data.message || 'Request failed');
-              err.data = data;
+          return res.text().then(function (text) {
+            var data = null;
+            var trimmed = (text || '').trim();
+            if (trimmed.charAt(0) === '{' || trimmed.charAt(0) === '[') {
+              try { data = JSON.parse(trimmed); } catch (e) { data = null; }
+            }
+
+            if (!data) {
+              var err = new Error(
+                res.status === 503 || res.status === 502 || res.status === 429
+                  ? 'Server busy (HTTP ' + res.status + '). Retrying…'
+                  : 'Server returned a non-JSON response (HTTP ' + res.status + '). The host may be rate-limiting long syncs.'
+              );
               err.status = res.status;
+              err.retryable = res.status === 503 || res.status === 502 || res.status === 429 || res.status === 408 || res.status === 0;
               throw err;
             }
+
+            if (!res.ok) {
+              var fail = new Error(data.message || ('Request failed (HTTP ' + res.status + ')'));
+              fail.status = res.status;
+              fail.data = data;
+              fail.retryable = res.status === 503 || res.status === 502 || res.status === 429;
+              throw fail;
+            }
+
             return data;
           });
+        }).catch(function (err) {
+          if (!err.status && err.name === 'TypeError') {
+            err.retryable = true;
+            err.message = 'Network error. Retrying…';
+          }
+          if (err.retryable && attempt < MAX_RETRIES) {
+            var wait = Math.min(30000, 1500 * Math.pow(2, attempt));
+            return sleep(wait).then(function () {
+              return postJson(url, body, csrf, attempt + 1);
+            });
+          }
+          if (err.retryable) {
+            err.message = 'Server kept returning errors after ' + MAX_RETRIES + ' retries (last HTTP ' + (err.status || 'network') + '). Click Continue sync to resume.';
+          }
+          throw err;
         });
       }
 
@@ -227,15 +276,19 @@
         var syncDoneEl = document.getElementById('mat-sync-all-done');
         var syncSummaryEl = document.getElementById('mat-sync-all-summary');
         var syncReloadBtn = document.getElementById('mat-sync-all-reload');
+        var syncResumeWrap = document.getElementById('mat-sync-all-resume-wrap');
+        var syncResumeBtn = document.getElementById('mat-sync-all-resume');
         var syncOkEl = document.getElementById('mat-sync-all-ok');
         var syncFailedEl = document.getElementById('mat-sync-all-failed');
         var syncSkippedEl = document.getElementById('mat-sync-all-skipped');
         var syncRemainingEl = document.getElementById('mat-sync-all-remaining');
+        var activeToken = null;
+        var stepUrlActive = null;
 
         function updateSyncAllProgress(data) {
           var total = data.phase_total || 1;
           var current = data.current || 0;
-          var pct = total> 0 ? Math.round((current / total) * 100) : 0;
+          var pct = total > 0 ? Math.round((current / total) * 100) : 0;
 
           if (syncPhaseLabel) {
             syncPhaseLabel.textContent = data.phase_label || 'Syncing…';
@@ -280,35 +333,45 @@
             : '<i class="fa fa-refresh"></i> Sync all';
         }
 
+        function showResume(show) {
+          if (syncResumeWrap) syncResumeWrap.hidden = !show;
+        }
+
+        function runStep(token, csrf) {
+          return postJson(stepUrlActive, { token: token }, csrf).then(function (stepData) {
+            updateSyncAllProgress(stepData);
+            if (stepData.done) {
+              activeToken = null;
+              setSyncAllRunning(false);
+              showResume(false);
+              if (syncDoneEl) syncDoneEl.hidden = false;
+              if (syncSummaryEl) syncSummaryEl.textContent = stepData.summary || stepData.message || 'Done.';
+              return stepData;
+            }
+            return sleep(STEP_DELAY_MS).then(function () {
+              return runStep(token, csrf);
+            });
+          });
+        }
+
         syncAllBtn.addEventListener('click', function () {
           var startUrl = syncAllBtn.getAttribute('data-start-url');
           var stepUrl = syncAllBtn.getAttribute('data-step-url');
           if (!startUrl || !stepUrl || !syncProgressEl) return;
 
           var csrf = getCsrfToken();
+          stepUrlActive = stepUrl;
           syncProgressEl.hidden = false;
           if (syncDoneEl) syncDoneEl.hidden = true;
+          showResume(false);
           if (syncLogEl) syncLogEl.innerHTML = '';
           setSyncAllRunning(true);
 
           postJson(startUrl, {}, csrf)
             .then(function (startData) {
+              activeToken = startData.token;
               updateSyncAllProgress(startData);
-
-              function runStep(token) {
-                return postJson(stepUrl, { token: token }, csrf).then(function (stepData) {
-                  updateSyncAllProgress(stepData);
-                  if (stepData.done) {
-                    setSyncAllRunning(false);
-                    if (syncDoneEl) syncDoneEl.hidden = false;
-                    if (syncSummaryEl) syncSummaryEl.textContent = stepData.summary || stepData.message || 'Done.';
-                    return stepData;
-                  }
-                  return runStep(token);
-                });
-              }
-
-              return runStep(startData.token);
+              return runStep(startData.token, csrf);
             })
             .catch(function (err) {
               setSyncAllRunning(false);
@@ -316,8 +379,30 @@
                 syncMessageEl.textContent = err.message || 'Sync failed.';
                 syncMessageEl.classList.add('mat-bulk-progress__message--error');
               }
+              showResume(!!activeToken);
             });
         });
+
+        if (syncResumeBtn) {
+          syncResumeBtn.addEventListener('click', function () {
+            if (!activeToken || !stepUrlActive) return;
+            var csrf = getCsrfToken();
+            showResume(false);
+            setSyncAllRunning(true);
+            if (syncMessageEl) {
+              syncMessageEl.classList.remove('mat-bulk-progress__message--error');
+              syncMessageEl.textContent = 'Resuming…';
+            }
+            runStep(activeToken, csrf).catch(function (err) {
+              setSyncAllRunning(false);
+              if (syncMessageEl) {
+                syncMessageEl.textContent = err.message || 'Sync failed.';
+                syncMessageEl.classList.add('mat-bulk-progress__message--error');
+              }
+              showResume(!!activeToken);
+            });
+          });
+        }
 
         if (syncReloadBtn) {
           syncReloadBtn.addEventListener('click', function () {
@@ -353,9 +438,9 @@
           if (deleteBtn) {
             deleteBtn.disabled = n === 0;
           }
-          if (selectAll && rowChecks.length> 0) {
-            selectAll.checked = n> 0 && n === rowChecks.length;
-            selectAll.indeterminate = n> 0 && n < rowChecks.length;
+          if (selectAll && rowChecks.length > 0) {
+            selectAll.checked = n > 0 && n === rowChecks.length;
+            selectAll.indeterminate = n > 0 && n < rowChecks.length;
           }
         }
 

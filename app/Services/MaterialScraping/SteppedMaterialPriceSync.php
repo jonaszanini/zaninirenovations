@@ -61,6 +61,11 @@ class SteppedMaterialPriceSync
 
     public function step(Request $request, string $sessionPrefix): JsonResponse
     {
+        // Keep each admin step short on shared hosting — browser paces requests.
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(120);
+        }
+
         $data = $request->validate([
             'token' => ['required', 'string', 'max:64'],
         ]);
@@ -80,13 +85,6 @@ class SteppedMaterialPriceSync
             session()->forget($sessionKey);
 
             return $this->progressResponse($state, 'Sync complete.', true);
-        }
-
-        if ($state['index'] > 0) {
-            $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
-            if ($delayMs > 0) {
-                usleep($delayMs * 1000);
-            }
         }
 
         $materialId = (int) $state['material_ids'][$state['index']];

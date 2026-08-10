@@ -487,6 +487,8 @@
         var syncBtn = document.getElementById('fq-sync-prices-btn');
         if (!syncBtn) return;
 
+        var STEP_DELAY_MS = {{ (int) config('materials.scraper.admin_step_delay_ms', 800) }};
+        var MAX_RETRIES = 5;
         var progressEl = document.getElementById('fq-sync-progress');
         var phaseLabel = document.getElementById('fq-sync-phase-label');
         var counterEl = document.getElementById('fq-sync-counter');
@@ -507,7 +509,12 @@
           return meta ? meta.getAttribute('content') : '';
         }
 
-        function postJson(url, body) {
+        function sleep(ms) {
+          return new Promise(function (resolve) { setTimeout(resolve, ms); });
+        }
+
+        function postJson(url, body, attempt) {
+          attempt = attempt || 0;
           return fetch(url, {
             method: 'POST',
             headers: {
@@ -518,14 +525,40 @@
             },
             body: JSON.stringify(body || {})
           }).then(function (res) {
-            return res.json().then(function (data) {
-              if (!res.ok) {
-                var err = new Error(data.message || ('Request failed (' + res.status + ')'));
+            return res.text().then(function (text) {
+              var data = null;
+              var trimmed = (text || '').trim();
+              if (trimmed.charAt(0) === '{' || trimmed.charAt(0) === '[') {
+                try { data = JSON.parse(trimmed); } catch (e) { data = null; }
+              }
+              if (!data) {
+                var err = new Error(
+                  res.status === 503 || res.status === 502 || res.status === 429
+                    ? 'Server busy (HTTP ' + res.status + '). Retrying…'
+                    : 'Server returned a non-JSON response (HTTP ' + res.status + ').'
+                );
                 err.status = res.status;
+                err.retryable = res.status === 503 || res.status === 502 || res.status === 429 || res.status === 408;
                 throw err;
+              }
+              if (!res.ok) {
+                var fail = new Error(data.message || ('Request failed (' + res.status + ')'));
+                fail.status = res.status;
+                fail.retryable = res.status === 503 || res.status === 502 || res.status === 429;
+                throw fail;
               }
               return data;
             });
+          }).catch(function (err) {
+            if (!err.status && err.name === 'TypeError') {
+              err.retryable = true;
+            }
+            if (err.retryable && attempt < MAX_RETRIES) {
+              return sleep(Math.min(30000, 1500 * Math.pow(2, attempt))).then(function () {
+                return postJson(url, body, attempt + 1);
+              });
+            }
+            throw err;
           });
         }
 
@@ -596,7 +629,9 @@
                     if (summaryEl) summaryEl.textContent = stepData.summary || stepData.message || 'Done.';
                     return stepData;
                   }
-                  return runStep(token);
+                  return sleep(STEP_DELAY_MS).then(function () {
+                    return runStep(token);
+                  });
                 });
               }
 

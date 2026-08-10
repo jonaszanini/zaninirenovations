@@ -253,6 +253,12 @@ class MaterialController extends Controller
 
     public function syncAllStep(Request $request, MaterialPriceSyncService $syncService): JsonResponse
     {
+        // Shared hosting (Hostinger) returns HTML 503 pages when PHP workers
+        // stay busy too long. Keep each step short — pacing lives in the browser.
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(120);
+        }
+
         $data = $request->validate([
             'token' => ['required', 'string', 'max:64'],
         ]);
@@ -272,13 +278,6 @@ class MaterialController extends Controller
             session()->forget($sessionKey);
 
             return $this->syncAllProgressResponse($state, 'Sync complete.', true);
-        }
-
-        if ($state['index'] > 0) {
-            $delayMs = max(0, (int) config('materials.scraper.delay_ms', 1500));
-            if ($delayMs > 0) {
-                usleep($delayMs * 1000);
-            }
         }
 
         $materialId = $state['material_ids'][$state['index']];
