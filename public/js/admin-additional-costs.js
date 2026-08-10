@@ -40,8 +40,8 @@
     card.querySelectorAll('[data-ac-row]').forEach(function (row) {
       var amountInp = row.querySelector('[data-ac-amount]');
       var amount = parseAmount(amountInp && amountInp.value);
-      var hstYes = row.querySelector('[data-ac-hst-yes]');
-      var hstIncluded = !!(hstYes && hstYes.checked);
+      var hstToggle = row.querySelector('[data-ac-hst-toggle]');
+      var hstIncluded = !!(hstToggle && hstToggle.checked);
       materialsPreTax += rowPreTax(amount, hstIncluded);
       taxInclusiveTotal += rowTaxIn(amount, hstIncluded);
     });
@@ -86,16 +86,22 @@
     return max + 1;
   }
 
+  function syncHstLabel(row) {
+    var toggle = row.querySelector('[data-ac-hst-toggle]');
+    var text = row.querySelector('[data-ac-hst-text]');
+    if (!text) return;
+    text.textContent = (toggle && toggle.checked) ? 'Tax included' : 'Before tax';
+  }
+
   function bindRow(card, row) {
-    row.querySelectorAll('[data-ac-hst-yes], [data-ac-hst-no]').forEach(function (radio) {
-      radio.addEventListener('change', function () {
-        row.querySelectorAll('.q-ac-hst-option').forEach(function (opt) {
-          var inp = opt.querySelector('input');
-          opt.classList.toggle('is-selected', !!(inp && inp.checked));
-        });
+    var hstToggle = row.querySelector('[data-ac-hst-toggle]');
+    if (hstToggle) {
+      hstToggle.addEventListener('change', function () {
+        syncHstLabel(row);
         notify(card);
       });
-    });
+      syncHstLabel(row);
+    }
     var amount = row.querySelector('[data-ac-amount]');
     var desc = row.querySelector('[data-ac-description]');
     if (amount) {
@@ -138,19 +144,16 @@
       +            ' placeholder="0.00" value="' + amount.replace(/"/g, '&quot;') + '" data-ac-amount>'
       +   '</div>'
       +   '<div class="admin-form-group q-ac-row__hst">'
-      +     '<span class="q-ac-row__hst-label">Tax</span>'
-      +     '<div class="q-ac-hst-choice" role="radiogroup" aria-label="Tax on additional cost">'
-      +       '<label class="q-ac-hst-option' + (hstIncluded ? ' is-selected' : '') + '">'
-      +         '<input type="radio" name="additional_costs[' + idx + '][hst_included]" value="1"'
-      +                ' class="q-ac-hst-option__input" data-ac-hst-yes' + (hstIncluded ? ' checked' : '') + '>'
-      +         '<span>Tax included</span>'
-      +       '</label>'
-      +       '<label class="q-ac-hst-option' + (!hstIncluded ? ' is-selected' : '') + '">'
-      +         '<input type="radio" name="additional_costs[' + idx + '][hst_included]" value="0"'
-      +                ' class="q-ac-hst-option__input" data-ac-hst-no' + (!hstIncluded ? ' checked' : '') + '>'
-      +         '<span>Before tax</span>'
-      +       '</label>'
-      +     '</div>'
+      +     '<span class="q-ac-row__hst-label" id="q-ac-hst-label-' + idx + '">Tax</span>'
+      +     '<label class="cp-visit-toggle cp-visit-toggle--compact q-ac-hst-toggle" for="q-ac-hst-' + idx + '">'
+      +       '<input type="hidden" name="additional_costs[' + idx + '][hst_included]" value="0">'
+      +       '<input type="checkbox" id="q-ac-hst-' + idx + '" name="additional_costs[' + idx + '][hst_included]"'
+      +              ' value="1" data-ac-hst-toggle aria-describedby="q-ac-hst-label-' + idx + '"'
+      +              (hstIncluded ? ' checked' : '') + '>'
+      +       '<span class="cp-visit-toggle__control" aria-hidden="true"></span>'
+      +       '<span class="cp-visit-toggle__label" data-ac-hst-text">'
+      +         (hstIncluded ? 'Tax included' : 'Before tax') + '</span>'
+      +     '</label>'
       +   '</div>'
       +   '<div class="q-ac-row__actions">'
       +     '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ac-remove'

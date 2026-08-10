@@ -79,27 +79,22 @@
                  data-ac-amount>
         </div>
         <div class="admin-form-group q-ac-row__hst">
-          <span class="q-ac-row__hst-label">Tax</span>
-          <div class="q-ac-hst-choice" role="radiogroup" aria-label="Tax on additional cost {{ $idx + 1 }}">
-            <label class="q-ac-hst-option{{ $row['hst_included'] ? ' is-selected' : '' }}">
-              <input type="radio"
-                     name="additional_costs[{{ $idx }}][hst_included]"
-                     value="1"
-                     class="q-ac-hst-option__input"
-                     data-ac-hst-yes
-                     @checked($row['hst_included'])>
-              <span>Tax included</span>
-            </label>
-            <label class="q-ac-hst-option{{ ! $row['hst_included'] ? ' is-selected' : '' }}">
-              <input type="radio"
-                     name="additional_costs[{{ $idx }}][hst_included]"
-                     value="0"
-                     class="q-ac-hst-option__input"
-                     data-ac-hst-no
-                     @checked(! $row['hst_included'])>
-              <span>Before tax</span>
-            </label>
-          </div>
+          <span class="q-ac-row__hst-label" id="q-ac-hst-label-{{ $idx }}">Tax</span>
+          <label class="cp-visit-toggle cp-visit-toggle--compact q-ac-hst-toggle"
+                 for="q-ac-hst-{{ $idx }}">
+            <input type="hidden" name="additional_costs[{{ $idx }}][hst_included]" value="0">
+            <input type="checkbox"
+                   id="q-ac-hst-{{ $idx }}"
+                   name="additional_costs[{{ $idx }}][hst_included]"
+                   value="1"
+                   data-ac-hst-toggle
+                   aria-describedby="q-ac-hst-label-{{ $idx }}"
+                   @checked($row['hst_included'])>
+            <span class="cp-visit-toggle__control" aria-hidden="true"></span>
+            <span class="cp-visit-toggle__label" data-ac-hst-text>
+              {{ $row['hst_included'] ? 'Tax included' : 'Before tax' }}
+            </span>
+          </label>
         </div>
         <div class="q-ac-row__actions">
           <button type="button"
@@ -144,7 +139,7 @@
   .q-ac-rows { display: flex; flex-direction: column; gap: 12px; }
   .q-ac-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(110px, 0.7fr) minmax(200px, 1fr) auto;
+    grid-template-columns: minmax(0, 1.6fr) minmax(120px, 0.55fr) minmax(148px, auto) auto;
     gap: 12px;
     align-items: end;
     padding: 12px 14px;
@@ -152,9 +147,16 @@
     border: 1px dashed #cbd5e1;
     border-radius: 8px;
   }
-  .q-ac-row .admin-form-group { margin-bottom: 0; }
+  .q-ac-row .admin-form-group { margin-bottom: 0; min-width: 0; }
+  .q-ac-row__desc label,
+  .q-ac-row__amount label,
   .q-ac-row__hst-label {
     display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .q-ac-row__hst-label {
     font-size: 0.8rem;
     font-weight: 600;
     color: #64748b;
@@ -162,31 +164,9 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
-  .q-ac-hst-choice {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .q-ac-hst-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0;
-    padding: 8px 10px;
+  .q-ac-hst-toggle {
     min-height: 44px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    background: #fff;
-    cursor: pointer;
-    font-size: 0.85rem;
   }
-  .q-ac-hst-option.is-selected,
-  .q-ac-hst-option:has(:checked) {
-    border-color: var(--admin-primary, #024768);
-    background: #f0f9ff;
-    box-shadow: 0 0 0 1px var(--admin-primary, #024768);
-  }
-  .q-ac-hst-option__input { margin: 0; }
   .q-ac-row__actions {
     display: flex;
     align-items: flex-end;
