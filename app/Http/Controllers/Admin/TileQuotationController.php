@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationAdditionalCosts;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
@@ -12,6 +13,7 @@ use App\Models\TileGroutType;
 use App\Models\TileMortarType;
 use App\Models\TileProduct;
 use App\Models\TileQuotation;
+use App\Services\AdditionalCostsService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TileQuotationCalculator;
@@ -19,6 +21,7 @@ use Illuminate\Http\Request;
 
 class TileQuotationController extends Controller
 {
+    use HandlesQuotationAdditionalCosts;
     use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
@@ -74,9 +77,10 @@ class TileQuotationController extends Controller
             'include_disposal_fee' => ['nullable', 'boolean'],
 
             'is_draft' => ['nullable', 'string'],
-        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules()), array_merge(
+        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
-            DebrisRemovalExpenseService::validationMessages()
+            DebrisRemovalExpenseService::validationMessages(),
+            AdditionalCostsService::validationMessages()
         ));
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
@@ -131,10 +135,15 @@ class TileQuotationController extends Controller
             $debris,
             'final_quote_total'
         );
+        $additional = $this->additionalCostsPersistenceFromRequest($request, null, 'tile_quotations');
+        $merged = $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
         $quotation->final_quote_total = $merged['final_quote_total'];
         if ($debris !== []) {
             $quotation->include_debris_removal = $merged['include_debris_removal'];
             $quotation->debris_removal_amount = $merged['debris_removal_amount'];
+        }
+        if (array_key_exists('additional_costs', $merged)) {
+            $quotation->additional_costs = $merged['additional_costs'];
         }
         
         if ($quotation->client_project_id) {
@@ -191,9 +200,10 @@ class TileQuotationController extends Controller
             'custom_demolition_rate' => ['nullable', 'numeric', 'min:0'],
             'include_disposal_fee' => ['nullable', 'boolean'],
             'is_draft' => ['nullable', 'string'],
-        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules()), array_merge(
+        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
-            DebrisRemovalExpenseService::validationMessages()
+            DebrisRemovalExpenseService::validationMessages(),
+            AdditionalCostsService::validationMessages()
         ));
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
@@ -247,10 +257,15 @@ class TileQuotationController extends Controller
             $debris,
             'final_quote_total'
         );
+        $additional = $this->additionalCostsPersistenceFromRequest($request, $quotation, 'tile_quotations');
+        $merged = $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
         $quotation->final_quote_total = $merged['final_quote_total'];
         if ($debris !== []) {
             $quotation->include_debris_removal = $merged['include_debris_removal'];
             $quotation->debris_removal_amount = $merged['debris_removal_amount'];
+        }
+        if (array_key_exists('additional_costs', $merged)) {
+            $quotation->additional_costs = $merged['additional_costs'];
         }
         $quotation->version += 1;
         
@@ -451,6 +466,7 @@ class TileQuotationController extends Controller
         }
 
         $this->appendDebrisRemovalProjectLine($items, $quotation);
+        $this->appendAdditionalCostsProjectLines($items, $quotation);
 
         $snapshot = $quotation->only([
             'quote_number',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationAdditionalCosts;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
@@ -12,6 +13,7 @@ use App\Models\ClientProjectQuotation;
 use App\Models\PavingQuotation;
 use App\Models\PavingMarbleType;
 use App\Models\PavingStoneType;
+use App\Services\AdditionalCostsService;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
@@ -26,6 +28,7 @@ use Illuminate\Validation\ValidationException;
 
 class PavingQuotationController extends Controller
 {
+    use HandlesQuotationAdditionalCosts;
     use HandlesQuotationCommuteExpense;
     use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
@@ -347,9 +350,9 @@ class PavingQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages()));
 
         $inputs = $this->gatherInputsFromRequest($request);
         $calc = (new PavingQuotationCalculator)->calculate($inputs);
@@ -369,8 +372,10 @@ class PavingQuotationController extends Controller
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'paving_quotations');
         $merged = $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
         $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'paving_quotations');
+        $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
+        $additional = $this->additionalCostsPersistenceFromRequest($request, $existing, 'paving_quotations');
 
-        return $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
+        return $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
     }
 
     /**

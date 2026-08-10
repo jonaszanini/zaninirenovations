@@ -479,6 +479,7 @@
 
           @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
           @include('admin.quotations._debris_removal', ['quotation' => $quotation])
+          @include('admin.quotations._additional_costs', ['quotation' => $quotation])
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
         </form>
 
@@ -927,6 +928,7 @@
       var t = null;
       var lastCommuteAmount = 0;
       var lastDebrisAmount = 0;
+      var lastAdditionalTaxIn = 0;
       var lastPreviewCalc = null;
       function schedule() {
         clearTimeout(t);
@@ -962,7 +964,7 @@
         var f = c.fixed_costs;
         var l = c.labour;
         var quoteBeforeCommute = Number(s.final_quote_total || 0);
-        var clientTotal = quoteBeforeCommute + lastCommuteAmount + lastDebrisAmount;
+        var clientTotal = quoteBeforeCommute + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
         var calculatedTotal = Number(s.built_up_grand_total || 0);
         var hasManual = s.manual_price_override != null && Number(s.manual_price_override)> 0;
         var subtotal = Number(s.total_with_tax_mats_fixed_plus_labour || 0);
@@ -971,7 +973,7 @@
         var html = '';
 
         html += section('Costs', [
-          row('Materials <span class="admin-form-help">(incl. HST)</span>', fmt(m.with_tax)),
+          row('Materials <span class="admin-form-help">(incl. HST)</span>', fmt(Number(m.with_tax || 0) + lastAdditionalTaxIn)),
           row('Equipment &amp; rentals <span class="admin-form-help">(incl. HST)</span>', fmt(f.with_tax)),
           row('Labour <span class="admin-form-help">(before HST)</span>', fmt(l.total)),
         ].join(''));
@@ -1170,6 +1172,11 @@
       document.addEventListener('debris-removal:change', function (e) {
         var d = e.detail || {};
         lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+        if (lastPreviewCalc) render(lastPreviewCalc);
+      });
+      document.addEventListener('additional-costs:change', function (e) {
+        var d = e.detail || {};
+        lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
         if (lastPreviewCalc) render(lastPreviewCalc);
       });
     })();

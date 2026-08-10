@@ -174,6 +174,36 @@
         </div>
       @endif
 
+      {{-- ─── Additional costs ──────────────────────────────────────────── --}}
+      @php
+        $additionalRows = $sourceModel !== null && is_array($sourceModel->additional_costs ?? null)
+          ? $sourceModel->additional_costs
+          : [];
+        $hasAdditional = $additionalRows !== [];
+      @endphp
+      @if ($hasAdditional)
+        <div class="cp-vd-section">
+          <div class="cp-vd-section__title"><i class="fa fa-plus-circle" aria-hidden="true"></i> Additional costs</div>
+          <div class="cp-vd-grid">
+            @foreach ($additionalRows as $row)
+              @php
+                $desc = trim((string) ($row['description'] ?? ''));
+                $amt = (float) ($row['amount'] ?? 0);
+                $hstIncluded = (bool) ($row['hst_included'] ?? true);
+                if ($amt <= 0) continue;
+              @endphp
+              <div class="cp-vd-field">
+                <span class="cp-vd-field__label">{{ $desc !== '' ? $desc : 'Additional cost' }}</span>
+                <span class="cp-vd-field__value">
+                  {{ \App\Models\ClientProject::formatMoney($amt) }}
+                  <small style="opacity: 0.7; margin-left: 4px;">{{ $hstIncluded ? '(tax included)' : '(before tax)' }}</small>
+                </span>
+              </div>
+            @endforeach
+          </div>
+        </div>
+      @endif
+
       {{-- ─── Totals summary ──────────────────────────────────────────── --}}
       @php
         $hasContent = $quotation->hasContent();

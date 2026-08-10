@@ -362,6 +362,7 @@ class ClientProjectQuotation extends Model
      * either the linked summary lines or a full material/labour breakdown.
      * Commute fuel and debris removal are rolled into the primary labour/material
      * line (pre-tax) with HST in the footer — never shown as their own rows to clients.
+     * Additional costs are rolled into the materials line the same way.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -448,34 +449,74 @@ class ClientProjectQuotation extends Model
      */
     protected function normalizeInternalExpensesForClientFacing(array $items): array
     {
-        $hiddenGross = 0.0;
+        $labourHiddenGross = 0.0;
+        $materialsHiddenGross = 0.0;
         $filtered = [];
 
         foreach ($items as $row) {
             $desc = (string) ($row['description'] ?? '');
-            if (self::isHiddenInternalExpenseLineDescription($desc)) {
-                $hiddenGross += (float) ($row['amount'] ?? 0);
+            if (self::isMaterialsHiddenInternalExpenseLineDescription($desc)) {
+                $materialsHiddenGross += (float) ($row['amount'] ?? 0);
+
+                continue;
+            }
+            if (self::isLabourHiddenInternalExpenseLineDescription($desc)) {
+                $labourHiddenGross += (float) ($row['amount'] ?? 0);
 
                 continue;
             }
             $filtered[] = $row;
         }
 
-        if ($hiddenGross <= 0 || $filtered === []) {
+        if ($filtered === []) {
+            return $items;
+        }
+
+        if ($materialsHiddenGross > 0) {
+            $filtered = $this->mergeHiddenTaxInExpenseIntoTarget($filtered, $materialsHiddenGross, 'materials');
+        }
+        if ($labourHiddenGross > 0) {
+            $filtered = $this->mergeHiddenTaxInExpenseIntoTarget($filtered, $labourHiddenGross, 'labour');
+        }
+
+        return array_values($filtered);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    protected function mergeHiddenTaxInExpenseIntoTarget(array $items, float $hiddenGross, string $bucket): array
+    {
+        if ($hiddenGross <= 0) {
+            return $items;
+        }
+
+        $targetIdx = $bucket === 'materials'
+            ? $this->materialsMergeTargetIndex($items)
+            : $this->commuteMergeTargetIndex($items);
+
+        if ($targetIdx === null) {
+            return $items;
+        }
+
+        $row = &$items[$targetIdx];
+
+        // Tax-included material buckets (e.g. paving) absorb the gross amount.
+        if (! empty($row['hst_included']) && empty($row['apply_hst'])) {
+            $row['amount'] = round((float) ($row['amount'] ?? 0) + $hiddenGross, 2);
+            unset($row);
+
             return $items;
         }
 
         $hiddenPreTax = self::preTaxFromHstIncluded($hiddenGross);
         if ($hiddenPreTax <= 0) {
-            return $filtered;
-        }
+            unset($row);
 
-        $targetIdx = $this->commuteMergeTargetIndex($filtered);
-        if ($targetIdx === null) {
             return $items;
         }
 
-        $row = &$filtered[$targetIdx];
         $row['amount'] = round((float) ($row['amount'] ?? 0) + $hiddenPreTax, 2);
 
         if (! empty($row['apply_hst'])) {
@@ -487,7 +528,7 @@ class ClientProjectQuotation extends Model
 
         unset($row);
 
-        return array_values($filtered);
+        return $items;
     }
 
     /** @deprecated Use normalizeInternalExpensesForClientFacing */
@@ -498,13 +539,62 @@ class ClientProjectQuotation extends Model
 
     protected static function isHiddenInternalExpenseLineDescription(string $description): bool
     {
+        return self::isLabourHiddenInternalExpenseLineDescription($description)
+            || self::isMaterialsHiddenInternalExpenseLineDescription($description);
+    }
+
+    protected static function isLabourHiddenInternalExpenseLineDescription(string $description): bool
+    {
         return str_starts_with($description, 'Commute expense')
             || str_starts_with($description, 'Debris removal');
+    }
+
+    protected static function isMaterialsHiddenInternalExpenseLineDescription(string $description): bool
+    {
+        return str_starts_with($description, \App\Services\AdditionalCostsService::LINE_PREFIX);
     }
 
     protected static function isCommuteLineDescription(string $description): bool
     {
         return self::isHiddenInternalExpenseLineDescription($description);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    protected function materialsMergeTargetIndex(array $items): ?int
+    {
+        $candidates = [];
+
+        foreach ($items as $i => $row) {
+            $desc = (string) ($row['description'] ?? '');
+            if (stripos($desc, 'HST exempt') !== false) {
+                continue;
+            }
+
+            $score = 0;
+            if (str_ends_with($desc, ' — Material') || str_ends_with($desc, ' — materials')) {
+                $score = 100;
+            } elseif (preg_match('/\bMaterials?\b/i', $desc) && stripos($desc, 'labour') === false) {
+                $score = 90;
+            } elseif (stripos($desc, 'Labour and material') !== false || stripos($desc, 'Material and labour') !== false) {
+                $score = 70;
+            } elseif (! empty($row['apply_hst']) || ! empty($row['hst_included'])) {
+                $score = 10;
+            } else {
+                continue;
+            }
+
+            $candidates[] = ['index' => $i, 'score' => $score];
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, fn ($a, $b) => $b['score'] <=> $a['score']);
+
+        return $candidates[0]['index'];
     }
 
     /**

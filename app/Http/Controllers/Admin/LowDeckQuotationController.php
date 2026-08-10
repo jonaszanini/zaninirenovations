@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\LowDeckAreaExceededException;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationAdditionalCosts;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
@@ -13,6 +14,7 @@ use App\Models\ClientProjectQuotation;
 use App\Models\LowDeckFormulaSetting;
 use App\Models\LowDeckMaterial;
 use App\Models\LowDeckQuotation;
+use App\Services\AdditionalCostsService;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
@@ -31,6 +33,7 @@ use Illuminate\Support\Facades\DB;
  */
 class LowDeckQuotationController extends Controller
 {
+    use HandlesQuotationAdditionalCosts;
     use HandlesQuotationCommuteExpense;
     use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
@@ -413,6 +416,7 @@ class LowDeckQuotationController extends Controller
         $items = $low_deck_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $low_deck_quotation);
         $this->appendDebrisRemovalProjectLine($items, $low_deck_quotation);
+        $this->appendAdditionalCostsProjectLines($items, $low_deck_quotation);
 
         $snapshot = $low_deck_quotation->only([
             'quote_number',
@@ -495,12 +499,13 @@ class LowDeckQuotationController extends Controller
             'include_under_deck_gravel' => ['nullable', 'boolean'],
             'include_labour_hst' => ['nullable', 'boolean'],
             'include_diagrams_on_pdf' => ['nullable', 'boolean'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules());
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules());
 
         $validator = validator($request->all(), $rules, array_merge(
             QuotationPaymentSchedule::validationMessages(),
             CommuteExpenseService::commuteValidationMessages(),
-            DebrisRemovalExpenseService::validationMessages()
+            DebrisRemovalExpenseService::validationMessages(),
+            AdditionalCostsService::validationMessages()
         ));
         $validator->after(function ($validator) use ($request, $maxArea) {
             $area = (float) $request->input('width_ft') * (float) $request->input('length_ft');
@@ -573,8 +578,10 @@ class LowDeckQuotationController extends Controller
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'low_deck_quotations');
         $merged = $this->mergeCommuteIntoPersistence($base, $commute, 'grand_total');
         $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'low_deck_quotations');
+        $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'grand_total');
+        $additional = $this->additionalCostsPersistenceFromRequest($request, $existing, 'low_deck_quotations');
 
-        return $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'grand_total');
+        return $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'grand_total');
     }
 
     /**

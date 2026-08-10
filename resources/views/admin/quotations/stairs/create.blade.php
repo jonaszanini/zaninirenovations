@@ -336,6 +336,7 @@
 
           @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
           @include('admin.quotations._debris_removal', ['quotation' => $quotation])
+          @include('admin.quotations._additional_costs', ['quotation' => $quotation])
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
         </form>
 
@@ -593,6 +594,9 @@
       var t = null;
       var lastCommuteAmount = 0;
       var lastDebrisAmount = 0;
+      var lastAdditionalMaterialsPreTax = 0;
+      var lastAdditionalMaterialsHst = 0;
+      var lastAdditionalTaxIn = 0;
       var lastPreviewCalc = null;
       function fmt(n) {
         return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -601,13 +605,16 @@
         if (!c || !c.summary) return;
         lastPreviewCalc = c;
         var s = c.summary;
-        var grandTotal = Number(s.grand_total || 0) + lastCommuteAmount + lastDebrisAmount;
+        var grandTotal = Number(s.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
         var html = '';
         (c.breakdown || []).forEach(function (row) {
           html += '<div class="pq-row"><span>' + row.label + '<br><small style="color:#64748b;font-weight:400">' + (row.detail || '') + '</small></span><strong>' + fmt(row.amount) + '</strong></div>';
         });
-        html += '<div class="pq-row"><span>Subtotal (pre-tax)</span><strong>' + fmt(s.subtotal_pre_hst) + '</strong></div>';
-        html += '<div class="pq-row"><span>HST (' + Math.round((s.hst_rate || 0.13) * 100) + '%)</span><strong>' + fmt(s.hst) + '</strong></div>';
+        if (lastAdditionalMaterialsPreTax > 0) {
+          html += '<div class="pq-row"><span>Additional costs (materials)<br><small style="color:#64748b;font-weight:400">Admin only — folded into materials on client PDF</small></span><strong>' + fmt(lastAdditionalMaterialsPreTax) + '</strong></div>';
+        }
+        html += '<div class="pq-row"><span>Subtotal (pre-tax)</span><strong>' + fmt(Number(s.subtotal_pre_hst || 0) + lastAdditionalMaterialsPreTax) + '</strong></div>';
+        html += '<div class="pq-row"><span>HST (' + Math.round((s.hst_rate || 0.13) * 100) + '%)</span><strong>' + fmt(Number(s.hst || 0) + lastAdditionalMaterialsHst) + '</strong></div>';
         if (lastCommuteAmount> 0) {
           html += '<div class="pq-row"><span>Commute expense (incl. HST)</span><strong>' + fmt(lastCommuteAmount) + '</strong></div>';
         }
@@ -649,6 +656,13 @@
       document.addEventListener('debris-removal:change', function (e) {
         var d = e.detail || {};
         lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+        if (lastPreviewCalc) render(lastPreviewCalc);
+      });
+      document.addEventListener('additional-costs:change', function (e) {
+        var d = e.detail || {};
+        lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
+        lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
+        lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
         if (lastPreviewCalc) render(lastPreviewCalc);
       });
     })();

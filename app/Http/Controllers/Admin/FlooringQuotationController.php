@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationAdditionalCosts;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
@@ -10,6 +11,7 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
 use App\Models\FlooringQuotation;
 use App\Models\FlooringType;
+use App\Services\AdditionalCostsService;
 use App\Services\ClientProjectStatusService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\FlooringQuotationCalculator;
@@ -20,6 +22,7 @@ use Illuminate\Validation\ValidationException;
 
 class FlooringQuotationController extends Controller
 {
+    use HandlesQuotationAdditionalCosts;
     use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
@@ -322,9 +325,9 @@ class FlooringQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ], QuotationPaymentSchedule::validationMessages(), DebrisRemovalExpenseService::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft);
         if (! $draft) {
@@ -392,8 +395,10 @@ class FlooringQuotationController extends Controller
         ];
 
         $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'flooring_quotations');
+        $merged = $this->mergeDebrisRemovalIntoPersistence($base, $debris, 'final_quote_total');
+        $additional = $this->additionalCostsPersistenceFromRequest($request, $existing, 'flooring_quotations');
 
-        return $this->mergeDebrisRemovalIntoPersistence($base, $debris, 'final_quote_total');
+        return $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
     }
 
     /**
@@ -517,6 +522,7 @@ class FlooringQuotationController extends Controller
         }
 
         $this->appendDebrisRemovalProjectLine($items, $flooringQuotation);
+        $this->appendAdditionalCostsProjectLines($items, $flooringQuotation);
 
         $snapshot = $flooringQuotation->only([
             'quote_number',

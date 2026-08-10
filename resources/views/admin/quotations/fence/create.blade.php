@@ -452,6 +452,7 @@
 
         @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
         @include('admin.quotations._debris_removal', ['quotation' => $quotation])
+        @include('admin.quotations._additional_costs', ['quotation' => $quotation])
         @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
         {{-- Labour rates (saved per quotation) ----------------------- --}}
@@ -688,6 +689,9 @@
   var tDebris = document.getElementById('fq-t-debris');
   var lastCommuteAmount = 0;
   var lastDebrisAmount = 0;
+  var lastAdditionalMaterialsPreTax = 0;
+  var lastAdditionalMaterialsHst = 0;
+  var lastAdditionalTaxIn = 0;
   var lastCalc = null;
 
   var MAX_SIDES = 4;
@@ -1040,10 +1044,7 @@
     }).join('');
     materialsBody.innerHTML = rows || '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
 
-    tMaterials.textContent = money(t.materials_subtotal);
-    tHst.textContent = money(t.hst);
     tLabour.textContent = money(t.labour_subtotal);
-    tTotal.textContent = money(t.total);
     tLabourHst.textContent = money(t.labour_hst);
     if (tLabourHstRow) {
       tLabourHstRow.classList.toggle(
@@ -1055,7 +1056,10 @@
     if (tCommute) tCommute.textContent = money(lastCommuteAmount);
     if (tDebrisRow) tDebrisRow.classList.toggle('is-hidden', !(lastDebrisAmount > 0));
     if (tDebris) tDebris.textContent = money(lastDebrisAmount);
-    tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount);
+    tMaterials.textContent = money(Number(t.materials_subtotal || 0) + lastAdditionalMaterialsPreTax);
+    tHst.textContent = money(Number(t.hst || 0) + lastAdditionalMaterialsHst);
+    tTotal.textContent = money(Number(t.total || 0) + lastAdditionalTaxIn);
+    tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn);
     if (t.labour_rate_per_ft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_ft) + '/ft)';
     }
@@ -1110,6 +1114,15 @@
   document.addEventListener('debris-removal:change', function (e) {
     var d = e.detail || {};
     lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+    if (lastCalc) {
+      renderCalc(lastCalc);
+    }
+  });
+  document.addEventListener('additional-costs:change', function (e) {
+    var d = e.detail || {};
+    lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
+    lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
+    lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
     if (lastCalc) {
       renderCalc(lastCalc);
     }
