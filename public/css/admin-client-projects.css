@@ -903,7 +903,7 @@ html.cp-cancel-modal-open {
   font-size: 1rem;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .cp-client-assign {
     gap: 0.5rem;
   }
