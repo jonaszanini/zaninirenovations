@@ -22,6 +22,8 @@ class TileQuotation extends Model
         'work_description',
         'payment_installments',
         'payment_percentages',
+        'include_debris_removal',
+        'debris_removal_amount',
         'version',
         'linked_at',
     ];
@@ -33,6 +35,8 @@ class TileQuotation extends Model
         'final_quote_total' => 'decimal:2',
         'payment_installments' => 'integer',
         'payment_percentages' => 'array',
+        'include_debris_removal' => 'boolean',
+        'debris_removal_amount' => 'decimal:2',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];

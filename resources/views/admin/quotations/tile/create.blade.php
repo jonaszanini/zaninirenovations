@@ -263,6 +263,8 @@
       </div>
 
       @include('admin.quotations._payment_schedule', ['quotation' => $quotation ?? null])
+
+      @include('admin.quotations._debris_removal', ['quotation' => $quotation ?? null])
     </div>
 
     <aside class="pq-sticky">
@@ -314,6 +316,49 @@ document.addEventListener('DOMContentLoaded', function () {
     var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     var liveTimer = null;
 
+    var liveTimer = null;
+    var lastDebrisAmount = 0;
+    var lastGrandTotal = 0;
+
+    function applyDebrisToLivePreview() {
+        if (!liveBody || liveBody.hidden) {
+            return;
+        }
+        var existing = liveBody.querySelector('[data-tl-debris-row]');
+        if (existing) {
+            existing.remove();
+        }
+        if (lastDebrisAmount > 0) {
+            var debrisRow = document.createElement('div');
+            debrisRow.setAttribute('data-tl-debris-row', '1');
+            debrisRow.style.cssText = 'display:flex; justify-content:space-between; margin-bottom:8px;';
+            debrisRow.innerHTML = '<span>Debris removal (incl. HST):</span><strong style="color:#0f172a;">$' + lastDebrisAmount.toFixed(2) + '</strong>';
+            var grandRow = liveBody.querySelector('[data-tl-grand-row]');
+            if (grandRow && grandRow.parentNode) {
+                grandRow.parentNode.insertBefore(debrisRow, grandRow);
+            } else {
+                liveBody.appendChild(debrisRow);
+            }
+        }
+        var grandValue = liveBody.querySelector('[data-tl-grand-value]');
+        if (grandValue) {
+            grandValue.textContent = '$' + (lastGrandTotal + lastDebrisAmount).toFixed(2);
+        }
+    }
+
+    function markLiveGrandTotalRow() {
+        var grandRows = liveBody.querySelectorAll('div[style*="font-size:18px"]');
+        if (!grandRows.length) {
+            return;
+        }
+        var grandRow = grandRows[grandRows.length - 1];
+        grandRow.setAttribute('data-tl-grand-row', '1');
+        var valueSpan = grandRow.querySelector('span:last-child');
+        if (valueSpan) {
+            valueSpan.setAttribute('data-tl-grand-value', '1');
+        }
+    }
+
     if (btnDraft) {
         btnDraft.addEventListener('click', function () {
             isDraftInput.value = '1';
@@ -342,6 +387,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 liveEmpty.hidden = true;
                 liveBody.innerHTML = data.html;
                 liveBody.hidden = false;
+                lastGrandTotal = Number((data.calculation && data.calculation.grand_total) || 0);
+                markLiveGrandTotalRow();
+                applyDebrisToLivePreview();
             } else {
                 liveEmpty.hidden = false;
                 liveBody.hidden = true;
@@ -412,6 +460,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Run on load if filled
     doLiveUpdate();
+
+    document.addEventListener('debris-removal:change', function (e) {
+        var d = e.detail || {};
+        lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+        applyDebrisToLivePreview();
+    });
 
     // Tile Product Preview Logic
     var tileProductSelect = document.getElementById('tile_product_id');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
@@ -13,6 +14,7 @@ use App\Models\FenceMaterial;
 use App\Models\FenceQuotation;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
+use App\Services\DebrisRemovalExpenseService;
 use App\Services\FenceQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
@@ -33,6 +35,7 @@ use Illuminate\Validation\Rule;
 class FenceQuotationController extends Controller
 {
     use HandlesQuotationCommuteExpense;
+    use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
@@ -365,6 +368,7 @@ class FenceQuotationController extends Controller
     {
         $items = $fence_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $fence_quotation);
+        $this->appendDebrisRemovalProjectLine($items, $fence_quotation);
 
         $snapshot = $fence_quotation->only([
             'quote_number',
@@ -609,11 +613,12 @@ class FenceQuotationController extends Controller
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'include_labour_hst' => ['nullable', 'boolean'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules());
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules());
 
         $data = $request->validate($rules, array_merge(
             QuotationPaymentSchedule::validationMessages(),
-            CommuteExpenseService::commuteValidationMessages()
+            CommuteExpenseService::commuteValidationMessages(),
+            DebrisRemovalExpenseService::validationMessages()
         ));
         $data['include_labour_hst'] = $request->has('include_labour_hst')
             ? $request->boolean('include_labour_hst')
@@ -654,7 +659,9 @@ class FenceQuotationController extends Controller
         ];
 
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'fence_quotations');
+        $merged = $this->mergeCommuteIntoPersistence($base, $commute, 'grand_total');
+        $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'fence_quotations');
 
-        return $this->mergeCommuteIntoPersistence($base, $commute, 'grand_total');
+        return $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'grand_total');
     }
 }

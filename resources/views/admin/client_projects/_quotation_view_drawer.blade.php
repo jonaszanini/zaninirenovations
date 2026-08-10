@@ -121,8 +121,7 @@
       {{-- ─── Commute expense ─────────────────────────────────────────── --}}
       @php
         $hasCommute = $sourceModel !== null
-          && property_exists($sourceModel, 'include_commute')
-          && $sourceModel->include_commute
+          && (bool) ($sourceModel->include_commute ?? false)
           && (float) ($sourceModel->commute_amount ?? 0) > 0;
       @endphp
       @if ($hasCommute)
@@ -152,6 +151,24 @@
             <div class="cp-vd-field cp-vd-field--highlight">
               <span class="cp-vd-field__label">Added to quotation (incl. HST)</span>
               <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($comAmt) }}</span>
+            </div>
+          </div>
+        </div>
+      @endif
+
+      {{-- ─── Debris removal ──────────────────────────────────────────── --}}
+      @php
+        $hasDebris = $sourceModel !== null
+          && (bool) ($sourceModel->include_debris_removal ?? false)
+          && (float) ($sourceModel->debris_removal_amount ?? 0) > 0;
+      @endphp
+      @if ($hasDebris)
+        <div class="cp-vd-section">
+          <div class="cp-vd-section__title"><i class="fa fa-trash" aria-hidden="true"></i> Debris removal</div>
+          <div class="cp-vd-grid">
+            <div class="cp-vd-field cp-vd-field--highlight">
+              <span class="cp-vd-field__label">Added to quotation (incl. HST)</span>
+              <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney((float) $sourceModel->debris_removal_amount) }}</span>
             </div>
           </div>
         </div>

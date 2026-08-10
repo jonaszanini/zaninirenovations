@@ -478,6 +478,7 @@
           </div>
 
           @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+          @include('admin.quotations._debris_removal', ['quotation' => $quotation])
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
         </form>
 
@@ -925,6 +926,7 @@
       var root = document.getElementById('pq-live-root');
       var t = null;
       var lastCommuteAmount = 0;
+      var lastDebrisAmount = 0;
       var lastPreviewCalc = null;
       function schedule() {
         clearTimeout(t);
@@ -960,7 +962,7 @@
         var f = c.fixed_costs;
         var l = c.labour;
         var quoteBeforeCommute = Number(s.final_quote_total || 0);
-        var clientTotal = quoteBeforeCommute + lastCommuteAmount;
+        var clientTotal = quoteBeforeCommute + lastCommuteAmount + lastDebrisAmount;
         var calculatedTotal = Number(s.built_up_grand_total || 0);
         var hasManual = s.manual_price_override != null && Number(s.manual_price_override)> 0;
         var subtotal = Number(s.total_with_tax_mats_fixed_plus_labour || 0);
@@ -987,6 +989,9 @@
         }
         if (lastCommuteAmount> 0) {
           quoteRows.push(row('Commute expense <span class="admin-form-help">(incl. HST)</span>', fmt(lastCommuteAmount)));
+        }
+        if (lastDebrisAmount > 0) {
+          quoteRows.push(row('Debris removal <span class="admin-form-help">(incl. HST)</span>', fmt(lastDebrisAmount)));
         }
         quoteRows.push(row('Total quote', fmt(clientTotal), 'pq-row--total'));
         html += section('Quote', quoteRows.join(''));
@@ -1160,6 +1165,11 @@
       document.addEventListener('commute-expense:change', function (e) {
         var d = e.detail || {};
         lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+        if (lastPreviewCalc) render(lastPreviewCalc);
+      });
+      document.addEventListener('debris-removal:change', function (e) {
+        var d = e.detail || {};
+        lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
         if (lastPreviewCalc) render(lastPreviewCalc);
       });
     })();

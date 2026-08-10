@@ -56,6 +56,8 @@ class StandardQuotation extends Model
         'commute_estimated_trips',
         'commute_round_trip_cost',
         'commute_amount',
+        'include_debris_removal',
+        'debris_removal_amount',
         'version',
         'linked_at',
     ];
@@ -87,6 +89,8 @@ class StandardQuotation extends Model
         'commute_estimated_trips' => 'integer',
         'commute_round_trip_cost' => 'decimal:2',
         'commute_amount' => 'decimal:2',
+        'include_debris_removal' => 'boolean',
+        'debris_removal_amount' => 'decimal:2',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];
@@ -240,6 +244,15 @@ class StandardQuotation extends Model
             );
             if ($commuteLine !== null) {
                 $lines[] = $commuteLine;
+            }
+        }
+
+        if ($this->include_debris_removal && (float) $this->debris_removal_amount > 0) {
+            $debrisLine = \App\Services\DebrisRemovalExpenseService::projectLineItem(
+                (float) $this->debris_removal_amount
+            );
+            if ($debrisLine !== null) {
+                $lines[] = $debrisLine;
             }
         }
 

@@ -451,6 +451,7 @@
         </div>
 
         @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+        @include('admin.quotations._debris_removal', ['quotation' => $quotation])
         @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
         {{-- Labour rates (saved per quotation) ----------------------- --}}
@@ -637,6 +638,10 @@
           <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
           <span id="fq-t-commute">CA$0.00</span>
         </div>
+        <div class="fq-totals-row is-hidden" id="fq-t-debris-row">
+          <span>Debris removal <span class="admin-form-help">(incl. HST)</span></span>
+          <span id="fq-t-debris">CA$0.00</span>
+        </div>
         <div class="fq-totals-row fq-totals-row--grand">
           <span>Grand total</span>
           <span id="fq-t-grand">CA$0.00</span>
@@ -682,7 +687,10 @@
   var tGrand = document.getElementById('fq-t-grand');
   var tCommuteRow = document.getElementById('fq-t-commute-row');
   var tCommute = document.getElementById('fq-t-commute');
+  var tDebrisRow = document.getElementById('fq-t-debris-row');
+  var tDebris = document.getElementById('fq-t-debris');
   var lastCommuteAmount = 0;
+  var lastDebrisAmount = 0;
   var lastCalc = null;
 
   var MAX_SIDES = 4;
@@ -1048,7 +1056,9 @@
     }
     if (tCommuteRow) tCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount> 0));
     if (tCommute) tCommute.textContent = money(lastCommuteAmount);
-    tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount);
+    if (tDebrisRow) tDebrisRow.classList.toggle('is-hidden', !(lastDebrisAmount > 0));
+    if (tDebris) tDebris.textContent = money(lastDebrisAmount);
+    tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount);
     if (t.labour_rate_per_ft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_ft) + '/ft)';
     }
@@ -1096,6 +1106,13 @@
   document.addEventListener('commute-expense:change', function (e) {
     var d = e.detail || {};
     lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+    if (lastCalc) {
+      renderCalc(lastCalc);
+    }
+  });
+  document.addEventListener('debris-removal:change', function (e) {
+    var d = e.detail || {};
+    lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
     if (lastCalc) {
       renderCalc(lastCalc);
     }

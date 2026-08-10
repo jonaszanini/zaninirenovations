@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
@@ -13,6 +14,7 @@ use App\Models\PaintingQuotation;
 use App\Models\PaintingSettings;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
+use App\Services\DebrisRemovalExpenseService;
 use App\Services\PaintingQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use Illuminate\Http\Request;
@@ -23,6 +25,7 @@ use Illuminate\Validation\ValidationException;
 class PaintingQuotationController extends Controller
 {
     use HandlesQuotationCommuteExpense;
+    use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
@@ -318,9 +321,9 @@ class PaintingQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft);
         if (! $draft) {
@@ -352,8 +355,10 @@ class PaintingQuotationController extends Controller
         ];
 
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'painting_quotations');
+        $merged = $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
+        $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'painting_quotations');
 
-        return $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
+        return $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
     }
 
     /**
@@ -510,6 +515,7 @@ class PaintingQuotationController extends Controller
             ];
         }
         $this->appendCommuteProjectLine($items, $paintingQuotation);
+        $this->appendDebrisRemovalProjectLine($items, $paintingQuotation);
 
         $snapshot = $paintingQuotation->only([
             'quote_number',

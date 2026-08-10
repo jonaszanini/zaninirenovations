@@ -335,6 +335,7 @@
           </div>
 
           @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+          @include('admin.quotations._debris_removal', ['quotation' => $quotation])
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
         </form>
 
@@ -591,6 +592,7 @@
       var root = document.getElementById('sq-live-root');
       var t = null;
       var lastCommuteAmount = 0;
+      var lastDebrisAmount = 0;
       var lastPreviewCalc = null;
       function fmt(n) {
         return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -599,7 +601,7 @@
         if (!c || !c.summary) return;
         lastPreviewCalc = c;
         var s = c.summary;
-        var grandTotal = Number(s.grand_total || 0) + lastCommuteAmount;
+        var grandTotal = Number(s.grand_total || 0) + lastCommuteAmount + lastDebrisAmount;
         var html = '';
         (c.breakdown || []).forEach(function (row) {
           html += '<div class="pq-row"><span>' + row.label + '<br><small style="color:#64748b;font-weight:400">' + (row.detail || '') + '</small></span><strong>' + fmt(row.amount) + '</strong></div>';
@@ -608,6 +610,9 @@
         html += '<div class="pq-row"><span>HST (' + Math.round((s.hst_rate || 0.13) * 100) + '%)</span><strong>' + fmt(s.hst) + '</strong></div>';
         if (lastCommuteAmount> 0) {
           html += '<div class="pq-row"><span>Commute expense (incl. HST)</span><strong>' + fmt(lastCommuteAmount) + '</strong></div>';
+        }
+        if (lastDebrisAmount > 0) {
+          html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><strong>' + fmt(lastDebrisAmount) + '</strong></div>';
         }
         html += '<div class="pq-row pq-row--hl"><span>Grand total</span><strong>' + fmt(grandTotal) + '</strong></div>';
         root.innerHTML = html;
@@ -639,6 +644,11 @@
       document.addEventListener('commute-expense:change', function (e) {
         var d = e.detail || {};
         lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+        if (lastPreviewCalc) render(lastPreviewCalc);
+      });
+      document.addEventListener('debris-removal:change', function (e) {
+        var d = e.detail || {};
+        lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
         if (lastPreviewCalc) render(lastPreviewCalc);
       });
     })();

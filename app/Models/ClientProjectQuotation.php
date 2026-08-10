@@ -360,8 +360,8 @@ class ClientProjectQuotation extends Model
     /**
      * Line items rendered on the client PDF. Standard quotations can show
      * either the linked summary lines or a full material/labour breakdown.
-     * Commute fuel is rolled into the primary labour/material line (pre-tax)
-     * with its HST in the footer — never shown as its own row to clients.
+     * Commute fuel and debris removal are rolled into the primary labour/material
+     * line (pre-tax) with HST in the footer — never shown as their own rows to clients.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -386,7 +386,7 @@ class ClientProjectQuotation extends Model
             }
         }
 
-        return $this->normalizeCommuteForClientFacing($items);
+        return $this->normalizeInternalExpensesForClientFacing($items);
     }
 
     /**
@@ -446,26 +446,27 @@ class ClientProjectQuotation extends Model
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
      */
-    protected function normalizeCommuteForClientFacing(array $items): array
+    protected function normalizeInternalExpensesForClientFacing(array $items): array
     {
-        $commuteGross = 0.0;
+        $hiddenGross = 0.0;
         $filtered = [];
 
         foreach ($items as $row) {
-            if (self::isCommuteLineDescription((string) ($row['description'] ?? ''))) {
-                $commuteGross += (float) ($row['amount'] ?? 0);
+            $desc = (string) ($row['description'] ?? '');
+            if (self::isHiddenInternalExpenseLineDescription($desc)) {
+                $hiddenGross += (float) ($row['amount'] ?? 0);
 
                 continue;
             }
             $filtered[] = $row;
         }
 
-        if ($commuteGross <= 0 || $filtered === []) {
+        if ($hiddenGross <= 0 || $filtered === []) {
             return $items;
         }
 
-        $commutePreTax = self::preTaxFromHstIncluded($commuteGross);
-        if ($commutePreTax <= 0) {
+        $hiddenPreTax = self::preTaxFromHstIncluded($hiddenGross);
+        if ($hiddenPreTax <= 0) {
             return $filtered;
         }
 
@@ -475,13 +476,13 @@ class ClientProjectQuotation extends Model
         }
 
         $row = &$filtered[$targetIdx];
-        $row['amount'] = round((float) ($row['amount'] ?? 0) + $commutePreTax, 2);
+        $row['amount'] = round((float) ($row['amount'] ?? 0) + $hiddenPreTax, 2);
 
         if (! empty($row['apply_hst'])) {
             $taxableBase = array_key_exists('hst_taxable_amount', $row)
                 ? (float) $row['hst_taxable_amount']
-                : (float) ($row['amount'] ?? 0) - $commutePreTax;
-            $row['hst_taxable_amount'] = round($taxableBase + $commutePreTax, 2);
+                : (float) ($row['amount'] ?? 0) - $hiddenPreTax;
+            $row['hst_taxable_amount'] = round($taxableBase + $hiddenPreTax, 2);
         }
 
         unset($row);
@@ -489,9 +490,21 @@ class ClientProjectQuotation extends Model
         return array_values($filtered);
     }
 
+    /** @deprecated Use normalizeInternalExpensesForClientFacing */
+    protected function normalizeCommuteForClientFacing(array $items): array
+    {
+        return $this->normalizeInternalExpensesForClientFacing($items);
+    }
+
+    protected static function isHiddenInternalExpenseLineDescription(string $description): bool
+    {
+        return str_starts_with($description, 'Commute expense')
+            || str_starts_with($description, 'Debris removal');
+    }
+
     protected static function isCommuteLineDescription(string $description): bool
     {
-        return str_starts_with($description, 'Commute expense');
+        return self::isHiddenInternalExpenseLineDescription($description);
     }
 
     /**
