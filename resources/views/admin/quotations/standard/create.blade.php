@@ -429,6 +429,7 @@
 
     {{-- Grand summary -------------------------------------------- --}}
     @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+    @include('admin.quotations._debris_removal', ['quotation' => $quotation])
     @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
     <div class="admin-card sq-grand-card">
@@ -477,6 +478,10 @@
         <div class="sq-grand-row sq-grand-row--commute is-hidden" id="sq-g-commute-row">
           <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
           <span id="sq-g-commute">CA$0.00</span>
+        </div>
+        <div class="sq-grand-row sq-grand-row--commute is-hidden" id="sq-g-debris-row">
+          <span>Debris removal <span class="admin-form-help">(incl. HST)</span></span>
+          <span id="sq-g-debris">CA$0.00</span>
         </div>
 
         <div class="sq-grand-row sq-grand-row--final">
@@ -623,7 +628,10 @@
   var gGrand = document.getElementById('sq-g-grand');
   var gCommuteRow = document.getElementById('sq-g-commute-row');
   var gCommute = document.getElementById('sq-g-commute');
+  var gDebrisRow = document.getElementById('sq-g-debris-row');
+  var gDebris = document.getElementById('sq-g-debris');
   var lastCommuteAmount = 0;
+  var lastDebrisAmount = 0;
 
   // Contingency controls + readouts
   var contEnabled = document.getElementById('sq-contingency-enabled');
@@ -773,7 +781,9 @@
     if (gLabTot) gLabTot.textContent = money(labWithHst);
     if (gCommuteRow) gCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount> 0));
     if (gCommute) gCommute.textContent = money(lastCommuteAmount);
-    gGrand.textContent = money(withSumWithCont + labWithHst + lastCommuteAmount);
+    if (gDebrisRow) gDebrisRow.classList.toggle('is-hidden', !(lastDebrisAmount > 0));
+    if (gDebris) gDebris.textContent = money(lastDebrisAmount);
+    gGrand.textContent = money(withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount);
 
     if (useFixed) {
       if (equivEl) equivEl.textContent = '';
@@ -1026,6 +1036,11 @@
   document.addEventListener('commute-expense:change', function (e) {
     var d = e.detail || {};
     lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+    recalcMaterials();
+  });
+  document.addEventListener('debris-removal:change', function (e) {
+    var d = e.detail || {};
+    lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
     recalcMaterials();
   });
 })();

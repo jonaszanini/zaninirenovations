@@ -46,6 +46,9 @@ class LowDeckQuotation extends Model
         'commute_estimated_trips',
         'commute_round_trip_cost',
         'commute_amount',
+        'include_debris_removal',
+        'debris_removal_amount',
+        'additional_costs',
         'version',
         'linked_at',
     ];
@@ -71,6 +74,9 @@ class LowDeckQuotation extends Model
         'commute_estimated_trips' => 'integer',
         'commute_round_trip_cost' => 'decimal:2',
         'commute_amount' => 'decimal:2',
+        'include_debris_removal' => 'boolean',
+        'debris_removal_amount' => 'decimal:2',
+        'additional_costs' => 'array',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];

@@ -254,6 +254,8 @@
         </div>
 
         @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+        @include('admin.quotations._debris_removal', ['quotation' => $quotation])
+        @include('admin.quotations._additional_costs', ['quotation' => $quotation])
         @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
         {{-- Dimensions ------------------------------------------------ --}}
@@ -429,6 +431,10 @@
           <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
           <span id="ld-t-commute">CA$0.00</span>
         </div>
+        <div class="ld-totals-row is-hidden" id="ld-t-debris-row">
+          <span>Debris removal <span class="admin-form-help">(incl. HST)</span></span>
+          <span id="ld-t-debris">CA$0.00</span>
+        </div>
         <div class="ld-totals-row ld-totals-row--grand">
           <span>Grand total</span>
           <span id="ld-t-grand">CA$0.00</span>
@@ -514,6 +520,8 @@
   var tGrand = document.getElementById('ld-t-grand');
   var tCommuteRow = document.getElementById('ld-t-commute-row');
   var tCommute = document.getElementById('ld-t-commute');
+  var tDebrisRow = document.getElementById('ld-t-debris-row');
+  var tDebris = document.getElementById('ld-t-debris');
   var diagramsHint = document.getElementById('ld-diagrams-hint');
   var printDiagramsBtn = document.getElementById('ld-print-diagrams');
   var diagramPrintDims = document.getElementById('ld-diagram-print-dims');
@@ -521,6 +529,10 @@
   var generateWorkDescriptionBtn = document.getElementById('ld-generate-work-description');
 
   var lastCommuteAmount = 0;
+  var lastDebrisAmount = 0;
+  var lastAdditionalMaterialsPreTax = 0;
+  var lastAdditionalMaterialsHst = 0;
+  var lastAdditionalTaxIn = 0;
   var lastCalc = null;
 
   function money(n) {
@@ -715,10 +727,7 @@
       }
     }
 
-    tMaterials.textContent = money(t.materials_subtotal);
-    tHst.textContent = money(t.hst);
     tLabour.textContent = money(t.labour_subtotal);
-    tTotal.textContent = money(t.total);
     tLabourHst.textContent = money(t.labour_hst);
     if (tLabourHstRow) {
       tLabourHstRow.classList.toggle(
@@ -728,7 +737,12 @@
     }
     if (tCommuteRow) tCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount > 0));
     if (tCommute) tCommute.textContent = money(lastCommuteAmount);
-    tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount);
+    if (tDebrisRow) tDebrisRow.classList.toggle('is-hidden', !(lastDebrisAmount > 0));
+    if (tDebris) tDebris.textContent = money(lastDebrisAmount);
+    tMaterials.textContent = money(Number(t.materials_subtotal || 0) + lastAdditionalMaterialsPreTax);
+    tHst.textContent = money(Number(t.hst || 0) + lastAdditionalMaterialsHst);
+    tTotal.textContent = money(Number(t.total || 0) + lastAdditionalTaxIn);
+    tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn);
     if (t.labour_rate_per_sqft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_sqft) + '/sq ft)';
     }
@@ -1188,6 +1202,22 @@
   document.addEventListener('commute-expense:change', function (e) {
     var d = e.detail || {};
     lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+    if (lastCalc) {
+      renderCalc(lastCalc);
+    }
+  });
+  document.addEventListener('debris-removal:change', function (e) {
+    var d = e.detail || {};
+    lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+    if (lastCalc) {
+      renderCalc(lastCalc);
+    }
+  });
+  document.addEventListener('additional-costs:change', function (e) {
+    var d = e.detail || {};
+    lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
+    lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
+    lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
     if (lastCalc) {
       renderCalc(lastCalc);
     }

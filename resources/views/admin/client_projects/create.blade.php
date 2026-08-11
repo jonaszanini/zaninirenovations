@@ -69,7 +69,10 @@
 
           <div class="admin-form-group">
             <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
-            <input type="text" id="cp-client-name" name="client_name" value="{{ old('client_name') }}" required maxlength="255"
+            {{-- No HTML required: a directory client_id is enough (server hydrates name).
+                 Browser required blocked Create even when a client was selected. --}}
+            <input type="text" id="cp-client-name" name="client_name" value="{{ old('client_name') }}" maxlength="255"
+                   data-cp-client-name
                    @class(['admin-input', 'is-invalid' => $errors->has('client_name')])>
             @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
@@ -278,7 +281,38 @@
       var form = document.getElementById('cp-create-project-form');
       if (!form) return;
 
+      function fillNameFromDirectoryIfNeeded() {
+        var nameInput = document.getElementById('cp-client-name');
+        var clientSelect = document.getElementById('cp-client-directory');
+        if (!nameInput || !clientSelect) return;
+        if (String(nameInput.value || '').trim() !== '') return;
+
+        var clientId = clientSelect.value;
+        if (!clientId) return;
+
+        // Prefer Tom Select option label/name when available.
+        var label = '';
+        var ts = clientSelect.tomselect;
+        if (ts && ts.options) {
+          var opt = ts.options[clientId] || ts.options[String(clientId)];
+          if (opt) {
+            label = opt.name || (opt.label ? String(opt.label).split(' — ')[0].trim() : '');
+          }
+        }
+        if (!label) {
+          var selected = clientSelect.options[clientSelect.selectedIndex];
+          if (selected && selected.text) {
+            label = String(selected.text).split(' — ')[0].trim();
+          }
+        }
+        if (label) {
+          nameInput.value = label;
+        }
+      }
+
       form.addEventListener('submit', function () {
+        fillNameFromDirectoryIfNeeded();
+
         var visitDate = document.getElementById('cp-create-visit-date');
         var visitCb = document.getElementById('cp-create-visit-required');
         if (visitDate && visitCb && !visitCb.checked) {
@@ -286,6 +320,16 @@
           visitDate.value = '';
         }
       });
+
+      // Outside-form Create button: fill before the browser posts the form.
+      document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest
+          ? e.target.closest('button[type="submit"][form="cp-create-project-form"]')
+          : null;
+        if (btn) {
+          fillNameFromDirectoryIfNeeded();
+        }
+      }, true);
     })();
   </script>
 @endsection

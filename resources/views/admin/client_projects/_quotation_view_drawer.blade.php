@@ -121,8 +121,7 @@
       {{-- ─── Commute expense ─────────────────────────────────────────── --}}
       @php
         $hasCommute = $sourceModel !== null
-          && property_exists($sourceModel, 'include_commute')
-          && $sourceModel->include_commute
+          && (bool) ($sourceModel->include_commute ?? false)
           && (float) ($sourceModel->commute_amount ?? 0) > 0;
       @endphp
       @if ($hasCommute)
@@ -153,6 +152,54 @@
               <span class="cp-vd-field__label">Added to quotation (incl. HST)</span>
               <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($comAmt) }}</span>
             </div>
+          </div>
+        </div>
+      @endif
+
+      {{-- ─── Debris removal ──────────────────────────────────────────── --}}
+      @php
+        $hasDebris = $sourceModel !== null
+          && (bool) ($sourceModel->include_debris_removal ?? false)
+          && (float) ($sourceModel->debris_removal_amount ?? 0) > 0;
+      @endphp
+      @if ($hasDebris)
+        <div class="cp-vd-section">
+          <div class="cp-vd-section__title"><i class="fa fa-trash" aria-hidden="true"></i> Debris removal</div>
+          <div class="cp-vd-grid">
+            <div class="cp-vd-field cp-vd-field--highlight">
+              <span class="cp-vd-field__label">Added to quotation (incl. HST)</span>
+              <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney((float) $sourceModel->debris_removal_amount) }}</span>
+            </div>
+          </div>
+        </div>
+      @endif
+
+      {{-- ─── Additional costs ──────────────────────────────────────────── --}}
+      @php
+        $additionalRows = $sourceModel !== null && is_array($sourceModel->additional_costs ?? null)
+          ? $sourceModel->additional_costs
+          : [];
+        $hasAdditional = $additionalRows !== [];
+      @endphp
+      @if ($hasAdditional)
+        <div class="cp-vd-section">
+          <div class="cp-vd-section__title"><i class="fa fa-plus-circle" aria-hidden="true"></i> Additional costs</div>
+          <div class="cp-vd-grid">
+            @foreach ($additionalRows as $row)
+              @php
+                $desc = trim((string) ($row['description'] ?? ''));
+                $amt = (float) ($row['amount'] ?? 0);
+                $hstIncluded = (bool) ($row['hst_included'] ?? true);
+                if ($amt <= 0) continue;
+              @endphp
+              <div class="cp-vd-field">
+                <span class="cp-vd-field__label">{{ $desc !== '' ? $desc : 'Additional cost' }}</span>
+                <span class="cp-vd-field__value">
+                  {{ \App\Models\ClientProject::formatMoney($amt) }}
+                  <small style="opacity: 0.7; margin-left: 4px;">{{ $hstIncluded ? '(tax included)' : '(before tax)' }}</small>
+                </span>
+              </div>
+            @endforeach
           </div>
         </div>
       @endif

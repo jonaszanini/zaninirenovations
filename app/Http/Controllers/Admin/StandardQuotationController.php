@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
@@ -11,6 +12,7 @@ use App\Models\ClientProjectQuotation;
 use App\Models\StandardQuotation;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
+use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
@@ -25,6 +27,7 @@ use Illuminate\Validation\ValidationException;
 class StandardQuotationController extends Controller
 {
     use HandlesQuotationCommuteExpense;
+    use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
@@ -399,7 +402,7 @@ class StandardQuotationController extends Controller
             ],
             'contingency_enabled' => ['nullable'],
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules()), array_merge([
             'client_name.required' => 'Client name is required.',
             'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',
@@ -408,7 +411,7 @@ class StandardQuotationController extends Controller
             'labour_quantity.required' => 'Enter estimated hours/days, or enable flat labour fee.',
             'contingency_percent.numeric' => 'Contingency percent must be a number.',
             'contingency_percent.max' => 'Contingency percent cannot exceed 100.',
-        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages()));
 
         $includesMaterial = $request->boolean('includes_material');
         $includesLabour = $request->boolean('includes_labour');
@@ -512,6 +515,12 @@ class StandardQuotationController extends Controller
             $commute,
             'grand_total'
         );
+        $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'standard_quotations');
+        $persistence['persistence'] = $this->mergeDebrisRemovalIntoPersistence(
+            $persistence['persistence'],
+            $debris,
+            'grand_total'
+        );
 
         return $persistence;
     }
@@ -590,6 +599,7 @@ class StandardQuotationController extends Controller
         }
 
         $this->appendCommuteProjectLine($sqLines, $standardQuotation);
+        $this->appendDebrisRemovalProjectLine($sqLines, $standardQuotation);
 
         /** @var ClientProjectQuotation $row */
         $row = ClientProjectQuotation::firstOrNew([

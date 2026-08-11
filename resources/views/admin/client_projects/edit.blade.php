@@ -61,7 +61,9 @@
 
         <div class="admin-form-group">
           <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
-          <input class="admin-input" type="text" id="cp-client-name" name="client_name" value="{{ old('client_name', $project->client_name) }}" required maxlength="255"
+          {{-- No HTML required: directory client_id is enough (server hydrates name). --}}
+          <input class="admin-input" type="text" id="cp-client-name" name="client_name" value="{{ old('client_name', $project->client_name) }}" maxlength="255"
+                 data-cp-client-name
                  @class(['admin-input', 'is-invalid' => $errors->has('client_name')]) @disabled($clientFieldsLocked)>
           @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>

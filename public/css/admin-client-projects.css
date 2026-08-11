@@ -871,43 +871,41 @@ html.cp-cancel-modal-open {
   gap: 6px;
 }
 .cp-client-assign {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.1fr) minmax(200px, 1fr);
-  gap: 1rem;
-  align-items: start;
-}
-
-.cp-client-assign__picker {
   display: flex;
-  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.65rem;
   min-width: 0;
 }
 
 .cp-client-directory-picker__field {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
 }
 
 .cp-client-directory-picker__manage {
-  align-self: flex-start;
-  white-space: nowrap;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: var(--admin-control-height, 44px);
+  height: var(--admin-control-height, 44px);
+  min-width: var(--admin-control-height, 44px);
+  min-height: var(--admin-control-height, 44px);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
 }
 
-.cp-client-assign__preview {
-  min-height: 44px;
-  padding: 0.65rem 0.85rem;
-  border: 1px solid var(--admin-border, #d8dee4);
-  border-radius: 8px;
-  background: var(--admin-surface-hover, #f4f6f8);
-}
-
-.cp-client-preview {
-  min-height: 1.5rem;
+.cp-client-directory-picker__manage .fa {
+  margin: 0;
+  font-size: 1rem;
 }
 
 @media (max-width: 768px) {
   .cp-client-assign {
-    grid-template-columns: 1fr;
+    gap: 0.5rem;
   }
 }
 .cp-send-client-email-row {

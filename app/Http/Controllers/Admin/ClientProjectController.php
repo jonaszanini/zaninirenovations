@@ -543,6 +543,7 @@ class ClientProjectController extends Controller
     protected function clientProjectValidationMessages(): array
     {
         return [
+            'client_name.required' => 'Enter a client name, or select a client from the directory.',
             'client_phone.digits' => 'Phone number must have exactly 10 digits (e.g. (123) 456-7890).',
             'client_email.email' => 'Please enter a valid email address.',
             'client_email_secondary.email' => 'Please enter a valid secondary email address.',

@@ -156,6 +156,8 @@ class Client extends Model
         $label = $this->searchLabel();
 
         return array_merge($this->toPickerArray(), [
+            // String id keeps Tom Select option keys consistent in the browser.
+            'id' => (string) $this->id,
             'label' => $label,
             'display' => $label,
             'phone_display' => $this->phone ? ClientProject::formatPhone($this->phone) : '',

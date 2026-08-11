@@ -311,6 +311,9 @@
 
       @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
+      @include('admin.quotations._debris_removal', ['quotation' => $quotation])
+      @include('admin.quotations._additional_costs', ['quotation' => $quotation])
+
       @if (! $isEdit)
         @include('admin.quotations._link_to_project_save_first', [
             'linkProject' => $linkProject ?? null,
@@ -366,6 +369,11 @@
       var tokenEl = document.querySelector('meta[name="csrf-token"]');
       var token = tokenEl ? tokenEl.getAttribute('content') : '';
       var debounceTimer = null;
+      var lastDebrisAmount = 0;
+      var lastAdditionalMaterialsPreTax = 0;
+      var lastAdditionalMaterialsHst = 0;
+      var lastAdditionalTaxIn = 0;
+      var lastPreviewData = null;
       var fmt = function (n) { return 'CA$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
 
       document.getElementById('fl-btn-draft').addEventListener('click', function () {
@@ -435,6 +443,7 @@
       }
 
       function renderPreview(data) {
+        lastPreviewData = data;
         var empty = document.getElementById('fl-live-empty');
         var body = document.getElementById('fl-live-body');
         var summary = data.summary || {};
@@ -457,9 +466,17 @@
           }
           html += '<div class="pq-row"><span>' + (row.label || '') + '<br><span class="admin-form-help">' + (row.detail || '') + '</span></span><span>' + fmt(row.amount) + '</span></div>';
         });
-        html += '<div class="pq-row"><span>Subtotal (pre-HST)</span><span>' + fmt(summary.subtotal_pre_hst) + '</span></div>';
-        html += '<div class="pq-row"><span>HST (13%)</span><span>' + fmt(summary.hst) + '</span></div>';
-        html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(summary.grand_total) + '</span></div>';
+        if (lastAdditionalMaterialsPreTax > 0) {
+          html += '<div class="fl-breakdown-section">Additional costs</div>';
+          html += '<div class="pq-row"><span>Additional costs (materials)<br><span class="admin-form-help">Admin only — hidden on client PDF</span></span><span>' + fmt(lastAdditionalMaterialsPreTax) + '</span></div>';
+        }
+        html += '<div class="pq-row"><span>Subtotal (pre-HST)</span><span>' + fmt(Number(summary.subtotal_pre_hst || 0) + lastAdditionalMaterialsPreTax) + '</span></div>';
+        html += '<div class="pq-row"><span>HST (13%)</span><span>' + fmt(Number(summary.hst || 0) + lastAdditionalMaterialsHst) + '</span></div>';
+        if (lastDebrisAmount > 0) {
+          html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
+        }
+        var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
+        html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
         body.innerHTML = html;
       }
 
@@ -518,6 +535,23 @@
         renderPreview(initialPreview);
       }
       schedulePreview();
+
+      document.addEventListener('debris-removal:change', function (e) {
+        var d = e.detail || {};
+        lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+        if (lastPreviewData) {
+          renderPreview(lastPreviewData);
+        }
+      });
+      document.addEventListener('additional-costs:change', function (e) {
+        var d = e.detail || {};
+        lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
+        lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
+        lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
+        if (lastPreviewData) {
+          renderPreview(lastPreviewData);
+        }
+      });
     })();
   </script>
 @endsection

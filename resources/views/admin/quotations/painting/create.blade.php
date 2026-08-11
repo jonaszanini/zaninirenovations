@@ -291,6 +291,7 @@
         </div>
 
         @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
+        @include('admin.quotations._debris_removal', ['quotation' => $quotation])
         @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
       </form>
 
@@ -446,6 +447,10 @@
           .replace(/"/g, '&quot;');
       }
 
+      var lastCommuteAmount = 0;
+      var lastDebrisAmount = 0;
+      var lastBreakdownData = null;
+
       function collectReadiness() {
         var items = [];
         var totalEl = form ? form.querySelector('[name="total_property_sqf"]') : null;
@@ -562,7 +567,9 @@
       function renderBreakdown(data) {
         var root = document.getElementById('pt-breakdown-root');
         if (!root || !data || !data.summary) return;
+        lastBreakdownData = data;
         var scope = data.scope || {};
+        var grand = Number(data.summary.grand_total || 0) + lastCommuteAmount + lastDebrisAmount;
         var html = '';
         (data.breakdown || []).forEach(function (row) {
           html += '<div class="pq-row"><span>' + escHtml(row.label || '')
@@ -571,7 +578,13 @@
         });
         html += '<div class="pq-row"><span>Subtotal (before HST)</span><span>' + money(data.summary.subtotal_pre_hst) + '</span></div>';
         html += '<div class="pq-row"><span>HST (13%)</span><span>' + money(data.summary.hst) + '</span></div>';
-        html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + money(data.summary.grand_total) + '</span></div>';
+        if (lastCommuteAmount > 0) {
+          html += '<div class="pq-row"><span>Commute expense (incl. HST)</span><span>' + money(lastCommuteAmount) + '</span></div>';
+        }
+        if (lastDebrisAmount > 0) {
+          html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + money(lastDebrisAmount) + '</span></div>';
+        }
+        html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + money(grand) + '</span></div>';
         if (scope.gallons_needed > 0) {
           html += '<p class="pq-hint" style="margin-top:8px;">' + scope.gallons_needed
             + ' gallon(s) @ ' + (scope.sqf_per_gallon || 70) + ' sq ft/gal (2 coats)</p>';
@@ -676,6 +689,17 @@
       }
 
       refreshSidebar();
+
+      document.addEventListener('commute-expense:change', function (e) {
+        var d = e.detail || {};
+        lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+        if (lastBreakdownData) renderBreakdown(lastBreakdownData);
+      });
+      document.addEventListener('debris-removal:change', function (e) {
+        var d = e.detail || {};
+        lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+        if (lastBreakdownData) renderBreakdown(lastBreakdownData);
+      });
     })();
   </script>
 @endsection

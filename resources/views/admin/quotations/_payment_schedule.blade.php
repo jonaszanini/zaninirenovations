@@ -30,9 +30,6 @@
 
 <div class="admin-card q-payment-schedule-card" id="q-payment-schedule">
   <h3 class="q-payment-schedule-card__title"><i class="fa fa-calendar-check-o" aria-hidden="true"></i> Payment schedule <span class="cp-required">*</span></h3>
-  <p class="admin-form-help q-payment-schedule-card__intro">
-    Choose how many installments appear on the client PDF. You can also customize the percentage split for each installment. Required before saving.
-  </p>
 
   <div class="q-payment-schedule-options" role="radiogroup" aria-label="Payment installments">
     @foreach ($paymentOptions as $opt)
