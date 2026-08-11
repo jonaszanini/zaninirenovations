@@ -457,7 +457,7 @@
         <div class="admin-form-section fq-quote-labour-section">
           <h4 class="cp-heading-sm">Labour rates for this quotation</h4>
           <p class="admin-form-help cp-form-help-spaced">
-            Stored with this quote{{ $isEdit ? '' : ' (prefilled from your last global defaults)' }}.
+            Stored with this quote{{ $isEdit ? '' : ' (prefilled from formula defaults)' }}.
             Change them here to adjust labour for this project only.
           </p>
           <div class="fq-formula-grid fq-quote-labour-grid">

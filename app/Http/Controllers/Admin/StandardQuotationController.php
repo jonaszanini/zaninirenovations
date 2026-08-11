@@ -472,6 +472,7 @@ class StandardQuotationController extends Controller
         }, $computed['materials']);
 
         $workDescription = trim((string) ($data['work_description'] ?? ''));
+        $paymentSchedule = $this->paymentScheduleFromRequest($request);
 
         $persistence = [
             'persistence' => [
@@ -482,7 +483,8 @@ class StandardQuotationController extends Controller
                 'includes_labour' => $includesLabour,
                 'pdf_detail_mode' => $data['pdf_detail_mode'],
                 'work_description' => $workDescription === '' ? null : $workDescription,
-                'payment_installments' => (int) $data['payment_installments'],
+                'payment_installments' => $paymentSchedule['payment_installments'],
+                'payment_percentages' => $paymentSchedule['payment_percentages'],
                 'materials' => $materialsForStorage,
                 'labour_mode' => $data['labour_mode'] ?? 'hours',
                 'labour_quantity' => round((float) ($data['labour_quantity'] ?? 0), 2),

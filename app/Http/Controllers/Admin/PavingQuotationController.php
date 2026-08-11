@@ -353,15 +353,14 @@ class PavingQuotationController extends Controller
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
         $workDescription = trim((string) $request->input('work_description'));
 
-        $base = [
+        $base = array_merge([
             'client_name' => trim((string) $request->input('client_name')) ?: null,
             'work_description' => $workDescription === '' ? null : $workDescription,
-            'payment_installments' => (int) $request->input('payment_installments'),
             'is_draft' => $intent === 'draft',
             'inputs' => $inputs,
             'calculation' => $calc,
             'final_quote_total' => round($final, 2),
-        ];
+        ], $this->paymentScheduleFromRequest($request));
 
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'paving_quotations');
 

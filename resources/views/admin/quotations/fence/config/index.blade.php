@@ -205,7 +205,7 @@
       <div>
         <h3 class="cp-form-help-flush">Formula parameters</h3>
         <p class="admin-form-help" style="margin:4px 0 0;">
-          Structural assumptions used by the calculator. Per-height labour rates are set on each fence quotation.
+          Structural assumptions used by the calculator. Labour rates below are defaults for new fence quotations (editable per quote).
         </p>
       </div>
       <button type="submit" class="admin-btn admin-btn--primary">
@@ -214,6 +214,22 @@
     </div>
 
     <div class="fq-formula-grid">
+      <div class="admin-form-group">
+        <label for="fq-labour-6">Labour rate 6′ fence (CAD$ / linear ft)</label>
+        <input id="fq-labour-6" type="text" name="labour_rate_per_ft"
+               class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
+               value="{{ old('labour_rate_per_ft', number_format((float) $settings->labour_rate_per_ft, 2, '.', '')) }}">
+        <p class="admin-form-help">Default start price for new 6′ fence quotations.</p>
+      </div>
+
+      <div class="admin-form-group">
+        <label for="fq-labour-8">Labour rate 8′ fence (CAD$ / linear ft)</label>
+        <input id="fq-labour-8" type="text" name="labour_rate_8ft_per_ft"
+               class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
+               value="{{ old('labour_rate_8ft_per_ft', number_format((float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft), 2, '.', '')) }}">
+        <p class="admin-form-help">Default start price for new 8′ fence quotations.</p>
+      </div>
+
       <div class="admin-form-group">
         <label for="fq-labour-additional-gate">Labour per additional gate (CAD$)</label>
         <input id="fq-labour-additional-gate" type="text" name="labour_per_additional_gate"

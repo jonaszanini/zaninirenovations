@@ -378,15 +378,14 @@ class FlooringQuotationController extends Controller
         }
         $rawInputs['material_local_images'] = $localImages;
 
-        return [
+        return array_merge([
             'client_name' => trim((string) $request->input('client_name')) ?: null,
             'work_description' => $workDescription === '' ? null : $workDescription,
-            'payment_installments' => (int) $request->input('payment_installments'),
             'is_draft' => $draft,
             'inputs' => $rawInputs,
             'calculation' => $calc,
             'final_quote_total' => round($final, 2),
-        ];
+        ], $this->paymentScheduleFromRequest($request));
     }
 
     /**

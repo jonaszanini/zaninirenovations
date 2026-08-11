@@ -329,14 +329,13 @@ class StairsQuotationController extends Controller
         $calc = (new StairsQuotationCalculator)->calculate($inputsForCalc);
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
 
-        $base = [
+        $base = array_merge([
             'client_name' => trim((string) $request->input('client_name')) ?: null,
-            'payment_installments' => (int) $request->input('payment_installments'),
             'is_draft' => $draft,
             'inputs' => $rawInputs,
             'calculation' => $calc,
             'final_quote_total' => round($final, 2),
-        ];
+        ], $this->paymentScheduleFromRequest($request));
 
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'stairs_quotations');
 

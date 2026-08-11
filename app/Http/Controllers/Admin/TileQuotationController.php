@@ -99,7 +99,9 @@ class TileQuotationController extends Controller
         $quotation->client_name = $data['client_name'] ?? null;
         $quotation->is_draft = $request->input('is_draft') === '1';
         $quotation->work_description = $data['work_description'] ?? null;
-        $quotation->payment_installments = (int) $data['payment_installments'];
+        $schedule = $this->paymentScheduleFromRequest($request);
+        $quotation->payment_installments = $schedule['payment_installments'];
+        $quotation->payment_percentages = $schedule['payment_percentages'];
         
         $quotation->inputs = [
             'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),
@@ -202,7 +204,9 @@ class TileQuotationController extends Controller
         }
         $quotation->is_draft = $request->input('is_draft') === '1';
         $quotation->work_description = $data['work_description'] ?? null;
-        $quotation->payment_installments = (int) $data['payment_installments'];
+        $schedule = $this->paymentScheduleFromRequest($request);
+        $quotation->payment_installments = $schedule['payment_installments'];
+        $quotation->payment_percentages = $schedule['payment_percentages'];
         
         $quotation->inputs = [
             'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),

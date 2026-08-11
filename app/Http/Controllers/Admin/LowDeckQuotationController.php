@@ -546,10 +546,9 @@ class LowDeckQuotationController extends Controller
         array $data,
         ?LowDeckQuotation $existing = null
     ): array {
-        $base = [
+        $base = array_merge([
             'client_name' => $data['client_name'],
             'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
-            'payment_installments' => (int) $data['payment_installments'],
             'width_ft' => $calc['inputs']['width_ft'],
             'length_ft' => $calc['inputs']['length_ft'],
             'joist_spacing_in' => (int) round((float) ($calc['geometry']['joist_spacing_in'] ?? 0)),
@@ -563,7 +562,7 @@ class LowDeckQuotationController extends Controller
             'labour_hst' => $calc['totals']['labour_hst'],
             'include_labour_hst' => (bool) ($calc['inputs']['include_labour_hst'] ?? true),
             'grand_total' => $calc['totals']['grand_total'],
-        ];
+        ], $this->paymentScheduleFromRequest($request));
 
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'low_deck_quotations');
 

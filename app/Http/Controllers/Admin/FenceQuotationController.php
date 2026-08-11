@@ -633,10 +633,9 @@ class FenceQuotationController extends Controller
         array $data,
         ?FenceQuotation $existing = null
     ): array {
-        $base = [
+        $base = array_merge([
             'client_name' => $data['client_name'],
             'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
-            'payment_installments' => (int) $data['payment_installments'],
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
             'post_size' => $calc['inputs']['post_size'],
             'board_style' => $calc['inputs']['board_style'],
@@ -651,7 +650,7 @@ class FenceQuotationController extends Controller
             'labour_hst' => $calc['totals']['labour_hst'],
             'include_labour_hst' => (bool) ($calc['inputs']['include_labour_hst'] ?? true),
             'grand_total' => $calc['totals']['grand_total'],
-        ];
+        ], $this->paymentScheduleFromRequest($request));
 
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'fence_quotations');
 

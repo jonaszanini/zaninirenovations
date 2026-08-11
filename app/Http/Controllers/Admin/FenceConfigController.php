@@ -91,6 +91,8 @@ class FenceConfigController extends Controller
     public function updateFormula(Request $request)
     {
         $data = $request->validate([
+            'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'gate_rails' => ['required', 'integer', 'min:0', 'max:50'],
             'concrete_per_post_6ft' => ['required', 'numeric', 'min:0', 'max:20'],
             'concrete_per_post_8ft' => ['required', 'numeric', 'min:0', 'max:20'],
