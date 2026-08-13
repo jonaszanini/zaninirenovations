@@ -280,6 +280,8 @@ class ClientProjectController extends Controller
 
     public function show(ClientProject $client_project)
     {
+        $client_project->syncFixedContractTotalsFromQuotation();
+
         $client_project->load([
             'installments',
             'expenses',

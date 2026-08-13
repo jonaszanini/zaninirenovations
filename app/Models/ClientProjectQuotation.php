@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\QuotationPaymentSchedule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
@@ -829,6 +830,35 @@ class ClientProjectQuotation extends Model
     public function isAccepted(): bool
     {
         return $this->status === self::STATUS_ACCEPTED;
+    }
+
+    /**
+     * Installment count and % split for Financials, from this row or its
+     * calculator snapshot when the columns were not copied yet.
+     *
+     * @return array{installments: int, percentages: list<float>}|null
+     */
+    public function resolvedPaymentSchedule(): ?array
+    {
+        $n = (int) ($this->payment_installments ?? 0);
+        $percentages = is_array($this->payment_percentages) ? $this->payment_percentages : null;
+
+        if (! in_array($n, QuotationPaymentSchedule::ALLOWED, true)) {
+            $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
+            $n = (int) ($snap['payment_installments'] ?? 0);
+            if (isset($snap['payment_percentages']) && is_array($snap['payment_percentages'])) {
+                $percentages = $snap['payment_percentages'];
+            }
+        }
+
+        if (! in_array($n, QuotationPaymentSchedule::ALLOWED, true)) {
+            return null;
+        }
+
+        return [
+            'installments' => $n,
+            'percentages' => QuotationPaymentSchedule::percentages($n, $percentages),
+        ];
     }
 
     /**

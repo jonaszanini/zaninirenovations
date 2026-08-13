@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SeedPaymentPlanFromQuotationService;
 use App\Support\EasternStandardTimeDisplay;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
@@ -964,8 +965,9 @@ class ClientProject extends Model
     }
 
     /**
-     * After the quotation changes, copy its pre-tax subtotal into `total_amount`
-     * and refresh each installment's dollar amount (same %) when nothing is paid yet.
+     * After the quotation changes, copy its pre-tax subtotal into `total_amount`,
+     * seed the Financials payment plan from the quotation's installment split when
+     * the plan is still the unused default, and refresh unpaid installment amounts.
      */
     public function syncFixedContractTotalsFromQuotation(): bool
     {
@@ -985,9 +987,12 @@ class ClientProject extends Model
         $this->total_amount = $sub;
         $this->saveQuietly();
 
-        foreach ($this->installments()->orderBy('sort_order')->get() as $inst) {
-            $inst->amount = round($sub * (float) $inst->percentage / 100, 2);
-            $inst->saveQuietly();
+        $seeded = app(SeedPaymentPlanFromQuotationService::class)->sync($this, $sub);
+        if (! $seeded) {
+            foreach ($this->installments()->orderBy('sort_order')->get() as $inst) {
+                $inst->amount = round($sub * (float) $inst->percentage / 100, 2);
+                $inst->saveQuietly();
+            }
         }
 
         return true;
