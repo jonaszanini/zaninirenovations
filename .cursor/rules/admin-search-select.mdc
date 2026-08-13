@@ -1,0 +1,33 @@
+---
+description: Use the shared admin search-select for searchable dropdowns; do not add Tom Select
+alwaysApply: true
+---
+
+# Admin search-select
+
+Every searchable dropdown in admin (clients, catalog materials, projects, etc.) must use the shared combobox — type in the field, pick from the list underneath.
+
+## Use
+
+```blade
+@include('admin.partials.search_select', [
+    'id' => 'unique-id',
+    'name' => 'field_name',          // hidden posted value
+    'label' => 'Visible label',
+    'placeholder' => 'Search…',
+    'searchUrl' => route('…'),       // remote JSON ?q=  OR
+    'optionsSource' => 'json-script-id', // local <script type="application/json">
+    'options' => $rows,              // or embed {id, name/label, …}
+    'metaKeys' => ['email', 'phone_display'],
+    'fill' => ['name' => 'other-input-id'],
+])
+```
+
+JS: `AdminSearchSelect` in `public/js/admin-search-select.js` (layout already loads it). Listen for `admin-search-select:change` (`detail.id`, `detail.option`). Trailing buttons (manage, open URL) go in `$trailing` or a `.fq-catalog-picker-wrap` beside the partial.
+
+## Do not
+
+- Add Tom Select (or similar) for searchable selects
+- Invent a one-off combobox; extend the partial (`$attrs`, `$fill`, `$listParent` => `body` inside tables)
+
+Options shape: `{ id, name or label, … }`. Second line uses `$metaKeys` (email, sku, price_label, …).

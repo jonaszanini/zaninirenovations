@@ -9,7 +9,7 @@ When creating or changing **admin** forms, tables, toolbars, or config pages:
 
 1. **Same line first** — Put related fields on one row when they fit at desktop width (dropdowns, SKUs, prices, units, toggles, paired URLs, icon + search/select).
 2. **Full width only when needed** — Long URLs, multi-line descriptions, rich text, and primary content blocks may span 100%.
-3. **Reuse existing grids** — See `docs/UI_GUIDELINES.md` §6 (`.admin-form-grid-2`, `.mat-form-grid-details`, `.mat-form-url-row`, `.fq-catalog-picker-wrap`, `.fq-catalog-picker`) before adding new layout classes.
+3. **Reuse existing grids** — See `docs/UI_GUIDELINES.md` §6 (`.admin-form-grid-2`, `.mat-form-grid-details`, `.mat-form-url-row`, `.fq-catalog-picker-wrap`) before adding new layout classes. Searchable dropdowns use `admin.partials.search_select`, not Tom Select.
 4. **Responsive stack** — Collapse to fewer columns at documented breakpoints (≤1200px / ≤768px); do not default to single-column desktop layouts.
 5. **Helper text** — Keep under the row or drop redundant copy; avoid helper paragraphs that force extra vertical space between controls on the same logical row.
 

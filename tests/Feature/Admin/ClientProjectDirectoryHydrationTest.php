@@ -25,7 +25,7 @@ class ClientProjectDirectoryHydrationTest extends IntegrationTestCase
             'name' => 'Replace 2 outside vents',
             'contacted_via' => ClientProject::CONTACTED_VIA_WHATSAPP,
             'client_id' => $client->id,
-            // Simulate Tom Select autofill failing: directory client selected,
+            // Directory client selected but contact fields left empty.
             // but contact fields left empty.
             'client_name' => '',
             'client_email' => '',
@@ -58,7 +58,7 @@ class ClientProjectDirectoryHydrationTest extends IntegrationTestCase
         $response = $this->post(route('admin.client-projects.store'), [
             'name' => 'Second coat',
             'contacted_via' => ClientProject::CONTACTED_VIA_WHATSAPP,
-            // Native Tom Select <select> can post "" alongside the chosen id.
+            // Duplicate client_id fields (empty plus the chosen id).
             'client_id' => ['', (string) $client->id],
             'client_name' => '',
             'billing_type' => ClientProject::BILLING_FIXED,

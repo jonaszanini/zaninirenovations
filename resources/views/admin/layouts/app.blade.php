@@ -9,6 +9,7 @@
   <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
   <link rel="stylesheet" href="{{ asset('css/font-awesome.min.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) ?: time() }}">
+  <link rel="stylesheet" href="{{ asset('css/admin-search-select.css') }}?v={{ @filemtime(public_path('css/admin-search-select.css')) ?: time() }}">
   @php
     $loadsClientProjectsCss = request()->routeIs(
       'admin.client-projects.*',
@@ -314,6 +315,7 @@
   </div>
 
   <script src="{{ asset('js/admin-dialog.js') }}?v={{ @filemtime(public_path('js/admin-dialog.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-search-select.js') }}?v={{ @filemtime(public_path('js/admin-search-select.js')) ?: time() }}"></script>
   <script>
     (function () {
       var app = document.getElementById('admin-app');

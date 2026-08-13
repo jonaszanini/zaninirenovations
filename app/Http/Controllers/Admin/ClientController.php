@@ -143,7 +143,7 @@ class ClientController extends Controller
     }
 
     /**
-     * JSON search for Tom Select on the project create/edit forms.
+     * JSON search for the admin search-select on project create/edit forms.
      */
     public function search(Request $request): JsonResponse
     {

@@ -869,7 +869,7 @@ class ClientProjectController extends Controller
     }
 
     /**
-     * Normalize client_id from the request (Tom Select can post "" plus the id).
+     * Normalize client_id from the request (the picker may post "" plus the id).
      */
     private function postedDirectoryClientId(Request $request): int
     {
@@ -889,7 +889,7 @@ class ClientProjectController extends Controller
 
     /**
      * When a directory client is selected but contact fields were left blank
-     * (e.g. the Tom Select autofill JS did not run), copy them from the client
+     * (e.g. the search-select fill JS did not run), copy them from the client
      * record before validation so create/update can proceed.
      */
     private function hydrateClientContactFromDirectory(Request $request): void

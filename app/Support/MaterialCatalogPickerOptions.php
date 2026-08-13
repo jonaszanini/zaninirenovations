@@ -7,7 +7,7 @@ use App\Models\Material;
 use Illuminate\Support\Collection;
 
 /**
- * Tom Select option payloads for picking rows from the materials catalog.
+ * Option payloads for the admin search-select when picking catalog materials.
  */
 final class MaterialCatalogPickerOptions
 {

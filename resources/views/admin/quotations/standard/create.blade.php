@@ -526,6 +526,7 @@
     ])
   @endif
 
+  <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
   <template id="sq-material-template">
     @include('admin.quotations.standard._material_row', [
       'i' => '__I__',
@@ -543,18 +544,19 @@
   </template>
 @endsection
 
-@push('styles')
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css">
-@endpush
-
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
 (function () {
   'use strict';
   var HST = 0.13;
   var HPD = 8;
-  var sqCatalogOptions = @json($catalogPickerOptions ?? []);
+  var sqCatalogOptions = [];
+  try {
+    var catalogJson = document.getElementById('admin-ss-catalog-options');
+    sqCatalogOptions = catalogJson ? JSON.parse(catalogJson.textContent || '[]') : [];
+  } catch (e) {
+    sqCatalogOptions = [];
+  }
   var sqCatalogOptionMap = {};
   sqCatalogOptions.forEach(function (item) {
     sqCatalogOptionMap[String(item.id)] = item;
@@ -801,19 +803,24 @@
     }
   }
 
+  function catalogRoot(row) {
+    return row.querySelector('[data-admin-search-select]');
+  }
+
   function destroyCatalogPicker(row) {
-    var selectEl = row.querySelector('.sq-mat-catalog-select');
-    if (!selectEl) return;
-    if (selectEl.tomselect) {
-      selectEl.tomselect.destroy();
+    var root = catalogRoot(row);
+    if (root && window.AdminSearchSelect) {
+      AdminSearchSelect.destroy(root);
     }
   }
 
   function rowHasMaterialContent(row) {
     var shortEl = row.querySelector('.sq-mat-short-name');
     var descEl = row.querySelector('.sq-mat-desc');
-    var selectEl = row.querySelector('.sq-mat-catalog-select');
-    var catalogVal = selectEl && selectEl.tomselect ? selectEl.tomselect.getValue() : (selectEl ? selectEl.value : '');
+    var root = catalogRoot(row);
+    var catalogVal = root && window.AdminSearchSelect
+      ? AdminSearchSelect.getValue(root)
+      : (root && root.querySelector('.admin-search-select__value') ? root.querySelector('.admin-search-select__value').value : '');
     return !!(catalogVal && String(catalogVal) !== '0')
       || (shortEl && String(shortEl.value || '').trim() !== '')
       || (descEl && String(descEl.value || '').trim() !== '');
@@ -869,45 +876,11 @@
   }
 
   function initCatalogPicker(row) {
-    if (typeof TomSelect === 'undefined') return;
     var checked = row.querySelector('.sq-mat-source-radio:checked');
     if (!checked || checked.value !== 'catalog') return;
-    var selectEl = row.querySelector('.sq-mat-catalog-select');
-    if (!selectEl || selectEl.tomselect) return;
-
-    var initial = selectEl.getAttribute('data-initial') || '';
-    var ts = new TomSelect(selectEl, {
-      plugins: ['clear_button'],
-      options: sqCatalogOptions,
-      valueField: 'id',
-      labelField: 'label',
-      searchField: ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-      maxOptions: 80,
-      maxItems: 1,
-      placeholder: 'Type to search name or SKU…',
-      allowEmptyOption: true,
-      closeAfterSelect: true,
-      render: {
-        option: function (data, escape) {
-          return '<div class="fq-catalog-picker__option">' +
-            '<span class="fq-catalog-picker__option-name">' + escape(data.name) + '</span>' +
-            (data.sku ? '<span class="fq-catalog-picker__option-meta">SKU ' + escape(data.sku) + '</span>' : '') +
-            '<span class="fq-catalog-picker__option-price">' + escape(data.price_label || '') + '</span>' +
-            '</div>';
-        },
-        item: function (data, escape) {
-          if (!data.id) return '';
-          return '<span class="fq-catalog-picker__item">' + escape(data.label) + '</span>';
-        }
-      },
-      onChange: function (value) {
-        applyCatalogToRow(row, value ? sqCatalogOptionMap[String(value)] : null);
-      }
-    });
-
-    if (initial && initial !== '0') {
-      ts.setValue(initial, true);
-    }
+    var root = catalogRoot(row);
+    if (!root || !window.AdminSearchSelect) return;
+    AdminSearchSelect.init(root);
   }
 
   function initMaterialRow(row) {
@@ -959,6 +932,15 @@
   });
 
   if (addBtn) addBtn.addEventListener('click', addRow);
+
+  list.addEventListener('admin-search-select:change', function (e) {
+    var row = e.target && e.target.closest ? e.target.closest('.sq-material-row') : null;
+    if (!row) return;
+    var option = e.detail && e.detail.option
+      ? e.detail.option
+      : (e.detail && e.detail.id ? sqCatalogOptionMap[String(e.detail.id)] : null);
+    applyCatalogToRow(row, option);
+  });
 
   // Strip anything that isn't a digit or a single decimal point from the
   // material-row qty inputs. We use type=text so we can fully control what

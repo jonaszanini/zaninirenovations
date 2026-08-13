@@ -119,7 +119,7 @@ class Client extends Model
             ->get();
     }
 
-    /** Single-line label for search dropdowns (Tom Select, etc.). */
+    /** Single-line label for search dropdowns. */
     public function searchLabel(): string
     {
         $parts = array_filter([$this->name, $this->email], fn ($v) => filled($v));
@@ -147,7 +147,7 @@ class Client extends Model
     }
 
     /**
-     * Tom Select option row (project create/edit client picker).
+     * Admin search-select option row (project create/edit client picker).
      *
      * @return array<string, mixed>
      */
@@ -156,7 +156,7 @@ class Client extends Model
         $label = $this->searchLabel();
 
         return array_merge($this->toPickerArray(), [
-            // String id keeps Tom Select option keys consistent in the browser.
+            // String id keeps search-select option keys consistent in the browser.
             'id' => (string) $this->id,
             'label' => $label,
             'display' => $label,

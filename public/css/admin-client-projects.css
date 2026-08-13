@@ -884,107 +884,6 @@ html.cp-cancel-modal-open {
   width: auto;
 }
 
-.cp-client-combobox {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.cp-client-combobox__control {
-  position: relative;
-}
-
-.cp-client-combobox__input {
-  width: 100%;
-  padding-right: 2.75rem;
-}
-
-.cp-client-combobox__clear {
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: var(--admin-control-height, 44px);
-  height: calc(var(--admin-control-height, 44px) - 4px);
-  min-width: 44px;
-  min-height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--admin-muted, #5a6570);
-  font-size: 1.35rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.cp-client-combobox__clear:hover,
-.cp-client-combobox__clear:focus-visible {
-  color: var(--admin-text, #373435);
-  background: #edf0f2;
-}
-
-.cp-client-combobox__list {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 40;
-  margin: 0;
-  padding: 0.25rem 0;
-  list-style: none;
-  max-height: min(16rem, 50vh);
-  overflow-y: auto;
-  background: #fff;
-  border: 1px solid var(--admin-border, #d8dee4);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-}
-
-.cp-client-combobox__option {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-height: 44px;
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
-}
-
-.cp-client-combobox__option:hover,
-.cp-client-combobox__option.is-active {
-  background: #eef6fa;
-}
-
-.cp-client-combobox__option.is-selected .cp-client-combobox__option-name {
-  color: var(--admin-primary, #024768);
-}
-
-.cp-client-combobox__option-name {
-  font-weight: 600;
-  color: var(--admin-text, #373435);
-}
-
-.cp-client-combobox__option-meta,
-.cp-client-combobox__empty {
-  font-size: 0.8rem;
-  color: var(--admin-muted, #5a6570);
-}
-
-.cp-client-combobox__empty {
-  padding: 0.75rem;
-}
-
-.cp-client-combobox.is-selected .cp-client-combobox__input {
-  border-color: var(--admin-primary, #024768);
-}
-
-@media (max-width: 700px) {
-  .cp-client-combobox__list {
-    max-height: min(14rem, 45vh);
-  }
-}
-
 .cp-client-directory-picker__manage {
   flex: 0 0 auto;
   box-sizing: border-box;
@@ -4360,126 +4259,6 @@ body.cp-modal-open {
   min-width: 240px;
 }
 
-/*
- * Tom Select search fields — one outer border only.
- * Do not style both .ts-wrapper and .ts-control with borders (double-box look).
- * Neutralize .admin-input if it was copied onto the wrapper from the <select>.
- */
-.fq-catalog-picker .ts-wrapper,
-.fq-catalog-picker-wrap.fq-catalog-picker .ts-wrapper,
-.fp-cp-wrap .ts-wrapper {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  border: 1px solid var(--admin-border, #d8dee4);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: none;
-  padding: 0;
-  min-height: var(--admin-control-height, 44px);
-  box-sizing: border-box;
-}
-
-.fq-catalog-picker > select.tomselected,
-.fq-catalog-picker-wrap > select.tomselected,
-.fp-cp-wrap > select.tomselected {
-  display: none !important;
-}
-
-.fq-catalog-picker .ts-control,
-.fq-catalog-picker-wrap.fq-catalog-picker .ts-control,
-.fp-cp-wrap .ts-control {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 4px;
-  min-height: calc(var(--admin-control-height, 44px) - 2px);
-  border: none !important;
-  border-radius: 8px;
-  padding: 6px 10px;
-  background: transparent;
-  box-shadow: none !important;
-}
-
-.fq-catalog-picker .ts-wrapper.focus,
-.fq-catalog-picker-wrap.fq-catalog-picker .ts-wrapper.focus,
-.fp-cp-wrap .ts-wrapper.focus {
-  border-color: var(--admin-primary, #1e5a8a);
-  box-shadow: 0 0 0 3px var(--admin-primary-ring, rgba(30, 90, 138, 0.2));
-}
-
-.fq-catalog-picker .ts-control .item,
-.fp-cp-wrap .ts-control .item {
-  flex: 0 1 auto;
-  max-width: calc(100% - 2.5rem);
-  margin: 0;
-}
-
-/* Empty-value option must not sit beside the search input (looks like a stuck placeholder).
-   Do not hide a real selected client while the control is focused — that made the
-   picker look like a free-text field and the chosen id never appeared selected. */
-.fq-catalog-picker .ts-control .item[data-value=""],
-.fp-cp-wrap .ts-control .item[data-value=""] {
-  display: none !important;
-}
-
-.fq-catalog-picker .ts-control > input,
-.fp-cp-wrap .ts-control > input {
-  flex: 1 1 auto;
-  min-width: 5rem;
-  width: auto !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  padding: 0 !important;
-  margin: 0;
-  min-height: 0;
-  font-size: var(--admin-control-font-size, 0.95rem);
-  color: var(--admin-text, #373435);
-}
-
-.fq-catalog-picker .ts-dropdown {
-  z-index: 40;
-  border-radius: 8px;
-  border: 1px solid var(--admin-border, #d8dee4);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-}
-
-.fq-catalog-picker .ts-dropdown .option {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid var(--admin-border, #e8edf2);
-}
-
-.fq-catalog-picker .ts-dropdown .option:last-child {
-  border-bottom: 0;
-}
-
-.fq-catalog-picker__option {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.fq-catalog-picker__option-name {
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.fq-catalog-picker__option-meta,
-.fq-catalog-picker__option-price {
-  font-size: 0.82rem;
-  color: var(--admin-text-muted, #5c6b7a);
-}
-
-.fq-catalog-picker__item {
-  display: inline-block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: middle;
-  max-width: 100%;
-}
-
 .fq-material-preview {
   display: flex;
   flex-direction: column;
@@ -4888,12 +4667,8 @@ body.cp-modal-open {
   color: #64748b;
   text-align: center;
 }
-.sq-mat-catalog-group .fq-catalog-picker {
+.sq-mat-catalog-group .admin-search-select {
   width: 100%;
-}
-
-.sq-mat-catalog-group .fq-catalog-picker .ts-dropdown {
-  z-index: 200;
 }
 
 .sq-materials-intro {
@@ -5142,57 +4917,6 @@ body.cp-modal-open {
   .fq-link-existing-row > .admin-btn {
     width: 100%;
   }
-}
-
-/* Searchable project picker (quotation link-to-project forms). */
-.fq-project-picker__control {
-  position: relative;
-}
-.fq-project-picker__select {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-.fq-project-picker__list {
-  position: absolute;
-  z-index: 30;
-  left: 0;
-  right: 0;
-  max-height: 240px;
-  overflow-y: auto;
-  margin: 4px 0 0;
-  padding: 4px 0;
-  list-style: none;
-  background: #fff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-}
-.fq-project-picker__option {
-  padding: 8px 12px;
-  font-size: 13px;
-  line-height: 1.35;
-  color: #1e293b;
-  cursor: pointer;
-}
-.fq-project-picker__option:hover,
-.fq-project-picker__option.is-active {
-  background: #eff6ff;
-  color: #024768;
-}
-.fq-project-picker__option.is-selected {
-  font-weight: 600;
-}
-.fq-project-picker__empty {
-  padding: 8px 12px;
-  font-size: 12px;
-  color: #64748b;
 }
 
 /* Divider between the "Existing project" and "New project" panels. */
@@ -5721,7 +5445,7 @@ body.cp-modal-open {
   }
 }
 
-/* Client directory (admin) + Tom Select on project forms */
+/* Client directory (admin) toolbar on the clients list */
 .cp-clients-toolbar-search {
   display: flex;
   flex-wrap: nowrap;

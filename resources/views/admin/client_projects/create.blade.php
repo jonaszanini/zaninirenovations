@@ -283,7 +283,7 @@
 
       function fillNameFromDirectoryIfNeeded() {
         var nameInput = document.getElementById('cp-client-name');
-        var clientIdInput = document.getElementById('cp-client-id');
+        var clientIdInput = document.getElementById('cp-client-combobox-value');
         var comboInput = document.getElementById('cp-client-combobox-input');
         if (!nameInput) return;
         if (String(nameInput.value || '').trim() !== '') return;

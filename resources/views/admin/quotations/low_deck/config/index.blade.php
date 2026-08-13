@@ -2,10 +2,6 @@
 
 @section('heading', 'Low Deck Configuration')
 
-@push('head')
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css">
-@endpush
-
 @section('content')
   @php
     $amazonVendorLinkTemplate = route('admin.materials.vendor-link.amazon', ['asin' => 'PLACEHOLDER']);
@@ -64,6 +60,7 @@
       </p>
     @endif
 
+    <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <div class="admin-table-scroll">
       <table class="admin-table fq-materials-table">
         <thead>
@@ -96,6 +93,24 @@
                       $pickerUrl = route('admin.materials.vendor-link.amazon', ['asin' => $storeAsin]);
                   }
                 @endphp
+                @php
+                  $ldPickerValue = (int) old('materials.'.$i.'.material_id', $m->material_id);
+                  $ldPickerAttrs = [
+                    'data-preview-target' => 'ld-preview-'.$i,
+                    'data-price-target' => 'ld-price-'.$i,
+                    'data-url-target' => 'ld-link-'.$i,
+                  ];
+                  if ($isBox) {
+                      $ldPickerAttrs['data-qty-per-box-target'] = 'ld-qty-per-box-'.$i;
+                  }
+                  if (filled($pickerUrl)) {
+                      $ldPickerAttrs['data-store-url'] = $pickerUrl;
+                      $ldPickerAttrs['data-link-vendor'] = $linkVendor;
+                  }
+                  if ($storeAsin) {
+                      $ldPickerAttrs['data-store-asin'] = $storeAsin;
+                  }
+                @endphp
                 <div class="fq-catalog-picker-wrap fq-catalog-picker">
                   <a href="{{ $pickerUrl ?: '#' }}"
                      class="admin-btn admin-btn--ghost admin-btn--sm fq-catalog-picker__open @if ($linkVendor) fq-catalog-picker__open--{{ $linkVendor }} @endif @if (! filled($pickerUrl)) fq-catalog-picker__open--disabled @endif"
@@ -106,19 +121,21 @@
                      @if (filled($pickerUrl)) data-store-url="{{ $pickerUrl }}" data-link-vendor="{{ $linkVendor }}" @endif>
                     <i class="fa fa-external-link" aria-hidden="true"></i>
                   </a>
-                  <select name="materials[{{ $i }}][material_id]"
-                            id="ld-catalog-picker-{{ $i }}"
-                            class="fq-catalog-picker__select"
-                            data-preview-target="ld-preview-{{ $i }}"
-                            data-price-target="ld-price-{{ $i }}"
-                            data-url-target="ld-link-{{ $i }}"
-                            @if ($isBox) data-qty-per-box-target="ld-qty-per-box-{{ $i }}" @endif
-                            data-initial="{{ (int) old('materials.'.$i.'.material_id', $m->material_id) }}"
-                            @if (filled($pickerUrl)) data-store-url="{{ $pickerUrl }}" data-link-vendor="{{ $linkVendor }}" @endif
-                            @if ($storeAsin) data-store-asin="{{ $storeAsin }}" @endif
-                            aria-label="Catalog material for {{ $m->effectiveName() }}">
-                    <option value=""></option>
-                  </select>
+                  @include('admin.partials.search_select', [
+                    'id' => 'ld-catalog-picker-'.$i,
+                    'name' => 'materials['.$i.'][material_id]',
+                    'value' => $ldPickerValue > 0 ? $ldPickerValue : '',
+                    'hideLabel' => true,
+                    'placeholder' => 'Search name or SKU…',
+                    'ariaLabel' => 'Catalog material for '.$m->effectiveName(),
+                    'optionsSource' => 'admin-ss-catalog-options',
+                    'searchFields' => ['label', 'name', 'sku', 'model', 'vendor'],
+                    'metaKeys' => ['sku', 'price_label'],
+                    'emptyMessage' => 'No matching materials',
+                    'maxOptions' => 80,
+                    'listParent' => 'body',
+                    'attrs' => $ldPickerAttrs,
+                  ])
                 </div>
               </td>
               <td>
@@ -321,10 +338,15 @@
 @endsection
 
 @push('scripts')
-  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   <script>
     (function () {
-      var catalogOptions = @json($catalogPickerOptions);
+      var catalogOptions = [];
+      try {
+        var catalogJson = document.getElementById('admin-ss-catalog-options');
+        catalogOptions = catalogJson ? JSON.parse(catalogJson.textContent || '[]') : [];
+      } catch (e) {
+        catalogOptions = [];
+      }
       var amazonVendorLinkTemplate = @json($amazonVendorLinkTemplate);
 
       function escapeHtml(text) {
@@ -396,47 +418,15 @@
         updateQtyPerBox(selectEl, value, optionMap);
       }
 
-      if (typeof TomSelect === 'undefined') return;
-
       var optionMap = {};
       catalogOptions.forEach(function (item) { optionMap[String(item.id)] = item; });
 
-      document.querySelectorAll('.fq-catalog-picker__select').forEach(function (selectEl) {
-        var initial = selectEl.getAttribute('data-initial') || '';
-        var syncingInitial = true;
-        var ts = new TomSelect(selectEl, {
-          plugins: ['clear_button'],
-          options: catalogOptions,
-          valueField: 'id',
-          labelField: 'label',
-          searchField: ['label', 'name', 'sku', 'model', 'vendor'],
-          maxOptions: 80,
-          placeholder: 'Type to search name or SKU…',
-          allowEmptyOption: true,
-          closeAfterSelect: true,
-          dropdownParent: 'body',
-          render: {
-            option: function (data, escape) {
-              return '<div class="fq-catalog-picker__option">' +
-                '<span class="fq-catalog-picker__option-name">' + escape(data.name) + '</span>' +
-                (data.sku ? '<span class="fq-catalog-picker__option-meta">SKU ' + escape(data.sku) + '</span>' : '') +
-                '<span class="fq-catalog-picker__option-price">' + escape(data.price_label || '') + '</span>' +
-                '</div>';
-            },
-            item: function (data, escape) {
-              if (!data.id) return '';
-              return '<span class="fq-catalog-picker__item">' + escape(data.label) + '</span>';
-            }
-          },
-          onChange: function (value) {
-            if (syncingInitial) return;
-            updatePreview(selectEl, value || this.getValue() || '', optionMap);
-          }
+      document.querySelectorAll('.fq-catalog-picker-wrap [data-admin-search-select]').forEach(function (root) {
+        var initial = window.AdminSearchSelect ? AdminSearchSelect.getValue(root) : '';
+        updatePreview(root, initial && initial !== '0' ? initial : '', optionMap);
+        root.addEventListener('admin-search-select:change', function (e) {
+          updatePreview(root, (e.detail && e.detail.id) || '', optionMap);
         });
-
-        if (initial && initial !== '0') ts.setValue(initial, true);
-        updatePreview(selectEl, initial && initial !== '0' ? initial : '', optionMap);
-        syncingInitial = false;
       });
     })();
   </script>

@@ -252,6 +252,7 @@ Toolbar / filter (no label wrapper):
 - Validation errors: **`.admin-form-error`**.
 - Help text: **`.admin-form-help`**.
 - Checkboxes: `@include('admin.partials.checkbox', [...])` — do **not** use `admin-input` on checkboxes.
+- Searchable dropdowns: `@include('admin.partials.search_select', [...])` — do **not** add Tom Select.
 - Required fields: `<span class="cp-required">*</span>`.
 - Compact toolbars may override height via context (e.g. `.mat-toolbar-search .admin-input` at 38px).
 
@@ -275,8 +276,8 @@ Three columns (vehicles): `.admin-form-grid-3` in `admin-vehicles.css`.
 | `.admin-form-grid-2` | `admin-client-projects.css` | Two equal columns (category + vendor, URLs side by side) |
 | `.mat-form-grid-details` | `admin-materials.css` | Eight compact fields on one row (material edit) |
 | `.mat-form-url-row` | `admin-materials.css` | Label row + control row: Product URL · Image URL · Active |
-| `.fq-catalog-picker-wrap` | `admin-client-projects.css` | Icon + Tom Select search on one line (fence config) |
-| `.fq-catalog-picker` | `admin-client-projects.css` | Single search/select combobox (materials DB picker) |
+| `.fq-catalog-picker-wrap` | `admin-client-projects.css` | Icon + search-select on one line (fence / low-deck config) |
+| Search-select | `admin.partials.search_select` | Type-in-field combobox for clients, catalog, projects — never Tom Select |
 
 **Rules:**
 

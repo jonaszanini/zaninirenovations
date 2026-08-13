@@ -30,15 +30,21 @@
 
     <div class="sq-mat-catalog-wrap" @if ($sourceMode !== 'catalog') hidden @endif>
       <div class="admin-form-group sq-mat-catalog-group">
-        <label class="sq-mat-catalog-label" for="sq-mat-catalog-{{ $i }}">Search materials</label>
-        <div class="fq-catalog-picker">
-          <select id="sq-mat-catalog-{{ $i }}" name="materials[{{ $i }}][catalog_material_id]"
-                  class="fq-catalog-picker__select sq-mat-catalog-select"
-                  data-initial="{{ (int) $catalogMaterialId }}"
-                  aria-label="Search materials database">
-            <option value=""></option>
-          </select>
-        </div>
+        <label class="sq-mat-catalog-label" for="sq-mat-catalog-{{ $i }}-input">Search materials</label>
+        @include('admin.partials.search_select', [
+          'id' => 'sq-mat-catalog-'.$i,
+          'name' => 'materials['.$i.'][catalog_material_id]',
+          'value' => (int) $catalogMaterialId ?: '',
+          'hideLabel' => true,
+          'placeholder' => 'Search name or SKU…',
+          'ariaLabel' => 'Search materials database',
+          'optionsSource' => 'admin-ss-catalog-options',
+          'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
+          'metaKeys' => ['sku', 'price_label'],
+          'emptyMessage' => 'No matching materials',
+          'wrapperClass' => 'sq-mat-catalog-select',
+          'maxOptions' => 80,
+        ])
       </div>
     </div>
 

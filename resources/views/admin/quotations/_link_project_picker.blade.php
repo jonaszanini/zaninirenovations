@@ -8,41 +8,25 @@
   $selectedId = (string) old($fieldName, $selected ?? '');
   $items = $projects->map(fn ($p) => [
       'id' => (int) $p->id,
-      'label' => $p->client_name . ' — ' . $p->name,
+      'name' => (string) $p->name,
+      'label' => $p->client_name.' — '.$p->name,
       'client_name' => (string) $p->client_name,
   ])->values();
+  $selectedOption = $items->first(fn ($item) => (string) $item['id'] === $selectedId);
 @endphp
-<div class="fq-project-picker" id="{{ $pickerId }}" data-fq-project-picker data-projects='@json($items)'>
-  <div class="admin-form-group cp-form-group-flush">
-    <label for="{{ $pickerId }}-search">Project</label>
-    <div class="fq-project-picker__control">
-      <input
-        type="search"
-        id="{{ $pickerId }}-search"
-        class="admin-input fq-project-picker__search"
-        placeholder="Search by client or project name…"
-        autocomplete="off"
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded="false"
-        aria-controls="{{ $pickerId }}-list"
-      >
-      <select
-        name="{{ $fieldName }}"
-        class="fq-project-picker__select"
-        required
-        tabindex="-1"
-        aria-hidden="true"
-      >
-        <option value="" @selected($selectedId === '')>Choose a project…</option>
-        @foreach ($items as $item)
-          <option value="{{ $item['id'] }}" @selected((string) $item['id'] === $selectedId)>{{ $item['label'] }}</option>
-        @endforeach
-      </select>
-      <ul id="{{ $pickerId }}-list" class="fq-project-picker__list" role="listbox" hidden></ul>
-    </div>
-    <p class="fq-project-picker__selected admin-form-help pq-hint" hidden>
-      Selected: <strong class="fq-project-picker__selected-text"></strong>
-    </p>
-  </div>
-</div>
+@include('admin.partials.search_select', [
+  'id' => $pickerId,
+  'name' => $fieldName,
+  'value' => $selectedId,
+  'label' => 'Project',
+  'placeholder' => 'Search by client or project name…',
+  'ariaLabel' => 'Search projects',
+  'required' => true,
+  'options' => $items->all(),
+  'selectedOption' => $selectedOption,
+  'searchFields' => ['label', 'name', 'client_name'],
+  'metaKeys' => ['client_name'],
+  'emptyMessage' => 'No projects match your search.',
+  'wrapperClass' => 'fq-project-picker',
+  'attrs' => ['data-fq-project-picker' => '1'],
+])
