@@ -468,6 +468,18 @@ body.admin-body {
   background: var(--admin-primary-soft);
 }
 
+.admin-btn--outline {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border: 1px solid var(--admin-primary);
+}
+
+.admin-btn--outline:hover {
+  background: rgba(2, 71, 104, 0.14);
+  color: var(--admin-primary-hover);
+  border-color: var(--admin-primary-hover);
+}
+
 .admin-btn--danger {
   background: var(--admin-danger-soft);
   color: var(--admin-danger);

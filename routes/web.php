@@ -249,6 +249,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     // Client Projects management (quote → completion lifecycle).
     Route::get('client-projects/calendar', [\App\Http\Controllers\Admin\ClientProjectController::class, 'calendar'])
         ->name('client-projects.calendar');
+    Route::get('client-projects/calendar/picker-events', [\App\Http\Controllers\Admin\ClientProjectController::class, 'schedulePickerEvents'])
+        ->name('client-projects.calendar.picker-events');
     Route::post('calendar/personal-events', [\App\Http\Controllers\Admin\AdminCalendarEventController::class, 'store'])
         ->name('calendar.personal-events.store');
     Route::put('calendar/personal-events/{admin_calendar_event}', [\App\Http\Controllers\Admin\AdminCalendarEventController::class, 'update'])

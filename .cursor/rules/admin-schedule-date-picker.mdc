@@ -1,0 +1,21 @@
+---
+description: Use the shared schedule date-picker modal for project start/end dates
+globs: resources/views/admin/**/*.blade.php,public/js/admin*.js
+alwaysApply: false
+---
+
+# Schedule date picker
+
+Pick project start/end dates on the shared calendar modal (booked jobs, visits, personal events). Do not copy the FullCalendar modal from the project show page.
+
+```blade
+@include('admin.partials.schedule_date_picker', [
+    'startDateId' => 'cp-start-date',
+    'endDateId' => 'cp-end-date',
+    'scheduleToggleId' => 'cp-create-schedule-enabled', // optional
+    'excludeProjectId' => $project->id ?? null,         // omit current job
+    'submitFormId' => 'cp-schedule-dates-form',         // optional: save immediately
+])
+```
+
+JS: `AdminScheduleDatePicker` (`public/js/admin-schedule-date-picker.js`). Button: `admin-btn admin-btn--outline`.

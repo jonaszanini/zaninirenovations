@@ -10,22 +10,21 @@ use Illuminate\Support\Collection;
 /**
  * Builds FullCalendar-compatible event arrays for ClientProject job spans
  * and on-site visit days, shared by the schedule date-picker modal
- * (ClientProjectController::show) and the full-screen calendar page
+ * (ClientProjectController::schedulePickerEvents) and the full-screen calendar page
  * (ClientProjectController::calendar).
  */
 class ClientProjectCalendarService
 {
     /**
-     * Events for every active project EXCEPT the given one, so the admin can
-     * see what days are already taken before choosing a start/end for the
-     * project they're currently editing.
+     * Events for every active project except `$current` (when set), so the
+     * admin can see booked days before choosing a start/end.
      *
      * @return list<array<string, mixed>>
      */
-    public function schedulePickerEvents(ClientProject $current): array
+    public function schedulePickerEvents(?ClientProject $current = null): array
     {
         $projects = ClientProject::query()
-            ->where('id', '!=', $current->id)
+            ->when($current, fn ($q) => $q->where('id', '!=', $current->id))
             ->whereNotIn('status', ClientProject::terminalStatuses())
             ->where(function ($q) {
                 $q->where(function ($sub) {

@@ -20,6 +20,7 @@ use App\Services\ClientProjectLinkedUtilitiesService;
 use App\Support\AdminPaginatedList;
 use App\Support\EasternStandardTimeDisplay;
 use App\Services\GoogleCalendarLink;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -301,18 +302,11 @@ class ClientProjectController extends Controller
 
         $calendarLink = GoogleCalendarLink::forProject($client_project);
 
-        // Other-project events shown inside the date-picker modal on the
-        // Calendar tab so the admin can see what days are already taken
-        // before choosing a start/end. Excludes the current project so its
-        // own dates don't show up as "conflicts".
-        $scheduleEvents = $this->calendarService->schedulePickerEvents($client_project);
-
         $linkedUtilities = app(ClientProjectLinkedUtilitiesService::class)->forProject($client_project);
 
         return view('admin.client_projects.show', [
             'project' => $client_project,
             'calendarLink' => $calendarLink,
-            'scheduleEvents' => $scheduleEvents,
             'activeHelpers' => \App\Models\Helper::query()->active()->orderBy('name')->get(),
             'linkedUtilities' => $linkedUtilities,
         ]);
@@ -866,6 +860,20 @@ class ClientProjectController extends Controller
             'personalEventUpdateUrlTemplate' => route('admin.calendar.personal-events.update', ['admin_calendar_event' => '__ID__']),
             'personalEventDestroyUrlTemplate' => route('admin.calendar.personal-events.destroy', ['admin_calendar_event' => '__ID__']),
         ]);
+    }
+
+    /**
+     * JSON events for the shared schedule date-picker modal.
+     */
+    public function schedulePickerEvents(Request $request): JsonResponse
+    {
+        $exclude = null;
+        $excludeId = $request->integer('exclude');
+        if ($excludeId > 0) {
+            $exclude = ClientProject::query()->find($excludeId);
+        }
+
+        return response()->json($this->calendarService->schedulePickerEvents($exclude));
     }
 
     /**

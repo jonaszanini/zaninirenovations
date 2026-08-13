@@ -174,6 +174,7 @@ Base: `.admin-btn` uses `--admin-control-height` (44px) — **the same height as
 | `.admin-btn--primary` | Main action (Save, Create, Submit) |
 | `.admin-btn--secondary` | Secondary filled action (Refresh, Remind) |
 | `.admin-btn--ghost` | Cancel, Back, low-emphasis |
+| `.admin-btn--outline` | Emphasized secondary (Pick on calendar) |
 | `.admin-btn--danger` | Delete, irreversible |
 | `.admin-btn--sm` | Tables, toolbars, filter bars — **same height as fields**, tighter horizontal padding |
 | `.admin-btn--lg` | Hero CTAs (contract sign, generate) — intentionally taller |

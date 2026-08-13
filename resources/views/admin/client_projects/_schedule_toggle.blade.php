@@ -10,6 +10,8 @@
   @param string|null $startDateValue
   @param string|null $endDateValue
   @param bool $slowExpand — 1s open/close animation (create project)
+  @param int|null $excludeProjectId — omit this project from calendar busy days
+  @param string|null $submitFormId — form to save immediately after picking (show page)
 --}}
 @php
   $expandOpen = $expandOpen ?? false;
@@ -34,6 +36,14 @@
   aria-hidden="{{ $expandOpen ? 'false' : 'true' }}">
   <div class="cp-visit-expandable__inner">
     <div id="{{ $warningId }}" class="admin-flash admin-flash--warning cp-schedule-date-warning admin-flash--js-hidden admin-flash--compact-top" role="alert"></div>
+    @include('admin.partials.schedule_date_picker', [
+      'startDateId' => $startDateId,
+      'endDateId' => $endDateId,
+      'scheduleToggleId' => $scheduleToggleId,
+      'excludeProjectId' => $excludeProjectId ?? null,
+      'submitFormId' => $submitFormId ?? null,
+      'hint' => $pickerHint ?? 'See other projects\' booked days, click two days (start, then end), then Use these dates.',
+    ])
     <div class="admin-form-grid-2 cp-schedule-dates">
       <div class="admin-form-group">
         <label for="{{ $startDateId }}">Start date</label>

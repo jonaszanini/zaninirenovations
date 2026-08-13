@@ -181,6 +181,7 @@
           'startDateValue' => $cpEditStartDateVal,
           'endDateValue' => $cpEditEndDateVal,
           'expandOpen' => $cpEditScheduleExpandOpen,
+          'excludeProjectId' => $project->id,
         ])
       </div>
 

@@ -5277,6 +5277,9 @@ body.cp-modal-open {
 .cp-visit-expandable.is-open .cp-visit-expandable__inner > .cp-visit-date {
   padding-top: 4px;
 }
+.cp-visit-expandable.is-open .cp-visit-expandable__inner > .cp-schedule-pick-row {
+  padding-top: 12px;
+}
 .cp-visit-expandable.is-open .cp-visit-expandable__inner > .cp-schedule-dates {
   padding-top: 12px;
 }
