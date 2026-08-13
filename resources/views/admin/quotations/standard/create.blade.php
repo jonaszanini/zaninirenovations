@@ -113,6 +113,15 @@
           <i class="fa fa-briefcase"></i> Open linked project
         </a>
       @endif
+      @if ($isEdit)
+        <a href="{{ route('admin.quotations.standard.purchase-list', $quotation) }}"
+           target="_blank" rel="noopener noreferrer"
+           class="admin-btn admin-btn--ghost admin-btn--sm"
+           data-purchase-list-choice
+           data-purchase-list-title="Print material list">
+          <i class="fa fa-print"></i> Print material list
+        </a>
+      @endif
       <button type="submit"
               form="sq-standard-form"
               class="admin-btn admin-btn--primary admin-btn--sm">

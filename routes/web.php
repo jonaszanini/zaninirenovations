@@ -481,6 +481,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('quotations.standard.store');
     Route::get('quotations/standard/{standard_quotation}/edit', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'edit'])
         ->name('quotations.standard.edit');
+    Route::get('quotations/standard/{standard_quotation}/purchase-list', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'purchaseList'])
+        ->name('quotations.standard.purchase-list');
     Route::put('quotations/standard/{standard_quotation}', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'update'])
         ->name('quotations.standard.update');
     Route::post('quotations/standard/{standard_quotation}/link', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'linkToProject'])

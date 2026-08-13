@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
+use App\Models\Material;
 use App\Models\StandardQuotation;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
@@ -16,6 +17,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
+use App\Support\PurchaseListPrintMode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -119,6 +121,77 @@ class StandardQuotationController extends Controller
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
+        ]);
+    }
+
+    /** Printable shopping list from the last saved materials rows. */
+    public function purchaseList(Request $request, StandardQuotation $standard_quotation)
+    {
+        $standard_quotation->load('project');
+
+        $materials = is_array($standard_quotation->materials) ? $standard_quotation->materials : [];
+        $catalogIds = [];
+        foreach ($materials as $row) {
+            $id = (int) ($row['catalog_material_id'] ?? 0);
+            if ($id > 0) {
+                $catalogIds[$id] = $id;
+            }
+        }
+        $catalogById = $catalogIds === []
+            ? collect()
+            : Material::query()->whereIn('id', array_values($catalogIds))->get()->keyBy('id');
+
+        $rows = [];
+        foreach ($materials as $row) {
+            $qty = (float) ($row['quantity'] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $shortName = trim((string) ($row['short_name'] ?? ''));
+            $description = trim((string) ($row['description'] ?? ''));
+            $catalogId = (int) ($row['catalog_material_id'] ?? 0);
+            /** @var Material|null $catalog */
+            $catalog = $catalogId > 0 ? $catalogById->get($catalogId) : null;
+
+            $name = $description !== '' ? $description : $shortName;
+            if ($name === '' && $catalog) {
+                $name = $catalog->displayName();
+            }
+            if ($name === '') {
+                $name = 'Material';
+            }
+
+            $unitPrice = round((float) ($row['unit_price'] ?? 0), 2);
+            $url = trim((string) ($row['url'] ?? ''));
+            if ($url === '' && $catalog) {
+                $url = (string) ($catalog->storeProductUrl() ?? '');
+            }
+
+            $sku = $catalog ? trim((string) ($catalog->store_sku ?? '')) : '';
+            $unit = $catalog ? trim((string) ($catalog->unit ?? '')) : '';
+            if ($unit === '' || $unit === 'each') {
+                $unit = 'ea';
+            }
+
+            $rows[] = [
+                'name_html' => $this->purchaseListCellHtml($name),
+                'short_name_html' => ($shortName !== '' && $shortName !== $name)
+                    ? $this->purchaseListCellHtml($shortName)
+                    : null,
+                'store_sku_html' => $sku !== '' ? $this->purchaseListCellHtml($sku) : null,
+                'url' => $url !== '' ? $url : null,
+                'quantity' => $qty,
+                'unit_html' => $this->purchaseListCellHtml($unit),
+                'unit_price' => $unitPrice,
+                'subtotal' => round($unitPrice * $qty, 2),
+            ];
+        }
+
+        return view('admin.quotations.standard.purchase_list', [
+            'quotation' => $standard_quotation,
+            'rows' => $rows,
+            'showPrices' => PurchaseListPrintMode::showsPrices($request->query('prices')),
         ]);
     }
 
@@ -713,6 +786,11 @@ class StandardQuotationController extends Controller
         }
 
         return round($contingency * ($taxableSub / $matSub), 2);
+    }
+
+    protected function purchaseListCellHtml(string $value): string
+    {
+        return htmlspecialchars($value, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8', true);
     }
 
 }
