@@ -172,7 +172,7 @@ class ClientProjectController extends Controller
             'contacted_via' => ['required', Rule::in($contactedViaKeys)],
             'conversation_on' => ['nullable', Rule::in($contactedViaKeys)],
             'client_id' => ['nullable', 'integer', 'exists:clients,id'],
-            'client_name' => ['required', 'string', 'max:255'],
+            'client_name' => ['required_without:client_id', 'nullable', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
             'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
             'client_phone' => ['nullable', 'digits:10'],
@@ -381,7 +381,7 @@ class ClientProjectController extends Controller
             'contacted_via' => ['sometimes', 'nullable', Rule::in($contactedViaKeys)],
             'conversation_on' => ['sometimes', 'nullable', Rule::in($contactedViaKeys)],
             'client_id' => ['sometimes', 'nullable', 'integer', 'exists:clients,id'],
-            'client_name' => ['required', 'string', 'max:255'],
+            'client_name' => ['required_without:client_id', 'nullable', 'string', 'max:255'],
             'client_email' => ['nullable', 'email', 'max:255'],
             'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
             'client_phone' => ['nullable', 'digits:10'],
@@ -544,6 +544,7 @@ class ClientProjectController extends Controller
     {
         return [
             'client_name.required' => 'Enter a client name, or select a client from the directory.',
+            'client_name.required_without' => 'Enter a client name, or select a client from the directory.',
             'client_phone.digits' => 'Phone number must have exactly 10 digits (e.g. (123) 456-7890).',
             'client_email.email' => 'Please enter a valid email address.',
             'client_email_secondary.email' => 'Please enter a valid secondary email address.',
@@ -868,13 +869,32 @@ class ClientProjectController extends Controller
     }
 
     /**
+     * Normalize client_id from the request (Tom Select can post "" plus the id).
+     */
+    private function postedDirectoryClientId(Request $request): int
+    {
+        $raw = $request->input('client_id');
+        if (is_array($raw)) {
+            $raw = collect($raw)
+                ->flatten()
+                ->filter(fn ($v) => $v !== null && $v !== '')
+                ->last();
+        }
+
+        $clientId = (int) $raw;
+        $request->merge(['client_id' => $clientId > 0 ? $clientId : null]);
+
+        return $clientId;
+    }
+
+    /**
      * When a directory client is selected but contact fields were left blank
      * (e.g. the Tom Select autofill JS did not run), copy them from the client
      * record before validation so create/update can proceed.
      */
     private function hydrateClientContactFromDirectory(Request $request): void
     {
-        $clientId = (int) $request->input('client_id', 0);
+        $clientId = $this->postedDirectoryClientId($request);
         if ($clientId <= 0) {
             return;
         }

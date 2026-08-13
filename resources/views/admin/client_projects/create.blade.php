@@ -284,22 +284,22 @@
       function fillNameFromDirectoryIfNeeded() {
         var nameInput = document.getElementById('cp-client-name');
         var clientSelect = document.getElementById('cp-client-directory');
-        if (!nameInput || !clientSelect) return;
+        var clientIdInput = document.getElementById('cp-client-id');
+        if (!nameInput) return;
         if (String(nameInput.value || '').trim() !== '') return;
 
-        var clientId = clientSelect.value;
+        var clientId = (clientIdInput && clientIdInput.value) || (clientSelect && clientSelect.value) || '';
         if (!clientId) return;
 
-        // Prefer Tom Select option label/name when available.
         var label = '';
-        var ts = clientSelect.tomselect;
+        var ts = clientSelect && clientSelect.tomselect;
         if (ts && ts.options) {
           var opt = ts.options[clientId] || ts.options[String(clientId)];
           if (opt) {
             label = opt.name || (opt.label ? String(opt.label).split(' — ')[0].trim() : '');
           }
         }
-        if (!label) {
+        if (!label && clientSelect) {
           var selected = clientSelect.options[clientSelect.selectedIndex];
           if (selected && selected.text) {
             label = String(selected.text).split(' — ')[0].trim();

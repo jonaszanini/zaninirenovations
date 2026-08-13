@@ -803,14 +803,14 @@
 
       <div class="admin-card">
         <h3>Start &amp; End dates</h3>
-        <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link.</p>
+        <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link. Picking dates on the calendar saves them immediately.</p>
         <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning admin-flash--js-hidden" role="alert"></div>
 
         <div class="cp-schedule-pick-row">
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="cp-open-date-picker">
             <i class="fa fa-calendar"></i> Pick on calendar
           </button>
-          <span class="admin-form-help cp-schedule-pick-hint">See other projects' booked days and click two days (start, then end) to fill the dates below.</span>
+          <span class="admin-form-help cp-schedule-pick-hint">See other projects' booked days, click two days (start, then end), then Use these dates to save.</span>
         </div>
 
         <div class="admin-form-grid-2">
@@ -985,7 +985,7 @@
         </div>
         <div class="cp-modal-footer">
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-modal-close>Cancel</button>
-          <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-date-picker-confirm" disabled>
+          <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-date-picker-confirm" disabled title="Save these start and end dates now">
             <i class="fa fa-check"></i> Use these dates
           </button>
         </div>
@@ -1411,7 +1411,30 @@
           endInput.value = selection.end;
           endInput.dispatchEvent(new Event('change', { bubbles: true }));
         }
-        closeModal();
+
+        var form = document.getElementById('cp-schedule-dates-form');
+        if (!form) {
+          closeModal();
+          return;
+        }
+
+        confirmBtn.disabled = true;
+        confirmBtn.setAttribute('aria-busy', 'true');
+
+        var onSubmit = function (e) {
+          form.removeEventListener('submit', onSubmit);
+          if (e.defaultPrevented) {
+            confirmBtn.disabled = false;
+            confirmBtn.removeAttribute('aria-busy');
+          }
+        };
+        form.addEventListener('submit', onSubmit);
+
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.submit();
+        }
       });
     })();
   </script>

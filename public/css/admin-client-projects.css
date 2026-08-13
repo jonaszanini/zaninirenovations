@@ -4314,11 +4314,11 @@ body.cp-modal-open {
   margin: 0;
 }
 
-/* Empty-value option must not sit beside the search input (looks like a stuck placeholder). */
+/* Empty-value option must not sit beside the search input (looks like a stuck placeholder).
+   Do not hide a real selected client while the control is focused — that made the
+   picker look like a free-text field and the chosen id never appeared selected. */
 .fq-catalog-picker .ts-control .item[data-value=""],
-.fp-cp-wrap .ts-control .item[data-value=""],
-.fq-catalog-picker .ts-wrapper.single.input-active .ts-control .item,
-.fp-cp-wrap .ts-wrapper.single.input-active .ts-control .item {
+.fp-cp-wrap .ts-control .item[data-value=""] {
   display: none !important;
 }
 
