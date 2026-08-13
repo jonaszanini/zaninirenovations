@@ -59,6 +59,7 @@ class LowDeckQuotationCalculatorTest extends TestCase
             [LowDeckMaterial::KEY_BOARD_5_4X6_8, 4.0, null],
             [LowDeckMaterial::KEY_BOARD_5_4X6_10, 5.0, null],
             [LowDeckMaterial::KEY_BOARD_5_4X6_12, 6.0, null],
+            [LowDeckMaterial::KEY_BOARD_5_4X6_16, 8.0, null],
             [LowDeckMaterial::KEY_SCREW_STRUCTURAL_6IN, 20.0, 50],
             [LowDeckMaterial::KEY_SCREW_DECK_2_5IN, 15.0, 350],
             [LowDeckMaterial::KEY_SCREW_FRAME_3IN, 12.0, 100],
@@ -471,5 +472,25 @@ class LowDeckQuotationCalculatorTest extends TestCase
         $this->assertSame(1, $fabric100['quantity']);
         $this->assertNotNull($fabric50);
         $this->assertSame(1, $fabric50['quantity']);
+    }
+
+    public function test_fifteen_foot_run_buys_sixteen_foot_deck_boards(): void
+    {
+        $calc = new LowDeckQuotationCalculator($this->settings(), $this->catalogue());
+        $result = $calc->calculate([
+            'width_ft' => 15,
+            'length_ft' => 14,
+            'material_waste_percent' => 0,
+            'include_under_deck_gravel' => false,
+        ]);
+
+        $this->assertSame(15.0, $result['geometry']['run_ft']);
+        $this->assertGreaterThan(12.0, $result['geometry']['boards']['infill_length_ft']);
+
+        $board16 = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_BOARD_5_4X6_16);
+        $board8 = $this->rowByKey($result['materials'], LowDeckMaterial::KEY_BOARD_5_4X6_8);
+        $this->assertNotNull($board16);
+        $this->assertSame((int) $result['geometry']['boards']['total_boards'], $board16['quantity']);
+        $this->assertNull($board8);
     }
 }

@@ -54,6 +54,8 @@ class LowDeckMaterial extends Model
 
     public const KEY_BOARD_5_4X6_12 = 'board_5_4x6_12';
 
+    public const KEY_BOARD_5_4X6_16 = 'board_5_4x6_16';
+
     // Fasteners
     public const KEY_SCREW_STRUCTURAL_6IN = 'screw_structural_6in';
 
@@ -81,6 +83,7 @@ class LowDeckMaterial extends Model
 
     /** Deck board stock lengths (feet) used by the bin-packer, longest first. */
     public const BOARD_STOCK_KEYS = [
+        16 => self::KEY_BOARD_5_4X6_16,
         12 => self::KEY_BOARD_5_4X6_12,
         10 => self::KEY_BOARD_5_4X6_10,
         8 => self::KEY_BOARD_5_4X6_8,
@@ -119,6 +122,7 @@ class LowDeckMaterial extends Model
         self::KEY_BOARD_5_4X6_8,
         self::KEY_BOARD_5_4X6_10,
         self::KEY_BOARD_5_4X6_12,
+        self::KEY_BOARD_5_4X6_16,
         self::KEY_SCREW_STRUCTURAL_6IN,
         self::KEY_SCREW_DECK_2_5IN,
         self::KEY_SCREW_FRAME_3IN,

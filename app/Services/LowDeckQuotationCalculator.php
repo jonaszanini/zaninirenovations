@@ -622,6 +622,34 @@ class LowDeckQuotationCalculator
             ];
         }
 
+        return $this->fillMissingStockPrices($options);
+    }
+
+    /**
+     * Unlinked catalogue rows are $0. Treat that as missing, not free, so a
+     * new 16' board is not cheaper than every priced 8'/10'/12' length.
+     *
+     * @param  list<array{key: string, length_ft: float, price: float}>  $options
+     * @return list<array{key: string, length_ft: float, price: float}>
+     */
+    private function fillMissingStockPrices(array $options): array
+    {
+        $priced = array_values(array_filter($options, static fn (array $s): bool => $s['price'] > 0));
+        if ($priced === []) {
+            return $options;
+        }
+
+        usort($priced, static fn (array $a, array $b): int => $b['length_ft'] <=> $a['length_ft']);
+        $ref = $priced[0];
+        $perFt = $ref['price'] / max(0.01, $ref['length_ft']);
+
+        foreach ($options as &$opt) {
+            if ($opt['price'] <= 0) {
+                $opt['price'] = round($perFt * $opt['length_ft'], 2);
+            }
+        }
+        unset($opt);
+
         return $options;
     }
 

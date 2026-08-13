@@ -14,6 +14,7 @@ class LowDeckLumberPackerTest extends TestCase
             ['key' => 's8', 'length_ft' => 8.0, 'price' => 5.0],
             ['key' => 's10', 'length_ft' => 10.0, 'price' => 6.5],
             ['key' => 's12', 'length_ft' => 12.0, 'price' => 8.0],
+            ['key' => 's16', 'length_ft' => 16.0, 'price' => 10.5],
         ];
     }
 
@@ -60,5 +61,14 @@ class LowDeckLumberPackerTest extends TestCase
 
         $this->assertSame([], $result['by_key']);
         $this->assertEqualsWithDelta(0.0, $result['total_price'], 0.001);
+    }
+
+    public function test_fifteen_foot_piece_uses_sixteen_foot_stock(): void
+    {
+        $result = LowDeckLumberPacker::pack([15.0, 15.0], $this->stocks(), 0.0);
+
+        $this->assertSame(2, $result['by_key']['s16']);
+        $this->assertArrayNotHasKey('s8', $result['by_key']);
+        $this->assertArrayNotHasKey('s12', $result['by_key']);
     }
 }

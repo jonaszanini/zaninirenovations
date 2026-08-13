@@ -38,6 +38,7 @@ return new class extends Migration {
             ['key' => 'board_5_4x6_8',      'name' => "5/4 x 6 x 8' Deck Board",                      'sort_order' => 110],
             ['key' => 'board_5_4x6_10',     'name' => "5/4 x 6 x 10' Deck Board",                     'sort_order' => 120],
             ['key' => 'board_5_4x6_12',     'name' => "5/4 x 6 x 12' Deck Board",                     'sort_order' => 130],
+            ['key' => 'board_5_4x6_16',     'name' => "5/4 x 6 x 16' Deck Board",                     'sort_order' => 135],
 
             // Fasteners
             ['key' => 'screw_structural_6in', 'name' => '6 in. Structural Screws',                    'sort_order' => 140, 'quantity_per_box' => 50],
