@@ -4,8 +4,8 @@
  * Keeps the payment-plan form in sync:
  *   - When the user selects "2/3/4 installments", the correct number of
  *     percentage rows is rendered.
- *   - As they type percentages, the dollar-amount next to each row updates
- *     live and a "Remaining to allocate" counter shows how far from 100% they are.
+ *   - As they type percentages, later installments fill with the leftover so
+ *     the plan always totals 100%. Dollar amounts update live.
  *
  * Money mask (inputs with class `.cp-money-input`):
  *   - Optional `data-cp-money-places="4"` sets fractional digits (default 2).
@@ -815,6 +815,79 @@
     recalc();
   }
 
+  function roundPct(n) {
+    return Math.round(n * 100) / 100;
+  }
+
+  function parsePct(input) {
+    var pct = parseFloat(input && input.value);
+    if (isNaN(pct) || pct < 0) return 0;
+    if (pct > 100) return 100;
+    return pct;
+  }
+
+  function installmentPctRows() {
+    var form = document.getElementById('cp-installments-form');
+    if (!form) return [];
+    var rows = [];
+    form.querySelectorAll('[data-row]').forEach(function (row) {
+      var input = row.querySelector('input.cp-pct-input[name="percentages[]"]');
+      if (!input) return;
+      rows.push({
+        input: input,
+        paid: row.getAttribute('data-paid') === '1' || input.readOnly
+      });
+    });
+    return rows;
+  }
+
+  /**
+   * After the user edits installment N, split (100 − sum of 1..N) across the
+   * following unpaid rows so 2/3/4-installment plans always add up to 100%.
+   */
+  function autoFillRemaining(changedInput) {
+    var rows = installmentPctRows();
+    if (rows.length < 2) return;
+
+    var changedIdx = -1;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].input === changedInput) {
+        changedIdx = i;
+        break;
+      }
+    }
+    if (changedIdx < 0 || rows[changedIdx].paid) return;
+
+    var used = 0;
+    for (var j = 0; j <= changedIdx; j++) {
+      used = roundPct(used + parsePct(rows[j].input));
+    }
+
+    var followers = [];
+    for (var k = changedIdx + 1; k < rows.length; k++) {
+      if (rows[k].paid) {
+        used = roundPct(used + parsePct(rows[k].input));
+      } else {
+        followers.push(rows[k]);
+      }
+    }
+    if (!followers.length) return;
+
+    var remaining = roundPct(100 - used);
+    if (remaining < 0) remaining = 0;
+
+    var each = roundPct(remaining / followers.length);
+    var allocated = 0;
+    followers.forEach(function (row, idx) {
+      var val = idx === followers.length - 1
+        ? roundPct(remaining - allocated)
+        : each;
+      if (val < 0) val = 0;
+      row.input.value = val.toFixed(2);
+      allocated = roundPct(allocated + parsePct(row.input));
+    });
+  }
+
   function recalc() {
     var form = document.getElementById('cp-installments-form');
     if (!form) return;
@@ -864,7 +937,12 @@
     var form = document.getElementById('cp-installments-form');
     if (!form) return;
     form.querySelectorAll('.cp-pct-input').forEach(function (input) {
-      input.addEventListener('input', recalc);
+      if (input._cpPctWired) return;
+      input._cpPctWired = true;
+      input.addEventListener('input', function () {
+        autoFillRemaining(input);
+        recalc();
+      });
     });
     var total = document.getElementById('cp-total');
     if (total && !total._wired) {

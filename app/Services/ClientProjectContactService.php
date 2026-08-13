@@ -253,15 +253,30 @@ class ClientProjectContactService
             return;
         }
 
+        $address = filled($data['client_address'] ?? null) ? $data['client_address'] : null;
+        $placeId = filled($data['client_address_place_id'] ?? null) ? $data['client_address_place_id'] : null;
+        $lat = $data['client_address_latitude'] ?? null;
+        $lng = $data['client_address_longitude'] ?? null;
+
+        if ($address === null) {
+            $placeId = null;
+            $lat = null;
+            $lng = null;
+        } elseif ($lat === null || $lng === null) {
+            $placeId = $placeId ?: $client->address_place_id;
+            $lat = $lat ?? $client->address_latitude;
+            $lng = $lng ?? $client->address_longitude;
+        }
+
         $client->update([
             'name' => $name,
             'email' => filled($data['client_email'] ?? null) ? $data['client_email'] : null,
             'email_secondary' => filled($data['client_email_secondary'] ?? null) ? $data['client_email_secondary'] : null,
             'phone' => filled($data['client_phone'] ?? null) ? $data['client_phone'] : null,
-            'address' => filled($data['client_address'] ?? null) ? $data['client_address'] : null,
-            'address_place_id' => filled($data['client_address_place_id'] ?? null) ? $data['client_address_place_id'] : null,
-            'address_latitude' => $data['client_address_latitude'] ?? null,
-            'address_longitude' => $data['client_address_longitude'] ?? null,
+            'address' => $address,
+            'address_place_id' => $placeId,
+            'address_latitude' => $lat,
+            'address_longitude' => $lng,
         ]);
     }
 

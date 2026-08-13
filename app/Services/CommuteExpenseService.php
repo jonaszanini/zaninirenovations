@@ -21,7 +21,7 @@ class CommuteExpenseService
         $settings = CompanySetting::current();
         $vehicle = Vehicle::active();
 
-        if (! $maps->isConfigured()) {
+        if (! $this->maps->isConfigured()) {
             return [
                 'ok' => false,
                 'fuel_cost' => null,
@@ -29,7 +29,7 @@ class CommuteExpenseService
             ];
         }
 
-        if (! $maps->isDistanceMatrixConfigured()) {
+        if (! $this->maps->isDistanceMatrixConfigured()) {
             return [
                 'ok' => false,
                 'fuel_cost' => null,
@@ -45,7 +45,9 @@ class CommuteExpenseService
             ];
         }
 
-        if ($project->client_address_latitude === null || $project->client_address_longitude === null) {
+        $project->copyServiceCoordinatesFromDirectory();
+
+        if (! $project->hasServiceCoordinates()) {
             return [
                 'ok' => false,
                 'fuel_cost' => null,

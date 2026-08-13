@@ -37,7 +37,9 @@ class ClientProjectTravelController extends Controller
             ]);
         }
 
-        if ($client_project->client_address_latitude === null || $client_project->client_address_longitude === null) {
+        $client_project->copyServiceCoordinatesFromDirectory();
+
+        if (! $client_project->hasServiceCoordinates()) {
             return response()->json([
                 'ok' => false,
                 'message' => 'This project needs a service address with map coordinates. Edit the project and pick an address from Google suggestions.',

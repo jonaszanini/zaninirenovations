@@ -300,6 +300,8 @@ class ClientProjectController extends Controller
             'invoices.timeEntries',
         ]);
 
+        $client_project->copyServiceCoordinatesFromDirectory();
+
         $calendarLink = GoogleCalendarLink::forProject($client_project);
 
         $linkedUtilities = app(ClientProjectLinkedUtilitiesService::class)->forProject($client_project);
@@ -927,6 +929,10 @@ class ClientProjectController extends Controller
         }
         if (! filled(trim((string) $request->input('client_address', ''))) && filled($client->address)) {
             $merge['client_address'] = $client->address;
+        }
+        $geoBlank = ! filled($request->input('client_address_latitude'))
+            || ! filled($request->input('client_address_longitude'));
+        if ($geoBlank && $client->address_latitude !== null && $client->address_longitude !== null) {
             $merge['client_address_place_id'] = $client->address_place_id;
             $merge['client_address_latitude'] = $client->address_latitude;
             $merge['client_address_longitude'] = $client->address_longitude;

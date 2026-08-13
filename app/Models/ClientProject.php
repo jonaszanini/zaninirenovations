@@ -1138,6 +1138,37 @@ class ClientProject extends Model
             && $this->client_address_longitude !== null;
     }
 
+    /**
+     * Copy map coordinates from the linked directory client when this project
+     * has an address but no lat/lng (typical after picking a client from DB).
+     */
+    public function copyServiceCoordinatesFromDirectory(): bool
+    {
+        if ($this->hasServiceCoordinates()) {
+            return false;
+        }
+
+        $client = $this->client;
+        if (! $client || $client->address_latitude === null || $client->address_longitude === null) {
+            return false;
+        }
+
+        $fill = [
+            'client_address_latitude' => $client->address_latitude,
+            'client_address_longitude' => $client->address_longitude,
+        ];
+        if (! filled($this->getRawOriginal('client_address_place_id')) && filled($client->address_place_id)) {
+            $fill['client_address_place_id'] = $client->address_place_id;
+        }
+        if (! filled($this->getRawOriginal('client_address')) && filled($client->address)) {
+            $fill['client_address'] = $client->address;
+        }
+
+        $this->forceFill($fill)->saveQuietly();
+
+        return true;
+    }
+
     public function usesInvoiceBillingOverride(): bool
     {
         return filled(trim((string) ($this->invoice_billing_name ?? '')));
