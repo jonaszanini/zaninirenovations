@@ -1,10 +1,13 @@
+@php
+  $showPrices = $showPrices ?? true;
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Purchasing list — {{ $quotation->quote_number }}</title>
+  <title>Purchasing list{{ $showPrices ? '' : ' (no prices)' }} — {{ $quotation->quote_number }}</title>
   <style>
     :root {
       --ink: #111827;
@@ -92,7 +95,7 @@
     <button type="button" onclick="window.print()">Print purchasing list</button>
   </div>
 
-  <h1>Purchasing list</h1>
+  <h1>Purchasing list{{ $showPrices ? '' : ' (no prices)' }}</h1>
   <p class="meta">
     <strong>{{ e($quotation->quote_number) }}</strong>
     @if (filled($quotation->client_name))
@@ -122,7 +125,10 @@
             <th class="unit">Unit</th>
             <th>Item</th>
             <th>Notes</th>
-            <th class="money">Total (incl. HST)</th>
+            @if ($showPrices)
+              <th class="money">Unit price</th>
+              <th class="money">Total (incl. HST)</th>
+            @endif
           </tr>
         </thead>
         <tbody>
@@ -138,7 +144,10 @@
                 @endif
               </td>
               <td class="note">{{ filled($row['note'] ?? '') ? e($row['note']) : '—' }}</td>
-              <td class="money">{{ e($row['with_tax_label']) }}</td>
+              @if ($showPrices)
+                <td class="money">{{ e($row['unit_price_label'] ?? '') }}</td>
+                <td class="money">{{ e($row['with_tax_label']) }}</td>
+              @endif
             </tr>
           @endforeach
         </tbody>
@@ -154,7 +163,10 @@
             <th class="unit">Unit</th>
             <th>Item</th>
             <th>Notes</th>
-            <th class="money">Total (incl. HST)</th>
+            @if ($showPrices)
+              <th class="money">Unit price</th>
+              <th class="money">Total (incl. HST)</th>
+            @endif
           </tr>
         </thead>
         <tbody>
@@ -164,7 +176,10 @@
               <td class="unit">{{ e($row['unit']) }}</td>
               <td>{{ e($row['label']) }}</td>
               <td class="note">{{ filled($row['note'] ?? '') ? e($row['note']) : '—' }}</td>
-              <td class="money">{{ e($row['with_tax_label']) }}</td>
+              @if ($showPrices)
+                <td class="money">{{ e($row['unit_price_label'] ?? '') }}</td>
+                <td class="money">{{ e($row['with_tax_label']) }}</td>
+              @endif
             </tr>
           @endforeach
         </tbody>

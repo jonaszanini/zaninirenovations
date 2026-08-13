@@ -88,6 +88,7 @@
       if (panelEl) panelEl.classList.remove('admin-dialog-panel--danger');
 
       if (actionsEl) {
+        actionsEl.className = 'admin-dialog-actions';
         actionsEl.innerHTML = '';
         actionsEl.appendChild(makeBtn('Close', 'admin-btn admin-btn--primary admin-btn--sm', function () {
           close(true);
@@ -135,11 +136,12 @@
       }
 
       var type = options.type || 'confirm';
-      var title = options.title || (type === 'alert' ? 'Notice' : 'Confirm');
+      var title = options.title || (type === 'alert' ? 'Notice' : (type === 'choose' ? 'Choose' : 'Confirm'));
       var message = options.message != null ? String(options.message) : '';
       var confirmLabel = options.confirmLabel || (type === 'alert' ? 'OK' : 'Continue');
       var cancelLabel = options.cancelLabel || 'Cancel';
       var danger = !!options.danger;
+      var choices = options.choices || [];
 
       lastFocus = document.activeElement;
 
@@ -150,19 +152,50 @@
         iconEl.className = 'fa admin-dialog-icon ' + (
           type === 'alert'
             ? 'fa-info-circle'
-            : (danger ? 'fa-exclamation-triangle' : 'fa-question-circle')
+            : (type === 'choose'
+              ? 'fa-print'
+              : (danger ? 'fa-exclamation-triangle' : 'fa-question-circle'))
         );
         iconEl.parentElement.className = 'admin-dialog-icon-wrap admin-dialog-icon-wrap--' + (
-          type === 'alert' ? 'info' : (danger ? 'danger' : 'confirm')
+          type === 'alert' ? 'info' : (danger && type !== 'choose' ? 'danger' : 'confirm')
         );
       }
 
       if (panelEl) {
-        panelEl.classList.toggle('admin-dialog-panel--danger', danger && type !== 'alert');
+        panelEl.classList.toggle('admin-dialog-panel--danger', danger && type !== 'alert' && type !== 'choose');
       }
 
       if (actionsEl) {
         actionsEl.innerHTML = '';
+        actionsEl.className = 'admin-dialog-actions' + (type === 'choose' ? ' admin-dialog-actions--stack' : '');
+
+        if (type === 'choose') {
+          var firstChoiceBtn = null;
+          choices.forEach(function (choice, i) {
+            var value = choice && choice.value != null ? choice.value : '';
+            var label = (choice && choice.label) ? String(choice.label) : String(value);
+            var cls = i === 0
+              ? 'admin-btn admin-btn--primary'
+              : 'admin-btn admin-btn--ghost';
+            var btn = makeBtn(label, cls, function () {
+              close(value);
+            });
+            if (!firstChoiceBtn) firstChoiceBtn = btn;
+            actionsEl.appendChild(btn);
+          });
+          actionsEl.appendChild(makeBtn(cancelLabel, 'admin-btn admin-btn--ghost', function () {
+            close(null);
+          }));
+          resolveCb = resolve;
+          root.hidden = false;
+          root.setAttribute('aria-hidden', 'false');
+          document.documentElement.classList.add(OPEN_CLASS);
+          setTimeout(function () {
+            if (firstChoiceBtn) firstChoiceBtn.focus();
+          }, 0);
+          return;
+        }
+
         if (type !== 'alert') {
           actionsEl.appendChild(makeBtn(cancelLabel, 'admin-btn admin-btn--ghost admin-btn--sm', function () {
             close(false);
@@ -172,7 +205,7 @@
           ? 'admin-btn admin-btn--danger admin-btn--sm'
           : 'admin-btn admin-btn--primary admin-btn--sm';
         var primaryBtn = makeBtn(confirmLabel, primaryClass, function () {
-          close(type === 'alert' ? true : true);
+          close(true);
         });
         actionsEl.appendChild(primaryBtn);
         resolveCb = resolve;
@@ -204,6 +237,21 @@
       confirmLabel: options.confirmLabel || 'Continue',
       cancelLabel: options.cancelLabel || 'Cancel',
       danger: !!options.danger,
+    });
+  }
+
+  /**
+   * Several equally valid actions. Resolves to the chosen `value`, or null if cancelled.
+   * options.choices: [{ value, label }, ...]
+   */
+  function choose(message, options) {
+    options = options || {};
+    return show({
+      type: 'choose',
+      message: message,
+      title: options.title || 'Choose',
+      choices: options.choices || [],
+      cancelLabel: options.cancelLabel || 'Cancel',
     });
   }
 
@@ -299,6 +347,7 @@
   global.AdminDialog = {
     alert: alert,
     confirm: confirm,
+    choose: choose,
     show: show,
     copyFallback: copyFallback,
   };

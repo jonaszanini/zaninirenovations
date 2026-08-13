@@ -1823,6 +1823,21 @@ details[open] > summary.admin-chevron-summary::after {
   justify-content: center;
 }
 
+#admin-dialog .admin-dialog-actions--stack {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+#admin-dialog .admin-dialog-actions--stack .admin-btn {
+  width: 100%;
+  min-height: var(--admin-control-height, 44px);
+  justify-content: center;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+
 #admin-dialog .admin-dialog-copy-field {
   width: 100%;
   margin-top: 10px;

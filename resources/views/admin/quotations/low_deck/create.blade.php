@@ -170,7 +170,9 @@
       @if ($isEdit)
         <a href="{{ route('admin.quotations.low-deck.purchase-list', $quotation) }}"
            target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm">
+           class="admin-btn admin-btn--ghost admin-btn--sm"
+           data-purchase-list-choice
+           data-purchase-list-title="Print shopping list">
           <i class="fa fa-print"></i> Print Shopping List
         </a>
         <a href="{{ route('admin.quotations.low-deck.layout-diagrams', $quotation) }}"

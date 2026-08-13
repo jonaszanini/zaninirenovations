@@ -117,4 +117,51 @@ class LowDeckQuotationTest extends IntegrationTestCase
         $response->assertSee('12 in. pier holes', false);
         $response->assertSee('members shown 1.5 in. wide', false);
     }
+
+    public function test_purchase_list_full_version_includes_unit_price_and_total(): void
+    {
+        $this->actingAsAdmin();
+        $quote = $this->storeMinimalLowDeckQuote();
+
+        $response = $this->get(route('admin.quotations.low-deck.purchase-list', [
+            'low_deck_quotation' => $quote,
+            'prices' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Unit price', false);
+        $response->assertSee('Total', false);
+        $response->assertDontSee('Shopping list (no prices)', false);
+    }
+
+    public function test_purchase_list_simple_version_omits_unit_price_and_total(): void
+    {
+        $this->actingAsAdmin();
+        $quote = $this->storeMinimalLowDeckQuote();
+
+        $response = $this->get(route('admin.quotations.low-deck.purchase-list', [
+            'low_deck_quotation' => $quote,
+            'prices' => 0,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Shopping list (no prices)', false);
+        $response->assertDontSee('Unit price', false);
+        $response->assertDontSee('Materials total (before HST)', false);
+    }
+
+    private function storeMinimalLowDeckQuote(): LowDeckQuotation
+    {
+        $this->post(route('admin.quotations.low-deck.store'), [
+            'client_name' => 'Jane Homeowner',
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'labour_rate_per_sqft' => 10,
+            'payment_installments' => 3,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+        ])->assertRedirect();
+
+        return LowDeckQuotation::query()->latest('id')->firstOrFail();
+    }
 }

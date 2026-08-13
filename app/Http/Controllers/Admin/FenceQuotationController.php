@@ -19,6 +19,7 @@ use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\FenceQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
+use App\Support\PurchaseListPrintMode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -472,7 +473,7 @@ class FenceQuotationController extends Controller
      * Quantities come from the stored calculation; long name, SKU, and
      * model come from the live materials catalogue when set.
      */
-    public function purchaseList(FenceQuotation $fence_quotation)
+    public function purchaseList(Request $request, FenceQuotation $fence_quotation)
     {
         $fence_quotation->load('project');
 
@@ -514,6 +515,8 @@ class FenceQuotationController extends Controller
                     'long_name_html' => $this->purchaseListCellHtml($longName),
                     'store_sku_html' => $storeSku !== null ? $this->purchaseListCellHtml($storeSku) : null,
                     'model_html' => $model !== null ? $this->purchaseListCellHtml($model) : null,
+                    'unit_price' => (float) ($line['unit_price'] ?? 0),
+                    'subtotal' => (float) ($line['subtotal'] ?? 0),
                 ];
             }
         }
@@ -521,6 +524,7 @@ class FenceQuotationController extends Controller
         return view('admin.quotations.fence.purchase_list', [
             'quotation' => $fence_quotation,
             'rows' => $rows,
+            'showPrices' => PurchaseListPrintMode::showsPrices($request->query('prices')),
         ]);
     }
 

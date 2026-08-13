@@ -1,9 +1,12 @@
+@php
+  $showPrices = $showPrices ?? true;
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Shopping list — {{ $quotation->quote_number }}</title>
+  <title>Shopping list{{ $showPrices ? '' : ' (no prices)' }} — {{ $quotation->quote_number }}</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -53,7 +56,7 @@
     <button type="button" onclick="window.print()">Print Shopping List</button>
   </div>
 
-  <h1>Shopping list</h1>
+  <h1>Shopping list{{ $showPrices ? '' : ' (no prices)' }}</h1>
   <p class="meta">
     <strong>{{ e($quotation->quote_number) }}</strong>
     @if (filled($quotation->client_name))
@@ -75,8 +78,10 @@
           <th class="check"></th>
           <th>Item</th>
           <th class="qty">Qty</th>
-          <th class="num">Unit price</th>
-          <th class="num">Total</th>
+          @if ($showPrices)
+            <th class="num">Unit price</th>
+            <th class="num">Total</th>
+          @endif
         </tr>
       </thead>
       <tbody>
@@ -93,11 +98,14 @@
             <td class="qty">
               {{ rtrim(rtrim(number_format((float) $row['quantity'], 2), '0'), '.') }} {!! $row['unit_html'] !!}
             </td>
-            <td class="num">{{ \App\Models\ClientProject::formatMoney((float) $row['unit_price']) }}</td>
-            <td class="num">{{ \App\Models\ClientProject::formatMoney((float) $row['subtotal']) }}</td>
+            @if ($showPrices)
+              <td class="num">{{ \App\Models\ClientProject::formatMoney((float) $row['unit_price']) }}</td>
+              <td class="num">{{ \App\Models\ClientProject::formatMoney((float) $row['subtotal']) }}</td>
+            @endif
           </tr>
         @endforeach
       </tbody>
+      @if ($showPrices)
       <tfoot>
         <tr>
           <td></td>
@@ -107,6 +115,7 @@
           <td class="num">{{ \App\Models\ClientProject::formatMoney($listTotal) }}</td>
         </tr>
       </tfoot>
+      @endif
     </table>
   @endif
 

@@ -1,10 +1,13 @@
+@php
+  $showPrices = $showPrices ?? true;
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Purchasing list — {{ $quotation->quote_number }}</title>
+  <title>Purchasing list{{ $showPrices ? '' : ' (no prices)' }} — {{ $quotation->quote_number }}</title>
   <style>
     :root {
       --ink: #111827;
@@ -51,7 +54,10 @@
       color: #374151;
       font-weight: 600;
     }
-    .qty { white-space: nowrap; width: 1%; font-variant-numeric: tabular-nums; }
+    .qty, .money { white-space: nowrap; width: 1%; font-variant-numeric: tabular-nums; }
+    .money { text-align: right; }
+    th.money { text-align: right; }
+    tfoot td { font-weight: 700; border-top: 2px solid var(--ink); }
     .empty {
       color: var(--muted);
       padding: 20px 0;
@@ -102,7 +108,7 @@
     <button type="button" onclick="window.print()">Print Material List</button>
   </div>
 
-  <h1>Purchasing list</h1>
+  <h1>Purchasing list{{ $showPrices ? '' : ' (no prices)' }}</h1>
   <p class="meta">
     <strong>{{ e($quotation->quote_number) }}</strong>
     @if (filled($quotation->client_name))
@@ -122,18 +128,38 @@
           <th>Long name</th>
           <th>SKU</th>
           <th>Model</th>
+          @if ($showPrices)
+            <th class="money">Unit price</th>
+            <th class="money">Total</th>
+          @endif
         </tr>
       </thead>
       <tbody>
+        @php $listTotal = 0; @endphp
         @foreach ($rows as $row)
+          @php $listTotal += (float) ($row['subtotal'] ?? 0); @endphp
           <tr>
             <td class="qty">{{ e($row['quantity_label']) }}</td>
             <td>{!! $row['long_name_html'] !!}</td>
             <td>{!! $row['store_sku_html'] !== null && $row['store_sku_html'] !== '' ? $row['store_sku_html'] : '—' !!}</td>
             <td>{!! $row['model_html'] !== null && $row['model_html'] !== '' ? $row['model_html'] : '—' !!}</td>
+            @if ($showPrices)
+              <td class="money">{{ \App\Models\ClientProject::formatMoney((float) ($row['unit_price'] ?? 0)) }}</td>
+              <td class="money">{{ \App\Models\ClientProject::formatMoney((float) ($row['subtotal'] ?? 0)) }}</td>
+            @endif
           </tr>
         @endforeach
       </tbody>
+      @if ($showPrices)
+      <tfoot>
+        <tr>
+          <td></td>
+          <td colspan="3">Materials total (before HST)</td>
+          <td></td>
+          <td class="money">{{ \App\Models\ClientProject::formatMoney($listTotal) }}</td>
+        </tr>
+      </tfoot>
+      @endif
     </table>
   @endif
 

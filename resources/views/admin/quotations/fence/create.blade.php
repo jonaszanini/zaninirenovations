@@ -372,7 +372,9 @@
       @if ($isEdit)
         <a href="{{ route('admin.quotations.fence.purchase-list', $quotation) }}"
            target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm">
+           class="admin-btn admin-btn--ghost admin-btn--sm"
+           data-purchase-list-choice
+           data-purchase-list-title="Print material list">
           <i class="fa fa-print"></i> Print Material List
         </a>
       @endif

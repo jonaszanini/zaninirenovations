@@ -21,6 +21,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\LowDeckQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\LowDeckWorkDescriptionGenerator;
+use App\Support\PurchaseListPrintMode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 /**
@@ -266,7 +267,7 @@ class LowDeckQuotationController extends Controller
     }
 
     /** Printable Home Depot shopping list for a saved quote. */
-    public function purchaseList(LowDeckQuotation $low_deck_quotation)
+    public function purchaseList(Request $request, LowDeckQuotation $low_deck_quotation)
     {
         $low_deck_quotation->load('project');
 
@@ -311,6 +312,7 @@ class LowDeckQuotationController extends Controller
         return view('admin.quotations.low_deck.purchase_list', [
             'quotation' => $low_deck_quotation,
             'rows' => $rows,
+            'showPrices' => PurchaseListPrintMode::showsPrices($request->query('prices')),
         ]);
     }
 
