@@ -884,6 +884,107 @@ html.cp-cancel-modal-open {
   width: auto;
 }
 
+.cp-client-combobox {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cp-client-combobox__control {
+  position: relative;
+}
+
+.cp-client-combobox__input {
+  width: 100%;
+  padding-right: 2.75rem;
+}
+
+.cp-client-combobox__clear {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: var(--admin-control-height, 44px);
+  height: calc(var(--admin-control-height, 44px) - 4px);
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--admin-muted, #5a6570);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-client-combobox__clear:hover,
+.cp-client-combobox__clear:focus-visible {
+  color: var(--admin-text, #373435);
+  background: #edf0f2;
+}
+
+.cp-client-combobox__list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  max-height: min(16rem, 50vh);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--admin-border, #d8dee4);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.cp-client-combobox__option {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+}
+
+.cp-client-combobox__option:hover,
+.cp-client-combobox__option.is-active {
+  background: #eef6fa;
+}
+
+.cp-client-combobox__option.is-selected .cp-client-combobox__option-name {
+  color: var(--admin-primary, #024768);
+}
+
+.cp-client-combobox__option-name {
+  font-weight: 600;
+  color: var(--admin-text, #373435);
+}
+
+.cp-client-combobox__option-meta,
+.cp-client-combobox__empty {
+  font-size: 0.8rem;
+  color: var(--admin-muted, #5a6570);
+}
+
+.cp-client-combobox__empty {
+  padding: 0.75rem;
+}
+
+.cp-client-combobox.is-selected .cp-client-combobox__input {
+  border-color: var(--admin-primary, #024768);
+}
+
+@media (max-width: 700px) {
+  .cp-client-combobox__list {
+    max-height: min(14rem, 45vh);
+  }
+}
+
 .cp-client-directory-picker__manage {
   flex: 0 0 auto;
   box-sizing: border-box;
@@ -5658,11 +5759,6 @@ body.cp-modal-open {
   text-align: right;
   white-space: nowrap;
 }
-.cp-client-directory-picker.fq-catalog-picker .ts-wrapper,
-.cp-client-directory-picker .fq-catalog-picker .ts-wrapper {
-  width: 100%;
-}
-
 /* Edit project — form + Save/Cancel column beside the narrow card */
 .cp-edit-project-layout {
   display: grid;

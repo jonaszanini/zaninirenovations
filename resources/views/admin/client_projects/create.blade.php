@@ -283,31 +283,13 @@
 
       function fillNameFromDirectoryIfNeeded() {
         var nameInput = document.getElementById('cp-client-name');
-        var clientSelect = document.getElementById('cp-client-directory');
         var clientIdInput = document.getElementById('cp-client-id');
+        var comboInput = document.getElementById('cp-client-combobox-input');
         if (!nameInput) return;
         if (String(nameInput.value || '').trim() !== '') return;
-
-        var clientId = (clientIdInput && clientIdInput.value) || (clientSelect && clientSelect.value) || '';
-        if (!clientId) return;
-
-        var label = '';
-        var ts = clientSelect && clientSelect.tomselect;
-        if (ts && ts.options) {
-          var opt = ts.options[clientId] || ts.options[String(clientId)];
-          if (opt) {
-            label = opt.name || (opt.label ? String(opt.label).split(' — ')[0].trim() : '');
-          }
-        }
-        if (!label && clientSelect) {
-          var selected = clientSelect.options[clientSelect.selectedIndex];
-          if (selected && selected.text) {
-            label = String(selected.text).split(' — ')[0].trim();
-          }
-        }
-        if (label) {
-          nameInput.value = label;
-        }
+        if (!clientIdInput || !clientIdInput.value) return;
+        var label = comboInput ? String(comboInput.value || '').split(' — ')[0].trim() : '';
+        if (label) nameInput.value = label;
       }
 
       form.addEventListener('submit', function () {
