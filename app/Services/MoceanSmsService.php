@@ -30,7 +30,7 @@ class MoceanSmsService
             return ['ok' => false, 'detail' => 'Recipient phone has no digits.'];
         }
 
-        $from = (string) config('mocean.from', 'MOCEAN');
+        $from = $this->normalizeFrom((string) config('mocean.from', 'MOCEAN'));
         $url = (string) config('mocean.send_url');
 
         try {
@@ -87,5 +87,24 @@ class MoceanSmsService
         }
 
         return ['ok' => true, 'detail' => 'Mocean status 0'];
+    }
+
+    /**
+     * Mocean accepts alphanumeric sender IDs as-is, or numeric IDs with
+     * country code and no punctuation (e.g. 18559154845).
+     */
+    private function normalizeFrom(string $from): string
+    {
+        $from = trim($from);
+        if ($from === '') {
+            return 'MOCEAN';
+        }
+        if (! preg_match('/[A-Za-z]/', $from)) {
+            $digits = preg_replace('/\D/', '', $from);
+
+            return $digits !== '' ? $digits : $from;
+        }
+
+        return $from;
     }
 }
