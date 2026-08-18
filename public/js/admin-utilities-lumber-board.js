@@ -62,6 +62,11 @@
     return isFinite(n) ? n : 0;
   }
 
+  function parseMoney(v) {
+    var n = parseFloat(String(v == null ? '' : v).replace(/,/g, ''));
+    return isFinite(n) ? n : 0;
+  }
+
   function toSixteenths(val, unit) {
     var n = parseNum(val);
     if (n <= 0) return 0;
@@ -427,7 +432,7 @@
           id: id,
           lengthVal: lenVal,
           lengthSix: six,
-          price: parseNum(priceInput ? priceInput.value : '')
+          price: parseMoney(priceInput ? priceInput.value : '')
         });
       }
     });
@@ -528,7 +533,7 @@
         '</div>' +
       '</td>' +
       '<td>' +
-        '<input type="number" min="0" step="any" inputmode="decimal" placeholder="Optional" data-lb-stock-price value="' + (data && data.price != null ? escapeAttr(data.price) : '') + '">' +
+        '<input type="text" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="Optional" data-lb-stock-price value="' + (data && data.price != null ? escapeAttr(data.price) : '') + '">' +
       '</td>' +
       '<td class="util-lb-col-action">' +
         '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm util-lb-row-remove" data-lb-remove-stock title="Remove" aria-label="Remove board length"><i class="fa fa-times"></i></button>' +
@@ -541,6 +546,9 @@
       syncSingleStockOptions(card, stockUnit);
       scheduleRender();
     });
+    if (window.cpMoneyMask) {
+      window.cpMoneyMask.wire(row.querySelector('[data-lb-stock-price]'));
+    }
     return row;
   }
 

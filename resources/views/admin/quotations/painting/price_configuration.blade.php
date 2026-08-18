@@ -44,20 +44,21 @@
     <div class="pq-form-grid">
       <div class="admin-form-group">
         <label for="labor_per_sqf">Base labor price per sq ft (CAD$)</label>
-        <input type="number" step="0.0001" min="0" class="admin-input" id="labor_per_sqf" name="labor_per_sqf"
-               value="{{ old('labor_per_sqf', $settings->labor_per_sqf) }}" required>
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+               class="admin-input cp-money-input" id="labor_per_sqf" name="labor_per_sqf"
+               value="{{ old('labor_per_sqf', number_format((float) $settings->labor_per_sqf, 4, '.', '')) }}" required>
         <p class="pq-hint">Default $2.51 / sq ft</p>
       </div>
       <div class="admin-form-group">
         <label for="paint_per_gallon">Paint price per gallon (CAD$)</label>
-        <input type="number" step="0.01" min="0" class="admin-input" id="paint_per_gallon" name="paint_per_gallon"
-               value="{{ old('paint_per_gallon', $settings->paint_per_gallon) }}" required>
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" id="paint_per_gallon" name="paint_per_gallon"
+               placeholder="0.00" value="{{ old('paint_per_gallon', number_format((float) $settings->paint_per_gallon, 2, '.', '')) }}" required>
         <p class="pq-hint">Premium paint e.g. Dulux Lifemaster</p>
       </div>
       <div class="admin-form-group">
         <label for="material_addon_fee">Material add-on fixed fee (CAD$)</label>
-        <input type="number" step="0.01" min="0" class="admin-input" id="material_addon_fee" name="material_addon_fee"
-               value="{{ old('material_addon_fee', $settings->material_addon_fee) }}" required>
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" id="material_addon_fee" name="material_addon_fee"
+               placeholder="0.00" value="{{ old('material_addon_fee', number_format((float) $settings->material_addon_fee, 2, '.', '')) }}" required>
         <p class="pq-hint">Brushes, sleeves, masking, etc.</p>
       </div>
       <div class="admin-form-group">

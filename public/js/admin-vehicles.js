@@ -9,7 +9,7 @@
 
   function costPerKm(consumption, gasPrice) {
     var litersPer100 = parseFloat(consumption);
-    var price = parseFloat(gasPrice);
+    var price = parseFloat(String(gasPrice).replace(/,/g, ''));
     if (isNaN(litersPer100) || litersPer100 <= 0 || isNaN(price) || price < 0) {
       return null;
     }

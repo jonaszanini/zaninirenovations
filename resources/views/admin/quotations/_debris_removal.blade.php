@@ -48,21 +48,16 @@
   <div class="q-debris-card__body" data-cp-debris-body @if ($includeDebrisChoice !== true) hidden @endif>
     <div class="admin-form-group q-debris-amount-group">
       <label for="q-debris-amount">Amount to charge <span class="cp-required">*</span></label>
-      <div class="q-debris-amount-wrap">
-        <span class="q-debris-amount-prefix">CA$</span>
-        <input type="number"
-               id="q-debris-amount"
-               name="debris_removal_amount"
-               class="admin-input q-debris-amount-input"
-               inputmode="decimal"
-               step="0.01"
-               min="0"
-               max="999999"
-               placeholder="0.00"
-               value="{{ $debrisAmount }}"
-               data-cp-debris-amount
-               @if ($includeDebrisChoice === true) required @endif>
-      </div>
+      <input type="text"
+             id="q-debris-amount"
+             name="debris_removal_amount"
+             @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('debris_removal_amount')])
+             inputmode="decimal"
+             autocomplete="off"
+             placeholder="0.00"
+             value="{{ $debrisAmount }}"
+             data-cp-debris-amount
+             @if ($includeDebrisChoice === true) required @endif>
       <p class="admin-form-help">Incl. HST — added to the grand total; hidden from the client PDF.</p>
       @error('debris_removal_amount')
         <p class="admin-form-error">{{ $message }}</p>
@@ -90,22 +85,7 @@
     border-radius: 8px;
   }
   .q-debris-amount-group { margin-bottom: 0; }
-  .q-debris-amount-wrap {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  .q-debris-amount-group .cp-money-input {
     max-width: 240px;
-  }
-  .q-debris-amount-prefix {
-    flex: 0 0 auto;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #64748b;
-  }
-  /* Beat `.admin-input { padding: … }` so the value/placeholder is not cramped. */
-  .q-debris-amount-wrap .admin-input.q-debris-amount-input {
-    flex: 1 1 auto;
-    min-width: 0;
-    font-weight: 600;
   }
 </style>

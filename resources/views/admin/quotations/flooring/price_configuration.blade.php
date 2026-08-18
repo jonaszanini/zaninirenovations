@@ -44,28 +44,31 @@
     <div class="pq-form-grid">
       <div class="admin-form-group">
         <label for="remove_carpet_dispose_rate">Remove carpet &amp; dispose (per sq ft, CAD$)</label>
-        <input type="number" step="0.0001" min="0" class="admin-input" id="remove_carpet_dispose_rate" name="remove_carpet_dispose_rate"
-               value="{{ old('remove_carpet_dispose_rate', $settings->remove_carpet_dispose_rate) }}" required>
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+               class="admin-input cp-money-input" id="remove_carpet_dispose_rate" name="remove_carpet_dispose_rate"
+               value="{{ old('remove_carpet_dispose_rate', number_format((float) $settings->remove_carpet_dispose_rate, 4, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
         <label for="rescrew_subfloor_rate">Re-screw subfloor to joists (flat fee per project, CAD$)</label>
-        <input type="number" step="0.01" min="0" class="admin-input" id="rescrew_subfloor_rate" name="rescrew_subfloor_rate"
-               value="{{ old('rescrew_subfloor_rate', $settings->rescrew_subfloor_rate) }}" required>
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" id="rescrew_subfloor_rate" name="rescrew_subfloor_rate"
+               placeholder="0.00" value="{{ old('rescrew_subfloor_rate', number_format((float) $settings->rescrew_subfloor_rate, 2, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
         <label for="install_shoe_moulding_rate">Install shoe moulding (per linear ft, CAD$)</label>
-        <input type="number" step="0.0001" min="0" class="admin-input" id="install_shoe_moulding_rate" name="install_shoe_moulding_rate"
-               value="{{ old('install_shoe_moulding_rate', $settings->install_shoe_moulding_rate) }}" required>
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+               class="admin-input cp-money-input" id="install_shoe_moulding_rate" name="install_shoe_moulding_rate"
+               value="{{ old('install_shoe_moulding_rate', number_format((float) $settings->install_shoe_moulding_rate, 4, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
         <label for="caulk_paint_shoe_moulding_rate">Caulk &amp; paint shoe moulding (per linear ft, CAD$)</label>
-        <input type="number" step="0.0001" min="0" class="admin-input" id="caulk_paint_shoe_moulding_rate" name="caulk_paint_shoe_moulding_rate"
-               value="{{ old('caulk_paint_shoe_moulding_rate', $settings->caulk_paint_shoe_moulding_rate) }}" required>
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+               class="admin-input cp-money-input" id="caulk_paint_shoe_moulding_rate" name="caulk_paint_shoe_moulding_rate"
+               value="{{ old('caulk_paint_shoe_moulding_rate', number_format((float) $settings->caulk_paint_shoe_moulding_rate, 4, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
         <label for="closet_door_reinstall_rate">Closet door remove &amp; reinstall (per door, CAD$)</label>
-        <input type="number" step="0.01" min="0" class="admin-input" id="closet_door_reinstall_rate" name="closet_door_reinstall_rate"
-               value="{{ old('closet_door_reinstall_rate', $settings->closet_door_reinstall_rate) }}" required>
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" id="closet_door_reinstall_rate" name="closet_door_reinstall_rate"
+               placeholder="0.00" value="{{ old('closet_door_reinstall_rate', number_format((float) $settings->closet_door_reinstall_rate, 2, '.', '')) }}" required>
       </div>
     </div>
 
@@ -83,8 +86,9 @@
         </div>
         <div class="admin-form-group" style="margin:0;">
           <label>Install $/sq ft</label>
-          <input type="number" step="0.0001" min="0" class="admin-input" name="flooring_types[{{ $i }}][installation_price_per_sqft]"
-                 value="{{ old('flooring_types.'.$i.'.installation_price_per_sqft', $type->installation_price_per_sqft) }}" required>
+          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                 class="admin-input cp-money-input" name="flooring_types[{{ $i }}][installation_price_per_sqft]"
+                 value="{{ old('flooring_types.'.$i.'.installation_price_per_sqft', number_format((float) $type->installation_price_per_sqft, 4, '.', '')) }}" required>
         </div>
         <div class="admin-form-group" style="margin:0;">
           <label>Sort</label>
@@ -113,7 +117,8 @@
       <label>Add flooring type</label>
       <div class="pq-form-grid">
         <input type="text" class="admin-input" name="new_flooring_types[0][name]" maxlength="160" placeholder="e.g. Engineered hardwood">
-        <input type="number" step="0.0001" min="0" class="admin-input" name="new_flooring_types[0][installation_price_per_sqft]" placeholder="Install $/sq ft">
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+               class="admin-input cp-money-input" name="new_flooring_types[0][installation_price_per_sqft]" placeholder="Install $/sq ft">
       </div>
     </div>
 

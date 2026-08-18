@@ -139,8 +139,8 @@
       +   '</div>'
       +   '<div class="admin-form-group q-ac-row__amount">'
       +     '<label for="q-ac-amt-' + idx + '">Amount (CA$)</label>'
-      +     '<input type="number" id="q-ac-amt-' + idx + '" name="additional_costs[' + idx + '][amount]"'
-      +            ' class="admin-input" inputmode="decimal" step="0.01" min="0" max="999999"'
+      +     '<input type="text" id="q-ac-amt-' + idx + '" name="additional_costs[' + idx + '][amount]"'
+      +            ' class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"'
       +            ' placeholder="0.00" value="' + amount.replace(/"/g, '&quot;') + '" data-ac-amount>'
       +   '</div>'
       +   '<div class="admin-form-group q-ac-row__hst">'
@@ -173,6 +173,9 @@
     var row = wrap.firstElementChild;
     list.appendChild(row);
     bindRow(card, row);
+    if (window.cpMoneyMask) {
+      window.cpMoneyMask.wire(row.querySelector('[data-ac-amount]'));
+    }
     var focus = row.querySelector('[data-ac-description]');
     if (focus && data && data.focus) focus.focus();
   }

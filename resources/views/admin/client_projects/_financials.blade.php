@@ -373,11 +373,11 @@
                       </div>
                       <div class="admin-form-group">
                         <label for="cp-expense-edit-amt-{{ $expense->id }}">Amount (CAD)</label>
-                        <input class="admin-input" type="text" id="cp-expense-edit-amt-{{ $expense->id }}" name="amount" required
-                               class="cp-money-input"
+                        <input type="text" id="cp-expense-edit-amt-{{ $expense->id }}" name="amount" required
+                               class="admin-input cp-money-input"
                                inputmode="decimal"
                                autocomplete="off"
-                               value="{{ old('amount', $expense->amount) }}">
+                               value="{{ old('amount', number_format((float) $expense->amount, 2, '.', '')) }}">
                       </div>
                     </div>
                   @endif

@@ -66,14 +66,14 @@
         <div class="admin-form-group admin-vehicles-gas-field">
           <label for="company-gas-price">Current gas price (CAD / L)</label>
           <div class="admin-vehicles-gas-row">
-            <input class="admin-input" type="text"
+            <input class="admin-input cp-money-input" type="text"
                    id="company-gas-price"
                    name="gas_price_per_liter"
-                   value="{{ old('gas_price_per_liter', $settings->gas_price_per_liter) }}"
+                   value="{{ old('gas_price_per_liter', $settings->gas_price_per_liter !== null ? number_format((float) $settings->gas_price_per_liter, 3, '.', '') : '') }}"
                    inputmode="decimal"
                    autocomplete="off"
-                   data-zr-numeric="decimal"
-                   data-zr-decimals="3"
+                   data-cp-money-entry="direct"
+                   data-cp-money-places="3"
                    data-cp-gas-price
                    placeholder="1.450"
                    required>

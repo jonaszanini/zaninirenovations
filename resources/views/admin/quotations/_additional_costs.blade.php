@@ -66,14 +66,13 @@
         </div>
         <div class="admin-form-group q-ac-row__amount">
           <label for="q-ac-amt-{{ $idx }}">Amount (CA$)</label>
-          <input type="number"
+          <input type="text"
                  id="q-ac-amt-{{ $idx }}"
                  name="additional_costs[{{ $idx }}][amount]"
-                 class="admin-input"
+                 class="admin-input cp-money-input"
                  inputmode="decimal"
-                 step="0.01"
-                 min="0"
-                 max="999999"
+                 autocomplete="off"
+                 data-cp-money-entry="direct"
                  placeholder="0.00"
                  value="{{ $row['amount'] }}"
                  data-ac-amount>

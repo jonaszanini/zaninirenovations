@@ -94,8 +94,9 @@
   </div>
   <div class="admin-form-group">
     <label for="mat-price">Price (CAD)</label>
-    <input @class(['admin-input', 'is-invalid' => $errors->has('price_cad')]) type="number" id="mat-price" name="price_cad" value="{{ old('price_cad', $m?->price_cad ?? '0.00') }}"
-           min="0" step="0.01" max="999999.99">
+    <input @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('price_cad')]) type="text" id="mat-price" name="price_cad"
+           value="{{ old('price_cad', $m?->price_cad !== null ? number_format((float) $m->price_cad, 2, '.', '') : '0.00') }}"
+           inputmode="decimal" autocomplete="off" placeholder="0.00" data-cp-money-entry="direct">
     @error('price_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">

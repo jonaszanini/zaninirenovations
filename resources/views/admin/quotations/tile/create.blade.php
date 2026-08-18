@@ -157,7 +157,8 @@
             </div>
             <div class="admin-form-group">
                 <label class="admin-form-label">Labor Rate per sqft ($) <span class="admin-text-danger">*</span></label>
-                <input type="number" step="0.01" name="labor_rate" class="admin-input tl-live-trigger" value="{{ $labor_rate }}" required>
+                <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" name="labor_rate"
+                       class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $labor_rate }}" required>
             </div>
         </div>
       </div>
@@ -184,7 +185,8 @@
             </div>
             <div class="admin-form-group" id="tl-custom-demo-rate-group" style="{{ $demolition_complexity === 'custom' ? '' : 'display:none;' }}">
               <label class="admin-form-label">Custom Rate ($ / sq ft)</label>
-              <input type="number" step="0.01" name="custom_demolition_rate" id="tl-custom-demo-rate" class="admin-input tl-live-trigger" value="{{ $custom_demolition_rate }}">
+              <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" name="custom_demolition_rate" id="tl-custom-demo-rate"
+                     class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $custom_demolition_rate }}">
             </div>
           </div>
           
@@ -399,8 +401,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function formDataWithPlainMoney(formEl) {
+        var fd = new FormData(formEl);
+        formEl.querySelectorAll('.cp-money-input[name]').forEach(function (input) {
+            fd.set(input.name, (input.value || '').replace(/,/g, ''));
+        });
+        return fd;
+    }
+
     function doLiveUpdate() {
-        var fd = new FormData(form);
+        var fd = formDataWithPlainMoney(form);
         fd.delete('_method'); // Edit forms include @method('PUT'); must not spoof preview POST as PUT.
         var payload = new URLSearchParams(fd);
 

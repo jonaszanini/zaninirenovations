@@ -256,8 +256,8 @@
                     <option value="{{ $value }}">{{ $label }}</option>
                   @endforeach
                 </select>
-                <input class="admin-input cp-split-row__amount" type="number" step="0.01" min="0.01"
-                       name="splits[0][amount]" placeholder="Amount" required>
+                <input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off"
+                       data-cp-money-entry="direct" name="splits[0][amount]" placeholder="0.00" required>
                 <button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)" disabled>
                   <i class="fa fa-times"></i>
                 </button>
@@ -327,7 +327,7 @@
           function getSplitsTotal() {
             var total = 0;
             document.querySelectorAll('#cp-split-rows .cp-split-row__amount').forEach(function (inp) {
-              var v = parseFloat(inp.value);
+              var v = window.cpMoneyMask ? window.cpMoneyMask.parse(inp.value) : parseFloat(String(inp.value || '').replace(/,/g, ''));
               if (!isNaN(v)) total += v;
             });
             return Math.round(total * 100) / 100;
@@ -364,6 +364,7 @@
               var amtInput = rows[0].querySelector('.cp-split-row__amount');
               if (!amtInput.value) {
                 amtInput.value = selected.toFixed(2);
+                if (window.cpMoneyMask) window.cpMoneyMask.wire(amtInput);
                 updateRemaining();
               }
             }
@@ -384,22 +385,26 @@
             div.setAttribute('data-split-row', '');
             div.innerHTML =
               '<select class="admin-input cp-split-row__method" name="splits[' + splitIdx + '][method]" required>' + opts + '</select>' +
-              '<input class="admin-input cp-split-row__amount" type="number" step="0.01" min="0.01" name="splits[' + splitIdx + '][amount]" placeholder="Amount" required>' +
+              '<input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" name="splits[' + splitIdx + '][amount]" placeholder="0.00" required>' +
               '<button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)"><i class="fa fa-times"></i></button>';
 
             document.getElementById('cp-split-rows').appendChild(div);
             splitIdx++;
 
+            var amtInput = div.querySelector('.cp-split-row__amount');
+            if (window.cpMoneyMask) window.cpMoneyMask.wire(amtInput);
+
             // Auto-suggest the remaining amount.
             var rem = Math.round((getSelectedTotal() - getSplitsTotal()) * 100) / 100;
             if (rem > 0.005) {
-              div.querySelector('.cp-split-row__amount').value = rem.toFixed(2);
+              amtInput.value = rem.toFixed(2);
+              if (window.cpMoneyMask) window.cpMoneyMask.wire(amtInput);
               updateRemaining();
             }
 
             updateRemoveButtons();
             updateAddButton();
-            div.querySelector('.cp-split-row__amount').focus();
+            amtInput.focus();
           };
 
           window.cpRemoveSplitRow = function (btn) {

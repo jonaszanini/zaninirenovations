@@ -243,9 +243,9 @@
                     <div class="pq-db-rate-inline">
                       <label class="pq-db-rate-price-label">
                         <span class="pq-db-rate-price-label-text">CAD</span>
-                        <input class="admin-input" type="text" name="price_before_tax" inputmode="decimal" autocomplete="off"
+                        <input type="text" name="price_before_tax" inputmode="decimal" autocomplete="off"
                                value="{{ number_format((float) $rate->price_before_tax, 2, '.', '') }}"
-                               class="admin-input cp-money-input pq-db-rate-input" required aria-label="Price {{ $rate->label }} before tax">
+                               class="admin-input cp-money-input pq-db-rate-input" data-cp-money-entry="direct" required aria-label="Price {{ $rate->label }} before tax">
                       </label>
                       <button type="submit" class="admin-btn admin-btn--sm admin-btn--primary">Save</button>
                     </div>
@@ -276,7 +276,7 @@
                   <td>{{ $idx + 1 }}</td>
                   <td><input class="admin-input" type="number" name="tiers[{{ $idx }}][area_sq_ft]" value="{{ $tier->area_sq_ft }}" step="0.01" min="1" class="admin-input" required aria-label="Tier area"></td>
                   <td>
-                    <input class="admin-input" type="text"
+                    <input type="text"
                            name="tiers[{{ $idx }}][price_per_sq_ft]"
                            value="{{ number_format((float) $tier->price_per_sq_ft, 4, '.', '') }}"
                            class="admin-input cp-money-input"

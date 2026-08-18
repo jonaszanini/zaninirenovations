@@ -250,8 +250,9 @@
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
               <label for="fl-material-cost">Material cost per sq ft (CAD$)</label>
-              <input type="number" step="0.0001" min="0" class="admin-input fl-preview-trigger fl-material-calc" id="fl-material-cost" name="material_cost_per_sqft"
-                     value="{{ old('material_cost_per_sqft', $inputs['material_cost_per_sqft'] ?? 0) }}">
+              <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                     class="admin-input cp-money-input fl-preview-trigger fl-material-calc" id="fl-material-cost" name="material_cost_per_sqft"
+                     value="{{ old('material_cost_per_sqft', number_format((float) ($inputs['material_cost_per_sqft'] ?? 0), 4, '.', '')) }}">
             </div>
             <div class="admin-form-group">
               <label for="fl-material-waste">Waste (%)</label>
@@ -260,8 +261,9 @@
             </div>
             <div class="admin-form-group">
               <label for="fl-material-delivery">Delivery (CAD$)</label>
-              <input type="number" step="0.01" min="0" class="admin-input fl-preview-trigger fl-material-calc" id="fl-material-delivery" name="material_delivery_fee"
-                     value="{{ old('material_delivery_fee', $inputs['material_delivery_fee'] ?? 60) }}">
+              <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                     class="admin-input cp-money-input fl-preview-trigger fl-material-calc" id="fl-material-delivery" name="material_delivery_fee"
+                     placeholder="0.00" value="{{ old('material_delivery_fee', number_format((float) ($inputs['material_delivery_fee'] ?? 60), 2, '.', '')) }}">
             </div>
             <div class="admin-form-group">
               <label for="fl-material-name">Material name / brand</label>
@@ -424,6 +426,9 @@
 
       function runPreview() {
         var fd = new FormData(form);
+        form.querySelectorAll('.cp-money-input[name]').forEach(function (input) {
+          fd.set(input.name, (input.value || '').replace(/,/g, ''));
+        });
         fd.delete('_method');
         fetch(previewUrl, {
           method: 'POST',
