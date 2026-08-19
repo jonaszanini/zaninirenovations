@@ -3626,6 +3626,51 @@
     return { x: cx / (3 * area2), y: cy / (3 * area2) };
   }
 
+  function polygonRayDistance(origin, dx, dy, verts) {
+    var best = Infinity;
+    var n = verts.length;
+    for (var i = 0; i < n; i++) {
+      var a = verts[i];
+      var b = verts[(i + 1) % n];
+      var ex = b.x - a.x;
+      var ey = b.y - a.y;
+      var denom = dx * ey - dy * ex;
+      if (Math.abs(denom) < 1e-9) continue;
+      var t = ((a.x - origin.x) * ey - (a.y - origin.y) * ex) / denom;
+      var u = ((a.x - origin.x) * dy - (a.y - origin.y) * dx) / denom;
+      if (t > 1e-6 && u >= -1e-6 && u <= 1 + 1e-6 && t < best) {
+        best = t;
+      }
+    }
+    return best;
+  }
+
+  function polygonAabbSize(verts) {
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    verts.forEach(function (v) {
+      if (v.x < minX) minX = v.x;
+      if (v.y < minY) minY = v.y;
+      if (v.x > maxX) maxX = v.x;
+      if (v.y > maxY) maxY = v.y;
+    });
+    return { width: Math.max(0, maxX - minX), height: Math.max(0, maxY - minY) };
+  }
+
+  function polygonAxisSpan(origin, verts, axisX, axisY) {
+    var fwd = polygonRayDistance(origin, axisX, axisY, verts);
+    var back = polygonRayDistance(origin, -axisX, -axisY, verts);
+    if (isFinite(fwd) && isFinite(back)) return fwd + back;
+    var box = polygonAabbSize(verts);
+    return axisX ? box.width : box.height;
+  }
+
+  function labelOverflow(labelW, labelH, boxW, boxH) {
+    return Math.max(0, labelW - boxW) + Math.max(0, labelH - boxH);
+  }
+
   function drawAreaNameLabels(labelLayer) {
     allPolygons().forEach(function (entry) {
       var poly = entry.polygon;
@@ -3663,6 +3708,15 @@
       kLabel.add(textNode);
       kLabel.offsetX(kLabel.width() / 2);
       kLabel.offsetY(kLabel.height() / 2);
+
+      var slack = uiSize(8);
+      var hSpan = Math.max(0, polygonAxisSpan(center, poly.vertices, 1, 0) - slack);
+      var vSpan = Math.max(0, polygonAxisSpan(center, poly.vertices, 0, 1) - slack);
+      var lw = kLabel.width();
+      var lh = kLabel.height();
+      if (labelOverflow(lh, lw, hSpan, vSpan) + 1 < labelOverflow(lw, lh, hSpan, vSpan)) {
+        kLabel.rotation(-90);
+      }
       labelLayer.add(kLabel);
     });
   }
