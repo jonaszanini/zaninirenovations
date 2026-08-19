@@ -16,5 +16,6 @@ class NotFoundPageTest extends TestCase
         $response->assertSee('Back to home', false);
         $response->assertSee('noindex, follow', false);
         $response->assertSee('text-404', false);
+        $response->assertSee('page-header--404', false);
     }
 }

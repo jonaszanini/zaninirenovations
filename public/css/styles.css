@@ -5748,6 +5748,10 @@ ul.pagination li:last-child {
   background-image: url("../images/header-bg.webp");
 }
 
+.page-header--404 {
+  background-image: url("../images/header-bg-404.webp");
+}
+
 /***********************************************************************************************/
 /* SINGLE TEAM PAGE */
 /***********************************************************************************************/

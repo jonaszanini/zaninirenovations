@@ -5,7 +5,7 @@
 @section('meta_robots', 'noindex, follow')
 
 @section('content')
-  <section class="page-header" aria-labelledby="not-found-heading">
+  <section class="page-header page-header--404" aria-labelledby="not-found-heading">
     <div class="container">
       <div class="row">
         <div class="col-sm-12 text-center">
