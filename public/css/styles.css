@@ -6419,23 +6419,55 @@ ul.pagination li:last-child {
 }
 
 .message-container-404 {
-  margin: 48px 0;
+  margin: 24px 0 40px;
+  padding: 0 8px;
 }
 .message-container-404 .text-404 {
-  font-size: 180px;
-  line-height: 200px;
+  font-size: 88px;
+  line-height: 1;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   font-family: "Open Sans", sans-serif;
   color: #024768;
+  margin: 0 0 16px;
 }
 .message-container-404 .text-404 span {
   color: #024768;
 }
 .message-container-404 .message-text-404 {
-  font-size: 32px;
-  line-height: 42px;
+  font-size: 18px;
+  line-height: 1.5;
   display: block;
+  color: #3a4856;
+  margin: 0 auto 24px;
+  max-width: 36em;
+}
+.message-container-404 .message-text-404 strong {
+  color: #024768;
+  display: block;
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+.message-container-404 .btn-theme {
+  min-height: 44px;
+}
+@media (min-width: 768px) {
+  .message-container-404 {
+    margin: 48px 0;
+  }
+  .message-container-404 .text-404 {
+    font-size: 180px;
+    line-height: 200px;
+    letter-spacing: 0.1em;
+    margin: 0 0 24px;
+  }
+  .message-container-404 .message-text-404 {
+    font-size: 28px;
+    line-height: 38px;
+  }
+  .message-container-404 .message-text-404 strong {
+    font-size: 32px;
+  }
 }
 
 /***********************************************************************************************/
@@ -8074,17 +8106,17 @@ footer .social-icons a:hover {
     display: none;
   }
   .message-container-404 {
-    margin: 48px 0;
+    margin: 24px 0 40px;
   }
   .message-container-404 .text-404 {
-    margin: 80px 0;
+    margin: 0 0 16px;
   }
   .message-container-404 .search-form-404 {
     padding: 5px;
     width: 100%;
   }
   .message-container-404 .message-text-404 {
-    padding: 24px 0px;
+    padding: 0;
   }
   .article-container-fix,
   .main-sidebar {
@@ -8427,17 +8459,17 @@ footer .social-icons a:hover {
     margin-top: 0px;
   }
   .message-container-404 {
-    margin: 48px 0;
+    margin: 24px 0 40px;
   }
   .message-container-404 .text-404 {
-    margin: 80px 0;
+    margin: 0 0 16px;
   }
   .message-container-404 .search-form-404 {
     padding: 5px;
     width: 100%;
   }
   .message-container-404 .message-text-404 {
-    padding: 24px 0px;
+    padding: 0;
   }
   .about-footer {
     margin-bottom: 32px;
