@@ -2013,6 +2013,18 @@
   background: rgba(198, 40, 40, 0.08);
 }
 
+.util-ra-area-name {
+  flex: 1 1 10rem;
+  min-width: 8.5rem;
+  max-width: 16rem;
+  margin-bottom: 0;
+}
+
+.util-ra-area-name .admin-input {
+  width: 100%;
+  margin-bottom: 0;
+}
+
 .util-ra-canvas-tools {
   display: flex;
   flex-wrap: wrap;
@@ -2043,7 +2055,7 @@
 }
 
 .util-ra-canvas-wrap.is-wall-edit {
-  cursor: pointer;
+  cursor: move;
 }
 
 .util-ra-canvas-wrap.is-vertex-edit {
@@ -2680,6 +2692,12 @@
 
   .util-ra-btn-cluster {
     flex: 1 1 auto;
+  }
+
+  .util-ra-area-name {
+    flex: 1 1 100%;
+    max-width: none;
+    min-width: 0;
   }
 
   .util-ra-btn-cluster .admin-btn {

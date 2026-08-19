@@ -180,6 +180,10 @@
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-delete-area disabled title="Delete the active area">
                   <i class="fa fa-minus-circle"></i> Delete area
                 </button>
+                <div class="admin-form-group util-ra-area-name" data-ra-area-name-wrap hidden>
+                  <label for="ra-area-name" class="util-sr-only">Area name (optional)</label>
+                  <input class="admin-input" type="text" id="ra-area-name" maxlength="80" placeholder="Area name (optional)" autocomplete="off" data-ra-area-name>
+                </div>
                 <span class="util-ra-group-chip" data-ra-group-chip hidden>
                   <span class="util-ra-group-chip__swatch" data-ra-group-chip-swatch></span>
                   <span class="util-ra-group-chip__label">Group</span>

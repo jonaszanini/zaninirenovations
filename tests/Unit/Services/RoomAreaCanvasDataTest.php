@@ -70,6 +70,44 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertSame('#e65100', $canvas['groups'][1]['color']);
     }
 
+    public function test_preserves_optional_polygon_name(): void
+    {
+        $raw = [
+            'v' => 2,
+            'groups' => [
+                [
+                    'id' => 'g1',
+                    'color' => '#024768',
+                    'polygons' => [
+                        [
+                            'id' => 'p1',
+                            'name' => "  Kitchen  island  \n",
+                            'vertices' => [
+                                ['x' => 0, 'y' => 0],
+                                ['x' => 10, 'y' => 0],
+                                ['x' => 10, 'y' => 10],
+                            ],
+                        ],
+                        [
+                            'id' => 'p2',
+                            'name' => '   ',
+                            'vertices' => [
+                                ['x' => 20, 'y' => 0],
+                                ['x' => 30, 'y' => 0],
+                                ['x' => 30, 'y' => 10],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $canvas = $this->service->normalize($raw);
+
+        $this->assertSame('Kitchen island', $canvas['groups'][0]['polygons'][0]['name']);
+        $this->assertArrayNotHasKey('name', $canvas['groups'][0]['polygons'][1]);
+    }
+
     public function test_validates_multi_polygon_totals(): void
     {
         $canvas = [

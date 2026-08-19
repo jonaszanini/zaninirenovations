@@ -35,6 +35,7 @@
   var SHIFT_SNAP_THRESHOLD_DEG = 10;
   var SHIFT_SNAP_STEP = Math.PI / 4;
   var UNDO_MAX = 50;
+  var AREA_NAME_MAX = 80;
   var WALL_DOUBLE_CLICK_MS = 400;
   var WALL_SPLIT_DEBOUNCE_MS = 400;
   var GROUP_COLORS = ['#024768', '#2e7d32', '#e65100', '#6a1b9a', '#c62828', '#00838f', '#5d4037'];
@@ -111,7 +112,9 @@
     zoom100: root.querySelector('[data-ra-zoom-100]'),
     zoomReset: root.querySelector('[data-ra-zoom-reset]'),
     zoomLabel: root.querySelector('[data-ra-zoom-label]'),
-    measureUnit: root.querySelector('[data-ra-measure-unit]')
+    measureUnit: root.querySelector('[data-ra-measure-unit]'),
+    areaName: root.querySelector('[data-ra-area-name]'),
+    areaNameWrap: root.querySelector('[data-ra-area-name-wrap]')
   };
 
   var state = {
@@ -129,6 +132,7 @@
     selectedRulerId: null,
     nextRulerId: 1,
     rulerPreview: null,
+    drawPreview: null,
     draftRulers: [],
     activeBackgroundUrl: null,
     bgImageVisible: true,
@@ -190,6 +194,7 @@
           return {
             id: poly.id,
             closed: !!poly.closed,
+            name: polygonName(poly),
             vertices: (poly.vertices || []).map(function (v) {
               return { x: v.x, y: v.y };
             })
@@ -263,7 +268,15 @@
   function createPolygon() {
     var id = 'p' + state.nextPolygonId;
     state.nextPolygonId += 1;
-    return { id: id, vertices: [], closed: false };
+    return { id: id, vertices: [], closed: false, name: '' };
+  }
+
+  function polygonName(poly) {
+    return poly && typeof poly.name === 'string' ? poly.name.trim() : '';
+  }
+
+  function sanitizeAreaName(raw) {
+    return String(raw || '').replace(/\s+/g, ' ').trim().slice(0, AREA_NAME_MAX);
   }
 
   function createGroup(color) {
@@ -445,12 +458,15 @@
       var polygons = [];
       (group.polygons || []).forEach(function (poly) {
         if (!poly.closed || poly.vertices.length < 3) return;
-        polygons.push({
+        var item = {
           id: poly.id,
           vertices: poly.vertices.map(function (v) {
             return { x: Math.round(v.x * 1000) / 1000, y: Math.round(v.y * 1000) / 1000 };
           })
-        });
+        };
+        var name = polygonName(poly);
+        if (name) item.name = name.slice(0, AREA_NAME_MAX);
+        polygons.push(item);
       });
       if (polygons.length) {
         groups.push({
@@ -573,6 +589,7 @@
         polygons.push({
           id: polyId,
           closed: true,
+          name: sanitizeAreaName(poly.name),
           vertices: verts.map(function (v) { return { x: v.x, y: v.y }; })
         });
       });
@@ -1749,21 +1766,8 @@
     return best;
   }
 
-  function wallPerpendicularNormal(a, b) {
-    var dx = b.x - a.x;
-    var dy = b.y - a.y;
-    var len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 1e-9) return { x: 0, y: -1 };
-    return { x: -dy / len, y: dx / len };
-  }
-
-  function wallDragCursorFor(wallIndex) {
-    var a = activeVertices()[wallIndex];
-    var b = activeVertices()[wallEndIndex(wallIndex)];
-    var dx = Math.abs(b.x - a.x);
-    var dy = Math.abs(b.y - a.y);
-    if (dx >= dy) return 'ns-resize';
-    return 'ew-resize';
+  function wallDragCursorFor() {
+    return 'move';
   }
 
   function canDragWalls() {
@@ -1828,20 +1832,16 @@
   function moveWallDrag(pos) {
     if (!state.draggingWall || state.wallDragIndex === null || !pos || !state.wallDragPointerStart) return;
     if (!state.wallDragOrigA || !state.wallDragOrigB) return;
-    var n = wallPerpendicularNormal(state.wallDragOrigA, state.wallDragOrigB);
-    var dx = pos.x - state.wallDragPointerStart.x;
-    var dy = pos.y - state.wallDragPointerStart.y;
-    var amount = dx * n.x + dy * n.y;
+    var ox = pos.x - state.wallDragPointerStart.x;
+    var oy = pos.y - state.wallDragPointerStart.y;
     if (state.shiftHeld && pixelsPerFoot() > 0) {
-      var step = pixelsPerFoot();
-      amount = Math.round(amount / step) * step;
+      var step = gridStepPx();
+      ox = Math.round(ox / step) * step;
+      oy = Math.round(oy / step) * step;
     }
-    if (Math.abs(amount) > 0.5 / uiScale()) {
-      if (!state.didWallDrag) pushUndoSnapshot();
+    if (Math.hypot(ox, oy) > 0.5 / uiScale()) {
       state.didWallDrag = true;
     }
-    var ox = n.x * amount;
-    var oy = n.y * amount;
     var wallIndex = state.wallDragIndex;
     var endIdx = wallEndIndex(wallIndex);
     activeVertices()[wallIndex] = clampToCanvas({
@@ -1890,6 +1890,14 @@
       if (e.evt && e.evt.button !== undefined && e.evt.button !== 0) return;
       e.cancelBubble = true;
       onWallPointerDown(wallIndex);
+    });
+    node.on('mouseenter', function () {
+      if (!canDragWalls() || !state.stage) return;
+      if (state.draggingWall || state.draggingVertex || state.spaceHeld) return;
+      state.stage.container().style.cursor = 'move';
+    });
+    node.on('mouseleave', function () {
+      if (state.stage && !state.draggingWall) updateCanvasCursor();
     });
   }
 
@@ -2156,26 +2164,24 @@
       return;
     }
 
-    var endIdx = wallEndIndex(wallIndex);
-    var start = activeVertices()[wallIndex];
-    var end = activeVertices()[endIdx];
-    var currentPx = dist(start, end);
-    if (currentPx < 1e-6) {
-      setFeedback('Wall has no length to adjust.', true);
+    var ppf = pixelsPerFoot();
+    var newPx = newFeet * ppf;
+    var proposed = bestWallResizeVertices(activeVertices(), isActiveClosed(), wallIndex, newPx);
+    if (!proposed) {
+      setFeedback('That wall has no length to adjust.', true);
       return;
     }
 
-    var ppf = pixelsPerFoot();
-    var newPx = newFeet * ppf;
-    var ux = (end.x - start.x) / currentPx;
-    var uy = (end.y - start.y) / currentPx;
-    var oldEnd = { x: end.x, y: end.y };
-    var newEnd = { x: start.x + ux * newPx, y: start.y + uy * newPx };
-
     pushUndoSnapshot();
-    activeVertices()[endIdx] = newEnd;
+    var previous = copyVertices(activeVertices());
+    var i;
+    for (i = 0; i < proposed.length; i++) {
+      activeVertices()[i] = clampToCanvas(proposed[i]);
+    }
     if (!isValidShape(activeVertices(), isActiveClosed())) {
-      activeVertices()[endIdx] = oldEnd;
+      for (i = 0; i < previous.length; i++) {
+        activeVertices()[i] = previous[i];
+      }
       discardLastUndoSnapshot();
       setFeedback('That length would make the shape cross itself.', true);
       return;
@@ -2184,6 +2190,141 @@
     redrawAll();
     els.wallLength.value = fmtLengthFromFeet(newFeet);
     setFeedback('Wall length updated.', false);
+  }
+
+  function copyVertices(verts) {
+    return verts.map(function (v) {
+      return { x: v.x, y: v.y };
+    });
+  }
+
+  function interiorCornerAngle(prev, vertex, next) {
+    var ax = prev.x - vertex.x;
+    var ay = prev.y - vertex.y;
+    var bx = next.x - vertex.x;
+    var by = next.y - vertex.y;
+    var la = Math.hypot(ax, ay);
+    var lb = Math.hypot(bx, by);
+    if (la < 1e-9 || lb < 1e-9) return Math.PI;
+    var cos = (ax * bx + ay * by) / (la * lb);
+    return Math.acos(Math.max(-1, Math.min(1, cos)));
+  }
+
+  function polygonRightAngleError(verts, closed) {
+    if (!closed || verts.length < 3) return 0;
+    var n = verts.length;
+    var err = 0;
+    for (var i = 0; i < n; i++) {
+      var prev = verts[(i - 1 + n) % n];
+      var next = verts[(i + 1) % n];
+      err += Math.abs(interiorCornerAngle(prev, verts[i], next) - Math.PI / 2);
+    }
+    return err;
+  }
+
+  function otherWallsLengthError(original, candidate, closed, skipWallIndex) {
+    var n = original.length;
+    var wallN = closed ? n : Math.max(0, n - 1);
+    var err = 0;
+    for (var i = 0; i < wallN; i++) {
+      if (i === skipWallIndex) continue;
+      var b0 = original[closed ? (i + 1) % n : i + 1];
+      var b1 = candidate[closed ? (i + 1) % n : i + 1];
+      err += Math.abs(dist(candidate[i], b1) - dist(original[i], b0));
+    }
+    return err;
+  }
+
+  function snapUnitToRightAngle(ux, uy) {
+    var angle = Math.atan2(uy, ux);
+    var snapped = Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
+    if (angleDelta(angle, snapped) <= SHIFT_SNAP_THRESHOLD_DEG * Math.PI / 180) {
+      return { x: Math.cos(snapped), y: Math.sin(snapped) };
+    }
+    return { x: ux, y: uy };
+  }
+
+  function translateVertexCopy(verts, indices, dx, dy) {
+    var out = copyVertices(verts);
+    var seen = {};
+    for (var i = 0; i < indices.length; i++) {
+      var idx = indices[i];
+      if (idx == null || idx < 0 || idx >= out.length || seen[idx]) continue;
+      seen[idx] = true;
+      out[idx] = { x: out[idx].x + dx, y: out[idx].y + dy };
+    }
+    return out;
+  }
+
+  function scoreWallResizeCandidate(original, candidate, closed, wallIndex) {
+    var originMoved = dist(original[0], candidate[0]);
+    var angleErr = polygonRightAngleError(candidate, closed);
+    var lengthErr = otherWallsLengthError(original, candidate, closed, wallIndex);
+    var travel = 0;
+    for (var i = 0; i < original.length; i++) {
+      travel += dist(original[i], candidate[i]);
+    }
+    return angleErr * 40 + lengthErr * 0.02 + (originMoved > 0.5 ? 12 : 0) + travel * 0.001;
+  }
+
+  /**
+   * Resize wall wallIndex to newPx. The old code always kept vertices[i]
+   * fixed and moved vertices[i+1], so a clockwise room grew the top to the
+   * right and the bottom to the left, shearing 90° corners. Pick the
+   * translation (one end, or that end plus the adjacent side) that keeps
+   * corners closest to square and prefers not to move the origin vertex.
+   */
+  function bestWallResizeVertices(verts, closed, wallIndex, newPx) {
+    var n = verts.length;
+    if (wallIndex < 0 || n < 2) return null;
+    var endIdx = closed ? (wallIndex + 1) % n : wallIndex + 1;
+    if (endIdx < 0 || endIdx >= n) return null;
+    var start = verts[wallIndex];
+    var end = verts[endIdx];
+    var currentPx = dist(start, end);
+    if (currentPx < 1e-6) return null;
+
+    var ux = (end.x - start.x) / currentPx;
+    var uy = (end.y - start.y) / currentPx;
+    var unit = snapUnitToRightAngle(ux, uy);
+    ux = unit.x;
+    uy = unit.y;
+
+    var bPrime = { x: start.x + ux * newPx, y: start.y + uy * newPx };
+    var aPrime = { x: end.x - ux * newPx, y: end.y - uy * newPx };
+    var dBx = bPrime.x - end.x;
+    var dBy = bPrime.y - end.y;
+    var dAx = aPrime.x - start.x;
+    var dAy = aPrime.y - start.y;
+
+    var nextIdx = closed ? (endIdx + 1) % n : (endIdx + 1 < n ? endIdx + 1 : null);
+    var prevIdx = closed ? ((wallIndex - 1 + n) % n) : (wallIndex > 0 ? wallIndex - 1 : null);
+    if (nextIdx === wallIndex) nextIdx = null;
+    if (prevIdx === endIdx) prevIdx = null;
+
+    var options = [
+      translateVertexCopy(verts, [endIdx], dBx, dBy),
+      translateVertexCopy(verts, [wallIndex], dAx, dAy)
+    ];
+    if (nextIdx != null) {
+      options.push(translateVertexCopy(verts, [endIdx, nextIdx], dBx, dBy));
+    }
+    if (prevIdx != null) {
+      options.push(translateVertexCopy(verts, [wallIndex, prevIdx], dAx, dAy));
+    }
+
+    var best = null;
+    var bestScore = Infinity;
+    for (var i = 0; i < options.length; i++) {
+      var cand = options[i];
+      if (!isValidShape(cand, closed)) continue;
+      var score = scoreWallResizeCandidate(verts, cand, closed, wallIndex);
+      if (score < bestScore) {
+        bestScore = score;
+        best = cand;
+      }
+    }
+    return best || options[0] || null;
   }
 
   function applyWallLengthScaleProject(wallIndex, newFeet) {
@@ -2306,7 +2447,7 @@
     } else if (state.draggingVertex) {
       el.style.cursor = 'grabbing';
     } else if (state.draggingWall && state.wallDragIndex !== null) {
-      el.style.cursor = wallDragCursorFor(state.wallDragIndex);
+      el.style.cursor = wallDragCursorFor();
     } else if (state.draggingRuler) {
       el.style.cursor = 'grabbing';
     } else if (state.draggingBg) {
@@ -2556,6 +2697,7 @@
     document.addEventListener('keydown', function (e) {
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         state.shiftHeld = true;
+        updateDrawPreviewFromPointer();
         return;
       }
       if (e.code !== 'Space' || e.repeat) return;
@@ -2570,6 +2712,7 @@
     document.addEventListener('keyup', function (e) {
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         state.shiftHeld = false;
+        updateDrawPreviewFromPointer();
         return;
       }
       if (e.code !== 'Space') return;
@@ -2670,6 +2813,7 @@
     state.layers.vertices = new Konva.Group();
     state.layers.walls = new Konva.Group();
     state.layers.labels = new Konva.Group();
+    state.layers.preview = new Konva.Group({ listening: false });
     state.layers.calib = new Konva.Group();
     state.layers.rulers = new Konva.Group();
 
@@ -2679,6 +2823,7 @@
     state.worldGroup.add(state.layers.walls);
     state.worldGroup.add(state.layers.vertices);
     state.worldGroup.add(state.layers.labels);
+    state.worldGroup.add(state.layers.preview);
     state.worldGroup.add(state.layers.calib);
     state.worldGroup.add(state.layers.rulers);
 
@@ -2726,6 +2871,9 @@
           state.rulerPreview = null;
           redrawRulers();
         }
+        if (!state.panning && !state.draggingWall && !state.draggingVertex) {
+          updateDrawPreviewFromPointer();
+        }
         return;
       }
       var pos = getPointerPos();
@@ -2745,6 +2893,10 @@
       state.lastPanScreen = null;
       if (els.canvasWrap) els.canvasWrap.classList.remove('is-panning');
       updateCanvasCursor();
+    });
+
+    state.stage.on('mouseleave', function () {
+      clearDrawPreview();
     });
 
     state.stage.on('click tap', onStageClick);
@@ -2978,6 +3130,7 @@
     redrawWalls();
     redrawCalib();
     redrawRulers();
+    redrawDrawPreview();
     updateLiveArea();
     updateToolbar();
   }
@@ -3092,6 +3245,121 @@
     redrawAll();
     setFeedback('Drawing cancelled.', false);
     return true;
+  }
+
+  function lastDrawVertex() {
+    if (isActiveClosed()) return null;
+    var verts = activeVertices();
+    if (!verts.length) return null;
+    return verts[verts.length - 1];
+  }
+
+  function snapDrawPreviewPoint(pos) {
+    var prev = lastDrawVertex();
+    if (!prev || !pos) return null;
+    var point = state.shiftHeld ? snapPoint(pos, prev, SHIFT_SNAP_STEP) : pos;
+    var verts = activeVertices();
+    if (verts.length >= 3) {
+      var first = verts[0];
+      if (dist(point, first) <= hitTolerance(CLOSE_HIT)) {
+        return { x: first.x, y: first.y };
+      }
+    }
+    return clampToCanvas(point);
+  }
+
+  function clearDrawPreview() {
+    var layer = state.layers.preview;
+    var hadPreview = !!state.drawPreview || (layer && layer.getChildren && layer.getChildren().length);
+    state.drawPreview = null;
+    if (hadPreview) redrawDrawPreview();
+  }
+
+  function updateDrawPreviewFromPointer() {
+    if (
+      state.panning
+      || state.rulerMode
+      || state.calibrating
+      || state.spaceHeld
+      || state.draggingWall
+      || state.draggingVertex
+      || state.bgMoveMode
+    ) {
+      clearDrawPreview();
+      return;
+    }
+    if (!lastDrawVertex()) {
+      clearDrawPreview();
+      return;
+    }
+    var pos = getPointerPos();
+    if (!pos) return;
+    state.drawPreview = snapDrawPreviewPoint(pos);
+    redrawDrawPreview();
+  }
+
+  function redrawDrawPreview() {
+    var layer = state.layers.preview;
+    if (!layer) return;
+    layer.destroyChildren();
+
+    var prev = lastDrawVertex();
+    var dest = state.drawPreview;
+    if (!prev || !dest || dist(prev, dest) < 1) {
+      flushKonva();
+      return;
+    }
+
+    var group = activeGroup();
+    var color = group ? group.color : DEFAULT_GROUP_COLOR;
+    layer.add(new Konva.Line({
+      points: [prev.x, prev.y, dest.x, dest.y],
+      stroke: color,
+      strokeWidth: uiSize(2),
+      dash: [uiSize(8), uiSize(5)],
+      opacity: 0.4,
+      lineCap: 'round',
+      listening: false
+    }));
+    layer.add(new Konva.Circle({
+      x: dest.x,
+      y: dest.y,
+      radius: uiSize(6),
+      fill: hexToRgba(color, 0.2),
+      stroke: color,
+      strokeWidth: uiSize(1.5),
+      opacity: 0.65,
+      listening: false
+    }));
+
+    var ppf = pixelsPerFoot();
+    if (ppf > 0) {
+      var kLabel = new Konva.Label({
+        x: (prev.x + dest.x) / 2,
+        y: (prev.y + dest.y) / 2,
+        opacity: 0.88,
+        listening: false
+      });
+      kLabel.add(new Konva.Tag({
+        fill: 'rgba(255,255,255,0.9)',
+        stroke: color,
+        strokeWidth: uiSize(1),
+        cornerRadius: uiSize(4),
+        pointerDirection: 'none'
+      }));
+      kLabel.add(new Konva.Text({
+        text: fmtLengthFromFeet(dist(prev, dest) / ppf),
+        fontSize: uiSize(11),
+        fontFamily: 'Open Sans, sans-serif',
+        fill: color,
+        padding: uiSize(4)
+      }));
+      kLabel.offsetX(kLabel.width() / 2);
+      kLabel.offsetY(kLabel.height() / 2);
+      layer.add(kLabel);
+    }
+
+    flushKonva();
   }
 
   function redrawPolygonLine() {
@@ -3277,6 +3545,8 @@
     if (!labelLayer) return;
     labelLayer.destroyChildren();
 
+    drawAreaNameLabels(labelLayer);
+
     var verts = activeVertices();
     var ppf = pixelsPerFoot();
     if (!ppf || verts.length === 0) {
@@ -3320,6 +3590,81 @@
     }
 
     flushKonva();
+  }
+
+  function polygonCentroid(verts) {
+    var n = verts.length;
+    if (!n) return null;
+    if (n < 3) {
+      var sx = 0;
+      var sy = 0;
+      verts.forEach(function (v) {
+        sx += v.x;
+        sy += v.y;
+      });
+      return { x: sx / n, y: sy / n };
+    }
+    var area2 = 0;
+    var cx = 0;
+    var cy = 0;
+    for (var i = 0; i < n; i++) {
+      var j = (i + 1) % n;
+      var cross = verts[i].x * verts[j].y - verts[j].x * verts[i].y;
+      area2 += cross;
+      cx += (verts[i].x + verts[j].x) * cross;
+      cy += (verts[i].y + verts[j].y) * cross;
+    }
+    if (Math.abs(area2) < 1e-9) {
+      var ax = 0;
+      var ay = 0;
+      verts.forEach(function (v) {
+        ax += v.x;
+        ay += v.y;
+      });
+      return { x: ax / n, y: ay / n };
+    }
+    return { x: cx / (3 * area2), y: cy / (3 * area2) };
+  }
+
+  function drawAreaNameLabels(labelLayer) {
+    allPolygons().forEach(function (entry) {
+      var poly = entry.polygon;
+      var name = polygonName(poly);
+      if (!name || !poly.closed || poly.vertices.length < 3) return;
+      var center = polygonCentroid(poly.vertices);
+      if (!center) return;
+      var isActive = entry.group.id === state.activeGroupId && poly.id === state.activePolygonId;
+      var kLabel = new Konva.Label({
+        x: center.x,
+        y: center.y,
+        opacity: isActive ? 1 : INACTIVE_POLYGON_OPACITY,
+        listening: false
+      });
+      kLabel.add(new Konva.Tag({
+        fill: 'rgba(255,255,255,0.92)',
+        stroke: entry.group.color || DEFAULT_GROUP_COLOR,
+        strokeWidth: uiSize(isActive ? 1.5 : 1),
+        cornerRadius: uiSize(4),
+        pointerDirection: 'none'
+      }));
+      var textNode = new Konva.Text({
+        text: name,
+        fontSize: uiSize(13),
+        fontFamily: 'Open Sans, sans-serif',
+        fontStyle: 'bold',
+        fill: entry.group.color || DEFAULT_GROUP_COLOR,
+        padding: uiSize(6),
+        align: 'center'
+      });
+      if (textNode.width() > uiSize(160)) {
+        textNode.width(uiSize(160));
+        textNode.wrap('word');
+      }
+      kLabel.add(textNode);
+      kLabel.offsetX(kLabel.width() / 2);
+      kLabel.offsetY(kLabel.height() / 2);
+      labelLayer.add(kLabel);
+    });
   }
 
   function redrawWalls() {
@@ -3746,6 +4091,7 @@
       pushUndoSnapshot();
       activeVertices().push(clampToCanvas(drawPoint));
       redrawAll();
+      updateDrawPreviewFromPointer();
       return;
     }
 
@@ -3829,6 +4175,7 @@
     }
     pushUndoSnapshot();
     setActiveClosed(true);
+    clearDrawPreview();
     redrawAll();
   }
 
@@ -3984,6 +4331,43 @@
     if (els.wallApply) {
       els.wallApply.disabled = state.selectedWallIndex === null || !pixelsPerFoot();
     }
+    syncAreaNameField();
+  }
+
+  function syncAreaNameField() {
+    if (!els.areaNameWrap || !els.areaName) return;
+    var poly = activePolygon();
+    var closed = !!(poly && poly.closed && poly.vertices.length >= 3);
+    show(els.areaNameWrap, closed);
+    if (!closed) return;
+    if (document.activeElement === els.areaName) return;
+    els.areaName.value = poly.name || '';
+  }
+
+  var areaNameUndoPushed = false;
+
+  function bindAreaNameField() {
+    if (!els.areaName) return;
+    els.areaName.addEventListener('focus', function () {
+      areaNameUndoPushed = false;
+    });
+    els.areaName.addEventListener('input', function () {
+      var poly = activePolygon();
+      if (!poly) return;
+      if (!areaNameUndoPushed) {
+        pushUndoSnapshot();
+        areaNameUndoPushed = true;
+      }
+      poly.name = String(els.areaName.value).slice(0, AREA_NAME_MAX);
+      redrawLabels();
+    });
+    els.areaName.addEventListener('change', function () {
+      var poly = activePolygon();
+      if (!poly) return;
+      poly.name = sanitizeAreaName(els.areaName.value);
+      els.areaName.value = poly.name;
+      redrawLabels();
+    });
   }
 
   function updateScaleUI() {
@@ -4736,6 +5120,7 @@
     if (els.rulerToggle) els.rulerToggle.addEventListener('click', toggleRulerMode);
     if (els.deleteRuler) els.deleteRuler.addEventListener('click', deleteSelectedRuler);
     if (els.rulerCancel) els.rulerCancel.addEventListener('click', clearRulerSelection);
+    bindAreaNameField();
 
     document.addEventListener('keydown', function (e) {
       if (e.target && e.target.closest('input, textarea, select')) return;

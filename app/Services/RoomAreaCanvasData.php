@@ -112,12 +112,17 @@ class RoomAreaCanvasData
                     continue;
                 }
                 $polygonIndex++;
-                $polygons[] = [
+                $item = [
                     'id' => isset($polygon['id']) && is_string($polygon['id']) && $polygon['id'] !== ''
                         ? $polygon['id']
                         : 'p'.$polygonIndex,
                     'vertices' => $verts,
                 ];
+                $name = $this->normalizeAreaName($polygon['name'] ?? null);
+                if ($name !== null) {
+                    $item['name'] = $name;
+                }
+                $polygons[] = $item;
             }
 
             if ($polygons !== []) {
@@ -188,6 +193,24 @@ class RoomAreaCanvasData
         }
 
         return $out;
+    }
+
+    private function normalizeAreaName(mixed $name): ?string
+    {
+        if (! is_string($name)) {
+            return null;
+        }
+
+        $clean = preg_replace('/\s+/u', ' ', $name) ?? '';
+        $clean = trim($clean);
+        $clean = preg_replace('/[\x00-\x1F\x7F]/u', '', $clean) ?? '';
+        if ($clean === '') {
+            return null;
+        }
+
+        $clean = function_exists('mb_substr') ? mb_substr($clean, 0, 80) : substr($clean, 0, 80);
+
+        return $clean === '' ? null : $clean;
     }
 
     /**
