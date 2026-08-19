@@ -773,6 +773,69 @@ class ClientProjectQuotation extends Model
         return $this->lineItemsSubtotal();
     }
 
+    /**
+     * Labour pre-tax amount used to set aside HST on the profit summary.
+     *
+     * Materials HST is already paid at the store (ITC); commute/debris are
+     * not labour. When a calculator split is unavailable, the whole subtotal
+     * is treated as labour so we do not drop the set-aside.
+     */
+    public function labourPreTaxForHstSetAside(): float
+    {
+        if ($this->labour === false) {
+            return 0.0;
+        }
+
+        $source = $this->calculatorModelForLabourHstSetAside();
+        if ($source !== null && method_exists($source, 'labourPreTaxAmountForProjectQuotation')) {
+            $labour = $source->labourPreTaxAmountForProjectQuotation();
+            if ($this->hasSubtotalOverrideActive()) {
+                $lineSub = $this->lineItemsSubtotal();
+                if ($lineSub > 0.00001) {
+                    $labour *= ((float) $this->subtotal_override / $lineSub);
+                }
+            }
+
+            return max(0, round(min($labour, $this->subtotal()), 2));
+        }
+
+        return $this->subtotal();
+    }
+
+    /**
+     * Calculator row used to read labour pre-tax. Prefers the stored snapshot
+     * (the accepted quote) so Financials does not hit extra queries.
+     */
+    protected function calculatorModelForLabourHstSetAside(): ?object
+    {
+        $class = match ($this->source_type) {
+            self::SOURCE_FENCE => FenceQuotation::class,
+            self::SOURCE_LOW_DECK => LowDeckQuotation::class,
+            self::SOURCE_PAVING => PavingQuotation::class,
+            self::SOURCE_STANDARD => StandardQuotation::class,
+            self::SOURCE_STAIRS => StairsQuotation::class,
+            self::SOURCE_PAINTING => PaintingQuotation::class,
+            self::SOURCE_FLOORING => FlooringQuotation::class,
+            self::SOURCE_TILE => TileQuotation::class,
+            default => null,
+        };
+        if ($class === null) {
+            return null;
+        }
+
+        $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
+        if ($snap !== []) {
+            return (new $class)->forceFill($snap);
+        }
+
+        $id = (int) ($this->source_id ?? 0);
+        if ($id <= 0) {
+            return null;
+        }
+
+        return $class::query()->find($id);
+    }
+
     /** 13% HST only on rows where `apply_hst` is true (default). */
     public function hst(): float
     {

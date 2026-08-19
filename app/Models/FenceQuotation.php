@@ -164,6 +164,12 @@ class FenceQuotation extends Model
         ]];
     }
 
+    /** Pre-HST labour only (excludes materials, commute, and debris). */
+    public function labourPreTaxAmountForProjectQuotation(): float
+    {
+        return max(0, round((float) $this->labour_total, 2));
+    }
+
     /** Client-facing label for the post cross-section (4×4 or 6×6). */
     public function postSizeLabel(): string
     {

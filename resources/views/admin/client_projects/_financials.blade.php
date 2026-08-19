@@ -519,7 +519,7 @@
   <h3>Profit summary
     <span class="cp-hint" title="{{ $isHourly
       ? 'Revenue = rate × logged hours (pre-tax labour). Expenses on Financials track materials reimbursed by the client—they are shown as cash tracked but do not reduce gross/net profit below. HST set aside = 13% of labour revenue.'
-      : 'Revenue = sum of pre-tax installment amounts for paid rows. When you mark an installment invoice paid, each row’s amount is updated to match that invoice’s billed subtotal (after discount), so this matches actual billed pre-tax revenue. HST set aside at 13% of that revenue (simplified). With closed hours on Time Tracking, Effective hourly rate = net profit after HST ÷ those hours.' }}">?</span></h3>
+      : 'Revenue = sum of pre-tax installment amounts for paid rows. When you mark an installment invoice paid, each row’s amount is updated to match that invoice’s billed subtotal (after discount), so this matches actual billed pre-tax revenue. HST set aside = 13% of the labour share of that paid revenue (materials HST is already paid at the store). If a quotation has no labour split, the full paid amount is treated as labour. With closed hours on Time Tracking, Effective hourly rate = net profit after HST ÷ those hours.' }}">?</span></h3>
   @php
     $revenue = $project->totalRevenueCollected();
     $spent = $project->totalSpent();

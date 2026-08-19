@@ -160,6 +160,12 @@ class LowDeckQuotation extends Model
         ]];
     }
 
+    /** Pre-HST labour only (excludes materials, commute, and debris). */
+    public function labourPreTaxAmountForProjectQuotation(): float
+    {
+        return max(0, round((float) $this->labour_total, 2));
+    }
+
     private function formatJoistSpacingLabel(): string
     {
         $exact = data_get($this->calculation, 'geometry.joists.field_spacing_in');

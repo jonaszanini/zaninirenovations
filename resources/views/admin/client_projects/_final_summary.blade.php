@@ -16,7 +16,7 @@
     @if ($isHourly)
       Hourly project: profit uses labour revenue only; Financials expenses (materials reimbursed by the client) are not deducted from gross or net profit.
     @else
-      All figures below are calculated from paid installments, expenses, returns, and logged time.
+      All figures below are calculated from paid installments, expenses, returns, and logged time. HST to save is 13% of labour (not materials).
     @endif
     A thank-you + review request was sent to the client (if an email was on file).
   </p>

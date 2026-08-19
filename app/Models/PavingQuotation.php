@@ -80,6 +80,18 @@ class PavingQuotation extends Model
         );
     }
 
+    /** Pre-HST labour only (excludes materials, commute, and debris). */
+    public function labourPreTaxAmountForProjectQuotation(): float
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $labour = $calc['summary']['labour_total'] ?? $calc['labour']['total'] ?? null;
+        if ($labour === null) {
+            return 0.0;
+        }
+
+        return max(0, round((float) $labour, 2));
+    }
+
     public static function generateNumber(): string
     {
         $year = (int) date('Y');

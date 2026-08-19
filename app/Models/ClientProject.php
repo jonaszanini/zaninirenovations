@@ -1208,9 +1208,46 @@ class ClientProject extends Model
         return $this->revenueForProfit() - $this->totalSpentForProfit();
     }
 
+    /**
+     * Sum of labour pre-tax across accepted quotations (override-scaled).
+     */
+    public function acceptedQuotationsLabourPreTax(): float
+    {
+        $sum = 0.0;
+        foreach ($this->acceptedQuotationsForFinancials() as $q) {
+            $sum += $q->labourPreTaxForHstSetAside();
+        }
+
+        return round($sum, 2);
+    }
+
+    /**
+     * Paid revenue that HST should be set aside on: labour only.
+     *
+     * Hourly billing is already labour. Fixed-price scales paid installments
+     * by labour / accepted quotation subtotal so materials (ITC at the store)
+     * are not taxed a second time. No usable quote split → treat paid as labour.
+     */
+    public function labourRevenueForHstSetAside(): float
+    {
+        if ($this->isHourly()) {
+            return $this->revenueForProfit();
+        }
+
+        $paid = $this->revenueForProfit();
+        $quoteSubtotal = $this->acceptedQuotationsFinancialAggregateSubtotal();
+        if ($quoteSubtotal < 0.01) {
+            return $paid;
+        }
+
+        $share = min(1.0, max(0.0, $this->acceptedQuotationsLabourPreTax() / $quoteSubtotal));
+
+        return round($paid * $share, 2);
+    }
+
     public function hstToSave(): float
     {
-        return round($this->revenueForProfit() * self::HST_RATE, 2);
+        return round($this->labourRevenueForHstSetAside() * self::HST_RATE, 2);
     }
 
     public function netProfitAfterHst(): float

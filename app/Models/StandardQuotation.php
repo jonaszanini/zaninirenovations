@@ -179,6 +179,22 @@ class StandardQuotation extends Model
         );
     }
 
+    /** Pre-HST labour only (excludes materials, commute, and debris). */
+    public function labourPreTaxAmountForProjectQuotation(): float
+    {
+        if ($this->includes_labour === false) {
+            return 0.0;
+        }
+
+        $computed = $this->computedTotals();
+        $fromCompute = max(0, round((float) ($computed['labour_total'] ?? 0), 2));
+        if ($fromCompute > 0) {
+            return $fromCompute;
+        }
+
+        return max(0, round((float) ($this->labour_total ?? 0), 2));
+    }
+
     /**
      * Itemized rows for the client PDF (materials, contingency, labour).
      *
