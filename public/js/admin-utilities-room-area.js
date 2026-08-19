@@ -160,6 +160,9 @@
     selectedVertexIndices: [],
     draggingVertex: false,
     draggingWall: false,
+    draggingShape: false,
+    shapePointerDown: null,
+    didShapeDrag: false,
     wallDragIndex: null,
     wallDragPointerStart: null,
     wallDragOrigA: null,
@@ -1339,6 +1342,9 @@
     }
     state.draggingVertex = false;
     state.draggingWall = false;
+    state.draggingShape = false;
+    state.shapePointerDown = null;
+    state.didShapeDrag = false;
     state.wallDragIndex = null;
     state.wallDragPointerStart = null;
     state.wallDragOrigA = null;
@@ -1769,6 +1775,146 @@
 
   function canDragWalls() {
     return wallCount() > 0 && isActiveClosed() && !state.spaceHeld && !state.rulerMode && !state.calibrating;
+  }
+
+  function canDragShapes() {
+    return !isDrawingOpenShape()
+      && !state.spaceHeld
+      && !state.rulerMode
+      && !state.calibrating
+      && !state.bgMoveMode
+      && !state.panning;
+  }
+
+  function polygonInteriorAtPoint(pos) {
+    if (!pos) return null;
+    var hit = null;
+    allPolygons().forEach(function (entry) {
+      var poly = entry.polygon;
+      if (!poly.closed || poly.vertices.length < 3) return;
+      if (pointInPolygon(pos, poly.vertices)) hit = entry;
+    });
+    return hit;
+  }
+
+  function clampedShapeDelta(verts, dx, dy) {
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    verts.forEach(function (v) {
+      if (v.x < minX) minX = v.x;
+      if (v.y < minY) minY = v.y;
+      if (v.x > maxX) maxX = v.x;
+      if (v.y > maxY) maxY = v.y;
+    });
+    return {
+      x: Math.max(-minX, Math.min(canvasW() - maxX, dx)),
+      y: Math.max(-minY, Math.min(canvasH() - maxY, dy))
+    };
+  }
+
+  function shapeBeingDragged() {
+    var pending = state.shapePointerDown;
+    if (!pending) return null;
+    var group = findGroupById(pending.groupId);
+    var poly = findPolygonInGroup(group, pending.polygonId);
+    if (!group || !poly) return null;
+    return { group: group, polygon: poly };
+  }
+
+  function onShapePointerDown() {
+    if (!canDragShapes()) return false;
+    var pos = getPointerPos();
+    if (!pos) return false;
+    if (findVertexAtPoint(pos) >= 0) return false;
+    if (isActiveClosed() && findWallAtPoint(pos) >= 0) return false;
+    var hit = polygonInteriorAtPoint(pos);
+    if (!hit) return false;
+    clearWallSelection();
+    clearVertexSelection();
+    clearRulerSelection();
+    state.shapePointerDown = {
+      groupId: hit.group.id,
+      polygonId: hit.polygon.id,
+      x: pos.x,
+      y: pos.y,
+      origVerts: copyVertices(hit.polygon.vertices)
+    };
+    state.didShapeDrag = false;
+    return true;
+  }
+
+  function tryStartShapeDragFromPending(pos) {
+    if (!state.shapePointerDown || state.draggingShape || !pos) return;
+    var pending = state.shapePointerDown;
+    if (Math.hypot(pos.x - pending.x, pos.y - pending.y) < uiSize(4)) return;
+    state.draggingShape = true;
+    state.didShapeDrag = false;
+    pushUndoSnapshot();
+    activatePolygon(pending.groupId, pending.polygonId);
+    if (els.canvasWrap) els.canvasWrap.classList.add('is-shape-drag');
+    updateCanvasCursor();
+    moveShapeDrag(pos);
+  }
+
+  function moveShapeDrag(pos) {
+    if (!state.draggingShape || !state.shapePointerDown || !pos) return;
+    var entry = shapeBeingDragged();
+    if (!entry) return;
+    var pending = state.shapePointerDown;
+    var dx = pos.x - pending.x;
+    var dy = pos.y - pending.y;
+    if (state.shiftHeld && pixelsPerFoot() > 0) {
+      var step = gridStepPx();
+      dx = Math.round(dx / step) * step;
+      dy = Math.round(dy / step) * step;
+    }
+    var delta = clampedShapeDelta(pending.origVerts, dx, dy);
+    if (Math.hypot(delta.x, delta.y) > 0.5 / uiScale()) {
+      state.didShapeDrag = true;
+    }
+    entry.polygon.vertices = pending.origVerts.map(function (v) {
+      return { x: v.x + delta.x, y: v.y + delta.y };
+    });
+    redrawPolygonLine();
+    redrawLabels();
+    redrawWalls();
+    redrawVertices();
+    updateLiveArea();
+  }
+
+  function finishShapePointerUp(pos) {
+    if (state.draggingShape) {
+      finishShapeDrag(pos);
+      state.shapePointerDown = null;
+      return;
+    }
+    state.shapePointerDown = null;
+  }
+
+  function finishShapeDrag(pos) {
+    if (!state.draggingShape) return;
+    if (pos) moveShapeDrag(pos);
+    var pending = state.shapePointerDown;
+    var entry = shapeBeingDragged();
+    var hadDrag = state.didShapeDrag;
+    if (entry && pending && pending.origVerts && !isValidShape(entry.polygon.vertices, true)) {
+      entry.polygon.vertices = copyVertices(pending.origVerts);
+      if (hadDrag) discardLastUndoSnapshot();
+      state.didShapeDrag = false;
+      setFeedback('That position would make the shape cross itself.', true);
+    } else if (!hadDrag) {
+      if (entry && pending && pending.origVerts) {
+        entry.polygon.vertices = copyVertices(pending.origVerts);
+      }
+      discardLastUndoSnapshot();
+    }
+    state.draggingShape = false;
+    state.shapePointerDown = null;
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-shape-drag');
+    updateCanvasCursor();
+    redrawAll();
   }
 
   function refreshSelectedWallLengthInput() {
@@ -2394,6 +2540,9 @@
     state.vertexDragOrigins = null;
     state.draggingVertex = false;
     state.draggingWall = false;
+    state.draggingShape = false;
+    state.shapePointerDown = null;
+    state.didShapeDrag = false;
     state.wallDragIndex = null;
     state.wallDragPointerStart = null;
     state.wallDragOrigA = null;
@@ -2435,6 +2584,16 @@
     return base / uiScale();
   }
 
+  function updateShapeHoverCursor() {
+    if (!canDragShapes() || !state.stage || state.shapePointerDown || state.draggingShape) return;
+    var pos = getPointerPos();
+    if (!pos || findVertexAtPoint(pos) >= 0 || (isActiveClosed() && findWallAtPoint(pos) >= 0) || !polygonInteriorAtPoint(pos)) {
+      updateCanvasCursor();
+      return;
+    }
+    state.stage.container().style.cursor = 'move';
+  }
+
   function updateCanvasCursor() {
     if (!state.stage) return;
     var el = state.stage.container();
@@ -2443,6 +2602,8 @@
     } else if (state.spaceHeld) {
       el.style.cursor = 'grab';
     } else if (state.draggingVertex) {
+      el.style.cursor = 'grabbing';
+    } else if (state.draggingShape) {
       el.style.cursor = 'grabbing';
     } else if (state.draggingWall && state.wallDragIndex !== null) {
       el.style.cursor = wallDragCursorFor();
@@ -2722,7 +2883,20 @@
       redrawVertices();
     });
 
+    document.addEventListener('mousemove', function (e) {
+      if (!state.stage || (!state.shapePointerDown && !state.draggingShape)) return;
+      var rect = state.stage.container().getBoundingClientRect();
+      var pos = stageToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      if (state.shapePointerDown && !state.draggingShape) {
+        tryStartShapeDragFromPending(pos);
+      }
+      if (state.draggingShape) moveShapeDrag(pos);
+    });
+
     document.addEventListener('mouseup', function () {
+      if (state.shapePointerDown || state.draggingShape) {
+        finishShapePointerUp(getPointerPos());
+      }
       if (state.wallPointerDown || state.draggingWall) {
         finishWallPointerUp(getPointerPos());
       }
@@ -2833,7 +3007,10 @@
       var evt = e.evt;
       var isMiddle = evt.button === 1;
       var isSpacePan = evt.button === 0 && state.spaceHeld;
-      if (!isMiddle && !isSpacePan) return;
+      if (!isMiddle && !isSpacePan) {
+        if (evt.button === undefined || evt.button === 0) onShapePointerDown();
+        return;
+      }
       evt.preventDefault();
       state.panning = true;
       state.didPan = false;
@@ -2844,6 +3021,13 @@
 
     state.stage.on('mousemove touchmove', function () {
       var pos = getPointerPos();
+      if (state.shapePointerDown && !state.draggingShape) {
+        tryStartShapeDragFromPending(pos);
+      }
+      if (state.draggingShape) {
+        moveShapeDrag(pos);
+        return;
+      }
       if (state.wallPointerDown && !state.draggingWall) {
         tryStartWallDragFromPending(pos);
       }
@@ -2869,8 +3053,9 @@
           state.rulerPreview = null;
           redrawRulers();
         }
-        if (!state.panning && !state.draggingWall && !state.draggingVertex) {
+        if (!state.panning && !state.draggingWall && !state.draggingVertex && !state.draggingShape) {
           updateDrawPreviewFromPointer();
+          updateShapeHoverCursor();
         }
         return;
       }
@@ -2883,9 +3068,10 @@
       redrawRulers();
     });
 
-    state.stage.on('mouseup touchend mouseleave', function () {
+    state.stage.on('mouseup touchend', function () {
+      finishShapePointerUp(getPointerPos());
       finishWallPointerUp(getPointerPos());
-      if (state.draggingWall) return;
+      if (state.draggingWall || state.draggingShape) return;
       if (!state.panning) return;
       state.panning = false;
       state.lastPanScreen = null;
@@ -3382,13 +3568,26 @@
       verts.forEach(function (v) { linePoints.push(v.x, v.y); });
       if (poly.closed && verts.length >= 3) {
         linePoints.push(verts[0].x, verts[0].y);
-        layer.add(new Konva.Line({
+        var fill = new Konva.Line({
           points: linePoints,
           closed: true,
           fill: hexToRgba(group.color, 0.12 * opacity),
           opacity: opacity,
-          listening: false
-        }));
+          listening: !state.draggingShape && !isDrawingOpenShape() && !state.rulerMode && !state.bgMoveMode
+        });
+        fill.on('mousedown touchstart', function (e) {
+          if (e.evt && e.evt.button !== undefined && e.evt.button !== 0) return;
+          onShapePointerDown();
+        });
+        fill.on('mouseenter', function () {
+          if (canDragShapes() && state.stage && !state.shapePointerDown && !state.draggingShape) {
+            state.stage.container().style.cursor = 'move';
+          }
+        });
+        fill.on('mouseleave', function () {
+          if (state.stage && !state.draggingShape && !state.shapePointerDown) updateCanvasCursor();
+        });
+        layer.add(fill);
       }
       if (linePoints.length >= 4 || (!poly.closed && linePoints.length >= 2)) {
         layer.add(new Konva.Line({
@@ -4087,8 +4286,9 @@
       state.didPan = false;
       return;
     }
-    if (state.draggingVertex || state.draggingWall || state.draggingRuler || state.didWallDrag) {
+    if (state.draggingVertex || state.draggingWall || state.draggingShape || state.draggingRuler || state.didWallDrag || state.didShapeDrag) {
       if (state.didWallDrag) state.didWallDrag = false;
+      if (state.didShapeDrag) state.didShapeDrag = false;
       return;
     }
 
@@ -4251,6 +4451,9 @@
     state.vertexDragOrigins = null;
     state.draggingVertex = false;
     state.draggingWall = false;
+    state.draggingShape = false;
+    state.shapePointerDown = null;
+    state.didShapeDrag = false;
     state.wallDragIndex = null;
     state.wallDragPointerStart = null;
     state.wallDragOrigA = null;

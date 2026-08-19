@@ -2070,8 +2070,9 @@
   cursor: grab !important;
 }
 
-.util-ra-canvas-wrap.is-panning {
-  cursor: grabbing;
+.util-ra-canvas-wrap.is-shape-drag,
+.util-ra-canvas-wrap.is-shape-drag .konvajs-content {
+  cursor: grabbing !important;
 }
 
 .util-ra-canvas-wrap.is-panning .konvajs-content {
