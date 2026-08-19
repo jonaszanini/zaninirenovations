@@ -3296,6 +3296,12 @@ a:hover .cp-expense-receipt-pdf {
   margin: 0;
   font-size: 14px;
 }
+.cp-invoice-reminders-paused {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
 .cp-invoice-actions .cp-action-tooltip {
   position: absolute;
   top: calc(100% + 6px);

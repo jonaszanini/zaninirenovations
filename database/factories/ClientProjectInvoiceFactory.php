@@ -41,6 +41,13 @@ class ClientProjectInvoiceFactory extends Factory
         ]);
     }
 
+    public function remindersPaused(): static
+    {
+        return $this->state(fn () => [
+            'reminders_paused_at' => now(),
+        ]);
+    }
+
     public function paid(): static
     {
         return $this->state(function (array $attributes) {

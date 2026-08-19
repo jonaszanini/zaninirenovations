@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Log;
  * Daily automated payment reminders for past-due sent invoices.
  *
  * Email is used when the project has a client email; otherwise SMS (Mocean).
- * Repeats every day until the invoice is marked paid.
+ * Repeats every day until the invoice is marked paid, unless the admin
+ * paused daily reminders on that invoice.
  *
  * Runs via automations:run-daily (HTTP cron at 9am EST).
  */

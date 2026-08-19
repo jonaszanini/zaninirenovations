@@ -74,6 +74,7 @@ class ClientProjectInvoice extends Model
         'status',
         'sent_at',
         'due_on',
+        'reminders_paused_at',
         'paid_at',
         'paid_amount',
         'payment_method',
@@ -95,8 +96,9 @@ class ClientProjectInvoice extends Model
         'discount_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'sent_at' => 'datetime',
-        'paid_at' => 'datetime',
         'due_on' => 'date',
+        'reminders_paused_at' => 'datetime',
+        'paid_at' => 'datetime',
         'version' => 'integer',
         'included_project_quotation_ids' => 'array',
         'included_quotations_snapshot' => 'array',
@@ -182,6 +184,12 @@ class ClientProjectInvoice extends Model
     public function wasEverSent(): bool
     {
         return $this->sent_at !== null;
+    }
+
+    /** True when the daily past-due reminder job should skip this invoice. */
+    public function dailyRemindersPaused(): bool
+    {
+        return $this->reminders_paused_at !== null;
     }
 
     /** Not tied to any Financials installment — user-supplied amount. */

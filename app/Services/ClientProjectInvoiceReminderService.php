@@ -40,6 +40,7 @@ class ClientProjectInvoiceReminderService
         return ClientProjectInvoice::query()
             ->with('project')
             ->where('status', ClientProjectInvoice::STATUS_SENT)
+            ->whereNull('reminders_paused_at')
             ->whereNotNull('due_on')
             ->whereDate('due_on', '<', $today)
             ->whereHas('project', function ($q) {

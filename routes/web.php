@@ -368,6 +368,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.invoices.sms');
     Route::post('client-projects/{client_project}/invoices/{invoice}/reminder', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'sendReminder'])
         ->name('client-projects.invoices.reminder');
+    Route::post('client-projects/{client_project}/invoices/{invoice}/reminders/toggle', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'toggleDailyReminders'])
+        ->name('client-projects.invoices.reminders.toggle');
     Route::post('client-projects/{client_project}/invoices/{invoice}/mark-paid', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'markPaid'])
         ->name('client-projects.invoices.mark-paid');
     Route::delete('client-projects/{client_project}/invoices/{invoice}', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'destroy'])

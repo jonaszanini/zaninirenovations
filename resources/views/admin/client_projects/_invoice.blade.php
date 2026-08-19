@@ -193,6 +193,7 @@
                     {{ $statusLabel }}
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
+                  @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
                 <td>
                   @include('admin.client_projects._invoice_row_actions', [
@@ -239,6 +240,8 @@
           One invoice per installment from your <a href="#financials" data-cp-jump-tab="financials">Payment plan</a>.
           When you mark an invoice as paid, a receipt is generated and emailed to the client automatically,
           and the matching installment on the Financials tab is marked paid for you.
+          Unpaid sent invoices get a payment reminder each day after the due date — use <strong>Stop daily reminders</strong> on a row to pause that without deleting the invoice.
+          Deleting an unpaid invoice removes only the invoice, not the payment-plan line.
         </p>
       </div>
 
@@ -360,6 +363,7 @@
                       <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                     @endif
                   </span>
+                  @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
                 <td>
                   @include('admin.client_projects._invoice_row_actions', [
@@ -429,6 +433,7 @@
                     {{ $statusLabel }}
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
+                  @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
                 <td>
                   @include('admin.client_projects._invoice_row_actions', [

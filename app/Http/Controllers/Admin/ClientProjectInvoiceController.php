@@ -565,6 +565,50 @@ class ClientProjectInvoiceController extends Controller
     }
 
     /**
+     * Pause or resume the daily past-due reminder job for this invoice.
+     * Does not affect one-off reminder emails/SMS from the bell button.
+     */
+    public function toggleDailyReminders(
+        ClientProject $client_project,
+        ClientProjectInvoice $invoice,
+        ClientProjectStatusService $statusService,
+    ) {
+        $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if (! $invoice->isSent()) {
+            return back()->with('error', 'Daily reminders can only be paused after the invoice has been sent.');
+        }
+
+        if ($invoice->isPaid()) {
+            return back()->with('error', 'Paid invoices do not receive payment reminders.');
+        }
+
+        if ($invoice->dailyRemindersPaused()) {
+            $invoice->forceFill(['reminders_paused_at' => null])->save();
+            $statusService->recordEvent(
+                $client_project,
+                "Daily payment reminders resumed for invoice {$invoice->invoice_number}."
+            );
+
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('invoice')
+                ->with('success', "Daily payment reminders resumed for invoice {$invoice->invoice_number}.");
+        }
+
+        $invoice->forceFill(['reminders_paused_at' => now()])->save();
+        $statusService->recordEvent(
+            $client_project,
+            "Daily payment reminders paused for invoice {$invoice->invoice_number}."
+        );
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('invoice')
+            ->with('success', "Daily payment reminders stopped for invoice {$invoice->invoice_number}. You can still send a one-off reminder, or resume daily reminders later.");
+    }
+
+    /**
      * Mark the invoice as paid, generate a Receipt PDF, email it, and
      * auto-mark the linked installment paid on the Financials tab.
      */
@@ -833,7 +877,7 @@ class ClientProjectInvoiceController extends Controller
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('invoice')
-            ->with('success', 'Invoice deleted.');
+            ->with('success', 'Invoice deleted. The payment-plan line is unchanged — you can create a new invoice for this installment when you are ready.');
     }
 
     // --- Helpers ----------------------------------------------------------

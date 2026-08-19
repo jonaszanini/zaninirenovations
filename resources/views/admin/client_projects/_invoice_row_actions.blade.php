@@ -212,20 +212,43 @@
               class="cp-inline-form"
               onsubmit="return confirm({{ json_encode($reminderConfirm) }});">
           @csrf
-          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn" aria-label="Reminder">
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn" aria-label="Send reminder">
             <i class="fa fa-bell-o" aria-hidden="true"></i>
-            <span class="cp-action-tooltip">Reminder</span>
+            <span class="cp-action-tooltip">{{ $invoice->dailyRemindersPaused() ? 'Send one reminder' : 'Reminder' }}</span>
           </button>
         </form>
       @else
         <button type="button"
                 class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn"
                 disabled
-                aria-label="Reminder">
+                aria-label="Send reminder">
           <i class="fa fa-bell-o" aria-hidden="true"></i>
           <span class="cp-action-tooltip">Reminder</span>
         </button>
       @endif
+
+      @php
+        $pauseConfirm = $invoice->dailyRemindersPaused()
+          ? "Resume daily payment reminders for invoice {$invoice->invoice_number}? The client will be emailed or texted again each day this invoice stays unpaid past the due date."
+          : "Stop daily payment reminders for invoice {$invoice->invoice_number}? The invoice stays on this line. You can still send a one-off reminder, or resume daily reminders later.";
+      @endphp
+      <form action="{{ route('admin.client-projects.invoices.reminders.toggle', [$project, $invoice]) }}"
+            method="post"
+            class="cp-inline-form"
+            onsubmit="return confirm({{ json_encode($pauseConfirm) }});">
+        @csrf
+        @if ($invoice->dailyRemindersPaused())
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn" aria-label="Resume daily reminders">
+            <i class="fa fa-play" aria-hidden="true"></i>
+            <span class="cp-action-tooltip">Resume daily reminders</span>
+          </button>
+        @else
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn" aria-label="Stop daily reminders">
+            <i class="fa fa-pause" aria-hidden="true"></i>
+            <span class="cp-action-tooltip">Stop daily reminders</span>
+          </button>
+        @endif
+      </form>
     @endif
 
     {{-- Mark as paid — available on any non-paid invoice with content,
@@ -282,7 +305,7 @@
     @unless ($invoice->isPaid())
       @php
         if ($invoice->wasEverSent()) {
-            $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to {$clientEmail}. Deleting it here will REMOVE it from our records and let you create a fresh invoice for this installment, but the client will still have the old PDF in their inbox. You should let them know to disregard the old one. Continue?";
+            $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to {$clientEmail}. Deleting it removes the invoice from our records and returns this line to Create Invoice — the payment-plan row stays. The client will still have the old PDF in their inbox. Continue?";
         } else {
             $deleteConfirm = 'Delete this draft invoice? This cannot be undone.';
         }
