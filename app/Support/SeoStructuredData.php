@@ -20,7 +20,7 @@ class SeoStructuredData
     public static function homeGraph(): array
     {
         $url = rtrim(config('app.url'), '/');
-        $lsi = (string) config('seo.lsi_verbatim', '');
+        $knowsAbout = self::knowsAboutTopics();
         $areas = config('seo.area_served', []);
         $fb = (string) config('social.facebook_url', '');
         $ig = (string) config('social.instagram_url', '');
@@ -37,7 +37,8 @@ class SeoStructuredData
             '@type' => 'Person',
             '@id' => $url.'/#person-jonas',
             'name' => 'Jonas Zanini',
-            'jobTitle' => 'Owner & Contractor',
+            'jobTitle' => 'Owner & Red Seal Certified Carpenter',
+            'description' => 'Red Seal certified carpenter and owner of Zanini Renovations in Carleton Place, Ontario.',
             'worksFor' => ['@id' => $url.'/#business'],
         ];
         $personMayara = [
@@ -52,7 +53,7 @@ class SeoStructuredData
             '@id' => $url.'/#primary-image',
             'url' => $ogAbs,
             'contentUrl' => $ogAbs,
-            'caption' => 'Licensed Carpenter Ottawa, Finish Carpentry Services Ontario, Custom Millwork Ottawa — O.Reg. 332/12 compliant, WSIB Clearance Certificate, Carleton Place.',
+            'caption' => 'Zanini Renovations carpentry and renovation work in the Ottawa area.',
         ];
 
         $business = [
@@ -64,8 +65,7 @@ class SeoStructuredData
             'image' => [$url.'/'.ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/')],
             'description' => $homeSummary,
             'slogan' => 'Quality craftsmanship for Ottawa-area homes',
-            'keywords' => $lsi,
-            'knowsAbout' => $lsi,
+            'knowsAbout' => $knowsAbout,
             'telephone' => '+1-647-834-7570',
             'email' => (string) config('mail.from.address', ''),
             'priceRange' => '$$',
@@ -234,6 +234,142 @@ class SeoStructuredData
             '@id' => rtrim($baseUrl, '/').'/#faq',
             'mainEntity' => $entities,
             'isPartOf' => ['@id' => rtrim($baseUrl, '/').'/#webpage'],
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function knowsAboutTopics(): array
+    {
+        $topics = config('seo.knows_about', []);
+        if (! is_array($topics)) {
+            return [];
+        }
+
+        $clean = [];
+        foreach ($topics as $topic) {
+            if (! is_string($topic)) {
+                continue;
+            }
+            $label = trim($topic);
+            if ($label !== '') {
+                $clean[] = $label;
+            }
+        }
+
+        return $clean;
+    }
+
+    /**
+     * JSON-LD graph for a public blog article.
+     *
+     * @return array<string, mixed>
+     */
+    public static function blogPosting(\App\Models\BlogPost $post): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $url = $post->publicUrl();
+        $description = trim((string) ($post->meta_description ?: $post->displayExcerpt(300)));
+        $published = $post->published_at ?? $post->created_at;
+        $modified = $post->updated_at ?? $published;
+        $authorName = trim((string) ($post->author_name ?: 'Jonas Zanini'));
+        $author = [
+            '@type' => 'Person',
+            'name' => $authorName,
+        ];
+        if (strcasecmp($authorName, 'Jonas Zanini') === 0) {
+            $author['@id'] = $base.'/#person-jonas';
+            $author['jobTitle'] = 'Owner & Red Seal Certified Carpenter';
+        }
+
+        $image = $post->featuredImageUrl();
+        if (! is_string($image) || $image === '') {
+            $image = $base.'/'.ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
+        }
+
+        $article = [
+            '@type' => 'BlogPosting',
+            '@id' => $url.'#article',
+            'headline' => (string) $post->title,
+            'description' => $description,
+            'url' => $url,
+            'mainEntityOfPage' => $url,
+            'inLanguage' => 'en-CA',
+            'image' => $image,
+            'author' => $author,
+            'publisher' => [
+                '@type' => 'HomeAndConstructionBusiness',
+                '@id' => $base.'/#business',
+                'name' => 'Zanini Renovations',
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => $base.'/images/logo.png',
+                ],
+            ],
+            'about' => ['@id' => $base.'/#business'],
+            'wordCount' => str_word_count(strip_tags((string) $post->html_content)),
+        ];
+
+        if ($published) {
+            $article['datePublished'] = $published->toAtomString();
+        }
+        if ($modified) {
+            $article['dateModified'] = $modified->toAtomString();
+        }
+
+        $keywords = [];
+        if ($post->relationLoaded('tags')) {
+            foreach ($post->tags as $tag) {
+                $name = trim((string) ($tag->name ?? ''));
+                if ($name !== '') {
+                    $keywords[] = $name;
+                }
+            }
+        }
+        if ($keywords !== []) {
+            $article['keywords'] = implode(', ', $keywords);
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Blog', 'url' => $base.'/blog'],
+                    ['name' => (string) $post->title, 'url' => $url],
+                ]),
+                $article,
+            ],
+        ];
+    }
+
+    /**
+     * JSON-LD for the public blog index.
+     *
+     * @return array<string, mixed>
+     */
+    public static function blogIndex(): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Blog', 'url' => $base.'/blog'],
+                ]),
+                [
+                    '@type' => 'Blog',
+                    '@id' => $base.'/blog#blog',
+                    'name' => 'Zanini Renovations Blog',
+                    'url' => $base.'/blog',
+                    'description' => 'Renovation tips, project insights, and carpentry news from Zanini Renovations in Carleton Place and the Ottawa region.',
+                    'inLanguage' => 'en-CA',
+                    'publisher' => ['@id' => $base.'/#business'],
+                ],
+            ],
         ];
     }
 

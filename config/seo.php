@@ -79,17 +79,34 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Verbatim LSI / semantic entity string (schema knowsAbout / keywords)
+    | Topics the business actually covers (JSON-LD knowsAbout — short labels)
     |--------------------------------------------------------------------------
     */
-    'lsi_verbatim' => 'O.Reg. 332/12 compliant (The specific regulation number for the Ontario Building Code). WSIB Clearance Certificate (Better than just "WSIB insured"). Form 1000 Compliance (Construction safety specific). Part 9 Housing & Small Buildings (The OBC section for residential work). Sub-floor depressurization rough-in (A 2026 OBC requirement for radon). Fire-resistance ratings (FRR). Structural load-bearing verification. Egress window compliance. General Liability Insurance $2M. Red Seal Certified Carpenter. Architectural Woodworking. MDF & Solid Wood Profiling. Coped Joints and Miters. Zero-clearance Built-ins. Scribe-to-wall fitting. Concealed hinge installation. Flush-mount cabinetry. Furniture-grade finishing. Engineered Wood Products (EWP). LVL Beam Installation (Laminated Veneer Lumber). Truss System Assembly. Advanced Framing (OVE). Sheathing and House Wrap. Header and Sill Plate sizing. Balloon vs. Platform Framing. Joist bridging and blocking. Space-saving condo storage. Ergonomic home office millwork. Legal basement apartment conversion. Multi-generational living renovations. Heritage home restoration. Bespoke closet solutions. Hidden door / Murphy door systems.',
+    'knows_about' => [
+        'Finish carpentry',
+        'Rough carpentry',
+        'Custom millwork',
+        'Residential fencing',
+        'Deck construction',
+        'Basement framing and finishing',
+        'Interior trim and moulding',
+        'Hardwood flooring installation',
+        'Drywall',
+        'Wood staircase refinishing',
+        'Ontario Building Code O.Reg. 332/12',
+        'Part 9 housing and small buildings',
+        'WSIB clearance certificate',
+        'Red Seal carpentry',
+    ],
+
+    'liability_insurance' => '$3 million',
 
     /*
     |--------------------------------------------------------------------------
     | Short, quotable homepage summary (WebPage + visible intro for AI/SEO)
     |--------------------------------------------------------------------------
     */
-    'home_summary' => 'Zanini Renovations is a licensed carpenter and home renovation contractor based in Carleton Place, serving Ottawa and surrounding Ontario communities. We provide finish carpentry, rough carpentry, custom millwork, decks, basement framing, trim, fencing, flooring, drywall, and staircase work—with liability insurance and O.Reg. 332/12 compliant practices.',
+    'home_summary' => 'Zanini Renovations is a licensed carpenter and home renovation contractor based in Carleton Place, serving Ottawa and surrounding Ontario communities. We provide finish carpentry, rough carpentry, custom millwork, decks, basement framing, trim, fencing, flooring, drywall, and staircase work—with $3 million general liability insurance, WSIB clearance, and O.Reg. 332/12 compliant practices.',
 
     'google_business_url' => env('SEO_GOOGLE_BUSINESS_URL', 'https://www.google.com/maps/place/Zanini+Renovations/@45.120446,-76.0081985,17z'),
 
@@ -109,7 +126,7 @@ return [
         ],
         [
             'question' => 'Is Zanini Renovations fully insured for residential work?',
-            'answer' => 'Yes. Zanini Renovations carries $3M in general liability insurance, ensuring your home and project are fully protected. All of our work strictly adheres to the Ontario Building Code (O.Reg. 332/12) requirements for Part 9 housing and small buildings, delivering structural integrity and professional craftsmanship you can trust.',
+            'answer' => 'Yes. Zanini Renovations carries $3 million in general liability insurance, ensuring your home and project are fully protected. All of our work strictly adheres to the Ontario Building Code (O.Reg. 332/12) requirements for Part 9 housing and small buildings, delivering structural integrity and professional craftsmanship you can trust.',
         ],
         [
             'question' => 'How do I get a quote for a renovation or carpentry project?',

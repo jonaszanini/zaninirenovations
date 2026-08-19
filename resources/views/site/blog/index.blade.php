@@ -4,6 +4,10 @@
 @section('meta_description', 'Renovation tips, project insights, and news from Zanini Renovations in Carleton Place and the Ottawa region.')
 @section('canonical', route('blog.index'))
 
+@push('jsonld')
+<script type="application/ld+json">{!! \App\Support\SeoStructuredData::toJsonLd(\App\Support\SeoStructuredData::blogIndex()) !!}</script>
+@endpush
+
 @push('styles')
   <link rel="stylesheet" href="{{ asset('css/blog.css') }}?v={{ @filemtime(public_path('css/blog.css')) ?: time() }}">
 @endpush

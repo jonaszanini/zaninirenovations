@@ -22,7 +22,7 @@
               <div class="col-lg-10 col-lg-offset-1 col-md-12 col-sm-12 col-xs-12">
 
                 <figure>
-                  <img src="{{ url('images/logo-footer.webp') }}" alt="Zanini Renovations — WSIB Clearance Certificate; General Liability Insurance $2M; Part 9 Housing &amp; Small Buildings" loading="lazy" decoding="async">
+                  <img src="{{ url('images/logo-footer.webp') }}" alt="Zanini Renovations" loading="lazy" decoding="async">
                 </figure>
                 <p class="margin-top-24">
 

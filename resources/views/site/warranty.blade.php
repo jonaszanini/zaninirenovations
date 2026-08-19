@@ -1,7 +1,6 @@
 @extends('site.layouts.public')
 
-@section('meta_description', 'Zanini Renovations warranty: O.Reg. 332/12 compliant workmanship, WSIB Clearance Certificate, Form 1000 Compliance, General Liability Insurance $2M, Part 9 Housing & Small Buildings. Carleton Place & Ottawa.')
-@section('meta_keywords', config('seo.lsi_verbatim'))
+@section('meta_description', 'Zanini Renovations warranty: O.Reg. 332/12 compliant workmanship, WSIB clearance, $3 million general liability insurance, Part 9 housing. Carleton Place and Ottawa.')
 @section('canonical', url('/warranty'))
 
 @push('jsonld')

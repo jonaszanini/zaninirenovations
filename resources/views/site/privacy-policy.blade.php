@@ -1,7 +1,6 @@
 @extends('site.layouts.public')
 
 @section('meta_description', 'Read the Zanini Renovations Privacy Policy for how we collect, use, disclose, and protect personal information under PIPEDA.')
-@section('meta_keywords', config('seo.lsi_verbatim'))
 @section('canonical', url('/privacy-policy'))
 
 @push('jsonld')

@@ -1,7 +1,6 @@
 @extends('site.layouts.public')
 
 @section('meta_description', 'Read the Zanini Renovations Terms and Conditions for services, quotes, payments, client responsibilities, liability, warranty, and governing law.')
-@section('meta_keywords', config('seo.lsi_verbatim'))
 @section('canonical', url('/terms-and-conditions'))
 
 @push('jsonld')

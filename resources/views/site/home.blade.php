@@ -1,7 +1,6 @@
 @extends('site.layouts.public')
 
-@section('meta_description', 'Licensed Carpenter Ottawa & Carleton Place — finish carpentry, rough carpentry, custom millwork, decks, basements. WSIB Clearance Certificate, Part 9 Housing & Small Buildings, O.Reg. 332/12 compliant. CAD$ quotes Kanata, Barrhaven, Orléans.')
-@section('meta_keywords', config('seo.lsi_verbatim'))
+@section('meta_description', 'Licensed Carpenter Ottawa & Carleton Place — finish carpentry, rough carpentry, custom millwork, decks, basements. WSIB clearance, Part 9 housing, O.Reg. 332/12 compliant. CAD quotes for Kanata, Barrhaven, Orléans.')
 @section('canonical', url('/'))
 
 @push('jsonld')
@@ -234,7 +233,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/fence.webp" alt="Residential Fencing Services Ottawa; Barrhaven Deck and Fence Builders; WSIB Clearance Certificate; General Liability Insurance $2M" loading="lazy" decoding="async">
+                <img src="images/services/fence.webp" alt="Wood privacy fence built by Zanini Renovations" loading="lazy" decoding="async">
                 <span class="fa fa-bars"></span>
               </figure>
 
@@ -249,7 +248,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/deck.webp" alt="Professional Deck Builder Ottawa; Timber Frame Porch Construction; Sheathing and House Wrap; O.Reg. 332/12 compliant" loading="lazy" decoding="async">
+                <img src="images/services/deck.webp" alt="Residential deck built by Zanini Renovations" loading="lazy" decoding="async">
                 <span class="fa fa-tree"></span>
               </figure>
 
@@ -264,7 +263,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/basement-renovation.webp" alt="Basement Framing Contractors; Kanata Basement Framing; Legal basement apartment conversion; Sub-floor depressurization rough-in (A 2026 OBC requirement for radon)" loading="lazy" decoding="async">
+                <img src="images/services/basement-renovation.webp" alt="Basement framing and finishing by Zanini Renovations" loading="lazy" decoding="async">
                 <span class="fa fa-home"></span>
               </figure>
 
@@ -279,7 +278,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/trim.webp" alt="Interior Trim Installation Ottawa; Crown Moulding Installation; Baseboard and Casing Replacement; Coped Joints and Miters; Hintonburg Modern Trim Design" loading="lazy" decoding="async">
+                <img src="images/services/trim.webp" alt="Interior trim and moulding installation" loading="lazy" decoding="async">
                 <span class="fa fa-wrench"></span>
               </figure>
 
@@ -294,7 +293,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/shelves.webp" alt="Custom Built-in Shelving Ottawa; Floating Shelf Installation; Zero-clearance Built-ins; Scribe-to-wall fitting; Concealed hinge installation" loading="lazy" decoding="async">
+                <img src="images/services/shelves.webp" alt="Custom built-in shelving" loading="lazy" decoding="async">
                 <span class="fa fa-cubes"></span>
               </figure>
 
@@ -309,7 +308,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/flooring.webp" alt="Hardwood Flooring Installation Ottawa; Riverside South Flooring Installers; Joist bridging and blocking; Furniture-grade finishing" loading="lazy" decoding="async">
+                <img src="images/services/flooring.webp" alt="Hardwood flooring installation" loading="lazy" decoding="async">
                 <span class="fa fa-th-large"></span>
               </figure>
 
@@ -324,7 +323,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/tiles.webp" alt="Drywall Installation and Taping; Soundproof Drywall Installation for Offices; Fire-resistance ratings (FRR)" loading="lazy" decoding="async">
+                <img src="images/services/tiles.webp" alt="Tile installation" loading="lazy" decoding="async">
                 <span class="fa fa-th"></span>
               </figure>
 
@@ -339,7 +338,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/accent-walls.webp" alt="Wainscoting and Wall Panelling; MDF &amp; Solid Wood Profiling; Modern Fireplace Surround Carpentry; Architectural Woodworking" loading="lazy" decoding="async">
+                <img src="images/services/accent-walls.webp" alt="Accent wall and wainscoting carpentry" loading="lazy" decoding="async">
                 <span class="fa fa-paint-brush"></span>
               </figure>
 
@@ -353,7 +352,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/stairs.webp" alt="Wood Staircase Refinishing; Under-Stairs Storage Solutions Ottawa; Structural load-bearing verification; LVL Beam Installation (Laminated Veneer Lumber)" loading="lazy" decoding="async">
+                <img src="images/services/stairs.webp" alt="Wood staircase carpentry" loading="lazy" decoding="async">
                 <span class="fa fa-sort-amount-asc"></span>
               </figure>
 
@@ -524,7 +523,7 @@
 
                     <figure class="team-member">
                       <a href="#" title="Jonas Zanini">
-                        <img src="images/about-us/jonas.webp" alt="Jonas Zanini — Red Seal Certified Carpenter; Licensed Carpenter Ottawa; Form 1000 Compliance (Construction safety specific)" loading="lazy" decoding="async">
+                        <img src="images/about-us/jonas.webp" alt="Jonas Zanini, owner and Red Seal certified carpenter" loading="lazy" decoding="async">
                       </a>
                     </figure>
                     <!-- end. team-member  -->
@@ -557,7 +556,7 @@
 
                     <figure class="team-member">
                       <a href="#" title="Mayara Zanini">
-                        <img src="images/about-us/mayara.webp" alt="Mayara Zanini — Zanini Renovations office; Carleton Place Rough Carpentry scheduling; WSIB Clearance Certificate inquiries" loading="lazy" decoding="async">
+                        <img src="images/about-us/mayara.webp" alt="Mayara Zanini, office and marketing" loading="lazy" decoding="async">
                       </a>
                     </figure>
                     <!-- end. team-member  -->
@@ -679,7 +678,7 @@
 
           <div class="col-lg-6 hidden-md hidden-xs hidden-sm no-padding">
             <figure>
-              <img src="images/reviews.webp" alt="Client testimonials — Home Renovation Carpentry Ottawa; Finish Carpentry Services Ontario; Egress window compliance projects" class="db" loading="lazy" decoding="async">
+              <img src="images/reviews.webp" alt="Client reviews of Zanini Renovations" class="db" loading="lazy" decoding="async">
             </figure>
           </div>
 

@@ -39,13 +39,10 @@ Route::view('/terms-and-conditions', 'site.terms-and-conditions')->name('terms-a
 Route::permanentRedirect('/services/custom-kitchen-remodel', '/');
 
 Route::get('/sitemap.xml', function () {
-    $blogPosts = \App\Models\BlogPost::query()
-        ->published()
-        ->orderByDesc('updated_at')
-        ->get(['slug', 'updated_at']);
+    $urls = \App\Support\PublicSitemap::urls();
 
     return response()
-        ->view('site.sitemap-xml', compact('blogPosts'), 200)
+        ->view('site.sitemap-xml', compact('urls'), 200)
         ->header('Content-Type', 'application/xml; charset=UTF-8');
 })->name('sitemap');
 
@@ -53,6 +50,11 @@ Route::get('/robots.txt', function () {
     return response(\App\Support\RobotsTxtGenerator::generate(), 200)
         ->header('Content-Type', 'text/plain; charset=UTF-8');
 })->name('robots');
+
+Route::get('/llms.txt', function () {
+    return response(\App\Support\LlmsTxtGenerator::generate(), 200)
+        ->header('Content-Type', 'text/plain; charset=UTF-8');
+})->name('llms-txt');
 
 /** Signed link (no login) so clients can open invoice PDFs from SMS — see ClientProjectInvoiceController::sendInvoiceSms. */
 Route::get('/client/invoice/{client_project}/{invoice}', [ClientProjectInvoiceController::class, 'guestDownloadInvoicePdf'])

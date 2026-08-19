@@ -57,6 +57,8 @@ class RobotsTxtGenerator
 
         $lines[] = 'Sitemap: '.$base.'/sitemap.xml';
         $lines[] = '';
+        $lines[] = '# LLM content index: '.$base.'/llms.txt';
+        $lines[] = '';
 
         return implode("\n", $lines);
     }

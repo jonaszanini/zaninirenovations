@@ -8,6 +8,10 @@
   @section('og_image', $post->featuredImageUrl())
 @endif
 
+@push('jsonld')
+<script type="application/ld+json">{!! \App\Support\SeoStructuredData::toJsonLd(\App\Support\SeoStructuredData::blogPosting($post)) !!}</script>
+@endpush
+
 @push('styles')
   <link rel="stylesheet" href="{{ asset('css/blog.css') }}?v={{ @filemtime(public_path('css/blog.css')) ?: time() }}">
 @endpush
