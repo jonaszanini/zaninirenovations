@@ -104,7 +104,7 @@
                 <i class="fa fa-arrows-h"></i> Calibrate
               </button>
               <div class="admin-form-group util-ra-scale-input">
-                <label for="ra-known-length">Known length (ft)</label>
+                <label for="ra-known-length">Known length</label>
                 <input class="admin-input" type="text" id="ra-known-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-known-length disabled>
               </div>
               <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-apply-scale disabled>

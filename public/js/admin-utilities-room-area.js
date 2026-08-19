@@ -141,6 +141,7 @@
     draggingBg: false,
     draftBackground: null,
     draftScale: null,
+    workingPpf: null,
     stage: null,
     worldGroup: null,
     viewport: { scale: 1, x: 0, y: 0, zoomPercent: 100 },
@@ -525,25 +526,24 @@
       };
       return;
     }
-    var sx = scaleToW / scaleFromW;
-    var sy = scaleToH / scaleFromH;
+    var s = canvasScaleFactor(scaleFromW, scaleFromH, scaleToW, scaleToH);
     state.bgLayout = {
-      x: parseFloat(bg.x) * sx,
-      y: parseFloat(bg.y) * sy,
-      width: parseFloat(bg.width) * sx,
-      height: parseFloat(bg.height) * sy
+      x: parseFloat(bg.x) * s,
+      y: parseFloat(bg.y) * s,
+      width: parseFloat(bg.width) * s,
+      height: parseFloat(bg.height) * s
     };
   }
 
   function scaleBgLayoutState(fromW, fromH, toW, toH) {
-    if (!state.bgLayout || !fromW || !fromH || fromW < 1 || fromH < 1) return;
-    var sx = toW / fromW;
-    var sy = toH / fromH;
+    if (!state.bgLayout || !fromW || fromW < 1) return;
+    var s = canvasScaleFactor(fromW, fromH, toW, toH);
+    if (s === 1) return;
     state.bgLayout = {
-      x: state.bgLayout.x * sx,
-      y: state.bgLayout.y * sy,
-      width: state.bgLayout.width * sx,
-      height: state.bgLayout.height * sy
+      x: state.bgLayout.x * s,
+      y: state.bgLayout.y * s,
+      width: state.bgLayout.width * s,
+      height: state.bgLayout.height * s
     };
   }
 
@@ -708,21 +708,22 @@
 
   function scalePoints(points, fromW, fromH, toW, toH) {
     if (!points || !points.length) return [];
-    var sx = toW / fromW;
-    var sy = toH / fromH;
-    if (!fromW || !fromH || fromW < 1 || fromH < 1 || (Math.abs(sx - 1) < 0.0005 && Math.abs(sy - 1) < 0.0005)) {
-      return points.map(function (v) {
-        return { x: parseFloat(v.x), y: parseFloat(v.y) };
-      });
-    }
+    var s = canvasScaleFactor(fromW, fromH, toW, toH);
     return points.map(function (v) {
-      return { x: parseFloat(v.x) * sx, y: parseFloat(v.y) * sy };
+      return { x: parseFloat(v.x) * s, y: parseFloat(v.y) * s };
     });
   }
 
+  /**
+   * One factor for x, y, and pixels-per-foot. Stretching width and height
+   * independently (or scaling geometry without scale) changes wall lengths.
+   */
   function canvasScaleFactor(fromW, fromH, toW, toH) {
-    if (!fromW || !fromH || fromW < 1 || fromH < 1) return 1;
-    return Math.sqrt((toW / fromW) * (toH / fromH));
+    if (!fromW || fromW < 1 || !toW) return 1;
+    var s = toW / fromW;
+    if (!isFinite(s) || s <= 0) return 1;
+    if (Math.abs(s - 1) < 0.0005) return 1;
+    return s;
   }
 
   function activeRoom() {
@@ -745,24 +746,19 @@
     return null;
   }
 
-  function scaleActivePixelsPerFoot(factor) {
-    if (Math.abs(factor - 1) < 0.0005) return;
-    var room = activeRoom();
-    if (room && room.scale_pixels_per_foot) {
-      room.scale_pixels_per_foot = parseFloat(room.scale_pixels_per_foot) * factor;
-      return;
-    }
-    if (!state.editingRoomId && state.draftScale) {
-      state.draftScale *= factor;
-      return;
-    }
-    scaleProjectPixelsPerFoot(factor);
+  function setWorkingPixelsPerFoot(ppf) {
+    var n = parseFloat(ppf);
+    state.workingPpf = (n && isFinite(n) && n > 0) ? n : null;
   }
 
-  function scaleProjectPixelsPerFoot(factor) {
-    var project = activeProject();
-    if (!project || !project.scale_pixels_per_foot || Math.abs(factor - 1) < 0.0005) return;
-    project.scale_pixels_per_foot = parseFloat(project.scale_pixels_per_foot) * factor;
+  function scaleActivePixelsPerFoot(factor) {
+    if (Math.abs(factor - 1) < 0.0005) return;
+    var current = pixelsPerFoot();
+    if (!current) return;
+    setWorkingPixelsPerFoot(current * factor);
+    if (!state.editingRoomId) {
+      state.draftScale = state.workingPpf;
+    }
   }
 
   function roomSourceCanvas(room, project) {
@@ -811,6 +807,16 @@
     }
 
     return { fromW: fromW, fromH: fromH, toW: toW, toH: toH };
+  }
+
+  function applyWorkingScaleFromSaved(savedPpf, target) {
+    var base = parseFloat(savedPpf) || 0;
+    if (base <= 0 || !target) {
+      setWorkingPixelsPerFoot(null);
+      return;
+    }
+    var s = canvasScaleFactor(target.fromW, target.fromH, target.toW, target.toH);
+    setWorkingPixelsPerFoot(base * s);
   }
 
   function confirmAction(message, options) {
@@ -1140,7 +1146,9 @@
   }
 
   function updateMeasureUnitPlaceholders() {
-    if (els.wallLength) els.wallLength.placeholder = measureUnitPlaceholder();
+    var ph = measureUnitPlaceholder();
+    if (els.wallLength) els.wallLength.placeholder = ph;
+    if (els.knownLength) els.knownLength.placeholder = ph;
   }
 
   function setMeasureUnit(unit) {
@@ -1284,30 +1292,16 @@
   }
 
   function captureScaleSnapshot() {
-    var room = activeRoom();
-    if (room && room.scale_pixels_per_foot) {
-      return parseFloat(room.scale_pixels_per_foot);
-    }
-    if (!state.editingRoomId && state.draftScale) {
-      return parseFloat(state.draftScale);
-    }
-    var project = activeProject();
-    return project && project.scale_pixels_per_foot ? parseFloat(project.scale_pixels_per_foot) : null;
+    var ppf = pixelsPerFoot();
+    return ppf > 0 ? ppf : null;
   }
 
   function restoreScaleSnapshot(ppf) {
     if (ppf == null || !isFinite(ppf) || ppf <= 0) return;
-    var room = activeRoom();
-    if (room) {
-      room.scale_pixels_per_foot = ppf;
-      return;
-    }
+    setWorkingPixelsPerFoot(ppf);
     if (!state.editingRoomId) {
       state.draftScale = ppf;
-      return;
     }
-    var project = activeProject();
-    if (project) project.scale_pixels_per_foot = ppf;
   }
 
   function pushUndoSnapshot() {
@@ -1363,6 +1357,9 @@
   }
 
   function pixelsPerFoot() {
+    if (state.workingPpf && isFinite(state.workingPpf) && state.workingPpf > 0) {
+      return parseFloat(state.workingPpf);
+    }
     var room = activeRoom();
     if (room && room.scale_pixels_per_foot) {
       return parseFloat(room.scale_pixels_per_foot);
@@ -2407,6 +2404,7 @@
     state.didVertexDrag = false;
     state.vertexDragFrom = null;
     state.draftScale = null;
+    setWorkingPixelsPerFoot(null);
     state.draftRulers = [];
     revokeDraftBackground();
     state.bgLayout = null;
@@ -3164,6 +3162,10 @@
     var source = roomSourceCanvas(room, project);
     var target = hydrateScaleTarget(roomCanvasRaw(room), source.w, source.h);
     hydrateCanvas(roomCanvasRaw(room), target.fromW, target.fromH, target.toW, target.toH);
+    applyWorkingScaleFromSaved(
+      room.scale_pixels_per_foot || project.scale_pixels_per_foot,
+      target
+    );
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
     clearUndoStack();
@@ -4259,6 +4261,7 @@
     state.didVertexDrag = false;
     stopCalibrationMode();
     state.draftRulers = [];
+    setWorkingPixelsPerFoot(null);
     clearWallSelection();
     clearVertexSelection();
     clearRulerSelection();
@@ -4282,6 +4285,7 @@
     state.bgLayout = null;
     stopBgMoveMode();
     state.draftScale = null;
+    setWorkingPixelsPerFoot(null);
     loadBackground(null);
     captureSavedSnapshot();
     if (els.roomName) {
@@ -4485,7 +4489,7 @@
   function applyScale() {
     if (state.calibPoints.length !== 2) return;
     try {
-      var feet = parseFeetInput(els.knownLength.value);
+      var feet = parseLengthInput(els.knownLength.value);
       var pxDist = dist(state.calibPoints[0], state.calibPoints[1]);
       if (pxDist < 5) throw new Error('Points are too close — pick a longer reference.');
       var ppf = pxDist / feet;
@@ -4498,7 +4502,7 @@
       if (state.editingRoomId) {
         var room = activeRoom();
         if (!room) return;
-        room.scale_pixels_per_foot = ppf;
+        setWorkingPixelsPerFoot(ppf);
         fetch(urlFromTemplate(root.getAttribute('data-room-update-template'), room.id), {
           method: 'PUT',
           credentials: 'same-origin',
@@ -4510,7 +4514,7 @@
           },
           body: JSON.stringify({
             name: room.name,
-            vertices: activeVertices(),
+            canvas: serializeCanvas(),
             scale_pixels_per_foot: ppf,
             canvas_width: contentW(),
             canvas_height: contentH()
@@ -4532,6 +4536,7 @@
       }
 
       state.draftScale = ppf;
+      setWorkingPixelsPerFoot(ppf);
       setFeedback('Scale calibrated. Save the room to keep this scale with it.', false);
     } catch (err) {
       setFeedback(err.message, true);
@@ -4620,12 +4625,11 @@
 
       var source = roomSourceCanvas(currentRoom, currentProject);
       var target = hydrateScaleTarget(roomCanvasRaw(currentRoom), source.w, source.h);
-      var factor = canvasScaleFactor(target.fromW, target.fromH, target.toW, target.toH);
-      if (Math.abs(factor - 1) > 0.0005) {
-        scaleActivePixelsPerFoot(factor);
-      }
-
       hydrateCanvas(roomCanvasRaw(currentRoom), target.fromW, target.fromH, target.toW, target.toH);
+      applyWorkingScaleFromSaved(
+        currentRoom.scale_pixels_per_foot || currentProject.scale_pixels_per_foot,
+        target
+      );
       clearUndoStack();
       redrawAll();
       fitViewport();
@@ -4773,17 +4777,15 @@
       if (!currentProject || currentProject.id !== projectId) return;
 
       resizeStage();
-      var factor = canvasScaleFactor(
-        currentProject.canvas_width,
-        currentProject.canvas_height,
-        contentW(),
-        contentH()
+      applyWorkingScaleFromSaved(
+        currentProject.scale_pixels_per_foot,
+        {
+          fromW: currentProject.canvas_width || contentW(),
+          fromH: currentProject.canvas_height || contentH(),
+          toW: contentW(),
+          toH: contentH()
+        }
       );
-      if (Math.abs(factor - 1) > 0.0005) {
-        scaleActivePixelsPerFoot(factor);
-        currentProject.canvas_width = contentW();
-        currentProject.canvas_height = contentH();
-      }
       loadBackground(null);
       updateScaleUI();
       refreshViewportAfterContentChange();
