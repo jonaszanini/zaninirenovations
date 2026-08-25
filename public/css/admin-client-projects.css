@@ -5980,3 +5980,263 @@ body.cp-modal-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* =====================================================================
+   Basement renovation quotation wizard
+   ===================================================================== */
+.br-layout.pq-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.95fr);
+  gap: 20px;
+  align-items: start;
+}
+.br-layout .pq-sticky {
+  position: sticky;
+  top: 88px;
+}
+.br-layout .pq-summary-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  background: #fafbfc;
+}
+.br-layout .pq-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.br-layout .pq-row--hl {
+  font-weight: 700;
+  color: #024768;
+  font-size: 16px;
+  border-top: 1px solid #d8dee4;
+  margin-top: 8px;
+  padding-top: 10px;
+}
+.br-layout .pq-sidebar-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.br-layout .pq-sidebar-actions .admin-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+  min-height: 44px;
+}
+.br-layout .fl-breakdown-section {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+.br-layout .fl-step-card h4 {
+  margin: 0 0 12px;
+  color: #024768;
+}
+.br-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.br-progress {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0 4px;
+  scroll-snap-type: x proximity;
+}
+.br-progress__item {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+.br-progress__item.is-current {
+  border-color: #024768;
+  background: #f0f7fb;
+  color: #024768;
+  font-weight: 700;
+}
+.br-progress__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #e8eef3;
+  font-size: 12px;
+  font-weight: 700;
+}
+.br-progress__item.is-current .br-progress__num {
+  background: #024768;
+  color: #fff;
+}
+.br-progress__label {
+  white-space: nowrap;
+}
+.br-acc {
+  margin: 0 0 12px;
+  overflow: visible;
+}
+.br-acc__summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #024768;
+  padding: 4px 2px;
+}
+.br-acc__summary::-webkit-details-marker {
+  display: none;
+}
+.br-acc__num {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.br-acc__body {
+  padding-top: 8px;
+}
+.br-check-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.br-check-stack .admin-checkbox {
+  min-height: 44px;
+}
+.br-review-heading {
+  margin: 20px 0 8px;
+  color: #024768;
+  font-size: 15px;
+}
+.br-provide-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px 16px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+.br-edit-table .admin-input {
+  min-width: 88px;
+}
+.br-step-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.br-step-nav .admin-btn {
+  min-height: 44px;
+  flex: 1 1 auto;
+}
+.br-step-nav__status {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: #024768;
+  min-width: 72px;
+  text-align: center;
+}
+.br-extra-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px dashed #e8edf2;
+}
+.br-extra-row .admin-form-group {
+  margin: 0;
+}
+.br-config-mat {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+.br-layout--create .br-acc:not(.is-active) {
+  display: none;
+}
+.br-layout--create .br-acc__summary {
+  pointer-events: none;
+}
+.br-layout--edit .br-step-nav {
+  display: none;
+}
+
+@media (min-width: 700px) {
+  .br-provide-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .br-extra-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 88px 88px 110px auto auto;
+    align-items: end;
+  }
+  .br-config-mat {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 90px 130px;
+    align-items: end;
+  }
+}
+
+@media (min-width: 900px) {
+  .br-shell {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  .br-progress {
+    flex-direction: column;
+    overflow-x: visible;
+    position: sticky;
+    top: 88px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+  .br-progress__item {
+    width: 100%;
+  }
+  .br-progress__label {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 1100px) {
+  .br-layout.pq-layout {
+    grid-template-columns: 1fr;
+  }
+  .br-layout .br-aside {
+    order: -1;
+    position: static;
+    top: auto;
+  }
+}
+

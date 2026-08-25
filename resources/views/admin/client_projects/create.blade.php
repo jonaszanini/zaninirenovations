@@ -4,6 +4,31 @@
 
 @section('content')
   @php
+    $duplicateProjects = session('duplicate_project_candidates');
+    $hasDuplicateProjects = $duplicateProjects && count($duplicateProjects);
+  @endphp
+
+  <div id="cp-duplicate-warning" class="admin-card cl-duplicate-warning" @if (! $hasDuplicateProjects) hidden @endif>
+    @if ($hasDuplicateProjects)
+      <p class="cl-duplicate-warning__title">
+        <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+        Possible duplicate {{ count($duplicateProjects) === 1 ? 'project' : 'projects' }}
+      </p>
+      <p class="admin-form-help">These existing projects look like the same job (same client or address, and a similar name). Open one below, or continue if this is a separate job.</p>
+      <ul class="cl-duplicate-warning__list">
+        @foreach ($duplicateProjects as $dup)
+          <li>
+            <a href="{{ route('admin.client-projects.show', $dup) }}" target="_blank" rel="noopener">{{ $dup->referenceCode() }} — {{ $dup->name }}</a>
+            <span class="cl-duplicate-warning__meta">
+              {{ collect([$dup->client_name, $dup->statusLabel(), $dup->client_address])->filter()->implode(' · ') ?: '—' }}
+            </span>
+          </li>
+        @endforeach
+      </ul>
+    @endif
+  </div>
+
+  @php
     $billingType = old('billing_type', \App\Models\ClientProject::BILLING_FIXED);
     $sendClientEmail = old('send_client_email', '1') === '1';
     $cpCreateVisitRequired = (bool) old('visit_required');
@@ -20,8 +45,12 @@
 
   <div class="cp-edit-project-layout">
     <div class="admin-card admin-card--narrow cp-edit-project-form-card">
-      <form id="cp-create-project-form" action="{{ route('admin.client-projects.store') }}" method="post" enctype="multipart/form-data">
+      <form id="cp-create-project-form" action="{{ route('admin.client-projects.store') }}" method="post" enctype="multipart/form-data"
+            data-cp-duplicate-check="{{ $duplicateCheckUrl ?? route('admin.client-projects.duplicate-check') }}">
         @csrf
+        @if ($hasDuplicateProjects)
+          <input type="hidden" name="confirm_duplicate_project" value="1">
+        @endif
 
         <div class="admin-form-group">
           <label for="cp-name">Project name <span class="cp-required">*</span></label>
@@ -259,8 +288,8 @@
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Project form actions">
-      <button type="submit" form="cp-create-project-form" class="admin-btn admin-btn--primary admin-btn--sm">
-        <i class="fa fa-check"></i> Create project
+      <button type="submit" form="cp-create-project-form" class="admin-btn admin-btn--primary admin-btn--sm" data-cp-create-submit>
+        <i class="fa fa-check"></i> {{ $hasDuplicateProjects ? 'Create anyway' : 'Create project' }}
       </button>
       <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
     </aside>

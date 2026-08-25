@@ -100,6 +100,10 @@
             @include('admin.client_projects._quotation_view_tile', ['sourceModel' => $sourceModel])
           @break
 
+          @case(ClientProjectQuotation::SOURCE_BASEMENT)
+            @include('admin.client_projects._quotation_view_basement', ['sourceModel' => $sourceModel])
+          @break
+
           @default
             <div class="cp-vd-section">
               <p class="admin-form-help">No additional calculator details available for this quotation type.</p>

@@ -240,6 +240,21 @@
     };
   }
 
+  function collectBasementContext(form) {
+    return {
+      client_name: formValue(form, 'client_name'),
+      area_sqft: formValue(form, 'area_sqft'),
+      ceiling_height_ft: formValue(form, 'ceiling_height_ft'),
+      room_count: formValue(form, 'room_count'),
+      flooring_type: formSelectValue(form, 'flooring_type'),
+      ceiling_type: formSelectValue(form, 'ceiling_type'),
+      include_bathroom: form.elements['include_bathroom'] && form.elements['include_bathroom'].checked,
+      include_demolition: form.elements['include_demolition'] && form.elements['include_demolition'].checked,
+      existing_notes: formValue(form, 'existing_notes'),
+      breakdown_summary: panelText('br-live-root')
+    };
+  }
+
   var collectors = {
     painting: collectPaintingContext,
     fence: collectFenceContext,
@@ -248,6 +263,7 @@
     stairs: collectStairsContext,
     flooring: collectFlooringContext,
     tile: collectTileContext,
+    basement: collectBasementContext,
   };
 
   function collectQuotationContext(formId, quotationType) {

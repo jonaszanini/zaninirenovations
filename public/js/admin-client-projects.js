@@ -580,6 +580,135 @@
     sync();
   }
 
+  function initCreateDuplicateCheck() {
+    var form = document.getElementById('cp-create-project-form');
+    var box = document.getElementById('cp-duplicate-warning');
+    if (!form || !box) return;
+    var url = form.getAttribute('data-cp-duplicate-check');
+    if (!url) return;
+
+    var timer = null;
+    var lastKey = '';
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrf = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+    function fieldValue(id) {
+      var el = document.getElementById(id);
+      return el ? String(el.value || '').trim() : '';
+    }
+
+    function payload() {
+      return {
+        name: fieldValue('cp-name'),
+        client_id: fieldValue('cp-client-combobox-value'),
+        client_name: fieldValue('cp-client-name'),
+        client_email: fieldValue('cp-client-email'),
+        client_phone: fieldValue('cp-client-phone'),
+        client_address: fieldValue('cp-client-address'),
+        client_address_place_id: fieldValue('cp-client-address-place-id')
+      };
+    }
+
+    function hasClientSignal(data) {
+      if (data.client_id) return true;
+      if (data.client_name) return true;
+      if (data.client_email) return true;
+      if (data.client_phone.replace(/\D/g, '').length >= 10) return true;
+      if (data.client_address.length >= 8) return true;
+      return false;
+    }
+
+    function clearConfirmFlag() {
+      var hidden = form.querySelector('input[name="confirm_duplicate_project"]');
+      if (hidden) hidden.remove();
+      var btn = document.querySelector('[data-cp-create-submit]');
+      if (btn) {
+        btn.innerHTML = '<i class="fa fa-check"></i> Create project';
+      }
+    }
+
+    function render(candidates) {
+      if (!candidates || !candidates.length) {
+        box.hidden = true;
+        box.innerHTML = '';
+        return;
+      }
+      var title = candidates.length === 1 ? 'project' : 'projects';
+      var items = candidates.map(function (row) {
+        var meta = [row.client_name, row.status, row.client_address].filter(Boolean).join(' · ') || '—';
+        return (
+          '<li>' +
+            '<a href="' + escapeHtml(row.url) + '" target="_blank" rel="noopener">' +
+              escapeHtml(row.reference) + ' — ' + escapeHtml(row.name) +
+            '</a>' +
+            '<span class="cl-duplicate-warning__meta">' + escapeHtml(meta) + '</span>' +
+          '</li>'
+        );
+      }).join('');
+      box.innerHTML =
+        '<p class="cl-duplicate-warning__title">' +
+          '<i class="fa fa-exclamation-triangle" aria-hidden="true"></i> ' +
+          'Possible duplicate ' + title +
+        '</p>' +
+        '<p class="admin-form-help">These existing projects look like the same job (same client or address, and a similar name). Open one below, or continue if this is a separate job.</p>' +
+        '<ul class="cl-duplicate-warning__list">' + items + '</ul>';
+      box.hidden = false;
+    }
+
+    function run() {
+      var data = payload();
+      var key = JSON.stringify(data);
+      if (key === lastKey) return;
+      lastKey = key;
+      if (data.name.length < 2 || !hasClientSignal(data)) {
+        render([]);
+        return;
+      }
+      var params = new URLSearchParams();
+      Object.keys(data).forEach(function (k) {
+        if (data[k]) params.set(k, data[k]);
+      });
+      fetch(url + '?' + params.toString(), {
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': csrf
+        }
+      }).then(function (res) {
+        if (!res.ok) return { candidates: [] };
+        return res.json();
+      }).then(function (json) {
+        render(json && json.candidates ? json.candidates : []);
+      }).catch(function () {
+        render([]);
+      });
+    }
+
+    function schedule() {
+      clearConfirmFlag();
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(run, 400);
+    }
+
+    ['cp-name', 'cp-client-name', 'cp-client-email', 'cp-client-phone', 'cp-client-address', 'cp-client-address-place-id'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', schedule);
+      el.addEventListener('change', schedule);
+    });
+
+    var picker = document.getElementById('cp-client-combobox');
+    if (picker) {
+      picker.addEventListener('admin-search-select:change', schedule);
+    }
+
+    if (box.hidden && payload().name.length >= 2 && hasClientSignal(payload())) {
+      run();
+    } else if (!box.hidden) {
+      lastKey = JSON.stringify(payload());
+    }
+  }
+
   function initCreateVisitFields() {
     var visitCb = document.getElementById('cp-create-visit-required');
     if (!visitCb) return;
@@ -1215,6 +1344,7 @@
     initBillingTypeToggle();
     initCreateVisitFields();
     initCreateScheduleFields();
+    initCreateDuplicateCheck();
     initEditScheduleFields();
     initRecalculateInstallmentsModal();
 

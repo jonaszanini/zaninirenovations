@@ -253,6 +253,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.calendar');
     Route::get('client-projects/calendar/picker-events', [\App\Http\Controllers\Admin\ClientProjectController::class, 'schedulePickerEvents'])
         ->name('client-projects.calendar.picker-events');
+    Route::get('client-projects/duplicate-check', [\App\Http\Controllers\Admin\ClientProjectController::class, 'duplicateCheck'])
+        ->name('client-projects.duplicate-check');
     Route::post('calendar/personal-events', [\App\Http\Controllers\Admin\AdminCalendarEventController::class, 'store'])
         ->name('calendar.personal-events.store');
     Route::put('calendar/personal-events/{admin_calendar_event}', [\App\Http\Controllers\Admin\AdminCalendarEventController::class, 'update'])
@@ -641,6 +643,34 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('quotations.tile.destroy');
     Route::post('quotations/tile/{quotation}/create-project', [\App\Http\Controllers\Admin\TileQuotationController::class, 'createProjectAndLink'])
         ->name('quotations.tile.create-project');
+
+    // Basement renovation quotations (multi-section wizard).
+    Route::get('quotations/basement', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'index'])
+        ->name('quotations.basement.index');
+    Route::get('quotations/basement/create', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'create'])
+        ->name('quotations.basement.create');
+    Route::get('quotations/basement/price-configuration', [\App\Http\Controllers\Admin\BasementDatabaseController::class, 'edit'])
+        ->name('quotations.basement.price-configuration');
+    Route::post('quotations/basement-calculate', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'preview'])
+        ->name('quotations.basement.calculate');
+    Route::post('quotations/basement/database', [\App\Http\Controllers\Admin\BasementDatabaseController::class, 'update'])
+        ->name('quotations.basement.database.update');
+    Route::post('quotations/basement', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'store'])
+        ->name('quotations.basement.store');
+    Route::post('quotations/basement/preview', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'preview'])
+        ->name('quotations.basement.preview');
+    Route::get('quotations/basement/{basement_quotation}/edit', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'edit'])
+        ->name('quotations.basement.edit');
+    Route::post('quotations/basement/{basement_quotation}/calculate', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'preview'])
+        ->name('quotations.basement.calculate-existing');
+    Route::put('quotations/basement/{basement_quotation}', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'update'])
+        ->name('quotations.basement.update');
+    Route::post('quotations/basement/{basement_quotation}/link', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'linkToProject'])
+        ->name('quotations.basement.link');
+    Route::post('quotations/basement/{basement_quotation}/create-project', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.basement.create-project');
+    Route::delete('quotations/basement/{basement_quotation}', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'destroy'])
+        ->name('quotations.basement.destroy');
 
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);

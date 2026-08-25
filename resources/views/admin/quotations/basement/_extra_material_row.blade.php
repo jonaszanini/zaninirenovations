@@ -1,0 +1,62 @@
+@php
+  $i = $i ?? '__I__';
+  $row = $row ?? [];
+  $name = $row['name'] ?? '';
+  $qty = $row['quantity'] ?? $row['qty'] ?? '';
+  $unit = $row['unit'] ?? 'each';
+  $price = isset($row['unit_price']) && $row['unit_price'] !== ''
+    ? number_format((float) $row['unit_price'], 2, '.', '')
+    : '';
+  $catalogId = (int) ($row['catalog_material_id'] ?? 0);
+@endphp
+<div class="br-extra-row" data-br-extra-row>
+  <div class="br-extra-row__catalog">
+    @include('admin.partials.search_select', [
+      'id' => 'br-extra-cat-'.$i,
+      'name' => 'extra_materials['.$i.'][catalog_material_id]',
+      'value' => $catalogId > 0 ? $catalogId : '',
+      'hideLabel' => true,
+      'placeholder' => 'Search Materials DB…',
+      'ariaLabel' => 'Search materials database',
+      'optionsSource' => 'admin-ss-catalog-options',
+      'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
+      'metaKeys' => ['sku', 'price_label'],
+      'emptyMessage' => 'No matching materials',
+      'maxOptions' => 80,
+      'listParent' => 'body',
+    ])
+  </div>
+  <div class="admin-form-group br-extra-row__name">
+    <label class="visually-hidden">Material name</label>
+    <input type="text" class="admin-input br-preview" data-br-extra-name name="extra_materials[{{ $i }}][name]" maxlength="160"
+           placeholder="Name" value="{{ $name }}">
+  </div>
+  <div class="admin-form-group">
+    <label class="visually-hidden">Quantity</label>
+    <input type="number" step="0.01" min="0" class="admin-input br-preview" name="extra_materials[{{ $i }}][quantity]"
+           placeholder="Qty" value="{{ $qty }}">
+  </div>
+  <div class="admin-form-group">
+    <label class="visually-hidden">Unit</label>
+    <input type="text" class="admin-input br-preview" name="extra_materials[{{ $i }}][unit]" maxlength="40"
+           placeholder="Unit" value="{{ $unit }}">
+  </div>
+  <div class="admin-form-group">
+    <label class="visually-hidden">Unit price</label>
+    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-br-extra-price
+           class="admin-input cp-money-input br-preview" name="extra_materials[{{ $i }}][unit_price]"
+           placeholder="0.00" value="{{ $price }}">
+  </div>
+  <div class="br-extra-row__client">
+    @include('admin.partials.checkbox', [
+      'name' => 'extra_materials['.$i.'][client_provided]',
+      'hiddenFallback' => true,
+      'checked' => ! empty($row['client_provided']),
+      'label' => 'Client provides',
+      'inputClass' => 'admin-checkbox__input br-preview',
+    ])
+  </div>
+  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm br-extra-remove" aria-label="Remove extra material">
+    <i class="fa fa-trash"></i>
+  </button>
+</div>

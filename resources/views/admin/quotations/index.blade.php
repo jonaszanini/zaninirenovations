@@ -117,5 +117,23 @@
         <h4>Low Deck</h4>
       </div>
     </a>
+
+    <a href="{{ route('admin.quotations.basement.index', $pq) }}" class="fq-hub-card">
+      <div class="fq-hub-card-image-wrap fq-hub-card-image-wrap--svg" aria-hidden="true">
+        <svg class="fq-hub-card-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
+          <rect x="10" y="6" width="44" height="52" rx="2" fill="#eef4f8" stroke="#024768" stroke-width="1.5"/>
+          <rect x="10" y="36" width="44" height="22" fill="#d7e6ef"/>
+          <line x1="10" y1="36" x2="54" y2="36" stroke="#024768" stroke-width="1.5"/>
+          <rect x="18" y="14" width="12" height="10" rx="1" fill="#b9d9ee" stroke="#024768" stroke-width="1"/>
+          <rect x="34" y="14" width="12" height="10" rx="1" fill="#b9d9ee" stroke="#024768" stroke-width="1"/>
+          <rect x="16" y="42" width="10" height="16" rx="1" fill="#f0e6d6" stroke="#024768" stroke-width="1"/>
+          <rect x="30" y="46" width="16" height="6" rx="1" fill="#c4a574"/>
+          <rect x="30" y="40" width="16" height="6" rx="1" fill="#d4b896"/>
+        </svg>
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Basement Renovation</h4>
+      </div>
+    </a>
   </div>
 @endsection

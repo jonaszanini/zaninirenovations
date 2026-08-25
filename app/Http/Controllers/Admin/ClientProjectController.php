@@ -16,6 +16,7 @@ use App\Services\ClientProjectClientMailer;
 use App\Services\ClientProjectPhotoStorage;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientProjectContactService;
+use App\Services\ClientProjectDuplicateMatcher;
 use App\Services\ClientProjectLinkedUtilitiesService;
 use App\Support\AdminPaginatedList;
 use App\Support\EasternStandardTimeDisplay;
@@ -152,9 +153,32 @@ class ClientProjectController extends Controller
     {
         return view('admin.client_projects.create', [
             'clientsSearchUrl' => route('admin.clients.search'),
+            'duplicateCheckUrl' => route('admin.client-projects.duplicate-check'),
             'initialClientForPicker' => $this->initialClientForPicker(
                 (int) old('client_id', 0) ?: null
             ),
+        ]);
+    }
+
+    /**
+     * Live JSON check used by the new-project form while the admin types.
+     */
+    public function duplicateCheck(Request $request, ClientProjectDuplicateMatcher $matcher): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'client_id' => ['nullable', 'integer', 'exists:clients,id'],
+            'client_name' => ['nullable', 'string', 'max:255'],
+            'client_email' => ['nullable', 'string', 'max:255'],
+            'client_phone' => ['nullable', 'string', 'max:32'],
+            'client_address' => ['nullable', 'string', 'max:500'],
+            'client_address_place_id' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $candidates = $this->duplicateProjectCandidates($data);
+
+        return response()->json([
+            'candidates' => $candidates->map(fn (ClientProject $p) => $matcher->toWarningRow($p))->values(),
         ]);
     }
 
@@ -200,6 +224,16 @@ class ClientProjectController extends Controller
         // Normalise hourly_rate so fixed projects don't carry a stray rate.
         if ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
             $data['hourly_rate'] = null;
+        }
+
+        if (! $request->boolean('confirm_duplicate_project')) {
+            $duplicates = $this->duplicateProjectCandidates($data);
+            if ($duplicates->isNotEmpty()) {
+                return back()
+                    ->withInput($request->except(['confirm_duplicate_project', 'photos']))
+                    ->with('duplicate_project_candidates', $duplicates)
+                    ->with('warning', 'A similar project already exists for this client or address. Open it below, or click "Create anyway" if this is a separate job.');
+            }
         }
 
         // Pulled out before array_merge below because it isn't a column
@@ -878,6 +912,29 @@ class ClientProjectController extends Controller
         }
 
         return response()->json($this->calendarService->schedulePickerEvents($exclude));
+    }
+
+    /**
+     * Existing projects that look like the same job as the posted create form.
+     *
+     * @param  array<string, mixed>  $data
+     * @return \Illuminate\Support\Collection<int, ClientProject>
+     */
+    private function duplicateProjectCandidates(array $data): \Illuminate\Support\Collection
+    {
+        $clientId = isset($data['client_id']) && $data['client_id'] !== '' && $data['client_id'] !== null
+            ? (int) $data['client_id']
+            : null;
+
+        return app(ClientProjectDuplicateMatcher::class)->findCandidates(
+            projectName: (string) ($data['name'] ?? ''),
+            clientId: $clientId && $clientId > 0 ? $clientId : null,
+            clientName: $data['client_name'] ?? null,
+            clientEmail: $data['client_email'] ?? null,
+            clientPhone: $data['client_phone'] ?? null,
+            clientAddress: $data['client_address'] ?? null,
+            placeId: $data['client_address_place_id'] ?? null,
+        );
     }
 
     /**

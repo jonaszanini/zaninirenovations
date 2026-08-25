@@ -1038,9 +1038,10 @@ textarea.is-invalid:focus {
 .cl-duplicate-warning__list li {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   padding: 8px 10px;
+  min-height: 44px;
   background: #fff;
   border: 1px solid #f2d693;
   border-radius: 6px;
@@ -1051,6 +1052,14 @@ textarea.is-invalid:focus {
 .cl-duplicate-warning__meta {
   font-size: 0.85rem;
   color: var(--admin-muted);
+}
+
+@media (max-width: 700px) {
+  .cl-duplicate-warning__list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
 }
 
 /* Inline contextual links in helper copy, flashes, and warnings */

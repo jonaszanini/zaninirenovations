@@ -50,6 +50,8 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_LOW_DECK = 'low_deck';
 
+    public const SOURCE_BASEMENT = 'basement';
+
     protected $fillable = [
         'client_project_id',
         'title',
@@ -257,6 +259,13 @@ class ClientProjectQuotation extends Model
             }
         }
 
+        if ($this->source_type === self::SOURCE_BASEMENT && $this->source_id) {
+            $basement = BasementQuotation::query()->find($this->source_id);
+            if ($basement) {
+                return $basement->displayTitle();
+            }
+        }
+
         $stored = trim((string) ($this->title ?? ''));
 
         return $stored !== '' ? $stored : $this->typeLabel();
@@ -306,6 +315,13 @@ class ClientProjectQuotation extends Model
             $fq = FlooringQuotation::query()->find($this->source_id);
             if ($fq) {
                 return $fq->scopeDescriptionForPdf();
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_BASEMENT && $this->source_id) {
+            $bq = BasementQuotation::query()->find($this->source_id);
+            if ($bq) {
+                return $bq->scopeDescriptionForPdf();
             }
         }
 
@@ -817,6 +833,7 @@ class ClientProjectQuotation extends Model
             self::SOURCE_PAINTING => PaintingQuotation::class,
             self::SOURCE_FLOORING => FlooringQuotation::class,
             self::SOURCE_TILE => TileQuotation::class,
+            self::SOURCE_BASEMENT => BasementQuotation::class,
             default => null,
         };
         if ($class === null) {
@@ -947,6 +964,7 @@ class ClientProjectQuotation extends Model
                     self::SOURCE_FLOORING => FlooringQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_TILE => TileQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_LOW_DECK => LowDeckQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_BASEMENT => BasementQuotation::query()->whereKey($sourceId)->delete(),
                     default => null,
                 };
             }
@@ -1018,6 +1036,10 @@ class ClientProjectQuotation extends Model
             return true;
         }
 
+        if ($this->source_type === self::SOURCE_BASEMENT && $this->source_id) {
+            return true;
+        }
+
         return (bool) $this->labour;
     }
 
@@ -1048,6 +1070,12 @@ class ClientProjectQuotation extends Model
             $tile = TileQuotation::query()->find($this->source_id);
 
             return $tile?->includesMaterialCharge() ?? false;
+        }
+
+        if ($this->source_type === self::SOURCE_BASEMENT && $this->source_id) {
+            $basement = BasementQuotation::query()->find($this->source_id);
+
+            return $basement?->includesMaterialCharge() ?? false;
         }
 
         return (bool) $this->material;

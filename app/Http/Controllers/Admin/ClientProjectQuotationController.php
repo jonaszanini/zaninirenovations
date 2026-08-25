@@ -15,6 +15,7 @@ use App\Models\PaintingQuotation;
 use App\Models\PavingQuotation;
 use App\Models\StairsQuotation;
 use App\Models\StandardQuotation;
+use App\Models\BasementQuotation;
 use App\Models\TileQuotation;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
@@ -110,6 +111,12 @@ class ClientProjectQuotationController extends Controller
             $tl = TileQuotation::find($quotation->source_id);
             if ($tl) {
                 return redirect()->route('admin.quotations.tile.edit', [$tl, 'return' => 'project']);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_BASEMENT && $quotation->source_id) {
+            $br = BasementQuotation::find($quotation->source_id);
+            if ($br) {
+                return redirect()->route('admin.quotations.basement.edit', [$br, 'return' => 'project']);
             }
         }
 
