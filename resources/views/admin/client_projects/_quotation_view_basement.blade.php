@@ -30,7 +30,7 @@
       <span class="cp-vd-field__value">{{ number_format((float) ($scope['ceiling_height_ft'] ?? $inp['ceiling_height_ft'] ?? 0), 2) }} ft</span>
     </div>
     <div class="cp-vd-field">
-      <span class="cp-vd-field__label">Rooms / zones</span>
+      <span class="cp-vd-field__label">Finished rooms / zones</span>
       <span class="cp-vd-field__value">{{ (int) ($scope['room_count'] ?? $inp['room_count'] ?? 0) }}</span>
     </div>
     <div class="cp-vd-field">

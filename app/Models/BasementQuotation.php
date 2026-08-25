@@ -121,7 +121,7 @@ class BasementQuotation extends Model
             $lines[] = 'Ceiling height: '.$height.' ft';
         }
         if ($rooms > 0) {
-            $lines[] = 'Rooms / zones: '.$rooms;
+            $lines[] = 'Finished rooms / zones: '.$rooms;
         }
         if (! empty($inputs['include_bathroom'])) {
             $type = ($inputs['bath_type'] ?? '') === 'half' ? 'Half bath' : 'Full bath';

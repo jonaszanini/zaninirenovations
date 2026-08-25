@@ -40,9 +40,11 @@
                title="Used to estimate wall square footage for insulation, drywall, and paint.">
       </div>
       <div class="admin-form-group">
-        <label for="br-rooms">Number of rooms / zones</label>
+        <label for="br-rooms">Finished rooms / zones (after reno)</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-rooms" name="room_count"
-               value="{{ $brVal('room_count', 1) }}">
+               value="{{ $brVal('room_count', 1) }}"
+               title="Count rooms as they will exist when the work is done, including new dividing walls. Not the current open basement.">
+        <p class="admin-form-help">Planned layout after the work — e.g. rec room + bedroom + bath = 3, even if it is open now. Enter new wall length on the Framing step.</p>
       </div>
       <div class="admin-form-group">
         <label for="br-owner-rate">Owner hourly rate (CAD$)</label>

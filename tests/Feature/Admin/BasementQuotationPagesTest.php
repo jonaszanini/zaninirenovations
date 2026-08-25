@@ -31,7 +31,11 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
             ->assertSee('Labor productivity')
-            ->assertSee('Default materials');
+            ->assertSee('Default materials')
+            ->assertSee('Line item')
+            ->assertSee('Materials DB')
+            ->assertSee('Unit price (CAD$)')
+            ->assertSee('Linked unit prices are locked', false);
     }
 
     public function test_preview_returns_live_totals(): void

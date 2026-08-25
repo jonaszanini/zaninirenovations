@@ -6175,12 +6175,89 @@ body.cp-modal-open {
 .br-extra-row .admin-form-group {
   margin: 0;
 }
-.br-config-mat {
+.br-config-divider {
+  margin: 1.5rem 0;
+  border: none;
+  border-top: 1px solid var(--admin-border);
+}
+.br-config-heading {
+  margin: 0 0 0.5rem;
+}
+.br-config-help {
+  margin: 0 0 1rem;
+}
+.br-config-table thead {
+  display: none;
+}
+.br-config-table {
+  min-width: 0;
+}
+.br-config-table,
+.br-config-table tbody,
+.br-config-table tr,
+.br-config-table td {
+  display: block;
+  width: 100%;
+}
+.br-config-table tr {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+.br-config-table tbody tr:last-child {
+  border-bottom: 0;
+}
+.br-config-table td {
+  padding: 0.35rem 0;
+  border: 0;
+  vertical-align: middle;
+}
+.br-config-table td:first-child {
+  padding-bottom: 0.55rem;
+}
+.br-config-table td[data-label]:not(:first-child) {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  padding: 12px 0;
-  border-bottom: 1px solid #eef2f7;
+  grid-template-columns: 7.75rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+.br-config-table td[data-label]:not(:first-child)::before {
+  content: attr(data-label);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+.br-config-line {
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+.br-config-table .admin-search-select,
+.br-config-table td .admin-input {
+  width: 100%;
+  min-width: 0;
+}
+.br-config-price-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.br-config-price-wrap .admin-input {
+  width: 100%;
+}
+.br-config-price-wrap .admin-input.is-locked,
+.br-config-price-wrap .admin-input[readonly] {
+  padding-right: 2.4rem;
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+  cursor: not-allowed;
+}
+.br-config-price-lock {
+  position: absolute;
+  right: 0.7rem;
+  color: var(--admin-muted);
+  pointer-events: none;
 }
 .br-layout--create .br-acc:not(.is-active) {
   display: none;
@@ -6200,9 +6277,53 @@ body.cp-modal-open {
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 88px 88px 110px auto auto;
     align-items: end;
   }
-  .br-config-mat {
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 90px 130px;
-    align-items: end;
+  .br-config-table {
+    display: table;
+    width: 100%;
+    min-width: 640px;
+    table-layout: auto;
+  }
+  .br-config-table thead {
+    display: table-header-group;
+  }
+  .br-config-table tbody {
+    display: table-row-group;
+  }
+  .br-config-table tr {
+    display: table-row;
+    padding: 0;
+    border: 0;
+  }
+  .br-config-table th,
+  .br-config-table td,
+  .br-config-table td[data-label]:not(:first-child) {
+    display: table-cell;
+    width: auto;
+    padding: 0.5rem 0.75rem 0.5rem 0;
+    border-bottom: 1px solid var(--admin-border);
+    vertical-align: middle;
+  }
+  .br-config-table td:first-child {
+    padding-bottom: 0.5rem;
+  }
+  .br-config-table td[data-label]::before {
+    content: none;
+  }
+  .br-config-table th:nth-child(1),
+  .br-config-table td:nth-child(1) {
+    width: 11.5rem;
+  }
+  .br-config-table th:nth-child(2),
+  .br-config-table td:nth-child(2) {
+    min-width: 14rem;
+  }
+  .br-config-table th:nth-child(4),
+  .br-config-table td:nth-child(4) {
+    width: 5.75rem;
+  }
+  .br-config-table th:nth-child(5),
+  .br-config-table td:nth-child(5) {
+    width: 8.75rem;
   }
 }
 

@@ -367,3 +367,65 @@
   }
   schedulePreview();
 })();
+
+/* Price configuration: fill + lock unit price when a Materials DB row is linked. */
+(function () {
+  var table = document.querySelector('.br-config-table');
+  if (!table) return;
+
+  function setLocked(priceEl, locked) {
+    if (!priceEl) return;
+    var wrap = priceEl.closest('.br-config-price-wrap');
+    var icon = wrap ? wrap.querySelector('.br-config-price-lock') : null;
+    if (locked) {
+      priceEl.readOnly = true;
+      priceEl.setAttribute('aria-readonly', 'true');
+      priceEl.classList.add('is-locked');
+      priceEl.title = 'Price comes from the Materials DB. Unlink to set a custom default.';
+      if (icon) icon.hidden = false;
+    } else {
+      priceEl.readOnly = false;
+      priceEl.removeAttribute('aria-readonly');
+      priceEl.classList.remove('is-locked');
+      priceEl.title = 'Default unit price when no catalog material is linked.';
+      if (icon) icon.hidden = true;
+    }
+  }
+
+  function applyPrice(priceEl, value) {
+    if (!priceEl) return;
+    priceEl.value = value == null || value === '' ? '' : String(value);
+    if (window.cpMoneyMask) window.cpMoneyMask.wire(priceEl);
+  }
+
+  document.addEventListener('admin-search-select:change', function (e) {
+    var row = e.target && e.target.closest ? e.target.closest('[data-br-config-row]') : null;
+    if (!row) return;
+    var opt = (e.detail && e.detail.option) || null;
+    var hasId = !!(e.detail && e.detail.id) || !!(opt && opt.id);
+    var nameEl = row.querySelector('[data-br-cfg-name]');
+    var priceEl = row.querySelector('[data-br-cfg-price]');
+
+    if (opt && hasId) {
+      if (nameEl && (opt.name || opt.label)) {
+        nameEl.value = opt.name || opt.label;
+      }
+      applyPrice(priceEl, opt.price);
+      setLocked(priceEl, true);
+      return;
+    }
+
+    if (nameEl) {
+      nameEl.value = nameEl.getAttribute('data-fallback-name') || '';
+    }
+    applyPrice(priceEl, priceEl ? priceEl.getAttribute('data-fallback-price') : '');
+    setLocked(priceEl, false);
+  });
+
+  table.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (!t || !t.matches || !t.matches('[data-br-cfg-price][readonly]')) return;
+    if (e.ctrlKey || e.metaKey || e.key === 'Tab') return;
+    e.preventDefault();
+  });
+})();
