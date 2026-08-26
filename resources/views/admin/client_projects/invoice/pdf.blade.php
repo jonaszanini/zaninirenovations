@@ -261,8 +261,17 @@
       padding-top: 10pt;
     }
 
-    .pay-instructions {
+    /* Table wrapper: DomPDF ignores page-break-inside on divs and will
+       split the blue box across pages. A one-cell table stays together. */
+    .pay-instructions-table {
+      width: 100%;
+      border-collapse: collapse;
       margin-top: 14pt;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .pay-instructions {
+      margin: 0;
       padding: 12pt 14pt;
       border: 1.5pt solid #024768;
       background: #f4fafe;
@@ -526,16 +535,20 @@
   </table>
   @endif
 
-  <div class="pay-instructions">
-    <p style="margin:0 0 6pt;">
-      <strong>Please pay via e-Transfer to:</strong>
-      <span class="email">zaninirenovations@gmail.com</span>
-    </p>
-    <p style="margin:0;font-size:10pt;color:#4b5563;">
-      Please include invoice number <strong>{{ $invoice->invoice_number }}</strong>
-      in the e-Transfer message so payment is matched to your project.
-    </p>
-  </div>
+  <table class="pay-instructions-table">
+    <tr>
+      <td class="pay-instructions">
+        <p style="margin:0 0 6pt;">
+          <strong>Please pay via e-Transfer to:</strong>
+          <span class="email">zaninirenovations@gmail.com</span>
+        </p>
+        <p style="margin:0;font-size:10pt;color:#4b5563;">
+          Please include invoice number <strong>{{ $invoice->invoice_number }}</strong>
+          in the e-Transfer message so payment is matched to your project.
+        </p>
+      </td>
+    </tr>
+  </table>
 
   <div class="closing">
     <p style="margin-top:14pt;">Thank you for your business — it's a pleasure working with you.</p>
