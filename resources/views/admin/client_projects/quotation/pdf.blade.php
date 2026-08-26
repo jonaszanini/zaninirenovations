@@ -257,12 +257,19 @@
       padding-right: 8pt;
     }
 
-    .quote-payment-schedule {
+    /* Table wrapper: DomPDF ignores page-break-inside on divs. */
+    .quote-payment-schedule-table {
+      width: 100%;
+      border-collapse: collapse;
       margin: 14pt 0 16pt;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .quote-payment-schedule {
+      margin: 0;
       padding: 10pt 12pt;
       background: #f8fafc;
       border-left: 3pt solid #024768;
-      page-break-inside: avoid;
     }
     .quote-payment-schedule-title {
       margin: 0 0 8pt;
@@ -282,6 +289,24 @@
     }
     .quote-payment-schedule li:last-child {
       margin-bottom: 0;
+    }
+
+    .quote-schedule-notice-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 16pt;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .quote-schedule-notice {
+      margin: 0;
+      padding: 10pt 12pt;
+      background: #e8f3f8;
+      border: 1.5pt solid #024768;
+      color: #0f172a;
+      font-size: 10.5pt;
+      font-weight: 700;
+      line-height: 1.45;
     }
 
     /* Items table */
@@ -610,14 +635,26 @@
   @php
     $paymentTerms = \App\Services\QuotationPaymentSchedule::terms($quotation->payment_installments ?? null, $quotation->payment_percentages ?? null);
   @endphp
-  <div class="quote-payment-schedule">
-    <p class="quote-payment-schedule-title">Payment Schedule &amp; Terms</p>
-    <ul>
-      @foreach ($paymentTerms as [$title, $detail])
-        <li><strong>{{ $title }}:</strong> {{ $detail }}</li>
-      @endforeach
-    </ul>
-  </div>
+  <table class="quote-payment-schedule-table">
+    <tr>
+      <td class="quote-payment-schedule">
+        <p class="quote-payment-schedule-title">Payment Schedule &amp; Terms</p>
+        <ul>
+          @foreach ($paymentTerms as [$title, $detail])
+            <li><strong>{{ $title }}:</strong> {{ $detail }}</li>
+          @endforeach
+        </ul>
+      </td>
+    </tr>
+  </table>
+
+  <table class="quote-schedule-notice-table">
+    <tr>
+      <td class="quote-schedule-notice">
+        Project start dates are approximate and subject to change due to adverse weather conditions, such as rain, or weather related delays on preceding projects. You will be notified promptly of any scheduling updates.
+      </td>
+    </tr>
+  </table>
 
   @if ($flooringMaterial && !empty($flooringMaterial['local_images']))
     <div class="pdf-photos-section" style="page-break-inside: avoid;">
@@ -696,7 +733,6 @@
   <div class="closing">
     <ul>
       <li>Prices are firm for 10 days.</li>
-      <li>Work schedule is based on weather permitting days (if outside work).</li>
       <li>Zanini Renovations carries a liability insurance.</li>
       <li>Warrantee on workmanship: 1 year.</li>
       <li>Warrantee on workmanship: damages caused by external forces (&ldquo;Act of God&rdquo;) such as weather are not covered under warrantee.</li>
