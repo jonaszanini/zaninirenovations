@@ -92,6 +92,9 @@
           <span class="cp-badge cp-badge--lg" style="background: {{ $project->statusColor() }}20; color: {{ $project->statusColor() }};">
             {{ $project->statusLabel() }}
           </span>
+          @if (filled($project->status_note))
+            <div class="cp-header-status-note" title="{{ $project->status_note }}">{{ \Illuminate\Support\Str::limit(trim((string) $project->status_note), 80) }}</div>
+          @endif
           <div class="cp-updated">Updated {{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</div>
         </div>
       </div>
@@ -440,16 +443,14 @@
     @endif
 
     @unless ($isClosed)
-      {{-- Status form: label + help icon on one line, then a row of
-           controls (select | save). The Save button remains in markup
-           for no-JS fallback and is hidden when auto-submit is active. --}}
+      {{-- Status form: label + help on one line, then status | quick note | save.
+           Status still auto-saves on change; Save note keeps a note on the current status. --}}
       <form action="{{ route('admin.client-projects.status.update', $project) }}" method="post" class="cp-status-form" id="cp-status-form" data-current-status="{{ $project->status }}">
         @csrf
-        <input type="hidden" name="note" id="cp-status-note" value="">
         <div class="cp-status-form-head">
           <label for="cp-status-select" class="cp-status-form-label">Change status</label>
           <span class="cp-hint" title="Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled is final; rejected projects can be reopened. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
-          <span class="cp-status-form-help">Pick a status to save it instantly.</span>
+          <span class="cp-status-form-help">Status saves on change. Optional note is for this status only.</span>
         </div>
         <div class="cp-status-controls">
           <select id="cp-status-select" name="status" class="admin-input cp-status-select">
@@ -457,11 +458,17 @@
               <option value="{{ $key }}" @selected($project->status === $key)>{{ $label }}</option>
             @endforeach
           </select>
-          {{-- The Save button stays for the no-JS fallback; the auto-submit
-               script below adds .cp-status-form--auto to the form which
-               hides it (see admin-client-projects.css). --}}
-          <button type="submit" class="admin-btn admin-btn--primary cp-status-save">
-            <i class="fa fa-save"></i> Save status
+          <input type="text"
+                 id="cp-status-note"
+                 name="note"
+                 class="admin-input cp-status-note"
+                 maxlength="2000"
+                 value="{{ old('note', $project->status_note) }}"
+                 placeholder="Quick note for this status…"
+                 aria-label="Quick note for this status"
+                 title="Saved with this status. Changing status starts a new note unless you type one as you change.">
+          <button type="submit" class="admin-btn admin-btn--primary cp-status-save" id="cp-status-save">
+            <i class="fa fa-save" aria-hidden="true"></i> Save note
           </button>
         </div>
       </form>
@@ -497,6 +504,7 @@
           form.classList.add('cp-status-form--auto');
 
           var submitting = false;
+          var originalNote = noteInput ? String(noteInput.value || '') : '';
 
           function submitStatus() {
             if (submitting) return;
@@ -536,9 +544,12 @@
               return;
             }
 
-            if (noteInput) {
+            // Unedited notes belong to the previous status. Start the new
+            // status blank unless the user typed a fresh note first.
+            if (noteInput && String(noteInput.value || '') === originalNote) {
               noteInput.value = '';
             }
+
             submitStatus();
           });
 

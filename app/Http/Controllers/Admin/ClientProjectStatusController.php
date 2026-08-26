@@ -35,7 +35,21 @@ class ClientProjectStatusController extends Controller
             ],
         ]);
 
-        $service->transition($client_project, $data['status'], $data['note'] ?? null);
+        $note = isset($data['note']) ? trim((string) $data['note']) : '';
+        $note = $note !== '' ? $note : null;
+
+        if ($data['status'] === $client_project->status) {
+            $unchanged = (filled($client_project->status_note) ? trim((string) $client_project->status_note) : null) === $note;
+            if ($unchanged) {
+                return back()->with('success', 'Status unchanged.');
+            }
+
+            $service->updateStatusNote($client_project, $note);
+
+            return back()->with('success', $note ? 'Status note saved.' : 'Status note cleared.');
+        }
+
+        $service->transition($client_project, $data['status'], $note, true);
 
         return back()->with('success', 'Status updated.');
     }
@@ -59,7 +73,7 @@ class ClientProjectStatusController extends Controller
             ? trim((string) $data['note'])
             : 'Project reopened from Rejected.';
 
-        $service->transition($client_project, $targetStatus, $note);
+        $service->transition($client_project, $targetStatus, $note, true);
 
         $label = ClientProject::statusLabels()[$targetStatus] ?? $targetStatus;
 

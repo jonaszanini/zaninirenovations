@@ -151,7 +151,7 @@
                   </div>
                 </td>
                 <td>
-                  <span class="cp-badge" style="background: {{ $statusColors[$project->status] ?? '#6b7280' }}20; color: {{ $statusColors[$project->status] ?? '#6b7280' }};">
+                  <span class="cp-badge" style="background: {{ $statusColors[$project->status] ?? '#6b7280' }}20; color: {{ $statusColors[$project->status] ?? '#6b7280' }};"@if (filled($project->status_note)) title="{{ $project->status_note }}"@endif>
                     {{ $statusLabels[$project->status] ?? $project->status }}
                   </span>
                 </td>

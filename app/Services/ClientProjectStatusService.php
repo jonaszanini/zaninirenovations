@@ -27,19 +27,25 @@ class ClientProjectStatusService
      * Apply a status transition. If `$toStatus === null` we just ensure the
      * project is bootstrapped (used right after creation).
      *
+     * @param  bool  $persistAsStatusNote  When true, the note is kept beside
+     *                                     the new status on the project card.
+     *                                     Automatic transitions pass false so
+     *                                     a leftover note does not follow.
      * @return ClientProject the refreshed project
      */
-    public function transition(ClientProject $project, ?string $toStatus, ?string $note = null): ClientProject
+    public function transition(ClientProject $project, ?string $toStatus, ?string $note = null, bool $persistAsStatusNote = false): ClientProject
     {
         $fromStatus = $project->status;
+        $normalizedNote = filled($note) ? trim((string) $note) : null;
 
-        return DB::transaction(function () use ($project, $fromStatus, $toStatus, $note) {
+        return DB::transaction(function () use ($project, $fromStatus, $toStatus, $normalizedNote, $persistAsStatusNote) {
             if ($toStatus !== null && $toStatus !== $fromStatus) {
                 $project->status = $toStatus;
                 $project->status_changed_at = now();
+                $project->status_note = $persistAsStatusNote ? $normalizedNote : null;
 
                 if ($toStatus === ClientProject::STATUS_CANCELLED) {
-                    $project->cancelled_reason = $note;
+                    $project->cancelled_reason = $normalizedNote;
                 } elseif ($fromStatus === ClientProject::STATUS_CANCELLED) {
                     $project->cancelled_reason = null;
                 }
@@ -60,7 +66,7 @@ class ClientProjectStatusService
 
                 $project->save();
 
-                $this->recordHistory($project, $fromStatus, $toStatus, $note);
+                $this->recordHistory($project, $fromStatus, $toStatus, $normalizedNote);
             }
 
             $this->runSideEffects($project, $fromStatus, $toStatus);
@@ -102,6 +108,35 @@ class ClientProjectStatusService
     public function recordEvent(ClientProject $project, string $note): void
     {
         $this->recordHistory($project, $project->status, $project->status, $note);
+    }
+
+    /**
+     * Save the quick note shown beside the current status without changing status.
+     */
+    public function updateStatusNote(ClientProject $project, ?string $note): ClientProject
+    {
+        $normalized = filled($note) ? trim((string) $note) : null;
+        $current = filled($project->status_note) ? trim((string) $project->status_note) : null;
+
+        if ($normalized === $current) {
+            return $project;
+        }
+
+        $project->status_note = $normalized;
+        $project->save();
+
+        $this->recordEvent(
+            $project,
+            $normalized !== null ? $normalized : 'Status note cleared.'
+        );
+
+        return $project->fresh([
+            'installments',
+            'expenses',
+            'returns',
+            'timeEntries',
+            'statusHistory',
+        ]) ?? $project;
     }
 
     /**

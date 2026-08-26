@@ -78,6 +78,7 @@ class ClientProject extends Model
         'notes',
         'status',
         'status_changed_at',
+        'status_note',
         'cancelled_reason',
         'start_date',
         'day_before_start_sent_for_date',
