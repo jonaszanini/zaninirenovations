@@ -1018,6 +1018,8 @@ textarea.is-invalid:focus {
 .cl-duplicate-warning {
   border: 1px solid #f2d693;
   background: #fff8e6;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
 }
 .cl-duplicate-warning__title {
   margin: 0 0 4px;
