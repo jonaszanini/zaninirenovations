@@ -37,6 +37,7 @@ class BasementDatabaseController extends Controller
             'materials.*.unit' => ['nullable', 'string', 'max:40'],
             'materials.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'materials.*.catalog_material_id' => ['nullable', 'integer', 'exists:materials,id'],
+            'tab' => ['nullable', 'in:rates,materials'],
         ]);
 
         $settings = BasementSettings::query()->find(1) ?? BasementSettings::current();
@@ -77,11 +78,22 @@ class BasementDatabaseController extends Controller
         ]);
         $settings->save();
 
+        $redirect = [
+            'tab' => $this->configTab($request),
+        ];
+        if ($request->filled('project')) {
+            $redirect['project'] = (int) $request->input('project');
+        }
+
         return redirect()
-            ->route(
-                'admin.quotations.basement.price-configuration',
-                $request->filled('project') ? ['project' => $request->query('project')] : []
-            )
+            ->route('admin.quotations.basement.price-configuration', $redirect)
             ->with('success', 'Basement renovation price database updated.');
+    }
+
+    private function configTab(Request $request): string
+    {
+        $tab = (string) $request->input('tab', $request->query('tab', 'rates'));
+
+        return in_array($tab, ['rates', 'materials'], true) ? $tab : 'rates';
     }
 }

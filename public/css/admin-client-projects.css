@@ -6196,6 +6196,9 @@ body.cp-modal-open {
 .br-config-help {
   margin: 0 0 1rem;
 }
+.br-config-tabs {
+  margin-top: 0;
+}
 .br-config-table thead {
   display: none;
 }
