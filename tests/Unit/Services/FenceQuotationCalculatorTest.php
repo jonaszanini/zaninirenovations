@@ -130,6 +130,32 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertGreaterThan(0, $nails['quantity']);
     }
 
+    public function test_linked_catalog_delivery_is_a_flat_line(): void
+    {
+        $catalogue = $this->basicCatalogue();
+        $concrete = $catalogue->get(FenceMaterial::KEY_CONCRETE);
+        $concrete->setRelation('material', new \App\Models\Material([
+            'name' => 'Quikrete 30kg',
+            'price_cad' => 7.00,
+            'delivery_cad' => 40.00,
+        ]));
+
+        $calculator = $this->calculatorWithCatalogue($catalogue);
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 16]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $delivery = collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_CONCRETE.'_delivery');
+        $this->assertNotNull($delivery);
+        $this->assertSame(1, $delivery['quantity']);
+        $this->assertSame('flat', $delivery['unit']);
+        $this->assertEqualsWithDelta(40.0, $delivery['subtotal'], 0.01);
+        $this->assertEqualsWithDelta(40.0, $delivery['unit_price'], 0.01);
+    }
+
     public function test_invalid_fence_height_defaults_to_six_feet(): void
     {
         $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());

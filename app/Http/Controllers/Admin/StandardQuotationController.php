@@ -450,6 +450,7 @@ class StandardQuotationController extends Controller
             'materials.*.apply_hst' => ['nullable'],
             'materials.*.hst_includes_unit' => ['nullable'],
             'materials.*.catalog_material_id' => ['nullable', 'integer', 'exists:materials,id'],
+            'materials.*.delivery_cad' => ['nullable', 'numeric', 'min:0'],
             'includes_material' => ['nullable'],
             'includes_labour' => ['nullable'],
             'labour_use_fixed' => ['nullable'],
@@ -544,6 +545,7 @@ class StandardQuotationController extends Controller
                 'apply_hst' => $m['apply_hst'],
                 'hst_includes_unit' => (bool) ($m['hst_includes_unit'] ?? false),
                 'catalog_material_id' => $catalogId > 0 ? $catalogId : null,
+                'delivery_cad' => round(max(0.0, (float) ($m['delivery_cad'] ?? 0)), 2),
             ];
         }, $computed['materials']);
 
@@ -757,7 +759,9 @@ class StandardQuotationController extends Controller
     {
         $taxable = 0.0;
         $exempt = 0.0;
-        $materials = is_array($sq->materials) ? $sq->materials : [];
+        $materials = StandardQuotationCalculator::withLiveCatalogDelivery(
+            is_array($sq->materials) ? $sq->materials : []
+        );
 
         foreach ($materials as $m) {
             $b = StandardQuotationCalculator::breakdownMaterialRow($m);

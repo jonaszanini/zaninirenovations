@@ -152,6 +152,42 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertCount(1, $calc['extra_materials']);
     }
 
+    public function test_extra_material_delivery_is_added_once(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'extra_materials' => [
+                [
+                    'name' => 'Debris bin',
+                    'quantity' => 2,
+                    'unit_price' => 400,
+                    'delivery_cad' => 80,
+                ],
+            ],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertEqualsWithDelta(880.0, $calc['summary']['materials_pre_hst'], 0.01);
+        $this->assertCount(2, $calc['extra_materials']);
+        $delivery = collect($calc['extra_materials'])->firstWhere('is_delivery', true);
+        $this->assertNotNull($delivery);
+        $this->assertSame(1.0, $delivery['qty']);
+        $this->assertEqualsWithDelta(80.0, $delivery['amount'], 0.01);
+    }
+
     private function settings(): BasementSettings
     {
         return new BasementSettings([

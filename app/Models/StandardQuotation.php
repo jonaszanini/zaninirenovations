@@ -213,12 +213,17 @@ class StandardQuotation extends Model
             $label = $parts !== [] ? implode(' — ', $parts) : 'Material';
             $qty = (float) ($material['quantity'] ?? 0);
             $unit = (float) ($material['unit_price'] ?? 0);
+            $delivery = round(max(0.0, (float) ($material['delivery_cad'] ?? 0)), 2);
             if ($qty > 0 && $unit >= 0) {
                 $label .= sprintf(
-                    ' (%s × $%s)',
+                    ' (%s × $%s',
                     self::formatPdfQty($qty),
                     number_format($unit, 2, '.', ',')
                 );
+                if ($delivery > 0) {
+                    $label .= sprintf(' + $%s delivery', number_format($delivery, 2, '.', ','));
+                }
+                $label .= ')';
             }
             $lines[] = [
                 'description' => $label,

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BasementQuotation;
 use App\Models\BasementSettings;
 use App\Models\Material;
+use App\Support\CatalogMaterialDelivery;
 
 class BasementQuotationCalculator
 {
@@ -188,6 +189,7 @@ class BasementQuotationCalculator
                 'unit' => 'each',
                 'unit_price' => 0,
                 'catalog_material_id' => null,
+                'delivery_cad' => 0,
             ];
             $override = is_array($inputs['materials_override'][$key] ?? null) ? $inputs['materials_override'][$key] : [];
             if (isset($override['qty']) && is_numeric($override['qty'])) {
@@ -209,6 +211,7 @@ class BasementQuotationCalculator
                 'amount' => $amount,
                 'catalog_material_id' => $def['catalog_material_id'],
                 'client_provided' => $clientProvided,
+                'delivery_cad' => $clientProvided ? 0.0 : round(max(0, (float) ($def['delivery_cad'] ?? 0)), 2),
             ];
         };
 
@@ -450,6 +453,17 @@ class BasementQuotationCalculator
         }
 
         $extraMaterials = [];
+        $extraCatalogIds = [];
+        foreach (is_array($inputs['extra_materials'] ?? null) ? $inputs['extra_materials'] : [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = (int) ($row['catalog_material_id'] ?? 0);
+            if ($id > 0) {
+                $extraCatalogIds[] = $id;
+            }
+        }
+        $extraDeliveries = CatalogMaterialDelivery::mapForIds($extraCatalogIds);
         foreach (is_array($inputs['extra_materials'] ?? null) ? $inputs['extra_materials'] : [] as $i => $row) {
             if (! is_array($row)) {
                 continue;
@@ -461,6 +475,15 @@ class BasementQuotationCalculator
                 continue;
             }
             $clientProvided = $providesAll || ! empty($row['client_provided']);
+            $catalogId = (int) ($row['catalog_material_id'] ?? 0) ?: null;
+            $delivery = 0.0;
+            if (! $clientProvided) {
+                if ($catalogId && array_key_exists($catalogId, $extraDeliveries)) {
+                    $delivery = $extraDeliveries[$catalogId];
+                } else {
+                    $delivery = round(max(0, (float) ($row['delivery_cad'] ?? 0)), 2);
+                }
+            }
             $amount = $clientProvided ? 0.0 : round($qty * $unitPrice, 2);
             $extraMaterials[] = [
                 'key' => 'extra_'.$i,
@@ -470,10 +493,14 @@ class BasementQuotationCalculator
                 'unit' => trim((string) ($row['unit'] ?? 'each')) ?: 'each',
                 'unit_price' => $unitPrice,
                 'amount' => $amount,
-                'catalog_material_id' => (int) ($row['catalog_material_id'] ?? 0) ?: null,
+                'catalog_material_id' => $catalogId,
                 'client_provided' => $clientProvided,
+                'delivery_cad' => $delivery,
             ];
         }
+
+        $materials = $this->appendDeliveryLines($materials);
+        $extraMaterials = $this->appendDeliveryLines($extraMaterials);
 
         $ownerRate = max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate));
         $helperRate = max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate));
@@ -626,10 +653,47 @@ class BasementQuotationCalculator
                 $rows[$key]['name'] = $mat->displayName();
                 $rows[$key]['unit_price'] = round((float) $mat->price_cad, 4);
                 $rows[$key]['catalog_material_id'] = $id;
+                $rows[$key]['delivery_cad'] = CatalogMaterialDelivery::cad($mat);
             }
         }
 
         return $rows;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function appendDeliveryLines(array $rows): array
+    {
+        $out = $rows;
+        foreach ($rows as $row) {
+            if (! empty($row['is_delivery']) || ! empty($row['client_provided'])) {
+                continue;
+            }
+            if ((float) ($row['qty'] ?? 0) <= 0) {
+                continue;
+            }
+            $delivery = round(max(0.0, (float) ($row['delivery_cad'] ?? 0)), 2);
+            if ($delivery <= 0) {
+                continue;
+            }
+            $out[] = [
+                'key' => $row['key'].'_delivery',
+                'section' => $row['section'],
+                'label' => $row['label'].' delivery',
+                'qty' => 1.0,
+                'unit' => 'flat',
+                'unit_price' => $delivery,
+                'amount' => $delivery,
+                'catalog_material_id' => $row['catalog_material_id'] ?? null,
+                'client_provided' => false,
+                'delivery_cad' => 0.0,
+                'is_delivery' => true,
+            ];
+        }
+
+        return $out;
     }
 
     /**

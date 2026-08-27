@@ -486,6 +486,7 @@ class BasementQuotationController extends Controller
                 'unit' => trim((string) ($row['unit'] ?? 'each')) ?: 'each',
                 'unit_price' => round(max(0, (float) ($row['unit_price'] ?? 0)), 4),
                 'catalog_material_id' => (int) ($row['catalog_material_id'] ?? 0) ?: null,
+                'delivery_cad' => round(max(0, (float) ($row['delivery_cad'] ?? 0)), 2),
                 'client_provided' => filter_var($row['client_provided'] ?? false, FILTER_VALIDATE_BOOLEAN),
             ];
         }

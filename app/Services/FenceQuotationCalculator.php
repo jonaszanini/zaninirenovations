@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\FenceFormulaSetting;
 use App\Models\FenceMaterial;
 use App\Models\FenceQuotation;
+use App\Support\CatalogMaterialDelivery;
 
 /**
  * FenceQuotationCalculator — the structural math engine behind the
@@ -60,6 +61,7 @@ class FenceQuotationCalculator
         $normalised = $this->normaliseInputs($inputs);
         $geometry = $this->computeGeometry($normalised);
         $materials = $this->computeMaterials($normalised, $geometry);
+        $materials = $this->withCatalogDeliveries($materials);
         $totals = $this->computeTotals($materials, $geometry, $normalised);
 
         return [
@@ -622,6 +624,22 @@ class FenceQuotationCalculator
         }
 
         return array_values($merged);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function withCatalogDeliveries(array $rows): array
+    {
+        return CatalogMaterialDelivery::appendNamedRows($rows, function (array $row): array {
+            /** @var FenceMaterial|null $mat */
+            $mat = $this->catalogue->get($row['key'] ?? '');
+            $delivery = $mat ? $mat->effectiveDeliveryCad() : 0.0;
+            $name = $mat ? $mat->effectiveName() : (string) ($row['name'] ?? '');
+
+            return [$delivery, $name];
+        });
     }
 
     private function postRowNotes(array $geom, FenceFormulaSetting $settings, int $postsBeforeWaste): string

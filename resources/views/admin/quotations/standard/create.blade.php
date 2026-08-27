@@ -26,7 +26,7 @@
       $matRows = is_array($quotation->materials) ? $quotation->materials : [];
   }
   if (!is_array($matRows) || count($matRows) === 0) {
-      $matRows = [['short_name' => '', 'description' => '', 'url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false, 'catalog_material_id' => null]];
+      $matRows = [['short_name' => '', 'description' => '', 'url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false, 'catalog_material_id' => null, 'delivery_cad' => 0]];
   }
 
   $labourMode = old('labour_mode', $isEdit ? $quotation->labour_mode : 'hours');
@@ -548,6 +548,7 @@
         'apply_hst' => true,
         'hst_includes_unit' => false,
         'catalog_material_id' => null,
+        'delivery_cad' => 0,
       ],
     ])
   </template>
@@ -694,10 +695,12 @@
       syncHstToggles(row);
       var unit = parseMoney(row.querySelector('.sq-mat-unit').value);
       var qty = parseQty(row.querySelector('.sq-mat-qty').value);
+      var deliveryEl = row.querySelector('.sq-mat-delivery');
+      var delivery = deliveryEl ? parseMoney(deliveryEl.value) : 0;
       var inclusive = row.querySelector('.sq-mat-hst-inclusive-cb') && row.querySelector('.sq-mat-hst-inclusive-cb').checked;
       var applyCb = row.querySelector('.sq-mat-hst-cb');
       var chargePreTax = applyCb && applyCb.checked;
-      var lineGross = Math.round(unit * qty * 100) / 100;
+      var lineGross = Math.round((unit * qty + delivery) * 100) / 100;
       var lineSub;
       var lineHst;
       var lineTot;
@@ -718,6 +721,16 @@
       row.querySelector('.sq-mat-sub').textContent = money(lineSub);
       row.querySelector('.sq-mat-hst').textContent = (inclusive || chargePreTax) ? money(lineHst) : '—';
       row.querySelector('.sq-mat-total').textContent = money(lineTot);
+
+      var note = row.querySelector('.sq-mat-delivery-note');
+      if (note) {
+        if (delivery > 0) {
+          note.hidden = false;
+          note.textContent = 'Includes ' + money(delivery) + ' delivery (once, not × qty).';
+        } else {
+          note.hidden = true;
+        }
+      }
 
       subSum += lineSub;
       hstSum += lineHst;
@@ -852,6 +865,8 @@
     if (catalogWrap) catalogWrap.hidden = !isCatalog;
     if (!isCatalog) {
       destroyCatalogPicker(row);
+      var deliveryEl = row.querySelector('.sq-mat-delivery');
+      if (deliveryEl) deliveryEl.value = '0.00';
     } else {
       initCatalogPicker(row);
     }
@@ -859,7 +874,9 @@
   }
 
   function applyCatalogToRow(row, item) {
+    var deliveryEl = row.querySelector('.sq-mat-delivery');
     if (!item) {
+      if (deliveryEl) deliveryEl.value = '0.00';
       syncMatDetailsVisibility(row);
       recalcMaterials();
       return;
@@ -873,6 +890,7 @@
       descEl.value = item.description || item.store_name || item.name || '';
     }
     if (unitEl) unitEl.value = item.price || '';
+    if (deliveryEl) deliveryEl.value = item.delivery || '0.00';
     if (urlEl) {
       urlEl.value = item.url || '';
       syncUrlOpenLink(urlEl);
@@ -899,6 +917,7 @@
       radio.dataset.sqSourceBound = '1';
       radio.addEventListener('change', function () {
         syncMatSourceUI(row);
+        recalcMaterials();
       });
     });
   }

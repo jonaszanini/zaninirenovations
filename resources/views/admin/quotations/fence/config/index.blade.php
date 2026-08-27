@@ -142,7 +142,7 @@
                     'ariaLabel' => 'Catalog material for '.$m->effectiveName(),
                     'optionsSource' => 'admin-ss-catalog-options',
                     'searchFields' => ['label', 'name', 'sku', 'model', 'vendor'],
-                    'metaKeys' => ['sku', 'price_label'],
+                    'metaKeys' => ['sku', 'price_label', 'delivery_label'],
                     'emptyMessage' => 'No matching materials',
                     'maxOptions' => 80,
                     'listParent' => 'body',

@@ -84,7 +84,8 @@
   <div class="admin-form-group">
     <label for="mat-sku">Store SKU / ASIN</label>
     <input @class(['admin-input', 'is-invalid' => $errors->has('store_sku')]) type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
-           placeholder="Home Depot SKU or Amazon ASIN">
+           placeholder="Optional — HD SKU or Amazon ASIN">
+    <p class="admin-form-help">Leave blank for other suppliers. Needed only to sync Home Depot or Amazon prices.</p>
     @error('store_sku') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -98,6 +99,14 @@
            value="{{ old('price_cad', $m?->price_cad !== null ? number_format((float) $m->price_cad, 2, '.', '') : '0.00') }}"
            inputmode="decimal" autocomplete="off" placeholder="0.00" data-cp-money-entry="direct">
     @error('price_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
+  </div>
+  <div class="admin-form-group">
+    <label for="mat-delivery">Delivery (CAD)</label>
+    <input @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('delivery_cad')]) type="text" id="mat-delivery" name="delivery_cad"
+           value="{{ old('delivery_cad', $m?->delivery_cad !== null ? number_format((float) $m->delivery_cad, 2, '.', '') : '0.00') }}"
+           inputmode="decimal" autocomplete="off" placeholder="0.00" data-cp-money-entry="direct">
+    <p class="admin-form-help">Added once on quotations that link this product.</p>
+    @error('delivery_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
     <label for="mat-unit">Unit</label>
@@ -147,7 +156,7 @@
     </div>
 
     <input @class(['admin-input', 'mat-form-url-row__control', 'is-invalid' => $errors->has('product_url')]) type="url" id="mat-product-url" name="product_url" value="{{ old('product_url', $m?->product_url) }}" maxlength="500"
-           placeholder="https://www.homedepot.ca/product/…"
+           placeholder="https://…"
            autocomplete="off" spellcheck="false">
     <input @class(['admin-input', 'mat-form-url-row__control', 'is-invalid' => $errors->has('image_url')]) type="url" id="mat-image-url" name="image_url" value="{{ $imageUrlFieldValue }}" maxlength="500"
            placeholder="https://images.homedepot.ca/productimages/…"
@@ -158,7 +167,7 @@
         <input type="checkbox" name="is_active" value="1" class="admin-checkbox__input"
                @checked(old('is_active', $m?->is_active ?? true))>
         <span class="admin-checkbox__mark" aria-hidden="true"></span>
-        <span class="admin-checkbox__text">Include in price sync</span>
+        <span class="admin-checkbox__text">Show in quotation pickers</span>
       </label>
     </div>
 
@@ -166,6 +175,7 @@
     @error('image_url') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
     @error('is_active') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
   </div>
+  <p class="admin-form-help">Any supplier URL is fine. Automatic price sync still only runs for Home Depot and Amazon items with a SKU/ASIN or store URL.</p>
 
   @if ($m && filled($m->last_scrape_error))
     <p class="mat-form-sync-error mat-scrape-meta__error" role="alert">{{ $m->last_scrape_error }}</p>

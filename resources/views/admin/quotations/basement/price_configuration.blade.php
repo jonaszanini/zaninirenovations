@@ -142,7 +142,7 @@
                     'optionsSource' => 'admin-ss-catalog-options',
                     'selectedOption' => $selected,
                     'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-                    'metaKeys' => ['sku', 'price_label'],
+                    'metaKeys' => ['sku', 'price_label', 'delivery_label'],
                     'emptyMessage' => 'No matching materials',
                     'maxOptions' => 80,
                     'listParent' => 'body',

@@ -154,7 +154,12 @@
               <td>{{ $material->categoryName() ?: '—' }}</td>
               <td>{{ $material->vendorName() ?: '—' }}</td>
               <td>{{ $material->store_sku ?: '—' }}</td>
-              <td class="mat-col-price">{{ $material->formattedPrice() }}</td>
+              <td class="mat-col-price">
+                {{ $material->formattedPrice() }}
+                @if ($material->deliveryCad() > 0)
+                  <br><small class="admin-form-help">Delivery {{ $material->formattedDelivery() }}</small>
+                @endif
+              </td>
               <td>
                 @if ($material->last_scraped_at)
                   <span class="mat-scrape-badge mat-scrape-badge--{{ $material->last_scrape_status ?? 'unknown' }}">

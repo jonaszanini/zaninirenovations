@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\CatalogMaterialDelivery;
+
 /**
  * Computes totals for a Standard standalone quotation from material rows
  * (unit price × qty, optional 13% HST per row, or tax-included unit pricing)
@@ -33,8 +35,9 @@ class StandardQuotationCalculator
         $desc = trim((string) ($row['description'] ?? ''));
         $unit = round((float) ($row['unit_price'] ?? 0), 2);
         $qty = (float) ($row['quantity'] ?? 0);
+        $delivery = round(max(0.0, (float) ($row['delivery_cad'] ?? 0)), 2);
 
-        if ($shortName === '' && $desc === '' && $unit == 0.0 && ($qty == 0.0 || $qty === 0.0)) {
+        if ($shortName === '' && $desc === '' && $unit == 0.0 && $delivery == 0.0 && ($qty == 0.0 || $qty === 0.0)) {
             return null;
         }
 
@@ -42,7 +45,7 @@ class StandardQuotationCalculator
         $chargePreTaxHst = !array_key_exists('apply_hst', $row)
             || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
 
-        $lineGross = round($unit * $qty, 2);
+        $lineGross = round(($unit * $qty) + $delivery, 2);
 
         if ($hstIncludes) {
             $lineSub = round($lineGross / (1 + self::HST_RATE), 2);
@@ -129,6 +132,8 @@ class StandardQuotationCalculator
         $hstSum = 0.0;
         $withHstSum = 0.0;
 
+        $materialRows = self::withLiveCatalogDelivery($materialRows);
+
         foreach ($materialRows as $row) {
             $b = self::breakdownMaterialRow($row);
             if ($b === null) {
@@ -140,6 +145,7 @@ class StandardQuotationCalculator
             $url = trim((string) ($row['url'] ?? ''));
             $unit = round((float) ($row['unit_price'] ?? 0), 2);
             $qty = (float) ($row['quantity'] ?? 0);
+            $delivery = round(max(0.0, (float) ($row['delivery_cad'] ?? 0)), 2);
 
             $subBefore += $b['line_subtotal'];
             $subTaxable += $b['taxable_pre'];
@@ -157,6 +163,7 @@ class StandardQuotationCalculator
                 'url' => $url,
                 'unit_price' => $unit,
                 'quantity' => $qty,
+                'delivery_cad' => $delivery,
                 'apply_hst' => $b['apply_hst'],
                 'hst_includes_unit' => $b['hst_includes_unit'],
                 'catalog_material_id' => $catalogId > 0 ? $catalogId : null,
@@ -260,5 +267,31 @@ class StandardQuotationCalculator
             'total_hst' => $totalHst,
             'grand_total' => $grand,
         ];
+    }
+
+    /**
+     * Overlay live catalog delivery onto linked rows (once per line, not × qty).
+     *
+     * @param  list<array<string, mixed>>  $materialRows
+     * @return list<array<string, mixed>>
+     */
+    public static function withLiveCatalogDelivery(array $materialRows): array
+    {
+        $ids = [];
+        foreach ($materialRows as $row) {
+            $id = (int) ($row['catalog_material_id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+        $map = CatalogMaterialDelivery::mapForIds($ids);
+        foreach ($materialRows as $i => $row) {
+            $id = (int) ($row['catalog_material_id'] ?? 0);
+            if ($id > 0 && array_key_exists($id, $map)) {
+                $materialRows[$i]['delivery_cad'] = $map[$id];
+            }
+        }
+
+        return $materialRows;
     }
 }

@@ -340,11 +340,17 @@
     var row = e.target && e.target.closest ? e.target.closest('[data-br-extra-row]') : null;
     if (!row) return;
     var opt = (e.detail && e.detail.option) || null;
-    if (!opt) return;
+    var deliveryEl = row.querySelector('[data-br-extra-delivery]');
+    if (!opt) {
+      if (deliveryEl) deliveryEl.value = '0.00';
+      schedulePreview();
+      return;
+    }
     var nameEl = row.querySelector('[data-br-extra-name]');
     var priceEl = row.querySelector('[data-br-extra-price]');
     if (nameEl) nameEl.value = opt.name || '';
     if (priceEl) priceEl.value = opt.price || '';
+    if (deliveryEl) deliveryEl.value = opt.delivery || '0.00';
     if (window.cpMoneyMask && priceEl) window.cpMoneyMask.wire(priceEl);
     schedulePreview();
   });

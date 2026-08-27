@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CatalogMaterialDelivery;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -153,6 +154,11 @@ class FenceMaterial extends Model
         }
 
         return round((float) $this->price_cad, 2);
+    }
+
+    public function effectiveDeliveryCad(): float
+    {
+        return CatalogMaterialDelivery::cad($this->material);
     }
 
     public function effectiveQuantityPerBox(): ?int

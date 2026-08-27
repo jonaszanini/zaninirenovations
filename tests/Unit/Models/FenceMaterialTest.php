@@ -49,4 +49,21 @@ class FenceMaterialTest extends TestCase
         $this->assertFalse($fenceMaterial->soldByBox());
         $this->assertSame(7.25, $fenceMaterial->unitPrice());
     }
+
+    public function test_effective_delivery_comes_from_linked_catalog_material(): void
+    {
+        $catalog = new Material([
+            'name' => 'Quikrete 30kg',
+            'price_cad' => 7.50,
+            'delivery_cad' => 45.00,
+        ]);
+        $fenceMaterial = new FenceMaterial([
+            'key' => FenceMaterial::KEY_CONCRETE,
+            'price_cad' => 7.50,
+        ]);
+        $fenceMaterial->setRelation('material', $catalog);
+
+        $this->assertEqualsWithDelta(45.0, $fenceMaterial->effectiveDeliveryCad(), 0.01);
+        $this->assertSame(0.0, (new FenceMaterial(['key' => FenceMaterial::KEY_RAIL]))->effectiveDeliveryCad());
+    }
 }

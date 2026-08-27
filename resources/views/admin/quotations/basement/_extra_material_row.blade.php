@@ -20,7 +20,7 @@
       'ariaLabel' => 'Search materials database',
       'optionsSource' => 'admin-ss-catalog-options',
       'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-      'metaKeys' => ['sku', 'price_label'],
+      'metaKeys' => ['sku', 'price_label', 'delivery_label'],
       'emptyMessage' => 'No matching materials',
       'maxOptions' => 80,
       'listParent' => 'body',
@@ -46,6 +46,8 @@
     <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-br-extra-price
            class="admin-input cp-money-input br-preview" name="extra_materials[{{ $i }}][unit_price]"
            placeholder="0.00" value="{{ $price }}">
+    <input type="hidden" name="extra_materials[{{ $i }}][delivery_cad]" data-br-extra-delivery
+           value="{{ isset($row['delivery_cad']) ? number_format((float) $row['delivery_cad'], 2, '.', '') : '0.00' }}">
   </div>
   <div class="br-extra-row__client">
     @include('admin.partials.checkbox', [

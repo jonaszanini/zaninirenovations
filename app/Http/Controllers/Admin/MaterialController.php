@@ -13,7 +13,6 @@ use App\Services\MaterialShortNameAiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MaterialController extends Controller
@@ -772,6 +771,7 @@ class MaterialController extends Controller
             'store_sku' => ['nullable', 'string', 'max:160'],
             'model' => ['nullable', 'string', 'max:160'],
             'price_cad' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'delivery_cad' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'product_url' => ['nullable', 'url', 'max:500'],
             'image_url' => ['nullable', 'url', 'max:500'],
             'unit' => ['nullable', 'string', 'max:40'],
@@ -781,6 +781,7 @@ class MaterialController extends Controller
         ]);
 
         $data['price_cad'] = (float) ($data['price_cad'] ?? 0);
+        $data['delivery_cad'] = (float) ($data['delivery_cad'] ?? 0);
         $data['is_active'] = $request->boolean('is_active');
         $data['sort_order'] = (int) ($data['sort_order'] ?? 0);
 
@@ -800,15 +801,6 @@ class MaterialController extends Controller
 
         if (! filled($data['quantity_per_package'] ?? null)) {
             $data['quantity_per_package'] = null;
-        }
-
-        if ($data['is_active']) {
-            $probe = Material::make($data);
-            if (! $probe->isSerpApiSyncable()) {
-                throw ValidationException::withMessages([
-                    'is_active' => [$probe->priceSyncEligibilityError() ?? 'Material is not eligible for price sync.'],
-                ]);
-            }
         }
 
         return $data;

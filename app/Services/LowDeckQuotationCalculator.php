@@ -7,6 +7,7 @@ use App\Models\LowDeckFormulaSetting;
 use App\Models\LowDeckMaterial;
 use App\Models\LowDeckQuotation;
 use App\Support\LowDeckLumberPacker;
+use App\Support\CatalogMaterialDelivery;
 
 /**
  * LowDeckQuotationCalculator — the structural math engine behind the Low
@@ -85,6 +86,7 @@ class LowDeckQuotationCalculator
             $packing,
             $materials
         );
+        $materials = $this->withCatalogDeliveries($materials);
         $totals = $this->computeTotals($materials, $geometry, $normalised, $materialWasteAmount);
 
         return [
@@ -1080,6 +1082,22 @@ class LowDeckQuotationCalculator
             'quantity_of_individual_units' => $adjustedUnits,
             'quantity_per_box' => $boxSize,
         ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function withCatalogDeliveries(array $rows): array
+    {
+        return CatalogMaterialDelivery::appendNamedRows($rows, function (array $row): array {
+            /** @var LowDeckMaterial|null $mat */
+            $mat = $this->catalogue->get($row['key'] ?? '');
+            $delivery = $mat ? $mat->effectiveDeliveryCad() : 0.0;
+            $name = $mat ? $mat->effectiveName() : (string) ($row['name'] ?? '');
+
+            return [$delivery, $name];
+        });
     }
 
     /** ================================================================

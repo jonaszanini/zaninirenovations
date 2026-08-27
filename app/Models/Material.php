@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\MaterialScraping\AmazonCaUrls;
 use App\Services\MaterialScraping\HomeDepotCaUrls;
+use App\Support\CatalogMaterialDelivery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,6 +30,7 @@ class Material extends Model
         'store_sku',
         'model',
         'price_cad',
+        'delivery_cad',
         'product_url',
         'image_url',
         'unit',
@@ -42,6 +44,7 @@ class Material extends Model
 
     protected $casts = [
         'price_cad' => 'decimal:2',
+        'delivery_cad' => 'decimal:2',
         'quantity_per_package' => 'integer',
         'is_active' => 'boolean',
         'last_scraped_at' => 'datetime',
@@ -102,6 +105,19 @@ class Material extends Model
     public function formattedPrice(): string
     {
         return ClientProject::formatMoney((float) $this->price_cad);
+    }
+
+    /**
+     * Flat delivery fee (CAD). Added once on quotations that link this product.
+     */
+    public function deliveryCad(): float
+    {
+        return CatalogMaterialDelivery::cad($this);
+    }
+
+    public function formattedDelivery(): string
+    {
+        return ClientProject::formatMoney($this->deliveryCad());
     }
 
     public function hasProductUrl(): bool

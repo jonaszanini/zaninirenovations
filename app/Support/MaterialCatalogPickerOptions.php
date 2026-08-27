@@ -25,12 +25,17 @@ final class MaterialCatalogPickerOptions
             }
 
             $priceLabel = ClientProject::formatMoney((float) $catalog->price_cad);
+            $delivery = $catalog->deliveryCad();
+            $deliveryLabel = $delivery > 0 ? 'Delivery '.$catalog->formattedDelivery() : '';
             $sku = trim((string) ($catalog->store_sku ?? ''));
             $label = $catalog->displayName();
             if ($sku !== '') {
                 $label .= ' · '.$sku;
             }
             $label .= ' · '.$priceLabel;
+            if ($delivery > 0) {
+                $label .= ' + '.$catalog->formattedDelivery().' delivery';
+            }
 
             $options[] = [
                 'id' => $catalog->id,
@@ -43,6 +48,8 @@ final class MaterialCatalogPickerOptions
                 'vendor' => trim((string) ($catalog->vendorName() ?? '')),
                 'price' => number_format((float) $catalog->price_cad, 2, '.', ''),
                 'price_label' => $priceLabel,
+                'delivery' => number_format($delivery, 2, '.', ''),
+                'delivery_label' => $deliveryLabel,
                 'url' => $catalog->storeProductUrl() ?? '',
                 'link_vendor' => $catalog->storeLinkVendor(),
                 'quantity_per_package' => $catalog->quantity_per_package,
@@ -62,7 +69,7 @@ final class MaterialCatalogPickerOptions
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'short_name', 'description', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor_id', 'quantity_per_package', 'sort_order']);
+            ->get(['id', 'name', 'short_name', 'description', 'store_sku', 'model', 'price_cad', 'delivery_cad', 'product_url', 'vendor_id', 'quantity_per_package', 'sort_order']);
 
         return self::fromMaterials($materials);
     }

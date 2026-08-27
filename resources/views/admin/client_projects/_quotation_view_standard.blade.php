@@ -55,7 +55,8 @@
             $matDesc  = trim((string) ($mat['description'] ?? ''));
             $qty      = (float) ($mat['quantity'] ?? 0);
             $unit     = (float) ($mat['unit_price'] ?? 0);
-            $lineTotal= (float) ($mat['line_subtotal'] ?? ($qty * $unit));
+            $delivery = round(max(0.0, (float) ($mat['delivery_cad'] ?? 0)), 2);
+            $lineTotal= (float) ($mat['line_subtotal'] ?? (($qty * $unit) + $delivery));
             $taxed    = (bool) ($mat['apply_hst'] ?? true);
           @endphp
           <tr>
@@ -63,6 +64,9 @@
               {{ $matName }}
               @if ($matDesc && $matDesc !== $matName)
                 <span style="color:#9ca3af;font-size:12px;display:block;">{{ $matDesc }}</span>
+              @endif
+              @if ($delivery > 0)
+                <span style="color:#9ca3af;font-size:12px;display:block;">Includes {{ \App\Models\ClientProject::formatMoney($delivery) }} delivery</span>
               @endif
               @if (!$taxed)
                 <span style="color:#b45309;font-size:11px;">No HST</span>

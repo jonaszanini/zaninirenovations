@@ -40,7 +40,7 @@
           'ariaLabel' => 'Search materials database',
           'optionsSource' => 'admin-ss-catalog-options',
           'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-          'metaKeys' => ['sku', 'price_label'],
+          'metaKeys' => ['sku', 'price_label', 'delivery_label'],
           'emptyMessage' => 'No matching materials',
           'wrapperClass' => 'sq-mat-catalog-select',
           'maxOptions' => 80,
@@ -68,6 +68,8 @@
           <input type="text" inputmode="decimal" autocomplete="off" name="materials[{{ $i }}][unit_price]"
                  class="admin-input cp-money-input sq-mat-unit" placeholder="0.00"
                  value="{{ isset($row['unit_price']) && $row['unit_price'] !== '' ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
+          <input type="hidden" name="materials[{{ $i }}][delivery_cad]" class="sq-mat-delivery"
+                 value="{{ isset($row['delivery_cad']) && $row['delivery_cad'] !== '' ? number_format((float) $row['delivery_cad'], 2, '.', '') : '0.00' }}">
         </div>
         <div class="sq-mat-field sq-mat-field--qty">
           <label>Qty</label>
@@ -77,6 +79,10 @@
                  value="{{ $row['quantity'] ?? '' }}">
         </div>
       </div>
+
+      <p class="admin-form-help sq-mat-delivery-note" @if ((float) ($row['delivery_cad'] ?? 0) <= 0) hidden @endif>
+        Includes {{ \App\Models\ClientProject::formatMoney((float) ($row['delivery_cad'] ?? 0)) }} delivery (once, not × qty).
+      </p>
 
       <div class="sq-mat-row sq-mat-row--url">
         <div class="sq-mat-field sq-mat-field--url">

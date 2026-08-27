@@ -29,4 +29,18 @@ class MaterialStoreProductUrlTest extends TestCase
         $this->assertSame(HomeDepotCaUrls::productUrl('1000790080'), $material->storeProductUrl());
         $this->assertSame('home_depot', $material->storeLinkVendor());
     }
+
+    public function test_third_party_product_is_not_price_syncable(): void
+    {
+        $material = new Material([
+            'name' => 'Debris bin / dumpster',
+            'is_active' => true,
+            'product_url' => 'https://binrentalsottawa.com/dumpster-rentals/',
+            'store_sku' => null,
+            'vendor_id' => null,
+        ]);
+
+        $this->assertFalse($material->isSerpApiSyncable());
+        $this->assertSame('https://binrentalsottawa.com/dumpster-rentals/', $material->storeProductUrl());
+    }
 }
