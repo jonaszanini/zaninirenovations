@@ -24,6 +24,11 @@
         <i class="fa fa-cubes"></i> Materials catalog
       </a>
     </div>
+    <div class="admin-toolbar-group admin-toolbar-actions">
+      <button type="submit" form="br-config-form" class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-save"></i> Save configuration
+      </button>
+    </div>
   </div>
 
   <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
@@ -189,7 +194,9 @@
     </section>
 
     <div class="admin-form-actions">
-      <button type="submit" class="admin-btn admin-btn--primary">Save configuration</button>
+      <button type="submit" class="admin-btn admin-btn--primary">
+        <i class="fa fa-save"></i> Save configuration
+      </button>
     </div>
   </form>
 @endsection

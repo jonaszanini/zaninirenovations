@@ -42,7 +42,9 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('cannot be linked separately', false)
             ->assertSee('17 L', false)
             ->assertSee('2x4x8', false)
-            ->assertSee('75 m', false);
+            ->assertSee('75 m', false)
+            ->assertSee('form="br-config-form"', false)
+            ->assertSee('Save configuration');
     }
 
     public function test_price_configuration_keeps_active_tab_after_save(): void
