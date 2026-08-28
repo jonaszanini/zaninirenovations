@@ -394,7 +394,7 @@ class BasementQuotationController extends Controller
             'include_tub', 'include_exhaust_fan', 'include_cleaning', 'include_touchups',
             'client_provides_all',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type'];
 
         $out = $defaults;
         foreach ($floats as $key) {
@@ -416,6 +416,9 @@ class BasementQuotationController extends Controller
         }
         foreach ($strings as $key) {
             $out[$key] = trim((string) $request->input($key, $defaults[$key]));
+        }
+        if (! in_array($out['lighting_type'], ['fixture', 'spot', 'both'], true)) {
+            $out['lighting_type'] = 'spot';
         }
 
         $sections = array_keys(BasementQuotationCalculator::SECTIONS);

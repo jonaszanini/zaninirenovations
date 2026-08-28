@@ -278,6 +278,102 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertStringContainsString('17 L', $mud['label']);
     }
 
+    public function test_spot_lights_use_pot_material_not_fixtures(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'lighting_type' => 'spot',
+            'light_qty' => 8,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $keys = collect($calc['materials'])->pluck('key')->all();
+        $this->assertContains('pot_light', $keys);
+        $this->assertNotContains('light_fixture', $keys);
+        $pots = collect($calc['materials'])->firstWhere('key', 'pot_light');
+        $this->assertSame(8.0, $pots['qty']);
+        $this->assertSame('electrical', $pots['section']);
+        $this->assertNotContains('fin_fixtures', collect($calc['labor'])->pluck('key')->all());
+        $this->assertContains('elec_lights', collect($calc['labor'])->pluck('key')->all());
+    }
+
+    public function test_light_fixtures_use_fixture_material_in_electrical(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'lighting_type' => 'fixture',
+            'light_qty' => 4,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $keys = collect($calc['materials'])->pluck('key')->all();
+        $this->assertContains('light_fixture', $keys);
+        $this->assertNotContains('pot_light', $keys);
+        $fixtures = collect($calc['materials'])->firstWhere('key', 'light_fixture');
+        $this->assertSame(4.0, $fixtures['qty']);
+        $this->assertSame('electrical', $fixtures['section']);
+        $labor = collect($calc['labor'])->pluck('key')->all();
+        $this->assertContains('elec_fixture_hang', $labor);
+        $this->assertNotContains('fin_fixtures', $labor);
+    }
+
+    public function test_both_lighting_types_add_spots_and_fixtures(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'lighting_type' => 'both',
+            'light_qty' => 10,
+            'fixture_qty' => 2,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $pots = collect($calc['materials'])->firstWhere('key', 'pot_light');
+        $fixtures = collect($calc['materials'])->firstWhere('key', 'light_fixture');
+        $this->assertSame(10.0, $pots['qty']);
+        $this->assertSame(2.0, $fixtures['qty']);
+        $this->assertSame('electrical', $pots['section']);
+        $this->assertSame('electrical', $fixtures['section']);
+    }
+
     public function test_extra_material_delivery_is_added_once(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

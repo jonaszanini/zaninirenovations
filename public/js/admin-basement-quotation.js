@@ -53,6 +53,26 @@
     target.hidden = !cb.checked;
   });
 
+  var lightingType = document.getElementById('br-lighting-type');
+  var lightingLabel = document.getElementById('br-lights-label');
+  var lightingFixtures = document.getElementById('br-lighting-fixture-qty');
+  function syncLightingType() {
+    var type = lightingType ? lightingType.value : 'spot';
+    if (lightingLabel) {
+      lightingLabel.textContent = type === 'fixture' ? 'How many light fixtures' : 'How many spot lights';
+    }
+    if (lightingFixtures) {
+      lightingFixtures.hidden = type !== 'both';
+    }
+  }
+  if (lightingType) {
+    lightingType.addEventListener('change', function () {
+      syncLightingType();
+      schedulePreview();
+    });
+    syncLightingType();
+  }
+
   var clientAll = document.getElementById('br-client-all');
   var provideBox = document.getElementById('br-provide-sections');
   function syncClientAll() {

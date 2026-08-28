@@ -149,9 +149,23 @@
                value="{{ $brVal('switch_qty', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-lights">Lighting points (pots / recessed)</label>
+        <label for="br-lighting-type">Ceiling lighting</label>
+        <select class="admin-input br-preview" id="br-lighting-type" name="lighting_type" data-br-lighting-type>
+          <option value="fixture" @selected($brVal('lighting_type', 'spot') === 'fixture')>Light fixtures</option>
+          <option value="spot" @selected($brVal('lighting_type', 'spot') === 'spot')>Spot lights (pots / recessed)</option>
+          <option value="both" @selected($brVal('lighting_type') === 'both')>Both</option>
+        </select>
+        <p class="admin-form-help">Electrical materials and hours follow this choice. Set unit prices under Price configuration.</p>
+      </div>
+      <div class="admin-form-group">
+        <label for="br-lights" id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'How many light fixtures' : 'How many spot lights' }}</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
                value="{{ $brVal('light_qty', 0) }}">
+      </div>
+      <div class="admin-form-group" id="br-lighting-fixture-qty" @if($brVal('lighting_type', 'spot') !== 'both') hidden @endif>
+        <label for="br-fixtures">How many light fixtures</label>
+        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-fixtures" name="fixture_qty"
+               value="{{ $brVal('fixture_qty', 0) }}">
       </div>
       <div class="admin-form-group">
         <label for="br-detectors">Smoke / CO detectors</label>
@@ -434,11 +448,6 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Final Details &amp; Cleanup</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
-      <div class="admin-form-group">
-        <label for="br-fixtures">Lighting fixtures to install</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-fixtures" name="fixture_qty"
-               value="{{ $brVal('fixture_qty', 0) }}" placeholder="Auto: lighting points">
-      </div>
       <div class="admin-form-group">
         <label for="br-hw">Extra hardware sets</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-hw" name="hardware_sets"

@@ -26,7 +26,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('1 of 13')
             ->assertSee('Project Overview')
-            ->assertSee('Final Details &amp; Cleanup', false);
+            ->assertSee('Ceiling lighting')
+            ->assertSee('Spot lights', false);
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()

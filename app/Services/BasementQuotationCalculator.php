@@ -46,6 +46,7 @@ class BasementQuotationCalculator
             'outlet_qty' => 0,
             'switch_qty' => 0,
             'light_qty' => 0,
+            'lighting_type' => 'spot',
             'panel_upgrade' => false,
             'detector_qty' => 2,
             'wiring_runs' => 0,
@@ -271,15 +272,20 @@ class BasementQuotationCalculator
         // --- Electrical ---
         $outlets = max(0, (int) $inputs['outlet_qty']);
         $switches = max(0, (int) $inputs['switch_qty']);
-        $lights = max(0, (int) $inputs['light_qty']);
+        [, $spots, $fixtures] = $this->lightingCounts($inputs);
+        $lightingPoints = $spots + $fixtures;
         $detectors = max(0, (int) $inputs['detector_qty']);
         $runs = max(0, (int) $inputs['wiring_runs']);
         if ($runs <= 0) {
-            $runs = $outlets + $switches + $lights;
+            $runs = $outlets + $switches + $lightingPoints;
         }
         $addLabor('elec_outlets', 'electrical', 'New outlets', $outlets.' location(s)', $outlets * (float) $prod['outlet_hours_each']);
         $addLabor('elec_switches', 'electrical', 'Switches', $switches.' location(s)', $switches * (float) $prod['switch_hours_each']);
-        $addLabor('elec_lights', 'electrical', 'Lighting points', $lights.' fixture(s)', $lights * (float) $prod['light_hours_each']);
+        $lightDetail = $this->lightingLaborDetail($spots, $fixtures);
+        $addLabor('elec_lights', 'electrical', 'Lighting wiring', $lightDetail, $lightingPoints * (float) $prod['light_hours_each']);
+        if ($fixtures > 0) {
+            $addLabor('elec_fixture_hang', 'electrical', 'Hang light fixtures', $fixtures.' fixture(s)', $fixtures * (float) $prod['fixture_hours_each']);
+        }
         $addLabor('elec_detectors', 'electrical', 'Smoke / CO detectors', $detectors.' unit(s)', $detectors * (float) $prod['detector_hours_each']);
         $addLabor('elec_runs', 'electrical', 'Wiring runs', $runs.' run(s)', $runs * (float) $prod['wiring_run_hours_each']);
         if (! empty($inputs['panel_upgrade'])) {
@@ -288,7 +294,8 @@ class BasementQuotationCalculator
         }
         $addMat('outlet_box', 'electrical', $outlets, 'outlet_box');
         $addMat('switch_device', 'electrical', $switches, 'switch_device');
-        $addMat('pot_light', 'electrical', $lights, 'pot_light');
+        $addMat('pot_light', 'electrical', $spots, 'pot_light');
+        $addMat('light_fixture', 'electrical', $fixtures, 'light_fixture');
         $addMat('smoke_co', 'electrical', $detectors, 'smoke_co');
         $addMat('nm_cable', 'electrical', $this->packages($runs * 25, BasementSettings::NMD90_FEET_PER_BOX), 'nm_cable');
 
@@ -449,13 +456,7 @@ class BasementQuotationCalculator
         }
 
         // --- Finishing ---
-        $fixtures = max(0, (int) $inputs['fixture_qty']);
-        if ($fixtures <= 0) {
-            $fixtures = $lights;
-        }
         $hw = max(0, (int) $inputs['hardware_sets']);
-        $addLabor('fin_fixtures', 'finishing', 'Lighting fixtures', $fixtures.' fixture(s)', $fixtures * (float) $prod['fixture_hours_each']);
-        $addMat('light_fixture', 'finishing', $fixtures, 'light_fixture');
         if ($hw > 0) {
             $addLabor('fin_hw', 'finishing', 'Hardware', $hw.' set(s)', (float) $prod['hardware_hours']);
         }
@@ -710,6 +711,43 @@ class BasementQuotationCalculator
         }
 
         return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @return array{0: string, 1: int, 2: int}  type, spot qty, fixture qty
+     */
+    private function lightingCounts(array $inputs): array
+    {
+        $type = strtolower(trim((string) ($inputs['lighting_type'] ?? 'spot')));
+        if (! in_array($type, ['fixture', 'spot', 'both'], true)) {
+            $type = 'spot';
+        }
+        $spots = max(0, (int) ($inputs['light_qty'] ?? 0));
+        $fixtures = max(0, (int) ($inputs['fixture_qty'] ?? 0));
+        if ($type === 'spot') {
+            $fixtures = 0;
+        } elseif ($type === 'fixture') {
+            if ($fixtures <= 0) {
+                $fixtures = $spots;
+            }
+            $spots = 0;
+        }
+
+        return [$type, $spots, $fixtures];
+    }
+
+    private function lightingLaborDetail(int $spots, int $fixtures): string
+    {
+        $bits = [];
+        if ($spots > 0) {
+            $bits[] = $spots.' spot light'.($spots === 1 ? '' : 's');
+        }
+        if ($fixtures > 0) {
+            $bits[] = $fixtures.' fixture'.($fixtures === 1 ? '' : 's');
+        }
+
+        return $bits !== [] ? implode(', ', $bits) : 'None';
     }
 
     /**
