@@ -321,6 +321,18 @@
   var extraTpl = document.getElementById('br-extra-template');
   var extraAdd = document.getElementById('br-extra-add');
 
+  function setExtraSource(row, linked) {
+    if (!row) return;
+    row.classList.toggle('is-linked', !!linked);
+    row.classList.toggle('is-manual', !linked);
+    var badge = row.querySelector('[data-br-extra-source]');
+    if (!badge) return;
+    badge.className = 'br-config-source ' + (linked ? 'br-config-source--linked' : 'br-config-source--manual');
+    badge.innerHTML = linked
+      ? '<i class="fa fa-link" aria-hidden="true"></i> Catalog'
+      : '<i class="fa fa-pencil" aria-hidden="true"></i> Manual';
+  }
+
   function extraIndex() {
     return extraList ? extraList.querySelectorAll('[data-br-extra-row]').length : 0;
   }
@@ -367,6 +379,7 @@
     var deliveryEl = row.querySelector('[data-br-extra-delivery]');
     if (!opt) {
       if (deliveryEl) deliveryEl.value = '0.00';
+      setExtraSource(row, false);
       schedulePreview();
       return;
     }
@@ -376,6 +389,7 @@
     if (priceEl) priceEl.value = opt.price || '';
     if (deliveryEl) deliveryEl.value = opt.delivery || '0.00';
     if (window.cpMoneyMask && priceEl) window.cpMoneyMask.wire(priceEl);
+    setExtraSource(row, true);
     schedulePreview();
   });
 
@@ -414,7 +428,7 @@
       priceEl.readOnly = true;
       priceEl.setAttribute('aria-readonly', 'true');
       priceEl.classList.add('is-locked');
-      priceEl.title = title || 'Price is the 2x4x8 stud unit price ÷ 8.';
+      priceEl.title = title || 'Price is the 2x4x8 stud unit price ÷ 8 and cannot be typed.';
       if (icon) icon.hidden = false;
     } else {
       priceEl.readOnly = false;
@@ -423,6 +437,27 @@
       priceEl.title = 'Base CAD$ in this line’s unit. Link a catalog item to fill a starting price, or type it.';
       if (icon) icon.hidden = true;
     }
+  }
+
+  function sourceHtml(kind) {
+    if (kind === 'linked') {
+      return '<i class="fa fa-link" aria-hidden="true"></i> Catalog';
+    }
+    if (kind === 'derived') {
+      return '<i class="fa fa-lock" aria-hidden="true"></i> From stud';
+    }
+    return '<i class="fa fa-pencil" aria-hidden="true"></i> Manual';
+  }
+
+  function setRowSource(row, kind) {
+    if (!row) return;
+    row.classList.toggle('is-linked', kind === 'linked');
+    row.classList.toggle('is-manual', kind === 'manual');
+    row.classList.toggle('is-derived', kind === 'derived');
+    var badge = row.querySelector('[data-br-cfg-source]');
+    if (!badge) return;
+    badge.className = 'br-config-source br-config-source--' + kind;
+    badge.innerHTML = sourceHtml(kind);
   }
 
   function applyPrice(priceEl, value) {
@@ -464,6 +499,7 @@
       }
       applyPrice(priceEl, opt.price);
       setLocked(priceEl, false);
+      setRowSource(row, 'linked');
       if (row.getAttribute('data-br-material-key') === STUD_KEY) {
         syncPlateFromStud();
       }
@@ -475,6 +511,7 @@
     }
     applyPrice(priceEl, priceEl ? priceEl.getAttribute('data-fallback-price') : '');
     setLocked(priceEl, false);
+    setRowSource(row, 'manual');
     if (row.getAttribute('data-br-material-key') === STUD_KEY) {
       syncPlateFromStud();
     }

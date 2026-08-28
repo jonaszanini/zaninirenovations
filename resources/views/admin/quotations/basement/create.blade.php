@@ -202,7 +202,7 @@
             </div>
 
             <h4 class="br-review-heading">Extra materials</h4>
-            <p class="admin-form-help">Add items from the Materials DB or type them manually.</p>
+            <p class="admin-form-help">Add items from the Materials DB or type them manually. Catalog rows are marked in blue; typed rows stay gray.</p>
             <div id="br-extra-list">
               @foreach ($extraRows as $ei => $erow)
                 @include('admin.quotations.basement._extra_material_row', ['i' => $ei, 'row' => is_array($erow) ? $erow : []])

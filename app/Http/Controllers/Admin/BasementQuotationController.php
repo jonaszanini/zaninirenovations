@@ -383,7 +383,7 @@ class BasementQuotationController extends Controller
             'room_count', 'demo_bin_qty', 'header_qty', 'framing_door_openings',
             'outlet_qty', 'switch_qty', 'light_qty', 'detector_qty', 'wiring_runs',
             'drywall_corners', 'drywall_openings', 'finish_level', 'transition_qty',
-            'door_qty', 'casing_openings', 'window_trim_qty', 'paint_coats',
+            'door_qty', 'casing_openings', 'window_trim_qty', 'paint_coats', 'paint_colors',
             'fixture_qty', 'hardware_sets',
         ];
         $bools = [
@@ -420,6 +420,7 @@ class BasementQuotationController extends Controller
         if (! in_array($out['lighting_type'], ['fixture', 'spot', 'both'], true)) {
             $out['lighting_type'] = 'spot';
         }
+        $out['paint_colors'] = ((int) $out['paint_colors'] === 2) ? 2 : 1;
 
         $sections = array_keys(BasementQuotationCalculator::SECTIONS);
         $provided = $request->input('client_provides_sections', []);

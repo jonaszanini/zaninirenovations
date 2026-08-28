@@ -27,7 +27,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('1 of 13')
             ->assertSee('Project Overview')
             ->assertSee('Ceiling lighting')
-            ->assertSee('Spot lights', false);
+            ->assertSee('Spot lights', false)
+            ->assertSee('Wall / ceiling colors');
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
@@ -44,6 +45,13 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('17 L', false)
             ->assertSee('2x4x8', false)
             ->assertSee('75 m', false)
+            ->assertSee('5 gal', false)
+            ->assertSee('Trim paint', false)
+            ->assertSee('Tape / cut-in two colors', false)
+            ->assertSee('br-config-source--manual', false)
+            ->assertSee('br-config-source--derived', false)
+            ->assertSee('From stud', false)
+            ->assertSee('br-config-legend', false)
             ->assertSee('form="br-config-form"', false)
             ->assertSee('Save configuration');
     }

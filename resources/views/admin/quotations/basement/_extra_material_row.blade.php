@@ -9,8 +9,15 @@
     : '';
   $catalogId = (int) ($row['catalog_material_id'] ?? 0);
 @endphp
-<div class="br-extra-row" data-br-extra-row>
+<div class="br-extra-row{{ $catalogId > 0 ? ' is-linked' : ' is-manual' }}" data-br-extra-row>
   <div class="br-extra-row__catalog">
+    <span class="br-config-source {{ $catalogId > 0 ? 'br-config-source--linked' : 'br-config-source--manual' }}" data-br-extra-source>
+      @if ($catalogId > 0)
+        <i class="fa fa-link" aria-hidden="true"></i> Catalog
+      @else
+        <i class="fa fa-pencil" aria-hidden="true"></i> Manual
+      @endif
+    </span>
     @include('admin.partials.search_select', [
       'id' => 'br-extra-cat-'.$i,
       'name' => 'extra_materials['.$i.'][catalog_material_id]',
@@ -18,6 +25,7 @@
       'hideLabel' => true,
       'placeholder' => 'Search Materials DB…',
       'ariaLabel' => 'Search materials database',
+      'wrapperClass' => $catalogId > 0 ? 'is-selected' : '',
       'optionsSource' => 'admin-ss-catalog-options',
       'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
       'metaKeys' => ['sku', 'price_label', 'delivery_label'],

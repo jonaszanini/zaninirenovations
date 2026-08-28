@@ -278,6 +278,140 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertStringContainsString('17 L', $mud['label']);
     }
 
+    public function test_paint_is_packed_into_can_sizes(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 350,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'paint_coats' => 1,
+            'paint_colors' => 1,
+            'baseboard_lf' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $keys = collect($calc['materials'])->pluck('key')->all();
+        $this->assertContains('paint_paint_1gal', $keys);
+        $this->assertContains('paint_paint_quart', $keys);
+        $this->assertContains('primer_primer_1gal', $keys);
+        $this->assertContains('primer_primer_quart', $keys);
+        $this->assertNotContains('paint_gallon', $keys);
+        $this->assertSame(1.0, collect($calc['materials'])->firstWhere('key', 'paint_paint_1gal')['qty']);
+        $this->assertSame(1.0, collect($calc['materials'])->firstWhere('key', 'paint_paint_quart')['qty']);
+        $this->assertNotContains('paint_two_color', collect($calc['labor'])->pluck('key')->all());
+
+        $pail = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 3500,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'paint_coats' => 1,
+            'paint_colors' => 1,
+            'baseboard_lf' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertSame(2.0, collect($pail['materials'])->firstWhere('key', 'paint_paint_5gal')['qty']);
+        $this->assertSame(1.0, collect($pail['materials'])->firstWhere('key', 'paint_paint_1gal')['qty']);
+    }
+
+    public function test_two_colors_packs_walls_and_ceiling_separately_and_adds_tape_labor(): void
+    {
+        $inputs = [
+            'area_sqft' => 400,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 400,
+            'paint_wall_sf' => 400,
+            'paint_ceiling_sf' => 400,
+            'paint_trim_lf' => 0,
+            'paint_coats' => 1,
+            'baseboard_lf' => 0,
+            'owner_hourly_rate' => 80,
+        ];
+
+        $one = (new BasementQuotationCalculator)->calculate($inputs + ['paint_colors' => 1], $this->settings());
+        $two = (new BasementQuotationCalculator)->calculate($inputs + ['paint_colors' => 2], $this->settings());
+
+        $twoKeys = collect($two['materials'])->pluck('key')->all();
+        $this->assertContains('paint_walls_paint_1gal', $twoKeys);
+        $this->assertContains('paint_ceil_paint_1gal', $twoKeys);
+        $this->assertNotContains('paint_paint_1gal', $twoKeys);
+        $this->assertStringContainsString('walls', (string) collect($two['materials'])->firstWhere('key', 'paint_walls_paint_1gal')['label']);
+        $this->assertStringContainsString('ceiling', (string) collect($two['materials'])->firstWhere('key', 'paint_ceil_paint_1gal')['label']);
+        $this->assertContains('paint_two_color', collect($two['labor'])->pluck('key')->all());
+        $this->assertNotContains('paint_two_color', collect($one['labor'])->pluck('key')->all());
+
+        $finishOne = collect($one['labor'])->firstWhere('key', 'dw_finish');
+        $finishTwo = collect($two['labor'])->firstWhere('key', 'dw_finish');
+        $this->assertGreaterThan($finishOne['hours'], $finishTwo['hours']);
+        $this->assertStringContainsString('two-color', $finishTwo['detail']);
+
+        $paintOne = collect($one['labor'])->firstWhere('key', 'paint_walls');
+        $paintTwo = collect($two['labor'])->firstWhere('key', 'paint_walls');
+        $this->assertGreaterThan($paintOne['hours'], $paintTwo['hours']);
+    }
+
+    public function test_trim_paint_uses_half_gallon_and_quart_only(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 100,
+            'paint_coats' => 2,
+            'baseboard_lf' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $trim = collect($calc['materials'])->filter(fn ($row) => str_starts_with((string) $row['key'], 'trim_'));
+        $this->assertNotEmpty($trim);
+        foreach ($trim as $row) {
+            $this->assertTrue(
+                str_contains($row['key'], 'half') || str_contains($row['key'], 'quart'),
+                $row['key']
+            );
+            $this->assertFalse(str_contains($row['key'], '5gal'));
+            $this->assertFalse(str_contains($row['key'], 'paint_1gal'));
+        }
+        $this->assertSame(1.0, collect($trim)->firstWhere('key', 'trim_trim_paint_half')['qty']);
+        $this->assertSame(1.0, collect($trim)->firstWhere('key', 'trim_trim_paint_quart')['qty']);
+    }
+
     public function test_spot_lights_use_pot_material_not_fixtures(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

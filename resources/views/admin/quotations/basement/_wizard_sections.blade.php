@@ -396,6 +396,14 @@
                value="{{ $brQty('paint_trim_lf') }}" placeholder="Auto from base + casing">
       </div>
       <div class="admin-form-group">
+        <label for="br-colors">Wall / ceiling colors</label>
+        <select class="admin-input br-preview" id="br-colors" name="paint_colors">
+          <option value="1" @selected((int) $brVal('paint_colors', 1) === 1)>One color (walls and ceiling the same)</option>
+          <option value="2" @selected((int) $brVal('paint_colors', 1) === 2)>Two colors (walls and ceiling different)</option>
+        </select>
+        <p class="admin-form-help">Two colors packs paint separately and adds tape / cut-in labor plus extra drywall finish time.</p>
+      </div>
+      <div class="admin-form-group">
         <label for="br-coats">Number of coats</label>
         <input type="number" step="1" min="1" class="admin-input br-preview" id="br-coats" name="paint_coats"
                value="{{ $brVal('paint_coats', 2) }}">

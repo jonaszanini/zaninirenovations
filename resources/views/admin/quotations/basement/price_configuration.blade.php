@@ -104,6 +104,14 @@
         After linking you can still edit the price. On each quotation you can change it again if the client picks a cheaper or more expensive product.
         2x4 plate lumber is always the 2x4x8 stud price ÷ 8 (per linear foot) and cannot be linked separately.
       </p>
+      <p class="br-config-legend" aria-label="How to read material rows">
+        <span class="br-config-source br-config-source--linked"><i class="fa fa-link" aria-hidden="true"></i> Catalog</span>
+        linked from Materials DB
+        <span class="br-config-source br-config-source--manual"><i class="fa fa-pencil" aria-hidden="true"></i> Manual</span>
+        typed here
+        <span class="br-config-source br-config-source--derived"><i class="fa fa-lock" aria-hidden="true"></i> From stud</span>
+        plate lumber only — price is locked
+      </p>
 
       @php $materialDefaults = \App\Models\BasementSettings::defaultMaterials(); @endphp
       <div class="admin-table-scroll">
@@ -132,10 +140,26 @@
                     number_format((float) $row['unit_price'], 4, '.', '')
                 );
               @endphp
-              <tr class="br-config-row" data-br-config-row data-br-material-key="{{ $key }}"
+              <tr class="br-config-row{{ $derivedPlate ? ' is-derived' : ($catalogId > 0 ? ' is-linked' : ' is-manual') }}"
+                  data-br-config-row data-br-material-key="{{ $key }}"
                   @if ($derivedPlate) data-br-derived-from="{{ \App\Models\BasementSettings::MATERIAL_STUD_2X4 }}" @endif>
                 <td data-label="Line item">
-                  <strong class="br-config-line">{{ $lineLabel }}</strong>
+                  <div class="br-config-line-wrap">
+                    <strong class="br-config-line">{{ $lineLabel }}</strong>
+                    @if ($derivedPlate)
+                      <span class="br-config-source br-config-source--derived" data-br-cfg-source>
+                        <i class="fa fa-lock" aria-hidden="true"></i> From stud
+                      </span>
+                    @elseif ($catalogId > 0)
+                      <span class="br-config-source br-config-source--linked" data-br-cfg-source>
+                        <i class="fa fa-link" aria-hidden="true"></i> Catalog
+                      </span>
+                    @else
+                      <span class="br-config-source br-config-source--manual" data-br-cfg-source>
+                        <i class="fa fa-pencil" aria-hidden="true"></i> Manual
+                      </span>
+                    @endif
+                  </div>
                 </td>
                 <td data-label="Materials DB">
                   @if ($derivedPlate)
@@ -149,6 +173,7 @@
                       'hideLabel' => true,
                       'placeholder' => 'Search Materials DB…',
                       'ariaLabel' => 'Catalog material for '.$lineLabel,
+                      'wrapperClass' => $catalogId > 0 ? 'is-selected' : '',
                       'optionsSource' => 'admin-ss-catalog-options',
                       'selectedOption' => $selected,
                       'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
@@ -178,9 +203,11 @@
                            name="materials[{{ $key }}][unit_price]"
                            data-fallback-price="{{ $fallbackPrice }}"
                            value="{{ $displayPrice }}"
-                           title="{{ $derivedPlate ? 'Price is the 2x4x8 stud unit price ÷ 8.' : 'Base CAD$ in this line’s unit (per sq ft, each, sheet, pail, …). Link a catalog item to fill a starting price, or type it. Each quotation can still override this.' }}"
+                           title="{{ $derivedPlate ? 'Price is the 2x4x8 stud unit price ÷ 8 and cannot be typed.' : 'Base CAD$ in this line’s unit (per sq ft, each, sheet, pail, …). Link a catalog item to fill a starting price, or type it. Each quotation can still override this.' }}"
                            @if ($derivedPlate) readonly aria-readonly="true" @endif>
-                    <i class="fa fa-lock br-config-price-lock" aria-hidden="true" @unless($derivedPlate) hidden @endunless></i>
+                    @if ($derivedPlate)
+                      <i class="fa fa-lock br-config-price-lock" title="Locked — from 2x4x8 stud ÷ 8" aria-hidden="true"></i>
+                    @endif
                   </div>
                 </td>
               </tr>

@@ -82,6 +82,7 @@ class BasementQuotationCalculator
             'paint_ceiling_sf' => null,
             'paint_trim_lf' => null,
             'paint_coats' => 2,
+            'paint_colors' => 1,
             'include_bathroom' => false,
             'bath_type' => 'full',
             'include_vanity' => true,
@@ -140,6 +141,7 @@ class BasementQuotationCalculator
         }
         $perimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
         $suggestedWallSf = round($perimeter * $height, 2);
+        $paintColors = ((int) ($inputs['paint_colors'] ?? 1) === 2) ? 2 : 1;
 
         $labor = [];
         $materials = [];
@@ -179,7 +181,8 @@ class BasementQuotationCalculator
             string $key,
             string $section,
             float $qty,
-            ?string $catalogKey = null
+            ?string $catalogKey = null,
+            ?string $labelOverride = null
         ) use (&$materials, $inputs, $matCatalog, $chargeMats): void {
             $qty = round(max(0, $qty), 2);
             if ($qty <= 0) {
@@ -218,7 +221,7 @@ class BasementQuotationCalculator
             $materials[] = [
                 'key' => $key,
                 'section' => $section,
-                'label' => $def['name'],
+                'label' => ($labelOverride !== null && $labelOverride !== '') ? $labelOverride : $def['name'],
                 'qty' => $qty,
                 'unit' => $derivedPlate ? 'lf' : $def['unit'],
                 'unit_price' => $unitPrice,
@@ -349,8 +352,14 @@ class BasementQuotationCalculator
         $dwSf = $dwWall + $dwCeil;
         $level = max(1, min(4, (int) ($inputs['finish_level'] ?? 4)));
         $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
+        $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
+        $finishDetail = number_format($dwSf, 0).' sq ft';
+        if ($paintColors === 2) {
+            $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
+            $finishDetail .= ', two-color';
+        }
         $addLabor('dw_hang', 'drywall', 'Hang drywall', number_format($dwSf, 0).' sq ft', $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
-        $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', number_format($dwSf, 0).' sq ft', $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr'])));
+        $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
         $sheets = $dwSf > 0 ? max(1, (int) ceil($dwSf / BasementSettings::PANEL_SF * 1.1)) : 0;
         $addMat('drywall_sheet', 'drywall', $sheets, 'drywall_sheet');
         $addMat('joint_compound', 'drywall', $this->packages($dwSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
@@ -416,13 +425,54 @@ class BasementQuotationCalculator
         $pWall = $this->qtyOr($inputs['paint_wall_sf'], $dwWall ?: $suggestedWallSf);
         $pCeil = $this->qtyOr($inputs['paint_ceiling_sf'], in_array($ceilingType, ['drop', 'none'], true) ? 0 : ($dwCeil ?: $area));
         $pTrim = $this->qtyOr($inputs['paint_trim_lf'], $baseLf + ($casing * 17) + ($windows * 16));
-        $addLabor('paint_walls', 'painting', 'Paint walls ('.$coats.' coat'.($coats === 1 ? '' : 's').')', number_format($pWall, 0).' sq ft', $perHr($pWall * $coats, (float) $prod['paint_wall_sf_per_hr']));
-        $addLabor('paint_ceiling', 'painting', 'Paint ceiling', number_format($pCeil, 0).' sq ft', $perHr($pCeil * $coats, (float) $prod['paint_ceiling_sf_per_hr']));
+        $colorFactor = $paintColors === 2 ? BasementSettings::TWO_COLOR_PAINT_FACTOR : 1.0;
+        $addLabor(
+            'paint_walls',
+            'painting',
+            'Paint walls ('.$coats.' coat'.($coats === 1 ? '' : 's').($paintColors === 2 ? ', color 1' : '').')',
+            number_format($pWall, 0).' sq ft',
+            $perHr($pWall * $coats, (float) $prod['paint_wall_sf_per_hr']) * $colorFactor
+        );
+        $addLabor(
+            'paint_ceiling',
+            'painting',
+            'Paint ceiling'.($paintColors === 2 ? ' (color 2)' : ''),
+            number_format($pCeil, 0).' sq ft',
+            $perHr($pCeil * $coats, (float) $prod['paint_ceiling_sf_per_hr']) * $colorFactor
+        );
         $addLabor('paint_trim', 'painting', 'Paint trim', number_format($pTrim, 0).' lf', $perHr($pTrim, (float) $prod['paint_trim_lf_per_hr']));
-        $paintGallons = $pWall + $pCeil > 0 ? max(1, (int) ceil((($pWall + $pCeil) * $coats) / 350)) : 0;
-        $primerGallons = $pWall + $pCeil > 0 ? max(1, (int) ceil(($pWall + $pCeil) / 350)) : 0;
-        $addMat('primer_gallon', 'painting', $primerGallons, 'primer_gallon');
-        $addMat('paint_gallon', 'painting', $paintGallons, 'paint_gallon');
+        if ($paintColors === 2 && $perimeter > 0) {
+            $addLabor(
+                'paint_two_color',
+                'painting',
+                'Tape / cut-in (two colors)',
+                number_format($perimeter, 0).' lf color break',
+                $perHr($perimeter, (float) $prod['paint_two_color_lf_per_hr'])
+            );
+        }
+
+        $addPaintPack = function (string $prefix, float $sf, int $surfaceCoats, array $sizes, string $note = '') use ($addMat, $matCatalog): void {
+            $packed = $this->packQuarts($this->quartsFromGallons($this->paintGallonsNeeded($sf, $surfaceCoats)), $sizes);
+            foreach ($packed as $catalogKey => $qty) {
+                $name = (string) ($matCatalog[$catalogKey]['name'] ?? $catalogKey);
+                if ($note !== '') {
+                    $name .= ' — '.$note;
+                }
+                $addMat($prefix.'_'.$catalogKey, 'painting', (float) $qty, $catalogKey, $name);
+            }
+        };
+
+        $addPaintPack('primer', $pWall + $pCeil, 1, BasementSettings::primerCanSizes());
+        if ($paintColors === 2) {
+            $addPaintPack('paint_walls', $pWall, $coats, BasementSettings::paintCanSizes(), 'walls');
+            $addPaintPack('paint_ceil', $pCeil, $coats, BasementSettings::paintCanSizes(), 'ceiling');
+        } else {
+            $addPaintPack('paint', $pWall + $pCeil, $coats, BasementSettings::paintCanSizes());
+        }
+        $trimQuarts = $this->trimQuartsNeeded($pTrim, $coats);
+        foreach ($this->packQuarts($trimQuarts, BasementSettings::trimPaintCanSizes()) as $catalogKey => $qty) {
+            $addMat('trim_'.$catalogKey, 'painting', (float) $qty, $catalogKey);
+        }
 
         // --- Bathroom ---
         if (! empty($inputs['include_bathroom'])) {
@@ -708,6 +758,66 @@ class BasementQuotationCalculator
                 'delivery_cad' => 0.0,
                 'is_delivery' => true,
             ];
+        }
+
+        return $out;
+    }
+
+    private function paintGallonsNeeded(float $sf, int $coats): float
+    {
+        if ($sf <= 0 || $coats <= 0) {
+            return 0.0;
+        }
+
+        return ($sf * $coats / BasementSettings::PAINT_SF_PER_GALLON) * BasementSettings::PAINT_WASTE;
+    }
+
+    private function quartsFromGallons(float $gallons): int
+    {
+        if ($gallons <= 0) {
+            return 0;
+        }
+
+        return max(1, (int) ceil($gallons * 4));
+    }
+
+    private function trimQuartsNeeded(float $lf, int $coats): int
+    {
+        if ($lf <= 0 || $coats <= 0) {
+            return 0;
+        }
+
+        return max(1, (int) ceil(($lf * $coats / BasementSettings::TRIM_LF_PER_QUART) * BasementSettings::PAINT_WASTE));
+    }
+
+    /**
+     * @param  list<array{key: string, quarts: int}>  $sizes  Largest first
+     * @return array<string, int>
+     */
+    private function packQuarts(int $needed, array $sizes): array
+    {
+        if ($needed <= 0 || $sizes === []) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($sizes as $size) {
+            $quarts = (int) ($size['quarts'] ?? 0);
+            $key = (string) ($size['key'] ?? '');
+            if ($quarts <= 0 || $key === '' || $needed <= 0) {
+                continue;
+            }
+            $count = intdiv($needed, $quarts);
+            if ($count > 0) {
+                $out[$key] = $count;
+                $needed -= $count * $quarts;
+            }
+        }
+        if ($needed > 0) {
+            $smallest = (string) ($sizes[count($sizes) - 1]['key'] ?? '');
+            if ($smallest !== '') {
+                $out[$smallest] = ($out[$smallest] ?? 0) + 1;
+            }
         }
 
         return $out;

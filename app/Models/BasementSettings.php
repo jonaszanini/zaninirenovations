@@ -34,6 +34,17 @@ class BasementSettings extends Model
 
     public const DRYWALL_TAPE_SF_PER_ROLL = 250;
 
+    public const PAINT_SF_PER_GALLON = 350;
+
+    public const PAINT_WASTE = 1.1;
+
+    /** Linear feet of trim per quart (2 coats folded into takeoff separately). */
+    public const TRIM_LF_PER_QUART = 100;
+
+    public const TWO_COLOR_PAINT_FACTOR = 1.2;
+
+    public const TWO_COLOR_DRYWALL_FINISH_FACTOR = 1.15;
+
     protected $fillable = [
         'owner_hourly_rate',
         'helper_hourly_rate',
@@ -115,6 +126,7 @@ class BasementSettings extends Model
             'paint_wall_sf_per_hr' => 80,
             'paint_ceiling_sf_per_hr' => 70,
             'paint_trim_lf_per_hr' => 30,
+            'paint_two_color_lf_per_hr' => 20,
             'vanity_hours' => 4,
             'toilet_hours' => 2,
             'shower_hours' => 12,
@@ -182,12 +194,59 @@ class BasementSettings extends Model
             'baseboard' => $row('8 ft baseboard (each)', 'each', round(2.10 * self::BASEBOARD_FEET_PER_STICK, 4)),
             'casing' => $row('Door casing set (per opening)', 'opening', 32.00),
             'window_trim' => $row('Window trim kit (per window)', 'each', 45.00),
-            'paint_gallon' => $row('Interior paint, 3.78 L / 1 gal can (each)', 'gallon', 55.00),
-            'primer_gallon' => $row('Primer, 3.78 L / 1 gal can (each)', 'gallon', 45.00),
+            'paint_5gal' => $row('Interior paint, 5 gal / 18.9 L pail (each)', 'pail', 240.00),
+            'paint_1gal' => $row('Interior paint, 1 gal / 3.78 L can (each)', 'gallon', 55.00),
+            'paint_half' => $row('Interior paint, 1/2 gal / 1.89 L can (each)', 'can', 32.00),
+            'paint_quart' => $row('Interior paint, quart / 946 mL (each)', 'quart', 18.00),
+            'primer_5gal' => $row('Primer, 5 gal / 18.9 L pail (each)', 'pail', 195.00),
+            'primer_1gal' => $row('Primer, 1 gal / 3.78 L can (each)', 'gallon', 45.00),
+            'primer_half' => $row('Primer, 1/2 gal / 1.89 L can (each)', 'can', 26.00),
+            'primer_quart' => $row('Primer, quart / 946 mL (each)', 'quart', 14.00),
+            'trim_paint_half' => $row('Trim paint, 1/2 gal / 1.89 L can (each)', 'can', 38.00),
+            'trim_paint_quart' => $row('Trim paint, quart / 946 mL (each)', 'quart', 22.00),
             'drop_ceiling' => $row('Drop ceiling tile + grid (per sq ft)', 'sf', 3.50),
             'light_fixture' => $row('Light fixture (each)', 'each', 85.00),
             'door_hardware' => $row('Interior door handle set (each)', 'each', 35.00),
             'cleaning' => $row('Final cleaning supplies (lump sum)', 'ls', 75.00),
+        ];
+    }
+
+    /**
+     * Largest-first can sizes for wall / ceiling paint (quarts).
+     *
+     * @return list<array{key: string, quarts: int}>
+     */
+    public static function paintCanSizes(): array
+    {
+        return [
+            ['key' => 'paint_5gal', 'quarts' => 20],
+            ['key' => 'paint_1gal', 'quarts' => 4],
+            ['key' => 'paint_half', 'quarts' => 2],
+            ['key' => 'paint_quart', 'quarts' => 1],
+        ];
+    }
+
+    /**
+     * @return list<array{key: string, quarts: int}>
+     */
+    public static function primerCanSizes(): array
+    {
+        return [
+            ['key' => 'primer_5gal', 'quarts' => 20],
+            ['key' => 'primer_1gal', 'quarts' => 4],
+            ['key' => 'primer_half', 'quarts' => 2],
+            ['key' => 'primer_quart', 'quarts' => 1],
+        ];
+    }
+
+    /**
+     * @return list<array{key: string, quarts: int}>
+     */
+    public static function trimPaintCanSizes(): array
+    {
+        return [
+            ['key' => 'trim_paint_half', 'quarts' => 2],
+            ['key' => 'trim_paint_quart', 'quarts' => 1],
         ];
     }
 
@@ -329,6 +388,7 @@ class BasementSettings extends Model
                 'paint_wall_sf_per_hr' => 'Paint walls (sq ft / hour)',
                 'paint_ceiling_sf_per_hr' => 'Paint ceiling (sq ft / hour)',
                 'paint_trim_lf_per_hr' => 'Paint trim (linear ft / hour)',
+                'paint_two_color_lf_per_hr' => 'Tape / cut-in two colors (linear ft / hour)',
             ],
             'Bathroom & finishing' => [
                 'vanity_hours' => 'Vanity install (hours)',
