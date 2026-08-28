@@ -271,10 +271,14 @@
     tbody.innerHTML = rows.map(function (row) {
       var provided = row.client_provided ? ' <span class="admin-form-help"> · client provided</span>' : '';
       var price = Number(row.unit_price || 0).toFixed(4);
+      var derivedPlate = row.key === 'plate_2x4';
+      var priceLock = derivedPlate
+        ? ' readonly aria-readonly="true" title="Price is the 2x4x8 stud unit price ÷ 8."'
+        : '';
       return '<tr data-br-mat-key="' + escapeHtml(row.key) + '">'
         + '<td>' + escapeHtml(row.label) + provided + '</td>'
         + '<td><input type="number" step="0.01" min="0" class="admin-input br-preview" name="materials_override[' + escapeHtml(row.key) + '][qty]" value="' + Number(row.qty || 0) + '"></td>'
-        + '<td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4" class="admin-input cp-money-input br-preview" name="materials_override[' + escapeHtml(row.key) + '][unit_price]" value="' + price + '"></td>'
+        + '<td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4" class="admin-input cp-money-input br-preview' + (derivedPlate ? ' is-locked' : '') + '" name="materials_override[' + escapeHtml(row.key) + '][unit_price]" value="' + price + '"' + priceLock + '></td>'
         + '<td class="cp-col-amount" data-br-mat-amt>' + fmt(row.amount || 0) + '</td>'
         + '</tr>';
     }).join('');
@@ -379,7 +383,10 @@
   var table = document.querySelector('.br-config-table');
   if (!table) return;
 
-  function setLocked(priceEl, locked) {
+  var STUD_KEY = 'stud_2x4';
+  var PLATE_FEET = 8;
+
+  function setLocked(priceEl, locked, title) {
     if (!priceEl) return;
     var wrap = priceEl.closest('.br-config-price-wrap');
     var icon = wrap ? wrap.querySelector('.br-config-price-lock') : null;
@@ -387,7 +394,7 @@
       priceEl.readOnly = true;
       priceEl.setAttribute('aria-readonly', 'true');
       priceEl.classList.add('is-locked');
-      priceEl.title = 'Price comes from the Materials DB. Unlink to set a custom default.';
+      priceEl.title = title || 'Price comes from the Materials DB. Unlink to set a custom default.';
       if (icon) icon.hidden = false;
     } else {
       priceEl.readOnly = false;
@@ -404,9 +411,28 @@
     if (window.cpMoneyMask) window.cpMoneyMask.wire(priceEl);
   }
 
+  function parsePrice(el) {
+    if (!el) return 0;
+    var raw = String(el.value || '').replace(/[^0-9.]/g, '');
+    var n = parseFloat(raw);
+    return isFinite(n) ? n : 0;
+  }
+
+  function syncPlateFromStud() {
+    var studRow = table.querySelector('[data-br-material-key="' + STUD_KEY + '"]');
+    var plateRow = table.querySelector('[data-br-derived-from="' + STUD_KEY + '"]');
+    if (!studRow || !plateRow) return;
+    var studPriceEl = studRow.querySelector('[data-br-cfg-price]');
+    var platePriceEl = plateRow.querySelector('[data-br-cfg-price]');
+    var stud = parsePrice(studPriceEl);
+    var plate = stud > 0 ? (stud / PLATE_FEET).toFixed(4) : '0.0000';
+    applyPrice(platePriceEl, plate);
+    setLocked(platePriceEl, true, 'Price is the 2x4x8 stud unit price ÷ 8.');
+  }
+
   document.addEventListener('admin-search-select:change', function (e) {
     var row = e.target && e.target.closest ? e.target.closest('[data-br-config-row]') : null;
-    if (!row) return;
+    if (!row || row.getAttribute('data-br-derived-from')) return;
     var opt = (e.detail && e.detail.option) || null;
     var hasId = !!(e.detail && e.detail.id) || !!(opt && opt.id);
     var nameEl = row.querySelector('[data-br-cfg-name]');
@@ -418,6 +444,9 @@
       }
       applyPrice(priceEl, opt.price);
       setLocked(priceEl, true);
+      if (row.getAttribute('data-br-material-key') === STUD_KEY) {
+        syncPlateFromStud();
+      }
       return;
     }
 
@@ -426,6 +455,18 @@
     }
     applyPrice(priceEl, priceEl ? priceEl.getAttribute('data-fallback-price') : '');
     setLocked(priceEl, false);
+    if (row.getAttribute('data-br-material-key') === STUD_KEY) {
+      syncPlateFromStud();
+    }
+  });
+
+  table.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t || !t.matches || !t.matches('[data-br-cfg-price]')) return;
+    var row = t.closest('[data-br-config-row]');
+    if (row && row.getAttribute('data-br-material-key') === STUD_KEY) {
+      syncPlateFromStud();
+    }
   });
 
   table.addEventListener('keydown', function (e) {

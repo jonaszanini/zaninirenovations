@@ -6,6 +6,34 @@ use Illuminate\Database\Eloquent\Model;
 
 class BasementSettings extends Model
 {
+    public const MATERIAL_STUD_2X4 = 'stud_2x4';
+
+    public const MATERIAL_PLATE_2X4 = 'plate_2x4';
+
+    /** 2x4 plates are takeoff in lf; price comes from an 8-ft stud board. */
+    public const PLATE_FEET_PER_BOARD = 8;
+
+    public const BASEBOARD_FEET_PER_STICK = 8;
+
+    /** 75 m NMD90 box. */
+    public const NMD90_FEET_PER_BOX = 246;
+
+    /** 10 ft × 100 ft roll. */
+    public const VAPOR_SF_PER_ROLL = 1000;
+
+    /** 4x8 sheet. */
+    public const PANEL_SF = 32;
+
+    public const BATT_SF_PER_BAG = 40;
+
+    public const UNDERLAYMENT_SF_PER_ROLL = 100;
+
+    public const THINSET_SF_PER_BAG = 50;
+
+    public const JOINT_COMPOUND_SF_PER_PAIL = 200;
+
+    public const DRYWALL_TAPE_SF_PER_ROLL = 250;
+
     protected $fillable = [
         'owner_hourly_rate',
         'helper_hourly_rate',
@@ -117,49 +145,49 @@ class BasementSettings extends Model
         };
 
         return [
-            'dump_bin' => $row('Debris bin / dumpster', 'each', 650),
-            'stud_2x4' => $row('2x4 stud', 'each', 5.50),
-            'plate_2x4' => $row('2x4 plate lumber', 'lf', 1.85),
-            'drywall_sheet' => $row('1/2" drywall sheet 4x8', 'sheet', 18.00),
-            'joint_compound' => $row('Joint compound pail', 'pail', 18.00),
-            'drywall_tape' => $row('Drywall tape roll', 'roll', 8.00),
-            'corner_bead' => $row('Corner bead', 'each', 6.50),
-            'insulation_batt' => $row('R-14 batt insulation', 'sf', 1.20),
-            'vapor_barrier' => $row('6 mil vapor barrier', 'sf', 0.25),
-            'underslab_insulation' => $row('Under-slab rigid insulation', 'sf', 2.40),
-            'outlet_box' => $row('Electrical box + device', 'each', 8.50),
-            'switch_device' => $row('Switch + cover', 'each', 7.50),
-            'pot_light' => $row('Recessed / pot light', 'each', 28.00),
-            'smoke_co' => $row('Smoke / CO detector', 'each', 45.00),
-            'nm_cable' => $row('NMD90 cable', 'ft', 1.20),
-            'panel_upgrade' => $row('Panel upgrade allowance', 'each', 1800.00),
-            'bath_rough_in' => $row('Bathroom rough-in kit', 'each', 850.00),
-            'sink_kit' => $row('Sink / laundry hookup kit', 'each', 220.00),
-            'floor_drain' => $row('Floor drain assembly', 'each', 95.00),
-            'vanity' => $row('Vanity + faucet', 'each', 450.00),
-            'toilet' => $row('Toilet', 'each', 280.00),
-            'shower_kit' => $row('Shower kit', 'each', 900.00),
-            'tub_kit' => $row('Tub kit', 'each', 750.00),
-            'exhaust_fan' => $row('Bath exhaust fan', 'each', 180.00),
-            'tile' => $row('Ceramic / porcelain tile', 'sf', 4.50),
-            'thinset_grout' => $row('Thinset & grout', 'sf', 1.10),
-            'lvp' => $row('LVP flooring', 'sf', 3.50),
-            'laminate' => $row('Laminate flooring', 'sf', 2.75),
-            'carpet' => $row('Carpet + pad', 'sf', 3.25),
-            'epoxy' => $row('Epoxy floor coating', 'sf', 4.00),
-            'underlayment' => $row('Floor underlayment', 'sf', 0.45),
-            'subfloor_panel' => $row('Subfloor / sleepers', 'sf', 2.80),
-            'transition' => $row('Floor transition strip', 'each', 18.00),
-            'interior_door' => $row('Prehung interior door', 'each', 280.00),
-            'baseboard' => $row('Baseboard', 'lf', 2.10),
-            'casing' => $row('Door casing', 'opening', 32.00),
-            'window_trim' => $row('Window trim kit', 'each', 45.00),
-            'paint_gallon' => $row('Interior paint', 'gallon', 55.00),
-            'primer_gallon' => $row('Primer', 'gallon', 45.00),
-            'drop_ceiling' => $row('Drop ceiling grid + tile', 'sf', 3.50),
-            'light_fixture' => $row('Lighting fixture', 'each', 85.00),
-            'door_hardware' => $row('Door hardware set', 'each', 35.00),
-            'cleaning' => $row('Final cleaning supplies', 'ls', 75.00),
+            'dump_bin' => $row('Debris bin / dumpster (each)', 'each', 650),
+            'stud_2x4' => $row('2x4x8 SPF stud (each)', 'each', 5.50),
+            'plate_2x4' => $row('2x4 plate lumber (lf)', 'lf', round(5.50 / self::PLATE_FEET_PER_BOARD, 4)),
+            'drywall_sheet' => $row('1/2" drywall 4x8 sheet (each)', 'sheet', 18.00),
+            'joint_compound' => $row('17 L all-purpose joint compound (pail)', 'pail', 18.00),
+            'drywall_tape' => $row('Drywall paper tape, 250 ft roll (each)', 'roll', 8.00),
+            'corner_bead' => $row('8 ft corner bead (each)', 'each', 6.50),
+            'insulation_batt' => $row('R-14 batt insulation, 15 in (bag, ~40 sq ft)', 'bag', round(1.20 * self::BATT_SF_PER_BAG, 4)),
+            'vapor_barrier' => $row('6 mil vapor barrier, 10x100 ft roll (each)', 'roll', round(0.25 * self::VAPOR_SF_PER_ROLL, 4)),
+            'underslab_insulation' => $row('2 in XPS rigid insulation 4x8 (sheet)', 'sheet', round(2.40 * self::PANEL_SF, 4)),
+            'outlet_box' => $row('Electrical box + receptacle + cover (each)', 'each', 8.50),
+            'switch_device' => $row('Light switch + cover (each)', 'each', 7.50),
+            'pot_light' => $row('Recessed / pot light (each)', 'each', 28.00),
+            'smoke_co' => $row('Smoke / CO combination detector (each)', 'each', 45.00),
+            'nm_cable' => $row('NMD90 14/2 cable, 75 m box (each)', 'box', round(1.20 * self::NMD90_FEET_PER_BOX, 4)),
+            'panel_upgrade' => $row('Electrical panel upgrade (allowance)', 'each', 1800.00),
+            'bath_rough_in' => $row('Bathroom plumbing rough-in kit (allowance)', 'each', 850.00),
+            'sink_kit' => $row('Sink / laundry hookup kit (each)', 'each', 220.00),
+            'floor_drain' => $row('Floor drain assembly (each)', 'each', 95.00),
+            'vanity' => $row('Bathroom vanity + faucet (each)', 'each', 450.00),
+            'toilet' => $row('Toilet (each)', 'each', 280.00),
+            'shower_kit' => $row('Shower stall kit (each)', 'each', 900.00),
+            'tub_kit' => $row('Bathtub (each)', 'each', 750.00),
+            'exhaust_fan' => $row('Bathroom exhaust fan (each)', 'each', 180.00),
+            'tile' => $row('Ceramic / porcelain tile (per sq ft)', 'sf', 4.50),
+            'thinset_grout' => $row('Thinset & grout, 50 lb bag (each)', 'bag', round(1.10 * self::THINSET_SF_PER_BAG, 4)),
+            'lvp' => $row('LVP flooring (per sq ft)', 'sf', 3.50),
+            'laminate' => $row('Laminate flooring (per sq ft)', 'sf', 2.75),
+            'carpet' => $row('Carpet + pad (per sq ft)', 'sf', 3.25),
+            'epoxy' => $row('Epoxy floor coating (per sq ft)', 'sf', 4.00),
+            'underlayment' => $row('Floor underlayment, 100 sq ft roll (each)', 'roll', round(0.45 * self::UNDERLAYMENT_SF_PER_ROLL, 4)),
+            'subfloor_panel' => $row('Subfloor 4x8 panel (sheet)', 'sheet', round(2.80 * self::PANEL_SF, 4)),
+            'transition' => $row('Floor transition strip (each)', 'each', 18.00),
+            'interior_door' => $row('Prehung interior door (each)', 'each', 280.00),
+            'baseboard' => $row('8 ft baseboard (each)', 'each', round(2.10 * self::BASEBOARD_FEET_PER_STICK, 4)),
+            'casing' => $row('Door casing set (per opening)', 'opening', 32.00),
+            'window_trim' => $row('Window trim kit (per window)', 'each', 45.00),
+            'paint_gallon' => $row('Interior paint, 3.78 L / 1 gal can (each)', 'gallon', 55.00),
+            'primer_gallon' => $row('Primer, 3.78 L / 1 gal can (each)', 'gallon', 45.00),
+            'drop_ceiling' => $row('Drop ceiling tile + grid (per sq ft)', 'sf', 3.50),
+            'light_fixture' => $row('Light fixture (each)', 'each', 85.00),
+            'door_hardware' => $row('Interior door handle set (each)', 'each', 35.00),
+            'cleaning' => $row('Final cleaning supplies (lump sum)', 'ls', 75.00),
         ];
     }
 
@@ -190,23 +218,51 @@ class BasementSettings extends Model
             if (! isset($stored[$key]) || ! is_array($stored[$key])) {
                 continue;
             }
-            $name = trim((string) ($stored[$key]['name'] ?? ''));
-            if ($name !== '') {
-                $row['name'] = $name;
-            }
-            $unit = trim((string) ($stored[$key]['unit'] ?? ''));
-            if ($unit !== '') {
-                $row['unit'] = $unit;
-            }
-            if (isset($stored[$key]['unit_price']) && is_numeric($stored[$key]['unit_price'])) {
-                $row['unit_price'] = round((float) $stored[$key]['unit_price'], 4);
-            }
             $catalogId = (int) ($stored[$key]['catalog_material_id'] ?? 0);
             $row['catalog_material_id'] = $catalogId > 0 ? $catalogId : null;
+
+            $storedUnit = trim((string) ($stored[$key]['unit'] ?? ''));
+            $unitMatches = $storedUnit === '' || $storedUnit === $row['unit'];
+            if ($unitMatches && isset($stored[$key]['unit_price']) && is_numeric($stored[$key]['unit_price'])) {
+                $row['unit_price'] = round((float) $stored[$key]['unit_price'], 4);
+            }
+
+            if ($catalogId > 0) {
+                $name = trim((string) ($stored[$key]['name'] ?? ''));
+                if ($name !== '') {
+                    $row['name'] = $name;
+                }
+            }
+
             $defaults[$key] = $row;
         }
 
-        return $defaults;
+        return self::applyDerivedMaterialPrices($defaults);
+    }
+
+    /**
+     * Plate lumber is the same 8-ft 2x4 as studs, priced per linear foot.
+     *
+     * @param  array<string, array<string, mixed>>  $rows
+     * @return array<string, array<string, mixed>>
+     */
+    public static function applyDerivedMaterialPrices(array $rows): array
+    {
+        if (! isset($rows[self::MATERIAL_PLATE_2X4])) {
+            return $rows;
+        }
+
+        $studPrice = round(max(0, (float) ($rows[self::MATERIAL_STUD_2X4]['unit_price'] ?? 0)), 4);
+        $plate = $rows[self::MATERIAL_PLATE_2X4];
+        $plate['catalog_material_id'] = null;
+        $plate['unit'] = 'lf';
+        $plate['delivery_cad'] = 0;
+        $plate['unit_price'] = $studPrice > 0
+            ? round($studPrice / self::PLATE_FEET_PER_BOARD, 4)
+            : 0.0;
+        $rows[self::MATERIAL_PLATE_2X4] = $plate;
+
+        return $rows;
     }
 
     /**

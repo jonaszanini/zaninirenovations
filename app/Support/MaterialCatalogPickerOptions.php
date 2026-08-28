@@ -53,6 +53,7 @@ final class MaterialCatalogPickerOptions
                 'url' => $catalog->storeProductUrl() ?? '',
                 'link_vendor' => $catalog->storeLinkVendor(),
                 'quantity_per_package' => $catalog->quantity_per_package,
+                'image' => $catalog->previewImageUrl() ?? '',
             ];
         }
 
@@ -69,7 +70,7 @@ final class MaterialCatalogPickerOptions
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'short_name', 'description', 'store_sku', 'model', 'price_cad', 'delivery_cad', 'product_url', 'vendor_id', 'quantity_per_package', 'sort_order']);
+            ->get(['id', 'name', 'short_name', 'description', 'store_sku', 'model', 'price_cad', 'delivery_cad', 'product_url', 'image_url', 'vendor_id', 'quantity_per_package', 'sort_order']);
 
         return self::fromMaterials($materials);
     }

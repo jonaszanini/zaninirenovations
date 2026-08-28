@@ -193,7 +193,7 @@
       list.style.left = rect.left + 'px';
       list.style.right = 'auto';
       list.style.top = (rect.bottom + 4) + 'px';
-      list.style.width = Math.max(rect.width, 220) + 'px';
+      list.style.width = Math.max(rect.width, 280) + 'px';
       list.style.zIndex = '200';
     }
 
@@ -266,18 +266,37 @@
           li.classList.add('is-selected');
         }
 
+        var imageUrl = String(row.image || row.image_url || '').trim();
+        if (imageUrl) {
+          var img = document.createElement('img');
+          img.className = 'admin-search-select__option-thumb';
+          img.src = imageUrl;
+          img.alt = '';
+          img.loading = 'lazy';
+          img.decoding = 'async';
+          img.referrerPolicy = 'no-referrer';
+          img.addEventListener('error', function () {
+            if (img.parentNode) img.parentNode.removeChild(img);
+          });
+          li.appendChild(img);
+        }
+
+        var body = document.createElement('span');
+        body.className = 'admin-search-select__option-body';
+
         var nameEl = document.createElement('span');
         nameEl.className = 'admin-search-select__option-name';
         nameEl.textContent = row.name || row.label || 'Item';
-        li.appendChild(nameEl);
+        body.appendChild(nameEl);
 
         var meta = metaFrom(row, metaKeys);
         if (meta) {
           var metaEl = document.createElement('span');
           metaEl.className = 'admin-search-select__option-meta';
           metaEl.textContent = meta;
-          li.appendChild(metaEl);
+          body.appendChild(metaEl);
         }
+        li.appendChild(body);
         list.appendChild(li);
       });
 

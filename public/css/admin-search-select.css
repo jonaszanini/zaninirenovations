@@ -71,12 +71,31 @@
 
 .admin-search-select__option {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.admin-search-select__option-thumb {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  background: #fff;
+  padding: 2px;
+}
+
+.admin-search-select__option-body {
+  display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 2px;
-  min-height: 44px;
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
+  min-width: 0;
 }
 
 .admin-search-select__option:hover,

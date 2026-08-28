@@ -34,6 +34,30 @@ class CatalogMaterialDeliveryTest extends TestCase
         $this->assertStringContainsString('delivery', strtolower($options[0]['label']));
     }
 
+    public function test_picker_exposes_preview_image(): void
+    {
+        $withUrl = MaterialCatalogPickerOptions::fromMaterials([
+            new Material([
+                'id' => 3,
+                'name' => 'Drywall sheet',
+                'price_cad' => 18,
+                'image_url' => 'https://example.com/drywall.jpg',
+            ]),
+        ]);
+        $this->assertSame('https://example.com/drywall.jpg', $withUrl[0]['image']);
+
+        $fromSku = MaterialCatalogPickerOptions::fromMaterials([
+            new Material([
+                'id' => 4,
+                'name' => '2x4 stud',
+                'price_cad' => 5.5,
+                'store_sku' => '1000123456',
+            ]),
+        ]);
+        $this->assertStringContainsString('images.homedepot.ca', $fromSku[0]['image']);
+        $this->assertStringContainsString('1000123456', $fromSku[0]['image']);
+    }
+
     public function test_append_named_rows_adds_flat_delivery_line(): void
     {
         $rows = CatalogMaterialDelivery::appendNamedRows([

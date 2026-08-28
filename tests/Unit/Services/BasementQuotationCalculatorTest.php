@@ -152,6 +152,132 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertCount(1, $calc['extra_materials']);
     }
 
+    public function test_plate_lumber_price_is_stud_divided_by_eight(): void
+    {
+        $materials = BasementSettings::defaultMaterials();
+        $materials['stud_2x4']['unit_price'] = 8.00;
+        $materials['plate_2x4']['unit_price'] = 99.00;
+        $materials['plate_2x4']['catalog_material_id'] = 999;
+
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'partition_lf' => 40,
+            'owner_hourly_rate' => 80,
+            'materials_override' => [
+                'plate_2x4' => ['unit_price' => 50],
+            ],
+        ], $this->settings($materials));
+
+        $plate = collect($calc['materials'])->firstWhere('key', 'plate_2x4');
+        $this->assertNotNull($plate);
+        $this->assertSame(120.0, $plate['qty']);
+        $this->assertSame('lf', $plate['unit']);
+        $this->assertEqualsWithDelta(1.0, $plate['unit_price'], 0.0001);
+        $this->assertEqualsWithDelta(120.0, $plate['amount'], 0.01);
+        $this->assertNull($plate['catalog_material_id']);
+        $this->assertSame(0.0, $plate['delivery_cad']);
+    }
+
+    public function test_plate_lumber_follows_stud_unit_price_override(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'partition_lf' => 40,
+            'owner_hourly_rate' => 80,
+            'materials_override' => [
+                'stud_2x4' => ['unit_price' => 16],
+                'plate_2x4' => ['unit_price' => 99],
+            ],
+        ], $this->settings());
+
+        $plate = collect($calc['materials'])->firstWhere('key', 'plate_2x4');
+        $this->assertNotNull($plate);
+        $this->assertEqualsWithDelta(2.0, $plate['unit_price'], 0.0001);
+        $this->assertEqualsWithDelta(240.0, $plate['amount'], 0.01);
+    }
+
+    public function test_package_sold_materials_count_bags_boxes_and_sticks(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => true,
+            'insulation_wall_sf' => 400,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'outlet_qty' => 0,
+            'switch_qty' => 0,
+            'light_qty' => 0,
+            'wiring_runs' => 10,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 40,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $defaults = BasementSettings::defaultMaterials();
+        $this->assertStringContainsString('17 L', $defaults['joint_compound']['name']);
+        $this->assertStringContainsString('2x4x8', $defaults['stud_2x4']['name']);
+
+        $batt = collect($calc['materials'])->firstWhere('key', 'insulation_batt');
+        $this->assertNotNull($batt);
+        $this->assertSame('bag', $batt['unit']);
+        $this->assertSame(11.0, $batt['qty']);
+
+        $vapor = collect($calc['materials'])->firstWhere('key', 'vapor_barrier');
+        $this->assertNotNull($vapor);
+        $this->assertSame('roll', $vapor['unit']);
+        $this->assertSame(1.0, $vapor['qty']);
+
+        $cable = collect($calc['materials'])->firstWhere('key', 'nm_cable');
+        $this->assertNotNull($cable);
+        $this->assertSame('box', $cable['unit']);
+        $this->assertSame(2.0, $cable['qty']);
+
+        $base = collect($calc['materials'])->firstWhere('key', 'baseboard');
+        $this->assertNotNull($base);
+        $this->assertSame('each', $base['unit']);
+        $this->assertSame(6.0, $base['qty']);
+
+        $mud = collect($calc['materials'])->firstWhere('key', 'joint_compound');
+        $this->assertNotNull($mud);
+        $this->assertSame('pail', $mud['unit']);
+        $this->assertSame(2.0, $mud['qty']);
+        $this->assertStringContainsString('17 L', $mud['label']);
+    }
+
     public function test_extra_material_delivery_is_added_once(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([
@@ -188,14 +314,14 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(80.0, $delivery['amount'], 0.01);
     }
 
-    private function settings(): BasementSettings
+    private function settings(?array $materials = null): BasementSettings
     {
         return new BasementSettings([
             'owner_hourly_rate' => 85,
             'helper_hourly_rate' => 45,
             'hours_per_day' => 8,
             'productivity' => BasementSettings::defaultProductivity(),
-            'materials' => BasementSettings::defaultMaterials(),
+            'materials' => $materials ?? BasementSettings::defaultMaterials(),
         ]);
     }
 }

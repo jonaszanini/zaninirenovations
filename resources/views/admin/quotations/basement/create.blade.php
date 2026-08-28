@@ -178,6 +178,7 @@
                     @if (str_starts_with((string) ($row['key'] ?? ''), 'extra_'))
                       @continue
                     @endif
+                    @php $derivedPlate = ($row['key'] ?? '') === \App\Models\BasementSettings::MATERIAL_PLATE_2X4; @endphp
                     <tr data-br-mat-key="{{ $row['key'] }}">
                       <td>{{ $row['label'] }}@if (! empty($row['client_provided'])) <span class="admin-form-help"> · client provided</span>@endif</td>
                       <td>
@@ -186,9 +187,10 @@
                       </td>
                       <td>
                         <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-                               class="admin-input cp-money-input br-preview"
+                               class="admin-input cp-money-input br-preview{{ $derivedPlate ? ' is-locked' : '' }}"
                                name="materials_override[{{ $row['key'] }}][unit_price]"
-                               value="{{ number_format((float) ($row['unit_price'] ?? 0), 4, '.', '') }}">
+                               value="{{ number_format((float) ($row['unit_price'] ?? 0), 4, '.', '') }}"
+                               @if ($derivedPlate) readonly aria-readonly="true" title="Price is the 2x4x8 stud unit price ÷ 8." @endif>
                       </td>
                       <td class="cp-col-amount" data-br-mat-amt>{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>

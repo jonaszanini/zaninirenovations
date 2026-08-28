@@ -69,6 +69,8 @@ class BasementDatabaseController extends Controller
             $mats[$key]['catalog_material_id'] = $catalogId > 0 ? $catalogId : null;
         }
 
+        $mats = BasementSettings::applyDerivedMaterialPrices($mats);
+
         $settings->fill([
             'owner_hourly_rate' => round((float) $data['owner_hourly_rate'], 2),
             'helper_hourly_rate' => round((float) $data['helper_hourly_rate'], 2),

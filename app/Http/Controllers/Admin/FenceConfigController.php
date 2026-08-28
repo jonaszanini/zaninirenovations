@@ -32,7 +32,7 @@ class FenceConfigController extends Controller
             ->with('vendor')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'short_name', 'store_sku', 'model', 'price_cad', 'product_url', 'vendor_id', 'quantity_per_package']);
+            ->get(['id', 'name', 'short_name', 'store_sku', 'model', 'price_cad', 'product_url', 'image_url', 'vendor_id', 'quantity_per_package']);
 
         $linkedSyncCount = count($this->linkedSyncableMaterialIds($materials));
 

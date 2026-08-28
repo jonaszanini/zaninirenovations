@@ -6245,6 +6245,12 @@ body.cp-modal-open {
   font-size: 0.95rem;
   font-weight: 650;
 }
+.br-config-derived {
+  margin: 0;
+  min-height: var(--admin-control-height);
+  display: flex;
+  align-items: center;
+}
 .br-config-table .admin-search-select,
 .br-config-table td .admin-input {
   width: 100%;

@@ -37,7 +37,12 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Line item')
             ->assertSee('Materials DB')
             ->assertSee('Unit price (CAD$)')
-            ->assertSee('Linked unit prices are locked', false);
+            ->assertSee('Linked unit prices are locked', false)
+            ->assertSee('From 2x4 stud', false)
+            ->assertSee('cannot be linked separately', false)
+            ->assertSee('17 L', false)
+            ->assertSee('2x4x8', false)
+            ->assertSee('75 m', false);
     }
 
     public function test_price_configuration_keeps_active_tab_after_save(): void

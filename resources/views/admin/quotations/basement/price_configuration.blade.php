@@ -94,8 +94,10 @@
              data-panel="materials" id="br-config-materials" role="tabpanel" aria-labelledby="br-tab-materials">
       <h3 class="br-config-heading">Default materials</h3>
       <p class="admin-form-help br-config-help">
-        Link a Materials DB row to pull live name and price. Linked unit prices are locked to the catalog.
-        Clear the search field to type a custom default.
+        Line-item names include the size and how the product is sold (17 L pail, 4x8 sheet, 75 m box, 8 ft stick).
+        Link that exact Materials DB product — not a smaller pail, a bag priced as a bag on a per-sq-ft line, or a 2x4x10 on the 2x4x8 stud row.
+        Linked unit prices are locked to the catalog. Clear the search field to type a custom default.
+        2x4 plate lumber is always the 2x4x8 stud price ÷ 8 (per linear foot) and cannot be linked separately.
       </p>
 
       @php $materialDefaults = \App\Models\BasementSettings::defaultMaterials(); @endphp
@@ -118,7 +120,8 @@
                 $lineLabel = $materialDefaults[$key]['name'] ?? $row['name'];
                 $fallbackName = $materialDefaults[$key]['name'] ?? $row['name'];
                 $fallbackPrice = number_format((float) ($materialDefaults[$key]['unit_price'] ?? $row['unit_price']), 4, '.', '');
-                $linked = $catalogId > 0 && is_array($selected);
+                $derivedPlate = $key === \App\Models\BasementSettings::MATERIAL_PLATE_2X4;
+                $linked = ! $derivedPlate && $catalogId > 0 && is_array($selected);
                 $displayName = old('materials.'.$key.'.name', $linked ? ($selected['name'] ?? $row['name']) : $row['name']);
                 $displayPrice = old(
                     'materials.'.$key.'.unit_price',
@@ -127,26 +130,32 @@
                       : number_format((float) $row['unit_price'], 4, '.', '')
                 );
               @endphp
-              <tr class="br-config-row" data-br-config-row>
+              <tr class="br-config-row" data-br-config-row data-br-material-key="{{ $key }}"
+                  @if ($derivedPlate) data-br-derived-from="{{ \App\Models\BasementSettings::MATERIAL_STUD_2X4 }}" @endif>
                 <td data-label="Line item">
                   <strong class="br-config-line">{{ $lineLabel }}</strong>
                 </td>
                 <td data-label="Materials DB">
-                  @include('admin.partials.search_select', [
-                    'id' => 'br-mat-pick-'.$key,
-                    'name' => 'materials['.$key.'][catalog_material_id]',
-                    'value' => $catalogId > 0 ? $catalogId : '',
-                    'hideLabel' => true,
-                    'placeholder' => 'Search Materials DB…',
-                    'ariaLabel' => 'Catalog material for '.$lineLabel,
-                    'optionsSource' => 'admin-ss-catalog-options',
-                    'selectedOption' => $selected,
-                    'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-                    'metaKeys' => ['sku', 'price_label', 'delivery_label'],
-                    'emptyMessage' => 'No matching materials',
-                    'maxOptions' => 80,
-                    'listParent' => 'body',
-                  ])
+                  @if ($derivedPlate)
+                    <p class="admin-form-help br-config-derived">From 2x4x8 stud ÷ 8</p>
+                    <input type="hidden" name="materials[{{ $key }}][catalog_material_id]" value="">
+                  @else
+                    @include('admin.partials.search_select', [
+                      'id' => 'br-mat-pick-'.$key,
+                      'name' => 'materials['.$key.'][catalog_material_id]',
+                      'value' => $catalogId > 0 ? $catalogId : '',
+                      'hideLabel' => true,
+                      'placeholder' => 'Search Materials DB…',
+                      'ariaLabel' => 'Catalog material for '.$lineLabel,
+                      'optionsSource' => 'admin-ss-catalog-options',
+                      'selectedOption' => $selected,
+                      'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
+                      'metaKeys' => ['sku', 'price_label', 'delivery_label'],
+                      'emptyMessage' => 'No matching materials',
+                      'maxOptions' => 80,
+                      'listParent' => 'body',
+                    ])
+                  @endif
                 </td>
                 <td data-label="Display name">
                   <input type="text" class="admin-input" data-br-cfg-name id="br-mat-name-{{ $key }}"
@@ -156,19 +165,20 @@
                 </td>
                 <td data-label="Unit">
                   <input type="text" class="admin-input" name="materials[{{ $key }}][unit]" maxlength="40"
-                         value="{{ old('materials.'.$key.'.unit', $row['unit']) }}">
+                         value="{{ old('materials.'.$key.'.unit', $row['unit']) }}"
+                         @if ($derivedPlate) readonly aria-readonly="true" @endif>
                 </td>
                 <td data-label="Unit price (CAD$)">
                   <div class="br-config-price-wrap">
                     <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-                           class="admin-input cp-money-input{{ $linked ? ' is-locked' : '' }}"
+                           class="admin-input cp-money-input{{ ($linked || $derivedPlate) ? ' is-locked' : '' }}"
                            data-br-cfg-price id="br-mat-price-{{ $key }}"
                            name="materials[{{ $key }}][unit_price]"
                            data-fallback-price="{{ $fallbackPrice }}"
                            value="{{ $displayPrice }}"
-                           title="{{ $linked ? 'Price comes from the Materials DB. Unlink to set a custom default.' : 'Default unit price when no catalog material is linked.' }}"
-                           @if ($linked) readonly aria-readonly="true" @endif>
-                    <i class="fa fa-lock br-config-price-lock" aria-hidden="true" @unless($linked) hidden @endunless></i>
+                           title="{{ $derivedPlate ? 'Price is the 2x4x8 stud unit price ÷ 8.' : ($linked ? 'Price comes from the Materials DB. Unlink to set a custom default.' : 'Default unit price when no catalog material is linked.') }}"
+                           @if ($linked || $derivedPlate) readonly aria-readonly="true" @endif>
+                    <i class="fa fa-lock br-config-price-lock" aria-hidden="true" @unless($linked || $derivedPlate) hidden @endunless></i>
                   </div>
                 </td>
               </tr>
