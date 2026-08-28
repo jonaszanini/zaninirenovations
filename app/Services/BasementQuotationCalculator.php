@@ -668,8 +668,6 @@ class BasementQuotationCalculator
             if ($id > 0 && isset($catalog[$id])) {
                 /** @var Material $mat */
                 $mat = $catalog[$id];
-                $rows[$key]['name'] = $mat->displayName();
-                $rows[$key]['unit_price'] = round((float) $mat->price_cad, 4);
                 $rows[$key]['catalog_material_id'] = $id;
                 $rows[$key]['delivery_cad'] = CatalogMaterialDelivery::cad($mat);
             }

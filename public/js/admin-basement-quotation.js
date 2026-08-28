@@ -378,7 +378,7 @@
   schedulePreview();
 })();
 
-/* Price configuration: fill + lock unit price when a Materials DB row is linked. */
+/* Price configuration: catalog pick fills name + starting price; price stays editable. */
 (function () {
   var table = document.querySelector('.br-config-table');
   if (!table) return;
@@ -394,13 +394,13 @@
       priceEl.readOnly = true;
       priceEl.setAttribute('aria-readonly', 'true');
       priceEl.classList.add('is-locked');
-      priceEl.title = title || 'Price comes from the Materials DB. Unlink to set a custom default.';
+      priceEl.title = title || 'Price is the 2x4x8 stud unit price ÷ 8.';
       if (icon) icon.hidden = false;
     } else {
       priceEl.readOnly = false;
       priceEl.removeAttribute('aria-readonly');
       priceEl.classList.remove('is-locked');
-      priceEl.title = 'Default unit price when no catalog material is linked.';
+      priceEl.title = 'Base CAD$ in this line’s unit. Link a catalog item to fill a starting price, or type it.';
       if (icon) icon.hidden = true;
     }
   }
@@ -443,7 +443,7 @@
         nameEl.value = opt.name || opt.label;
       }
       applyPrice(priceEl, opt.price);
-      setLocked(priceEl, true);
+      setLocked(priceEl, false);
       if (row.getAttribute('data-br-material-key') === STUD_KEY) {
         syncPlateFromStud();
       }

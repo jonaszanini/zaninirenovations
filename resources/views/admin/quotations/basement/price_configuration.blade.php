@@ -99,9 +99,9 @@
              data-panel="materials" id="br-config-materials" role="tabpanel" aria-labelledby="br-tab-materials">
       <h3 class="br-config-heading">Default materials</h3>
       <p class="admin-form-help br-config-help">
-        Line-item names include the size and how the product is sold (17 L pail, 4x8 sheet, 75 m box, 8 ft stick).
-        Link that exact Materials DB product — not a smaller pail, a bag priced as a bag on a per-sq-ft line, or a 2x4x10 on the 2x4x8 stud row.
-        Linked unit prices are locked to the catalog. Clear the search field to type a custom default.
+        Each line is priced in the unit shown: tile, LVP, and similar finishes are <strong>per sq ft</strong>; toilets and fans are <strong>each</strong>; drywall is per <strong>sheet</strong>; compound is per <strong>17 L pail</strong>.
+        Link a Materials DB product to fill the name, a starting price, and delivery — or leave the search empty and type the CAD$ yourself.
+        After linking you can still edit the price. On each quotation you can change it again if the client picks a cheaper or more expensive product.
         2x4 plate lumber is always the 2x4x8 stud price ÷ 8 (per linear foot) and cannot be linked separately.
       </p>
 
@@ -126,13 +126,10 @@
                 $fallbackName = $materialDefaults[$key]['name'] ?? $row['name'];
                 $fallbackPrice = number_format((float) ($materialDefaults[$key]['unit_price'] ?? $row['unit_price']), 4, '.', '');
                 $derivedPlate = $key === \App\Models\BasementSettings::MATERIAL_PLATE_2X4;
-                $linked = ! $derivedPlate && $catalogId > 0 && is_array($selected);
-                $displayName = old('materials.'.$key.'.name', $linked ? ($selected['name'] ?? $row['name']) : $row['name']);
+                $displayName = old('materials.'.$key.'.name', $row['name']);
                 $displayPrice = old(
                     'materials.'.$key.'.unit_price',
-                    $linked && isset($selected['price'])
-                      ? number_format((float) $selected['price'], 4, '.', '')
-                      : number_format((float) $row['unit_price'], 4, '.', '')
+                    number_format((float) $row['unit_price'], 4, '.', '')
                 );
               @endphp
               <tr class="br-config-row" data-br-config-row data-br-material-key="{{ $key }}"
@@ -176,14 +173,14 @@
                 <td data-label="Unit price (CAD$)">
                   <div class="br-config-price-wrap">
                     <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-                           class="admin-input cp-money-input{{ ($linked || $derivedPlate) ? ' is-locked' : '' }}"
+                           class="admin-input cp-money-input{{ $derivedPlate ? ' is-locked' : '' }}"
                            data-br-cfg-price id="br-mat-price-{{ $key }}"
                            name="materials[{{ $key }}][unit_price]"
                            data-fallback-price="{{ $fallbackPrice }}"
                            value="{{ $displayPrice }}"
-                           title="{{ $derivedPlate ? 'Price is the 2x4x8 stud unit price ÷ 8.' : ($linked ? 'Price comes from the Materials DB. Unlink to set a custom default.' : 'Default unit price when no catalog material is linked.') }}"
-                           @if ($linked || $derivedPlate) readonly aria-readonly="true" @endif>
-                    <i class="fa fa-lock br-config-price-lock" aria-hidden="true" @unless($linked || $derivedPlate) hidden @endunless></i>
+                           title="{{ $derivedPlate ? 'Price is the 2x4x8 stud unit price ÷ 8.' : 'Base CAD$ in this line’s unit (per sq ft, each, sheet, pail, …). Link a catalog item to fill a starting price, or type it. Each quotation can still override this.' }}"
+                           @if ($derivedPlate) readonly aria-readonly="true" @endif>
+                    <i class="fa fa-lock br-config-price-lock" aria-hidden="true" @unless($derivedPlate) hidden @endunless></i>
                   </div>
                 </td>
               </tr>
