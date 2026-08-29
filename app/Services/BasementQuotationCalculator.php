@@ -25,6 +25,96 @@ class BasementQuotationCalculator
         'finishing' => 'Final Details & Cleanup',
     ];
 
+    public const SCOPE_PRESETS = [
+        'full' => 'Full basement',
+        'bathroom' => 'Bathroom only',
+        'wall' => 'New wall',
+        'custom' => 'Custom',
+    ];
+
+    /**
+     * Trade steps shown as include-checkboxes (Overview is always on).
+     *
+     * @return array<string, string>
+     */
+    public static function tradeSections(): array
+    {
+        $rows = self::SECTIONS;
+        unset($rows['overview']);
+
+        return $rows;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function presetEnabledSections(string $preset): array
+    {
+        $preset = self::normalizePreset($preset);
+
+        return match ($preset) {
+            'bathroom' => ['overview', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
+            'wall' => ['overview', 'framing', 'drywall', 'painting', 'finishing'],
+            'custom' => ['overview'],
+            default => array_keys(self::SECTIONS),
+        };
+    }
+
+    public static function normalizePreset(mixed $preset): string
+    {
+        $value = strtolower(trim((string) $preset));
+
+        return in_array($preset = $value, ['full', 'bathroom', 'wall', 'custom'], true) ? $preset : 'full';
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @return list<string>
+     */
+    public static function enabledSections(array $inputs): array
+    {
+        $preset = self::normalizePreset($inputs['scope_preset'] ?? null);
+        $raw = $inputs['enabled_sections'] ?? null;
+        $allowed = array_keys(self::SECTIONS);
+        if ($raw === null) {
+            $keys = self::presetEnabledSections($preset);
+        } else {
+            $keys = is_array($raw) ? array_values(array_intersect($allowed, array_map('strval', $raw))) : [];
+            if ($keys === [] && $preset !== 'custom') {
+                $keys = self::presetEnabledSections($preset);
+            }
+        }
+        if (! in_array('overview', $keys, true)) {
+            array_unshift($keys, 'overview');
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function sectionEnabled(array $inputs, string $section): bool
+    {
+        return in_array($section, self::enabledSections($inputs), true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function finishLabel(array $inputs): string
+    {
+        $preset = self::normalizePreset($inputs['scope_preset'] ?? null);
+        $bath = ! empty($inputs['include_bathroom']) && self::sectionEnabled($inputs, 'bathroom');
+
+        return match ($preset) {
+            'bathroom' => 'Bathroom only',
+            'wall' => 'New wall',
+            'custom' => 'Custom',
+            default => $bath ? 'Full finish with bathroom' : 'Full finish',
+        };
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -35,6 +125,8 @@ class BasementQuotationCalculator
             'ceiling_height_ft' => 8,
             'room_count' => 1,
             'existing_notes' => '',
+            'scope_preset' => 'full',
+            'enabled_sections' => null,
             'include_demolition' => false,
             'demo_flooring_sf' => null,
             'demo_drywall_sf' => 0,
@@ -116,8 +208,17 @@ class BasementQuotationCalculator
         }
 
         $hints = [];
-        if (max(0, (float) ($inputs['area_sqft'] ?? 0)) <= 0) {
-            $hints[] = 'Enter the total basement area in square feet.';
+        $preset = self::normalizePreset($inputs['scope_preset'] ?? null);
+        $area = max(0, (float) ($inputs['area_sqft'] ?? 0));
+        $partition = max(0, (float) ($inputs['partition_lf'] ?? 0));
+        if ($preset === 'wall') {
+            if ($partition <= 0 && $area <= 0) {
+                $hints[] = 'Enter the new wall length in linear feet (Framing), or an area for cleaning.';
+            }
+        } elseif ($area <= 0) {
+            $hints[] = $preset === 'bathroom'
+                ? 'Enter the bathroom / work area in square feet.'
+                : 'Enter the total basement area in square feet.';
         }
 
         return $hints;
@@ -133,15 +234,29 @@ class BasementQuotationCalculator
         $prod = $settings->resolvedProductivity();
         $matCatalog = $this->resolveMaterialCatalog($settings);
         $inputs = array_merge(self::defaultInputs(), $inputs);
+        $inputs['scope_preset'] = self::normalizePreset($inputs['scope_preset'] ?? null);
 
         $area = round(max(0, (float) $inputs['area_sqft']), 2);
         $height = round(max(0, (float) $inputs['ceiling_height_ft']), 2) ?: 8;
-        if ($area <= 0) {
+        $partitionLf = max(0, (float) $inputs['partition_lf']);
+        if ($area <= 0 && $partitionLf <= 0) {
             return $this->emptyCalculation($inputs, $settings, $height);
         }
         $perimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
         $suggestedWallSf = round($perimeter * $height, 2);
+        $wallBothSidesSf = round($partitionLf * $height * 2, 2);
+        $dwWallFallback = $inputs['scope_preset'] === 'wall' ? $wallBothSidesSf : $suggestedWallSf;
         $paintColors = ((int) ($inputs['paint_colors'] ?? 1) === 2) ? 2 : 1;
+        $on = function (string $section) use ($inputs): bool {
+            return self::sectionEnabled($inputs, $section);
+        };
+        $ceilingType = (string) ($inputs['ceiling_type'] ?? 'drywall');
+        $flType = (string) ($inputs['flooring_type'] ?? 'lvp');
+        $dwWall = 0.0;
+        $dwCeil = 0.0;
+        $baseLf = 0.0;
+        $casing = 0;
+        $windows = 0;
 
         $labor = [];
         $materials = [];
@@ -246,7 +361,7 @@ class BasementQuotationCalculator
         };
 
         // --- Demolition ---
-        if (! empty($inputs['include_demolition'])) {
+        if ($on('demolition') && ! empty($inputs['include_demolition'])) {
             $demoFloor = $this->qtyOr($inputs['demo_flooring_sf'], $area);
             $demoDrywall = $this->qtyOr($inputs['demo_drywall_sf'], 0);
             $bins = max(0, (int) $inputs['demo_bin_qty']);
@@ -257,22 +372,24 @@ class BasementQuotationCalculator
         }
 
         // --- Framing ---
-        $partitionLf = max(0, (float) $inputs['partition_lf']);
         $bulkheadLf = max(0, (float) $inputs['bulkhead_lf']);
         $headers = max(0, (int) $inputs['header_qty']);
         $frameDoors = max(0, (int) $inputs['framing_door_openings']);
-        $addLabor('framing_walls', 'framing', 'Partition wall framing', number_format($partitionLf, 0).' lf × '.$height.' ft', $perHr($partitionLf, (float) $prod['framing_lf_per_hr']));
-        $addLabor('framing_bulkheads', 'framing', 'Bulkheads / duct boxing', number_format($bulkheadLf, 0).' lf', $perHr($bulkheadLf, (float) $prod['bulkhead_lf_per_hr']));
-        $addLabor('framing_headers', 'framing', 'Headers / beams', $headers.' opening(s)', $headers * (float) $prod['header_hours_each']);
-        $addLabor('framing_doors', 'framing', 'Door openings', $frameDoors.' opening(s)', $frameDoors * (float) $prod['door_opening_hours_each']);
-        if ($partitionLf > 0) {
-            $studs = max(1, (int) ceil(($partitionLf * 12 / 16) + 2));
-            $plates = round($partitionLf * 3, 0);
-            $addMat('stud_2x4', 'framing', $studs, 'stud_2x4');
-            $addMat('plate_2x4', 'framing', $plates, 'plate_2x4');
+        if ($on('framing')) {
+            $addLabor('framing_walls', 'framing', 'Partition wall framing', number_format($partitionLf, 0).' lf × '.$height.' ft', $perHr($partitionLf, (float) $prod['framing_lf_per_hr']));
+            $addLabor('framing_bulkheads', 'framing', 'Bulkheads / duct boxing', number_format($bulkheadLf, 0).' lf', $perHr($bulkheadLf, (float) $prod['bulkhead_lf_per_hr']));
+            $addLabor('framing_headers', 'framing', 'Headers / beams', $headers.' opening(s)', $headers * (float) $prod['header_hours_each']);
+            $addLabor('framing_doors', 'framing', 'Door openings', $frameDoors.' opening(s)', $frameDoors * (float) $prod['door_opening_hours_each']);
+            if ($partitionLf > 0) {
+                $studs = max(1, (int) ceil(($partitionLf * 12 / 16) + 2));
+                $plates = round($partitionLf * 3, 0);
+                $addMat('stud_2x4', 'framing', $studs, 'stud_2x4');
+                $addMat('plate_2x4', 'framing', $plates, 'plate_2x4');
+            }
         }
 
         // --- Electrical ---
+        if ($on('electrical')) {
         $outlets = max(0, (int) $inputs['outlet_qty']);
         $switches = max(0, (int) $inputs['switch_qty']);
         [, $spots, $fixtures] = $this->lightingCounts($inputs);
@@ -301,9 +418,10 @@ class BasementQuotationCalculator
         $addMat('light_fixture', 'electrical', $fixtures, 'light_fixture');
         $addMat('smoke_co', 'electrical', $detectors, 'smoke_co');
         $addMat('nm_cable', 'electrical', $this->packages($runs * 25, BasementSettings::NMD90_FEET_PER_BOX), 'nm_cable');
+        }
 
         // --- Plumbing ---
-        if (! empty($inputs['include_plumbing'])) {
+        if ($on('plumbing') && ! empty($inputs['include_plumbing'])) {
             if (! empty($inputs['bath_rough_in'])) {
                 $addLabor('plumb_bath', 'plumbing', 'Bathroom rough-in', 'Drain / vent / supply', (float) $prod['plumbing_bath_rough_hours']);
                 $addMat('bath_rough_in', 'plumbing', 1, 'bath_rough_in');
@@ -325,157 +443,171 @@ class BasementQuotationCalculator
         }
 
         // --- Insulation ---
-        $insWall = $this->qtyOr($inputs['insulation_wall_sf'], ! empty($inputs['insulate_walls']) ? $suggestedWallSf : 0);
-        $insCeil = $this->qtyOr($inputs['insulation_ceiling_sf'], ! empty($inputs['insulate_ceiling']) ? $area : 0);
-        $insSlab = $this->qtyOr($inputs['underslab_sf'], ! empty($inputs['underslab']) ? $area : 0);
-        if (! empty($inputs['insulate_walls'])) {
-            $addLabor('ins_walls', 'insulation', 'Wall insulation + vapor barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
-            $addMat('insulation_batt', 'insulation', $this->packages($insWall * 1.05, BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
-            $addMat('vapor_barrier', 'insulation', $this->packages($insWall * 1.1, BasementSettings::VAPOR_SF_PER_ROLL), 'vapor_barrier');
-        }
-        if (! empty($inputs['insulate_ceiling'])) {
-            $addLabor('ins_ceiling', 'insulation', 'Ceiling insulation', number_format($insCeil, 0).' sq ft', $perHr($insCeil, (float) $prod['insulation_ceiling_sf_per_hr']));
-            $addMat('insulation_batt_ceil', 'insulation', $this->packages($insCeil * 1.05, BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
-        }
-        if (! empty($inputs['underslab'])) {
-            $addLabor('ins_slab', 'insulation', 'Under-slab insulation', number_format($insSlab, 0).' sq ft', $perHr($insSlab, (float) $prod['underslab_sf_per_hr']));
-            $addMat('underslab_insulation', 'insulation', $this->packages($insSlab, BasementSettings::PANEL_SF), 'underslab_insulation');
+        if ($on('insulation')) {
+            $insWall = $this->qtyOr($inputs['insulation_wall_sf'], ! empty($inputs['insulate_walls']) ? $suggestedWallSf : 0);
+            $insCeil = $this->qtyOr($inputs['insulation_ceiling_sf'], ! empty($inputs['insulate_ceiling']) ? $area : 0);
+            $insSlab = $this->qtyOr($inputs['underslab_sf'], ! empty($inputs['underslab']) ? $area : 0);
+            if (! empty($inputs['insulate_walls'])) {
+                $addLabor('ins_walls', 'insulation', 'Wall insulation + vapor barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
+                $addMat('insulation_batt', 'insulation', $this->packages($insWall * 1.05, BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
+                $addMat('vapor_barrier', 'insulation', $this->packages($insWall * 1.1, BasementSettings::VAPOR_SF_PER_ROLL), 'vapor_barrier');
+            }
+            if (! empty($inputs['insulate_ceiling'])) {
+                $addLabor('ins_ceiling', 'insulation', 'Ceiling insulation', number_format($insCeil, 0).' sq ft', $perHr($insCeil, (float) $prod['insulation_ceiling_sf_per_hr']));
+                $addMat('insulation_batt_ceil', 'insulation', $this->packages($insCeil * 1.05, BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
+            }
+            if (! empty($inputs['underslab'])) {
+                $addLabor('ins_slab', 'insulation', 'Under-slab insulation', number_format($insSlab, 0).' sq ft', $perHr($insSlab, (float) $prod['underslab_sf_per_hr']));
+                $addMat('underslab_insulation', 'insulation', $this->packages($insSlab, BasementSettings::PANEL_SF), 'underslab_insulation');
+            }
         }
 
         // --- Drywall ---
-        $ceilingType = (string) ($inputs['ceiling_type'] ?? 'drywall');
-        $dwWall = $this->qtyOr($inputs['drywall_wall_sf'], $suggestedWallSf);
-        $dwCeil = $this->qtyOr(
-            $inputs['drywall_ceiling_sf'],
-            in_array($ceilingType, ['drywall', 'paint'], true) ? $area : 0
-        );
-        $dwSf = $dwWall + $dwCeil;
-        $level = max(1, min(4, (int) ($inputs['finish_level'] ?? 4)));
-        $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
-        $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
-        $finishDetail = number_format($dwSf, 0).' sq ft';
-        if ($paintColors === 2) {
-            $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
-            $finishDetail .= ', two-color';
+        if ($on('drywall')) {
+            $dwWall = $this->qtyOr($inputs['drywall_wall_sf'], $dwWallFallback);
+            $dwCeil = $this->qtyOr(
+                $inputs['drywall_ceiling_sf'],
+                $on('ceiling') && in_array($ceilingType, ['drywall', 'paint'], true) ? $area : 0
+            );
+            $dwSf = $dwWall + $dwCeil;
+            $level = max(1, min(4, (int) ($inputs['finish_level'] ?? 4)));
+            $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
+            $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
+            $finishDetail = number_format($dwSf, 0).' sq ft';
+            if ($paintColors === 2) {
+                $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
+                $finishDetail .= ', two-color';
+            }
+            $addLabor('dw_hang', 'drywall', 'Hang drywall', number_format($dwSf, 0).' sq ft', $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
+            $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
+            $sheets = $dwSf > 0 ? max(1, (int) ceil($dwSf / BasementSettings::PANEL_SF * 1.1)) : 0;
+            $addMat('drywall_sheet', 'drywall', $sheets, 'drywall_sheet');
+            $addMat('joint_compound', 'drywall', $this->packages($dwSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
+            $addMat('drywall_tape', 'drywall', $this->packages($dwSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
+            $corners = max(0, (int) $inputs['drywall_corners']);
+            $openings = max(0, (int) $inputs['drywall_openings']);
+            $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
+            $addLabor('dw_openings', 'drywall', 'Cut & finish openings', $openings.' opening(s)', $openings * (float) ($prod['drywall_opening_hours_each'] ?? 0.4));
         }
-        $addLabor('dw_hang', 'drywall', 'Hang drywall', number_format($dwSf, 0).' sq ft', $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
-        $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
-        $sheets = $dwSf > 0 ? max(1, (int) ceil($dwSf / BasementSettings::PANEL_SF * 1.1)) : 0;
-        $addMat('drywall_sheet', 'drywall', $sheets, 'drywall_sheet');
-        $addMat('joint_compound', 'drywall', $this->packages($dwSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
-        $addMat('drywall_tape', 'drywall', $this->packages($dwSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
-        $corners = max(0, (int) $inputs['drywall_corners']);
-        $openings = max(0, (int) $inputs['drywall_openings']);
-        $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
-        $addLabor('dw_openings', 'drywall', 'Cut & finish openings', $openings.' opening(s)', $openings * (float) ($prod['drywall_opening_hours_each'] ?? 0.4));
 
         // --- Ceiling ---
-        $ceilSf = $this->qtyOr($inputs['ceiling_sf'], $area);
-        if ($ceilingType === 'drop') {
-            $addLabor('ceil_drop', 'ceiling', 'Drop ceiling', number_format($ceilSf, 0).' sq ft', $perHr($ceilSf, (float) $prod['ceiling_drop_sf_per_hr']));
-            $addMat('drop_ceiling', 'ceiling', $ceilSf * 1.08, 'drop_ceiling');
+        if ($on('ceiling')) {
+            $ceilSf = $this->qtyOr($inputs['ceiling_sf'], $area);
+            if ($ceilingType === 'drop') {
+                $addLabor('ceil_drop', 'ceiling', 'Drop ceiling', number_format($ceilSf, 0).' sq ft', $perHr($ceilSf, (float) $prod['ceiling_drop_sf_per_hr']));
+                $addMat('drop_ceiling', 'ceiling', $ceilSf * 1.08, 'drop_ceiling');
+            }
         }
 
         // --- Flooring ---
-        $flSf = $this->qtyOr($inputs['flooring_sf'], $area);
-        $flType = (string) ($inputs['flooring_type'] ?? 'lvp');
-        $flCatalog = match ($flType) {
-            'laminate' => 'laminate',
-            'carpet' => 'carpet',
-            'tile' => 'tile',
-            'epoxy' => 'epoxy',
-            default => 'lvp',
-        };
-        if ($flType !== 'none' && $flSf > 0) {
-            if (! empty($inputs['subfloor_prep'])) {
-                $addLabor('fl_subfloor', 'flooring', 'Subfloor prep / leveling', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['subfloor_sf_per_hr']));
-                $addMat('subfloor_panel', 'flooring', $this->packages($flSf, BasementSettings::PANEL_SF), 'subfloor_panel');
+        if ($on('flooring')) {
+            $flSf = $this->qtyOr($inputs['flooring_sf'], $area);
+            $flCatalog = match ($flType) {
+                'laminate' => 'laminate',
+                'carpet' => 'carpet',
+                'tile' => 'tile',
+                'epoxy' => 'epoxy',
+                default => 'lvp',
+            };
+            if ($flType !== 'none' && $flSf > 0) {
+                if (! empty($inputs['subfloor_prep'])) {
+                    $addLabor('fl_subfloor', 'flooring', 'Subfloor prep / leveling', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['subfloor_sf_per_hr']));
+                    $addMat('subfloor_panel', 'flooring', $this->packages($flSf, BasementSettings::PANEL_SF), 'subfloor_panel');
+                }
+                if (! empty($inputs['underlayment']) && $flType !== 'epoxy' && $flType !== 'tile') {
+                    $addLabor('fl_underlay', 'flooring', 'Underlayment', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['underlayment_sf_per_hr']));
+                    $addMat('underlayment', 'flooring', $this->packages($flSf * 1.08, BasementSettings::UNDERLAYMENT_SF_PER_ROLL), 'underlayment');
+                }
+                $addLabor('fl_install', 'flooring', $this->flooringLabel($flType).' install', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['flooring_sf_per_hr']));
+                $addMat('flooring_finish', 'flooring', $flSf * 1.08, $flCatalog);
+                $transitions = max(0, (int) $inputs['transition_qty']);
+                $addLabor('fl_transitions', 'flooring', 'Transitions', $transitions.' piece(s)', $transitions * (float) $prod['transition_hours_each']);
+                $addMat('transition', 'flooring', $transitions, 'transition');
             }
-            if (! empty($inputs['underlayment']) && $flType !== 'epoxy' && $flType !== 'tile') {
-                $addLabor('fl_underlay', 'flooring', 'Underlayment', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['underlayment_sf_per_hr']));
-                $addMat('underlayment', 'flooring', $this->packages($flSf * 1.08, BasementSettings::UNDERLAYMENT_SF_PER_ROLL), 'underlayment');
-            }
-            $addLabor('fl_install', 'flooring', $this->flooringLabel($flType).' install', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['flooring_sf_per_hr']));
-            $addMat('flooring_finish', 'flooring', $flSf * 1.08, $flCatalog);
-            $transitions = max(0, (int) $inputs['transition_qty']);
-            $addLabor('fl_transitions', 'flooring', 'Transitions', $transitions.' piece(s)', $transitions * (float) $prod['transition_hours_each']);
-            $addMat('transition', 'flooring', $transitions, 'transition');
         }
 
         // --- Doors / trim ---
-        $doors = max(0, (int) $inputs['door_qty']);
-        $baseLf = $this->qtyOr($inputs['baseboard_lf'], $perimeter);
-        $casing = max(0, (int) $inputs['casing_openings']);
-        if ($casing <= 0) {
-            $casing = $doors;
+        if ($on('doors_trim')) {
+            $doors = max(0, (int) $inputs['door_qty']);
+            $baseLf = $this->qtyOr($inputs['baseboard_lf'], $perimeter);
+            $casing = max(0, (int) $inputs['casing_openings']);
+            if ($casing <= 0) {
+                $casing = $doors;
+            }
+            $windows = max(0, (int) $inputs['window_trim_qty']);
+            $addLabor('trim_doors', 'doors_trim', 'Interior doors', $doors.' door(s)', $doors * (float) $prod['door_install_hours_each']);
+            $addLabor('trim_base', 'doors_trim', 'Baseboards', number_format($baseLf, 0).' lf', $perHr($baseLf, (float) $prod['baseboard_lf_per_hr']));
+            $addLabor('trim_casing', 'doors_trim', 'Door casing', $casing.' opening(s)', $casing * (float) $prod['casing_opening_hours']);
+            $addLabor('trim_windows', 'doors_trim', 'Window trim', $windows.' window(s)', $windows * (float) $prod['window_trim_hours_each']);
+            $addMat('interior_door', 'doors_trim', $doors, 'interior_door');
+            $addMat('baseboard', 'doors_trim', $this->packages($baseLf * 1.08, BasementSettings::BASEBOARD_FEET_PER_STICK), 'baseboard');
+            $addMat('casing', 'doors_trim', $casing, 'casing');
+            $addMat('window_trim', 'doors_trim', $windows, 'window_trim');
+            $addMat('door_hardware', 'doors_trim', $doors, 'door_hardware');
         }
-        $windows = max(0, (int) $inputs['window_trim_qty']);
-        $addLabor('trim_doors', 'doors_trim', 'Interior doors', $doors.' door(s)', $doors * (float) $prod['door_install_hours_each']);
-        $addLabor('trim_base', 'doors_trim', 'Baseboards', number_format($baseLf, 0).' lf', $perHr($baseLf, (float) $prod['baseboard_lf_per_hr']));
-        $addLabor('trim_casing', 'doors_trim', 'Door casing', $casing.' opening(s)', $casing * (float) $prod['casing_opening_hours']);
-        $addLabor('trim_windows', 'doors_trim', 'Window trim', $windows.' window(s)', $windows * (float) $prod['window_trim_hours_each']);
-        $addMat('interior_door', 'doors_trim', $doors, 'interior_door');
-        $addMat('baseboard', 'doors_trim', $this->packages($baseLf * 1.08, BasementSettings::BASEBOARD_FEET_PER_STICK), 'baseboard');
-        $addMat('casing', 'doors_trim', $casing, 'casing');
-        $addMat('window_trim', 'doors_trim', $windows, 'window_trim');
-        $addMat('door_hardware', 'doors_trim', $doors, 'door_hardware');
 
         // --- Painting ---
-        $coats = max(1, (int) ($inputs['paint_coats'] ?? 2));
-        $pWall = $this->qtyOr($inputs['paint_wall_sf'], $dwWall ?: $suggestedWallSf);
-        $pCeil = $this->qtyOr($inputs['paint_ceiling_sf'], in_array($ceilingType, ['drop', 'none'], true) ? 0 : ($dwCeil ?: $area));
-        $pTrim = $this->qtyOr($inputs['paint_trim_lf'], $baseLf + ($casing * 17) + ($windows * 16));
-        $colorFactor = $paintColors === 2 ? BasementSettings::TWO_COLOR_PAINT_FACTOR : 1.0;
-        $addLabor(
-            'paint_walls',
-            'painting',
-            'Paint walls ('.$coats.' coat'.($coats === 1 ? '' : 's').($paintColors === 2 ? ', color 1' : '').')',
-            number_format($pWall, 0).' sq ft',
-            $perHr($pWall * $coats, (float) $prod['paint_wall_sf_per_hr']) * $colorFactor
-        );
-        $addLabor(
-            'paint_ceiling',
-            'painting',
-            'Paint ceiling'.($paintColors === 2 ? ' (color 2)' : ''),
-            number_format($pCeil, 0).' sq ft',
-            $perHr($pCeil * $coats, (float) $prod['paint_ceiling_sf_per_hr']) * $colorFactor
-        );
-        $addLabor('paint_trim', 'painting', 'Paint trim', number_format($pTrim, 0).' lf', $perHr($pTrim, (float) $prod['paint_trim_lf_per_hr']));
-        if ($paintColors === 2 && $perimeter > 0) {
-            $addLabor(
-                'paint_two_color',
-                'painting',
-                'Tape / cut-in (two colors)',
-                number_format($perimeter, 0).' lf color break',
-                $perHr($perimeter, (float) $prod['paint_two_color_lf_per_hr'])
+        if ($on('painting')) {
+            $coats = max(1, (int) ($inputs['paint_coats'] ?? 2));
+            $pWall = $this->qtyOr($inputs['paint_wall_sf'], $dwWall ?: $dwWallFallback);
+            $pCeil = $this->qtyOr(
+                $inputs['paint_ceiling_sf'],
+                (! $on('ceiling') || in_array($ceilingType, ['drop', 'none'], true)) ? 0 : ($dwCeil ?: $area)
             );
-        }
-
-        $addPaintPack = function (string $prefix, float $sf, int $surfaceCoats, array $sizes, string $note = '') use ($addMat, $matCatalog): void {
-            $packed = $this->packQuarts($this->quartsFromGallons($this->paintGallonsNeeded($sf, $surfaceCoats)), $sizes);
-            foreach ($packed as $catalogKey => $qty) {
-                $name = (string) ($matCatalog[$catalogKey]['name'] ?? $catalogKey);
-                if ($note !== '') {
-                    $name .= ' — '.$note;
-                }
-                $addMat($prefix.'_'.$catalogKey, 'painting', (float) $qty, $catalogKey, $name);
+            $pTrim = $this->qtyOr($inputs['paint_trim_lf'], $baseLf + ($casing * 17) + ($windows * 16));
+            $colorFactor = $paintColors === 2 ? BasementSettings::TWO_COLOR_PAINT_FACTOR : 1.0;
+            $addLabor(
+                'paint_walls',
+                'painting',
+                'Paint walls ('.$coats.' coat'.($coats === 1 ? '' : 's').($paintColors === 2 ? ', color 1' : '').')',
+                number_format($pWall, 0).' sq ft',
+                $perHr($pWall * $coats, (float) $prod['paint_wall_sf_per_hr']) * $colorFactor
+            );
+            $addLabor(
+                'paint_ceiling',
+                'painting',
+                'Paint ceiling'.($paintColors === 2 ? ' (color 2)' : ''),
+                number_format($pCeil, 0).' sq ft',
+                $perHr($pCeil * $coats, (float) $prod['paint_ceiling_sf_per_hr']) * $colorFactor
+            );
+            $addLabor('paint_trim', 'painting', 'Paint trim', number_format($pTrim, 0).' lf', $perHr($pTrim, (float) $prod['paint_trim_lf_per_hr']));
+            $colorBreakLf = $inputs['scope_preset'] === 'wall' ? $partitionLf : $perimeter;
+            if ($paintColors === 2 && $colorBreakLf > 0) {
+                $addLabor(
+                    'paint_two_color',
+                    'painting',
+                    'Tape / cut-in (two colors)',
+                    number_format($colorBreakLf, 0).' lf color break',
+                    $perHr($colorBreakLf, (float) $prod['paint_two_color_lf_per_hr'])
+                );
             }
-        };
 
-        $addPaintPack('primer', $pWall + $pCeil, 1, BasementSettings::primerCanSizes());
-        if ($paintColors === 2) {
-            $addPaintPack('paint_walls', $pWall, $coats, BasementSettings::paintCanSizes(), 'walls');
-            $addPaintPack('paint_ceil', $pCeil, $coats, BasementSettings::paintCanSizes(), 'ceiling');
-        } else {
-            $addPaintPack('paint', $pWall + $pCeil, $coats, BasementSettings::paintCanSizes());
-        }
-        $trimQuarts = $this->trimQuartsNeeded($pTrim, $coats);
-        foreach ($this->packQuarts($trimQuarts, BasementSettings::trimPaintCanSizes()) as $catalogKey => $qty) {
-            $addMat('trim_'.$catalogKey, 'painting', (float) $qty, $catalogKey);
+            $addPaintPack = function (string $prefix, float $sf, int $surfaceCoats, array $sizes, string $note = '') use ($addMat, $matCatalog): void {
+                $packed = $this->packQuarts($this->quartsFromGallons($this->paintGallonsNeeded($sf, $surfaceCoats)), $sizes);
+                foreach ($packed as $catalogKey => $qty) {
+                    $name = (string) ($matCatalog[$catalogKey]['name'] ?? $catalogKey);
+                    if ($note !== '') {
+                        $name .= ' — '.$note;
+                    }
+                    $addMat($prefix.'_'.$catalogKey, 'painting', (float) $qty, $catalogKey, $name);
+                }
+            };
+
+            $addPaintPack('primer', $pWall + $pCeil, 1, BasementSettings::primerCanSizes());
+            if ($paintColors === 2) {
+                $addPaintPack('paint_walls', $pWall, $coats, BasementSettings::paintCanSizes(), 'walls');
+                $addPaintPack('paint_ceil', $pCeil, $coats, BasementSettings::paintCanSizes(), 'ceiling');
+            } else {
+                $addPaintPack('paint', $pWall + $pCeil, $coats, BasementSettings::paintCanSizes());
+            }
+            $trimQuarts = $this->trimQuartsNeeded($pTrim, $coats);
+            foreach ($this->packQuarts($trimQuarts, BasementSettings::trimPaintCanSizes()) as $catalogKey => $qty) {
+                $addMat('trim_'.$catalogKey, 'painting', (float) $qty, $catalogKey);
+            }
         }
 
         // --- Bathroom ---
-        if (! empty($inputs['include_bathroom'])) {
+        if ($on('bathroom') && ! empty($inputs['include_bathroom'])) {
             $half = ($inputs['bath_type'] ?? 'full') === 'half';
             if (! empty($inputs['include_vanity'])) {
                 $addLabor('bath_vanity', 'bathroom', 'Vanity', 'Install', (float) $prod['vanity_hours']);
@@ -506,16 +638,18 @@ class BasementQuotationCalculator
         }
 
         // --- Finishing ---
-        $hw = max(0, (int) $inputs['hardware_sets']);
-        if ($hw > 0) {
-            $addLabor('fin_hw', 'finishing', 'Hardware', $hw.' set(s)', (float) $prod['hardware_hours']);
-        }
-        if (! empty($inputs['include_cleaning']) && $area > 0) {
-            $addLabor('fin_clean', 'finishing', 'Final cleaning', number_format($area, 0).' sq ft', ($area / 100) * (float) $prod['cleaning_hours_per_100sf']);
-            $addMat('cleaning', 'finishing', 1, 'cleaning');
-        }
-        if (! empty($inputs['include_touchups'])) {
-            $addLabor('fin_touch', 'finishing', 'Touch-ups', 'Walkthrough punch list', (float) $prod['touchup_hours']);
+        if ($on('finishing')) {
+            $hw = max(0, (int) $inputs['hardware_sets']);
+            if ($hw > 0) {
+                $addLabor('fin_hw', 'finishing', 'Hardware', $hw.' set(s)', (float) $prod['hardware_hours']);
+            }
+            if (! empty($inputs['include_cleaning']) && $area > 0) {
+                $addLabor('fin_clean', 'finishing', 'Final cleaning', number_format($area, 0).' sq ft', ($area / 100) * (float) $prod['cleaning_hours_per_100sf']);
+                $addMat('cleaning', 'finishing', 1, 'cleaning');
+            }
+            if (! empty($inputs['include_touchups'])) {
+                $addLabor('fin_touch', 'finishing', 'Touch-ups', 'Walkthrough punch list', (float) $prod['touchup_hours']);
+            }
         }
 
         $extraMaterials = [];
@@ -626,7 +760,7 @@ class BasementQuotationCalculator
             ];
         }
 
-        $finishLabel = ! empty($inputs['include_bathroom']) ? 'Full finish with bathroom' : 'Full finish';
+        $finishLabel = self::finishLabel($inputs);
 
         return [
             'scope' => [
@@ -901,7 +1035,7 @@ class BasementQuotationCalculator
                 'room_count' => max(0, (int) ($inputs['room_count'] ?? 0)),
                 'suggested_wall_sf' => 0.0,
                 'suggested_perimeter_lf' => 0.0,
-                'finish_label' => ! empty($inputs['include_bathroom']) ? 'Full finish with bathroom' : 'Full finish',
+                'finish_label' => self::finishLabel($inputs),
                 'ceiling_type' => (string) ($inputs['ceiling_type'] ?? 'drywall'),
                 'flooring_type' => (string) ($inputs['flooring_type'] ?? 'lvp'),
             ],

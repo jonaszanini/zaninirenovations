@@ -18,20 +18,71 @@
       return (bool) old($key, $inputs[$key] ?? $fallback);
   };
   $step = 0;
+  $scopePreset = $scopePreset ?? \App\Services\BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
+  $enabledNow = $enabledNow ?? \App\Services\BasementQuotationCalculator::enabledSections([
+      'scope_preset' => $scopePreset,
+      'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
+  ]);
+  $enabledCount = $enabledCount ?? max(1, count($enabledNow));
 @endphp
 
 {{-- 1. Overview --}}
-@php $step++; @endphp
+@php
+  $step++;
+  $areaLabels = [
+      'full' => 'Total basement area (sq ft)',
+      'bathroom' => 'Bathroom / work area (sq ft)',
+      'wall' => 'Basement area (sq ft, optional)',
+      'custom' => 'Work area (sq ft)',
+  ];
+  $presetHelp = [
+      'full' => 'Walks every trade. Area auto-fills insulation, drywall, flooring, paint, and cleanup.',
+      'bathroom' => 'Plumbing, electrical, drywall, paint, fixtures, and cleanup — not whole-basement flooring or insulation.',
+      'wall' => 'Framing, drywall, paint, and cleanup. Drywall and paint use wall length × height × both sides.',
+      'custom' => 'Only the trades you check below. Overview and Review always stay.',
+  ];
+@endphp
 <details class="br-acc admin-card is-active" data-br-step="overview" @if(empty($isEdit)) open @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Project Overview</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Project Overview</summary>
   <div class="br-acc__body">
+    <fieldset class="br-scope-presets">
+      <legend>What are you quoting?</legend>
+      <p class="admin-form-help">Pick a starting point, then add or skip trades. Unused steps stay out of the wizard.</p>
+      @foreach (\App\Services\BasementQuotationCalculator::SCOPE_PRESETS as $presetKey => $presetLabel)
+        <label class="br-scope-option">
+          <input type="radio" class="br-preview" name="scope_preset" value="{{ $presetKey }}"
+                 data-br-scope-preset
+                 @checked($scopePreset === $presetKey)>
+          <span class="br-scope-option__body">
+            <strong>{{ $presetLabel }}</strong>
+            <span class="admin-form-help">{{ $presetHelp[$presetKey] }}</span>
+          </span>
+        </label>
+      @endforeach
+    </fieldset>
+
+    <input type="hidden" name="enabled_sections[]" value="overview">
+    <fieldset class="br-provide-grid br-scope-trades" id="br-enabled-sections">
+      <legend>Trades to include</legend>
+      @foreach (\App\Services\BasementQuotationCalculator::tradeSections() as $tradeKey => $tradeLabel)
+        @include('admin.partials.checkbox', [
+          'name' => 'enabled_sections[]',
+          'value' => $tradeKey,
+          'checked' => in_array($tradeKey, $enabledNow, true),
+          'label' => $tradeLabel,
+          'inputClass' => 'admin-checkbox__input br-preview',
+          'attrs' => ['data-br-enabled-section' => $tradeKey],
+        ])
+      @endforeach
+    </fieldset>
+
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
-        <label for="br-area">Total basement area (sq ft)</label>
+        <label for="br-area" id="br-area-label">{{ $areaLabels[$scopePreset] ?? $areaLabels['full'] }}</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-area" name="area_sqft"
                value="{{ $brVal('area_sqft', 0) }}"
-               title="Finished floor area of the basement. Leave other quantity fields blank to auto-calculate from this.">
-        <p class="admin-form-help">Leave later quantity fields blank to auto-fill from this area. Enter 0 on a field to skip it.</p>
+               title="Finished floor area of the work. Leave other quantity fields blank to auto-calculate from this.">
+        <p class="admin-form-help" id="br-area-help">Leave later quantity fields blank to auto-fill from this area. Enter 0 on a field to skip it.</p>
       </div>
       <div class="admin-form-group">
         <label for="br-height">Ceiling height (ft)</label>
@@ -69,8 +120,8 @@
 
 {{-- 2. Demolition --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="demolition">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Demolition &amp; Preparation</summary>
+<details class="br-acc admin-card" data-br-step="demolition" @unless(in_array('demolition', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Demolition &amp; Preparation</summary>
   <div class="br-acc__body">
     @include('admin.partials.checkbox', [
       'name' => 'include_demolition',
@@ -103,8 +154,8 @@
 
 {{-- 3. Framing --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="framing">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Framing</summary>
+<details class="br-acc admin-card" data-br-step="framing" @unless(in_array('framing', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Framing</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
@@ -134,8 +185,8 @@
 
 {{-- 4. Electrical --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="electrical">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Electrical</summary>
+<details class="br-acc admin-card" data-br-step="electrical" @unless(in_array('electrical', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Electrical</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
@@ -194,8 +245,8 @@
 
 {{-- 5. Plumbing --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="plumbing">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Plumbing</summary>
+<details class="br-acc admin-card" data-br-step="plumbing" @unless(in_array('plumbing', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Plumbing</summary>
   <div class="br-acc__body">
     @include('admin.partials.checkbox', [
       'name' => 'include_plumbing',
@@ -217,8 +268,8 @@
 
 {{-- 6. Insulation --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="insulation">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Insulation &amp; Vapor Barrier</summary>
+<details class="br-acc admin-card" data-br-step="insulation" @unless(in_array('insulation', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Insulation &amp; Vapor Barrier</summary>
   <div class="br-acc__body">
     <div class="br-check-stack">
       @include('admin.partials.checkbox', ['name' => 'insulate_walls', 'hiddenFallback' => true, 'checked' => $brOn('insulate_walls', true), 'label' => 'Wall insulation + vapor barrier', 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-wall']])
@@ -249,8 +300,8 @@
 
 {{-- 7. Drywall --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="drywall">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Drywall / Mud / Tape / Sand</summary>
+<details class="br-acc admin-card" data-br-step="drywall" @unless(in_array('drywall', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Drywall / Mud / Tape / Sand</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
@@ -287,8 +338,8 @@
 
 {{-- 8. Ceiling --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="ceiling">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Ceiling Options</summary>
+<details class="br-acc admin-card" data-br-step="ceiling" @unless(in_array('ceiling', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Ceiling Options</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
@@ -311,8 +362,8 @@
 
 {{-- 9. Flooring --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="flooring">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Flooring</summary>
+<details class="br-acc admin-card" data-br-step="flooring" @unless(in_array('flooring', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Flooring</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
@@ -346,8 +397,8 @@
 
 {{-- 10. Doors & trim --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="doors_trim">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Doors, Trim &amp; Baseboards</summary>
+<details class="br-acc admin-card" data-br-step="doors_trim" @unless(in_array('doors_trim', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Doors, Trim &amp; Baseboards</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
@@ -376,8 +427,8 @@
 
 {{-- 11. Painting --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="painting">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Painting</summary>
+<details class="br-acc admin-card" data-br-step="painting" @unless(in_array('painting', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Painting</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
@@ -414,8 +465,8 @@
 
 {{-- 12. Bathroom --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="bathroom">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Bathroom</summary>
+<details class="br-acc admin-card" data-br-step="bathroom" @unless(in_array('bathroom', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Bathroom</summary>
   <div class="br-acc__body">
     @include('admin.partials.checkbox', [
       'name' => 'include_bathroom',
@@ -452,8 +503,8 @@
 
 {{-- 13. Finishing --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="finishing">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of 13</span> Final Details &amp; Cleanup</summary>
+<details class="br-acc admin-card" data-br-step="finishing" @unless(in_array('finishing', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Final Details &amp; Cleanup</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">

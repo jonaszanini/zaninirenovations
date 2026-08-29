@@ -18,6 +18,12 @@
       }
   }
   $sectionList = $sections ?? BasementQuotationCalculator::SECTIONS;
+  $scopePreset = BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
+  $enabledNow = BasementQuotationCalculator::enabledSections([
+      'scope_preset' => $scopePreset,
+      'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
+  ]);
+  $enabledCount = max(1, count($enabledNow));
   $previewLabor = is_array($initialPreview['labor'] ?? null) ? $initialPreview['labor'] : [];
   $previewMats = array_merge(
       is_array($initialPreview['materials'] ?? null) ? $initialPreview['materials'] : [],
@@ -68,7 +74,8 @@
         @php $n = 0; @endphp
         @foreach ($sectionList as $key => $label)
           @php $n++; @endphp
-          <button type="button" class="br-progress__item{{ $n === 1 ? ' is-current' : '' }}" data-br-goto="{{ $key }}">
+          <button type="button" class="br-progress__item{{ $n === 1 ? ' is-current' : '' }}" data-br-goto="{{ $key }}"
+                  @if ($key !== 'overview' && ! in_array($key, $enabledNow, true)) hidden @endif>
             <span class="br-progress__num">{{ $n }}</span>
             <span class="br-progress__label">{{ $label }}</span>
           </button>
@@ -102,6 +109,9 @@
             'inputs' => $inputs,
             'settings' => $settings,
             'isEdit' => $isEdit,
+            'scopePreset' => $scopePreset,
+            'enabledNow' => $enabledNow,
+            'enabledCount' => $enabledCount,
         ])
 
         <details class="br-acc admin-card" data-br-step="review" @if ($isEdit) open @endif>
@@ -240,7 +250,7 @@
       </div>
       <div class="br-step-nav" id="br-step-nav">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of 13</span>
+        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
         <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
       </div>
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
@@ -282,6 +292,12 @@
       initialPreview: @json($initialPreview ?? null),
       isEdit: @json($isEdit),
       sectionKeys: @json(array_keys($sectionList)),
+      presetSections: @json([
+          'full' => BasementQuotationCalculator::presetEnabledSections('full'),
+          'bathroom' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+          'wall' => BasementQuotationCalculator::presetEnabledSections('wall'),
+          'custom' => BasementQuotationCalculator::presetEnabledSections('custom'),
+      ]),
     };
   </script>
   <script src="{{ asset('js/admin-basement-quotation.js') }}?v={{ @filemtime(public_path('js/admin-basement-quotation.js')) ?: time() }}"></script>

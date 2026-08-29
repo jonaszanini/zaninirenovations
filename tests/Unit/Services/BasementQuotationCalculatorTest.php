@@ -544,6 +544,83 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(80.0, $delivery['amount'], 0.01);
     }
 
+    public function test_missing_scope_preset_still_full_finish(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'include_demolition' => false,
+            'flooring_type' => 'lvp',
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertSame('Full finish', $calc['scope']['finish_label']);
+        $this->assertNotEmpty(collect($calc['materials'])->firstWhere('key', 'flooring_finish'));
+        $this->assertNotEmpty(collect($calc['labor'])->firstWhere('key', 'ins_walls'));
+    }
+
+    public function test_bathroom_preset_skips_whole_basement_trades(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'include_plumbing' => true,
+            'bath_rough_in' => true,
+            'insulate_walls' => true,
+            'flooring_type' => 'lvp',
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $keys = collect($calc['labor'])->pluck('key')->all();
+        $matKeys = collect($calc['materials'])->pluck('key')->all();
+        $this->assertSame('Bathroom only', $calc['scope']['finish_label']);
+        $this->assertContains('bath_vanity', $keys);
+        $this->assertContains('plumb_bath', $keys);
+        $this->assertNotContains('ins_walls', $keys);
+        $this->assertNotContains('fl_install', $keys);
+        $this->assertNotContains('trim_base', $keys);
+        $this->assertEmpty(collect($calc['materials'])->firstWhere('key', 'flooring_finish'));
+        $this->assertEmpty(collect($calc['materials'])->firstWhere('key', 'insulation_batt'));
+        $this->assertEmpty(collect($calc['materials'])->firstWhere('key', 'baseboard'));
+    }
+
+    public function test_wall_preset_uses_partition_for_drywall_and_paint(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'ceiling_height_ft' => 8,
+            'scope_preset' => 'wall',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('wall'),
+            'partition_lf' => 20,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertSame('New wall', $calc['scope']['finish_label']);
+        $hang = collect($calc['labor'])->firstWhere('key', 'dw_hang');
+        $this->assertNotNull($hang);
+        $this->assertStringContainsString('320', $hang['detail']);
+        $this->assertNotContains('fl_install', collect($calc['labor'])->pluck('key')->all());
+        $this->assertNotContains('ins_walls', collect($calc['labor'])->pluck('key')->all());
+        $this->assertContains('framing_walls', collect($calc['labor'])->pluck('key')->all());
+    }
+
+    public function test_disabled_painting_does_not_auto_fill_paint(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'scope_preset' => 'custom',
+            'enabled_sections' => ['overview', 'drywall'],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $matKeys = collect($calc['materials'])->pluck('key')->all();
+        $laborKeys = collect($calc['labor'])->pluck('key')->all();
+        $this->assertContains('dw_hang', $laborKeys);
+        $this->assertNotContains('paint_walls', $laborKeys);
+        $this->assertEmpty(array_filter($matKeys, fn ($key) => str_contains((string) $key, 'paint')));
+    }
+
     private function settings(?array $materials = null): BasementSettings
     {
         return new BasementSettings([

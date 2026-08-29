@@ -26,6 +26,12 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('1 of 13')
             ->assertSee('Project Overview')
+            ->assertSee('What are you quoting?')
+            ->assertSee('Full basement')
+            ->assertSee('Bathroom only')
+            ->assertSee('New wall')
+            ->assertSee('Trades to include')
+            ->assertSee('Flooring')
             ->assertSee('Ceiling lighting')
             ->assertSee('Spot lights', false)
             ->assertSee('Wall / ceiling colors');

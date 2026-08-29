@@ -394,7 +394,7 @@ class BasementQuotationController extends Controller
             'include_tub', 'include_exhaust_fan', 'include_cleaning', 'include_touchups',
             'client_provides_all',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset'];
 
         $out = $defaults;
         foreach ($floats as $key) {
@@ -421,12 +421,25 @@ class BasementQuotationController extends Controller
             $out['lighting_type'] = 'spot';
         }
         $out['paint_colors'] = ((int) $out['paint_colors'] === 2) ? 2 : 1;
+        $out['scope_preset'] = BasementQuotationCalculator::normalizePreset($out['scope_preset'] ?? 'full');
 
         $sections = array_keys(BasementQuotationCalculator::SECTIONS);
         $provided = $request->input('client_provides_sections', []);
         $out['client_provides_sections'] = is_array($provided)
             ? array_values(array_intersect($sections, array_map('strval', $provided)))
             : [];
+
+        if ($request->has('enabled_sections')) {
+            $enabled = $request->input('enabled_sections', []);
+            $out['enabled_sections'] = is_array($enabled)
+                ? array_values(array_intersect($sections, array_map('strval', $enabled)))
+                : [];
+            if (! in_array('overview', $out['enabled_sections'], true)) {
+                array_unshift($out['enabled_sections'], 'overview');
+            }
+        } else {
+            $out['enabled_sections'] = null;
+        }
 
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);

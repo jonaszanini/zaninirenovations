@@ -5,8 +5,10 @@
 
   var previewUrl = cfg.previewUrl || '';
   var isEdit = !!cfg.isEdit;
-  var sectionKeys = (cfg.sectionKeys || []).slice();
+  var allSectionKeys = (cfg.sectionKeys || []).slice();
+  var sectionKeys = allSectionKeys.slice();
   var wizardKeys = sectionKeys.concat(['review']);
+  var presetSections = cfg.presetSections || {};
   var tokenEl = document.querySelector('meta[name="csrf-token"]');
   var token = tokenEl ? tokenEl.getAttribute('content') : '';
   var debounceTimer = null;
@@ -95,6 +97,130 @@
     return form.querySelector('[data-br-step="' + key + '"]');
   }
 
+  function currentPreset() {
+    var el = form.querySelector('[data-br-scope-preset]:checked');
+    return el ? el.value : 'full';
+  }
+
+  function enabledTradeKeys() {
+    var keys = ['overview'];
+    form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
+      if (cb.checked && keys.indexOf(cb.value) === -1) {
+        keys.push(cb.value);
+      }
+    });
+    return keys;
+  }
+
+  function rebuildWizardKeys() {
+    var enabled = enabledTradeKeys();
+    var next = [];
+    allSectionKeys.forEach(function (k) {
+      if (enabled.indexOf(k) !== -1) next.push(k);
+    });
+    sectionKeys = next;
+    wizardKeys = next.concat(['review']);
+  }
+
+  function setNamedCheck(name, on) {
+    form.querySelectorAll('input[name="' + name + '"][type="checkbox"]').forEach(function (cb) {
+      cb.checked = !!on;
+    });
+  }
+
+  function setNamedValue(name, value) {
+    var el = form.querySelector('[name="' + name + '"]');
+    if (el && el.type !== 'checkbox' && el.type !== 'hidden') {
+      el.value = value;
+    } else if (el && el.tagName === 'SELECT') {
+      el.value = value;
+    }
+  }
+
+  function syncRevealTargets() {
+    form.querySelectorAll('[data-br-reveal]').forEach(function (cb) {
+      var target = document.getElementById(cb.getAttribute('data-br-reveal'));
+      if (target) target.hidden = !cb.checked;
+    });
+  }
+
+  function applyScope() {
+    rebuildWizardKeys();
+    var enabled = enabledTradeKeys();
+    allSectionKeys.forEach(function (k) {
+      var show = enabled.indexOf(k) !== -1;
+      var el = sectionEl(k);
+      if (el) {
+        el.hidden = !show;
+        if (!show) {
+          el.classList.remove('is-active');
+          if (!isEdit) el.removeAttribute('open');
+        } else if (isEdit) {
+          el.removeAttribute('hidden');
+        }
+      }
+      form.querySelectorAll('.br-progress__item[data-br-goto="' + k + '"]').forEach(function (btn) {
+        btn.hidden = !show;
+      });
+    });
+    var tradeCount = Math.max(1, sectionKeys.length);
+    var n = 0;
+    sectionKeys.forEach(function (k) {
+      n += 1;
+      var el = sectionEl(k);
+      if (!el) return;
+      var num = el.querySelector('.br-acc__num');
+      if (num) num.textContent = n + ' of ' + tradeCount;
+    });
+    var areaLabel = document.getElementById('br-area-label');
+    if (areaLabel) {
+      var labels = {
+        full: 'Total basement area (sq ft)',
+        bathroom: 'Bathroom / work area (sq ft)',
+        wall: 'Basement area (sq ft, optional)',
+        custom: 'Work area (sq ft)'
+      };
+      areaLabel.textContent = labels[currentPreset()] || labels.full;
+    }
+    if (currentIndex >= wizardKeys.length) {
+      currentIndex = 0;
+    }
+    if (wizardKeys[currentIndex] !== 'review' && sectionKeys.indexOf(wizardKeys[currentIndex]) < 0) {
+      currentIndex = 0;
+    }
+  }
+
+  function applyPreset(preset) {
+    var keys = presetSections[preset] || presetSections.full || allSectionKeys;
+    form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
+      cb.checked = keys.indexOf(cb.value) !== -1;
+    });
+    if (preset === 'bathroom') {
+      setNamedCheck('include_plumbing', true);
+      setNamedCheck('include_bathroom', true);
+      setNamedCheck('bath_rough_in', true);
+      setNamedCheck('insulate_walls', false);
+      setNamedValue('flooring_type', 'none');
+      setNamedValue('detector_qty', 0);
+      setNamedCheck('include_cleaning', true);
+      setNamedCheck('include_touchups', true);
+    } else if (preset === 'wall') {
+      setNamedCheck('insulate_walls', false);
+      setNamedValue('flooring_type', 'none');
+      setNamedValue('detector_qty', 0);
+      setNamedCheck('include_cleaning', true);
+      setNamedCheck('include_touchups', true);
+    } else if (preset === 'full') {
+      setNamedCheck('insulate_walls', true);
+      setNamedValue('flooring_type', 'lvp');
+      setNamedValue('detector_qty', 2);
+      setNamedCheck('include_cleaning', true);
+      setNamedCheck('include_touchups', true);
+    }
+    applyScope();
+    syncRevealTargets();
+  }
+
   function setWizardStep(index, scroll) {
     if (index < 0) index = 0;
     if (index >= wizardKeys.length) index = wizardKeys.length - 1;
@@ -133,6 +259,8 @@
     }
   }
 
+  applyScope();
+
   if (!isEdit) {
     setWizardStep(0, false);
     var prevBtn = document.getElementById('br-prev');
@@ -143,6 +271,20 @@
     var nav = document.getElementById('br-step-nav');
     if (nav) nav.hidden = true;
   }
+
+  form.querySelectorAll('[data-br-scope-preset]').forEach(function (el) {
+    el.addEventListener('change', function () {
+      applyPreset(el.value);
+      if (!isEdit) setWizardStep(0, false);
+      schedulePreview();
+    });
+  });
+  form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      applyScope();
+      if (!isEdit) setWizardStep(currentIndex, false);
+    });
+  });
 
   form.querySelectorAll('[data-br-goto]').forEach(function (btn) {
     btn.addEventListener('click', function () {

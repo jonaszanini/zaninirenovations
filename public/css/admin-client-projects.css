@@ -6154,6 +6154,54 @@ body.cp-modal-open {
   padding: 0;
   border: 0;
 }
+.br-scope-presets {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+}
+.br-scope-presets legend {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+.br-scope-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 44px;
+  margin: 0 0 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--admin-surface);
+}
+.br-scope-option:has(input:checked) {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  box-shadow: inset 3px 0 0 var(--admin-primary);
+}
+.br-scope-option input {
+  margin-top: 0.35rem;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.br-scope-option__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.br-scope-option__body .admin-form-help {
+  margin: 0;
+}
+.br-scope-trades {
+  margin-bottom: 1rem;
+}
+.br-progress__item[hidden],
+.br-acc[hidden] {
+  display: none !important;
+}
 .br-edit-table .admin-input {
   min-width: 88px;
 }
