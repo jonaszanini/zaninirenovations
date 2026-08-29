@@ -144,42 +144,54 @@
     });
   }
 
-  function areaEntryMode() {
-    var el = form.querySelector('[data-br-area-mode]:checked');
-    return el ? el.value : 'sqft';
-  }
-
   function formatAreaSqft(n) {
     var rounded = Math.round(Number(n) * 100) / 100;
     if (!isFinite(rounded) || rounded <= 0) return '';
     return String(rounded);
   }
 
-  function syncAreaFromDimensions() {
-    var lenEl = document.getElementById('br-area-length');
-    var widEl = document.getElementById('br-area-width');
-    var areaEl = document.getElementById('br-area');
-    var out = document.getElementById('br-area-computed');
+  function lwMode(root) {
+    var el = root.querySelector('[data-br-lw-mode]:checked');
+    return el ? el.value : 'sqft';
+  }
+
+  function syncLw(root) {
+    var dims = lwMode(root) === 'dimensions';
+    var sqft = root.querySelector('[data-br-lw-sqft]');
+    var dimWrap = root.querySelector('[data-br-lw-dims]');
+    if (sqft) sqft.hidden = dims;
+    if (dimWrap) dimWrap.hidden = !dims;
+    if (!dims) return;
+    var qty = root.querySelector('[data-br-lw-qty]');
+    var lenEl = root.querySelector('[data-br-lw-length]');
+    var widEl = root.querySelector('[data-br-lw-width]');
+    var out = root.querySelector('[data-br-lw-computed]');
     var len = lenEl ? parseFloat(lenEl.value) : 0;
     var wid = widEl ? parseFloat(widEl.value) : 0;
+    var zero = root.getAttribute('data-br-lw-zero') === '1';
     if (len > 0 && wid > 0) {
       var area = formatAreaSqft(len * wid);
-      if (areaEl) areaEl.value = area;
+      if (qty) qty.value = area;
       if (out) out.textContent = area + ' sq ft';
     } else {
-      if (areaEntryMode() === 'dimensions' && areaEl) areaEl.value = '0';
-      if (out) out.textContent = 'Enter length and width to calculate sq ft.';
+      if (zero && qty) qty.value = '0';
+      if (out) out.textContent = 'Enter length and width';
     }
   }
 
-  function applyAreaEntryMode() {
-    var dims = areaEntryMode() === 'dimensions';
-    var sqft = document.getElementById('br-area-sqft-fields');
-    if (sqft) sqft.hidden = dims;
-    form.querySelectorAll('[data-br-area-dim]').forEach(function (el) {
-      el.hidden = !dims;
+  function bindLw() {
+    form.querySelectorAll('[data-br-lw]').forEach(function (root) {
+      if (root.getAttribute('data-br-lw-bound') === '1') return;
+      root.setAttribute('data-br-lw-bound', '1');
+      root.querySelectorAll('[data-br-lw-mode]').forEach(function (el) {
+        el.addEventListener('change', function () { syncLw(root); });
+      });
+      var lenEl = root.querySelector('[data-br-lw-length]');
+      var widEl = root.querySelector('[data-br-lw-width]');
+      if (lenEl) lenEl.addEventListener('input', function () { syncLw(root); });
+      if (widEl) widEl.addEventListener('input', function () { syncLw(root); });
+      syncLw(root);
     });
-    if (dims) syncAreaFromDimensions();
   }
 
   function applyScope() {
@@ -298,7 +310,7 @@
   }
 
   applyScope();
-  applyAreaEntryMode();
+  bindLw();
 
   if (!isEdit) {
     setWizardStep(0, false);
@@ -317,15 +329,6 @@
       if (!isEdit) setWizardStep(0, false);
       schedulePreview();
     });
-  });
-  form.querySelectorAll('[data-br-area-mode]').forEach(function (el) {
-    el.addEventListener('change', function () {
-      applyAreaEntryMode();
-    });
-  });
-  ['br-area-length', 'br-area-width'].forEach(function (id) {
-    var el = document.getElementById(id);
-    if (el) el.addEventListener('input', syncAreaFromDimensions);
   });
   form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
     cb.addEventListener('change', function () {

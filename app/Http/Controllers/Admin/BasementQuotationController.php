@@ -423,6 +423,7 @@ class BasementQuotationController extends Controller
         }
         $out['paint_colors'] = ((int) $out['paint_colors'] === 2) ? 2 : 1;
         $out['scope_preset'] = BasementQuotationCalculator::normalizePreset($out['scope_preset'] ?? 'full');
+        $out['qty_dims'] = $this->qtyDimsFromRequest($request);
         $out = BasementQuotationCalculator::applyAreaEntry($out);
 
         $sections = array_keys(BasementQuotationCalculator::SECTIONS);
@@ -447,6 +448,30 @@ class BasementQuotationController extends Controller
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
         unset($draft);
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, array{mode: string, length_ft: float|null, width_ft: float|null}>
+     */
+    private function qtyDimsFromRequest(Request $request): array
+    {
+        $raw = $request->input('qty_dims', []);
+        if (! is_array($raw)) {
+            $raw = [];
+        }
+        $out = [];
+        foreach (BasementQuotationCalculator::qtyLwKeys() as $field) {
+            $row = is_array($raw[$field] ?? null) ? $raw[$field] : [];
+            $lenRaw = $row['length_ft'] ?? null;
+            $widRaw = $row['width_ft'] ?? null;
+            $out[$field] = [
+                'mode' => BasementQuotationCalculator::normalizeAreaMode($row['mode'] ?? 'sqft'),
+                'length_ft' => ($lenRaw === null || $lenRaw === '') ? null : round(max(0, (float) $lenRaw), 4),
+                'width_ft' => ($widRaw === null || $widRaw === '') ? null : round(max(0, (float) $widRaw), 4),
+            ];
+        }
 
         return $out;
     }

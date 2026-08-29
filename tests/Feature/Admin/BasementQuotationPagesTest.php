@@ -31,7 +31,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Bathroom only')
             ->assertSee('New wall')
             ->assertSee('Trades to include')
-            ->assertSee('Work area')
+            ->assertSee('Total basement area')
             ->assertSee('Total sq ft')
             ->assertSee('Length × width')
             ->assertSee('Flooring')

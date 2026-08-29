@@ -25,6 +25,21 @@
       'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
   ]);
   $enabledCount = $enabledCount ?? max(1, count($enabledNow));
+  $qtyDimsPosted = old('qty_dims', $inputs['qty_dims'] ?? []);
+  if (! is_array($qtyDimsPosted)) {
+      $qtyDimsPosted = [];
+  }
+  $qtyDim = function (string $field) use ($qtyDimsPosted) {
+      $row = is_array($qtyDimsPosted[$field] ?? null) ? $qtyDimsPosted[$field] : [];
+      $len = $row['length_ft'] ?? '';
+      $wid = $row['width_ft'] ?? '';
+
+      return [
+          'mode' => \App\Services\BasementQuotationCalculator::normalizeAreaMode($row['mode'] ?? 'sqft'),
+          'length' => ($len === null || $len === '') ? '' : $len,
+          'width' => ($wid === null || $wid === '') ? '' : $wid,
+      ];
+  };
 @endphp
 
 {{-- 1. Overview --}}
@@ -42,11 +57,6 @@
       'wall' => 'Framing, drywall, paint, and cleanup. Drywall and paint use wall length × height × both sides.',
       'custom' => 'Only the trades you check below. Overview and Review always stay.',
   ];
-  $areaLen = $brQty('area_length_ft');
-  $areaWid = $brQty('area_width_ft');
-  $areaComputed = ($areaMode === 'dimensions' && $areaLen !== '' && $areaWid !== '' && (float) $areaLen > 0 && (float) $areaWid > 0)
-      ? rtrim(rtrim(number_format((float) $areaLen * (float) $areaWid, 2, '.', ''), '0'), '.').' sq ft'
-      : 'Enter length and width to calculate sq ft.';
 @endphp
 <details class="br-acc admin-card is-active" data-br-step="overview" @if(empty($isEdit)) open @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Project Overview</summary>
@@ -82,50 +92,23 @@
       @endforeach
     </fieldset>
 
-    <fieldset class="br-scope-presets">
-      <legend>Work area</legend>
-      <p class="admin-form-help">Enter the finished floor area, or length and width in feet and we will multiply them.</p>
-      <div class="br-area-mode">
-        <label class="br-scope-option">
-          <input type="radio" class="br-preview" name="area_entry_mode" value="sqft"
-                 data-br-area-mode @checked($areaMode === 'sqft')>
-          <span class="br-scope-option__body">
-            <strong>Total sq ft</strong>
-            <span class="admin-form-help">Type the square footage directly.</span>
-          </span>
-        </label>
-        <label class="br-scope-option">
-          <input type="radio" class="br-preview" name="area_entry_mode" value="dimensions"
-                 data-br-area-mode @checked($areaMode === 'dimensions')>
-          <span class="br-scope-option__body">
-            <strong>Length × width</strong>
-            <span class="admin-form-help">We multiply the two sides (feet) for you.</span>
-          </span>
-        </label>
-      </div>
-    </fieldset>
-
     <div class="admin-form-grid-2">
-      <div class="admin-form-group" id="br-area-sqft-fields" @if($areaMode === 'dimensions') hidden @endif>
-        <label for="br-area" id="br-area-label">{{ $areaLabels[$scopePreset] ?? $areaLabels['full'] }}</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-area" name="area_sqft"
-               value="{{ $brVal('area_sqft', 0) }}"
-               title="Finished floor area of the work. Leave other quantity fields blank to auto-calculate from this.">
-        <p class="admin-form-help" id="br-area-help">Leave later quantity fields blank to auto-fill from this area. Enter 0 on a field to skip it.</p>
-      </div>
-      <div class="admin-form-group" data-br-area-dim @unless($areaMode === 'dimensions') hidden @endunless>
-        <label for="br-area-length">Length (ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-area-length" name="area_length_ft"
-               value="{{ $brQty('area_length_ft') }}" placeholder="e.g. 12"
-               title="One side of the finished floor area, in feet.">
-      </div>
-      <div class="admin-form-group" data-br-area-dim @unless($areaMode === 'dimensions') hidden @endunless>
-        <label for="br-area-width">Width (ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-area-width" name="area_width_ft"
-               value="{{ $brQty('area_width_ft') }}" placeholder="e.g. 10"
-               title="The other side of the finished floor area, in feet.">
-        <p class="admin-form-help" id="br-area-computed">{{ $areaComputed }}</p>
-      </div>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'area_sqft',
+        'id' => 'br-area',
+        'label' => $areaLabels[$scopePreset] ?? $areaLabels['full'],
+        'labelId' => 'br-area-label',
+        'value' => $brVal('area_sqft', 0),
+        'modeName' => 'area_entry_mode',
+        'lengthName' => 'area_length_ft',
+        'widthName' => 'area_width_ft',
+        'mode' => $areaMode,
+        'lengthValue' => $brQty('area_length_ft'),
+        'widthValue' => $brQty('area_width_ft'),
+        'help' => 'Leave later quantity fields blank to auto-fill from this area. Enter 0 on a field to skip it.',
+        'title' => 'Finished floor area of the work. Leave other quantity fields blank to auto-calculate from this.',
+        'zeroIfIncomplete' => true,
+      ])
       <div class="admin-form-group">
         <label for="br-height">Ceiling height (ft)</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-height" name="ceiling_height_ft"
@@ -174,16 +157,32 @@
       'attrs' => ['data-br-reveal' => 'br-demo-fields'],
     ])
     <div id="br-demo-fields" class="admin-form-grid-2" style="margin-top:12px;" @unless($brOn('include_demolition')) hidden @endunless>
-      <div class="admin-form-group">
-        <label for="br-demo-floor">Existing flooring removal (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-demo-floor" name="demo_flooring_sf"
-               value="{{ $brQty('demo_flooring_sf') }}" placeholder="Auto: basement area">
-      </div>
-      <div class="admin-form-group">
-        <label for="br-demo-dw">Existing drywall / ceiling removal (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-demo-dw" name="demo_drywall_sf"
-               value="{{ $brQty('demo_drywall_sf') }}" placeholder="0 if none">
-      </div>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'demo_flooring_sf',
+        'id' => 'br-demo-floor',
+        'label' => 'Existing flooring removal (sq ft)',
+        'value' => $brQty('demo_flooring_sf'),
+        'modeName' => 'qty_dims[demo_flooring_sf][mode]',
+        'lengthName' => 'qty_dims[demo_flooring_sf][length_ft]',
+        'widthName' => 'qty_dims[demo_flooring_sf][width_ft]',
+        'mode' => $qtyDim('demo_flooring_sf')['mode'],
+        'lengthValue' => $qtyDim('demo_flooring_sf')['length'],
+        'widthValue' => $qtyDim('demo_flooring_sf')['width'],
+        'placeholder' => 'Auto: basement area',
+      ])
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'demo_drywall_sf',
+        'id' => 'br-demo-dw',
+        'label' => 'Existing drywall / ceiling removal (sq ft)',
+        'value' => $brQty('demo_drywall_sf'),
+        'modeName' => 'qty_dims[demo_drywall_sf][mode]',
+        'lengthName' => 'qty_dims[demo_drywall_sf][length_ft]',
+        'widthName' => 'qty_dims[demo_drywall_sf][width_ft]',
+        'mode' => $qtyDim('demo_drywall_sf')['mode'],
+        'lengthValue' => $qtyDim('demo_drywall_sf')['length'],
+        'widthValue' => $qtyDim('demo_drywall_sf')['width'],
+        'placeholder' => '0 if none',
+      ])
       <div class="admin-form-group">
         <label for="br-bins">Debris bins</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bins" name="demo_bin_qty"
@@ -316,26 +315,56 @@
     <div class="br-check-stack">
       @include('admin.partials.checkbox', ['name' => 'insulate_walls', 'hiddenFallback' => true, 'checked' => $brOn('insulate_walls', true), 'label' => 'Wall insulation + vapor barrier', 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-wall']])
     </div>
-    <div class="admin-form-group" id="br-ins-wall" @unless($brOn('insulate_walls', true)) hidden @endunless>
-      <label for="br-ins-wall-sf">Wall insulation (sq ft)</label>
-      <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-ins-wall-sf" name="insulation_wall_sf"
-             value="{{ $brQty('insulation_wall_sf') }}" placeholder="Auto: perimeter × height">
+    <div id="br-ins-wall" @unless($brOn('insulate_walls', true)) hidden @endunless>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'insulation_wall_sf',
+        'id' => 'br-ins-wall-sf',
+        'label' => 'Wall insulation (sq ft)',
+        'value' => $brQty('insulation_wall_sf'),
+        'modeName' => 'qty_dims[insulation_wall_sf][mode]',
+        'lengthName' => 'qty_dims[insulation_wall_sf][length_ft]',
+        'widthName' => 'qty_dims[insulation_wall_sf][width_ft]',
+        'mode' => $qtyDim('insulation_wall_sf')['mode'],
+        'lengthValue' => $qtyDim('insulation_wall_sf')['length'],
+        'widthValue' => $qtyDim('insulation_wall_sf')['width'],
+        'placeholder' => 'Auto: perimeter × height',
+      ])
     </div>
     <div class="br-check-stack">
       @include('admin.partials.checkbox', ['name' => 'insulate_ceiling', 'hiddenFallback' => true, 'checked' => $brOn('insulate_ceiling'), 'label' => 'Ceiling insulation', 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-ceil']])
     </div>
-    <div class="admin-form-group" id="br-ins-ceil" @unless($brOn('insulate_ceiling')) hidden @endunless>
-      <label for="br-ins-ceil-sf">Ceiling insulation (sq ft)</label>
-      <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-ins-ceil-sf" name="insulation_ceiling_sf"
-             value="{{ $brQty('insulation_ceiling_sf') }}" placeholder="Auto: basement area">
+    <div id="br-ins-ceil" @unless($brOn('insulate_ceiling')) hidden @endunless>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'insulation_ceiling_sf',
+        'id' => 'br-ins-ceil-sf',
+        'label' => 'Ceiling insulation (sq ft)',
+        'value' => $brQty('insulation_ceiling_sf'),
+        'modeName' => 'qty_dims[insulation_ceiling_sf][mode]',
+        'lengthName' => 'qty_dims[insulation_ceiling_sf][length_ft]',
+        'widthName' => 'qty_dims[insulation_ceiling_sf][width_ft]',
+        'mode' => $qtyDim('insulation_ceiling_sf')['mode'],
+        'lengthValue' => $qtyDim('insulation_ceiling_sf')['length'],
+        'widthValue' => $qtyDim('insulation_ceiling_sf')['width'],
+        'placeholder' => 'Auto: basement area',
+      ])
     </div>
     <div class="br-check-stack">
       @include('admin.partials.checkbox', ['name' => 'underslab', 'hiddenFallback' => true, 'checked' => $brOn('underslab'), 'label' => 'Under-slab insulation', 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-slab']])
     </div>
-    <div class="admin-form-group" id="br-ins-slab" @unless($brOn('underslab')) hidden @endunless>
-      <label for="br-ins-slab-sf">Under-slab insulation (sq ft)</label>
-      <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-ins-slab-sf" name="underslab_sf"
-             value="{{ $brQty('underslab_sf') }}" placeholder="Auto: basement area">
+    <div id="br-ins-slab" @unless($brOn('underslab')) hidden @endunless>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'underslab_sf',
+        'id' => 'br-ins-slab-sf',
+        'label' => 'Under-slab insulation (sq ft)',
+        'value' => $brQty('underslab_sf'),
+        'modeName' => 'qty_dims[underslab_sf][mode]',
+        'lengthName' => 'qty_dims[underslab_sf][length_ft]',
+        'widthName' => 'qty_dims[underslab_sf][width_ft]',
+        'mode' => $qtyDim('underslab_sf')['mode'],
+        'lengthValue' => $qtyDim('underslab_sf')['length'],
+        'widthValue' => $qtyDim('underslab_sf')['width'],
+        'placeholder' => 'Auto: basement area',
+      ])
     </div>
   </div>
 </details>
@@ -346,16 +375,32 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Drywall / Mud / Tape / Sand</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
-      <div class="admin-form-group">
-        <label for="br-dw-wall">Wall drywall (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-dw-wall" name="drywall_wall_sf"
-               value="{{ $brQty('drywall_wall_sf') }}" placeholder="Auto from area × height">
-      </div>
-      <div class="admin-form-group">
-        <label for="br-dw-ceil">Ceiling drywall (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-dw-ceil" name="drywall_ceiling_sf"
-               value="{{ $brQty('drywall_ceiling_sf') }}" placeholder="Auto if ceiling is drywall">
-      </div>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'drywall_wall_sf',
+        'id' => 'br-dw-wall',
+        'label' => 'Wall drywall (sq ft)',
+        'value' => $brQty('drywall_wall_sf'),
+        'modeName' => 'qty_dims[drywall_wall_sf][mode]',
+        'lengthName' => 'qty_dims[drywall_wall_sf][length_ft]',
+        'widthName' => 'qty_dims[drywall_wall_sf][width_ft]',
+        'mode' => $qtyDim('drywall_wall_sf')['mode'],
+        'lengthValue' => $qtyDim('drywall_wall_sf')['length'],
+        'widthValue' => $qtyDim('drywall_wall_sf')['width'],
+        'placeholder' => 'Auto from area × height',
+      ])
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'drywall_ceiling_sf',
+        'id' => 'br-dw-ceil',
+        'label' => 'Ceiling drywall (sq ft)',
+        'value' => $brQty('drywall_ceiling_sf'),
+        'modeName' => 'qty_dims[drywall_ceiling_sf][mode]',
+        'lengthName' => 'qty_dims[drywall_ceiling_sf][length_ft]',
+        'widthName' => 'qty_dims[drywall_ceiling_sf][width_ft]',
+        'mode' => $qtyDim('drywall_ceiling_sf')['mode'],
+        'lengthValue' => $qtyDim('drywall_ceiling_sf')['length'],
+        'widthValue' => $qtyDim('drywall_ceiling_sf')['width'],
+        'placeholder' => 'Auto if ceiling is drywall',
+      ])
       <div class="admin-form-group">
         <label for="br-dw-corners">Outside corners</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-dw-corners" name="drywall_corners"
@@ -393,11 +438,19 @@
           <option value="none" @selected($brVal('ceiling_type') === 'none')>Leave existing / skip</option>
         </select>
       </div>
-      <div class="admin-form-group">
-        <label for="br-ceil-sf">Ceiling area (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-ceil-sf" name="ceiling_sf"
-               value="{{ $brQty('ceiling_sf') }}" placeholder="Auto: basement area">
-      </div>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'ceiling_sf',
+        'id' => 'br-ceil-sf',
+        'label' => 'Ceiling area (sq ft)',
+        'value' => $brQty('ceiling_sf'),
+        'modeName' => 'qty_dims[ceiling_sf][mode]',
+        'lengthName' => 'qty_dims[ceiling_sf][length_ft]',
+        'widthName' => 'qty_dims[ceiling_sf][width_ft]',
+        'mode' => $qtyDim('ceiling_sf')['mode'],
+        'lengthValue' => $qtyDim('ceiling_sf')['length'],
+        'widthValue' => $qtyDim('ceiling_sf')['width'],
+        'placeholder' => 'Auto: basement area',
+      ])
     </div>
   </div>
 </details>
@@ -419,11 +472,19 @@
           <option value="none" @selected($brVal('flooring_type') === 'none')>Skip flooring</option>
         </select>
       </div>
-      <div class="admin-form-group">
-        <label for="br-fl-sf">Flooring area (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-fl-sf" name="flooring_sf"
-               value="{{ $brQty('flooring_sf') }}" placeholder="Auto: basement area">
-      </div>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'flooring_sf',
+        'id' => 'br-fl-sf',
+        'label' => 'Flooring area (sq ft)',
+        'value' => $brQty('flooring_sf'),
+        'modeName' => 'qty_dims[flooring_sf][mode]',
+        'lengthName' => 'qty_dims[flooring_sf][length_ft]',
+        'widthName' => 'qty_dims[flooring_sf][width_ft]',
+        'mode' => $qtyDim('flooring_sf')['mode'],
+        'lengthValue' => $qtyDim('flooring_sf')['length'],
+        'widthValue' => $qtyDim('flooring_sf')['width'],
+        'placeholder' => 'Auto: basement area',
+      ])
       <div class="admin-form-group">
         <label for="br-trans">Transitions</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-trans" name="transition_qty"
@@ -473,16 +534,32 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Painting</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
-      <div class="admin-form-group">
-        <label for="br-p-wall">Walls (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-p-wall" name="paint_wall_sf"
-               value="{{ $brQty('paint_wall_sf') }}" placeholder="Auto from drywall walls">
-      </div>
-      <div class="admin-form-group">
-        <label for="br-p-ceil">Ceiling (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-p-ceil" name="paint_ceiling_sf"
-               value="{{ $brQty('paint_ceiling_sf') }}" placeholder="Auto unless drop ceiling">
-      </div>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'paint_wall_sf',
+        'id' => 'br-p-wall',
+        'label' => 'Walls (sq ft)',
+        'value' => $brQty('paint_wall_sf'),
+        'modeName' => 'qty_dims[paint_wall_sf][mode]',
+        'lengthName' => 'qty_dims[paint_wall_sf][length_ft]',
+        'widthName' => 'qty_dims[paint_wall_sf][width_ft]',
+        'mode' => $qtyDim('paint_wall_sf')['mode'],
+        'lengthValue' => $qtyDim('paint_wall_sf')['length'],
+        'widthValue' => $qtyDim('paint_wall_sf')['width'],
+        'placeholder' => 'Auto from drywall walls',
+      ])
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'paint_ceiling_sf',
+        'id' => 'br-p-ceil',
+        'label' => 'Ceiling (sq ft)',
+        'value' => $brQty('paint_ceiling_sf'),
+        'modeName' => 'qty_dims[paint_ceiling_sf][mode]',
+        'lengthName' => 'qty_dims[paint_ceiling_sf][length_ft]',
+        'widthName' => 'qty_dims[paint_ceiling_sf][width_ft]',
+        'mode' => $qtyDim('paint_ceiling_sf')['mode'],
+        'lengthValue' => $qtyDim('paint_ceiling_sf')['length'],
+        'widthValue' => $qtyDim('paint_ceiling_sf')['width'],
+        'placeholder' => 'Auto unless drop ceiling',
+      ])
       <div class="admin-form-group">
         <label for="br-p-trim">Trim (linear ft)</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-p-trim" name="paint_trim_lf"
@@ -534,11 +611,19 @@
         @include('admin.partials.checkbox', ['name' => 'include_tub', 'hiddenFallback' => true, 'checked' => $brOn('include_tub'), 'label' => 'Tub', 'inputClass' => 'admin-checkbox__input br-preview'])
         @include('admin.partials.checkbox', ['name' => 'include_exhaust_fan', 'hiddenFallback' => true, 'checked' => $brOn('include_exhaust_fan', true), 'label' => 'Exhaust fan', 'inputClass' => 'admin-checkbox__input br-preview'])
       </div>
-      <div class="admin-form-group">
-        <label for="br-tile">Tile work (sq ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-tile" name="bath_tile_sf"
-               value="{{ $brVal('bath_tile_sf', 0) }}" placeholder="Floor + shower walls">
-      </div>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'bath_tile_sf',
+        'id' => 'br-tile',
+        'label' => 'Tile work (sq ft)',
+        'value' => $brVal('bath_tile_sf', 0),
+        'modeName' => 'qty_dims[bath_tile_sf][mode]',
+        'lengthName' => 'qty_dims[bath_tile_sf][length_ft]',
+        'widthName' => 'qty_dims[bath_tile_sf][width_ft]',
+        'mode' => $qtyDim('bath_tile_sf')['mode'],
+        'lengthValue' => $qtyDim('bath_tile_sf')['length'],
+        'widthValue' => $qtyDim('bath_tile_sf')['width'],
+        'placeholder' => 'Floor + shower walls',
+      ])
     </div>
   </div>
 </details>

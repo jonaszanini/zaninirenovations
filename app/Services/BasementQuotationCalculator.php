@@ -73,7 +73,30 @@ class BasementQuotationCalculator
     }
 
     /**
-     * When the user enters length × width, overwrite area_sqft so takeoff matches.
+     * Square-footage fields that can be entered as length × width.
+     *
+     * @return list<string>
+     */
+    public static function qtyLwKeys(): array
+    {
+        return [
+            'demo_flooring_sf',
+            'demo_drywall_sf',
+            'insulation_wall_sf',
+            'insulation_ceiling_sf',
+            'underslab_sf',
+            'drywall_wall_sf',
+            'drywall_ceiling_sf',
+            'ceiling_sf',
+            'flooring_sf',
+            'paint_wall_sf',
+            'paint_ceiling_sf',
+            'bath_tile_sf',
+        ];
+    }
+
+    /**
+     * When the user enters length × width, overwrite the matching sq ft field.
      *
      * @param  array<string, mixed>  $inputs
      * @return array<string, mixed>
@@ -82,12 +105,31 @@ class BasementQuotationCalculator
     {
         $mode = self::normalizeAreaMode($inputs['area_entry_mode'] ?? 'sqft');
         $inputs['area_entry_mode'] = $mode;
-        if ($mode !== 'dimensions') {
-            return $inputs;
+        if ($mode === 'dimensions') {
+            $len = round(max(0, (float) ($inputs['area_length_ft'] ?? 0)), 4);
+            $wid = round(max(0, (float) ($inputs['area_width_ft'] ?? 0)), 4);
+            $inputs['area_sqft'] = ($len > 0 && $wid > 0) ? round($len * $wid, 2) : 0.0;
         }
-        $len = round(max(0, (float) ($inputs['area_length_ft'] ?? 0)), 4);
-        $wid = round(max(0, (float) ($inputs['area_width_ft'] ?? 0)), 4);
-        $inputs['area_sqft'] = ($len > 0 && $wid > 0) ? round($len * $wid, 2) : 0.0;
+
+        $raw = is_array($inputs['qty_dims'] ?? null) ? $inputs['qty_dims'] : [];
+        $clean = [];
+        foreach (self::qtyLwKeys() as $field) {
+            $row = is_array($raw[$field] ?? null) ? $raw[$field] : [];
+            $rowMode = self::normalizeAreaMode($row['mode'] ?? 'sqft');
+            $lenRaw = $row['length_ft'] ?? null;
+            $widRaw = $row['width_ft'] ?? null;
+            $len = ($lenRaw === null || $lenRaw === '') ? null : round(max(0, (float) $lenRaw), 4);
+            $wid = ($widRaw === null || $widRaw === '') ? null : round(max(0, (float) $widRaw), 4);
+            $clean[$field] = [
+                'mode' => $rowMode,
+                'length_ft' => $len,
+                'width_ft' => $wid,
+            ];
+            if ($rowMode === 'dimensions' && $len !== null && $wid !== null && $len > 0 && $wid > 0) {
+                $inputs[$field] = round($len * $wid, 2);
+            }
+        }
+        $inputs['qty_dims'] = $clean;
 
         return $inputs;
     }
@@ -150,6 +192,7 @@ class BasementQuotationCalculator
             'area_entry_mode' => 'sqft',
             'area_length_ft' => null,
             'area_width_ft' => null,
+            'qty_dims' => [],
             'ceiling_height_ft' => 8,
             'room_count' => 1,
             'existing_notes' => '',
