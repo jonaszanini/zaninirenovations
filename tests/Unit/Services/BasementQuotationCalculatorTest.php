@@ -621,6 +621,36 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEmpty(array_filter($matKeys, fn ($key) => str_contains((string) $key, 'paint')));
     }
 
+    public function test_length_times_width_sets_work_area(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 0,
+            'area_entry_mode' => 'dimensions',
+            'area_length_ft' => 10,
+            'area_width_ft' => 12,
+            'flooring_type' => 'lvp',
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertSame(120.0, $calc['scope']['area_sqft']);
+        $this->assertSame('dimensions', $calc['scope']['area_entry_mode']);
+        $this->assertNotEmpty(collect($calc['materials'])->firstWhere('key', 'flooring_finish'));
+    }
+
+    public function test_incomplete_dimensions_do_not_keep_typed_sqft(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'area_entry_mode' => 'dimensions',
+            'area_length_ft' => 10,
+            'area_width_ft' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertSame(0.0, $calc['scope']['area_sqft']);
+        $this->assertSame(0.0, $calc['summary']['grand_total']);
+    }
+
     private function settings(?array $materials = null): BasementSettings
     {
         return new BasementSettings([

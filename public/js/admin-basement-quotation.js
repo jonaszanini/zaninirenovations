@@ -144,6 +144,44 @@
     });
   }
 
+  function areaEntryMode() {
+    var el = form.querySelector('[data-br-area-mode]:checked');
+    return el ? el.value : 'sqft';
+  }
+
+  function formatAreaSqft(n) {
+    var rounded = Math.round(Number(n) * 100) / 100;
+    if (!isFinite(rounded) || rounded <= 0) return '';
+    return String(rounded);
+  }
+
+  function syncAreaFromDimensions() {
+    var lenEl = document.getElementById('br-area-length');
+    var widEl = document.getElementById('br-area-width');
+    var areaEl = document.getElementById('br-area');
+    var out = document.getElementById('br-area-computed');
+    var len = lenEl ? parseFloat(lenEl.value) : 0;
+    var wid = widEl ? parseFloat(widEl.value) : 0;
+    if (len > 0 && wid > 0) {
+      var area = formatAreaSqft(len * wid);
+      if (areaEl) areaEl.value = area;
+      if (out) out.textContent = area + ' sq ft';
+    } else {
+      if (areaEntryMode() === 'dimensions' && areaEl) areaEl.value = '0';
+      if (out) out.textContent = 'Enter length and width to calculate sq ft.';
+    }
+  }
+
+  function applyAreaEntryMode() {
+    var dims = areaEntryMode() === 'dimensions';
+    var sqft = document.getElementById('br-area-sqft-fields');
+    if (sqft) sqft.hidden = dims;
+    form.querySelectorAll('[data-br-area-dim]').forEach(function (el) {
+      el.hidden = !dims;
+    });
+    if (dims) syncAreaFromDimensions();
+  }
+
   function applyScope() {
     rebuildWizardKeys();
     var enabled = enabledTradeKeys();
@@ -260,6 +298,7 @@
   }
 
   applyScope();
+  applyAreaEntryMode();
 
   if (!isEdit) {
     setWizardStep(0, false);
@@ -278,6 +317,15 @@
       if (!isEdit) setWizardStep(0, false);
       schedulePreview();
     });
+  });
+  form.querySelectorAll('[data-br-area-mode]').forEach(function (el) {
+    el.addEventListener('change', function () {
+      applyAreaEntryMode();
+    });
+  });
+  ['br-area-length', 'br-area-width'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', syncAreaFromDimensions);
   });
   form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
     cb.addEventListener('change', function () {

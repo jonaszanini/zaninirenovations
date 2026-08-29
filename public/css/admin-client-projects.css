@@ -6198,8 +6198,24 @@ body.cp-modal-open {
 .br-scope-trades {
   margin-bottom: 1rem;
 }
+.br-area-mode {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+}
+.br-area-mode .br-scope-option {
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .br-area-mode {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 .br-progress__item[hidden],
-.br-acc[hidden] {
+.br-acc[hidden],
+#br-area-sqft-fields[hidden],
+[data-br-area-dim][hidden] {
   display: none !important;
 }
 .br-edit-table .admin-input {

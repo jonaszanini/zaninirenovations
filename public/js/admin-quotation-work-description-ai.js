@@ -244,6 +244,9 @@
     return {
       client_name: formValue(form, 'client_name'),
       area_sqft: formValue(form, 'area_sqft'),
+      area_entry_mode: formValue(form, 'area_entry_mode'),
+      area_length_ft: formValue(form, 'area_length_ft'),
+      area_width_ft: formValue(form, 'area_width_ft'),
       ceiling_height_ft: formValue(form, 'ceiling_height_ft'),
       room_count: formValue(form, 'room_count'),
       flooring_type: formSelectValue(form, 'flooring_type'),

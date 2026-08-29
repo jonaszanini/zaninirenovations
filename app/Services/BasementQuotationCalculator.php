@@ -67,6 +67,31 @@ class BasementQuotationCalculator
         return in_array($preset = $value, ['full', 'bathroom', 'wall', 'custom'], true) ? $preset : 'full';
     }
 
+    public static function normalizeAreaMode(mixed $mode): string
+    {
+        return strtolower(trim((string) $mode)) === 'dimensions' ? 'dimensions' : 'sqft';
+    }
+
+    /**
+     * When the user enters length × width, overwrite area_sqft so takeoff matches.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, mixed>
+     */
+    public static function applyAreaEntry(array $inputs): array
+    {
+        $mode = self::normalizeAreaMode($inputs['area_entry_mode'] ?? 'sqft');
+        $inputs['area_entry_mode'] = $mode;
+        if ($mode !== 'dimensions') {
+            return $inputs;
+        }
+        $len = round(max(0, (float) ($inputs['area_length_ft'] ?? 0)), 4);
+        $wid = round(max(0, (float) ($inputs['area_width_ft'] ?? 0)), 4);
+        $inputs['area_sqft'] = ($len > 0 && $wid > 0) ? round($len * $wid, 2) : 0.0;
+
+        return $inputs;
+    }
+
     /**
      * @param  array<string, mixed>  $inputs
      * @return list<string>
@@ -122,6 +147,9 @@ class BasementQuotationCalculator
     {
         return [
             'area_sqft' => 0,
+            'area_entry_mode' => 'sqft',
+            'area_length_ft' => null,
+            'area_width_ft' => null,
             'ceiling_height_ft' => 8,
             'room_count' => 1,
             'existing_notes' => '',
@@ -208,17 +236,25 @@ class BasementQuotationCalculator
         }
 
         $hints = [];
+        $inputs = self::applyAreaEntry($inputs);
         $preset = self::normalizePreset($inputs['scope_preset'] ?? null);
+        $mode = self::normalizeAreaMode($inputs['area_entry_mode'] ?? 'sqft');
         $area = max(0, (float) ($inputs['area_sqft'] ?? 0));
         $partition = max(0, (float) ($inputs['partition_lf'] ?? 0));
         if ($preset === 'wall') {
             if ($partition <= 0 && $area <= 0) {
-                $hints[] = 'Enter the new wall length in linear feet (Framing), or an area for cleaning.';
+                $hints[] = $mode === 'dimensions'
+                    ? 'Enter the new wall length in linear feet (Framing), or length and width for cleaning.'
+                    : 'Enter the new wall length in linear feet (Framing), or an area for cleaning.';
             }
         } elseif ($area <= 0) {
-            $hints[] = $preset === 'bathroom'
-                ? 'Enter the bathroom / work area in square feet.'
-                : 'Enter the total basement area in square feet.';
+            if ($mode === 'dimensions') {
+                $hints[] = 'Enter length and width in feet to calculate the work area.';
+            } else {
+                $hints[] = $preset === 'bathroom'
+                    ? 'Enter the bathroom / work area in square feet.'
+                    : 'Enter the total basement area in square feet.';
+            }
         }
 
         return $hints;
@@ -235,6 +271,7 @@ class BasementQuotationCalculator
         $matCatalog = $this->resolveMaterialCatalog($settings);
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $inputs['scope_preset'] = self::normalizePreset($inputs['scope_preset'] ?? null);
+        $inputs = self::applyAreaEntry($inputs);
 
         $area = round(max(0, (float) $inputs['area_sqft']), 2);
         $height = round(max(0, (float) $inputs['ceiling_height_ft']), 2) ?: 8;
@@ -765,6 +802,9 @@ class BasementQuotationCalculator
         return [
             'scope' => [
                 'area_sqft' => $area,
+                'area_entry_mode' => self::normalizeAreaMode($inputs['area_entry_mode'] ?? 'sqft'),
+                'area_length_ft' => round(max(0, (float) ($inputs['area_length_ft'] ?? 0)), 4),
+                'area_width_ft' => round(max(0, (float) ($inputs['area_width_ft'] ?? 0)), 4),
                 'ceiling_height_ft' => $height,
                 'room_count' => max(0, (int) $inputs['room_count']),
                 'suggested_wall_sf' => $suggestedWallSf,

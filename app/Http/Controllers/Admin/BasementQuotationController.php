@@ -378,6 +378,7 @@ class BasementQuotationController extends Controller
             'drywall_wall_sf', 'drywall_ceiling_sf', 'ceiling_sf',
             'flooring_sf', 'baseboard_lf',
             'paint_wall_sf', 'paint_ceiling_sf', 'paint_trim_lf',
+            'area_length_ft', 'area_width_ft',
         ];
         $ints = [
             'room_count', 'demo_bin_qty', 'header_qty', 'framing_door_openings',
@@ -394,7 +395,7 @@ class BasementQuotationController extends Controller
             'include_tub', 'include_exhaust_fan', 'include_cleaning', 'include_touchups',
             'client_provides_all',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode'];
 
         $out = $defaults;
         foreach ($floats as $key) {
@@ -422,6 +423,7 @@ class BasementQuotationController extends Controller
         }
         $out['paint_colors'] = ((int) $out['paint_colors'] === 2) ? 2 : 1;
         $out['scope_preset'] = BasementQuotationCalculator::normalizePreset($out['scope_preset'] ?? 'full');
+        $out = BasementQuotationCalculator::applyAreaEntry($out);
 
         $sections = array_keys(BasementQuotationCalculator::SECTIONS);
         $provided = $request->input('client_provides_sections', []);

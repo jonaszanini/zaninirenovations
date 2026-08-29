@@ -19,6 +19,7 @@
   };
   $step = 0;
   $scopePreset = $scopePreset ?? \App\Services\BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
+  $areaMode = \App\Services\BasementQuotationCalculator::normalizeAreaMode(old('area_entry_mode', $inputs['area_entry_mode'] ?? 'sqft'));
   $enabledNow = $enabledNow ?? \App\Services\BasementQuotationCalculator::enabledSections([
       'scope_preset' => $scopePreset,
       'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
@@ -41,6 +42,11 @@
       'wall' => 'Framing, drywall, paint, and cleanup. Drywall and paint use wall length × height × both sides.',
       'custom' => 'Only the trades you check below. Overview and Review always stay.',
   ];
+  $areaLen = $brQty('area_length_ft');
+  $areaWid = $brQty('area_width_ft');
+  $areaComputed = ($areaMode === 'dimensions' && $areaLen !== '' && $areaWid !== '' && (float) $areaLen > 0 && (float) $areaWid > 0)
+      ? rtrim(rtrim(number_format((float) $areaLen * (float) $areaWid, 2, '.', ''), '0'), '.').' sq ft'
+      : 'Enter length and width to calculate sq ft.';
 @endphp
 <details class="br-acc admin-card is-active" data-br-step="overview" @if(empty($isEdit)) open @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Project Overview</summary>
@@ -76,13 +82,49 @@
       @endforeach
     </fieldset>
 
+    <fieldset class="br-scope-presets">
+      <legend>Work area</legend>
+      <p class="admin-form-help">Enter the finished floor area, or length and width in feet and we will multiply them.</p>
+      <div class="br-area-mode">
+        <label class="br-scope-option">
+          <input type="radio" class="br-preview" name="area_entry_mode" value="sqft"
+                 data-br-area-mode @checked($areaMode === 'sqft')>
+          <span class="br-scope-option__body">
+            <strong>Total sq ft</strong>
+            <span class="admin-form-help">Type the square footage directly.</span>
+          </span>
+        </label>
+        <label class="br-scope-option">
+          <input type="radio" class="br-preview" name="area_entry_mode" value="dimensions"
+                 data-br-area-mode @checked($areaMode === 'dimensions')>
+          <span class="br-scope-option__body">
+            <strong>Length × width</strong>
+            <span class="admin-form-help">We multiply the two sides (feet) for you.</span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
     <div class="admin-form-grid-2">
-      <div class="admin-form-group">
+      <div class="admin-form-group" id="br-area-sqft-fields" @if($areaMode === 'dimensions') hidden @endif>
         <label for="br-area" id="br-area-label">{{ $areaLabels[$scopePreset] ?? $areaLabels['full'] }}</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-area" name="area_sqft"
                value="{{ $brVal('area_sqft', 0) }}"
                title="Finished floor area of the work. Leave other quantity fields blank to auto-calculate from this.">
         <p class="admin-form-help" id="br-area-help">Leave later quantity fields blank to auto-fill from this area. Enter 0 on a field to skip it.</p>
+      </div>
+      <div class="admin-form-group" data-br-area-dim @unless($areaMode === 'dimensions') hidden @endunless>
+        <label for="br-area-length">Length (ft)</label>
+        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-area-length" name="area_length_ft"
+               value="{{ $brQty('area_length_ft') }}" placeholder="e.g. 12"
+               title="One side of the finished floor area, in feet.">
+      </div>
+      <div class="admin-form-group" data-br-area-dim @unless($areaMode === 'dimensions') hidden @endunless>
+        <label for="br-area-width">Width (ft)</label>
+        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-area-width" name="area_width_ft"
+               value="{{ $brQty('area_width_ft') }}" placeholder="e.g. 10"
+               title="The other side of the finished floor area, in feet.">
+        <p class="admin-form-help" id="br-area-computed">{{ $areaComputed }}</p>
       </div>
       <div class="admin-form-group">
         <label for="br-height">Ceiling height (ft)</label>

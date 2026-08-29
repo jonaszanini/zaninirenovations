@@ -23,7 +23,19 @@
     @endif
     <div class="cp-vd-field">
       <span class="cp-vd-field__label">Area</span>
-      <span class="cp-vd-field__value">{{ $area > 0 ? number_format($area, 0).' sq ft' : '—' }}</span>
+      <span class="cp-vd-field__value">
+        @php
+          $areaMode = \App\Services\BasementQuotationCalculator::normalizeAreaMode($scope['area_entry_mode'] ?? $inp['area_entry_mode'] ?? 'sqft');
+          $areaLen = (float) ($scope['area_length_ft'] ?? $inp['area_length_ft'] ?? 0);
+          $areaWid = (float) ($scope['area_width_ft'] ?? $inp['area_width_ft'] ?? 0);
+        @endphp
+        @if ($areaMode === 'dimensions' && $areaLen > 0 && $areaWid > 0)
+          {{ rtrim(rtrim(number_format($areaLen, 2, '.', ''), '0'), '.') }} × {{ rtrim(rtrim(number_format($areaWid, 2, '.', ''), '0'), '.') }} ft
+          ({{ $area > 0 ? number_format($area, 0).' sq ft' : '—' }})
+        @else
+          {{ $area > 0 ? number_format($area, 0).' sq ft' : '—' }}
+        @endif
+      </span>
     </div>
     <div class="cp-vd-field">
       <span class="cp-vd-field__label">Ceiling height</span>
