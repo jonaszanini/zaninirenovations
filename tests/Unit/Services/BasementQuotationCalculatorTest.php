@@ -651,6 +651,27 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertSame(0.0, $calc['summary']['grand_total']);
     }
 
+    public function test_trade_length_times_width_overrides_auto_qty(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'include_demolition' => true,
+            'qty_dims' => [
+                'demo_flooring_sf' => [
+                    'mode' => 'dimensions',
+                    'length_ft' => 8,
+                    'width_ft' => 10,
+                ],
+            ],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $demo = collect($calc['labor'])->firstWhere('key', 'demo_floor');
+        $this->assertNotNull($demo);
+        $this->assertStringContainsString('80', $demo['detail']);
+        $this->assertStringNotContainsString('400', $demo['detail']);
+    }
+
     private function settings(?array $materials = null): BasementSettings
     {
         return new BasementSettings([
