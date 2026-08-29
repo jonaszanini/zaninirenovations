@@ -24,6 +24,12 @@
       'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
   ]);
   $enabledCount = max(1, count($enabledNow));
+  $presetSections = [
+      'full' => BasementQuotationCalculator::presetEnabledSections('full'),
+      'bathroom' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+      'wall' => BasementQuotationCalculator::presetEnabledSections('wall'),
+      'custom' => BasementQuotationCalculator::presetEnabledSections('custom'),
+  ];
   $previewLabor = is_array($initialPreview['labor'] ?? null) ? $initialPreview['labor'] : [];
   $previewMats = array_merge(
       is_array($initialPreview['materials'] ?? null) ? $initialPreview['materials'] : [],
@@ -292,12 +298,7 @@
       initialPreview: @json($initialPreview ?? null),
       isEdit: @json($isEdit),
       sectionKeys: @json(array_keys($sectionList)),
-      presetSections: @json([
-          'full' => BasementQuotationCalculator::presetEnabledSections('full'),
-          'bathroom' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
-          'wall' => BasementQuotationCalculator::presetEnabledSections('wall'),
-          'custom' => BasementQuotationCalculator::presetEnabledSections('custom'),
-      ]),
+      presetSections: @json($presetSections),
     };
   </script>
   <script src="{{ asset('js/admin-basement-quotation.js') }}?v={{ @filemtime(public_path('js/admin-basement-quotation.js')) ?: time() }}"></script>

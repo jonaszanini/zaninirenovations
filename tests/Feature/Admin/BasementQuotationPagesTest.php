@@ -62,6 +62,28 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Save configuration');
     }
 
+    public function test_bathroom_preset_hides_flooring_in_progress_nav(): void
+    {
+        $this->actingAsAdmin();
+
+        $html = $this->withInput([
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => \App\Services\BasementQuotationCalculator::presetEnabledSections('bathroom'),
+        ])->get(route('admin.quotations.basement.create'))
+            ->assertOk()
+            ->assertSee('Bathroom only')
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/data-br-goto="flooring"[^>]*\bhidden\b/s',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-br-goto="plumbing"[^>]*\bhidden\b/s',
+            $html
+        );
+    }
+
     public function test_price_configuration_keeps_active_tab_after_save(): void
     {
         $this->actingAsAdmin();
