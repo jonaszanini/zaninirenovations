@@ -32,17 +32,68 @@
 
   var draftBtn = document.getElementById('br-btn-draft');
   var publishBtn = document.getElementById('br-btn-publish');
+
+  function findStepKeyForElement(el) {
+    var step = el && el.closest ? el.closest('[data-br-step]') : null;
+    return step ? step.getAttribute('data-br-step') : null;
+  }
+
+  /**
+   * Create-mode wizard hides inactive steps with display:none. Required fields in
+   * Review (payment schedule, debris) can still block submit with no visible
+   * browser message. Reveal → validate → jump to the failing step when needed.
+   */
+  function submitWizard(intent) {
+    var intentEl = document.getElementById('br-save-intent');
+    if (intentEl) intentEl.value = intent;
+
+    if (!isEdit) {
+      form.querySelectorAll('.br-acc').forEach(function (el) {
+        el.classList.add('is-active');
+        el.setAttribute('open', '');
+        el.hidden = false;
+      });
+    }
+
+    if (!form.checkValidity()) {
+      var invalid = form.querySelector(':invalid');
+      if (!isEdit) {
+        var key = findStepKeyForElement(invalid);
+        var idx = key ? wizardKeys.indexOf(key) : 0;
+        if (idx < 0) idx = wizardKeys.indexOf('review');
+        if (idx < 0) idx = 0;
+        setWizardStep(idx, true);
+      }
+      setTimeout(function () {
+        if (!invalid) return;
+        try { invalid.focus(); } catch (err) { /* ignore */ }
+        if (typeof invalid.reportValidity === 'function') {
+          invalid.reportValidity();
+        }
+      }, 80);
+      return;
+    }
+
+    HTMLFormElement.prototype.submit.call(form);
+  }
+
   if (draftBtn) {
-    draftBtn.addEventListener('click', function () {
-      document.getElementById('br-save-intent').value = 'draft';
-      form.requestSubmit();
+    draftBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      submitWizard('draft');
     });
   }
   if (publishBtn) {
-    publishBtn.addEventListener('click', function () {
-      document.getElementById('br-save-intent').value = 'publish';
+    publishBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      submitWizard('publish');
     });
   }
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var intentEl = document.getElementById('br-save-intent');
+    submitWizard(intentEl && intentEl.value ? intentEl.value : 'publish');
+  });
 
   document.querySelectorAll('[data-br-reveal]').forEach(function (cb) {
     var target = document.getElementById(cb.getAttribute('data-br-reveal'));
@@ -159,13 +210,14 @@
     var dims = lwMode(root) === 'dimensions';
     var sqft = root.querySelector('[data-br-lw-sqft]');
     var dimWrap = root.querySelector('[data-br-lw-dims]');
+    var out = root.querySelector('[data-br-lw-computed]');
     if (sqft) sqft.hidden = dims;
     if (dimWrap) dimWrap.hidden = !dims;
+    if (out) out.hidden = !dims;
     if (!dims) return;
     var qty = root.querySelector('[data-br-lw-qty]');
     var lenEl = root.querySelector('[data-br-lw-length]');
     var widEl = root.querySelector('[data-br-lw-width]');
-    var out = root.querySelector('[data-br-lw-computed]');
     var len = lenEl ? parseFloat(lenEl.value) : 0;
     var wid = widEl ? parseFloat(widEl.value) : 0;
     var zero = root.getAttribute('data-br-lw-zero') === '1';
