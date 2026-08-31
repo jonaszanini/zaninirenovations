@@ -523,7 +523,7 @@
 
                     <figure class="team-member">
                       <a href="#" title="Jonas Zanini">
-                        <img src="images/about-us/jonas.webp" alt="Jonas Zanini, owner and Red Seal certified carpenter" loading="lazy" decoding="async">
+                        <img src="images/about-us/jonas.webp" alt="Jonas Zanini, owner and contractor" loading="lazy" decoding="async">
                       </a>
                     </figure>
                     <!-- end. team-member  -->

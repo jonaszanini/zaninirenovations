@@ -37,8 +37,8 @@ class SeoStructuredData
             '@type' => 'Person',
             '@id' => $url.'/#person-jonas',
             'name' => 'Jonas Zanini',
-            'jobTitle' => 'Owner & Red Seal Certified Carpenter',
-            'description' => 'Red Seal certified carpenter and owner of Zanini Renovations in Carleton Place, Ontario.',
+            'jobTitle' => 'Owner & Contractor',
+            'description' => 'Contractor and owner of Zanini Renovations in Carleton Place, Ontario.',
             'worksFor' => ['@id' => $url.'/#business'],
         ];
         $personMayara = [
@@ -280,7 +280,7 @@ class SeoStructuredData
         ];
         if (strcasecmp($authorName, 'Jonas Zanini') === 0) {
             $author['@id'] = $base.'/#person-jonas';
-            $author['jobTitle'] = 'Owner & Red Seal Certified Carpenter';
+            $author['jobTitle'] = 'Owner & Contractor';
         }
 
         $image = $post->featuredImageUrl();

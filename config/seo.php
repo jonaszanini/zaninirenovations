@@ -118,7 +118,7 @@ return [
     'home_faq' => [
         [
             'question' => 'What renovation and carpentry services does Zanini Renovations offer?',
-            'answer' => 'We offer residential carpentry and renovation services including decks and outdoor living, fencing, basement framing and finishing, interior trim and moulding, custom built-ins and shelving, hardwood flooring, drywall, accent walls and wainscoting, and wood staircase refinishing. Projects are completed by a licensed, Red Seal certified carpenter.',
+            'answer' => 'We offer residential carpentry and renovation services including decks and outdoor living, fencing, basement framing and finishing, interior trim and moulding, custom built-ins and shelving, hardwood flooring, drywall, accent walls and wainscoting, and wood staircase refinishing. Projects are completed by a licensed and insured contractor.',
         ],
         [
             'question' => 'What areas does Zanini Renovations serve?',

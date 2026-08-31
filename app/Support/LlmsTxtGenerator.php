@@ -28,7 +28,7 @@ class LlmsTxtGenerator
             '',
             '> '.$summary,
             '',
-            'Zanini Renovations is owned by Jonas Zanini, a Red Seal certified carpenter.',
+            'Zanini Renovations is owned by Jonas Zanini.',
             'Office and marketing: Mayara Zanini. Based in Carleton Place, Ontario.',
             'Phone: '.$phone.'. Quotes are in Canadian dollars.',
             'Insurance: '.$insurance.' general liability; WSIB clearance; Ontario Building Code O.Reg. 332/12 (Part 9 housing).',
