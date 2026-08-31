@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\BasementQuotation;
+use App\Models\ClientProject;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -65,6 +66,38 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Save configuration');
     }
 
+    public function test_project_context_sits_between_price_configuration_and_next(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'notes' => 'Site has a low beam in the rec room.',
+        ]);
+
+        $html = $this->get(route('admin.quotations.basement.create', ['project' => $project->id]))
+            ->assertOk()
+            ->assertSee('Project Context')
+            ->assertSee('Site has a low beam in the rec room.')
+            ->getContent();
+
+        $price = strpos($html, 'Price configuration');
+        $context = strpos($html, 'Project Context');
+        $next = strpos($html, '>Next</button>');
+        $live = strpos($html, 'Live breakdown');
+
+        $this->assertNotFalse($price);
+        $this->assertNotFalse($context);
+        $this->assertNotFalse($next);
+        $this->assertNotFalse($live);
+        $this->assertLessThan($context, $price);
+        $this->assertLessThan($next, $context);
+        $this->assertLessThan($live, $next);
+        $this->assertMatchesRegularExpression(
+            '/<details class="admin-accordion admin-card cp-project-context-card">/',
+            $html
+        );
+    }
+
     public function test_bathroom_preset_hides_flooring_in_progress_nav(): void
     {
         $this->actingAsAdmin();
@@ -83,6 +116,17 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         );
         $this->assertDoesNotMatchRegularExpression(
             '/data-br-goto="plumbing"[^>]*\bhidden\b/s',
+            $html
+        );
+        $this->assertMatchesRegularExpression('/id="br-outlets"[^>]*value="3"/', $html);
+        $this->assertMatchesRegularExpression('/id="br-switches"[^>]*value="2"/', $html);
+        $this->assertMatchesRegularExpression('/id="br-fixtures"[^>]*value="1"/', $html);
+        $this->assertMatchesRegularExpression('/option value="both"[^>]*selected/', $html);
+        $this->assertStringContainsString('1 at the sink', $html);
+        $this->assertStringContainsString('How many light fixtures', $html);
+        $this->assertStringContainsString('How many spot lights', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="br-lighting-fixture-qty"[^>]*\bhidden\b/',
             $html
         );
     }

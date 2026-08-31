@@ -19,6 +19,13 @@
   }
   $sectionList = $sections ?? BasementQuotationCalculator::SECTIONS;
   $scopePreset = BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
+  if (! $isEdit) {
+      foreach (BasementQuotationCalculator::electricalDefaultsForPreset($scopePreset) as $elecKey => $elecVal) {
+          if (old($elecKey) === null) {
+              $inputs[$elecKey] = $elecVal;
+          }
+      }
+  }
   $enabledNow = BasementQuotationCalculator::enabledSections([
       'scope_preset' => $scopePreset,
       'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
@@ -30,6 +37,10 @@
       'wall' => BasementQuotationCalculator::presetEnabledSections('wall'),
       'custom' => BasementQuotationCalculator::presetEnabledSections('custom'),
   ];
+  $electricalByPreset = [];
+  foreach (array_keys(BasementQuotationCalculator::SCOPE_PRESETS) as $presetKey) {
+      $electricalByPreset[$presetKey] = BasementQuotationCalculator::electricalDefaultsForPreset($presetKey);
+  }
   $previewLabor = is_array($initialPreview['labor'] ?? null) ? $initialPreview['labor'] : [];
   $previewMats = array_merge(
       is_array($initialPreview['materials'] ?? null) ? $initialPreview['materials'] : [],
@@ -55,6 +66,10 @@
     <a href="{{ route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm" style="margin-left:8px;">
       <i class="fa fa-cog"></i> Price configuration
     </a>
+  </div>
+
+  <div class="br-project-context-slot">
+    @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
 
   @if ($isEdit && $quotation->project)
@@ -262,7 +277,6 @@
     </div>
 
     <aside class="br-aside">
-      @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       <div class="pq-summary-card">
         <h4 style="margin:0 0 10px;">Live breakdown</h4>
         <div id="br-live-root">
@@ -302,6 +316,7 @@
       isEdit: @json($isEdit),
       sectionKeys: @json(array_keys($sectionList)),
       presetSections: @json($presetSections),
+      electricalByPreset: @json($electricalByPreset),
     };
   </script>
   <script src="{{ asset('js/admin-basement-quotation.js') }}?v={{ @filemtime(public_path('js/admin-basement-quotation.js')) ?: time() }}"></script>

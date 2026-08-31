@@ -36,16 +36,38 @@
             @endif
           </button>
           @if ($editable)
-            <form action="{{ route('admin.client-projects.photos.destroy', [$project, $photo]) }}"
-                  method="post"
-                  class="cp-project-photos-delete"
-                  onsubmit="return confirm('Remove this file?');">
-              @csrf
-              @method('DELETE')
-              <button type="submit" class="admin-btn admin-btn--ghost admin-btn--xs" title="Remove file">
-                <i class="fa fa-trash" aria-hidden="true"></i>
-              </button>
-            </form>
+            <div class="cp-project-photos-actions">
+              @if ($photo->isImage())
+                <form action="{{ route('admin.client-projects.photos.rotate', [$project, $photo]) }}"
+                      method="post"
+                      class="cp-project-photos-action">
+                  @csrf
+                  <input type="hidden" name="direction" value="ccw">
+                  <button type="submit" class="admin-btn admin-btn--ghost admin-btn--xs" title="Rotate 90° left" aria-label="Rotate {{ $photo->displayName() }} 90 degrees left">
+                    <i class="fa fa-undo" aria-hidden="true"></i>
+                  </button>
+                </form>
+                <form action="{{ route('admin.client-projects.photos.rotate', [$project, $photo]) }}"
+                      method="post"
+                      class="cp-project-photos-action">
+                  @csrf
+                  <input type="hidden" name="direction" value="cw">
+                  <button type="submit" class="admin-btn admin-btn--ghost admin-btn--xs" title="Rotate 90° right" aria-label="Rotate {{ $photo->displayName() }} 90 degrees right">
+                    <i class="fa fa-repeat" aria-hidden="true"></i>
+                  </button>
+                </form>
+              @endif
+              <form action="{{ route('admin.client-projects.photos.destroy', [$project, $photo]) }}"
+                    method="post"
+                    class="cp-project-photos-action"
+                    onsubmit="return confirm('Remove this file?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="admin-btn admin-btn--ghost admin-btn--xs" title="Remove file">
+                  <i class="fa fa-trash" aria-hidden="true"></i>
+                </button>
+              </form>
+            </div>
           @endif
         </figure>
       @endforeach
@@ -153,6 +175,7 @@
         }
 
         grid.addEventListener('click', function (e) {
+          if (e.target.closest('.cp-project-photos-actions')) return;
           var btn = e.target.closest('[data-cp-photo-index]');
           if (!btn) return;
           var idx = parseInt(btn.getAttribute('data-cp-photo-index'), 10);

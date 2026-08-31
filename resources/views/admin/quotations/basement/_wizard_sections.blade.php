@@ -233,30 +233,33 @@
         <label for="br-outlets">New outlets</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-outlets" name="outlet_qty"
                value="{{ $brVal('outlet_qty', 0) }}">
+        <p class="admin-form-help" data-br-bathroom-electrical-hint @if($scopePreset !== 'bathroom') hidden @endif>Typical bathroom: 1 at the sink, 2 on the wall. Change the count if this job differs.</p>
       </div>
       <div class="admin-form-group">
         <label for="br-switches">Switches</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-switches" name="switch_qty"
                value="{{ $brVal('switch_qty', 0) }}">
+        <p class="admin-form-help" data-br-bathroom-electrical-hint @if($scopePreset !== 'bathroom') hidden @endif>Typical bathroom: 1 for the light, 1 for the exhaust.</p>
       </div>
       <div class="admin-form-group">
         <label for="br-lighting-type">Ceiling lighting</label>
         <select class="admin-input br-preview" id="br-lighting-type" name="lighting_type" data-br-lighting-type>
           <option value="fixture" @selected($brVal('lighting_type', 'spot') === 'fixture')>Light fixtures</option>
           <option value="spot" @selected($brVal('lighting_type', 'spot') === 'spot')>Spot lights (pots / recessed)</option>
-          <option value="both" @selected($brVal('lighting_type') === 'both')>Both</option>
+          <option value="both" @selected($brVal('lighting_type') === 'both')>Light fixtures and spot lights</option>
         </select>
-        <p class="admin-form-help">Electrical materials and hours follow this choice. Set unit prices under Price configuration.</p>
-      </div>
-      <div class="admin-form-group">
-        <label for="br-lights" id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'How many light fixtures' : 'How many spot lights' }}</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
-               value="{{ $brVal('light_qty', 0) }}">
+        <p class="admin-form-help">Electrical materials and hours follow this choice. Use both for a ceiling fixture plus a shower pot. Set unit prices under Price configuration.</p>
       </div>
       <div class="admin-form-group" id="br-lighting-fixture-qty" @if($brVal('lighting_type', 'spot') !== 'both') hidden @endif>
         <label for="br-fixtures">How many light fixtures</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-fixtures" name="fixture_qty"
                value="{{ $brVal('fixture_qty', 0) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="br-lights" id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'How many light fixtures' : 'How many spot lights' }}</label>
+        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
+               value="{{ $brVal('light_qty', 0) }}">
+        <p class="admin-form-help" id="br-spot-hint" @if($brVal('lighting_type', 'spot') === 'fixture') hidden @endif>Optional — e.g. one at the shower.</p>
       </div>
       <div class="admin-form-group">
         <label for="br-detectors">Smoke / CO detectors</label>

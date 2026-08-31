@@ -109,6 +109,7 @@
   var lightingType = document.getElementById('br-lighting-type');
   var lightingLabel = document.getElementById('br-lights-label');
   var lightingFixtures = document.getElementById('br-lighting-fixture-qty');
+  var spotHint = document.getElementById('br-spot-hint');
   function syncLightingType() {
     var type = lightingType ? lightingType.value : 'spot';
     if (lightingLabel) {
@@ -116,6 +117,9 @@
     }
     if (lightingFixtures) {
       lightingFixtures.hidden = type !== 'both';
+    }
+    if (spotHint) {
+      spotHint.hidden = type === 'fixture';
     }
   }
   if (lightingType) {
@@ -290,6 +294,25 @@
     if (wizardKeys[currentIndex] !== 'review' && sectionKeys.indexOf(wizardKeys[currentIndex]) < 0) {
       currentIndex = 0;
     }
+    syncBathroomElectricalHints();
+  }
+
+  function applyElectricalDefaults(preset) {
+    var map = (cfg.electricalByPreset || {})[preset];
+    if (!map) return;
+    var keys = Object.keys(map);
+    if (!keys.length) return;
+    keys.forEach(function (name) {
+      setNamedValue(name, map[name]);
+    });
+    syncLightingType();
+  }
+
+  function syncBathroomElectricalHints() {
+    var bath = currentPreset() === 'bathroom';
+    form.querySelectorAll('[data-br-bathroom-electrical-hint]').forEach(function (el) {
+      el.hidden = !bath;
+    });
   }
 
   function applyPreset(preset) {
@@ -319,8 +342,10 @@
       setNamedCheck('include_cleaning', true);
       setNamedCheck('include_touchups', true);
     }
+    applyElectricalDefaults(preset);
     applyScope();
     syncRevealTargets();
+    syncBathroomElectricalHints();
   }
 
   function setWizardStep(index, scroll) {

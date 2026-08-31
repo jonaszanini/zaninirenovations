@@ -605,6 +605,31 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertContains('framing_walls', collect($calc['labor'])->pluck('key')->all());
     }
 
+    public function test_bathroom_electrical_defaults_are_three_outlets_two_switches_and_both_lights(): void
+    {
+        $defaults = BasementQuotationCalculator::electricalDefaultsForPreset('bathroom');
+        $this->assertSame(3, $defaults['outlet_qty']);
+        $this->assertSame(2, $defaults['switch_qty']);
+        $this->assertSame('both', $defaults['lighting_type']);
+        $this->assertSame(1, $defaults['fixture_qty']);
+        $this->assertSame(0, $defaults['light_qty']);
+
+        $calc = (new BasementQuotationCalculator)->calculate(array_merge([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'include_plumbing' => true,
+            'detector_qty' => 0,
+            'owner_hourly_rate' => 80,
+        ], $defaults), $this->settings());
+
+        $this->assertSame(3.0, collect($calc['materials'])->firstWhere('key', 'outlet_box')['qty']);
+        $this->assertSame(2.0, collect($calc['materials'])->firstWhere('key', 'switch_device')['qty']);
+        $this->assertSame(1.0, collect($calc['materials'])->firstWhere('key', 'light_fixture')['qty']);
+        $this->assertEmpty(collect($calc['materials'])->firstWhere('key', 'pot_light'));
+    }
+
     public function test_disabled_painting_does_not_auto_fill_paint(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

@@ -89,6 +89,29 @@ class ClientProjectPhotoStorage
         }
     }
 
+    public function rotateImage(ClientProjectPhoto $photo, string $direction): void
+    {
+        if (! $photo->isImage()) {
+            throw new \RuntimeException('Only photos can be rotated.');
+        }
+
+        $relative = ltrim(str_replace('\\', '/', (string) $photo->path), '/');
+        if ($relative === '' || ! str_ends_with(strtolower($relative), '.webp')) {
+            throw new \RuntimeException('Only WebP photos can be rotated.');
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($relative)) {
+            throw new \RuntimeException('Photo file is missing on disk.');
+        }
+
+        $fullPath = $disk->path($relative);
+        app(ProjectPhotoRotationService::class)->rotateWebp($fullPath, $direction);
+        $this->converter->recompressWebpAtPath($fullPath);
+        $this->syncPublicStorageMirror($relative);
+        $photo->touch();
+    }
+
     public function purgeProjectPhotos(ClientProject $project): void
     {
         foreach ($project->photos as $photo) {

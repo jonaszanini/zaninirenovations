@@ -385,6 +385,29 @@ class ClientProjectController extends Controller
         return back()->with('success', 'File removed.');
     }
 
+    public function rotatePhoto(Request $request, ClientProject $client_project, ClientProjectPhoto $photo, ClientProjectPhotoStorage $photoStorage)
+    {
+        if ((int) $photo->client_project_id !== (int) $client_project->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'direction' => ['required', Rule::in(['cw', 'ccw'])],
+        ]);
+
+        try {
+            $photoStorage->rotateImage($photo, (string) $request->input('direction'));
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Could not rotate the photo: '.$e->getMessage());
+        }
+
+        return back()->with('success', 'Photo rotated.');
+    }
+
     public function edit(ClientProject $client_project)
     {
         $client_project->load(['client', 'photos']);

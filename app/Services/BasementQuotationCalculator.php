@@ -67,6 +67,37 @@ class BasementQuotationCalculator
         return in_array($preset = $value, ['full', 'bathroom', 'wall', 'custom'], true) ? $preset : 'full';
     }
 
+    /**
+     * Form defaults when the user picks a scope preset. Empty array means
+     * do not overwrite electrical fields (custom).
+     *
+     * @return array<string, int|string>
+     */
+    public static function electricalDefaultsForPreset(string $preset): array
+    {
+        $preset = self::normalizePreset($preset);
+        if ($preset === 'custom') {
+            return [];
+        }
+        if ($preset === 'bathroom') {
+            return [
+                'outlet_qty' => 3,
+                'switch_qty' => 2,
+                'lighting_type' => 'both',
+                'light_qty' => 0,
+                'fixture_qty' => 1,
+            ];
+        }
+
+        return [
+            'outlet_qty' => 0,
+            'switch_qty' => 0,
+            'lighting_type' => 'spot',
+            'light_qty' => 0,
+            'fixture_qty' => 0,
+        ];
+    }
+
     public static function normalizeAreaMode(mixed $mode): string
     {
         return strtolower(trim((string) $mode)) === 'dimensions' ? 'dimensions' : 'sqft';

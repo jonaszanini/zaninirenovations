@@ -3859,10 +3859,25 @@ body.cp-modal-open {
   transform: scale(1.02);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
 }
-.cp-project-photos-delete {
+.cp-project-photos-actions {
   position: absolute;
   top: 4px;
   right: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  z-index: 1;
+}
+.cp-project-photos-action {
+  margin: 0;
+}
+.cp-project-photos-actions .admin-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
 }
 .cp-edit-project-photos-card {
   margin-top: 16px;
@@ -5999,6 +6014,25 @@ body.cp-modal-open {
   flex-direction: column;
   gap: 16px;
   align-items: stretch;
+}
+.br-project-context-slot {
+  margin: 0 0 16px;
+}
+.br-project-context-slot:not(:has(.cp-project-context-card)) {
+  display: none;
+}
+/* Keep native <details> collapsing after the move. Flex/grid on <details>
+   (or a display override on the panel) can leave notes/photos always visible. */
+.br-project-context-slot .cp-project-context-card {
+  display: block;
+  margin: 0;
+}
+.br-project-context-slot .cp-project-context-card > .admin-accordion__summary {
+  min-height: 44px;
+  cursor: pointer;
+}
+.br-project-context-slot .cp-project-context-card:not([open]) > .admin-accordion__panel {
+  display: none;
 }
 .br-toolbar {
   display: flex;

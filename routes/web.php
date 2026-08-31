@@ -389,6 +389,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.time-tracking-summary.send');
     Route::post('client-projects/{client_project}/photos', [\App\Http\Controllers\Admin\ClientProjectController::class, 'storePhotos'])
         ->name('client-projects.photos.store');
+    Route::post('client-projects/{client_project}/photos/{photo}/rotate', [\App\Http\Controllers\Admin\ClientProjectController::class, 'rotatePhoto'])
+        ->name('client-projects.photos.rotate');
     Route::delete('client-projects/{client_project}/photos/{photo}', [\App\Http\Controllers\Admin\ClientProjectController::class, 'destroyPhoto'])
         ->name('client-projects.photos.destroy');
 
