@@ -162,7 +162,129 @@ class BasementQuotationCalculator
         }
         $inputs['qty_dims'] = $clean;
 
+        return self::applyBathTileAreas($inputs);
+    }
+
+    /**
+     * @return list<array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null}>
+     */
+    public static function defaultBathTileAreas(): array
+    {
+        return [
+            self::blankBathTileArea('Floor'),
+            self::blankBathTileArea('Shower'),
+        ];
+    }
+
+    /**
+     * @return array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null}
+     */
+    public static function blankBathTileArea(string $label = ''): array
+    {
+        return [
+            'label' => $label,
+            'sqft' => 0.0,
+            'mode' => 'sqft',
+            'length_ft' => null,
+            'width_ft' => null,
+        ];
+    }
+
+    /**
+     * Named tile zones (floor, shower, …) summed into bath_tile_sf.
+     * A saved quote with only bath_tile_sf still works.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, mixed>
+     */
+    public static function applyBathTileAreas(array $inputs): array
+    {
+        $raw = $inputs['bath_tile_areas'] ?? null;
+        $areas = [];
+        if (is_array($raw)) {
+            foreach ($raw as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $normalized = self::normalizeBathTileArea($row);
+                if ($normalized !== null) {
+                    $areas[] = $normalized;
+                }
+            }
+        }
+
+        if ($areas === []) {
+            $legacy = round(max(0, (float) ($inputs['bath_tile_sf'] ?? 0)), 2);
+            $dims = is_array($inputs['qty_dims']['bath_tile_sf'] ?? null) ? $inputs['qty_dims']['bath_tile_sf'] : [];
+            $inputs['bath_tile_areas'] = $legacy > 0
+                ? [[
+                    'label' => 'Tile work',
+                    'sqft' => $legacy,
+                    'mode' => self::normalizeAreaMode($dims['mode'] ?? 'sqft'),
+                    'length_ft' => $dims['length_ft'] ?? null,
+                    'width_ft' => $dims['width_ft'] ?? null,
+                ]]
+                : [];
+            $inputs['bath_tile_sf'] = $legacy;
+
+            return $inputs;
+        }
+
+        $total = 0.0;
+        foreach ($areas as $row) {
+            $total += (float) $row['sqft'];
+        }
+        $inputs['bath_tile_areas'] = $areas;
+        $inputs['bath_tile_sf'] = round($total, 2);
+
         return $inputs;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null}|null
+     */
+    public static function normalizeBathTileArea(array $row): ?array
+    {
+        $label = trim((string) ($row['label'] ?? ''));
+        $mode = self::normalizeAreaMode($row['mode'] ?? 'sqft');
+        $lenRaw = $row['length_ft'] ?? null;
+        $widRaw = $row['width_ft'] ?? null;
+        $len = ($lenRaw === null || $lenRaw === '') ? null : round(max(0, (float) $lenRaw), 4);
+        $wid = ($widRaw === null || $widRaw === '') ? null : round(max(0, (float) $widRaw), 4);
+        $sqft = round(max(0, (float) ($row['sqft'] ?? 0)), 2);
+        if ($mode === 'dimensions' && $len !== null && $wid !== null && $len > 0 && $wid > 0) {
+            $sqft = round($len * $wid, 2);
+        }
+        if ($label === '' && $sqft <= 0) {
+            return null;
+        }
+
+        return [
+            'label' => $label,
+            'sqft' => $sqft,
+            'mode' => $mode,
+            'length_ft' => $len,
+            'width_ft' => $wid,
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $areas
+     */
+    public static function bathTileLaborDetail(array $areas, float $total): string
+    {
+        $bits = [];
+        foreach ($areas as $row) {
+            $sf = (float) ($row['sqft'] ?? 0);
+            if ($sf <= 0) {
+                continue;
+            }
+            $label = trim((string) ($row['label'] ?? ''));
+            $bits[] = ($label !== '' ? $label.' ' : '').number_format($sf, 0).' sf';
+        }
+
+        return $bits !== [] ? implode(' + ', $bits) : number_format($total, 0).' sq ft';
     }
 
     /**
@@ -742,7 +864,14 @@ class BasementQuotationCalculator
             }
             $tileSf = max(0, (float) $inputs['bath_tile_sf']);
             if ($tileSf > 0) {
-                $addLabor('bath_tile', 'bathroom', 'Bathroom tile', number_format($tileSf, 0).' sq ft', $perHr($tileSf, (float) $prod['tile_sf_per_hr']));
+                $tileAreas = is_array($inputs['bath_tile_areas'] ?? null) ? $inputs['bath_tile_areas'] : [];
+                $addLabor(
+                    'bath_tile',
+                    'bathroom',
+                    'Bathroom tile',
+                    self::bathTileLaborDetail($tileAreas, $tileSf),
+                    $perHr($tileSf, (float) $prod['tile_sf_per_hr'])
+                );
                 $addMat('bath_tile', 'bathroom', $tileSf * 1.1, 'tile');
                 $addMat('thinset_grout', 'bathroom', $this->packages($tileSf * 1.1, BasementSettings::THINSET_SF_PER_BAG), 'thinset_grout');
             }

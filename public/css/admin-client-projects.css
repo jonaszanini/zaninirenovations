@@ -6373,6 +6373,54 @@ body.cp-modal-open {
 .br-lw__computed[hidden] {
   display: none !important;
 }
+.br-tile-areas {
+  margin-top: 0.75rem;
+}
+.br-tile-areas__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+.br-tile-areas__title {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.br-tile-row {
+  padding: 12px 0;
+  border-top: 1px dashed #e8edf2;
+}
+.br-tile-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.br-tile-row__bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 0.5rem;
+}
+.br-tile-row__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.br-tile-row__remove {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+}
+.br-tile-row .br-lw {
+  margin-bottom: 0;
+}
 .br-edit-table .admin-input {
   min-width: 88px;
 }

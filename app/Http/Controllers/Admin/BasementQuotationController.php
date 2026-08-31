@@ -424,6 +424,7 @@ class BasementQuotationController extends Controller
         $out['paint_colors'] = ((int) $out['paint_colors'] === 2) ? 2 : 1;
         $out['scope_preset'] = BasementQuotationCalculator::normalizePreset($out['scope_preset'] ?? 'full');
         $out['qty_dims'] = $this->qtyDimsFromRequest($request);
+        $out['bath_tile_areas'] = $request->input('bath_tile_areas', []);
         $out = BasementQuotationCalculator::applyAreaEntry($out);
 
         $sections = array_keys(BasementQuotationCalculator::SECTIONS);

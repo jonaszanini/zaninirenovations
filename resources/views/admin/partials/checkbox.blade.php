@@ -7,6 +7,7 @@
   @param string       $value           Input value (default: 1)
   @param bool         $checked
   @param string|null  $label           Label HTML (right of checkbox)
+  @param string|null  $info            Optional explanation shown on the info icon
   @param string       $class           Extra classes on <label>
   @param string       $inputClass      Extra classes on <input> (default: admin-checkbox__input)
   @param bool         $hiddenFallback  Emit hidden 0 before checkbox (for Laravel boolean fields)
@@ -32,6 +33,9 @@
          @checked($checked)
          @foreach ($attrs as $attrKey => $attrVal) {{ $attrKey }}="{{ $attrVal }}" @endforeach>
   <span class="admin-checkbox__mark" aria-hidden="true"></span>
+  @if (! empty($info))
+    @include('admin.partials.info_tip', ['text' => $info])
+  @endif
   @if (isset($label))
     <span class="admin-checkbox__text">{!! $label !!}</span>
   @endif

@@ -38,7 +38,9 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Flooring')
             ->assertSee('Ceiling lighting')
             ->assertSee('Spot lights', false)
-            ->assertSee('Wall / ceiling colors');
+            ->assertSee('Wall / ceiling colors')
+            ->assertSee('fa-info-circle', false)
+            ->assertSee('New drain, vent, and hot/cold supply');
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
@@ -124,7 +126,10 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/option value="both"[^>]*selected/', $html);
         $this->assertStringContainsString('1 at the sink', $html);
         $this->assertStringContainsString('How many light fixtures', $html);
-        $this->assertStringContainsString('How many spot lights', $html);
+        $this->assertStringContainsString('fa-info-circle', $html);
+        $this->assertStringContainsString('New drain, vent, and hot/cold supply', $html);
+        $this->assertStringContainsString('Add tile area', $html);
+        $this->assertStringContainsString('e.g. Floor, Shower', $html);
         $this->assertDoesNotMatchRegularExpression(
             '/id="br-lighting-fixture-qty"[^>]*\bhidden\b/',
             $html

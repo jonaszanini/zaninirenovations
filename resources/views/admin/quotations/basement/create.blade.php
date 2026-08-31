@@ -126,12 +126,12 @@
         <div class="admin-card fl-step-card">
           <h4>Client &amp; scope</h4>
           <div class="admin-form-group">
-            <label for="br-client-name">Client name</label>
+            <label for="br-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
             <input type="text" class="admin-input" id="br-client-name" name="client_name" maxlength="160"
                    value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
           </div>
           <div class="admin-form-group">
-            <label for="br-work-description">Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
+            <label for="br-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary that appears on the client PDF. Improve with AI after you fill the wizard.']) Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
             <textarea class="admin-input" id="br-work-description" name="work_description" rows="4" maxlength="5000">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
             @include('admin.partials.quotation_work_description_ai', [
                 'workDescriptionTextareaId' => 'br-work-description',
@@ -161,6 +161,7 @@
                 'hiddenFallback' => true,
                 'checked' => (bool) old('client_provides_all', $inputs['client_provides_all'] ?? false),
                 'label' => '<strong>Client provides all materials</strong> for the entire project',
+                'info' => 'Labor only — you do not supply materials. Material cost drops out of the total.',
                 'inputClass' => 'admin-checkbox__input br-preview',
                 'id' => 'br-client-all',
               ])
@@ -176,6 +177,7 @@
                   'value' => $key,
                   'checked' => in_array($key, $provideSections, true),
                   'label' => $label,
+                  'info' => 'Client buys the materials for '.$label.'; you still carry the labor for that trade.',
                   'inputClass' => 'admin-checkbox__input br-preview',
                 ])
               @endforeach

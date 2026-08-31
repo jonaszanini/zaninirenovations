@@ -630,6 +630,66 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEmpty(collect($calc['materials'])->firstWhere('key', 'pot_light'));
     }
 
+    public function test_bathroom_tile_areas_are_summed_and_named_on_labor(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'detector_qty' => 0,
+            'bath_tile_areas' => [
+                ['label' => 'Floor', 'sqft' => 40],
+                ['label' => 'Shower', 'sqft' => 64],
+            ],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $labor = collect($calc['labor'])->firstWhere('key', 'bath_tile');
+        $this->assertNotNull($labor);
+        $this->assertStringContainsString('Floor 40 sf', $labor['detail']);
+        $this->assertStringContainsString('Shower 64 sf', $labor['detail']);
+        $mat = collect($calc['materials'])->firstWhere('key', 'bath_tile');
+        $this->assertNotNull($mat);
+        $this->assertEqualsWithDelta(114.4, $mat['qty'], 0.01);
+    }
+
+    public function test_bathroom_tile_area_uses_length_times_width(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'detector_qty' => 0,
+            'bath_tile_areas' => [
+                ['label' => 'Floor', 'mode' => 'dimensions', 'length_ft' => 8, 'width_ft' => 5, 'sqft' => 0],
+            ],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $labor = collect($calc['labor'])->firstWhere('key', 'bath_tile');
+        $this->assertNotNull($labor);
+        $this->assertStringContainsString('Floor 40 sf', $labor['detail']);
+    }
+
+    public function test_legacy_bath_tile_sf_still_quotes(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'detector_qty' => 0,
+            'bath_tile_sf' => 50,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $labor = collect($calc['labor'])->firstWhere('key', 'bath_tile');
+        $this->assertNotNull($labor);
+        $this->assertStringContainsString('50', $labor['detail']);
+    }
+
     public function test_disabled_painting_does_not_auto_fill_paint(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

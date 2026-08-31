@@ -1199,6 +1199,65 @@ textarea.is-invalid:focus {
   flex: 1 1 auto;
   min-width: 0;
 }
+
+.admin-info-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin: -10px -8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--admin-primary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.admin-info-tip:focus-visible {
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.admin-info-tip__bubble {
+  display: none;
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  top: calc(100% - 4px);
+  width: min(280px, 70vw);
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-text);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.4;
+  text-align: left;
+  box-shadow: var(--admin-shadow-md);
+  white-space: normal;
+}
+.admin-info-tip[aria-expanded="true"] .admin-info-tip__bubble {
+  display: block;
+}
+.admin-form-group > label:has(.admin-info-tip),
+.admin-form-group-label:has(.admin-info-tip),
+.br-lw__head > label:has(.admin-info-tip) {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.admin-checkbox .admin-info-tip {
+  margin: -10px -6px;
+}
+
 /* Standalone checkbox (photo overlays, JS-generated tiles) — no label wrapper */
 input[type="checkbox"].admin-checkbox__input--standalone {
   appearance: none;

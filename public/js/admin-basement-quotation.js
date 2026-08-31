@@ -250,6 +250,63 @@
     });
   }
 
+  function formatTileTotal(n) {
+    var rounded = Math.round(Number(n) * 100) / 100;
+    if (!isFinite(rounded) || rounded <= 0) return '0 sq ft';
+    return String(rounded) + ' sq ft';
+  }
+
+  function syncTileTotal() {
+    var list = document.getElementById('br-tile-list');
+    var out = form.querySelector('[data-br-tile-total]');
+    if (!list || !out) return;
+    var total = 0;
+    list.querySelectorAll('[data-br-lw-qty]').forEach(function (el) {
+      var n = parseFloat(el.value);
+      if (isFinite(n) && n > 0) total += n;
+    });
+    out.textContent = 'Combined: ' + formatTileTotal(total);
+  }
+
+  function initTileRow(row) {
+    if (!row || row.getAttribute('data-br-tile-bound') === '1') return;
+    row.setAttribute('data-br-tile-bound', '1');
+    bindLw();
+    row.querySelectorAll('.br-preview').forEach(bindPreview);
+    var remove = row.querySelector('[data-br-tile-remove]');
+    if (remove) {
+      remove.addEventListener('click', function () {
+        row.remove();
+        syncTileTotal();
+        schedulePreview();
+      });
+    }
+    row.querySelectorAll('.br-preview').forEach(function (el) {
+      el.addEventListener('input', syncTileTotal);
+      el.addEventListener('change', syncTileTotal);
+    });
+  }
+
+  function initTileAreas() {
+    var list = document.getElementById('br-tile-list');
+    var tpl = document.getElementById('br-tile-template');
+    var add = document.getElementById('br-tile-add');
+    if (!list) return;
+    list.querySelectorAll('[data-br-tile-row]').forEach(initTileRow);
+    syncTileTotal();
+    if (add && tpl) {
+      add.addEventListener('click', function () {
+        var i = 't' + Date.now();
+        var wrap = document.createElement('div');
+        wrap.innerHTML = tpl.innerHTML.replace(/__I__/g, String(i)).trim();
+        var row = wrap.firstElementChild;
+        list.appendChild(row);
+        initTileRow(row);
+        schedulePreview();
+      });
+    }
+  }
+
   function applyScope() {
     rebuildWizardKeys();
     var enabled = enabledTradeKeys();
@@ -586,6 +643,7 @@
   }
 
   form.querySelectorAll('.br-preview').forEach(bindPreview);
+  initTileAreas();
 
   var extraList = document.getElementById('br-extra-list');
   var extraTpl = document.getElementById('br-extra-template');

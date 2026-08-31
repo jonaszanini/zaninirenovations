@@ -357,3 +357,38 @@
   };
 
 })(window);
+
+(function () {
+  function closeTips(except) {
+    document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach(function (btn) {
+      if (btn !== except) {
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  document.addEventListener('mousedown', function (e) {
+    if (e.target.closest && e.target.closest('.admin-info-tip')) {
+      e.preventDefault();
+    }
+  }, true);
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('.admin-info-tip') : null;
+    if (!btn) {
+      closeTips(null);
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    var open = btn.getAttribute('aria-expanded') === 'true';
+    closeTips(btn);
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+  }, true);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeTips(null);
+    }
+  });
+})();

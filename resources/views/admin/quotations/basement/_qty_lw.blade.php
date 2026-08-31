@@ -13,6 +13,7 @@
   @param mixed       $widthValue
   @param string|null $placeholder
   @param string|null $help
+  @param string|null $info            Explanation for the information icon
   @param string|null $labelId
   @param string|null $title
   @param bool        $zeroIfIncomplete  Work area: incomplete L×W zeros the qty
@@ -31,7 +32,10 @@
 @endphp
 <div class="admin-form-group br-lw{{ $companion ? ' br-lw--with-companion' : '' }}" data-br-lw @if($zeroIfIncomplete) data-br-lw-zero="1" @endif>
   <div class="br-lw__head">
-    <label for="{{ $id }}" @if(! empty($labelId)) id="{{ $labelId }}" @endif>{{ $label }}</label>
+    <label for="{{ $id }}" @if(! empty($labelId)) id="{{ $labelId }}" @endif>
+      @include('admin.partials.info_tip', ['text' => $info ?? null])
+      {{ $label }}
+    </label>
     <div class="br-lw-segment" role="radiogroup" aria-label="{{ $label }} entry">
       <label class="br-lw-segment__item">
         <input type="radio" class="br-preview" name="{{ $modeName }}" value="sqft"
