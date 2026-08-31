@@ -3,7 +3,9 @@
 @php
   $isEdit = isset($quotation) && filled($quotation);
   $returnToProject = request('return') === 'project' && $isEdit && $quotation->project;
-  $projectForReturn = $returnToProject ? $quotation->project : null;
+  $projectForReturn = ($isEdit && $quotation->project)
+      ? $quotation->project
+      : ($linkProject ?? null);
   $preservePid = optional($linkProject ?? null)->id ?: (request()->filled('project') ? (int) request('project') : null);
   $qs = array_filter(['return' => $returnToProject ? 'project' : null, 'project' => $preservePid]);
   $formQuery = $qs !== [] ? '?'.http_build_query($qs) : '';
@@ -73,10 +75,11 @@
     <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ old('is_draft', $isEdit && $quotation->is_draft ? '1' : '0') }}">
     
     <div class="fq-form-toolbar">
-      <a href="{{ $returnToProject ? route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-arrow-left"></i> Back
+      <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-arrow-left"></i> Back to list
       </a>
       <div class="fq-form-toolbar-right">
+        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
         @if ($linkProject)
           <div class="fq-linked-banner">
             <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.client-projects.show', $linkProject) }}">{{ $linkProject->name }}</a>
@@ -276,7 +279,8 @@
           <i class="fa fa-save"></i> Save quotation
         </button>
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tl-btn-draft">Save as draft</button>
-        <a href="{{ $returnToProject ? route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation']) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
+        <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
       
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])

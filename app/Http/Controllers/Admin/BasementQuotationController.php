@@ -60,23 +60,15 @@ class BasementQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkIfRequested($quote->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', $intent === 'draft'
-                    ? 'Basement quotation saved as draft and linked.'
-                    : 'Basement quotation '.$quote->quote_number.' saved and linked to this project.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.basement.edit', $quote->fresh())
             ->with('success', $intent === 'draft'
-                ? 'Basement quotation saved as draft.'
-                : 'Basement quotation '.$quote->quote_number.' saved.');
+                ? ($linkedNow ? 'Basement quotation saved as draft and linked.' : 'Basement quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Basement quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Basement quotation '.$quote->quote_number.' saved.'));
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -107,28 +99,13 @@ class BasementQuotationController extends Controller
 
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkIfRequested($basement_quotation->fresh(), $request, $warnings);
-
-        if ($this->shouldReturnToProjectAfterSave($request, $basement_quotation->fresh())) {
-            $r = redirect()
-                ->route('admin.client-projects.show', $basement_quotation->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Basement quotation '.$basement_quotation->quote_number.' updated (v'.$basement_quotation->version.').');
-
-            return $warnings === [] ? $r : $r->with('warning', implode(' ', $warnings));
-        }
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $basement_quotation->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Basement quotation '.$basement_quotation->quote_number.' updated and linked.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.basement.edit', $basement_quotation)
-            ->with('success', 'Basement quotation '.$basement_quotation->quote_number.' updated (v'.$basement_quotation->version.').');
+            ->with('success', $linkedNow
+                ? 'Basement quotation '.$basement_quotation->quote_number.' updated and linked.'
+                : 'Basement quotation '.$basement_quotation->quote_number.' updated (v'.$basement_quotation->version.').');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -643,13 +620,4 @@ class BasementQuotationController extends Controller
         ], $this->quotationLinkClientNameAttributes($project)));
     }
 
-    protected function shouldReturnToProjectAfterSave(Request $request, BasementQuotation $quotation): bool
-    {
-        if (! $quotation->isLinked()) {
-            return false;
-        }
-
-        return $request->input('return') === 'project'
-            || $request->query('return') === 'project';
-    }
 }

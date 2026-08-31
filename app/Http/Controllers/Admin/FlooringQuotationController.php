@@ -59,23 +59,15 @@ class FlooringQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkFlooringIfRequested($quote->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', $intent === 'draft'
-                    ? 'Flooring quotation saved as draft and linked.'
-                    : 'Flooring quotation '.$quote->quote_number.' saved and linked to this project.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.flooring.edit', $quote->fresh())
             ->with('success', $intent === 'draft'
-                ? 'Flooring quotation saved as draft.'
-                : 'Flooring quotation '.$quote->quote_number.' saved.');
+                ? ($linkedNow ? 'Flooring quotation saved as draft and linked.' : 'Flooring quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Flooring quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Flooring quotation '.$quote->quote_number.' saved.'));
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -106,28 +98,13 @@ class FlooringQuotationController extends Controller
 
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkFlooringIfRequested($flooring_quotation->fresh(), $request, $warnings);
-
-        if ($this->shouldReturnToProjectAfterFlooringSave($request, $flooring_quotation->fresh())) {
-            $r = redirect()
-                ->route('admin.client-projects.show', $flooring_quotation->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Flooring quotation '.$flooring_quotation->quote_number.' updated (v'.$flooring_quotation->version.').');
-
-            return $warnings === [] ? $r : $r->with('warning', implode(' ', $warnings));
-        }
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $flooring_quotation->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Flooring quotation '.$flooring_quotation->quote_number.' updated and linked.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.flooring.edit', $flooring_quotation)
-            ->with('success', 'Flooring quotation '.$flooring_quotation->quote_number.' updated (v'.$flooring_quotation->version.').');
+            ->with('success', $linkedNow
+                ? 'Flooring quotation '.$flooring_quotation->quote_number.' updated and linked.'
+                : 'Flooring quotation '.$flooring_quotation->quote_number.' updated (v'.$flooring_quotation->version.').');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -571,15 +548,5 @@ class FlooringQuotationController extends Controller
             'client_project_id' => $project->id,
             'linked_at' => now(),
         ], $this->quotationLinkClientNameAttributes($project)));
-    }
-
-    protected function shouldReturnToProjectAfterFlooringSave(Request $request, FlooringQuotation $quotation): bool
-    {
-        if (! $quotation->isLinked()) {
-            return false;
-        }
-
-        return $request->input('return') === 'project'
-            || $request->query('return') === 'project';
     }
 }

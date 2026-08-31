@@ -155,12 +155,13 @@ class TileQuotationController extends Controller
 
         if ($quotation->client_project_id) {
             $this->syncProjectQuotation($quotation);
-            return redirect()
-                ->route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation'])
-                ->with('success', 'Tile quotation created and linked.');
         }
 
-        return redirect()->route('admin.quotations.index')->with('success', 'Tile quotation created.');
+        return redirect()
+            ->route('admin.quotations.tile.edit', $quotation)
+            ->with('success', $quotation->client_project_id
+                ? 'Tile quotation created and linked.'
+                : 'Tile quotation created.');
     }
 
     public function edit(Request $request, TileQuotation $quotation)
@@ -279,13 +280,9 @@ class TileQuotationController extends Controller
             $this->syncProjectQuotation($quotation);
         }
 
-        if ($request->query('return') === 'project' && $quotation->client_project_id) {
-            return redirect()
-                ->route('admin.client-projects.show', ['client_project' => $quotation->client_project_id, 'tab' => 'quotation'])
-                ->with('success', 'Tile quotation updated.');
-        }
-
-        return redirect()->route('admin.quotations.index')->with('success', 'Tile quotation updated.');
+        return redirect()
+            ->route('admin.quotations.tile.edit', $quotation)
+            ->with('success', 'Tile quotation updated.');
     }
 
     public function destroy(TileQuotation $quotation)

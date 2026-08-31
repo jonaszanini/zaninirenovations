@@ -29,6 +29,9 @@
 
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
   $linkProject = $linkProject ?? null;
+  $projectForReturn = ($isEdit && $quotation->project)
+      ? $quotation->project
+      : $linkProject;
 @endphp
 
 @section('heading', $title)
@@ -166,6 +169,7 @@
       <a href="{{ route('admin.quotations.low-deck.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-cog"></i> Configuration
       </a>
+      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
       <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       @if ($isEdit)
         <a href="{{ route('admin.quotations.low-deck.purchase-list', $quotation) }}"

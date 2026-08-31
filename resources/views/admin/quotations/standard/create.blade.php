@@ -6,15 +6,14 @@
   $isEdit = filled($quotation);
 
   // Project-context mode: this editor was opened from a project's
-  // "Edit quotation" entry point. The form posts with ?return=project
-  // so the controller redirects the user back to the project's
-  // Quotation tab on save (instead of staying on the standalone
-  // editor). The "Connect to a project" panel is hidden in this mode
-  // since the SQ is already linked.
+  // "Edit quotation" entry point (?return=project). Save stays on this
+  // page; use Back to project to open the project's Quotation tab.
   $returnToProject = request('return') === 'project'
     && $isEdit
     && $quotation->project;
-  $projectForReturn = $returnToProject ? $quotation->project : null;
+  $projectForReturn = ($isEdit && $quotation->project)
+    ? $quotation->project
+    : ($linkProject ?? null);
 
   $formAction = $isEdit
     ? route('admin.quotations.standard.update', $quotation).($returnToProject ? '?return=project' : '')
@@ -92,27 +91,15 @@
 @section('content')
   <div class="admin-toolbar fq-list-toolbar">
     <div class="admin-toolbar-group">
-      @if ($returnToProject && $projectForReturn)
-        <a href="{{ route('admin.client-projects.show', $projectForReturn) }}#quotation"
-           class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to project
-        </a>
-      @else
-        <a href="{{ route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> All standard quotations
-        </a>
-        <a href="{{ route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-th"></i> Quotation types
-        </a>
-      @endif
+      <a href="{{ route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-arrow-left"></i> All standard quotations
+      </a>
+      <a href="{{ route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-th"></i> Quotation types
+      </a>
+      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
     </div>
     <div class="admin-toolbar-group">
-      @if ($isEdit && $quotation->isLinked() && !$returnToProject)
-        <a href="{{ route('admin.client-projects.show', $quotation->client_project_id) }}#quotation"
-           class="admin-btn admin-btn--primary admin-btn--sm">
-          <i class="fa fa-briefcase"></i> Open linked project
-        </a>
-      @endif
       @if ($isEdit)
         <a href="{{ route('admin.quotations.standard.purchase-list', $quotation) }}"
            target="_blank" rel="noopener noreferrer"

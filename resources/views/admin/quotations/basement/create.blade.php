@@ -5,7 +5,9 @@
 
   $isEdit = filled($quotation);
   $returnToProject = request('return') === 'project' && $isEdit && $quotation->project;
-  $projectForReturn = $returnToProject ? $quotation->project : null;
+  $projectForReturn = ($isEdit && $quotation->project)
+      ? $quotation->project
+      : ($linkProject ?? null);
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
   $qs = array_filter(['return' => $returnToProject ? 'project' : null, 'project' => $preservePid]);
   $formQuery = $qs !== [] ? '?'.http_build_query($qs) : '';
@@ -63,6 +65,7 @@
     <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
       <i class="fa fa-arrow-left"></i> Back to list
     </a>
+    @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
     <a href="{{ route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm" style="margin-left:8px;">
       <i class="fa fa-cog"></i> Price configuration
     </a>
@@ -96,6 +99,7 @@
           <i class="fa fa-save"></i> Save quotation
         </button>
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-btn-draft">Save as draft</button>
+        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
         <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
       <div class="br-step-nav" id="br-step-nav">

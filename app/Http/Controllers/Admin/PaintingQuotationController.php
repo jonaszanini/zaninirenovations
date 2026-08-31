@@ -61,23 +61,15 @@ class PaintingQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkPaintingIfRequested($quote->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', $intent === 'draft'
-                    ? 'Painting quotation saved as draft and linked.'
-                    : 'Painting quotation '.$quote->quote_number.' saved and linked to this project.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.painting.edit', $quote->fresh())
             ->with('success', $intent === 'draft'
-                ? 'Painting quotation saved as draft.'
-                : 'Painting quotation '.$quote->quote_number.' saved.');
+                ? ($linkedNow ? 'Painting quotation saved as draft and linked.' : 'Painting quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Painting quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Painting quotation '.$quote->quote_number.' saved.'));
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -108,40 +100,15 @@ class PaintingQuotationController extends Controller
 
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkPaintingIfRequested($painting_quotation->fresh(), $request, $warnings);
-
-        if ($this->shouldReturnToProjectAfterPaintingSave($request, $painting_quotation->fresh())) {
-            $r = redirect()
-                ->route('admin.client-projects.show', $painting_quotation->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Painting quotation '.$painting_quotation->quote_number.' updated (v'.$painting_quotation->version.').');
-
-            return $warnings === [] ? $r : $r->with('warning', implode(' ', $warnings));
-        }
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $painting_quotation->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Painting quotation '.$painting_quotation->quote_number.' updated and linked.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.painting.edit', $painting_quotation)
-            ->with('success', 'Painting quotation '.$painting_quotation->quote_number.' updated (v'.$painting_quotation->version.').');
+            ->with('success', $linkedNow
+                ? 'Painting quotation '.$painting_quotation->quote_number.' updated and linked.'
+                : 'Painting quotation '.$painting_quotation->quote_number.' updated (v'.$painting_quotation->version.').');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-    }
-
-    protected function shouldReturnToProjectAfterPaintingSave(Request $request, PaintingQuotation $quotation): bool
-    {
-        if (! $quotation->isLinked()) {
-            return false;
-        }
-
-        return $request->input('return') === 'project'
-            || $request->query('return') === 'project';
     }
 
     public function preview(Request $request)

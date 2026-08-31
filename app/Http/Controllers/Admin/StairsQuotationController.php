@@ -64,23 +64,15 @@ class StairsQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkStairsIfRequested($quote->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', $intent === 'draft'
-                    ? 'Stairs quotation saved as draft and linked.'
-                    : 'Stairs quotation '.$quote->quote_number.' saved and linked to this project.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.stairs.edit', $quote->fresh())
             ->with('success', $intent === 'draft'
-                ? 'Stairs quotation saved as draft.'
-                : 'Stairs quotation '.$quote->quote_number.' saved.');
+                ? ($linkedNow ? 'Stairs quotation saved as draft and linked.' : 'Stairs quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Stairs quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Stairs quotation '.$quote->quote_number.' saved.'));
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -111,40 +103,15 @@ class StairsQuotationController extends Controller
 
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkStairsIfRequested($stairs_quotation->fresh(), $request, $warnings);
-
-        if ($this->shouldReturnToProjectAfterStairsSave($request, $stairs_quotation->fresh())) {
-            $r = redirect()
-                ->route('admin.client-projects.show', $stairs_quotation->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Stairs quotation '.$stairs_quotation->quote_number.' updated (v'.$stairs_quotation->version.').');
-
-            return $warnings === [] ? $r : $r->with('warning', implode(' ', $warnings));
-        }
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $stairs_quotation->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Stairs quotation '.$stairs_quotation->quote_number.' updated and linked.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.stairs.edit', $stairs_quotation)
-            ->with('success', 'Stairs quotation '.$stairs_quotation->quote_number.' updated (v'.$stairs_quotation->version.').');
+            ->with('success', $linkedNow
+                ? 'Stairs quotation '.$stairs_quotation->quote_number.' updated and linked.'
+                : 'Stairs quotation '.$stairs_quotation->quote_number.' updated (v'.$stairs_quotation->version.').');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-    }
-
-    protected function shouldReturnToProjectAfterStairsSave(Request $request, StairsQuotation $quotation): bool
-    {
-        if (! $quotation->isLinked()) {
-            return false;
-        }
-
-        return $request->input('return') === 'project'
-            || $request->query('return') === 'project';
     }
 
     public function preview(Request $request)

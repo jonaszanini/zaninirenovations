@@ -104,19 +104,13 @@ class FenceQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkFenceIfRequested($quote->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Fence quotation '.$quote->quote_number.' saved and linked to this project.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.fence.edit', $quote->fresh())
-            ->with('success', 'Fence quotation '.$quote->quote_number.' saved.');
+            ->with('success', $linkedNow
+                ? 'Fence quotation '.$quote->quote_number.' saved and linked to this project.'
+                : 'Fence quotation '.$quote->quote_number.' saved.');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -184,19 +178,13 @@ class FenceQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkFenceIfRequested($fence_quotation->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $fence_quotation->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Fence quotation '.$fence_quotation->quote_number.' updated and linked.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.fence.edit', $fence_quotation)
-            ->with('success', 'Fence quotation '.$fence_quotation->quote_number.' updated (v'.$fence_quotation->version.').');
+            ->with('success', $linkedNow
+                ? 'Fence quotation '.$fence_quotation->quote_number.' updated and linked.'
+                : 'Fence quotation '.$fence_quotation->quote_number.' updated (v'.$fence_quotation->version.').');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }

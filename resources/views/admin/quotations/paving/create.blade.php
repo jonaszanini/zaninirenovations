@@ -15,6 +15,9 @@
 
   $linkProject = $linkProject ?? null;
   $preservePid = request('project');
+  $projectForReturn = ($isEdit && $quotation->project)
+      ? $quotation->project
+      : $linkProject;
 @endphp
 
 @section('heading', $title)
@@ -315,6 +318,7 @@
       <a href="{{ route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-cog"></i> Price configuration
       </a>
+      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
       @if ($isEdit)
         <a href="{{ route('admin.quotations.paving.purchase-list', $quotation) }}"
            target="_blank" rel="noopener noreferrer"
@@ -503,6 +507,7 @@
             <i class="fa fa-save"></i> Save quotation
           </button>
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
+          @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
           <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
         </div>
         @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])

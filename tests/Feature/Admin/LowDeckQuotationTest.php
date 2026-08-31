@@ -61,6 +61,7 @@ class LowDeckQuotationTest extends IntegrationTestCase
         $quote = LowDeckQuotation::query()->latest('id')->first();
         $this->assertNotNull($quote);
         $this->assertSame($project->id, $quote->client_project_id);
+        $response->assertRedirect(route('admin.quotations.low-deck.edit', $quote));
         $this->assertSame(192.0, (float) $quote->calculation['geometry']['area_sq_ft']);
 
         $line = ClientProjectQuotation::query()

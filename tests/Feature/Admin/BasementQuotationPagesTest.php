@@ -190,4 +190,50 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('850', $quote->summaryDescription());
         $response->assertRedirect(route('admin.quotations.basement.edit', $quote));
     }
+
+    public function test_save_stays_on_quotation_and_shows_back_to_project(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+        ]);
+
+        $this->get(route('admin.quotations.basement.create', ['project' => $project->id]))
+            ->assertOk()
+            ->assertSee('Back to project', false);
+
+        $payload = [
+            'save_intent' => 'publish',
+            'client_name' => 'Stay On Quote Client',
+            'area_sqft' => 850,
+            'ceiling_height_ft' => 8,
+            'room_count' => 3,
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ];
+
+        $store = $this->post(route('admin.quotations.basement.store', ['project' => $project->id]), $payload);
+
+        $quote = BasementQuotation::query()->where('client_name', 'Stay On Quote Client')->first();
+        $this->assertNotNull($quote);
+        $this->assertSame($project->id, $quote->client_project_id);
+        $store->assertRedirect(route('admin.quotations.basement.edit', $quote));
+
+        $this->get(route('admin.quotations.basement.edit', [
+            'basement_quotation' => $quote,
+            'return' => 'project',
+        ]))
+            ->assertOk()
+            ->assertSee('Back to project', false)
+            ->assertSee('#quotation', false);
+
+        $this->put(route('admin.quotations.basement.update', [
+            'basement_quotation' => $quote,
+            'return' => 'project',
+        ]), $payload)
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+    }
 }

@@ -74,19 +74,13 @@ class LowDeckQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkLowDeckIfRequested($quote->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Low deck quotation '.$quote->quote_number.' saved and linked to this project.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.low-deck.edit', $quote->fresh())
-            ->with('success', 'Low deck quotation '.$quote->quote_number.' saved.');
+            ->with('success', $linkedNow
+                ? 'Low deck quotation '.$quote->quote_number.' saved and linked to this project.'
+                : 'Low deck quotation '.$quote->quote_number.' saved.');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -119,19 +113,13 @@ class LowDeckQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkLowDeckIfRequested($low_deck_quotation->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $low_deck_quotation->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Low deck quotation '.$low_deck_quotation->quote_number.' updated and linked.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.low-deck.edit', $low_deck_quotation)
-            ->with('success', 'Low deck quotation '.$low_deck_quotation->quote_number.' updated (v'.$low_deck_quotation->version.').');
+            ->with('success', $linkedNow
+                ? 'Low deck quotation '.$low_deck_quotation->quote_number.' updated and linked.'
+                : 'Low deck quotation '.$low_deck_quotation->quote_number.' updated (v'.$low_deck_quotation->version.').');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }

@@ -75,21 +75,14 @@ class StandardQuotationController extends Controller
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkStandardIfRequested($quote, $request, $warnings);
 
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $quote->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Standard quotation '.$quote->quote_number.' saved and linked to this project.')
-                ->with('standard_flash', 'linked')
-                ->with('standard_linked_project_id', $quote->client_project_id);
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.standard.edit', $quote)
-            ->with('success', 'Standard quotation '.$quote->quote_number.' saved.')
-            ->with('standard_flash', 'saved');
+            ->with('success', $linkedNow
+                ? 'Standard quotation '.$quote->quote_number.' saved and linked to this project.'
+                : 'Standard quotation '.$quote->quote_number.' saved.')
+            ->with('standard_flash', $linkedNow ? 'linked' : 'saved');
 
         if ($warnings !== []) {
             $resp = $resp->with('warning', implode(' ', $warnings));
@@ -220,21 +213,6 @@ class StandardQuotationController extends Controller
             });
         }
 
-        // Honour ?return=project / return=project — sent by the project's
-        // "Edit quotation" entry point so the user lands back on the
-        // project's Quotation tab (not the standalone editor).
-        if ($this->shouldReturnToProject($request, $standard_quotation)) {
-            $r = redirect()
-                ->route('admin.client-projects.show', $standard_quotation->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').');
-            if ($warnings !== []) {
-                $r = $r->with('warning', implode(' ', $warnings));
-            }
-
-            return $r;
-        }
-
         $resp = redirect()
             ->route('admin.quotations.standard.edit', $standard_quotation)
             ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').')
@@ -243,20 +221,6 @@ class StandardQuotationController extends Controller
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
 
-    /**
-     * Whether the editor should redirect back to the project after save.
-     * True when the form was opened from the project's "Edit quotation"
-     * entry (which appends ?return=project to the URL).
-     */
-    protected function shouldReturnToProject(Request $request, StandardQuotation $sq): bool
-    {
-        if (!$sq->isLinked()) {
-            return false;
-        }
-
-        return $request->input('return') === 'project'
-            || $request->query('return') === 'project';
-    }
 
     public function linkToProject(Request $request, StandardQuotation $standard_quotation)
     {

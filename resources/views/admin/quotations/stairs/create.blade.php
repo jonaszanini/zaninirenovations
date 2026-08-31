@@ -8,7 +8,9 @@
   $returnToProject = request('return') === 'project'
     && $isEdit
     && $quotation->project;
-  $projectForReturn = $returnToProject ? $quotation->project : null;
+  $projectForReturn = ($isEdit && $quotation->project)
+    ? $quotation->project
+    : ($linkProject ?? null);
 
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
   $qs = array_filter([
@@ -188,11 +190,7 @@
       <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         Price configuration
       </a>
-      @if ($returnToProject && $projectForReturn)
-        <a href="{{ route('admin.client-projects.show', $projectForReturn) }}#quotation" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to project
-        </a>
-      @endif
+      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
       <a href="{{ route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sq-btn-draft">Save as draft</button>
       <button type="submit" form="sq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="sq-btn-publish">

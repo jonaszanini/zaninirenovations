@@ -67,23 +67,15 @@ class PavingQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkPavingIfRequested($quote->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $quote->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', $intent === 'draft'
-                    ? 'Paving quotation saved as draft and linked.'
-                    : 'Paving quotation '.$quote->quote_number.' saved and linked to this project.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.paving.edit', $quote->fresh())
             ->with('success', $intent === 'draft'
-                ? 'Paving quotation saved as draft.'
-                : 'Paving quotation '.$quote->quote_number.' saved.');
+                ? ($linkedNow ? 'Paving quotation saved as draft and linked.' : 'Paving quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Paving quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Paving quotation '.$quote->quote_number.' saved.'));
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
@@ -114,19 +106,13 @@ class PavingQuotationController extends Controller
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkPavingIfRequested($paving_quotation->fresh(), $request, $warnings);
-
-        if ($newlyLinked && $hubProjectRequested) {
-            $resp = redirect()
-                ->route('admin.client-projects.show', $paving_quotation->fresh()->client_project_id)
-                ->withFragment('quotation')
-                ->with('success', 'Paving quotation '.$paving_quotation->quote_number.' updated and linked.');
-
-            return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
-        }
+        $linkedNow = $newlyLinked && $hubProjectRequested;
 
         $resp = redirect()
             ->route('admin.quotations.paving.edit', $paving_quotation)
-            ->with('success', 'Paving quotation '.$paving_quotation->quote_number.' updated (v'.$paving_quotation->version.').');
+            ->with('success', $linkedNow
+                ? 'Paving quotation '.$paving_quotation->quote_number.' updated and linked.'
+                : 'Paving quotation '.$paving_quotation->quote_number.' updated (v'.$paving_quotation->version.').');
 
         return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
     }
