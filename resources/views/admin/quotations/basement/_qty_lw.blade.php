@@ -16,6 +16,7 @@
   @param string|null $labelId
   @param string|null $title
   @param bool        $zeroIfIncomplete  Work area: incomplete L×W zeros the qty
+  @param string|null $companion         Optional HTML for a third field (e.g. ceiling height)
 --}}
 @php
   $mode = \App\Services\BasementQuotationCalculator::normalizeAreaMode($mode ?? 'sqft');
@@ -23,11 +24,12 @@
   $widthValue = $widthValue ?? '';
   $placeholder = $placeholder ?? '';
   $zeroIfIncomplete = ! empty($zeroIfIncomplete);
+  $companion = $companion ?? null;
   $computed = ($mode === 'dimensions' && $lengthValue !== '' && $widthValue !== '' && (float) $lengthValue > 0 && (float) $widthValue > 0)
       ? rtrim(rtrim(number_format((float) $lengthValue * (float) $widthValue, 2, '.', ''), '0'), '.').' sq ft'
       : 'Enter length and width';
 @endphp
-<div class="admin-form-group br-lw" data-br-lw @if($zeroIfIncomplete) data-br-lw-zero="1" @endif>
+<div class="admin-form-group br-lw{{ $companion ? ' br-lw--with-companion' : '' }}" data-br-lw @if($zeroIfIncomplete) data-br-lw-zero="1" @endif>
   <div class="br-lw__head">
     <label for="{{ $id }}" @if(! empty($labelId)) id="{{ $labelId }}" @endif>{{ $label }}</label>
     <div class="br-lw-segment" role="radiogroup" aria-label="{{ $label }} entry">
@@ -43,29 +45,38 @@
       </label>
     </div>
   </div>
-  <div data-br-lw-sqft @if($mode === 'dimensions') hidden @endif>
-    <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}" name="{{ $name }}"
-           data-br-lw-qty
-           value="{{ $value }}"
-           @if($placeholder !== '') placeholder="{{ $placeholder }}" @endif
-           @if(! empty($title)) title="{{ $title }}" @endif>
-    @if (! empty($help))
-      <p class="admin-form-help">{{ $help }}</p>
+
+  <div class="br-lw__fields">
+    <div class="br-lw__sqft" data-br-lw-sqft @if($mode === 'dimensions') hidden @endif>
+      <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}" name="{{ $name }}"
+             data-br-lw-qty
+             value="{{ $value }}"
+             @if($placeholder !== '') placeholder="{{ $placeholder }}" @endif
+             @if(! empty($title)) title="{{ $title }}" @endif>
+    </div>
+    <div class="br-lw__dims" data-br-lw-dims @unless($mode === 'dimensions') hidden @endunless>
+      <div class="admin-form-group br-lw__dim">
+        <label for="{{ $id }}-length">Length (ft)</label>
+        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}-length"
+               name="{{ $lengthName }}" data-br-lw-length
+               value="{{ $lengthValue }}" placeholder="e.g. 12">
+      </div>
+      <div class="admin-form-group br-lw__dim">
+        <label for="{{ $id }}-width">Width (ft)</label>
+        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}-width"
+               name="{{ $widthName }}" data-br-lw-width
+               value="{{ $widthValue }}" placeholder="e.g. 10">
+      </div>
+    </div>
+    @if (filled($companion))
+      <div class="br-lw__companion">
+        {!! $companion !!}
+      </div>
     @endif
   </div>
-  <div class="br-lw__dims" data-br-lw-dims @unless($mode === 'dimensions') hidden @endunless>
-    <div class="admin-form-group">
-      <label for="{{ $id }}-length">Length (ft)</label>
-      <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}-length"
-             name="{{ $lengthName }}" data-br-lw-length
-             value="{{ $lengthValue }}" placeholder="e.g. 12">
-    </div>
-    <div class="admin-form-group">
-      <label for="{{ $id }}-width">Width (ft)</label>
-      <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}-width"
-             name="{{ $widthName }}" data-br-lw-width
-             value="{{ $widthValue }}" placeholder="e.g. 10">
-      <p class="admin-form-help" data-br-lw-computed>{{ $computed }}</p>
-    </div>
-  </div>
+
+  <p class="admin-form-help br-lw__computed" data-br-lw-computed @if($mode !== 'dimensions') hidden @endif>{{ $computed }}</p>
+  @if (! empty($help))
+    <p class="admin-form-help br-lw__help">{{ $help }}</p>
+  @endif
 </div>

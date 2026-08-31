@@ -75,6 +75,21 @@
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="br-save-intent" value="publish">
 
+    <div class="br-toolbar" aria-label="Quotation actions">
+      <div class="pq-sidebar-actions">
+        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="br-btn-publish">
+          <i class="fa fa-save"></i> Save quotation
+        </button>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-btn-draft">Save as draft</button>
+        <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+      </div>
+      <div class="br-step-nav" id="br-step-nav">
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
+        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
+        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
+      </div>
+    </div>
+
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
         @php $n = 0; @endphp
@@ -246,19 +261,7 @@
       </div>
     </div>
 
-    <aside class="pq-sticky br-aside">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="br-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-btn-draft">Save as draft</button>
-        <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      </div>
-      <div class="br-step-nav" id="br-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
-      </div>
+    <aside class="br-aside">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       <div class="pq-summary-card">
         <h4 style="margin:0 0 10px;">Live breakdown</h4>

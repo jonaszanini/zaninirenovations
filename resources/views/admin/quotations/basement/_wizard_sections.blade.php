@@ -92,7 +92,7 @@
       @endforeach
     </fieldset>
 
-    <div class="admin-form-grid-2">
+    <div class="br-overview-geom">
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'area_sqft',
         'id' => 'br-area',
@@ -108,13 +108,12 @@
         'help' => 'Leave later quantity fields blank to auto-fill from this area. Enter 0 on a field to skip it.',
         'title' => 'Finished floor area of the work. Leave other quantity fields blank to auto-calculate from this.',
         'zeroIfIncomplete' => true,
+        'companion' => view('admin.quotations.basement._ceiling_height_field', [
+            'value' => $brVal('ceiling_height_ft', 8),
+        ])->render(),
       ])
-      <div class="admin-form-group">
-        <label for="br-height">Ceiling height (ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-height" name="ceiling_height_ft"
-               value="{{ $brVal('ceiling_height_ft', 8) }}"
-               title="Used to estimate wall square footage for insulation, drywall, and paint.">
-      </div>
+    </div>
+    <div class="admin-form-grid-2">
       <div class="admin-form-group">
         <label for="br-rooms">Finished rooms / zones (after reno)</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-rooms" name="room_count"

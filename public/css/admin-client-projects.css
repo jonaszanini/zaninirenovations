@@ -5995,14 +5995,25 @@ body.cp-modal-open {
    Basement renovation quotation wizard
    ===================================================================== */
 .br-layout.pq-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.95fr);
-  gap: 20px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
 }
-.br-layout .pq-sticky {
+.br-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--admin-surface, #fff);
+  border: 1px solid var(--admin-border, #d8dee4);
+  border-radius: var(--admin-radius, 10px);
   position: sticky;
-  top: 88px;
+  top: 72px;
+  z-index: 20;
+  box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.06));
 }
 .br-layout .pq-summary-card {
   border: 1px solid #e2e8f0;
@@ -6030,10 +6041,10 @@ body.cp-modal-open {
   flex-direction: row;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin: 0;
 }
 .br-layout .pq-sidebar-actions .admin-btn {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   justify-content: center;
   min-height: 44px;
@@ -6050,10 +6061,20 @@ body.cp-modal-open {
   margin: 0 0 12px;
   color: #024768;
 }
+.br-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
 .br-shell {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+.br-main {
   min-width: 0;
 }
 .br-progress {
@@ -6198,12 +6219,15 @@ body.cp-modal-open {
 .br-scope-trades {
   margin-bottom: 1rem;
 }
+.br-overview-geom {
+  margin-bottom: 1rem;
+}
 .br-lw__head {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0.4rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.65rem;
 }
 .br-lw__head > label {
   margin-bottom: 0;
@@ -6263,23 +6287,56 @@ body.cp-modal-open {
 .admin-form-group .br-lw-segment__item + .br-lw-segment__item {
   border-left: 1px solid var(--admin-border);
 }
+.br-lw__fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+.br-lw__sqft,
+.br-lw__companion,
+.br-lw__dim,
+.br-lw__companion-field {
+  min-width: 0;
+}
 .br-lw__dims {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
 }
-.br-lw__dims > .admin-form-group {
+.br-lw__dims > .admin-form-group,
+.br-lw__companion-field {
   margin-bottom: 0;
+}
+.br-lw__computed {
+  margin: 0.35rem 0 0;
+}
+.br-lw__computed[hidden],
+.br-lw__help {
+  margin-top: 0.35rem;
 }
 @media (min-width: 768px) {
   .br-lw__dims {
     grid-template-columns: 1fr 1fr;
   }
+  .br-lw--with-companion .br-lw__fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .br-lw--with-companion .br-lw__dims {
+    display: contents;
+  }
+  .br-lw--with-companion .br-lw__fields:has([data-br-lw-sqft]:not([hidden])) {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.75fr);
+  }
+  .br-lw--with-companion .br-lw__fields:has([data-br-lw-sqft]:not([hidden])) .br-lw__companion {
+    grid-column: 2;
+  }
 }
 .br-progress__item[hidden],
 .br-acc[hidden],
 [data-br-lw-sqft][hidden],
-[data-br-lw-dims][hidden] {
+[data-br-lw-dims][hidden],
+.br-lw__computed[hidden] {
   display: none !important;
 }
 .br-edit-table .admin-input {
@@ -6289,11 +6346,11 @@ body.cp-modal-open {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin: 0;
 }
 .br-step-nav .admin-btn {
   min-height: 44px;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 .br-step-nav__status {
   flex: 0 0 auto;
@@ -6624,7 +6681,7 @@ body.cp-modal-open {
 @media (min-width: 900px) {
   .br-shell {
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 200px minmax(0, 1fr);
     gap: 20px;
     align-items: start;
   }
@@ -6632,8 +6689,8 @@ body.cp-modal-open {
     flex-direction: column;
     overflow-x: visible;
     position: sticky;
-    top: 88px;
-    max-height: calc(100vh - 120px);
+    top: 148px;
+    max-height: calc(100vh - 170px);
     overflow-y: auto;
   }
   .br-progress__item {
@@ -6644,14 +6701,15 @@ body.cp-modal-open {
   }
 }
 
-@media (max-width: 1100px) {
-  .br-layout.pq-layout {
-    grid-template-columns: 1fr;
+@media (max-width: 768px) {
+  .br-toolbar {
+    top: 56px;
+    flex-direction: column;
+    align-items: stretch;
   }
-  .br-layout .br-aside {
-    order: -1;
-    position: static;
-    top: auto;
+  .br-layout .pq-sidebar-actions .admin-btn,
+  .br-step-nav .admin-btn {
+    flex: 1 1 auto;
   }
 }
 
