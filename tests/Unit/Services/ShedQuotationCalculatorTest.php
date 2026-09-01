@@ -154,6 +154,28 @@ class ShedQuotationCalculatorTest extends TestCase
         $this->assertSame([], (new ShedQuotationCalculator)->validationHints(['length_ft' => 0], true));
     }
 
+    public function test_asphalt_shingles_are_counted_in_bundles(): void
+    {
+        $calc = (new ShedQuotationCalculator)->calculate([
+            'length_ft' => 10,
+            'width_ft' => 12,
+            'wall_height_ft' => 8,
+            'roof_pitch' => 6,
+            'roof_type' => 'asphalt',
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $shingles = collect($calc['materials'])->firstWhere('key', 'asphalt_shingle');
+        $this->assertNotNull($shingles);
+        $this->assertSame('bundle', $shingles['unit']);
+
+        $expected = max(1, (int) ceil(
+            ((float) $calc['scope']['roof_sf'] * ShedSettings::MATERIAL_WASTE) / ShedSettings::SHINGLE_SF_PER_BUNDLE
+        ));
+        $this->assertSame((float) $expected, (float) $shingles['qty']);
+        $this->assertGreaterThan(1, $expected);
+    }
+
     private function settings(): ShedSettings
     {
         return new ShedSettings([

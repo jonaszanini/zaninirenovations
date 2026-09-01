@@ -70,6 +70,12 @@ Route::get('/helper/payment/{helper_payment}/acknowledge', [\App\Http\Controller
     ->middleware('signed')
     ->name('public.helper-payment.acknowledge');
 
+Route::get('/quote-form/{token}', [\App\Http\Controllers\BasementClientIntakeController::class, 'show'])
+    ->name('public.basement-intake.show');
+Route::post('/quote-form/{token}', [\App\Http\Controllers\BasementClientIntakeController::class, 'store'])
+    ->middleware('throttle:12,1')
+    ->name('public.basement-intake.store');
+
 Route::get('/', function () {
     $projects = Project::query()
         ->with([
@@ -667,6 +673,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('quotations.basement.calculate-existing');
     Route::put('quotations/basement/{basement_quotation}', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'update'])
         ->name('quotations.basement.update');
+    Route::post('quotations/basement/{basement_quotation}/intake/email', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'sendIntake'])
+        ->name('quotations.basement.intake.email');
+    Route::post('quotations/basement/{basement_quotation}/intake/reopen', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'reopenIntake'])
+        ->name('quotations.basement.intake.reopen');
     Route::post('quotations/basement/{basement_quotation}/link', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'linkToProject'])
         ->name('quotations.basement.link');
     Route::post('quotations/basement/{basement_quotation}/create-project', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'createProjectAndLink'])

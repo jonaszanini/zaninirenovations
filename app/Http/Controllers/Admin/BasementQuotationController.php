@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
+use App\Mail\BasementClientIntakeMail;
 use App\Models\BasementQuotation;
 use App\Models\BasementSettings;
 use App\Models\ClientProject;
@@ -19,6 +20,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class BasementQuotationController extends Controller
@@ -227,6 +229,42 @@ class BasementQuotationController extends Controller
             ->with('success', 'Project created. The basement renovation line was added to the Quotation tab.');
     }
 
+    public function sendIntake(Request $request, BasementQuotation $basement_quotation)
+    {
+        if (! $basement_quotation->supportsClientIntake()) {
+            return back()->with('error', 'Client intake is only available for Full basement and Bathroom only quotations.');
+        }
+
+        $email = $basement_quotation->intakeClientEmail();
+        if ($email === null) {
+            return back()->with('error', 'Link this quotation to a project with a client email, or copy the form link instead.');
+        }
+
+        $url = $basement_quotation->clientIntakeUrl();
+        $name = trim((string) ($basement_quotation->project->client_name ?? $basement_quotation->client_name ?? 'there'));
+        if ($name === '') {
+            $name = 'there';
+        }
+
+        Mail::to($email, $name)->send(new BasementClientIntakeMail($basement_quotation, $url, $name));
+        $basement_quotation->client_intake_sent_at = now();
+        $basement_quotation->save();
+
+        return back()->with('success', 'Client form emailed to '.$email.'.');
+    }
+
+    public function reopenIntake(BasementQuotation $basement_quotation)
+    {
+        if (! $basement_quotation->supportsClientIntake()) {
+            return back()->with('error', 'Client intake is only available for Full basement and Bathroom only quotations.');
+        }
+
+        $basement_quotation->client_intake_submitted_at = null;
+        $basement_quotation->save();
+
+        return back()->with('success', 'The client can submit the form again. Their previous answers stay until they submit.');
+    }
+
     public function destroy(BasementQuotation $basement_quotation)
     {
         $cpq = ClientProjectQuotation::query()
@@ -262,6 +300,10 @@ class BasementQuotationController extends Controller
 
         $linkedCpq = null;
         if ($quotation) {
+            $quotation->loadMissing('project');
+            if ($quotation->supportsClientIntake()) {
+                $quotation->ensureIntakeToken();
+            }
             $linkedCpq = ClientProjectQuotation::query()
                 ->where('source_type', ClientProjectQuotation::SOURCE_BASEMENT)
                 ->where('source_id', $quotation->id)
@@ -552,6 +594,11 @@ class BasementQuotationController extends Controller
 
             return false;
         }
+    }
+
+    public function syncLinkedQuote(ClientProject $project, BasementQuotation $quote): void
+    {
+        $this->syncLineToProjectQuotation($project, $quote);
     }
 
     protected function syncLineToProjectQuotation(ClientProject $project, BasementQuotation $quote): void

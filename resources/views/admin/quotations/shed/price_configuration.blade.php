@@ -139,6 +139,9 @@
                 <td data-label="Line item">
                   <div class="br-config-line-wrap">
                     <strong class="br-config-line">{{ $lineLabel }}</strong>
+                    @if ($key === 'asphalt_shingle')
+                      <p class="admin-form-help admin-form-help--tight">Home Depot sells by the bundle (~33.3 sq ft). This line is priced and counted in bundles, not roofing squares.</p>
+                    @endif
                     @if ($derivedPlate)
                       <span class="br-config-source br-config-source--derived" data-br-cfg-source>
                         <i class="fa fa-lock" aria-hidden="true"></i> From stud

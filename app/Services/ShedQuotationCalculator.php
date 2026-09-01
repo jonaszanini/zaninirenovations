@@ -391,8 +391,8 @@ class ShedQuotationCalculator
         if (($inputs['roof_type'] ?? 'asphalt') === 'metal') {
             $addMat('metal_roof', 'roof', round($roofSf * $waste, 0), 'metal_roof');
         } else {
-            $squares = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::SHINGLE_SF_PER_SQUARE));
-            $addMat('asphalt_shingle', 'roof', $squares, 'asphalt_shingle');
+            $bundles = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::SHINGLE_SF_PER_BUNDLE));
+            $addMat('asphalt_shingle', 'roof', $bundles, 'asphalt_shingle');
         }
 
         $sidingKey = match ((string) ($inputs['siding'] ?? 'vinyl')) {

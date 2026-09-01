@@ -18,6 +18,7 @@
   @param string|null $title
   @param bool        $zeroIfIncomplete  Work area: incomplete L×W zeros the qty
   @param string|null $companion         Optional HTML for a third field (e.g. ceiling height)
+  @param bool        $clientFilled
 --}}
 @php
   $mode = \App\Services\BasementQuotationCalculator::normalizeAreaMode($mode ?? 'sqft');
@@ -26,6 +27,7 @@
   $placeholder = $placeholder ?? '';
   $zeroIfIncomplete = ! empty($zeroIfIncomplete);
   $companion = $companion ?? null;
+  $clientFilled = $clientFilled ?? false;
   $computed = ($mode === 'dimensions' && $lengthValue !== '' && $widthValue !== '' && (float) $lengthValue > 0 && (float) $widthValue > 0)
       ? rtrim(rtrim(number_format((float) $lengthValue * (float) $widthValue, 2, '.', ''), '0'), '.').' sq ft'
       : 'Enter length and width';
@@ -34,6 +36,9 @@
   <div class="br-lw__head">
     <label for="{{ $id }}" @if(! empty($labelId)) id="{{ $labelId }}" @endif>
       @include('admin.partials.info_tip', ['text' => $info ?? null])
+      @if (! empty($clientFilled))
+        @include('admin.quotations.basement._client_filled', ['force' => true])
+      @endif
       {{ $label }}
     </label>
     <div class="br-lw-segment" role="radiogroup" aria-label="{{ $label }} entry">

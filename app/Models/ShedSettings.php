@@ -28,6 +28,9 @@ class ShedSettings extends Model
 
     public const SHINGLE_SF_PER_SQUARE = 100;
 
+    /** Typical architectural bundle (3 bundles ≈ 1 square). */
+    public const SHINGLE_SF_PER_BUNDLE = 33.3;
+
     public const PAINT_SF_PER_GALLON = 350;
 
     public const PAINT_WASTE = 1.1;
@@ -129,7 +132,11 @@ class ShedSettings extends Model
             'helical_pile' => $row('Helical pile installed (each)', 'each', 325.00),
             'pt_skid' => $row('Pressure-treated 6x6 skid (each)', 'each', 85.00),
             'deck_block' => $row('Deck block (each)', 'each', 12.00),
-            'asphalt_shingle' => $row('Asphalt shingles (square / 100 sq ft)', 'sq', 95.00),
+            'asphalt_shingle' => $row(
+                'Asphalt shingles (bundle / 33.3 sq ft)',
+                'bundle',
+                round(95.00 * self::SHINGLE_SF_PER_BUNDLE / self::SHINGLE_SF_PER_SQUARE, 4)
+            ),
             'metal_roof' => $row('Metal roofing (per sq ft)', 'sf', 4.25),
             'underlayment' => $row('Roof underlayment (per sq ft)', 'sf', 0.45),
             'ice_water' => $row('Ice & water shield (per sq ft)', 'sf', 1.10),
@@ -195,6 +202,18 @@ class ShedSettings extends Model
 
             $storedUnit = trim((string) ($stored[$key]['unit'] ?? ''));
             $unitMatches = $storedUnit === '' || $storedUnit === $row['unit'];
+            if ($key === 'asphalt_shingle' && $storedUnit === 'sq' && $row['unit'] !== 'sq') {
+                if ($catalogId > 0) {
+                    // Linked catalog items are sold per bundle; keep the stored pack price.
+                    $unitMatches = true;
+                } elseif (isset($stored[$key]['unit_price']) && is_numeric($stored[$key]['unit_price'])) {
+                    $row['unit_price'] = round(
+                        (float) $stored[$key]['unit_price'] * self::SHINGLE_SF_PER_BUNDLE / self::SHINGLE_SF_PER_SQUARE,
+                        4
+                    );
+                    $unitMatches = false;
+                }
+            }
             if ($unitMatches && isset($stored[$key]['unit_price']) && is_numeric($stored[$key]['unit_price'])) {
                 $row['unit_price'] = round((float) $stored[$key]['unit_price'], 4);
             }

@@ -7343,3 +7343,72 @@ body.cp-modal-open {
   }
 }
 
+/* Client intake bar + “filled from client form” badge on basement quotes */
+.br-intake-bar {
+  margin-bottom: 16px;
+}
+.br-intake-bar__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+.br-intake-bar__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef3f6;
+  color: #024768;
+  font-size: 13px;
+  font-weight: 600;
+}
+.br-intake-bar__chip--done {
+  background: #e8f4ea;
+  color: #0f5132;
+}
+.br-intake-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.br-intake-bar__actions .admin-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.br-intake-bar__actions form {
+  margin: 0;
+}
+.br-client-filled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 4px 0 0;
+  border-radius: 50%;
+  background: #e8f4ea;
+  color: #024768;
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.admin-checkbox .br-client-filled {
+  margin: 0 4px 0 0;
+}
+@media (max-width: 700px) {
+  .br-intake-bar__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .br-intake-bar__actions .admin-btn,
+  .br-intake-bar__actions form .admin-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

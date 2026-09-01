@@ -1,0 +1,124 @@
+/* Client basement quotation intake — mobile-first public form */
+.bi-page {
+  padding: 24px 0 48px;
+}
+.bi-page__title {
+  font-size: 26px;
+  line-height: 1.25;
+  margin: 8px 0 8px;
+  color: #024768;
+}
+@media (min-width: 768px) {
+  .bi-page__title {
+    font-size: 32px;
+  }
+}
+.bi-page__lead {
+  margin: 0 0 24px;
+  color: #5a6570;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.bi-card {
+  background: #fff;
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 0 0 16px;
+}
+@media (min-width: 768px) {
+  .bi-card {
+    padding: 20px 24px;
+  }
+}
+.bi-card__title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #024768;
+}
+.bi-field {
+  margin: 0 0 14px;
+}
+.bi-field:last-child {
+  margin-bottom: 0;
+}
+.bi-field label,
+.bi-legend {
+  display: block;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: #373435;
+}
+.bi-field .form-control {
+  min-height: 44px;
+  height: 44px;
+}
+.bi-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bi-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #d8dee4;
+  border-radius: 6px;
+  margin: 0;
+  cursor: pointer;
+  flex: 1 1 140px;
+  font-weight: 500;
+}
+.bi-choice input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.bi-choice:has(input:checked) {
+  border-color: #024768;
+  background: #f0f7fc;
+}
+.bi-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 700px) {
+  .bi-grid--2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .bi-grid--3 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+.bi-reveal[hidden],
+[data-bi-hide-when][hidden] {
+  display: none !important;
+}
+.bi-error {
+  background: #fdecea;
+  color: #c62828;
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+.bi-submit {
+  min-height: 44px;
+  width: 100%;
+  margin-top: 8px;
+}
+@media (min-width: 700px) {
+  .bi-submit {
+    width: auto;
+    min-width: 220px;
+  }
+}
+.bi-area-inputs {
+  margin-top: 8px;
+}

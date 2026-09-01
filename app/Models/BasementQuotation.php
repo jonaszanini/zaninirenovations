@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BasementQuotationCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -25,6 +26,11 @@ class BasementQuotation extends Model
         'additional_costs',
         'version',
         'linked_at',
+        'client_intake_token',
+        'client_intake_sent_at',
+        'client_intake_submitted_at',
+        'client_intake_answers',
+        'client_filled_keys',
     ];
 
     protected $casts = [
@@ -39,6 +45,10 @@ class BasementQuotation extends Model
         'additional_costs' => 'array',
         'version' => 'integer',
         'linked_at' => 'datetime',
+        'client_intake_sent_at' => 'datetime',
+        'client_intake_submitted_at' => 'datetime',
+        'client_intake_answers' => 'array',
+        'client_filled_keys' => 'array',
     ];
 
     public function project(): BelongsTo
@@ -49,6 +59,75 @@ class BasementQuotation extends Model
     public function isLinked(): bool
     {
         return $this->client_project_id !== null;
+    }
+
+    /**
+     * Full basement and bathroom-only quotes can send a client intake form.
+     */
+    public function supportsClientIntake(): bool
+    {
+        $preset = BasementQuotationCalculator::normalizePreset(
+            is_array($this->inputs) ? ($this->inputs['scope_preset'] ?? null) : null
+        );
+
+        return in_array($preset, ['full', 'bathroom'], true);
+    }
+
+    public function hasClientIntakeToken(): bool
+    {
+        return is_string($this->client_intake_token) && $this->client_intake_token !== '';
+    }
+
+    public function isClientIntakeSubmitted(): bool
+    {
+        return $this->client_intake_submitted_at !== null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function clientFilledKeys(): array
+    {
+        $keys = $this->client_filled_keys;
+
+        return is_array($keys) ? array_values(array_map('strval', $keys)) : [];
+    }
+
+    public function clientFilled(string $key): bool
+    {
+        return in_array($key, $this->clientFilledKeys(), true);
+    }
+
+    public function ensureIntakeToken(): string
+    {
+        if ($this->hasClientIntakeToken()) {
+            return (string) $this->client_intake_token;
+        }
+
+        do {
+            $token = bin2hex(random_bytes(32));
+        } while (static::query()->where('client_intake_token', $token)->exists());
+
+        $this->client_intake_token = $token;
+        $this->save();
+
+        return $token;
+    }
+
+    public function clientIntakeUrl(): string
+    {
+        return route('public.basement-intake.show', ['token' => $this->ensureIntakeToken()]);
+    }
+
+    public function intakeClientEmail(): ?string
+    {
+        $project = $this->project;
+        if (! $project) {
+            return null;
+        }
+        $email = trim((string) ($project->client_email ?? ''));
+
+        return $email !== '' ? $email : null;
     }
 
     public function areaSqft(): float

@@ -41,6 +41,10 @@
           'width' => ($wid === null || $wid === '') ? '' : $wid,
       ];
   };
+  $filledKeys = $filledKeys ?? [];
+  $brFilled = function (string $key) use ($filledKeys): bool {
+      return in_array($key, $filledKeys, true);
+  };
   $tradeInfo = [
       'demolition' => 'Tear-out of existing flooring, drywall, or ceiling, plus dumpster / bin cost.',
       'framing' => 'New wood walls, bulkheads around ducts, headers, and door openings.',
@@ -202,14 +206,16 @@
         'info' => $brInfo['area_sqft'],
         'title' => 'Finished floor area of the work. Leave other quantity fields blank to auto-calculate from this.',
         'zeroIfIncomplete' => true,
+        'clientFilled' => $brFilled('area_sqft'),
         'companion' => view('admin.quotations.basement._ceiling_height_field', [
             'value' => $brVal('ceiling_height_ft', 8),
+            'filledKeys' => $filledKeys,
         ])->render(),
       ])
     </div>
     <div class="br-qty-grid">
       <div class="admin-form-group">
-        <label for="br-rooms">@include('admin.partials.info_tip', ['text' => $brInfo['room_count']]) Finished rooms / zones (after reno)</label>
+        <label for="br-rooms">@include('admin.partials.info_tip', ['text' => $brInfo['room_count']]) @include('admin.quotations.basement._client_filled', ['key' => 'room_count', 'filledKeys' => $filledKeys]) Finished rooms / zones (after reno)</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-rooms" name="room_count"
                value="{{ $brVal('room_count', 1) }}"
                title="Count rooms as they will exist when the work is done, including new dividing walls. Not the current open basement.">
@@ -248,6 +254,7 @@
       'info' => $brInfo['include_demolition'],
       'inputClass' => 'admin-checkbox__input br-preview',
       'attrs' => ['data-br-reveal' => 'br-demo-fields'],
+      'clientFilled' => $brFilled('include_demolition'),
     ])
     <div id="br-demo-fields" class="br-qty-grid br-qty-grid--inset" @unless($brOn('include_demolition')) hidden @endunless>
       @include('admin.quotations.basement._qty_lw', [
@@ -295,7 +302,7 @@
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group">
-        <label for="br-partition">@include('admin.partials.info_tip', ['text' => $brInfo['partition_lf']]) New partition walls (linear ft)</label>
+        <label for="br-partition">@include('admin.partials.info_tip', ['text' => $brInfo['partition_lf']]) @include('admin.quotations.basement._client_filled', ['key' => 'partition_lf', 'filledKeys' => $filledKeys]) New partition walls (linear ft)</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-partition" name="partition_lf"
                value="{{ $brVal('partition_lf', 0) }}"
                title="Interior walls only. Height uses the ceiling height from Overview.">
@@ -352,7 +359,7 @@
   <div class="br-acc__body">
     <div class="br-toggle-qty-grid">
       <div class="br-toggle-qty">
-        @include('admin.partials.checkbox', ['name' => 'insulate_walls', 'hiddenFallback' => true, 'checked' => $brOn('insulate_walls', true), 'label' => 'Wall insulation + vapor barrier', 'info' => $brInfo['insulate_walls'], 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-wall']])
+        @include('admin.partials.checkbox', ['name' => 'insulate_walls', 'hiddenFallback' => true, 'checked' => $brOn('insulate_walls', true), 'label' => 'Wall insulation + vapor barrier', 'info' => $brInfo['insulate_walls'], 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-wall'], 'clientFilled' => $brFilled('insulate_walls')])
         <div id="br-ins-wall" class="br-toggle-qty__fields" @unless($brOn('insulate_walls', true)) hidden @endunless>
           @include('admin.quotations.basement._qty_lw', [
             'name' => 'insulation_wall_sf',
@@ -371,7 +378,7 @@
         </div>
       </div>
       <div class="br-toggle-qty">
-        @include('admin.partials.checkbox', ['name' => 'insulate_ceiling', 'hiddenFallback' => true, 'checked' => $brOn('insulate_ceiling'), 'label' => 'Ceiling insulation', 'info' => $brInfo['insulate_ceiling'], 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-ceil']])
+        @include('admin.partials.checkbox', ['name' => 'insulate_ceiling', 'hiddenFallback' => true, 'checked' => $brOn('insulate_ceiling'), 'label' => 'Ceiling insulation', 'info' => $brInfo['insulate_ceiling'], 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-ceil'], 'clientFilled' => $brFilled('insulate_ceiling')])
         <div id="br-ins-ceil" class="br-toggle-qty__fields" @unless($brOn('insulate_ceiling')) hidden @endunless>
           @include('admin.quotations.basement._qty_lw', [
             'name' => 'insulation_ceiling_sf',
@@ -390,7 +397,7 @@
         </div>
       </div>
       <div class="br-toggle-qty">
-        @include('admin.partials.checkbox', ['name' => 'underslab', 'hiddenFallback' => true, 'checked' => $brOn('underslab'), 'label' => 'Under-slab insulation', 'info' => $brInfo['underslab'], 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-slab']])
+        @include('admin.partials.checkbox', ['name' => 'underslab', 'hiddenFallback' => true, 'checked' => $brOn('underslab'), 'label' => 'Under-slab insulation', 'info' => $brInfo['underslab'], 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-slab'], 'clientFilled' => $brFilled('underslab')])
         <div id="br-ins-slab" class="br-toggle-qty__fields" @unless($brOn('underslab')) hidden @endunless>
           @include('admin.quotations.basement._qty_lw', [
             'name' => 'underslab_sf',
@@ -475,7 +482,7 @@
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group">
-        <label for="br-ceil-type">@include('admin.partials.info_tip', ['text' => $brInfo['ceiling_type']]) Ceiling type</label>
+        <label for="br-ceil-type">@include('admin.partials.info_tip', ['text' => $brInfo['ceiling_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'ceiling_type', 'filledKeys' => $filledKeys]) Ceiling type</label>
         <select class="admin-input br-preview" id="br-ceil-type" name="ceiling_type">
           <option value="drywall" @selected($brVal('ceiling_type', 'drywall') === 'drywall')>Drywall ceiling</option>
           <option value="paint" @selected($brVal('ceiling_type') === 'paint')>Paint-grade drywall</option>
@@ -508,7 +515,7 @@
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group">
-        <label for="br-fl-type">@include('admin.partials.info_tip', ['text' => $brInfo['flooring_type']]) Final flooring type</label>
+        <label for="br-fl-type">@include('admin.partials.info_tip', ['text' => $brInfo['flooring_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'flooring_type', 'filledKeys' => $filledKeys]) Final flooring type</label>
         <select class="admin-input br-preview" id="br-fl-type" name="flooring_type">
           <option value="lvp" @selected($brVal('flooring_type', 'lvp') === 'lvp')>LVP</option>
           <option value="laminate" @selected($brVal('flooring_type') === 'laminate')>Laminate</option>
@@ -539,8 +546,8 @@
       </div>
     </div>
     <div class="br-check-grid br-check-grid--inset">
-      @include('admin.partials.checkbox', ['name' => 'subfloor_prep', 'hiddenFallback' => true, 'checked' => $brOn('subfloor_prep'), 'label' => 'Subfloor preparation / leveling', 'info' => $brInfo['subfloor_prep'], 'inputClass' => 'admin-checkbox__input br-preview'])
-      @include('admin.partials.checkbox', ['name' => 'underlayment', 'hiddenFallback' => true, 'checked' => $brOn('underlayment', true), 'label' => 'Underlayment (LVP / laminate / carpet)', 'info' => $brInfo['underlayment'], 'inputClass' => 'admin-checkbox__input br-preview'])
+      @include('admin.partials.checkbox', ['name' => 'subfloor_prep', 'hiddenFallback' => true, 'checked' => $brOn('subfloor_prep'), 'label' => 'Subfloor preparation / leveling', 'info' => $brInfo['subfloor_prep'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('subfloor_prep')])
+      @include('admin.partials.checkbox', ['name' => 'underlayment', 'hiddenFallback' => true, 'checked' => $brOn('underlayment', true), 'label' => 'Underlayment (LVP / laminate / carpet)', 'info' => $brInfo['underlayment'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('underlayment')])
     </div>
   </div>
 </details>
@@ -552,7 +559,7 @@
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group">
-        <label for="br-doors">@include('admin.partials.info_tip', ['text' => $brInfo['door_qty']]) Interior doors</label>
+        <label for="br-doors">@include('admin.partials.info_tip', ['text' => $brInfo['door_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'door_qty', 'filledKeys' => $filledKeys]) Interior doors</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-doors" name="door_qty"
                value="{{ $brVal('door_qty', 0) }}">
       </div>
@@ -615,7 +622,7 @@
                value="{{ $brQty('paint_trim_lf') }}" placeholder="Auto from base + casing">
       </div>
       <div class="admin-form-group">
-        <label for="br-colors">@include('admin.partials.info_tip', ['text' => $brInfo['paint_colors']]) Wall / ceiling colors</label>
+        <label for="br-colors">@include('admin.partials.info_tip', ['text' => $brInfo['paint_colors']]) @include('admin.quotations.basement._client_filled', ['key' => 'paint_colors', 'filledKeys' => $filledKeys]) Wall / ceiling colors</label>
         <select class="admin-input br-preview" id="br-colors" name="paint_colors">
           <option value="1" @selected((int) $brVal('paint_colors', 1) === 1)>One color (walls and ceiling the same)</option>
           <option value="2" @selected((int) $brVal('paint_colors', 1) === 2)>Two colors (walls and ceiling different)</option>
@@ -644,13 +651,14 @@
         'info' => $brInfo['include_bathroom'],
         'inputClass' => 'admin-checkbox__input br-preview',
         'attrs' => ['data-br-reveal' => 'br-bath-fields'],
+        'clientFilled' => $brFilled('include_bathroom'),
       ])
     </div>
     <div id="br-bath-fields" class="br-bath-fields" @unless($brOn('include_bathroom') || $bathNestTrades) hidden @endunless>
       <div class="br-bath-block">
         <div class="br-bath-top">
           <div class="admin-form-group">
-            <label for="br-bath-type">@include('admin.partials.info_tip', ['text' => $brInfo['bath_type']]) Bathroom type</label>
+            <label for="br-bath-type">@include('admin.partials.info_tip', ['text' => $brInfo['bath_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'bath_type', 'filledKeys' => $filledKeys]) Bathroom type</label>
             <select class="admin-input br-preview" id="br-bath-type" name="bath_type">
               <option value="full" @selected($brVal('bath_type', 'full') === 'full')>Full bath</option>
               <option value="half" @selected($brVal('bath_type') === 'half')>Half bath</option>
@@ -670,6 +678,7 @@
             'info' => $brInfo['include_vanity'],
             'inputClass' => 'admin-checkbox__input br-preview',
             'attrs' => ['data-br-exclusive-group' => 'bath-sink'],
+            'clientFilled' => $brFilled('include_vanity'),
           ])
           @include('admin.partials.checkbox', [
             'name' => 'include_pedestal_sink',
@@ -680,11 +689,12 @@
             'info' => $brInfo['include_pedestal_sink'],
             'inputClass' => 'admin-checkbox__input br-preview',
             'attrs' => ['data-br-exclusive-group' => 'bath-sink'],
+            'clientFilled' => $brFilled('include_pedestal_sink'),
           ])
-          @include('admin.partials.checkbox', ['name' => 'include_toilet', 'hiddenFallback' => true, 'checked' => $brOn('include_toilet', true), 'label' => 'Toilet', 'info' => $brInfo['include_toilet'], 'inputClass' => 'admin-checkbox__input br-preview'])
-          @include('admin.partials.checkbox', ['name' => 'include_shower', 'hiddenFallback' => true, 'checked' => $brOn('include_shower', true), 'label' => 'Shower', 'info' => $brInfo['include_shower'], 'inputClass' => 'admin-checkbox__input br-preview'])
-          @include('admin.partials.checkbox', ['name' => 'include_tub', 'hiddenFallback' => true, 'checked' => $brOn('include_tub'), 'label' => 'Tub', 'info' => $brInfo['include_tub'], 'inputClass' => 'admin-checkbox__input br-preview'])
-          @include('admin.partials.checkbox', ['name' => 'include_exhaust_fan', 'hiddenFallback' => true, 'checked' => $brOn('include_exhaust_fan', true), 'label' => 'Exhaust fan', 'info' => $brInfo['include_exhaust_fan'], 'inputClass' => 'admin-checkbox__input br-preview'])
+          @include('admin.partials.checkbox', ['name' => 'include_toilet', 'hiddenFallback' => true, 'checked' => $brOn('include_toilet', true), 'label' => 'Toilet', 'info' => $brInfo['include_toilet'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('include_toilet')])
+          @include('admin.partials.checkbox', ['name' => 'include_shower', 'hiddenFallback' => true, 'checked' => $brOn('include_shower', true), 'label' => 'Shower', 'info' => $brInfo['include_shower'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('include_shower')])
+          @include('admin.partials.checkbox', ['name' => 'include_tub', 'hiddenFallback' => true, 'checked' => $brOn('include_tub'), 'label' => 'Tub', 'info' => $brInfo['include_tub'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('include_tub')])
+          @include('admin.partials.checkbox', ['name' => 'include_exhaust_fan', 'hiddenFallback' => true, 'checked' => $brOn('include_exhaust_fan', true), 'label' => 'Exhaust fan', 'info' => $brInfo['include_exhaust_fan'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('include_exhaust_fan')])
         </div>
       </div>
       <div class="br-nested-trade" id="br-plumbing-slot-bath" @unless($bathNestTrades) hidden @endunless>
@@ -721,9 +731,10 @@
               'info' => $brInfo['include_bath_fixture'],
               'inputClass' => 'admin-checkbox__input br-preview',
               'attrs' => ['data-br-reveal' => 'br-bath-fixture-qty-wrap', 'data-br-bath-light' => 'fixture'],
+              'clientFilled' => $brFilled('include_bath_fixture'),
             ])
             <div class="admin-form-group" id="br-bath-fixture-qty-wrap" @unless($brOn('include_bath_fixture')) hidden @endunless>
-              <label for="br-bath-fixture-qty">@include('admin.partials.info_tip', ['text' => $brInfo['bath_fixture_qty']]) How many</label>
+              <label for="br-bath-fixture-qty">@include('admin.partials.info_tip', ['text' => $brInfo['bath_fixture_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'bath_fixture_qty', 'filledKeys' => $filledKeys]) How many</label>
               <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-fixture-qty" name="bath_fixture_qty"
                      value="{{ $brVal('bath_fixture_qty', 1) }}">
             </div>
@@ -738,9 +749,10 @@
               'info' => $brInfo['include_bath_spot'],
               'inputClass' => 'admin-checkbox__input br-preview',
               'attrs' => ['data-br-reveal' => 'br-bath-spot-qty-wrap', 'data-br-bath-light' => 'spot'],
+              'clientFilled' => $brFilled('include_bath_spot'),
             ])
             <div class="admin-form-group" id="br-bath-spot-qty-wrap" @unless($brOn('include_bath_spot')) hidden @endunless>
-              <label for="br-bath-spot-qty">@include('admin.partials.info_tip', ['text' => $brInfo['bath_spot_qty']]) How many</label>
+              <label for="br-bath-spot-qty">@include('admin.partials.info_tip', ['text' => $brInfo['bath_spot_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'bath_spot_qty', 'filledKeys' => $filledKeys]) How many</label>
               <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-spot-qty" name="bath_spot_qty"
                      value="{{ $brVal('bath_spot_qty', 0) }}">
             </div>
@@ -772,6 +784,7 @@
         <div class="br-tile-areas__head">
           <span class="br-tile-areas__title">
             @include('admin.partials.info_tip', ['text' => $brInfo['bath_tile_sf']])
+            @include('admin.quotations.basement._client_filled', ['key' => 'bath_tile_areas', 'filledKeys' => $filledKeys])
             Tile work
           </span>
           <span class="admin-form-help" data-br-tile-total>Combined: {{ $tileTotal > 0 ? rtrim(rtrim(number_format($tileTotal, 2, '.', ''), '0'), '.').' sq ft' : '0 sq ft' }}</span>
@@ -803,8 +816,8 @@
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-hw" name="hardware_sets"
                value="{{ $brVal('hardware_sets', 0) }}">
       </div>
-      @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', true), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check'])
-      @include('admin.partials.checkbox', ['name' => 'include_touchups', 'hiddenFallback' => true, 'checked' => $brOn('include_touchups', true), 'label' => 'Touch-ups / punch list', 'info' => $brInfo['include_touchups'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check'])
+      @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', true), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_cleaning')])
+      @include('admin.partials.checkbox', ['name' => 'include_touchups', 'hiddenFallback' => true, 'checked' => $brOn('include_touchups', true), 'label' => 'Touch-ups / punch list', 'info' => $brInfo['include_touchups'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_touchups')])
     </div>
   </div>
 </details>

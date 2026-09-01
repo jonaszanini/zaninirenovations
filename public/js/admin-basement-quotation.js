@@ -963,3 +963,31 @@
     e.preventDefault();
   });
 })();
+
+(function () {
+  var btn = document.getElementById('br-intake-copy');
+  var input = document.getElementById('br-intake-url');
+  if (!btn || !input) return;
+
+  btn.addEventListener('click', function () {
+    var url = input.value;
+    var original = btn.innerHTML;
+    function done() {
+      btn.innerHTML = '<i class="fa fa-check" aria-hidden="true"></i> Copied';
+      window.setTimeout(function () {
+        btn.innerHTML = original;
+      }, 1600);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(function () {
+        input.select();
+        document.execCommand('copy');
+        done();
+      });
+      return;
+    }
+    input.select();
+    document.execCommand('copy');
+    done();
+  });
+})();

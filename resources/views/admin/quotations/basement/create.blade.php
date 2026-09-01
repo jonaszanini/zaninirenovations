@@ -56,6 +56,7 @@
   if (! is_array($provideBathItems)) {
       $provideBathItems = [];
   }
+  $filledKeys = ($isEdit && $quotation) ? $quotation->clientFilledKeys() : [];
   $extraRows = old('extra_materials', $inputs['extra_materials'] ?? []);
   if (! is_array($extraRows)) {
       $extraRows = [];
@@ -84,6 +85,8 @@
       <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.client-projects.show', $quotation->project) }}#quotation"><strong>{{ $quotation->project->name }}</strong></a>
     </div>
   @endif
+
+  @include('admin.quotations.basement._intake_bar', ['quotation' => $isEdit ? $quotation : null])
 
   @if ($errors->has('calculation'))
     <div class="admin-flash admin-flash--danger">{{ $errors->first('calculation') }}</div>
@@ -158,6 +161,7 @@
             'scopePreset' => $scopePreset,
             'enabledNow' => $enabledNow,
             'enabledCount' => $enabledCount,
+            'filledKeys' => $filledKeys,
         ])
 
         <details class="br-acc admin-card" data-br-step="review" @if ($isEdit) open @endif>
@@ -188,12 +192,14 @@
                   'label' => $label,
                   'info' => 'Client buys the materials for '.$label.'; you still carry the labor for that trade.',
                   'inputClass' => 'admin-checkbox__input br-preview',
+                  'clientFilled' => $key === 'flooring' && in_array('client_provides_sections', $filledKeys, true),
                 ])
               @endforeach
             </fieldset>
             <fieldset class="br-bath-provide" id="br-provide-bath-items">
               <legend class="br-bath-provide__title">
                 @include('admin.partials.info_tip', ['text' => 'Client buys these fixtures; you still install them. Tile, fan, and lights stay on the Bathroom step (or Electrical when quoting living-area lights).'])
+                @include('admin.quotations.basement._client_filled', ['key' => 'client_provides_bath_items', 'filledKeys' => $filledKeys])
                 Bathroom items
               </legend>
               <div class="br-bath-provide__grid">
@@ -205,6 +211,7 @@
                     'label' => $itemLabel,
                     'info' => 'Client supplies the '.$itemLabel.'; material cost drops out. Labor stays.',
                     'inputClass' => 'admin-checkbox__input br-preview',
+                    'clientFilled' => in_array('client_provides_bath_items', $filledKeys, true) && in_array($itemKey, $provideBathItems, true),
                   ])
                 @endforeach
               </div>

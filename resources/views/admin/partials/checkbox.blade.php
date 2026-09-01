@@ -11,6 +11,7 @@
   @param string       $class           Extra classes on <label>
   @param string       $inputClass      Extra classes on <input> (default: admin-checkbox__input)
   @param bool         $hiddenFallback  Emit hidden 0 before checkbox (for Laravel boolean fields)
+  @param bool         $clientFilled    Show “filled from client form” icon
   @param array        $attrs           Extra HTML attributes on input
 --}}
 @php
@@ -20,6 +21,7 @@
   $inputClass = trim('admin-checkbox__input ' . ($inputClass ?? ''));
   $hiddenFallback = $hiddenFallback ?? false;
   $attrs = $attrs ?? [];
+  $clientFilled = $clientFilled ?? false;
 @endphp
 <label class="{{ $class }}" @if (! empty($id)) for="{{ $id }}" @endif>
   @if ($hiddenFallback)
@@ -35,6 +37,9 @@
   <span class="admin-checkbox__mark" aria-hidden="true"></span>
   @if (! empty($info))
     @include('admin.partials.info_tip', ['text' => $info])
+  @endif
+  @if (! empty($clientFilled))
+    @include('admin.quotations.basement._client_filled', ['force' => true])
   @endif
   @if (isset($label))
     <span class="admin-checkbox__text">{!! $label !!}</span>

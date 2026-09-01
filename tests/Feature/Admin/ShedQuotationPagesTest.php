@@ -50,7 +50,9 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Materials DB')
             ->assertSee('Unit price (CAD$)')
             ->assertSee('From stud', false)
-            ->assertSee('Save configuration');
+            ->assertSee('Save configuration')
+            ->assertSee('Asphalt shingles (bundle / 33.3 sq ft)')
+            ->assertSee('priced and counted in bundles');
     }
 
     public function test_project_context_sits_between_price_configuration_and_next(): void
