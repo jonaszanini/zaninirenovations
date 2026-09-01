@@ -27,6 +27,7 @@
       <a href="{{ route('admin.quotations.painting.index', $qparam) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Back to list
       </a>
+      @include('admin.partials.quotation_back_to_quote')
     </div>
   </div>
 
@@ -35,6 +36,7 @@
     @if ($qpid)
       <input type="hidden" name="project" value="{{ $qpid }}">
     @endif
+    @include('admin.partials.quotation_return_quote_hidden')
 
     <h3 style="margin:0 0 12px;">Baseline pricing</h3>
     <p class="admin-form-help" style="margin:0 0 16px;">

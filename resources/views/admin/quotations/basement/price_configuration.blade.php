@@ -20,6 +20,7 @@
       <a href="{{ route('admin.quotations.basement.index', $qparam) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Back to list
       </a>
+      @include('admin.partials.quotation_back_to_quote')
       <a href="{{ route('admin.materials.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-cubes"></i> Materials catalog
       </a>
@@ -38,6 +39,7 @@
     @if ($qpid)
       <input type="hidden" name="project" value="{{ $qpid }}">
     @endif
+    @include('admin.partials.quotation_return_quote_hidden')
     <input type="hidden" name="tab" id="br-config-tab" value="{{ $startTab }}">
 
     <div class="cp-tabs br-config-tabs" role="tablist" aria-label="Price configuration">

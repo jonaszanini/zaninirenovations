@@ -120,9 +120,10 @@
              placeholder="Auto" value="{{ $shVal('skid_qty') }}">
     </div>
     <div class="admin-form-group" id="sh-found-blocks" hidden>
-      <label for="sh-blocks">@include('admin.partials.info_tip', ['text' => 'Leave blank to auto-count from size (~4 ft grid).']) Deck blocks</label>
+      <label for="sh-blocks">@include('admin.partials.info_tip', ['text' => 'Blocks sit in excavated holes on a 3/4" gravel bed for drainage. Leave blank to auto-count from size (~4 ft grid).']) Deck blocks</label>
       <input type="number" min="0" step="1" class="admin-input sh-preview" id="sh-blocks" name="block_qty"
              placeholder="Auto" value="{{ $shVal('block_qty') }}">
+      <p class="admin-form-help">Labor includes digging each hole and setting the block. Materials include one 3/4" gravel bag under each block.</p>
     </div>
     @include('admin.partials.checkbox', [
       'name' => 'include_site_level',

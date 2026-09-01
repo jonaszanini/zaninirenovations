@@ -371,6 +371,9 @@
       <i class="fa fa-arrow-left"></i> Back to fence quotations
     </a>
     <div class="fq-form-toolbar-right">
+      <a href="{{ route('admin.quotations.fence.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-cog"></i> Price configuration
+      </a>
       @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
       <a href="{{ route('admin.quotations.fence.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       @if ($isEdit)
@@ -426,7 +429,7 @@
   <div class="fq-calc-layout">
     {{-- ====================== LEFT: FORM =========================== --}}
     <div class="fq-left-stack">
-      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card">
+      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor>
         @csrf
         @if ($isEdit) @method('PUT') @endif
         @if ($linkProject)

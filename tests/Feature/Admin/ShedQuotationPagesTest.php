@@ -181,6 +181,61 @@ class ShedQuotationPagesTest extends IntegrationTestCase
         $response->assertRedirect(route('admin.quotations.shed.edit', $quote));
     }
 
+    public function test_store_can_redirect_to_price_configuration_after_save(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->post(route('admin.quotations.shed.store'), [
+            'save_intent' => 'publish',
+            'client_name' => 'Leave Save Client',
+            'length_ft' => 10,
+            'width_ft' => 12,
+            'wall_height_ft' => 8,
+            'shed_type' => 'gable',
+            'foundation' => 'skids',
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'include_commute' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'after_save_url' => '/admin/quotations/shed/price-configuration',
+            'after_save_attach_return' => '1',
+        ]);
+
+        $quote = ShedQuotation::query()->where('client_name', 'Leave Save Client')->first();
+        $this->assertNotNull($quote);
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringContainsString('/admin/quotations/shed/price-configuration', $location);
+        $this->assertStringContainsString('return=', $location);
+        $this->assertStringContainsString((string) $quote->id, urldecode($location));
+    }
+
+    public function test_store_ignores_external_after_save_url(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->post(route('admin.quotations.shed.store'), [
+            'save_intent' => 'publish',
+            'client_name' => 'Safe Redirect Client',
+            'length_ft' => 10,
+            'width_ft' => 12,
+            'wall_height_ft' => 8,
+            'shed_type' => 'gable',
+            'foundation' => 'skids',
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'include_commute' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'after_save_url' => 'https://evil.example/admin/quotations',
+        ]);
+
+        $quote = ShedQuotation::query()->where('client_name', 'Safe Redirect Client')->first();
+        $this->assertNotNull($quote);
+        $response->assertRedirect(route('admin.quotations.shed.edit', $quote));
+    }
+
     public function test_save_stays_on_quotation_and_shows_back_to_project(): void
     {
         $this->actingAsAdmin();

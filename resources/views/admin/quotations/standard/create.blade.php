@@ -146,7 +146,7 @@
     </div>
   @endif
 
-  <form action="{{ $formAction }}" method="post" id="sq-standard-form">
+  <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor>
     @csrf
     @if ($isEdit)
       @method('PUT')

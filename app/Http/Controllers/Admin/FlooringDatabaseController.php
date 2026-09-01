@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FlooringQuotation;
 use App\Models\FlooringType;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -116,7 +117,13 @@ class FlooringDatabaseController extends Controller
         }
 
         return redirect()
-            ->route('admin.quotations.flooring.price-configuration', $request->filled('project') ? ['project' => $request->query('project')] : [])
+            ->route(
+                'admin.quotations.flooring.price-configuration',
+                QuotationAfterSaveRedirect::withReturnQuery(
+                    $request,
+                    $request->filled('project') ? ['project' => $request->query('project')] : []
+                )
+            )
             ->with('success', 'Flooring price database updated.');
     }
 }

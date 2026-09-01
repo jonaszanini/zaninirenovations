@@ -18,6 +18,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
+use App\Support\QuotationAfterSaveRedirect;
 use App\Services\StairsQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -74,7 +75,7 @@ class StairsQuotationController extends Controller
                     ? 'Stairs quotation '.$quote->quote_number.' saved and linked to this project.'
                     : 'Stairs quotation '.$quote->quote_number.' saved.'));
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function edit(Request $request, StairsQuotation $stairs_quotation)
@@ -111,7 +112,7 @@ class StairsQuotationController extends Controller
                 ? 'Stairs quotation '.$stairs_quotation->quote_number.' updated and linked.'
                 : 'Stairs quotation '.$stairs_quotation->quote_number.' updated (v'.$stairs_quotation->version.').');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function preview(Request $request)

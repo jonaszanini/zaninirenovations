@@ -407,8 +407,17 @@ class ShedQuotationCalculator
             $blocks = $inputs['block_qty'] === null || $inputs['block_qty'] === ''
                 ? $autoBlocks
                 : max(0, (int) $inputs['block_qty']);
-            $addLabor('foundation_blocks', 'foundation', 'Deck blocks', $blocks.' block(s)', $blocks * (float) $prod['block_hours_each']);
+            $excavateHrs = $blocks * (float) ($prod['block_excavate_hours_each'] ?? 0);
+            $setHrs = $blocks * (float) ($prod['block_hours_each'] ?? 0);
+            $addLabor(
+                'foundation_blocks',
+                'foundation',
+                'Deck blocks',
+                'excavate '.$blocks.' hole(s), 3/4" gravel, set '.$blocks.' block(s)',
+                $excavateHrs + $setHrs
+            );
             $addMat('deck_block', 'foundation', $blocks, 'deck_block');
+            $addMat('gravel_34_bag', 'foundation', $blocks, 'gravel_34_bag');
         } else {
             $autoSkids = max(3, (int) ceil($width / 4) + 1);
             $skids = $inputs['skid_qty'] === null || $inputs['skid_qty'] === ''

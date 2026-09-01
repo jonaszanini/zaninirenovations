@@ -215,7 +215,7 @@
 
   <div class="pq-layout">
       <div>
-        <form id="sq-main-form" method="post" action="{{ $formAction }}">
+        <form id="sq-main-form" method="post" action="{{ $formAction }}" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
           @csrf
           @if ($isEdit)
             @method('PUT')

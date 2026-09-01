@@ -18,6 +18,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\PavingMarbleCalculator;
+use App\Support\QuotationAfterSaveRedirect;
 use App\Services\PavingQuotationCalculator;
 use App\Services\PavingStoneEntryResolver;
 use App\Services\QuotationPaymentSchedule;
@@ -77,7 +78,7 @@ class PavingQuotationController extends Controller
                     ? 'Paving quotation '.$quote->quote_number.' saved and linked to this project.'
                     : 'Paving quotation '.$quote->quote_number.' saved.'));
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function edit(Request $request, PavingQuotation $paving_quotation)
@@ -114,7 +115,7 @@ class PavingQuotationController extends Controller
                 ? 'Paving quotation '.$paving_quotation->quote_number.' updated and linked.'
                 : 'Paving quotation '.$paving_quotation->quote_number.' updated (v'.$paving_quotation->version.').');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function preview(Request $request)

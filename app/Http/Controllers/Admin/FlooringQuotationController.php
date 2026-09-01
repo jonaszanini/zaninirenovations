@@ -16,6 +16,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\FlooringQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -69,7 +70,7 @@ class FlooringQuotationController extends Controller
                     ? 'Flooring quotation '.$quote->quote_number.' saved and linked to this project.'
                     : 'Flooring quotation '.$quote->quote_number.' saved.'));
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function edit(Request $request, FlooringQuotation $flooring_quotation)
@@ -106,7 +107,7 @@ class FlooringQuotationController extends Controller
                 ? 'Flooring quotation '.$flooring_quotation->quote_number.' updated and linked.'
                 : 'Flooring quotation '.$flooring_quotation->quote_number.' updated (v'.$flooring_quotation->version.').');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function preview(Request $request, ?FlooringQuotation $flooring_quotation = null)

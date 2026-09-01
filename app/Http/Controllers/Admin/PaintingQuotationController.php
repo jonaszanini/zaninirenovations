@@ -17,6 +17,7 @@ use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\PaintingQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -71,7 +72,7 @@ class PaintingQuotationController extends Controller
                     ? 'Painting quotation '.$quote->quote_number.' saved and linked to this project.'
                     : 'Painting quotation '.$quote->quote_number.' saved.'));
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function edit(Request $request, PaintingQuotation $painting_quotation)
@@ -108,7 +109,7 @@ class PaintingQuotationController extends Controller
                 ? 'Painting quotation '.$painting_quotation->quote_number.' updated and linked.'
                 : 'Painting quotation '.$painting_quotation->quote_number.' updated (v'.$painting_quotation->version.').');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function preview(Request $request)

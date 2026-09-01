@@ -297,6 +297,33 @@ class ShedQuotationCalculatorTest extends TestCase
         $this->assertSame('House wrap', ShedQuotationCalculator::sidingLabel('house_wrap'));
     }
 
+    public function test_deck_blocks_include_excavation_labor_and_gravel_bags(): void
+    {
+        $calc = (new ShedQuotationCalculator)->calculate([
+            'length_ft' => 13,
+            'width_ft' => 3,
+            'foundation' => 'blocks',
+            'block_qty' => 8,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ], $this->settings());
+
+        $labor = collect($calc['labor'])->firstWhere('key', 'foundation_blocks');
+        $this->assertNotNull($labor);
+        $this->assertStringContainsString('excavate', (string) $labor['detail']);
+        $this->assertStringContainsString('gravel', (string) $labor['detail']);
+        $this->assertEqualsWithDelta(8 * (0.35 + 0.4), (float) $labor['hours'], 0.01);
+
+        $blocks = collect($calc['materials'])->firstWhere('key', 'deck_block');
+        $gravel = collect($calc['materials'])->firstWhere('key', 'gravel_34_bag');
+        $this->assertNotNull($blocks);
+        $this->assertNotNull($gravel);
+        $this->assertSame(8.0, (float) $blocks['qty']);
+        $this->assertSame(8.0, (float) $gravel['qty']);
+        $this->assertSame('bag', $gravel['unit']);
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'gravel'));
+    }
+
     private function settings(): ShedSettings
     {
         return new ShedSettings([

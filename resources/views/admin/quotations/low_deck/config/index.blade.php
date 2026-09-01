@@ -12,6 +12,7 @@
       <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Back to low deck quotations
       </a>
+      @include('admin.partials.quotation_back_to_quote')
       <a href="{{ route('admin.materials.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-cubes"></i> Materials catalog
       </a>
@@ -24,6 +25,7 @@
   <form method="post" action="{{ route('admin.quotations.low-deck.config.materials.update') }}" class="admin-card fq-config-card">
     @csrf
     @method('PUT')
+    @include('admin.partials.quotation_return_quote_hidden')
     <div class="fq-config-header">
       <div>
         <h3 class="cp-form-help-flush">Materials catalogue</h3>

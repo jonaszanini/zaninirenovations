@@ -69,7 +69,7 @@
     </div>
   @endif
 
-  <form action="{{ $formAction }}" method="POST" id="tl-form">
+  <form action="{{ $formAction }}" method="POST" id="tl-form" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
     @csrf
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ old('is_draft', $isEdit && $quotation->is_draft ? '1' : '0') }}">
@@ -79,6 +79,9 @@
         <i class="fa fa-arrow-left"></i> Back to list
       </a>
       <div class="fq-form-toolbar-right">
+        <a href="{{ route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-cog"></i> Price configuration
+        </a>
         @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
         @if ($linkProject)
           <div class="fq-linked-banner">
@@ -279,6 +282,9 @@
           <i class="fa fa-save"></i> Save quotation
         </button>
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tl-btn-draft">Save as draft</button>
+        <a href="{{ route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-cog"></i> Price configuration
+        </a>
         @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
         <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>

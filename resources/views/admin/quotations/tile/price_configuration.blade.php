@@ -15,6 +15,16 @@
 @endpush
 
 @section('content')
+  @php $qparam = ! empty($qpid) ? ['project' => $qpid] : []; @endphp
+  <div class="admin-toolbar fq-list-toolbar" style="margin-bottom:16px;">
+    <div class="admin-toolbar-group">
+      <a href="{{ route('admin.quotations.tile.index', $qparam) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-arrow-left"></i> Back to list
+      </a>
+      @include('admin.partials.quotation_back_to_quote')
+    </div>
+  </div>
+
   @if (session('success'))
     <div class="admin-banner admin-banner--success" style="margin-bottom:16px;">
       <i class="fa fa-check-circle"></i> {{ session('success') }}
@@ -35,6 +45,7 @@
   <form action="{{ route('admin.quotations.tile.price-configuration.update') }}{{ $qpid ? '?project='.$qpid : '' }}" method="POST" enctype="multipart/form-data">
     @csrf
     @method('PUT')
+    @include('admin.partials.quotation_return_quote_hidden')
 
     <div class="config-card">
       <h3>Mortar Types</h3>

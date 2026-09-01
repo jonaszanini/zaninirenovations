@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PaintingPaintLine;
 use App\Models\PaintingSettings;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -94,7 +95,13 @@ class PaintingDatabaseController extends Controller
         }
 
         return redirect()
-            ->route('admin.quotations.painting.price-configuration', $request->filled('project') ? ['project' => $request->query('project')] : [])
+            ->route(
+                'admin.quotations.painting.price-configuration',
+                QuotationAfterSaveRedirect::withReturnQuery(
+                    $request,
+                    $request->filled('project') ? ['project' => $request->query('project')] : []
+                )
+            )
             ->with('success', 'Painting price database updated.');
     }
 }

@@ -13,6 +13,7 @@
       <a href="{{ route('admin.quotations.paving.index', $qparam) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Back to list
       </a>
+      @include('admin.partials.quotation_back_to_quote')
     </div>
   </div>
 

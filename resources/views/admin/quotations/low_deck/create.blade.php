@@ -167,7 +167,7 @@
     </a>
     <div class="ld-form-toolbar-right">
       <a href="{{ route('admin.quotations.low-deck.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-cog"></i> Configuration
+        <i class="fa fa-cog"></i> Price configuration
       </a>
       @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
       <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
@@ -229,7 +229,7 @@
   <div class="ld-calc-layout">
     {{-- ====================== LEFT: FORM =========================== --}}
     <div class="ld-left-stack">
-      <form id="ld-form" method="post" action="{{ $formAction }}" class="admin-card">
+      <form id="ld-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor>
         @csrf
         @if ($isEdit) @method('PUT') @endif
         @if ($linkProject)

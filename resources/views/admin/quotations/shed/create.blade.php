@@ -68,7 +68,9 @@
   <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
 
   <form method="post" action="{{ $formAction }}" id="sh-main-form" class="pq-layout br-layout {{ $isEdit ? 'br-layout--edit' : 'br-layout--create' }}"
-        data-br-mode="{{ $isEdit ? 'edit' : 'create' }}">
+        data-br-mode="{{ $isEdit ? 'edit' : 'create' }}"
+        data-quotation-editor
+        data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
     @csrf
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="sh-save-intent" value="publish">
@@ -79,6 +81,9 @@
           <i class="fa fa-save"></i> Save quotation
         </button>
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sh-btn-draft">Save as draft</button>
+        <a href="{{ route('admin.quotations.shed.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-cog"></i> Price configuration
+        </a>
         @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
         <a href="{{ route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>

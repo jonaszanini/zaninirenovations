@@ -7,6 +7,7 @@ use App\Models\TileMortarType;
 use App\Models\TileGroutType;
 use App\Models\TileProduct;
 use App\Models\TileQuotation;
+use App\Support\QuotationAfterSaveRedirect;
 use App\Services\ProjectPhotoWebpStorage;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -227,7 +228,13 @@ class TileDatabaseController extends Controller
         }
 
         return redirect()
-            ->route('admin.quotations.tile.price-configuration', $request->filled('project') ? ['project' => $request->query('project')] : [])
+            ->route(
+                'admin.quotations.tile.price-configuration',
+                QuotationAfterSaveRedirect::withReturnQuery(
+                    $request,
+                    $request->filled('project') ? ['project' => $request->query('project')] : []
+                )
+            )
             ->with('success', 'Tile database updated.');
     }
 

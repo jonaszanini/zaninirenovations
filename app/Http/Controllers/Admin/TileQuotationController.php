@@ -17,6 +17,7 @@ use App\Services\AdditionalCostsService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TileQuotationCalculator;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 
 class TileQuotationController extends Controller
@@ -157,11 +158,11 @@ class TileQuotationController extends Controller
             $this->syncProjectQuotation($quotation);
         }
 
-        return redirect()
+        return QuotationAfterSaveRedirect::apply($request, redirect()
             ->route('admin.quotations.tile.edit', $quotation)
             ->with('success', $quotation->client_project_id
                 ? 'Tile quotation created and linked.'
-                : 'Tile quotation created.');
+                : 'Tile quotation created.'));
     }
 
     public function edit(Request $request, TileQuotation $quotation)
@@ -280,9 +281,9 @@ class TileQuotationController extends Controller
             $this->syncProjectQuotation($quotation);
         }
 
-        return redirect()
+        return QuotationAfterSaveRedirect::apply($request, redirect()
             ->route('admin.quotations.tile.edit', $quotation)
-            ->with('success', 'Tile quotation updated.');
+            ->with('success', 'Tile quotation updated.'));
     }
 
     public function destroy(TileQuotation $quotation)

@@ -22,6 +22,7 @@ use App\Services\LowDeckQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\LowDeckWorkDescriptionGenerator;
 use App\Support\PurchaseListPrintMode;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 /**
@@ -82,7 +83,7 @@ class LowDeckQuotationController extends Controller
                 ? 'Low deck quotation '.$quote->quote_number.' saved and linked to this project.'
                 : 'Low deck quotation '.$quote->quote_number.' saved.');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function edit(Request $request, LowDeckQuotation $low_deck_quotation)
@@ -121,7 +122,7 @@ class LowDeckQuotationController extends Controller
                 ? 'Low deck quotation '.$low_deck_quotation->quote_number.' updated and linked.'
                 : 'Low deck quotation '.$low_deck_quotation->quote_number.' updated (v'.$low_deck_quotation->version.').');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     /** Live JSON breakdown for the calculator form. */

@@ -404,6 +404,7 @@
   @if (request()->routeIs('admin.quotations.*'))
   <script src="{{ asset('js/admin-quotation-link-project.js') }}?v={{ @filemtime(public_path('js/admin-quotation-link-project.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-purchase-list-choice.js') }}?v={{ @filemtime(public_path('js/admin-purchase-list-choice.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-quotation-leave-save.js') }}?v={{ @filemtime(public_path('js/admin-quotation-leave-save.js')) ?: time() }}"></script>
   @endif
   @stack('scripts')
 </body>

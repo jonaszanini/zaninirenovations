@@ -20,6 +20,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\FenceQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\PurchaseListPrintMode;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -112,7 +113,7 @@ class FenceQuotationController extends Controller
                 ? 'Fence quotation '.$quote->quote_number.' saved and linked to this project.'
                 : 'Fence quotation '.$quote->quote_number.' saved.');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     /** Open an existing quote back in the calculator for editing. */
@@ -186,7 +187,7 @@ class FenceQuotationController extends Controller
                 ? 'Fence quotation '.$fence_quotation->quote_number.' updated and linked.'
                 : 'Fence quotation '.$fence_quotation->quote_number.' updated (v'.$fence_quotation->version.').');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ShedSettings;
 use App\Support\MaterialCatalogPickerOptions;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 
 class ShedDatabaseController extends Controller
@@ -86,6 +87,7 @@ class ShedDatabaseController extends Controller
         if ($request->filled('project')) {
             $redirect['project'] = (int) $request->input('project');
         }
+        $redirect = QuotationAfterSaveRedirect::withReturnQuery($request, $redirect);
 
         return redirect()
             ->route('admin.quotations.shed.price-configuration', $redirect)

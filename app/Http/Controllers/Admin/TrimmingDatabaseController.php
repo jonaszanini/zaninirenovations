@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\TrimmingSettings;
 use App\Support\MaterialCatalogPickerOptions;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 
 class TrimmingDatabaseController extends Controller
@@ -86,6 +87,7 @@ class TrimmingDatabaseController extends Controller
         if ($request->filled('project')) {
             $redirect['project'] = (int) $request->input('project');
         }
+        $redirect = QuotationAfterSaveRedirect::withReturnQuery($request, $redirect);
 
         return redirect()
             ->route('admin.quotations.trimming.price-configuration', $redirect)

@@ -10,6 +10,7 @@ use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Support\LowDeckWorkDescriptionGenerator;
 use App\Support\MaterialCatalogPickerOptions;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 
 /**
@@ -66,7 +67,7 @@ class LowDeckConfigController extends Controller
         }
 
         return redirect()
-            ->route('admin.quotations.low-deck.config')
+            ->route('admin.quotations.low-deck.config', QuotationAfterSaveRedirect::withReturnQuery(request()))
             ->with('success', 'Low deck materials linked to the catalog.');
     }
 
@@ -76,7 +77,7 @@ class LowDeckConfigController extends Controller
     ) {
         if (! $localizedPriceFetcher->usesSerpApi()) {
             return redirect()
-                ->route('admin.quotations.low-deck.config')
+                ->route('admin.quotations.low-deck.config', QuotationAfterSaveRedirect::withReturnQuery(request()))
                 ->with('error', 'SerpApi is not configured. Set MATERIALS_SCRAPER_SERPAPI_KEY on the server to sync low deck material prices online.');
         }
 
@@ -88,7 +89,7 @@ class LowDeckConfigController extends Controller
 
         if ($deckRows->isEmpty()) {
             return redirect()
-                ->route('admin.quotations.low-deck.config')
+                ->route('admin.quotations.low-deck.config', QuotationAfterSaveRedirect::withReturnQuery(request()))
                 ->with('error', 'No low deck materials are linked to the catalog yet. Select a material for each row and save.');
         }
 
@@ -138,7 +139,7 @@ class LowDeckConfigController extends Controller
         }
 
         return redirect()
-            ->route('admin.quotations.low-deck.config')
+            ->route('admin.quotations.low-deck.config', QuotationAfterSaveRedirect::withReturnQuery(request()))
             ->with($failed > 0 ? 'error' : 'success', $message);
     }
 
@@ -213,7 +214,7 @@ class LowDeckConfigController extends Controller
         LowDeckFormulaSetting::current()->update($data);
 
         return redirect()
-            ->route('admin.quotations.low-deck.config')
+            ->route('admin.quotations.low-deck.config', QuotationAfterSaveRedirect::withReturnQuery(request()))
             ->with('success', 'Formula parameters updated.');
     }
 }

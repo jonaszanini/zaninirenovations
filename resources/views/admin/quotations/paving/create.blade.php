@@ -343,7 +343,7 @@
 
   <div class="pq-layout">
       <div>
-        <form id="pq-main-form" method="post" action="{{ $formAction }}">
+        <form id="pq-main-form" method="post" action="{{ $formAction }}" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
           @csrf
           @if ($isEdit)
             @method('PUT')
@@ -507,6 +507,9 @@
             <i class="fa fa-save"></i> Save quotation
           </button>
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
+          <a href="{{ route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+            <i class="fa fa-cog"></i> Price configuration
+          </a>
           @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
           <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
         </div>

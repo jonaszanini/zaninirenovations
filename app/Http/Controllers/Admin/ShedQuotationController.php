@@ -19,6 +19,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\ShedQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -73,7 +74,7 @@ class ShedQuotationController extends Controller
                     ? 'Shed quotation '.$quote->quote_number.' saved and linked to this project.'
                     : 'Shed quotation '.$quote->quote_number.' saved.'));
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function edit(Request $request, ShedQuotation $shed_quotation)
@@ -110,7 +111,7 @@ class ShedQuotationController extends Controller
                 ? 'Shed quotation '.$shed_quotation->quote_number.' updated and linked.'
                 : 'Shed quotation '.$shed_quotation->quote_number.' updated (v'.$shed_quotation->version.').');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function preview(Request $request, ?ShedQuotation $shed_quotation = null)

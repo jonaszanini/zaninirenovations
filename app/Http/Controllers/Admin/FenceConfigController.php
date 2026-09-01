@@ -7,6 +7,7 @@ use App\Models\FenceFormulaSetting;
 use App\Models\FenceMaterial;
 use App\Models\Material;
 use App\Support\MaterialCatalogPickerOptions;
+use App\Support\QuotationAfterSaveRedirect;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\MaterialScraping\SteppedMaterialPriceSync;
 use Illuminate\Http\JsonResponse;
@@ -64,7 +65,7 @@ class FenceConfigController extends Controller
         }
 
         return redirect()
-            ->route('admin.quotations.fence.config')
+            ->route('admin.quotations.fence.config', QuotationAfterSaveRedirect::withReturnQuery($request))
             ->with('success', 'Fence materials linked to the catalog.');
     }
 
@@ -108,7 +109,7 @@ class FenceConfigController extends Controller
         FenceFormulaSetting::current()->update($data);
 
         return redirect()
-            ->route('admin.quotations.fence.config')
+            ->route('admin.quotations.fence.config', QuotationAfterSaveRedirect::withReturnQuery($request))
             ->with('success', 'Formula parameters updated.');
     }
 

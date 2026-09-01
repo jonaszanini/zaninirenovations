@@ -8,6 +8,7 @@ use App\Models\PavingMaterialRate;
 use App\Models\PavingPricingTier;
 use App\Models\PavingStoneType;
 use App\Services\ProjectPhotoWebpStorage;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -259,6 +260,7 @@ class PavingDatabaseController extends Controller
         } elseif ($request->query('project')) {
             $params['project'] = (int) $request->query('project');
         }
+        $params = QuotationAfterSaveRedirect::withReturnQuery($request, $params);
 
         $redirect = redirect()->route('admin.quotations.paving.price-configuration', $params);
         foreach ($with as $key => $value) {

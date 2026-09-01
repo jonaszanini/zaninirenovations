@@ -18,6 +18,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
+use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -94,7 +95,7 @@ class StandardQuotationController extends Controller
                 ->with('standard_linked_project_id', $quote->client_project_id);
         }
 
-        return $resp;
+        return QuotationAfterSaveRedirect::apply($request, $resp);
     }
 
     public function edit(Request $request, StandardQuotation $standard_quotation)
@@ -218,7 +219,7 @@ class StandardQuotationController extends Controller
             ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').')
             ->with('standard_flash', 'saved');
 
-        return $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings));
+        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
 

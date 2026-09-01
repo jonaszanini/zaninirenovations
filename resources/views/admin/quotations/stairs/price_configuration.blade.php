@@ -100,6 +100,7 @@
       <a href="{{ route('admin.quotations.stairs.index', $qparam) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Stairs quotations
       </a>
+      @include('admin.partials.quotation_back_to_quote')
     </div>
     <a href="{{ route('admin.quotations.stairs.create', $qparam) }}" class="admin-btn admin-btn--primary admin-btn--sm">
       <i class="fa fa-plus"></i> New stairs quotation
