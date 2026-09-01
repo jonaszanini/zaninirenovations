@@ -62,8 +62,9 @@ class ShedQuotationCalculatorTest extends TestCase
         $this->assertGreaterThan(15, $calc['scope']['area_sqm']);
         $this->assertTrue($calc['scope']['permit_required']);
         $this->assertNotEmpty($calc['scope']['permit_warnings']);
-        $this->assertStringContainsString('Max without a permit: 15 m² (~161.5 sq ft)', $calc['scope']['permit_warnings'][0]);
-        $this->assertStringContainsString((string) $calc['scope']['area_sqm'], $calc['scope']['permit_warnings'][0]);
+        $this->assertStringContainsString('Max without a permit: 161.5 sq ft', $calc['scope']['permit_warnings'][0]);
+        $this->assertStringContainsString($calc['scope']['area_sqft'].' sq ft', $calc['scope']['permit_warnings'][0]);
+        $this->assertStringNotContainsString('m²', $calc['scope']['permit_warnings'][0]);
     }
 
     public function test_attached_triggers_permit_warning_under_threshold(): void

@@ -220,7 +220,7 @@
 
             <h4 class="br-review-heading">Labor hours</h4>
             <div class="admin-table-scroll">
-              <table class="admin-table br-edit-table">
+              <table class="admin-table br-review-table">
                 <thead>
                   <tr>
                     <th>Trade</th>
@@ -232,10 +232,7 @@
                   @forelse ($previewLabor as $row)
                     <tr data-br-labor-key="{{ $row['key'] }}">
                       <td>{{ $row['label'] }}<br><span class="admin-form-help">{{ $row['detail'] ?? '' }}</span></td>
-                      <td>
-                        <input type="number" step="0.01" min="0" class="admin-input br-preview"
-                               name="labor_override[{{ $row['key'] }}][hours]" value="{{ $row['hours'] }}">
-                      </td>
+                      <td data-br-labor-hrs>{{ number_format((float) ($row['hours'] ?? 0), 2) }}</td>
                       <td class="cp-col-amount" data-br-labor-amt>{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>
                   @empty
@@ -247,7 +244,7 @@
 
             <h4 class="br-review-heading">Materials</h4>
             <div class="admin-table-scroll">
-              <table class="admin-table br-edit-table">
+              <table class="admin-table br-review-table">
                 <thead>
                   <tr>
                     <th>Material</th>
@@ -261,20 +258,10 @@
                     @if (str_starts_with((string) ($row['key'] ?? ''), 'extra_'))
                       @continue
                     @endif
-                    @php $derivedPlate = ($row['key'] ?? '') === \App\Models\BasementSettings::MATERIAL_PLATE_2X4; @endphp
                     <tr data-br-mat-key="{{ $row['key'] }}">
                       <td>{{ $row['label'] }}@if (! empty($row['client_provided'])) <span class="admin-form-help"> · client provided</span>@endif</td>
-                      <td>
-                        <input type="number" step="0.01" min="0" class="admin-input br-preview"
-                               name="materials_override[{{ $row['key'] }}][qty]" value="{{ $row['qty'] }}">
-                      </td>
-                      <td>
-                        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-                               class="admin-input cp-money-input br-preview{{ $derivedPlate ? ' is-locked' : '' }}"
-                               name="materials_override[{{ $row['key'] }}][unit_price]"
-                               value="{{ number_format((float) ($row['unit_price'] ?? 0), 4, '.', '') }}"
-                               @if ($derivedPlate) readonly aria-readonly="true" title="Price is the 2x4x8 stud unit price ÷ 8." @endif>
-                      </td>
+                      <td data-br-mat-qty>{{ number_format((float) ($row['qty'] ?? 0), 2) }}</td>
+                      <td data-br-mat-price>{{ \App\Models\ClientProject::formatMoney($row['unit_price'] ?? 0) }}</td>
                       <td class="cp-col-amount" data-br-mat-amt>{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>
                   @empty

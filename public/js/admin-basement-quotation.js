@@ -642,24 +642,9 @@
     body.innerHTML = html;
   }
 
-  function activeIn(el) {
-    return el && document.activeElement && el.contains(document.activeElement);
-  }
-
   function rebuildLaborTable(rows) {
     var tbody = document.getElementById('br-labor-rows');
-    if (!tbody || activeIn(tbody)) {
-      if (tbody && lastPreviewData) {
-        (lastPreviewData.labor || []).forEach(function (row) {
-          var tr = tbody.querySelector('[data-br-labor-key="' + row.key + '"]');
-          if (tr) {
-            var amt = tr.querySelector('[data-br-labor-amt]');
-            if (amt) amt.textContent = fmt(row.amount || 0);
-          }
-        });
-      }
-      return;
-    }
+    if (!tbody) return;
     if (!rows.length) {
       tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Enter the basement area to generate labor lines.</td></tr>';
       return;
@@ -667,49 +652,28 @@
     tbody.innerHTML = rows.map(function (row) {
       return '<tr data-br-labor-key="' + escapeHtml(row.key) + '">'
         + '<td>' + escapeHtml(row.label) + '<br><span class="admin-form-help">' + escapeHtml(row.detail || '') + '</span></td>'
-        + '<td><input type="number" step="0.01" min="0" class="admin-input br-preview" name="labor_override[' + escapeHtml(row.key) + '][hours]" value="' + Number(row.hours || 0) + '"></td>'
-        + '<td class="cp-col-amount" data-br-labor-amt>' + fmt(row.amount || 0) + '</td>'
+        + '<td>' + Number(row.hours || 0).toFixed(2) + '</td>'
+        + '<td class="cp-col-amount">' + fmt(row.amount || 0) + '</td>'
         + '</tr>';
     }).join('');
-    tbody.querySelectorAll('.br-preview').forEach(bindPreview);
   }
 
   function rebuildMatTable(rows) {
     var tbody = document.getElementById('br-mat-rows');
-    if (!tbody || activeIn(tbody)) {
-      if (tbody && lastPreviewData) {
-        (lastPreviewData.materials || []).forEach(function (row) {
-          var tr = tbody.querySelector('[data-br-mat-key="' + row.key + '"]');
-          if (tr) {
-            var amt = tr.querySelector('[data-br-mat-amt]');
-            if (amt) amt.textContent = fmt(row.amount || 0);
-          }
-        });
-      }
-      return;
-    }
+    if (!tbody) return;
     if (!rows.length) {
       tbody.innerHTML = '<tr class="br-empty-row"><td colspan="4" class="admin-form-help">Materials appear after quantities are entered.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (row) {
       var provided = row.client_provided ? ' <span class="admin-form-help"> · client provided</span>' : '';
-      var price = Number(row.unit_price || 0).toFixed(4);
-      var derivedPlate = row.key === 'plate_2x4';
-      var priceLock = derivedPlate
-        ? ' readonly aria-readonly="true" title="Price is the 2x4x8 stud unit price ÷ 8."'
-        : '';
       return '<tr data-br-mat-key="' + escapeHtml(row.key) + '">'
         + '<td>' + escapeHtml(row.label) + provided + '</td>'
-        + '<td><input type="number" step="0.01" min="0" class="admin-input br-preview" name="materials_override[' + escapeHtml(row.key) + '][qty]" value="' + Number(row.qty || 0) + '"></td>'
-        + '<td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4" class="admin-input cp-money-input br-preview' + (derivedPlate ? ' is-locked' : '') + '" name="materials_override[' + escapeHtml(row.key) + '][unit_price]" value="' + price + '"' + priceLock + '></td>'
-        + '<td class="cp-col-amount" data-br-mat-amt>' + fmt(row.amount || 0) + '</td>'
+        + '<td>' + Number(row.qty || 0).toFixed(2) + '</td>'
+        + '<td>' + fmt(row.unit_price || 0) + '</td>'
+        + '<td class="cp-col-amount">' + fmt(row.amount || 0) + '</td>'
         + '</tr>';
     }).join('');
-    tbody.querySelectorAll('.br-preview').forEach(bindPreview);
-    if (window.cpMoneyMask) {
-      window.cpMoneyMask.wire(tbody.querySelectorAll('.cp-money-input'));
-    }
   }
 
   function bindPreview(el) {

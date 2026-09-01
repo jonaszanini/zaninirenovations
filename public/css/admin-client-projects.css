@@ -243,6 +243,12 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.br-review-table th:not(:first-child),
+.br-review-table td:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .cp-required {
   color: #dc2626;
 }

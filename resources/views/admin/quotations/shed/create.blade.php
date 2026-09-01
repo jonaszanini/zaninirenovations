@@ -163,7 +163,7 @@
 
             <h4 class="br-review-heading">Labor hours</h4>
             <div class="admin-table-scroll">
-              <table class="admin-table br-edit-table">
+              <table class="admin-table br-review-table">
                 <thead>
                   <tr>
                     <th>Trade</th>
@@ -175,10 +175,7 @@
                   @forelse ($previewLabor as $row)
                     <tr data-sh-labor-key="{{ $row['key'] }}">
                       <td>{{ $row['label'] }}<br><span class="admin-form-help">{{ $row['detail'] ?? '' }}</span></td>
-                      <td>
-                        <input type="number" step="0.01" min="0" class="admin-input sh-preview"
-                               name="labor_override[{{ $row['key'] }}][hours]" value="{{ $row['hours'] }}">
-                      </td>
+                      <td data-sh-labor-hrs>{{ number_format((float) ($row['hours'] ?? 0), 2) }}</td>
                       <td class="cp-col-amount" data-sh-labor-amt>{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>
                   @empty
@@ -190,7 +187,7 @@
 
             <h4 class="br-review-heading">Materials</h4>
             <div class="admin-table-scroll">
-              <table class="admin-table br-edit-table">
+              <table class="admin-table br-review-table">
                 <thead>
                   <tr>
                     <th>Material</th>
@@ -204,20 +201,10 @@
                     @if (str_starts_with((string) ($row['key'] ?? ''), 'extra_'))
                       @continue
                     @endif
-                    @php $derivedPlate = \App\Models\ShedSettings::isDerivedPlate((string) ($row['key'] ?? '')); @endphp
                     <tr data-sh-mat-key="{{ $row['key'] }}">
                       <td>{{ $row['label'] }}@if (! empty($row['client_provided'])) <span class="admin-form-help"> · client provided</span>@endif</td>
-                      <td>
-                        <input type="number" step="0.01" min="0" class="admin-input sh-preview"
-                               name="materials_override[{{ $row['key'] }}][qty]" value="{{ $row['qty'] }}">
-                      </td>
-                      <td>
-                        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-                               class="admin-input cp-money-input sh-preview{{ $derivedPlate ? ' is-locked' : '' }}"
-                               name="materials_override[{{ $row['key'] }}][unit_price]"
-                               value="{{ number_format((float) ($row['unit_price'] ?? 0), 4, '.', '') }}"
-                               @if ($derivedPlate) readonly aria-readonly="true" @endif>
-                      </td>
+                      <td data-sh-mat-qty>{{ number_format((float) ($row['qty'] ?? 0), 2) }}</td>
+                      <td data-sh-mat-price>{{ \App\Models\ClientProject::formatMoney($row['unit_price'] ?? 0) }}</td>
                       <td class="cp-col-amount" data-sh-mat-amt>{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>
                   @empty

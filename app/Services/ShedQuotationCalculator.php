@@ -621,11 +621,14 @@ class ShedQuotationCalculator
         ];
     }
 
+    public static function permitExemptMaxSqFt(): float
+    {
+        return round(self::PERMIT_AREA_SQM * self::SQFT_PER_SQM, 1);
+    }
+
     public static function permitExemptMaxLabel(): string
     {
-        $sqft = round(self::PERMIT_AREA_SQM * self::SQFT_PER_SQM, 1);
-
-        return self::PERMIT_AREA_SQM.' m² (~'.$sqft.' sq ft)';
+        return self::permitExemptMaxSqFt().' sq ft';
     }
 
     /**
@@ -637,8 +640,7 @@ class ShedQuotationCalculator
         $warnings = [];
         $maxLabel = self::permitExemptMaxLabel();
         if ($areaSqm > self::PERMIT_AREA_SQM) {
-            $current = $areaSqm.' m² ('.$areaSqft.' sq ft)';
-            $warnings[] = 'Building permit required. This floor is '.$current.'. Max without a permit: '.$maxLabel.'.';
+            $warnings[] = 'Building permit required. This floor is '.$areaSqft.' sq ft. Max without a permit: '.$maxLabel.'.';
         }
         if (! empty($inputs['attached']) || ($inputs['shed_type'] ?? '') === 'lean_to' && ! empty($inputs['attached'])) {
             $warnings[] = 'Attached sheds are not permit-exempt, even under '.$maxLabel.'.';

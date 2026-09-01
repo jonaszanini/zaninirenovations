@@ -31,7 +31,7 @@
         'hiddenFallback' => true,
         'checked' => $shOn('attached'),
         'label' => 'Attached to an existing building',
-        'info' => 'Attached sheds (including a lean-to on the house) need a building permit even under 15 m².',
+        'info' => 'Attached sheds (including a lean-to on the house) need a building permit even under '.ShedQuotationCalculator::permitExemptMaxLabel().'.',
         'inputClass' => 'admin-checkbox__input sh-preview',
       ])
     </div>
