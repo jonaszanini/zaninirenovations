@@ -97,6 +97,7 @@ class ShedSettings extends Model
             'roof_frame_sf_per_hr' => 20,
             'roof_cover_sf_per_hr' => 35,
             'siding_sf_per_hr' => 30,
+            'house_wrap_sf_per_hr' => 150,
             'door_hours_each' => 2.5,
             'window_hours_each' => 1.5,
             'insulation_sf_per_hr' => 40,
@@ -371,6 +372,7 @@ class ShedSettings extends Model
                 'roof_frame_sf_per_hr' => 'Roof framing (sq ft / hour)',
                 'roof_cover_sf_per_hr' => 'Roof covering (sq ft / hour)',
                 'siding_sf_per_hr' => 'Siding (sq ft / hour)',
+                'house_wrap_sf_per_hr' => 'House wrap (sq ft / hour)',
             ],
             'Openings' => [
                 'door_hours_each' => 'Door install (hours each)',

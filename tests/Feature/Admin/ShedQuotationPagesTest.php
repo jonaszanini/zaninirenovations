@@ -62,6 +62,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Metal roof Black (36×93 panel)')
             ->assertSee('Metal roof Silver (36×93 panel)')
             ->assertSee('Weather coat, 1 gal (each)')
+            ->assertSee('House wrap (sq ft / hour)')
             ->assertSee('Fiber-cement wall cladding (Hardie-style), not roof shingles.')
             ->assertSee('>Each</option>', false)
             ->assertSee('>Sq ft</option>', false)

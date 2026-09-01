@@ -291,6 +291,8 @@ class ShedQuotationCalculatorTest extends TestCase
         $this->assertFalse($keys->contains('weather_coat_roof'));
         $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'roof_wrap'));
         $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'siding_wrap'));
+        $wallWrap = collect($calc['labor'])->firstWhere('key', 'siding_wrap');
+        $this->assertLessThan(3, (float) $wallWrap['hours']);
         $this->assertSame('House wrap', ShedQuotationCalculator::roofLabel('house_wrap'));
         $this->assertSame('House wrap', ShedQuotationCalculator::sidingLabel('house_wrap'));
     }

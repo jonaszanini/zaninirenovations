@@ -471,7 +471,7 @@ class ShedQuotationCalculator
                 $addMat('asphalt_shingle', 'roof', $bundles, 'asphalt_shingle');
             }
         } elseif (self::hasHouseWrapRoof($roofType)) {
-            $addLabor('roof_wrap', 'roof', 'Roof house wrap', number_format($roofSf, 0).' sq ft', $perHr($roofSf, (float) $prod['siding_sf_per_hr']));
+            $addLabor('roof_wrap', 'roof', 'Roof house wrap', number_format($roofSf, 0).' sq ft', $perHr($roofSf, (float) ($prod['house_wrap_sf_per_hr'] ?? 150)));
             $addMat('house_wrap_roof', 'roof', round($roofSf * $waste, 0), 'house_wrap', 'House wrap (roof)');
         } elseif (self::hasWeatherCoatRoof($roofType)) {
             $addLabor('roof_weather', 'roof', 'Roof weather coat', number_format($roofSf, 0).' sq ft', $perHr($roofSf, (float) $prod['paint_sf_per_hr']));
@@ -491,7 +491,7 @@ class ShedQuotationCalculator
             $addMat($sidingKey, 'siding', round($wallNet * $waste, 0), $sidingKey);
             $addMat('corner_trim', 'siding', round($height * 4 + $perimeter * 0.15, 0), 'corner_trim');
         } elseif (self::hasHouseWrapSiding($sidingType)) {
-            $addLabor('siding_wrap', 'siding', 'Wall house wrap', number_format($wallNet, 0).' sq ft', $perHr($wallNet, (float) $prod['siding_sf_per_hr']));
+            $addLabor('siding_wrap', 'siding', 'Wall house wrap', number_format($wallNet, 0).' sq ft', $perHr($wallNet, (float) ($prod['house_wrap_sf_per_hr'] ?? 150)));
             $addMat('house_wrap_siding', 'siding', round($wallNet * $waste, 0), 'house_wrap', 'House wrap (walls)');
         } elseif (self::hasWeatherCoatSiding($sidingType)) {
             $addLabor('siding_weather', 'siding', 'Wall weather coat', number_format($wallNet, 0).' sq ft', $perHr($wallNet, (float) $prod['paint_sf_per_hr']));
