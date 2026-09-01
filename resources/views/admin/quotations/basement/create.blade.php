@@ -165,20 +165,18 @@
           <div class="br-acc__body">
             <p class="admin-form-help">Edit hours, quantities, or unit prices below. Totals recalculate as you type. Enter 0 on an auto-filled quantity in a previous section to skip that trade.</p>
 
-            <div class="br-check-stack" style="margin-bottom:16px;">
-              @include('admin.partials.checkbox', [
-                'name' => 'client_provides_all',
-                'hiddenFallback' => true,
-                'checked' => (bool) old('client_provides_all', $inputs['client_provides_all'] ?? false),
-                'label' => '<strong>Client provides all materials</strong> for the entire project',
-                'info' => 'Labor only — you do not supply materials. Material cost drops out of the total.',
-                'inputClass' => 'admin-checkbox__input br-preview',
-                'id' => 'br-client-all',
-              ])
-            </div>
+            @include('admin.partials.checkbox', [
+              'name' => 'client_provides_all',
+              'hiddenFallback' => true,
+              'checked' => (bool) old('client_provides_all', $inputs['client_provides_all'] ?? false),
+              'label' => '<strong>Client provides all materials</strong> for the entire project',
+              'info' => 'Labor only — you do not supply materials. Material cost drops out of the total.',
+              'inputClass' => 'admin-checkbox__input br-preview',
+              'id' => 'br-client-all',
+            ])
             <div id="br-provide-wrap">
             <fieldset class="br-provide-grid" id="br-provide-sections">
-              <legend class="admin-form-help">Or client provides materials for specific sections</legend>
+              <legend>Or client provides materials for specific sections</legend>
               @foreach ($sectionList as $key => $label)
                 @if ($key === 'overview' || $key === 'bathroom')
                   @continue
@@ -194,8 +192,10 @@
               @endforeach
             </fieldset>
             <fieldset class="br-bath-provide" id="br-provide-bath-items">
-              <legend class="br-bath-provide__title">Bathroom items</legend>
-              <p class="admin-form-help">Client buys these fixtures; you still install them. Tile, fan, and lights stay on the Bathroom step (or Electrical when quoting living-area lights).</p>
+              <legend class="br-bath-provide__title">
+                @include('admin.partials.info_tip', ['text' => 'Client buys these fixtures; you still install them. Tile, fan, and lights stay on the Bathroom step (or Electrical when quoting living-area lights).'])
+                Bathroom items
+              </legend>
               <div class="br-bath-provide__grid">
                 @foreach (\App\Services\BasementQuotationCalculator::clientProvidesBathItemLabels() as $itemKey => $itemLabel)
                   @include('admin.partials.checkbox', [
