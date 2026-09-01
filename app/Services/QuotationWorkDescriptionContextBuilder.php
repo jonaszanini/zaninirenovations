@@ -23,6 +23,8 @@ class QuotationWorkDescriptionContextBuilder
             'paving' => $this->paving($context),
             'standard' => $this->standard($context),
             'trimming' => $this->trimming($context),
+            'shed' => $this->shed($context),
+            'basement' => $this->basement($context),
             default => $this->generic($type, $context),
         };
     }
@@ -294,6 +296,126 @@ class QuotationWorkDescriptionContextBuilder
         $this->appendLine($lines, 'Cove linear feet', $c['cove_lf'] ?? null);
         $this->appendLine($lines, 'Chair rail linear feet', $c['chair_rail_lf'] ?? null);
         $this->appendLine($lines, 'Wainscot wall linear feet', $c['wainscot_wall_lf'] ?? null);
+        $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function shed(array $c): string
+    {
+        $lines = ['Quotation type: Custom shed'];
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+
+        $type = trim((string) ($c['shed_type'] ?? ''));
+        if ($type !== '') {
+            $this->appendLine($lines, 'Shed style', ShedQuotationCalculator::shedTypeLabel($type));
+        }
+        if (! empty($c['attached'])) {
+            $lines[] = 'Attached to an existing building: yes';
+        }
+
+        $length = $c['length_ft'] ?? null;
+        $width = $c['width_ft'] ?? null;
+        if ($length !== null && $length !== '' && $width !== null && $width !== '') {
+            $this->appendLine($lines, 'Floor size', $length.' ft × '.$width.' ft');
+        }
+        $this->appendLine($lines, 'Floor area', $c['area_label'] ?? null);
+        $this->appendLine($lines, 'Wall height', isset($c['wall_height_ft']) && $c['wall_height_ft'] !== '' ? $c['wall_height_ft'].' ft' : null);
+        $this->appendLine($lines, 'Roof pitch', isset($c['roof_pitch']) && $c['roof_pitch'] !== '' ? $c['roof_pitch'].'/12' : null);
+        $this->appendLine($lines, 'Overhang', isset($c['overhang_in']) && $c['overhang_in'] !== '' ? $c['overhang_in'].' in' : null);
+
+        $foundation = trim((string) ($c['foundation'] ?? ''));
+        if ($foundation !== '') {
+            $this->appendLine($lines, 'Foundation', ShedQuotationCalculator::foundationLabel($foundation));
+        }
+        $this->appendLine($lines, 'Joist size', $c['joist_size'] ?? null);
+        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) && $c['joist_spacing_in'] !== '' ? $c['joist_spacing_in'].' in' : null);
+        $this->appendLine($lines, 'Stud size', $c['stud_size'] ?? null);
+        $this->appendLine($lines, 'Stud spacing', isset($c['stud_spacing_in']) && $c['stud_spacing_in'] !== '' ? $c['stud_spacing_in'].' in' : null);
+
+        $roof = trim((string) ($c['roof_type'] ?? ''));
+        if ($roof !== '') {
+            $this->appendLine($lines, 'Roof covering', ShedQuotationCalculator::roofLabel($roof));
+        }
+        $siding = trim((string) ($c['siding'] ?? ''));
+        if ($siding !== '') {
+            $this->appendLine($lines, 'Siding', ShedQuotationCalculator::sidingLabel($siding));
+        }
+        if (! empty($c['include_paint'])) {
+            $lines[] = 'Exterior paint / stain: yes';
+        }
+
+        $doorQty = (int) ($c['door_qty'] ?? 0);
+        $windowQty = (int) ($c['window_qty'] ?? 0);
+        if ($doorQty > 0) {
+            $door = ShedQuotationCalculator::DOOR_TYPES[(string) ($c['door_type'] ?? 'custom')] ?? 'Custom built';
+            $lines[] = 'Doors: '.$doorQty.' × '.$door.(! empty($c['double_door']) ? ' (double)' : '');
+        }
+        if ($windowQty > 0) {
+            $window = ShedQuotationCalculator::WINDOW_TYPES[(string) ($c['window_type'] ?? 'slider')] ?? 'Standard slider';
+            $lines[] = 'Windows: '.$windowQty.' × '.$window;
+        }
+
+        $finish = (($c['interior_finish'] ?? 'rough') === 'finished') ? 'Fully finished (insulation and drywall)' : 'Rough / shell';
+        $this->appendLine($lines, 'Interior', $finish);
+        if (! empty($c['include_electrical'])) {
+            $lines[] = 'Electrical: yes ('.($c['outlet_qty'] ?? 0).' outlets, '.($c['light_qty'] ?? 0).' lights'
+                .(! empty($c['include_subpanel']) ? ', subpanel' : '').')';
+        }
+        if (! empty($c['include_loft'])) {
+            $lines[] = 'Loft: yes';
+        }
+        if (! empty($c['include_ramp'])) {
+            $lines[] = 'Ramp: yes';
+        }
+        if (! empty($c['include_gutters'])) {
+            $lines[] = 'Gutters: yes';
+        }
+        if (! empty($c['include_plumbing'])) {
+            $lines[] = 'Plumbing: yes';
+        }
+        if (! empty($c['client_provides_all'])) {
+            $lines[] = 'Client provides all materials: yes';
+        }
+
+        $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
+        $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
+        $this->appendBlock($lines, 'Permit notes', $c['permit_notes'] ?? null);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function basement(array $c): string
+    {
+        $lines = ['Quotation type: Basement renovation'];
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+        $this->appendLine($lines, 'Scope', $c['scope_preset'] ?? null);
+        $this->appendLine($lines, 'Area', isset($c['area_sqft']) && $c['area_sqft'] !== '' ? $c['area_sqft'].' sq ft' : null);
+        $this->appendLine($lines, 'Ceiling height', isset($c['ceiling_height_ft']) && $c['ceiling_height_ft'] !== '' ? $c['ceiling_height_ft'].' ft' : null);
+        $this->appendLine($lines, 'Room count', $c['room_count'] ?? null);
+        $this->appendLine($lines, 'Flooring', $c['flooring_type'] ?? null);
+        $this->appendLine($lines, 'Ceiling', $c['ceiling_type'] ?? null);
+        if (! empty($c['include_bathroom'])) {
+            $lines[] = 'Bathroom: yes';
+        }
+        if (! empty($c['include_demolition'])) {
+            $lines[] = 'Demolition: yes';
+        }
+        $this->appendBlock($lines, 'Site notes', $c['existing_notes'] ?? null);
+        $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
+        $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
+        $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
+        $this->flattenInto($lines, $c, '', [
+            'client_name', 'scope_preset', 'area_sqft', 'area_entry_mode', 'area_length_ft', 'area_width_ft',
+            'ceiling_height_ft', 'room_count', 'flooring_type', 'ceiling_type', 'include_bathroom',
+            'include_demolition', 'existing_notes', 'labor_summary', 'materials_summary', 'breakdown_summary',
+        ]);
 
         return implode("\n", $lines);
     }
@@ -303,14 +425,80 @@ class QuotationWorkDescriptionContextBuilder
      */
     private function generic(string $type, array $c): string
     {
-        $lines = ['Quotation type: '.$type];
-        foreach ($c as $key => $value) {
-            if (is_scalar($value) && trim((string) $value) !== '') {
-                $lines[] = ucfirst(str_replace('_', ' ', (string) $key)).': '.$value;
-            }
-        }
+        $labels = [
+            'stairs' => 'Stair refinishing',
+            'flooring' => 'Flooring',
+            'tile' => 'Tile',
+            'painting' => 'Residential interior painting',
+            'fence' => 'Fence installation',
+            'paving' => 'Paving stones / hardscape',
+            'low_deck' => 'Low floating deck',
+            'trimming' => 'Interior trimming',
+        ];
+        $lines = ['Quotation type: '.($labels[$type] ?? $type)];
+        $this->flattenInto($lines, $c);
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @param  list<string>  $lines
+     * @param  array<string, mixed>  $c
+     * @param  list<string>  $skipKeys
+     */
+    private function flattenInto(array &$lines, array $c, string $prefix = '', array $skipKeys = []): void
+    {
+        foreach ($c as $key => $value) {
+            $keyStr = (string) $key;
+            if ($this->shouldSkipContextKey($keyStr) || in_array($keyStr, $skipKeys, true)) {
+                continue;
+            }
+            $label = $prefix === '' ? $this->humanizeKey($keyStr) : $prefix.' / '.$this->humanizeKey($keyStr);
+            if (is_bool($value)) {
+                if ($value) {
+                    $lines[] = $label.': yes';
+                }
+                continue;
+            }
+            if (is_array($value)) {
+                $this->flattenInto($lines, $value, $label, $skipKeys);
+                continue;
+            }
+            if (is_scalar($value) && trim((string) $value) !== '') {
+                $lines[] = $label.': '.$value;
+            }
+        }
+    }
+
+    private function shouldSkipContextKey(string $key): bool
+    {
+        if (in_array($key, [
+            '_token', '_method', 'save_intent', 'work_description',
+            'owner_hourly_rate', 'helper_hourly_rate', 'link_client_project_id',
+            'tm_client_pick', 'include_commute', 'include_debris_removal',
+        ], true)) {
+            return true;
+        }
+        if (str_contains($key, 'override')) {
+            return true;
+        }
+        if (str_starts_with($key, 'payment_') || str_starts_with($key, 'commute_') || str_starts_with($key, 'fp_')) {
+            return true;
+        }
+        if (str_contains($key, 'unit_price') || str_contains($key, 'hourly_rate')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function humanizeKey(string $key): string
+    {
+        if (is_numeric($key)) {
+            return '#'.((int) $key + 1);
+        }
+
+        return ucfirst(str_replace('_', ' ', $key));
     }
 
     /**

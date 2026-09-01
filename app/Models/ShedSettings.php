@@ -326,7 +326,7 @@ class ShedSettings extends Model
             'siding_bnb' => 'Vertical wall boards with battens covering the joints.',
             'siding_wood' => 'Wood cladding on the exterior walls.',
             'siding_hardie' => 'Fiber-cement wall cladding (Hardie-style), not roof shingles.',
-            'house_wrap' => 'Weather barrier on the walls, under the siding.',
+            'house_wrap' => 'Weather barrier on the walls, under the siding or weather coat.',
             'corner_trim' => 'Trim at outside corners and around doors and windows.',
             self::MATERIAL_WEATHER_COAT => 'Sealer on roof or wall sheathing until finish covering is installed.',
             'door_custom' => 'Site-built exterior door in the wall opening.',

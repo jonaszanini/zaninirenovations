@@ -3140,6 +3140,7 @@ a.ic-model-card:hover {
 
 .admin-ai-action-group {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
   overflow: visible;

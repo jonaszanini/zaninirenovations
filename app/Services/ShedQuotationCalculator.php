@@ -477,6 +477,7 @@ class ShedQuotationCalculator
             $addMat('corner_trim', 'siding', round($height * 4 + $perimeter * 0.15, 0), 'corner_trim');
         } elseif (self::hasWeatherCoatSiding($sidingType)) {
             $addLabor('siding_weather', 'siding', 'Wall weather coat', number_format($wallNet, 0).' sq ft', $perHr($wallNet, (float) $prod['paint_sf_per_hr']));
+            $addMat('house_wrap', 'siding', round($wallNet * $waste, 0), 'house_wrap');
             $addMat('weather_coat_siding', 'siding', ShedSettings::weatherCoatGallons($wallNet), ShedSettings::MATERIAL_WEATHER_COAT);
         }
 

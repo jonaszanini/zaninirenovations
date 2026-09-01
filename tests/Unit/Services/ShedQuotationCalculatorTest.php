@@ -262,6 +262,7 @@ class ShedQuotationCalculatorTest extends TestCase
         $wallCoat = collect($calc['materials'])->firstWhere('key', 'weather_coat_siding');
         $this->assertNotNull($roofCoat);
         $this->assertNotNull($wallCoat);
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'house_wrap'));
         $this->assertSame('gallon', $roofCoat['unit']);
         $this->assertSame(ShedSettings::weatherCoatGallons((float) $calc['scope']['roof_sf']), (int) $roofCoat['qty']);
         $this->assertNull(collect($calc['materials'])->firstWhere('key', 'asphalt_shingle'));

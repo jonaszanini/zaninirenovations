@@ -2,6 +2,7 @@
   $workDescriptionTextareaId = $workDescriptionTextareaId ?? 'work-description';
   $aiContextFormId = $aiContextFormId ?? '';
   $aiQuotationType = $aiQuotationType ?? '';
+  $showCreateFromQuote = $aiQuotationType !== '' && $aiQuotationType !== 'standard';
   // Fallback to URL-based unique key so create and edit pages have independent histories
   $historyKey = $historyKey ?? ('quotation-work-desc:' . md5(request()->fullUrl()));
 @endphp
@@ -22,6 +23,16 @@
         'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION,
         'instructionLabel' => 'Edit quotation work description prompt',
       ])
+      @if ($showCreateFromQuote)
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm quotation-work-description-ai__from-quote">
+          <i class="fa fa-list-alt" aria-hidden="true"></i>
+          <span>Create automatically from quotation</span>
+        </button>
+        @include('admin.partials.ai_instruction_edit_link', [
+          'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION_FROM_QUOTE,
+          'instructionLabel' => 'Edit create-from-quotation prompt',
+        ])
+      @endif
       <span class="admin-ai-text-history-mount" data-history-mount></span>
     </div>
     @if (!empty($trailingActionPartial))

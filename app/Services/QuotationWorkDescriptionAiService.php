@@ -62,6 +62,46 @@ class QuotationWorkDescriptionAiService
         return $this->normalizeParagraph($text);
     }
 
+    /**
+     * Draft a work description from structured quotation fields only (no contractor notes).
+     *
+     * @param  array<string, mixed>|null  $contextPayload
+     */
+    public function composeFromQuotation(string $quotationType, ?array $contextPayload = null): string
+    {
+        $type = trim($quotationType);
+        if ($type === '' || $type === 'standard') {
+            throw new RuntimeException('Create automatically from quotation is not available for this quotation type.');
+        }
+
+        $instruction = AiInstruction::forKey(AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION_FROM_QUOTE);
+        if (! $instruction) {
+            throw new RuntimeException('Quotation-from-quote AI instruction is not configured. Add it under Tools → AI Instructions.');
+        }
+
+        $quotationContext = $this->contextBuilder->build($type, $contextPayload);
+        if ($quotationContext === '') {
+            throw new RuntimeException('Fill in quotation details first, then click Create automatically from quotation.');
+        }
+
+        $systemInstruction = str_replace(
+            '{{ quotation_context }}',
+            $quotationContext,
+            $instruction->instruction,
+        );
+
+        $text = trim($this->gemini->generate(
+            $systemInstruction,
+            'Write the description of the work from the quotation parameters.',
+        ));
+
+        if ($text === '') {
+            throw new RuntimeException('Gemini did not return a description.');
+        }
+
+        return $this->normalizeParagraph($text);
+    }
+
     private function normalizeParagraph(string $text): string
     {
         $text = preg_replace('/^```(?:\w+)?\s*|\s*```$/u', '', $text) ?? $text;

@@ -42,7 +42,8 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Hardie board')
             ->assertSee('Fully finished')
             ->assertSee('fa-info-circle', false)
-            ->assertSee('Live breakdown');
+            ->assertSee('Live breakdown')
+            ->assertSee('Create automatically from quotation');
 
         $this->get(route('admin.quotations.shed.price-configuration'))
             ->assertOk()

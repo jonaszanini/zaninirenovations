@@ -43,9 +43,20 @@ class QuotationHubController extends Controller
             'contractor_notes' => ['nullable', 'string', 'max:5000'],
             'quotation_type' => ['nullable', 'string', 'max:32'],
             'context' => ['nullable', 'array'],
+            'mode' => ['nullable', 'in:improve,from_quotation'],
         ]);
 
         try {
+            $mode = $data['mode'] ?? 'improve';
+            if ($mode === 'from_quotation') {
+                return response()->json([
+                    'description' => $service->composeFromQuotation(
+                        (string) ($data['quotation_type'] ?? ''),
+                        $data['context'] ?? null,
+                    ),
+                ]);
+            }
+
             return response()->json([
                 'description' => $service->suggest(
                     (string) ($data['contractor_notes'] ?? ''),

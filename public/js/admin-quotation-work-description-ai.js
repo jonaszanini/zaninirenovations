@@ -243,6 +243,7 @@
   function collectBasementContext(form) {
     return {
       client_name: formValue(form, 'client_name'),
+      scope_preset: formSelectValue(form, 'scope_preset') || formValue(form, 'scope_preset'),
       area_sqft: formValue(form, 'area_sqft'),
       area_entry_mode: formValue(form, 'area_entry_mode'),
       area_length_ft: formValue(form, 'area_length_ft'),
@@ -254,8 +255,154 @@
       include_bathroom: form.elements['include_bathroom'] && form.elements['include_bathroom'].checked,
       include_demolition: form.elements['include_demolition'] && form.elements['include_demolition'].checked,
       existing_notes: formValue(form, 'existing_notes'),
+      labor_summary: tableScopeLines('br-labor-rows'),
+      materials_summary: tableScopeLines('br-mat-rows'),
       breakdown_summary: panelText('br-live-root')
     };
+  }
+
+  function collectShedContext(form) {
+    return {
+      client_name: formValue(form, 'client_name'),
+      shed_type: choiceValue(form, 'shed_type'),
+      attached: isChecked(form, 'attached'),
+      length_ft: formValue(form, 'length_ft'),
+      width_ft: formValue(form, 'width_ft'),
+      wall_height_ft: formValue(form, 'wall_height_ft'),
+      roof_pitch: formSelectValue(form, 'roof_pitch') || formValue(form, 'roof_pitch'),
+      overhang_in: formValue(form, 'overhang_in'),
+      area_label: panelText('sh-area-readout'),
+      foundation: choiceValue(form, 'foundation'),
+      joist_size: choiceValue(form, 'joist_size'),
+      joist_spacing_in: formSelectValue(form, 'joist_spacing_in') || formValue(form, 'joist_spacing_in'),
+      floor_sheathing: choiceValue(form, 'floor_sheathing'),
+      stud_size: choiceValue(form, 'stud_size'),
+      stud_spacing_in: formSelectValue(form, 'stud_spacing_in') || formValue(form, 'stud_spacing_in'),
+      wall_sheathing: isChecked(form, 'wall_sheathing'),
+      roof_type: choiceValue(form, 'roof_type'),
+      siding: choiceValue(form, 'siding'),
+      include_paint: isChecked(form, 'include_paint'),
+      door_type: formSelectValue(form, 'door_type') || formValue(form, 'door_type'),
+      door_qty: formValue(form, 'door_qty'),
+      double_door: isChecked(form, 'double_door'),
+      window_type: formSelectValue(form, 'window_type') || formValue(form, 'window_type'),
+      window_qty: formValue(form, 'window_qty'),
+      interior_finish: choiceValue(form, 'interior_finish'),
+      include_electrical: isChecked(form, 'include_electrical'),
+      outlet_qty: formValue(form, 'outlet_qty'),
+      light_qty: formValue(form, 'light_qty'),
+      include_subpanel: isChecked(form, 'include_subpanel'),
+      include_loft: isChecked(form, 'include_loft'),
+      include_ramp: isChecked(form, 'include_ramp'),
+      include_gutters: isChecked(form, 'include_gutters'),
+      include_plumbing: isChecked(form, 'include_plumbing'),
+      client_provides_all: isChecked(form, 'client_provides_all'),
+      labor_summary: tableScopeLines('sh-labor-rows'),
+      materials_summary: tableScopeLines('sh-mat-rows'),
+      permit_notes: panelText('sh-permit-list'),
+      breakdown_summary: panelText('sh-live-root')
+    };
+  }
+
+  function collectTrimmingContext(form) {
+    var families = [];
+    form.querySelectorAll('input[name="enabled_families[]"]:checked').forEach(function (el) {
+      families.push(el.value);
+    });
+    return {
+      client_name: formValue(form, 'client_name'),
+      enabled_families: families,
+      door_qty: formValue(form, 'door_qty'),
+      window_qty: formValue(form, 'window_qty'),
+      floor_lf: formValue(form, 'floor_lf'),
+      crown_lf: formValue(form, 'crown_lf'),
+      cove_lf: formValue(form, 'cove_lf'),
+      chair_rail_lf: formValue(form, 'chair_rail_lf'),
+      wainscot_wall_lf: formValue(form, 'wainscot_wall_lf'),
+      breakdown_summary: panelText('tm-live-root')
+    };
+  }
+
+  function collectLowDeckContext(form) {
+    return {
+      client_name: formValue(form, 'client_name'),
+      width_ft: formValue(form, 'width_ft'),
+      length_ft: formValue(form, 'length_ft'),
+      joist_spacing_in: formValue(form, 'joist_spacing_in'),
+      geometry_summary: panelText('ld-geometry') || panelText('ld-area-value'),
+      materials_summary: panelText('ld-materials'),
+      totals_summary: panelText('ld-live-root') || panelText('ld-totals'),
+      breakdown_summary: panelText('ld-live-root')
+    };
+  }
+
+  function isChecked(form, name) {
+    var nodes = form.querySelectorAll('input[name="' + name.replace(/"/g, '\\"') + '"]');
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].type === 'checkbox' && nodes[i].checked && nodes[i].value !== '0') return true;
+    }
+    return false;
+  }
+
+  function choiceValue(form, name) {
+    var input = form.querySelector('input[name="' + name.replace(/"/g, '\\"') + '"]:checked');
+    return input ? String(input.value || '').trim() : formValue(form, name);
+  }
+
+  function tableScopeLines(tbodyId) {
+    var lines = [];
+    document.querySelectorAll('#' + tbodyId + ' tr').forEach(function (tr) {
+      if (tr.classList.contains('br-empty-row')) return;
+      var first = tr.querySelector('td');
+      if (!first) return;
+      var text = first.innerText.replace(/\s+/g, ' ').trim();
+      if (text) lines.push(text);
+    });
+    return lines.join('\n');
+  }
+
+  function shouldSkipFormKey(key) {
+    if (!key) return true;
+    if (/^(?:_token|_method|save_intent|work_description|owner_hourly_rate|helper_hourly_rate|link_client_project_id|tm_client_pick|include_commute|include_debris_removal)$/.test(key)) {
+      return true;
+    }
+    if (/override|unit_price|hourly_rate/.test(key)) return true;
+    if (/^(?:payment_|commute_|fp_|debris_|additional_cost)/.test(key)) return true;
+    return false;
+  }
+
+  function assignFormPath(obj, rawName, value) {
+    var name = String(rawName);
+    var isArray = /\[\]$/.test(name);
+    name = name.replace(/\[\]$/, '');
+    var parts = name.split(/\[|\]/).filter(Boolean);
+    if (!parts.length) return;
+    var cur = obj;
+    for (var i = 0; i < parts.length - 1; i++) {
+      var part = parts[i];
+      if (!cur[part] || typeof cur[part] !== 'object') cur[part] = {};
+      cur = cur[part];
+    }
+    var last = parts[parts.length - 1];
+    if (isArray) {
+      if (!Array.isArray(cur[last])) cur[last] = [];
+      cur[last].push(value);
+    } else {
+      cur[last] = value;
+    }
+  }
+
+  function collectFormSnapshot(form) {
+    var obj = {};
+    var fd = new FormData(form);
+    fd.delete('_method');
+    fd.forEach(function (value, key) {
+      if (shouldSkipFormKey(key)) return;
+      var text = value == null ? '' : String(value).trim();
+      if (text === '') return;
+      assignFormPath(obj, key, text);
+    });
+    return obj;
   }
 
   var collectors = {
@@ -267,13 +414,18 @@
     flooring: collectFlooringContext,
     tile: collectTileContext,
     basement: collectBasementContext,
+    shed: collectShedContext,
+    trimming: collectTrimmingContext,
+    low_deck: collectLowDeckContext,
   };
 
   function collectQuotationContext(formId, quotationType) {
-    if (!formId || !quotationType || !collectors[quotationType]) return null;
+    if (!formId) return null;
     var form = document.getElementById(formId);
     if (!form) return null;
-    return collectors[quotationType](form);
+    var snapshot = collectFormSnapshot(form);
+    var specialized = (quotationType && collectors[quotationType]) ? collectors[quotationType](form) : {};
+    return Object.assign({}, snapshot, specialized);
   }
 
   function contextHasData(context) {
@@ -304,6 +456,7 @@
     var historyKey = root.getAttribute('data-history-key') || ('quotation-work-desc:' + textareaId);
     var textarea = document.getElementById(textareaId);
     var btn = root.querySelector('.quotation-work-description-ai__btn');
+    var fromQuoteBtn = root.querySelector('.quotation-work-description-ai__from-quote');
     var loadingEl = root.querySelector('.quotation-work-description-ai__loading');
     var statusEl = root.querySelector('.quotation-work-description-ai__status');
     var historyMount = root.querySelector('[data-history-mount]');
@@ -330,38 +483,25 @@
       statusEl.classList.toggle('is-error', !!isError);
     }
 
-    function setLoading(active) {
-      if (loadingEl) loadingEl.hidden = !active;
+    function setLoading(active, label) {
+      if (loadingEl) {
+        loadingEl.hidden = !active;
+        var span = loadingEl.querySelector('span');
+        if (span && label) span.textContent = label;
+      }
       btn.disabled = !!active;
+      if (fromQuoteBtn) fromQuoteBtn.disabled = !!active;
     }
 
-    btn.addEventListener('click', async function () {
-      var notes = textarea.value.trim();
-      var context = collectQuotationContext(contextFormId, quotationType);
-      var hasContext = contextHasData(context);
-
-      if (!notes && !hasContext) {
-        setStatus('Enter a brief description or fill in quotation details first, then click Improve description with AI.', true);
-        textarea.focus();
-        return;
-      }
-
+    async function requestDescription(payload, statusMessage) {
       if (history) {
         history.captureOriginalIfNeeded();
       }
 
-      setLoading(true);
-      setStatus('Rewriting your description with Gemini…', false);
+      setLoading(true, 'Writing with Gemini…');
+      setStatus(statusMessage, false);
 
       try {
-        var payload = {
-          contractor_notes: notes,
-        };
-        if (quotationType && hasContext) {
-          payload.quotation_type = quotationType;
-          payload.context = context;
-        }
-
         var res = await fetch(improveUrl, {
           method: 'POST',
           credentials: 'same-origin',
@@ -401,11 +541,50 @@
         textarea.focus();
         setStatus('Description updated. Use the history icon to restore earlier versions.', false);
       } catch (err) {
-        setStatus(err.message || 'Could not improve description.', true);
+        setStatus(err.message || 'Could not generate description.', true);
       } finally {
         setLoading(false);
       }
+    }
+
+    btn.addEventListener('click', function () {
+      var notes = textarea.value.trim();
+      var context = collectQuotationContext(contextFormId, quotationType);
+      var hasContext = contextHasData(context);
+
+      if (!notes && !hasContext) {
+        setStatus('Enter a brief description or fill in quotation details first, then click Improve description with AI.', true);
+        textarea.focus();
+        return;
+      }
+
+      var payload = {
+        mode: 'improve',
+        contractor_notes: notes,
+      };
+      if (quotationType && hasContext) {
+        payload.quotation_type = quotationType;
+        payload.context = context;
+      }
+
+      requestDescription(payload, 'Rewriting your description with Gemini…');
     });
+
+    if (fromQuoteBtn) {
+      fromQuoteBtn.addEventListener('click', function () {
+        var context = collectQuotationContext(contextFormId, quotationType);
+        if (!quotationType || !contextHasData(context)) {
+          setStatus('Fill in quotation details first, then click Create automatically from quotation.', true);
+          return;
+        }
+
+        requestDescription({
+          mode: 'from_quotation',
+          quotation_type: quotationType,
+          context: context,
+        }, 'Writing a description from this quotation…');
+      });
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function () {

@@ -217,7 +217,7 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Siding</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips siding. Weather coat seals the wall sheathing. Finish siding includes house wrap and corner trim.']) Material</label>
+      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips siding. Weather coat includes house wrap plus a sealer on the sheathing. Finish siding includes house wrap and corner trim.']) Material</label>
       <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::SIDING as $key => $label)
           <label class="sh-choice">
