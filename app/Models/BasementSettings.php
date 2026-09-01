@@ -128,6 +128,7 @@ class BasementSettings extends Model
             'paint_trim_lf_per_hr' => 30,
             'paint_two_color_lf_per_hr' => 20,
             'vanity_hours' => 4,
+            'pedestal_sink_hours' => 2,
             'toilet_hours' => 2,
             'shower_hours' => 12,
             'tub_hours' => 10,
@@ -177,6 +178,7 @@ class BasementSettings extends Model
             'sink_kit' => $row('Sink / laundry hookup kit (each)', 'each', 220.00),
             'floor_drain' => $row('Floor drain assembly (each)', 'each', 95.00),
             'vanity' => $row('Bathroom vanity (each)', 'each', 360.00),
+            'pedestal_sink' => $row('Pedestal bathroom sink (each)', 'each', 180.00),
             'faucet' => $row('Bathroom faucet (each)', 'each', 90.00),
             'toilet' => $row('Toilet (each)', 'each', 280.00),
             'shower_kit' => $row('Shower frame (each)', 'each', 800.00),
@@ -394,6 +396,7 @@ class BasementSettings extends Model
             ],
             'Bathroom & finishing' => [
                 'vanity_hours' => 'Vanity install (hours)',
+                'pedestal_sink_hours' => 'Pedestal sink install (hours)',
                 'toilet_hours' => 'Toilet install (hours)',
                 'shower_hours' => 'Shower install (hours)',
                 'tub_hours' => 'Tub install (hours)',

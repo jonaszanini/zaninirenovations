@@ -125,6 +125,80 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertContains('bath_vanity', collect($calc['labor'])->pluck('key')->all());
     }
 
+    public function test_pedestal_sink_replaces_vanity_and_can_be_client_provided(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'include_vanity' => true,
+            'include_pedestal_sink' => true,
+            'detector_qty' => 0,
+            'client_provides_bath_items' => ['pedestal_sink', 'faucet'],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $labor = collect($calc['labor'])->pluck('key')->all();
+        $this->assertContains('bath_pedestal', $labor);
+        $this->assertNotContains('bath_vanity', $labor);
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'vanity'));
+
+        $sink = collect($calc['materials'])->firstWhere('key', 'pedestal_sink');
+        $this->assertNotNull($sink);
+        $this->assertSame('Pedestal bathroom sink (each)', $sink['label']);
+        $this->assertTrue($sink['client_provided']);
+        $this->assertSame(0.0, $sink['amount']);
+        $this->assertEqualsWithDelta(2.0, collect($calc['labor'])->firstWhere('key', 'bath_pedestal')['hours'], 0.01);
+
+        $faucet = collect($calc['materials'])->firstWhere('key', 'faucet');
+        $this->assertNotNull($faucet);
+        $this->assertTrue($faucet['client_provided']);
+    }
+
+    public function test_pedestal_sink_uses_lower_material_price_than_vanity(): void
+    {
+        $vanityQuote = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'include_vanity' => true,
+            'include_toilet' => false,
+            'include_shower' => false,
+            'include_exhaust_fan' => false,
+            'detector_qty' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $pedestalQuote = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'include_vanity' => false,
+            'include_pedestal_sink' => true,
+            'include_toilet' => false,
+            'include_shower' => false,
+            'include_exhaust_fan' => false,
+            'detector_qty' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $vanityMat = collect($vanityQuote['materials'])->firstWhere('key', 'vanity');
+        $pedestalMat = collect($pedestalQuote['materials'])->firstWhere('key', 'pedestal_sink');
+        $this->assertNotNull($vanityMat);
+        $this->assertNotNull($pedestalMat);
+        $this->assertEqualsWithDelta(360.0, $vanityMat['amount'], 0.01);
+        $this->assertEqualsWithDelta(180.0, $pedestalMat['amount'], 0.01);
+        $this->assertEqualsWithDelta(4.0, collect($vanityQuote['labor'])->firstWhere('key', 'bath_vanity')['hours'], 0.01);
+        $this->assertEqualsWithDelta(2.0, collect($pedestalQuote['labor'])->firstWhere('key', 'bath_pedestal')['hours'], 0.01);
+        $this->assertLessThan(
+            $vanityQuote['summary']['labor_pre_hst'],
+            $pedestalQuote['summary']['labor_pre_hst']
+        );
+    }
+
     public function test_legacy_bathroom_section_still_zeros_all_bath_materials(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([
@@ -193,6 +267,7 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $keys = collect($calc['labor'])->pluck('key')->all();
         $this->assertNotContains('bath_vanity', $keys);
+        $this->assertNotContains('bath_pedestal', $keys);
         $this->assertNotContains('bath_toilet', $keys);
     }
 

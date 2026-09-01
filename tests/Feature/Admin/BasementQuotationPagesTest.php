@@ -141,7 +141,10 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             '/id="br-lighting-fixture-qty"[^>]*\bhidden\b/',
             $html
         );
-        $this->assertStringContainsString('id="br-electrical-slot-bath"', $html);
+        $this->assertStringContainsString('Pedestal sink + faucet', $html);
+        $this->assertStringContainsString('name="include_pedestal_sink"', $html);
+        $this->assertStringContainsString('Pedestal sink', $html);
+        $this->assertStringContainsString('value="pedestal_sink"', $html);
         $this->assertStringContainsString('id="br-plumbing-slot-bath"', $html);
     }
 

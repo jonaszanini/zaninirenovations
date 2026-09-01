@@ -368,7 +368,7 @@ class BasementQuotationController extends Controller
             'include_demolition', 'panel_upgrade', 'include_plumbing', 'bath_rough_in',
             'sink_laundry', 'wet_bar', 'floor_drain', 'wh_reloc', 'insulate_walls',
             'insulate_ceiling', 'underslab', 'subfloor_prep', 'underlayment',
-            'include_bathroom', 'include_vanity', 'include_toilet', 'include_shower',
+            'include_bathroom', 'include_vanity', 'include_pedestal_sink', 'include_toilet', 'include_shower',
             'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
             'include_cleaning', 'include_touchups',
             'client_provides_all',

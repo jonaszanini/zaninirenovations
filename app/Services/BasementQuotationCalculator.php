@@ -114,6 +114,7 @@ class BasementQuotationCalculator
     {
         return [
             'vanity' => 'Vanity',
+            'pedestal_sink' => 'Pedestal sink',
             'faucet' => 'Faucet',
             'shower_frame' => 'Shower frame',
             'tub' => 'Tub',
@@ -141,6 +142,7 @@ class BasementQuotationCalculator
     {
         return match ($catalogOrKey) {
             'vanity' => 'vanity',
+            'pedestal_sink' => 'pedestal_sink',
             'faucet' => 'faucet',
             'shower_kit' => 'shower_frame',
             'showerhead' => 'showerhead',
@@ -214,7 +216,25 @@ class BasementQuotationCalculator
         }
         $inputs['qty_dims'] = $clean;
 
-        return self::applyBathTileAreas($inputs);
+        return self::applyBathTileAreas(self::normalizeBathSinkChoice($inputs));
+    }
+
+    /**
+     * Vanity and pedestal sink are alternatives. Pedestal wins if both are posted.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, mixed>
+     */
+    public static function normalizeBathSinkChoice(array $inputs): array
+    {
+        if (! empty($inputs['include_pedestal_sink'])) {
+            $inputs['include_pedestal_sink'] = true;
+            $inputs['include_vanity'] = false;
+        } else {
+            $inputs['include_pedestal_sink'] = false;
+        }
+
+        return $inputs;
     }
 
     /**
@@ -501,6 +521,7 @@ class BasementQuotationCalculator
             'include_bathroom' => false,
             'bath_type' => 'full',
             'include_vanity' => true,
+            'include_pedestal_sink' => false,
             'include_toilet' => true,
             'include_shower' => true,
             'include_tub' => false,
@@ -948,6 +969,16 @@ class BasementQuotationCalculator
             if (! empty($inputs['include_vanity'])) {
                 $addLabor('bath_vanity', 'bathroom', 'Vanity', 'Install', (float) $prod['vanity_hours']);
                 $addMat('vanity', 'bathroom', 1, 'vanity');
+                $addMat('faucet', 'bathroom', 1, 'faucet');
+            } elseif (! empty($inputs['include_pedestal_sink'])) {
+                $addLabor(
+                    'bath_pedestal',
+                    'bathroom',
+                    'Pedestal sink',
+                    'Install',
+                    (float) $prod['pedestal_sink_hours']
+                );
+                $addMat('pedestal_sink', 'bathroom', 1, 'pedestal_sink');
                 $addMat('faucet', 'bathroom', 1, 'faucet');
             }
             if (! empty($inputs['include_toilet'])) {

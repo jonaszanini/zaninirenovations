@@ -112,8 +112,9 @@
       'paint_colors' => 'One color = walls and ceiling the same. Two colors packs paint separately and adds tape / cut-in labor plus extra drywall finish time.',
       'paint_coats' => 'Finish coats after primer. Two is typical on new drywall.',
       'include_bathroom' => 'Adds bathroom fixture install and tile. Bathroom-only quotes keep electrical and plumbing on this step. On a full basement, turn on bathroom rough-in under Plumbing if new drains are needed.',
-      'bath_type' => 'Full bath includes shower or tub. Half bath is toilet and vanity only.',
-      'include_vanity' => 'Vanity cabinet, top, and faucet install (fixture cost from Price configuration).',
+      'bath_type' => 'Full bath includes shower or tub. Half bath is toilet and a vanity or pedestal sink.',
+      'include_vanity' => 'Vanity cabinet, top, and faucet. Uncheck this to use a pedestal sink instead.',
+      'include_pedestal_sink' => 'Simple pedestal bathroom sink and faucet instead of a vanity cabinet. Faster to install and a lower fixture cost.',
       'include_toilet' => 'Toilet supply, set, and connect.',
       'include_shower' => 'Shower unit or valve and surround install. Tile area is the field below.',
       'include_tub' => 'Bathtub set and connect, instead of or in addition to a shower.',
@@ -660,7 +661,26 @@
           <span class="br-tile-areas__title">Fixtures</span>
         </div>
         <div class="br-check-grid">
-          @include('admin.partials.checkbox', ['name' => 'include_vanity', 'hiddenFallback' => true, 'checked' => $brOn('include_vanity', true), 'label' => 'Vanity + faucet', 'info' => $brInfo['include_vanity'], 'inputClass' => 'admin-checkbox__input br-preview'])
+          @include('admin.partials.checkbox', [
+            'name' => 'include_vanity',
+            'id' => 'br-include-vanity',
+            'hiddenFallback' => true,
+            'checked' => $brOn('include_pedestal_sink') ? false : $brOn('include_vanity', true),
+            'label' => 'Vanity + faucet',
+            'info' => $brInfo['include_vanity'],
+            'inputClass' => 'admin-checkbox__input br-preview',
+            'attrs' => ['data-br-exclusive-group' => 'bath-sink'],
+          ])
+          @include('admin.partials.checkbox', [
+            'name' => 'include_pedestal_sink',
+            'id' => 'br-include-pedestal',
+            'hiddenFallback' => true,
+            'checked' => $brOn('include_pedestal_sink'),
+            'label' => 'Pedestal sink + faucet',
+            'info' => $brInfo['include_pedestal_sink'],
+            'inputClass' => 'admin-checkbox__input br-preview',
+            'attrs' => ['data-br-exclusive-group' => 'bath-sink'],
+          ])
           @include('admin.partials.checkbox', ['name' => 'include_toilet', 'hiddenFallback' => true, 'checked' => $brOn('include_toilet', true), 'label' => 'Toilet', 'info' => $brInfo['include_toilet'], 'inputClass' => 'admin-checkbox__input br-preview'])
           @include('admin.partials.checkbox', ['name' => 'include_shower', 'hiddenFallback' => true, 'checked' => $brOn('include_shower', true), 'label' => 'Shower', 'info' => $brInfo['include_shower'], 'inputClass' => 'admin-checkbox__input br-preview'])
           @include('admin.partials.checkbox', ['name' => 'include_tub', 'hiddenFallback' => true, 'checked' => $brOn('include_tub'), 'label' => 'Tub', 'info' => $brInfo['include_tub'], 'inputClass' => 'admin-checkbox__input br-preview'])
