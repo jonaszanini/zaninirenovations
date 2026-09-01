@@ -275,12 +275,24 @@
     var list = document.getElementById('br-tile-list');
     var out = form.querySelector('[data-br-tile-total]');
     if (!list || !out) return;
-    var total = 0;
-    list.querySelectorAll('[data-br-lw-qty]').forEach(function (el) {
-      var n = parseFloat(el.value);
-      if (isFinite(n) && n > 0) total += n;
+    var tile = 0;
+    var vinyl = 0;
+    list.querySelectorAll('[data-br-tile-row]').forEach(function (row) {
+      var qty = row.querySelector('[data-br-lw-qty]');
+      var finish = row.querySelector('[data-br-tile-finish]');
+      var n = qty ? parseFloat(qty.value) : NaN;
+      if (!isFinite(n) || n <= 0) return;
+      if (finish && String(finish.value).toLowerCase() === 'vinyl') vinyl += n;
+      else tile += n;
     });
-    out.textContent = 'Combined: ' + formatTileTotal(total);
+    var total = tile + vinyl;
+    var text = 'Combined: ' + formatTileTotal(total);
+    if (total > 0 && tile > 0 && vinyl > 0) {
+      text += ' (tile ' + formatTileTotal(tile) + ' · vinyl ' + formatTileTotal(vinyl) + ')';
+    } else if (total > 0 && vinyl > 0) {
+      text += ' (vinyl)';
+    }
+    out.textContent = text;
   }
 
   function initTileRow(row) {

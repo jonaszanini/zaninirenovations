@@ -816,6 +816,73 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertStringContainsString('50', $labor['detail']);
     }
 
+    public function test_bathroom_vinyl_floor_uses_lvp_not_tile(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'detector_qty' => 0,
+            'bath_tile_areas' => [
+                ['label' => 'Floor', 'sqft' => 40, 'finish' => 'vinyl'],
+                ['label' => 'Shower', 'sqft' => 64, 'finish' => 'tile'],
+            ],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $tileLabor = collect($calc['labor'])->firstWhere('key', 'bath_tile');
+        $this->assertNotNull($tileLabor);
+        $this->assertStringContainsString('Shower 64 sf', $tileLabor['detail']);
+        $this->assertStringNotContainsString('Floor', $tileLabor['detail']);
+        $this->assertEqualsWithDelta(round(64 / 12, 2), $tileLabor['hours'], 0.01);
+
+        $vinylLabor = collect($calc['labor'])->firstWhere('key', 'bath_vinyl');
+        $this->assertNotNull($vinylLabor);
+        $this->assertSame('Bathroom vinyl flooring', $vinylLabor['label']);
+        $this->assertStringContainsString('Floor 40 sf', $vinylLabor['detail']);
+        $this->assertEqualsWithDelta(round(40 / 25, 2), $vinylLabor['hours'], 0.01);
+
+        $underlayLabor = collect($calc['labor'])->firstWhere('key', 'bath_vinyl_underlay');
+        $this->assertNotNull($underlayLabor);
+        $this->assertEqualsWithDelta(round(40 / 80, 2), $underlayLabor['hours'], 0.01);
+
+        $tileMat = collect($calc['materials'])->firstWhere('key', 'bath_tile');
+        $this->assertNotNull($tileMat);
+        $this->assertEqualsWithDelta(70.4, $tileMat['qty'], 0.01);
+        $this->assertEqualsWithDelta(4.50, $tileMat['unit_price'], 0.01);
+
+        $vinylMat = collect($calc['materials'])->firstWhere('key', 'bath_vinyl');
+        $this->assertNotNull($vinylMat);
+        $this->assertSame('Bathroom vinyl flooring', $vinylMat['label']);
+        $this->assertEqualsWithDelta(43.2, $vinylMat['qty'], 0.01);
+        $this->assertEqualsWithDelta(3.50, $vinylMat['unit_price'], 0.01);
+
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'thinset_grout'));
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'bath_vinyl_underlay'));
+    }
+
+    public function test_bathroom_vinyl_only_skips_tile_materials(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'detector_qty' => 0,
+            'bath_tile_areas' => [
+                ['label' => 'Floor', 'sqft' => 40, 'finish' => 'vinyl'],
+            ],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertNull(collect($calc['labor'])->firstWhere('key', 'bath_tile'));
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'bath_tile'));
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'thinset_grout'));
+        $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'bath_vinyl'));
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'bath_vinyl'));
+    }
+
     public function test_disabled_painting_does_not_auto_fill_paint(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

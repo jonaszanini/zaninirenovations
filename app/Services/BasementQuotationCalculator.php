@@ -218,7 +218,7 @@ class BasementQuotationCalculator
     }
 
     /**
-     * @return list<array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null}>
+     * @return list<array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null, finish: string}>
      */
     public static function defaultBathTileAreas(): array
     {
@@ -229,7 +229,7 @@ class BasementQuotationCalculator
     }
 
     /**
-     * @return array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null}
+     * @return array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null, finish: string}
      */
     public static function blankBathTileArea(string $label = ''): array
     {
@@ -239,7 +239,16 @@ class BasementQuotationCalculator
             'mode' => 'sqft',
             'length_ft' => null,
             'width_ft' => null,
+            'finish' => 'tile',
         ];
+    }
+
+    /**
+     * Tile (ceramic / porcelain) or vinyl (LVP) on a bathroom floor/wall area.
+     */
+    public static function normalizeBathTileFinish(mixed $finish): string
+    {
+        return strtolower(trim((string) $finish)) === 'vinyl' ? 'vinyl' : 'tile';
     }
 
     /**
@@ -275,6 +284,7 @@ class BasementQuotationCalculator
                     'mode' => self::normalizeAreaMode($dims['mode'] ?? 'sqft'),
                     'length_ft' => $dims['length_ft'] ?? null,
                     'width_ft' => $dims['width_ft'] ?? null,
+                    'finish' => 'tile',
                 ]]
                 : [];
             $inputs['bath_tile_sf'] = $legacy;
@@ -294,7 +304,7 @@ class BasementQuotationCalculator
 
     /**
      * @param  array<string, mixed>  $row
-     * @return array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null}|null
+     * @return array{label: string, sqft: float, mode: string, length_ft: float|null, width_ft: float|null, finish: string}|null
      */
     public static function normalizeBathTileArea(array $row): ?array
     {
@@ -318,6 +328,39 @@ class BasementQuotationCalculator
             'mode' => $mode,
             'length_ft' => $len,
             'width_ft' => $wid,
+            'finish' => self::normalizeBathTileFinish($row['finish'] ?? null),
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $areas
+     * @return array{tile: float, vinyl: float, tile_rows: list<array<string, mixed>>, vinyl_rows: list<array<string, mixed>>}
+     */
+    public static function splitBathTileAreasByFinish(array $areas): array
+    {
+        $tile = 0.0;
+        $vinyl = 0.0;
+        $tileRows = [];
+        $vinylRows = [];
+        foreach ($areas as $row) {
+            $sf = (float) ($row['sqft'] ?? 0);
+            if ($sf <= 0) {
+                continue;
+            }
+            if (self::normalizeBathTileFinish($row['finish'] ?? null) === 'vinyl') {
+                $vinyl += $sf;
+                $vinylRows[] = $row;
+            } else {
+                $tile += $sf;
+                $tileRows[] = $row;
+            }
+        }
+
+        return [
+            'tile' => round($tile, 2),
+            'vinyl' => round($vinyl, 2),
+            'tile_rows' => $tileRows,
+            'vinyl_rows' => $vinylRows,
         ];
     }
 
@@ -944,18 +987,44 @@ class BasementQuotationCalculator
             }
             $addMat('bath_pot_light', 'bathroom', $bathSpots, 'pot_light', 'Bathroom spot light');
             $addMat('bath_light_fixture', 'bathroom', $bathFixtures, 'light_fixture', 'Bathroom light fixture');
-            $tileSf = max(0, (float) $inputs['bath_tile_sf']);
+            $tileAreas = is_array($inputs['bath_tile_areas'] ?? null) ? $inputs['bath_tile_areas'] : [];
+            $tileSplit = self::splitBathTileAreasByFinish($tileAreas);
+            $tileSf = $tileSplit['tile'];
+            $vinylSf = $tileSplit['vinyl'];
             if ($tileSf > 0) {
-                $tileAreas = is_array($inputs['bath_tile_areas'] ?? null) ? $inputs['bath_tile_areas'] : [];
                 $addLabor(
                     'bath_tile',
                     'bathroom',
                     'Bathroom tile',
-                    self::bathTileLaborDetail($tileAreas, $tileSf),
+                    self::bathTileLaborDetail($tileSplit['tile_rows'], $tileSf),
                     $perHr($tileSf, (float) $prod['tile_sf_per_hr'])
                 );
                 $addMat('bath_tile', 'bathroom', $tileSf * 1.1, 'tile');
                 $addMat('thinset_grout', 'bathroom', $this->packages($tileSf * 1.1, BasementSettings::THINSET_SF_PER_BAG), 'thinset_grout');
+            }
+            if ($vinylSf > 0) {
+                $addLabor(
+                    'bath_vinyl_underlay',
+                    'bathroom',
+                    'Bathroom vinyl underlayment',
+                    number_format($vinylSf, 0).' sq ft',
+                    $perHr($vinylSf, (float) $prod['underlayment_sf_per_hr'])
+                );
+                $addMat(
+                    'bath_vinyl_underlay',
+                    'bathroom',
+                    $this->packages($vinylSf * 1.08, BasementSettings::UNDERLAYMENT_SF_PER_ROLL),
+                    'underlayment',
+                    'Bathroom vinyl underlayment'
+                );
+                $addLabor(
+                    'bath_vinyl',
+                    'bathroom',
+                    'Bathroom vinyl flooring',
+                    self::bathTileLaborDetail($tileSplit['vinyl_rows'], $vinylSf),
+                    $perHr($vinylSf, (float) $prod['flooring_sf_per_hr'])
+                );
+                $addMat('bath_vinyl', 'bathroom', $vinylSf * 1.08, 'lvp', 'Bathroom vinyl flooring');
             }
         }
 

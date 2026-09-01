@@ -6643,7 +6643,7 @@ body.cp-modal-open {
 }
 .br-tile-row__main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
   gap: 8px 10px;
   align-items: end;
 }
@@ -6652,8 +6652,13 @@ body.cp-modal-open {
   margin-bottom: 0;
   min-width: 0;
 }
-.br-tile-row__name {
+.br-tile-row__finish {
   grid-column: 1;
+  margin-bottom: 0;
+  min-width: 0;
+}
+.br-tile-row__name {
+  grid-column: 2;
   margin-bottom: 0;
   min-width: 0;
 }
@@ -6674,10 +6679,15 @@ body.cp-modal-open {
 .br-tile-row__sqft-controls .br-lw-segment {
   align-self: center;
 }
+.br-tile-row__finish .admin-input {
+  width: 100%;
+  max-width: 9.5rem;
+}
 .br-tile-row__name .admin-input {
   max-width: 9.5rem;
 }
 .br-tile-row__remove {
+  grid-column: 3;
   flex-shrink: 0;
   min-width: 44px;
   min-height: 44px;
@@ -6695,9 +6705,10 @@ body.cp-modal-open {
 }
 @media (min-width: 700px) {
   .br-tile-row__main {
-    grid-template-columns: max-content minmax(7rem, 9.5rem) 44px;
+    grid-template-columns: max-content minmax(6.5rem, 8.5rem) minmax(7rem, 9.5rem) 44px;
   }
   .br-tile-row__sqft,
+  .br-tile-row__finish,
   .br-tile-row__name,
   .br-tile-row__remove {
     grid-column: auto;

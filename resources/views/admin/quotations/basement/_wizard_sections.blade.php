@@ -122,7 +122,7 @@
       'include_bath_spot' => 'Recessed pot / spot in the bathroom (for example a shower pot). You can use this together with a light fixture.',
       'bath_fixture_qty' => 'How many bathroom light fixtures to hang.',
       'bath_spot_qty' => 'How many bathroom recessed pots / spot lights.',
-      'bath_tile_sf' => 'Split tile into named areas (floor, shower walls, accent). Each can be total sq ft or length × width. The quote uses the combined total plus waste.',
+      'bath_tile_sf' => 'Split into named areas (floor, shower walls, accent). Each can be total sq ft or length × width. Choose Tile (ceramic / porcelain, thinset) or Vinyl (LVP flooring prices). Shower walls stay tile; use Vinyl on the floor.',
       'hardware_sets' => 'Extra towel bars, paper holders, or similar, beyond what comes with the vanity.',
       'include_cleaning' => 'Final broom/vacuum, wipe, and dust so the space is handover-ready.',
       'include_touchups' => 'Small paint and caulk fixes on a punch list after the main work.',
@@ -739,6 +739,7 @@
                     'mode' => $legacyDim['mode'],
                     'length_ft' => $legacyDim['length'],
                     'width_ft' => $legacyDim['width'],
+                    'finish' => 'tile',
                 ]]
                 : \App\Services\BasementQuotationCalculator::defaultBathTileAreas();
         }

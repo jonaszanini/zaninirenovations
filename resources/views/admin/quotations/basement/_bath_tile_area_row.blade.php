@@ -1,8 +1,8 @@
 {{--
-  One bathroom tile zone (floor, shower, accent wall, …).
+  One bathroom tile / vinyl zone (floor, shower, accent wall, …).
 
   @param int|string $i
-  @param array       $area  label, sqft, mode, length_ft, width_ft
+  @param array       $area  label, sqft, mode, length_ft, width_ft, finish
 --}}
 @php
   $i = $i ?? '__I__';
@@ -10,6 +10,7 @@
   $label = $area['label'] ?? '';
   $sqft = $area['sqft'] ?? '';
   $mode = \App\Services\BasementQuotationCalculator::normalizeAreaMode($area['mode'] ?? 'sqft');
+  $finish = \App\Services\BasementQuotationCalculator::normalizeBathTileFinish($area['finish'] ?? null);
   $length = $area['length_ft'] ?? ($area['length'] ?? '');
   $width = $area['width_ft'] ?? ($area['width'] ?? '');
   $computed = ($mode === 'dimensions' && $length !== '' && $width !== '' && (float) $length > 0 && (float) $width > 0)
@@ -39,6 +40,14 @@
           </label>
         </div>
       </div>
+    </div>
+    <div class="admin-form-group br-tile-row__finish">
+      <label for="br-tile-finish-{{ $i }}">Finish</label>
+      <select class="admin-input br-preview" id="br-tile-finish-{{ $i }}"
+              name="bath_tile_areas[{{ $i }}][finish]" data-br-tile-finish>
+        <option value="tile" @selected($finish === 'tile')>Tile</option>
+        <option value="vinyl" @selected($finish === 'vinyl')>Vinyl (LVP)</option>
+      </select>
     </div>
     <div class="admin-form-group br-tile-row__name">
       <label for="br-tile-label-{{ $i }}">Area name</label>

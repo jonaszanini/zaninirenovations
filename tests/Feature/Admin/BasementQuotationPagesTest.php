@@ -135,6 +135,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('New drain, vent, and hot/cold supply', $html);
         $this->assertStringContainsString('Add tile area', $html);
         $this->assertStringContainsString('e.g. Floor, Shower', $html);
+        $this->assertStringContainsString('Vinyl (LVP)', $html);
+        $this->assertStringContainsString('name="bath_tile_areas[0][finish]"', $html);
         $this->assertMatchesRegularExpression(
             '/id="br-lighting-fixture-qty"[^>]*\bhidden\b/',
             $html
