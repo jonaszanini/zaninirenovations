@@ -28,6 +28,22 @@ class ProjectPhotoRotationService
         $this->rotateWithFirstWorkingStrategy($absolutePath, $direction);
     }
 
+    /**
+     * Degrees for Imagick::rotateImage(). ImageMagick uses clockwise-positive angles.
+     */
+    public static function imagickDegrees(string $direction): float
+    {
+        return $direction === 'cw' ? 90.0 : -90.0;
+    }
+
+    /**
+     * Degrees for GD imagerotate(). PHP GD uses counter-clockwise-positive angles.
+     */
+    public static function gdDegrees(string $direction): int
+    {
+        return $direction === 'cw' ? -90 : 90;
+    }
+
     private function webpQuality(): int
     {
         $q = (int) config('webp.quality', 75);
@@ -37,8 +53,8 @@ class ProjectPhotoRotationService
 
     private function rotateWithFirstWorkingStrategy(string $absolutePath, string $direction): void
     {
-        $degreesImagick = $direction === 'cw' ? -90.0 : 90.0;
-        $degreesGd = $direction === 'cw' ? -90 : 90;
+        $degreesImagick = self::imagickDegrees($direction);
+        $degreesGd = self::gdDegrees($direction);
 
         if ($this->imagickAvailable()) {
             $this->rotateViaImagick($absolutePath, $degreesImagick);

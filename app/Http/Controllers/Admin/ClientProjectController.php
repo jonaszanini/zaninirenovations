@@ -398,11 +398,28 @@ class ClientProjectController extends Controller
         try {
             $photoStorage->rotateImage($photo, (string) $request->input('direction'));
         } catch (\RuntimeException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
+            }
+
             return back()->with('error', $e->getMessage());
         } catch (\Throwable $e) {
             report($e);
+            $message = 'Could not rotate the photo: '.$e->getMessage();
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message], 500);
+            }
 
-            return back()->with('error', 'Could not rotate the photo: '.$e->getMessage());
+            return back()->with('error', $message);
+        }
+
+        $photo->refresh();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'url' => $photo->url(),
+            ]);
         }
 
         return back()->with('success', 'Photo rotated.');

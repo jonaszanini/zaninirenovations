@@ -3861,23 +3861,45 @@ body.cp-modal-open {
 }
 .cp-project-photos-actions {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px;
+  top: 6px;
+  right: 6px;
   z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.cp-project-photos-item:hover .cp-project-photos-actions,
+.cp-project-photos-item:focus-within .cp-project-photos-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 .cp-project-photos-action {
   margin: 0;
 }
-.cp-project-photos-actions .admin-btn {
-  min-width: 44px;
-  min-height: 44px;
+.cp-project-photos-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--admin-control-height, 44px);
+  height: var(--admin-control-height, 44px);
   padding: 0;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--admin-danger, #c62828);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.16);
+  cursor: pointer;
+}
+.cp-project-photos-delete:hover,
+.cp-project-photos-delete:focus-visible {
+  background: #fff;
+  color: #8e1b1b;
+}
+@media (hover: none) {
+  .cp-project-photos-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 .cp-edit-project-photos-card {
   margin-top: 16px;
@@ -4060,6 +4082,38 @@ body.cp-modal-open {
   text-align: center;
   color: #e5e7eb;
   font-size: 14px;
+}
+.cp-photo-lightbox-tools {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 12px;
+  pointer-events: auto;
+}
+.cp-photo-lightbox-tools[hidden] {
+  display: none !important;
+}
+.cp-photo-lightbox-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--admin-control-height, 44px);
+  height: var(--admin-control-height, 44px);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+.cp-photo-lightbox-tool:hover:not(:disabled),
+.cp-photo-lightbox-tool:focus-visible:not(:disabled) {
+  background: rgba(255, 255, 255, 0.28);
+}
+.cp-photo-lightbox-tool:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 .cp-photo-lightbox-close {
   position: absolute;

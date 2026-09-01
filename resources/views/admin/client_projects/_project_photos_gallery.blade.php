@@ -6,6 +6,9 @@
     'url' => $p->url(),
     'type' => $p->mediaType(),
     'name' => $p->displayName(),
+    'rotateUrl' => ($editable && $p->isImage())
+      ? route('admin.client-projects.photos.rotate', [$project, $p])
+      : null,
   ])->values();
 @endphp
 
@@ -37,33 +40,13 @@
           </button>
           @if ($editable)
             <div class="cp-project-photos-actions">
-              @if ($photo->isImage())
-                <form action="{{ route('admin.client-projects.photos.rotate', [$project, $photo]) }}"
-                      method="post"
-                      class="cp-project-photos-action">
-                  @csrf
-                  <input type="hidden" name="direction" value="ccw">
-                  <button type="submit" class="admin-btn admin-btn--ghost admin-btn--xs" title="Rotate 90° left" aria-label="Rotate {{ $photo->displayName() }} 90 degrees left">
-                    <i class="fa fa-undo" aria-hidden="true"></i>
-                  </button>
-                </form>
-                <form action="{{ route('admin.client-projects.photos.rotate', [$project, $photo]) }}"
-                      method="post"
-                      class="cp-project-photos-action">
-                  @csrf
-                  <input type="hidden" name="direction" value="cw">
-                  <button type="submit" class="admin-btn admin-btn--ghost admin-btn--xs" title="Rotate 90° right" aria-label="Rotate {{ $photo->displayName() }} 90 degrees right">
-                    <i class="fa fa-repeat" aria-hidden="true"></i>
-                  </button>
-                </form>
-              @endif
               <form action="{{ route('admin.client-projects.photos.destroy', [$project, $photo]) }}"
                     method="post"
                     class="cp-project-photos-action"
                     onsubmit="return confirm('Remove this file?');">
                 @csrf
                 @method('DELETE')
-                <button type="submit" class="admin-btn admin-btn--ghost admin-btn--xs" title="Remove file">
+                <button type="submit" class="cp-project-photos-delete" title="Remove file" aria-label="Remove {{ $photo->displayName() }}">
                   <i class="fa fa-trash" aria-hidden="true"></i>
                 </button>
               </form>
@@ -93,6 +76,16 @@
           </a>
         </div>
         <figcaption class="cp-photo-lightbox-caption" data-cp-lightbox-caption></figcaption>
+        @if ($editable)
+          <div class="cp-photo-lightbox-tools" data-cp-lightbox-tools hidden>
+            <button type="button" class="cp-photo-lightbox-tool" data-cp-lightbox-rotate="ccw" aria-label="Rotate 90 degrees left" title="Rotate left">
+              <i class="fa fa-undo" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="cp-photo-lightbox-tool" data-cp-lightbox-rotate="cw" aria-label="Rotate 90 degrees right" title="Rotate right">
+              <i class="fa fa-repeat" aria-hidden="true"></i>
+            </button>
+          </div>
+        @endif
       </figure>
       <button type="button" class="cp-photo-lightbox-nav cp-photo-lightbox-nav--next" data-cp-lightbox-next aria-label="Next">
         <i class="fa fa-chevron-right" aria-hidden="true"></i>
@@ -123,7 +116,12 @@
         var captionEl = lightbox.querySelector('[data-cp-lightbox-caption]');
         var prevBtn = lightbox.querySelector('[data-cp-lightbox-prev]');
         var nextBtn = lightbox.querySelector('[data-cp-lightbox-next]');
+        var toolsEl = lightbox.querySelector('[data-cp-lightbox-tools]');
+        var rotateBtns = lightbox.querySelectorAll('[data-cp-lightbox-rotate]');
         var current = 0;
+        var rotating = false;
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var csrf = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
         function hideAllMedia() {
           if (imgEl) { imgEl.hidden = true; imgEl.removeAttribute('src'); }
@@ -136,6 +134,11 @@
           if (pdfWrap) pdfWrap.hidden = true;
         }
 
+        function setToolsVisible(visible) {
+          if (!toolsEl) return;
+          toolsEl.hidden = !visible;
+        }
+
         function render() {
           var item = items[current];
           if (!item) return;
@@ -144,21 +147,65 @@
           if (item.type === 'video' && videoEl) {
             videoEl.src = item.url;
             videoEl.hidden = false;
+            setToolsVisible(false);
           } else if (item.type === 'pdf' && pdfWrap && pdfLink) {
             pdfWrap.hidden = false;
             if (pdfName) pdfName.textContent = item.name || 'PDF document';
             pdfLink.href = item.url;
+            setToolsVisible(false);
           } else if (imgEl) {
             imgEl.src = item.url;
             imgEl.alt = item.name || ('File ' + (current + 1));
             imgEl.hidden = false;
+            setToolsVisible(!!item.rotateUrl);
           }
 
           if (captionEl) {
             captionEl.textContent = (item.name ? item.name + ' — ' : '') + (current + 1) + ' / ' + items.length;
           }
           if (prevBtn) prevBtn.disabled = current <= 0;
-          if (nextBtn) nextBtn.disabled = current>= items.length - 1;
+          if (nextBtn) nextBtn.disabled = current >= items.length - 1;
+        }
+
+        function applyRotatedUrl(url) {
+          items[current].url = url;
+          if (imgEl) imgEl.src = url;
+          var thumb = grid.querySelector('[data-cp-photo-index="' + current + '"] img');
+          if (thumb) thumb.src = url;
+        }
+
+        function rotateCurrent(direction) {
+          var item = items[current];
+          if (!item || !item.rotateUrl || rotating) return;
+          rotating = true;
+          rotateBtns.forEach(function (btn) { btn.disabled = true; });
+          fetch(item.rotateUrl, {
+            method: 'POST',
+            headers: {
+              'X-CSRF-TOKEN': csrf,
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            credentials: 'same-origin',
+            body: 'direction=' + encodeURIComponent(direction) + '&_token=' + encodeURIComponent(csrf)
+          }).then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, data: data };
+            });
+          }).then(function (result) {
+            if (result.ok && result.data && result.data.url) {
+              applyRotatedUrl(result.data.url);
+              return;
+            }
+            var msg = (result.data && result.data.message) ? result.data.message : 'Could not rotate the photo.';
+            if (captionEl) captionEl.textContent = msg;
+          }).catch(function () {
+            if (captionEl) captionEl.textContent = 'Could not rotate the photo.';
+          }).then(function () {
+            rotating = false;
+            rotateBtns.forEach(function (btn) { btn.disabled = false; });
+          });
         }
 
         function openAt(index) {
@@ -172,6 +219,7 @@
           lightbox.hidden = true;
           document.body.classList.remove('cp-modal-open');
           hideAllMedia();
+          setToolsVisible(false);
         }
 
         grid.addEventListener('click', function (e) {
@@ -204,6 +252,12 @@
             }
           });
         }
+
+        rotateBtns.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            rotateCurrent(btn.getAttribute('data-cp-lightbox-rotate'));
+          });
+        });
 
         document.addEventListener('keydown', function (e) {
           if (lightbox.hidden) return;
