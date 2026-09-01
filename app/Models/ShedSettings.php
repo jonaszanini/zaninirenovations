@@ -281,6 +281,61 @@ class ShedSettings extends Model
     }
 
     /**
+     * Short “what / where / why” copy for price-configuration info icons.
+     *
+     * @return array<string, string>
+     */
+    public static function materialInfoTips(): array
+    {
+        return [
+            'lumber_2x4' => '2×4 studs for walls, and joists when 2×4 floors are selected.',
+            'lumber_2x6' => '2×6 boards for floor joists, roof rafters, and 2×6 walls.',
+            'plate_2x4' => 'Top and bottom plates on 2×4 walls. Price is the 2×4 stud ÷ 8 ft.',
+            'plate_2x6' => 'Top and bottom plates on 2×6 walls. Price is the 2×6 ÷ 8 ft.',
+            'osb_58' => '4×8 sheets for the floor deck and roof sheathing.',
+            'plywood_34' => 'Thicker 4×8 floor decking when 3/4" plywood is chosen.',
+            'wall_osb' => '4×8 wall sheathing under the siding for structure and nailing.',
+            'concrete' => 'Ready-mix for a poured concrete pad foundation.',
+            'gravel' => 'Granular base under a pad, skids, or deck blocks.',
+            'helical_pile' => 'Ground screw piles the shed sits on (pile foundation).',
+            'pt_skid' => 'Pressure-treated 6×6 runners the floor frame sits on.',
+            'deck_block' => 'Blocks under the floor or skids for a block foundation.',
+            'asphalt_shingle' => 'Asphalt roof covering. Sold in bundles (~33.3 sq ft), not squares.',
+            self::MATERIAL_METAL_BLACK => 'Black steel roof panels (36×93 in) over the roof deck.',
+            self::MATERIAL_METAL_GALVANIZED => 'Silver galvanized steel roof panels (36×93 in) over the roof deck.',
+            'underlayment' => 'Waterproof layer over the roof sheathing, under shingles or metal.',
+            'ice_water' => 'Self-stick membrane at the eaves to stop ice-dam leaks.',
+            'drip_edge' => 'Metal flashing on roof edges so water drips clear of the fascia.',
+            'fascia' => 'Board on the eave edge. Gutters and drip edge fasten to it.',
+            'ridge_vent' => 'Vent along the roof peak to let hot air out.',
+            'siding_vinyl' => 'Vinyl cladding on the exterior walls.',
+            'siding_bnb' => 'Vertical wall boards with battens covering the joints.',
+            'siding_wood' => 'Wood cladding on the exterior walls.',
+            'siding_hardie' => 'Fiber-cement wall cladding (Hardie-style), not roof shingles.',
+            'house_wrap' => 'Weather barrier on the walls, under the siding.',
+            'corner_trim' => 'Trim at outside corners and around doors and windows.',
+            'door_custom' => 'Site-built exterior door in the wall opening.',
+            'door_prehung' => 'Factory door already in a frame, set in the wall opening.',
+            'door_rollup' => 'Overhead door in a wide wall opening.',
+            'window_slider' => 'Sliding window in the wall for light and air.',
+            'window_transom' => 'Small high window in the wall for extra light.',
+            'insulation_batt' => 'Batt insulation in the walls on a finished interior.',
+            'vapor_barrier' => 'Plastic sheet on the warm side of the insulation.',
+            'drywall_sheet' => 'Interior wall boards on a finished interior.',
+            'joint_compound' => 'Mud used to tape and finish drywall joints.',
+            'drywall_tape' => 'Paper tape over drywall seams before mudding.',
+            'paint_exterior' => 'Exterior paint or stain for wood, Hardie, or board-and-batten.',
+            'gutter' => 'Eave gutters and downspouts to carry roof water away.',
+            'ramp' => 'Pressure-treated ramp at the door for access.',
+            'outlet_box' => 'Interior receptacle box, outlet, and cover.',
+            'light_fixture' => 'Light fixture inside or on the shed.',
+            'subpanel' => 'Electrical subpanel allowance if the shed is powered.',
+            'fasteners' => 'Nails, screws, and hangers used throughout the build.',
+            'loft_osb' => '4×8 sheets for a storage loft floor inside the shed.',
+        ];
+    }
+
+    /**
      * @return array<string, array<string, string>>
      */
     public static function productivityGroups(): array

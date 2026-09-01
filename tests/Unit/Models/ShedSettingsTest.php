@@ -93,4 +93,13 @@ class ShedSettingsTest extends TestCase
         $this->assertSame('Old metal sheet', $row['name']);
         $this->assertEqualsWithDelta(72.28, $row['unit_price'], 0.001);
     }
+
+    public function test_every_default_material_has_an_info_tip(): void
+    {
+        $tips = ShedSettings::materialInfoTips();
+        foreach (array_keys(ShedSettings::defaultMaterials()) as $key) {
+            $this->assertArrayHasKey($key, $tips);
+            $this->assertNotSame('', trim($tips[$key]));
+        }
+    }
 }

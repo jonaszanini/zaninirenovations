@@ -54,9 +54,10 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             ->assertSee('From stud', false)
             ->assertSee('Save configuration')
             ->assertSee('Asphalt shingles (bundle / 33.3 sq ft)')
-            ->assertSee('Priced per bundle (33.3 sq ft), not per square.')
+            ->assertSee('Sold in bundles (~33.3 sq ft), not squares.')
             ->assertSee('Metal roof Black (36×93 panel)')
-            ->assertSee('Metal roof Silver (36×93 panel)');
+            ->assertSee('Metal roof Silver (36×93 panel)')
+            ->assertSee('Fiber-cement wall cladding (Hardie-style), not roof shingles.');
     }
 
     public function test_project_context_sits_between_price_configuration_and_next(): void

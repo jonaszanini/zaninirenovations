@@ -6935,8 +6935,18 @@ body.cp-modal-open {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-.br-config-line .admin-info-tip {
-  vertical-align: -0.15em;
+.br-config-line:has(.admin-info-tip) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+.br-config-table .br-config-line .admin-info-tip {
+  margin: -10px 0 -10px -8px;
+  flex-shrink: 0;
+}
+.br-config-line > span {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .br-config-derived {
   margin: 0;

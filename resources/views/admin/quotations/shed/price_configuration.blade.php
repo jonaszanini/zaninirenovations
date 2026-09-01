@@ -132,6 +132,7 @@
                 $derivedFrom = $key === \App\Models\ShedSettings::MATERIAL_PLATE_2X6
                     ? \App\Models\ShedSettings::MATERIAL_LUMBER_2X6
                     : \App\Models\ShedSettings::MATERIAL_LUMBER_2X4;
+                $infoTip = \App\Models\ShedSettings::materialInfoTips()[$key] ?? '';
               @endphp
               <tr class="br-config-row{{ $derivedPlate ? ' is-derived' : ($catalogId > 0 ? ' is-linked' : ' is-manual') }}"
                   data-br-config-row data-br-material-key="{{ $key }}"
@@ -139,12 +140,8 @@
                 <td data-label="Line item">
                   <div class="br-config-line-wrap">
                     <strong class="br-config-line">
-                      {{ $lineLabel }}
-                      @if ($key === 'asphalt_shingle')
-                        @include('admin.partials.info_tip', ['text' => 'Priced per bundle (33.3 sq ft), not per square.'])
-                      @elseif (\App\Models\ShedSettings::isMetalRoofPanel($key))
-                        @include('admin.partials.info_tip', ['text' => 'Vicwest UltraVic 36×93 in panel (23.25 sq ft).'])
-                      @endif
+                      @include('admin.partials.info_tip', ['text' => $infoTip])
+                      <span>{{ $lineLabel }}</span>
                     </strong>
                     @if ($derivedPlate)
                       <span class="br-config-source br-config-source--derived" data-br-cfg-source>
