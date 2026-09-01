@@ -36,7 +36,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Total sq ft')
             ->assertSee('Length × width')
             ->assertSee('Flooring')
-            ->assertSee('Ceiling lighting')
+            ->assertSee('Basement ceiling lighting')
             ->assertSee('Spot lights', false)
             ->assertSee('Wall / ceiling colors')
             ->assertSee('fa-info-circle', false)
@@ -122,15 +122,17 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         );
         $this->assertMatchesRegularExpression('/id="br-outlets"[^>]*value="3"/', $html);
         $this->assertMatchesRegularExpression('/id="br-switches"[^>]*value="2"/', $html);
-        $this->assertMatchesRegularExpression('/id="br-fixtures"[^>]*value="1"/', $html);
-        $this->assertMatchesRegularExpression('/option value="both"[^>]*selected/', $html);
+        $this->assertMatchesRegularExpression('/id="br-bath-fixture-qty"[^>]*value="1"/', $html);
+        $this->assertStringContainsString('name="include_bath_fixture"', $html);
+        $this->assertStringContainsString('Light fixture', $html);
+        $this->assertStringContainsString('Spot light', $html);
         $this->assertStringContainsString('1 at the sink', $html);
-        $this->assertStringContainsString('How many light fixtures', $html);
+        $this->assertStringContainsString('Living-area lights stay on the Electrical step.', $html);
         $this->assertStringContainsString('fa-info-circle', $html);
         $this->assertStringContainsString('New drain, vent, and hot/cold supply', $html);
         $this->assertStringContainsString('Add tile area', $html);
         $this->assertStringContainsString('e.g. Floor, Shower', $html);
-        $this->assertDoesNotMatchRegularExpression(
+        $this->assertMatchesRegularExpression(
             '/id="br-lighting-fixture-qty"[^>]*\bhidden\b/',
             $html
         );

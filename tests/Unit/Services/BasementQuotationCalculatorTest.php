@@ -53,6 +53,16 @@ class BasementQuotationCalculatorTest extends TestCase
             $calc['summary']['subtotal_pre_hst'],
             0.01
         );
+        $this->assertEqualsWithDelta(
+            round($calc['summary']['labor_pre_hst'] * 0.13, 2),
+            $calc['summary']['labor_hst'],
+            0.01
+        );
+        $this->assertEqualsWithDelta(
+            round($calc['summary']['labor_pre_hst'] + $calc['summary']['labor_hst'], 2),
+            $calc['summary']['labor_after_hst'],
+            0.01
+        );
         $this->assertCount(3, $calc['eta']['scenarios']);
         $this->assertSame(1, $calc['eta']['scenarios'][0]['crew']);
         $this->assertGreaterThan(
@@ -74,6 +84,67 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $this->assertSame(0.0, $calc['summary']['materials_pre_hst']);
         $this->assertGreaterThan(0, $calc['summary']['labor_pre_hst']);
+    }
+
+    public function test_client_provides_individual_bathroom_items(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'include_vanity' => true,
+            'include_toilet' => true,
+            'include_shower' => true,
+            'include_tub' => true,
+            'detector_qty' => 0,
+            'client_provides_bath_items' => ['vanity', 'faucet', 'showerhead'],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $vanity = collect($calc['materials'])->firstWhere('key', 'vanity');
+        $faucet = collect($calc['materials'])->firstWhere('key', 'faucet');
+        $head = collect($calc['materials'])->firstWhere('key', 'showerhead');
+        $toilet = collect($calc['materials'])->firstWhere('key', 'toilet');
+        $frame = collect($calc['materials'])->firstWhere('key', 'shower_kit');
+        $tub = collect($calc['materials'])->firstWhere('key', 'tub_kit');
+
+        $this->assertNotNull($vanity);
+        $this->assertTrue($vanity['client_provided']);
+        $this->assertSame(0.0, $vanity['amount']);
+        $this->assertTrue($faucet['client_provided']);
+        $this->assertSame(0.0, $faucet['amount']);
+        $this->assertTrue($head['client_provided']);
+        $this->assertSame(0.0, $head['amount']);
+        $this->assertFalse($toilet['client_provided']);
+        $this->assertGreaterThan(0, $toilet['amount']);
+        $this->assertFalse($frame['client_provided']);
+        $this->assertGreaterThan(0, $frame['amount']);
+        $this->assertFalse($tub['client_provided']);
+        $this->assertGreaterThan(0, $tub['amount']);
+        $this->assertContains('bath_vanity', collect($calc['labor'])->pluck('key')->all());
+    }
+
+    public function test_legacy_bathroom_section_still_zeros_all_bath_materials(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'include_vanity' => true,
+            'include_toilet' => true,
+            'detector_qty' => 0,
+            'client_provides_sections' => ['bathroom'],
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        foreach (['vanity', 'faucet', 'toilet'] as $key) {
+            $row = collect($calc['materials'])->firstWhere('key', $key);
+            $this->assertNotNull($row, $key);
+            $this->assertTrue($row['client_provided']);
+            $this->assertSame(0.0, $row['amount']);
+        }
     }
 
     public function test_overrides_replace_calculated_hours_and_qty(): void
@@ -605,20 +676,22 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertContains('framing_walls', collect($calc['labor'])->pluck('key')->all());
     }
 
-    public function test_bathroom_electrical_defaults_are_three_outlets_two_switches_and_both_lights(): void
+    public function test_bathroom_electrical_defaults_are_three_outlets_two_switches_and_a_bath_fixture(): void
     {
         $defaults = BasementQuotationCalculator::electricalDefaultsForPreset('bathroom');
         $this->assertSame(3, $defaults['outlet_qty']);
         $this->assertSame(2, $defaults['switch_qty']);
-        $this->assertSame('both', $defaults['lighting_type']);
-        $this->assertSame(1, $defaults['fixture_qty']);
+        $this->assertSame('spot', $defaults['lighting_type']);
+        $this->assertSame(0, $defaults['fixture_qty']);
         $this->assertSame(0, $defaults['light_qty']);
+        $this->assertTrue($defaults['include_bath_fixture']);
+        $this->assertSame(1, $defaults['bath_fixture_qty']);
+        $this->assertFalse($defaults['include_bath_spot']);
 
         $calc = (new BasementQuotationCalculator)->calculate(array_merge([
             'area_sqft' => 80,
             'scope_preset' => 'bathroom',
             'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
-            'include_bathroom' => true,
             'include_plumbing' => true,
             'detector_qty' => 0,
             'owner_hourly_rate' => 80,
@@ -626,8 +699,52 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $this->assertSame(3.0, collect($calc['materials'])->firstWhere('key', 'outlet_box')['qty']);
         $this->assertSame(2.0, collect($calc['materials'])->firstWhere('key', 'switch_device')['qty']);
-        $this->assertSame(1.0, collect($calc['materials'])->firstWhere('key', 'light_fixture')['qty']);
-        $this->assertEmpty(collect($calc['materials'])->firstWhere('key', 'pot_light'));
+        $this->assertSame(1.0, collect($calc['materials'])->firstWhere('key', 'bath_light_fixture')['qty']);
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'light_fixture'));
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'pot_light'));
+        $this->assertContains('bath_lights', collect($calc['labor'])->pluck('key')->all());
+    }
+
+    public function test_bathroom_and_basement_lighting_are_counted_separately(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 800,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'include_bathroom' => true,
+            'lighting_type' => 'both',
+            'light_qty' => 8,
+            'fixture_qty' => 2,
+            'include_bath_fixture' => true,
+            'bath_fixture_qty' => 1,
+            'include_bath_spot' => true,
+            'bath_spot_qty' => 1,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertSame(8.0, collect($calc['materials'])->firstWhere('key', 'pot_light')['qty']);
+        $this->assertSame(2.0, collect($calc['materials'])->firstWhere('key', 'light_fixture')['qty']);
+        $this->assertSame(1.0, collect($calc['materials'])->firstWhere('key', 'bath_pot_light')['qty']);
+        $this->assertSame(1.0, collect($calc['materials'])->firstWhere('key', 'bath_light_fixture')['qty']);
+        $labor = collect($calc['labor'])->pluck('key')->all();
+        $this->assertContains('elec_lights', $labor);
+        $this->assertContains('bath_lights', $labor);
+        $this->assertContains('elec_fixture_hang', $labor);
+        $this->assertContains('bath_fixture_hang', $labor);
+        $runs = collect($calc['labor'])->firstWhere('key', 'elec_runs');
+        $this->assertNotNull($runs);
+        $this->assertStringContainsString('12', $runs['detail']);
     }
 
     public function test_bathroom_tile_areas_are_summed_and_named_on_labor(): void

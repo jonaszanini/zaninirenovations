@@ -69,9 +69,9 @@ class BasementQuotationCalculator
 
     /**
      * Form defaults when the user picks a scope preset. Empty array means
-     * do not overwrite electrical fields (custom).
+     * do not overwrite electrical / bathroom-lighting fields (custom).
      *
-     * @return array<string, int|string>
+     * @return array<string, int|string|bool>
      */
     public static function electricalDefaultsForPreset(string $preset): array
     {
@@ -83,9 +83,14 @@ class BasementQuotationCalculator
             return [
                 'outlet_qty' => 3,
                 'switch_qty' => 2,
-                'lighting_type' => 'both',
+                'lighting_type' => 'spot',
                 'light_qty' => 0,
-                'fixture_qty' => 1,
+                'fixture_qty' => 0,
+                'include_bathroom' => true,
+                'include_bath_fixture' => true,
+                'bath_fixture_qty' => 1,
+                'include_bath_spot' => false,
+                'bath_spot_qty' => 0,
             ];
         }
 
@@ -96,6 +101,51 @@ class BasementQuotationCalculator
             'light_qty' => 0,
             'fixture_qty' => 0,
         ];
+    }
+
+    /**
+     * Fixture checkboxes under Review → Bathroom items (client supplies the product).
+     *
+     * @return array<string, string>
+     */
+    public static function clientProvidesBathItemLabels(): array
+    {
+        return [
+            'vanity' => 'Vanity',
+            'faucet' => 'Faucet',
+            'shower_frame' => 'Shower frame',
+            'tub' => 'Tub',
+            'showerhead' => 'Showerhead',
+            'toilet' => 'Toilet',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @return list<string>
+     */
+    public static function normalizeClientProvidesBathItems(array $inputs): array
+    {
+        $allowed = array_keys(self::clientProvidesBathItemLabels());
+        $raw = $inputs['client_provides_bath_items'] ?? [];
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        return array_values(array_intersect($allowed, array_map('strval', $raw)));
+    }
+
+    public static function bathProvideItemForMaterial(string $catalogOrKey): ?string
+    {
+        return match ($catalogOrKey) {
+            'vanity' => 'vanity',
+            'faucet' => 'faucet',
+            'shower_kit' => 'shower_frame',
+            'showerhead' => 'showerhead',
+            'tub_kit' => 'tub',
+            'toilet' => 'toilet',
+            default => null,
+        };
     }
 
     public static function normalizeAreaMode(mixed $mode): string
@@ -363,6 +413,10 @@ class BasementQuotationCalculator
             'switch_qty' => 0,
             'light_qty' => 0,
             'lighting_type' => 'spot',
+            'include_bath_fixture' => false,
+            'bath_fixture_qty' => 1,
+            'include_bath_spot' => false,
+            'bath_spot_qty' => 0,
             'panel_upgrade' => false,
             'detector_qty' => 2,
             'wiring_runs' => 0,
@@ -413,6 +467,7 @@ class BasementQuotationCalculator
             'include_touchups' => true,
             'client_provides_all' => false,
             'client_provides_sections' => [],
+            'client_provides_bath_items' => [],
             'owner_hourly_rate' => 85,
             'helper_hourly_rate' => 45,
             'extra_materials' => [],
@@ -498,13 +553,15 @@ class BasementQuotationCalculator
         $provideSections = is_array($inputs['client_provides_sections'] ?? null)
             ? array_values(array_filter(array_map('strval', $inputs['client_provides_sections'])))
             : [];
+        $provideBathItems = self::normalizeClientProvidesBathItems($inputs);
 
-        $chargeMats = function (string $section) use ($providesAll, $provideSections): bool {
-            if ($providesAll) {
-                return false;
+        $clientProvidedMat = function (string $section, ?string $catalogKey, string $lineKey) use ($providesAll, $provideSections, $provideBathItems): bool {
+            if ($providesAll || in_array($section, $provideSections, true)) {
+                return true;
             }
+            $item = self::bathProvideItemForMaterial($catalogKey ?: $lineKey);
 
-            return ! in_array($section, $provideSections, true);
+            return $item !== null && in_array($item, $provideBathItems, true);
         };
 
         $addLabor = function (string $key, string $section, string $label, string $detail, float $hours) use (&$labor, $inputs): void {
@@ -531,7 +588,7 @@ class BasementQuotationCalculator
             float $qty,
             ?string $catalogKey = null,
             ?string $labelOverride = null
-        ) use (&$materials, $inputs, $matCatalog, $chargeMats): void {
+        ) use (&$materials, $inputs, $matCatalog, $clientProvidedMat): void {
             $qty = round(max(0, $qty), 2);
             if ($qty <= 0) {
                 return;
@@ -563,7 +620,7 @@ class BasementQuotationCalculator
                     ? round($studPrice / BasementSettings::PLATE_FEET_PER_BOARD, 4)
                     : 0.0;
             }
-            $clientProvided = ! $chargeMats($section);
+            $clientProvided = $clientProvidedMat($section, $catalogKey, $key);
             $amount = $clientProvided ? 0.0 : round($qty * $unitPrice, 2);
             $derivedPlate = $key === BasementSettings::MATERIAL_PLATE_2X4;
             $materials[] = [
@@ -626,7 +683,8 @@ class BasementQuotationCalculator
         $outlets = max(0, (int) $inputs['outlet_qty']);
         $switches = max(0, (int) $inputs['switch_qty']);
         [, $spots, $fixtures] = $this->lightingCounts($inputs);
-        $lightingPoints = $spots + $fixtures;
+        [$bathSpots, $bathFixtures] = $this->bathroomLightingCounts($inputs);
+        $lightingPoints = $spots + $fixtures + $bathSpots + $bathFixtures;
         $detectors = max(0, (int) $inputs['detector_qty']);
         $runs = max(0, (int) $inputs['wiring_runs']);
         if ($runs <= 0) {
@@ -635,7 +693,7 @@ class BasementQuotationCalculator
         $addLabor('elec_outlets', 'electrical', 'New outlets', $outlets.' location(s)', $outlets * (float) $prod['outlet_hours_each']);
         $addLabor('elec_switches', 'electrical', 'Switches', $switches.' location(s)', $switches * (float) $prod['switch_hours_each']);
         $lightDetail = $this->lightingLaborDetail($spots, $fixtures);
-        $addLabor('elec_lights', 'electrical', 'Lighting wiring', $lightDetail, $lightingPoints * (float) $prod['light_hours_each']);
+        $addLabor('elec_lights', 'electrical', 'Basement lighting wiring', $lightDetail, ($spots + $fixtures) * (float) $prod['light_hours_each']);
         if ($fixtures > 0) {
             $addLabor('elec_fixture_hang', 'electrical', 'Hang light fixtures', $fixtures.' fixture(s)', $fixtures * (float) $prod['fixture_hours_each']);
         }
@@ -845,6 +903,7 @@ class BasementQuotationCalculator
             if (! empty($inputs['include_vanity'])) {
                 $addLabor('bath_vanity', 'bathroom', 'Vanity', 'Install', (float) $prod['vanity_hours']);
                 $addMat('vanity', 'bathroom', 1, 'vanity');
+                $addMat('faucet', 'bathroom', 1, 'faucet');
             }
             if (! empty($inputs['include_toilet'])) {
                 $addLabor('bath_toilet', 'bathroom', 'Toilet', 'Install', (float) $prod['toilet_hours']);
@@ -853,6 +912,7 @@ class BasementQuotationCalculator
             if (! $half && ! empty($inputs['include_shower'])) {
                 $addLabor('bath_shower', 'bathroom', 'Shower', 'Install', (float) $prod['shower_hours']);
                 $addMat('shower_kit', 'bathroom', 1, 'shower_kit');
+                $addMat('showerhead', 'bathroom', 1, 'showerhead');
             }
             if (! $half && ! empty($inputs['include_tub'])) {
                 $addLabor('bath_tub', 'bathroom', 'Tub', 'Install', (float) $prod['tub_hours']);
@@ -862,6 +922,26 @@ class BasementQuotationCalculator
                 $addLabor('bath_fan', 'bathroom', 'Exhaust fan', 'Install + duct', (float) $prod['exhaust_fan_hours']);
                 $addMat('exhaust_fan', 'bathroom', 1, 'exhaust_fan');
             }
+            [$bathSpots, $bathFixtures] = $this->bathroomLightingCounts($inputs);
+            $bathLightDetail = $this->lightingLaborDetail($bathSpots, $bathFixtures);
+            $addLabor(
+                'bath_lights',
+                'bathroom',
+                'Bathroom lighting wiring',
+                $bathLightDetail,
+                ($bathSpots + $bathFixtures) * (float) $prod['light_hours_each']
+            );
+            if ($bathFixtures > 0) {
+                $addLabor(
+                    'bath_fixture_hang',
+                    'bathroom',
+                    'Hang bathroom light fixtures',
+                    $bathFixtures.' fixture(s)',
+                    $bathFixtures * (float) $prod['fixture_hours_each']
+                );
+            }
+            $addMat('bath_pot_light', 'bathroom', $bathSpots, 'pot_light', 'Bathroom spot light');
+            $addMat('bath_light_fixture', 'bathroom', $bathFixtures, 'light_fixture', 'Bathroom light fixture');
             $tileSf = max(0, (float) $inputs['bath_tile_sf']);
             if ($tileSf > 0) {
                 $tileAreas = is_array($inputs['bath_tile_areas'] ?? null) ? $inputs['bath_tile_areas'] : [];
@@ -1026,6 +1106,8 @@ class BasementQuotationCalculator
                 'owner_hourly_rate' => $ownerRate,
                 'helper_hourly_rate' => $helperRate,
                 'labor_pre_hst' => $laborPre,
+                'labor_hst' => $laborHst,
+                'labor_after_hst' => round($laborPre + $laborHst, 2),
                 'materials_pre_hst' => $matPre,
                 'materials_hst' => $matHst,
                 'materials_after_hst' => round($matPre + $matHst, 2),
@@ -1224,6 +1306,25 @@ class BasementQuotationCalculator
         return [$type, $spots, $fixtures];
     }
 
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @return array{0: int, 1: int}  spot qty, fixture qty
+     */
+    private function bathroomLightingCounts(array $inputs): array
+    {
+        if (empty($inputs['include_bathroom']) || ! self::sectionEnabled($inputs, 'bathroom')) {
+            return [0, 0];
+        }
+        $fixtures = ! empty($inputs['include_bath_fixture'])
+            ? max(0, (int) ($inputs['bath_fixture_qty'] ?? 0))
+            : 0;
+        $spots = ! empty($inputs['include_bath_spot'])
+            ? max(0, (int) ($inputs['bath_spot_qty'] ?? 0))
+            : 0;
+
+        return [$spots, $fixtures];
+    }
+
     private function lightingLaborDetail(int $spots, int $fixtures): string
     {
         $bits = [];
@@ -1292,6 +1393,8 @@ class BasementQuotationCalculator
                 'owner_hourly_rate' => $ownerRate,
                 'helper_hourly_rate' => $helperRate,
                 'labor_pre_hst' => 0.0,
+                'labor_hst' => 0.0,
+                'labor_after_hst' => 0.0,
                 'materials_pre_hst' => 0.0,
                 'materials_hst' => 0.0,
                 'materials_after_hst' => 0.0,

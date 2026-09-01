@@ -362,14 +362,15 @@ class BasementQuotationController extends Controller
             'outlet_qty', 'switch_qty', 'light_qty', 'detector_qty', 'wiring_runs',
             'drywall_corners', 'drywall_openings', 'finish_level', 'transition_qty',
             'door_qty', 'casing_openings', 'window_trim_qty', 'paint_coats', 'paint_colors',
-            'fixture_qty', 'hardware_sets',
+            'fixture_qty', 'hardware_sets', 'bath_fixture_qty', 'bath_spot_qty',
         ];
         $bools = [
             'include_demolition', 'panel_upgrade', 'include_plumbing', 'bath_rough_in',
             'sink_laundry', 'wet_bar', 'floor_drain', 'wh_reloc', 'insulate_walls',
             'insulate_ceiling', 'underslab', 'subfloor_prep', 'underlayment',
             'include_bathroom', 'include_vanity', 'include_toilet', 'include_shower',
-            'include_tub', 'include_exhaust_fan', 'include_cleaning', 'include_touchups',
+            'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
+            'include_cleaning', 'include_touchups',
             'client_provides_all',
         ];
         $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode'];
@@ -409,6 +410,9 @@ class BasementQuotationController extends Controller
         $out['client_provides_sections'] = is_array($provided)
             ? array_values(array_intersect($sections, array_map('strval', $provided)))
             : [];
+        $out['client_provides_bath_items'] = BasementQuotationCalculator::normalizeClientProvidesBathItems([
+            'client_provides_bath_items' => $request->input('client_provides_bath_items', []),
+        ]);
 
         if ($request->has('enabled_sections')) {
             $enabled = $request->input('enabled_sections', []);

@@ -130,13 +130,25 @@
     syncLightingType();
   }
 
+  form.querySelectorAll('[data-br-bath-light]').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      if (cb.checked) {
+        var wrap = document.getElementById(cb.getAttribute('data-br-reveal'));
+        var qty = wrap ? wrap.querySelector('input[type="number"]') : null;
+        if (qty && Number(qty.value) <= 0) {
+          qty.value = '1';
+        }
+      }
+    });
+  });
+
   var clientAll = document.getElementById('br-client-all');
-  var provideBox = document.getElementById('br-provide-sections');
+  var provideWrap = document.getElementById('br-provide-wrap');
   function syncClientAll() {
-    if (!provideBox) return;
+    if (!provideWrap) return;
     var on = !!(clientAll && clientAll.checked);
-    provideBox.hidden = on;
-    provideBox.querySelectorAll('input[type="checkbox"]').forEach(function (el) {
+    provideWrap.hidden = on;
+    provideWrap.querySelectorAll('input[type="checkbox"]').forEach(function (el) {
       el.disabled = on;
     });
   }
@@ -360,15 +372,45 @@
     var keys = Object.keys(map);
     if (!keys.length) return;
     keys.forEach(function (name) {
-      setNamedValue(name, map[name]);
+      var val = map[name];
+      if (typeof val === 'boolean') {
+        setNamedCheck(name, val);
+      } else {
+        setNamedValue(name, val);
+      }
     });
     syncLightingType();
+    syncBathLightQtyDefaults();
   }
 
   function syncBathroomElectricalHints() {
     var bath = currentPreset() === 'bathroom';
     form.querySelectorAll('[data-br-bathroom-electrical-hint]').forEach(function (el) {
       el.hidden = !bath;
+    });
+    form.querySelectorAll('[data-br-basement-lighting]').forEach(function (el) {
+      if (bath) {
+        el.hidden = true;
+        return;
+      }
+      if (el.id === 'br-lighting-fixture-qty') {
+        return;
+      }
+      el.hidden = false;
+    });
+    if (!bath) {
+      syncLightingType();
+    }
+  }
+
+  function syncBathLightQtyDefaults() {
+    form.querySelectorAll('[data-br-bath-light]').forEach(function (cb) {
+      if (!cb.checked) return;
+      var wrap = document.getElementById(cb.getAttribute('data-br-reveal'));
+      var qty = wrap ? wrap.querySelector('input[type="number"]') : null;
+      if (qty && Number(qty.value) <= 0) {
+        qty.value = '1';
+      }
     });
   }
 
@@ -520,8 +562,6 @@
     var empty = document.getElementById('br-live-empty');
     var body = document.getElementById('br-live-body');
     var summary = data.summary || {};
-    var breakdown = data.breakdown || [];
-    var eta = (data.eta && data.eta.scenarios) ? data.eta.scenarios : [];
     rebuildLaborTable(data.labor || []);
     rebuildMatTable(data.materials || []);
     if (!summary.grand_total || summary.grand_total <= 0) {
@@ -531,34 +571,19 @@
     }
     if (empty) empty.hidden = true;
     if (body) body.hidden = false;
+    var laborPre = Number(summary.labor_pre_hst || 0);
+    var laborHst = Number(summary.labor_hst != null ? summary.labor_hst : laborPre * 0.13);
+    var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
+    var matHst = Number(summary.materials_hst || 0) + lastAdditionalMaterialsHst;
     var html = '';
-    html += '<div class="pq-row"><span>Labor (pre-HST)</span><span>' + fmt(summary.labor_pre_hst || 0) + '</span></div>';
-    html += '<div class="pq-row"><span>Materials (pre-HST)</span><span>' + fmt(summary.materials_pre_hst || 0) + '</span></div>';
-    html += '<div class="pq-row"><span>Materials + HST</span><span>' + fmt(summary.materials_after_hst || 0) + '</span></div>';
-    html += '<div class="pq-row"><span>Labor hours</span><span>' + Number(summary.total_hours || 0).toFixed(2) + '</span></div>';
-    var lastSection = '';
-    breakdown.forEach(function (row) {
-      var sec = row.section === 'materials' ? 'Materials' : 'Labor';
-      if (sec !== lastSection) {
-        html += '<div class="fl-breakdown-section">' + sec + '</div>';
-        lastSection = sec;
-      }
-      html += '<div class="pq-row"><span>' + escapeHtml(row.label || '') + '<br><span class="admin-form-help">' + escapeHtml(row.detail || '') + '</span></span><span>' + fmt(row.amount) + '</span></div>';
-    });
-    if (eta.length) {
-      html += '<div class="fl-breakdown-section">Duration</div>';
-      eta.forEach(function (sc) {
-        html += '<div class="pq-row"><span>' + escapeHtml(sc.label || '') + '<br><span class="admin-form-help">' + Number(sc.calendar_days || 0).toFixed(1) + ' calendar days</span></span><span>' + fmt(sc.labor_cost || 0) + '</span></div>';
-      });
-    }
-    if (lastAdditionalMaterialsPreTax > 0) {
-      html += '<div class="fl-breakdown-section">Additional costs</div>';
-      html += '<div class="pq-row"><span>Additional costs (materials)</span><span>' + fmt(lastAdditionalMaterialsPreTax) + '</span></div>';
-    }
-    html += '<div class="pq-row"><span>Subtotal (pre-HST)</span><span>' + fmt(Number(summary.subtotal_pre_hst || 0) + lastAdditionalMaterialsPreTax) + '</span></div>';
-    html += '<div class="pq-row"><span>HST (13%)</span><span>' + fmt(Number(summary.hst || 0) + lastAdditionalMaterialsHst) + '</span></div>';
+    html += '<div class="pq-row"><span>Labor (pre-HST)</span><span>' + fmt(laborPre) + '</span></div>';
+    html += '<div class="pq-row"><span>Labor HST</span><span>' + fmt(laborHst) + '</span></div>';
+    html += '<div class="pq-row pq-row--sub"><span>Total labor</span><span>' + fmt(laborPre + laborHst) + '</span></div>';
+    html += '<div class="pq-row pq-row--group"><span>Materials (pre-HST)</span><span>' + fmt(matPre) + '</span></div>';
+    html += '<div class="pq-row"><span>Materials HST</span><span>' + fmt(matHst) + '</span></div>';
+    html += '<div class="pq-row pq-row--sub"><span>Total materials</span><span>' + fmt(matPre + matHst) + '</span></div>';
     if (lastDebrisAmount > 0) {
-      html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
+      html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
     }
     var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
     html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';

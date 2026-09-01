@@ -52,6 +52,10 @@
   if (! is_array($provideSections)) {
       $provideSections = [];
   }
+  $provideBathItems = old('client_provides_bath_items', $inputs['client_provides_bath_items'] ?? []);
+  if (! is_array($provideBathItems)) {
+      $provideBathItems = [];
+  }
   $extraRows = old('extra_materials', $inputs['extra_materials'] ?? []);
   if (! is_array($extraRows)) {
       $extraRows = [];
@@ -170,10 +174,11 @@
                 'id' => 'br-client-all',
               ])
             </div>
+            <div id="br-provide-wrap">
             <fieldset class="br-provide-grid" id="br-provide-sections">
               <legend class="admin-form-help">Or client provides materials for specific sections</legend>
               @foreach ($sectionList as $key => $label)
-                @if ($key === 'overview')
+                @if ($key === 'overview' || $key === 'bathroom')
                   @continue
                 @endif
                 @include('admin.partials.checkbox', [
@@ -186,6 +191,23 @@
                 ])
               @endforeach
             </fieldset>
+            <fieldset class="br-bath-provide" id="br-provide-bath-items">
+              <legend class="br-bath-provide__title">Bathroom items</legend>
+              <p class="admin-form-help">Client buys these fixtures; you still install them. Tile, fan, and lights stay on the Bathroom / Electrical sections above.</p>
+              <div class="br-bath-provide__grid">
+                @foreach (\App\Services\BasementQuotationCalculator::clientProvidesBathItemLabels() as $itemKey => $itemLabel)
+                  @include('admin.partials.checkbox', [
+                    'name' => 'client_provides_bath_items[]',
+                    'value' => $itemKey,
+                    'checked' => in_array($itemKey, $provideBathItems, true),
+                    'label' => $itemLabel,
+                    'info' => 'Client supplies the '.$itemLabel.'; material cost drops out. Labor stays.',
+                    'inputClass' => 'admin-checkbox__input br-preview',
+                  ])
+                @endforeach
+              </div>
+            </fieldset>
+            </div>
 
             <h4 class="br-review-heading">Labor hours</h4>
             <div class="admin-table-scroll">

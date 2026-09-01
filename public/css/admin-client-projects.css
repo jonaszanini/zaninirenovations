@@ -6062,6 +6062,14 @@ body.cp-modal-open {
   padding: 4px 0;
   font-size: 13px;
 }
+.br-layout .pq-row--sub {
+  font-weight: 600;
+}
+.br-layout .pq-row--group {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #d8dee4;
+}
 .br-layout .pq-row--hl {
   font-weight: 700;
   color: #024768;
@@ -6208,6 +6216,32 @@ body.cp-modal-open {
   margin: 0 0 16px;
   padding: 0;
   border: 0;
+}
+.br-bath-provide {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-border, #d8dee4);
+  border-radius: var(--admin-radius, 10px);
+  background: var(--admin-surface, #fff);
+}
+.br-bath-provide__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--admin-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 4px;
+}
+.br-bath-provide .admin-form-help {
+  margin: 0 0 10px;
+}
+.br-bath-provide__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px 16px;
+}
+.br-bath-provide__grid .admin-checkbox {
+  min-height: 44px;
 }
 .br-scope-presets {
   margin: 0 0 1rem;
@@ -6370,11 +6404,34 @@ body.cp-modal-open {
 .br-acc[hidden],
 [data-br-lw-sqft][hidden],
 [data-br-lw-dims][hidden],
+[data-br-basement-lighting][hidden],
 .br-lw__computed[hidden] {
   display: none !important;
 }
 .br-tile-areas {
   margin-top: 0.75rem;
+}
+.br-bath-lighting {
+  margin-top: 0.75rem;
+}
+.br-bath-light-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 140px);
+  gap: 8px 12px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+.br-bath-light-row .admin-form-group {
+  margin-bottom: 0;
+}
+.br-bath-light-row .admin-form-group[hidden] {
+  display: none !important;
+}
+@media (max-width: 700px) {
+  .br-bath-light-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
 }
 .br-tile-areas__head {
   display: flex;
@@ -6675,6 +6732,9 @@ body.cp-modal-open {
 
 @media (min-width: 700px) {
   .br-provide-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .br-bath-provide__grid {
     grid-template-columns: 1fr 1fr;
   }
   .br-extra-row {

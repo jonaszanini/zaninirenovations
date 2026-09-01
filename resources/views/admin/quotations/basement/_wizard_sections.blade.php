@@ -70,9 +70,9 @@
       'framing_door_openings' => 'Rough openings to frame in new or existing walls, before hanging the door.',
       'outlet_qty' => 'New receptacles to install (GFCI at wet locations). Count each device, not each gang box if you prefer.',
       'switch_qty' => 'New wall switches, including 3-way and exhaust-fan switches.',
-      'lighting_type' => 'What goes on the ceiling: hanging/flush fixtures, recessed pots, or both (e.g. fixture plus a shower pot).',
-      'fixture_qty' => 'Ceiling or vanity light fixtures to hang (not recessed pots).',
-      'light_qty' => 'Recessed pot / spot lights. For bathroom, use 1 if the client wants a shower pot.',
+      'lighting_type' => 'Lights in the finished basement rooms, not the bathroom. Bathroom lights are chosen on the Bathroom step.',
+      'fixture_qty' => 'Ceiling light fixtures to hang in the basement (not recessed pots, not the bathroom).',
+      'light_qty' => 'Recessed pot / spot lights in the basement rooms. Bathroom spots are on the Bathroom step.',
       'detector_qty' => 'Interconnected smoke/CO units. Ontario typically wants one on this level.',
       'wiring_runs' => 'Cable pulls from the panel or a junction to devices. Leave 0 to estimate one run per outlet, switch, and light.',
       'panel_upgrade' => 'Allowance to upgrade or add capacity in the electrical panel when the new circuits will not fit.',
@@ -116,6 +116,10 @@
       'include_shower' => 'Shower unit or valve and surround install. Tile area is the field below.',
       'include_tub' => 'Bathtub set and connect, instead of or in addition to a shower.',
       'include_exhaust_fan' => 'Bath fan, duct, and roof/soffit cap. Pair with a switch on the Electrical step.',
+      'include_bath_fixture' => 'Ceiling or vanity light fixture in the bathroom. Check this and set how many.',
+      'include_bath_spot' => 'Recessed pot / spot in the bathroom (for example a shower pot). You can use this together with a light fixture.',
+      'bath_fixture_qty' => 'How many bathroom light fixtures to hang.',
+      'bath_spot_qty' => 'How many bathroom recessed pots / spot lights.',
       'bath_tile_sf' => 'Split tile into named areas (floor, shower walls, accent). Each can be total sq ft or length × width. The quote uses the combined total plus waste.',
       'hardware_sets' => 'Extra towel bars, paper holders, or similar, beyond what comes with the vanity.',
       'include_cleaning' => 'Final broom/vacuum, wipe, and dust so the space is handover-ready.',
@@ -328,25 +332,25 @@
                value="{{ $brVal('switch_qty', 0) }}">
         <p class="admin-form-help" data-br-bathroom-electrical-hint @if($scopePreset !== 'bathroom') hidden @endif>Typical bathroom: 1 for the light, 1 for the exhaust.</p>
       </div>
-      <div class="admin-form-group">
-        <label for="br-lighting-type">@include('admin.partials.info_tip', ['text' => $brInfo['lighting_type']]) Ceiling lighting</label>
+      <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
+        <label for="br-lighting-type">@include('admin.partials.info_tip', ['text' => $brInfo['lighting_type']]) Basement ceiling lighting</label>
         <select class="admin-input br-preview" id="br-lighting-type" name="lighting_type" data-br-lighting-type>
           <option value="fixture" @selected($brVal('lighting_type', 'spot') === 'fixture')>Light fixtures</option>
           <option value="spot" @selected($brVal('lighting_type', 'spot') === 'spot')>Spot lights (pots / recessed)</option>
           <option value="both" @selected($brVal('lighting_type') === 'both')>Light fixtures and spot lights</option>
         </select>
-        <p class="admin-form-help">Electrical materials and hours follow this choice. Use both for a ceiling fixture plus a shower pot. Set unit prices under Price configuration.</p>
+        <p class="admin-form-help">Living-area lights only. Bathroom fixtures and spots are on the Bathroom step. Set unit prices under Price configuration.</p>
       </div>
-      <div class="admin-form-group" id="br-lighting-fixture-qty" @if($brVal('lighting_type', 'spot') !== 'both') hidden @endif>
+      <div class="admin-form-group" id="br-lighting-fixture-qty" data-br-basement-lighting @if($scopePreset === 'bathroom' || $brVal('lighting_type', 'spot') !== 'both') hidden @endif>
         <label for="br-fixtures">@include('admin.partials.info_tip', ['text' => $brInfo['fixture_qty']]) How many light fixtures</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-fixtures" name="fixture_qty"
                value="{{ $brVal('fixture_qty', 0) }}">
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
         <label for="br-lights">@include('admin.partials.info_tip', ['text' => $brInfo['light_qty']]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'How many light fixtures' : 'How many spot lights' }}</span></label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
                value="{{ $brVal('light_qty', 0) }}">
-        <p class="admin-form-help" id="br-spot-hint" @if($brVal('lighting_type', 'spot') === 'fixture') hidden @endif>Optional — e.g. one at the shower.</p>
+        <p class="admin-form-help" id="br-spot-hint" @if($brVal('lighting_type', 'spot') === 'fixture') hidden @endif>Optional extra pots in the basement rooms.</p>
       </div>
       <div class="admin-form-group">
         <label for="br-detectors">@include('admin.partials.info_tip', ['text' => $brInfo['detector_qty']]) Smoke / CO detectors</label>
@@ -711,6 +715,49 @@
         @include('admin.partials.checkbox', ['name' => 'include_shower', 'hiddenFallback' => true, 'checked' => $brOn('include_shower', true), 'label' => 'Shower', 'info' => $brInfo['include_shower'], 'inputClass' => 'admin-checkbox__input br-preview'])
         @include('admin.partials.checkbox', ['name' => 'include_tub', 'hiddenFallback' => true, 'checked' => $brOn('include_tub'), 'label' => 'Tub', 'info' => $brInfo['include_tub'], 'inputClass' => 'admin-checkbox__input br-preview'])
         @include('admin.partials.checkbox', ['name' => 'include_exhaust_fan', 'hiddenFallback' => true, 'checked' => $brOn('include_exhaust_fan', true), 'label' => 'Exhaust fan', 'info' => $brInfo['include_exhaust_fan'], 'inputClass' => 'admin-checkbox__input br-preview'])
+      </div>
+      <div class="br-bath-lighting">
+        <div class="br-tile-areas__head">
+          <span class="br-tile-areas__title">
+            @include('admin.partials.info_tip', ['text' => 'Bathroom ceiling lights only. You can check a light fixture, a spot light, or both.'])
+            Bathroom lighting
+          </span>
+        </div>
+        <p class="admin-form-help">Living-area lights stay on the Electrical step.</p>
+        <div class="br-bath-light-row">
+          @include('admin.partials.checkbox', [
+            'name' => 'include_bath_fixture',
+            'id' => 'br-bath-include-fixture',
+            'hiddenFallback' => true,
+            'checked' => $brOn('include_bath_fixture'),
+            'label' => 'Light fixture',
+            'info' => $brInfo['include_bath_fixture'],
+            'inputClass' => 'admin-checkbox__input br-preview',
+            'attrs' => ['data-br-reveal' => 'br-bath-fixture-qty-wrap', 'data-br-bath-light' => 'fixture'],
+          ])
+          <div class="admin-form-group" id="br-bath-fixture-qty-wrap" @unless($brOn('include_bath_fixture')) hidden @endunless>
+            <label for="br-bath-fixture-qty">@include('admin.partials.info_tip', ['text' => $brInfo['bath_fixture_qty']]) How many</label>
+            <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-fixture-qty" name="bath_fixture_qty"
+                   value="{{ $brVal('bath_fixture_qty', 1) }}">
+          </div>
+        </div>
+        <div class="br-bath-light-row">
+          @include('admin.partials.checkbox', [
+            'name' => 'include_bath_spot',
+            'id' => 'br-bath-include-spot',
+            'hiddenFallback' => true,
+            'checked' => $brOn('include_bath_spot'),
+            'label' => 'Spot light',
+            'info' => $brInfo['include_bath_spot'],
+            'inputClass' => 'admin-checkbox__input br-preview',
+            'attrs' => ['data-br-reveal' => 'br-bath-spot-qty-wrap', 'data-br-bath-light' => 'spot'],
+          ])
+          <div class="admin-form-group" id="br-bath-spot-qty-wrap" @unless($brOn('include_bath_spot')) hidden @endunless>
+            <label for="br-bath-spot-qty">@include('admin.partials.info_tip', ['text' => $brInfo['bath_spot_qty']]) How many</label>
+            <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-spot-qty" name="bath_spot_qty"
+                   value="{{ $brVal('bath_spot_qty', 0) }}">
+          </div>
+        </div>
       </div>
       @php
         $tileAreas = old('bath_tile_areas', $inputs['bath_tile_areas'] ?? null);
