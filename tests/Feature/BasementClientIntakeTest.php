@@ -41,13 +41,15 @@ class BasementClientIntakeTest extends IntegrationTestCase
     public function test_full_form_shows_basement_sections_bathroom_form_hides_them(): void
     {
         $full = $this->makeQuote(['scope_preset' => 'full']);
-        $this->get(route('public.basement-intake.show', ['token' => $full->client_intake_token]))
+        $fullHtml = $this->get(route('public.basement-intake.show', ['token' => $full->client_intake_token]))
             ->assertOk()
             ->assertSee('Basement / work area')
             ->assertSee('Living-area ceiling lights')
             ->assertSee('Who supplies the flooring?')
             ->assertSee('New walls (linear feet)')
-            ->assertDontSee('Owner hourly');
+            ->assertDontSee('Owner hourly')
+            ->getContent();
+        $this->assertNoCheckedRadios($fullHtml);
 
         $bath = $this->makeQuote([
             'scope_preset' => 'bathroom',
@@ -65,6 +67,69 @@ class BasementClientIntakeTest extends IntegrationTestCase
         $this->assertStringNotContainsString('Who supplies the flooring?', $html);
         $this->assertStringNotContainsString('New walls (linear feet)', $html);
         $this->assertStringNotContainsString('name="flooring_type"', $html);
+        $this->assertNoCheckedRadios($html);
+    }
+
+    public function test_new_form_does_not_preselect_answers(): void
+    {
+        $quote = $this->makeQuote([
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'area_sqft' => 80,
+            'include_vanity' => true,
+            'bath_type' => 'full',
+            'bath_rough_in' => true,
+        ]);
+
+        $html = $this->get(route('public.basement-intake.show', ['token' => $quote->client_intake_token]))
+            ->assertOk()
+            ->assertSee('Nothing is pre-selected')
+            ->getContent();
+
+        $this->assertNoCheckedRadios($html);
+    }
+
+    public function test_submit_without_choices_is_rejected(): void
+    {
+        $quote = $this->makeQuote([
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+        ]);
+        $url = route('public.basement-intake.show', ['token' => $quote->client_intake_token]);
+
+        $this->from($url)
+            ->post(route('public.basement-intake.store', ['token' => $quote->client_intake_token]), [])
+            ->assertRedirect($url)
+            ->assertSessionHasErrors(['area_entry_mode', 'bath_type', 'sink', 'include_cleaning']);
+
+        $quote->refresh();
+        $this->assertNull($quote->client_intake_submitted_at);
+    }
+
+    public function test_previous_client_answers_are_restored_when_reopened(): void
+    {
+        $quote = $this->makeQuote([
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+        ]);
+        $quote->client_intake_answers = $this->bathroomPayload(['sink' => 'pedestal']);
+        $quote->save();
+
+        $html = $this->get(route('public.basement-intake.show', ['token' => $quote->client_intake_token]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/name="sink"\s+value="pedestal"[^>]*checked/i',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/name="sink"\s+value="vanity"[^>]*checked/i',
+            $html
+        );
     }
 
     public function test_one_submit_lock_rejects_second_post(): void
@@ -191,16 +256,39 @@ class BasementClientIntakeTest extends IntegrationTestCase
             'area_entry_mode' => 'sqft',
             'area_sqft' => 80,
             'include_bathroom' => '1',
+            'bath_rough_in' => '1',
             'bath_type' => 'full',
             'sink' => 'vanity',
+            'sink_provide' => 'we',
+            'faucet_provide' => 'we',
             'include_toilet' => '1',
+            'toilet_provide' => 'we',
             'include_shower' => '1',
+            'shower_provide' => 'we',
+            'showerhead_provide' => 'we',
             'include_tub' => '0',
             'include_exhaust_fan' => '1',
+            'include_bath_fixture' => '0',
+            'include_bath_spot' => '0',
             'include_cleaning' => '1',
             'include_touchups' => '1',
+            'tile_floor_mode' => 'sqft',
             'tile_floor_sqft' => 40,
             'tile_floor_finish' => 'tile',
+            'tile_shower_mode' => 'sqft',
+            'tile_shower_sqft' => 30,
+            'tile_shower_finish' => 'tile',
         ], $overrides);
+    }
+
+    private function assertNoCheckedRadios(string $html): void
+    {
+        preg_match_all('/<input\b[^>]*>/i', $html, $tags);
+        foreach ($tags[0] as $tag) {
+            if (! preg_match('/type=["\']radio["\']/i', $tag)) {
+                continue;
+            }
+            $this->assertDoesNotMatchRegularExpression('/\bchecked\b/i', $tag, $tag);
+        }
     }
 }

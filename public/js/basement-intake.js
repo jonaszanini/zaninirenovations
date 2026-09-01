@@ -2,6 +2,10 @@
   var form = document.getElementById('bi-form');
   if (!form) return;
 
+  function isHidden(el) {
+    return !!(el && el.closest('[hidden]'));
+  }
+
   function syncReveals() {
     form.querySelectorAll('[data-bi-reveal]').forEach(function (el) {
       var spec = el.getAttribute('data-bi-reveal');
@@ -30,24 +34,15 @@
   }
 
   function syncAreaMode(prefix) {
-    var mode = form.querySelector('[name="' + prefix + '_mode"]:checked, [name="' + prefix + '"]');
-    if (prefix === 'area_entry') {
-      mode = form.querySelector('[name="area_entry_mode"]:checked');
-    }
+    var modeName = prefix === 'area_entry' ? 'area_entry_mode' : prefix + '_mode';
+    var mode = form.querySelector('[name="' + modeName + '"]:checked');
     var wrap = form.querySelector('[data-bi-area="' + prefix + '"]');
-    if (!mode || !wrap) return;
-    var isDim = mode.value === 'dimensions';
-    wrap.querySelectorAll('[data-bi-sqft]').forEach(function (el) { el.hidden = isDim; });
+    if (!wrap) return;
+    var isDim = mode && mode.value === 'dimensions';
+    var isSqft = mode && mode.value === 'sqft';
+    wrap.querySelectorAll('[data-bi-sqft]').forEach(function (el) { el.hidden = !isSqft; });
     wrap.querySelectorAll('[data-bi-dims]').forEach(function (el) { el.hidden = !isDim; });
   }
-
-  form.addEventListener('change', function () {
-    syncReveals();
-    syncHideWhen();
-    syncAreaMode('area_entry');
-    syncAreaMode('tile_floor');
-    syncAreaMode('tile_shower');
-  });
 
   function syncHideWhen() {
     form.querySelectorAll('[data-bi-hide-when]').forEach(function (el) {
@@ -66,9 +61,46 @@
     });
   }
 
-  syncReveals();
-  syncHideWhen();
-  syncAreaMode('area_entry');
-  syncAreaMode('tile_floor');
-  syncAreaMode('tile_shower');
+  function syncDisabled() {
+    form.querySelectorAll('input, select, textarea').forEach(function (input) {
+      if (input.type === 'hidden' || input.type === 'submit') return;
+      input.disabled = isHidden(input);
+    });
+  }
+
+  function syncAll() {
+    syncReveals();
+    syncHideWhen();
+    syncAreaMode('area_entry');
+    syncAreaMode('tile_floor');
+    syncAreaMode('tile_shower');
+    syncDisabled();
+  }
+
+  form.addEventListener('change', syncAll);
+
+  form.addEventListener('submit', function (e) {
+    syncAll();
+    var groups = form.querySelectorAll('.bi-choices');
+    for (var i = 0; i < groups.length; i++) {
+      var group = groups[i];
+      if (isHidden(group)) continue;
+      var radios = group.querySelectorAll('input[type="radio"]:not(:disabled)');
+      if (!radios.length) continue;
+      var checked = false;
+      radios.forEach(function (radio) {
+        if (radio.checked) checked = true;
+      });
+      if (!checked) {
+        e.preventDefault();
+        radios[0].focus();
+        if (typeof radios[0].reportValidity === 'function') {
+          radios[0].reportValidity();
+        }
+        return;
+      }
+    }
+  });
+
+  syncAll();
 })();

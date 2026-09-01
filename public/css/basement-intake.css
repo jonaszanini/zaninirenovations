@@ -98,7 +98,12 @@
   }
 }
 .bi-reveal[hidden],
-[data-bi-hide-when][hidden] {
+[data-bi-hide-when][hidden],
+[data-bi-sqft][hidden],
+[data-bi-dims][hidden],
+[data-bi-reveal][hidden],
+.bi-grid[hidden],
+[hidden] {
   display: none !important;
 }
 .bi-error {
