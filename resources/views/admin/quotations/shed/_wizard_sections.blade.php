@@ -43,7 +43,7 @@
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
-        <label for="sh-length">@include('admin.partials.info_tip', ['text' => 'Outside length of the floor. 12×14 already exceeds 15 m².']) Length (ft)</label>
+        <label for="sh-length">@include('admin.partials.info_tip', ['text' => 'Outside length of the floor. Max without a permit: '.ShedQuotationCalculator::permitExemptMaxLabel().'.']) Length (ft)</label>
         <input type="number" min="0" step="0.1" class="admin-input sh-preview" id="sh-length" name="length_ft"
                value="{{ $shVal('length_ft') }}">
       </div>
@@ -71,7 +71,7 @@
                value="{{ $shVal('overhang_in', 12) }}">
       </div>
       <div class="admin-form-group">
-        <label>Area</label>
+        <label>@include('admin.partials.info_tip', ['text' => 'Detached, one-storey, storage-only sheds can be up to '.ShedQuotationCalculator::permitExemptMaxLabel().' without a building permit.']) Area</label>
         <p class="sh-area-readout" id="sh-area-readout">—</p>
       </div>
     </div>

@@ -268,7 +268,7 @@ class ShedQuotationCalculator
         $typeMult = max(0.5, (float) ($prod[$multKey] ?? 1));
         $roofSf = round($roofFootprint * $pitchFactor * $typeMult, 2);
 
-        $permit = $this->permitWarnings($inputs, $areaSqm);
+        $permit = $this->permitWarnings($inputs, $areaSqm, $area);
 
         $labor = [];
         $materials = [];
@@ -621,18 +621,27 @@ class ShedQuotationCalculator
         ];
     }
 
+    public static function permitExemptMaxLabel(): string
+    {
+        $sqft = round(self::PERMIT_AREA_SQM * self::SQFT_PER_SQM, 1);
+
+        return self::PERMIT_AREA_SQM.' m² (~'.$sqft.' sq ft)';
+    }
+
     /**
      * @param  array<string, mixed>  $inputs
      * @return list<string>
      */
-    public function permitWarnings(array $inputs, float $areaSqm): array
+    public function permitWarnings(array $inputs, float $areaSqm, float $areaSqft = 0): array
     {
         $warnings = [];
+        $maxLabel = self::permitExemptMaxLabel();
         if ($areaSqm > self::PERMIT_AREA_SQM) {
-            $warnings[] = 'Floor area exceeds 15 m² (~161.5 sq ft). A building permit is required under the Ontario Building Code.';
+            $current = $areaSqm.' m² ('.$areaSqft.' sq ft)';
+            $warnings[] = 'Building permit required. This floor is '.$current.'. Max without a permit: '.$maxLabel.'.';
         }
         if (! empty($inputs['attached']) || ($inputs['shed_type'] ?? '') === 'lean_to' && ! empty($inputs['attached'])) {
-            $warnings[] = 'Attached sheds are not permit-exempt, even under 15 m².';
+            $warnings[] = 'Attached sheds are not permit-exempt, even under '.$maxLabel.'.';
         }
         if (($inputs['interior_finish'] ?? 'rough') === 'finished') {
             $warnings[] = 'A fully finished interior may not qualify as storage-only. Confirm permit requirements with the municipality.';
