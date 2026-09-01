@@ -118,7 +118,7 @@
     function syncPaintWrap() {
       var siding = (form.querySelector('[name="siding"]:checked') || {}).value || 'vinyl';
       var wrap = document.getElementById('sh-paint-wrap');
-      if (wrap) wrap.hidden = (siding === 'none' || siding === 'weather_coat');
+      if (wrap) wrap.hidden = (siding === 'none' || siding === 'weather_coat' || siding === 'house_wrap');
     }
     form.querySelectorAll('[name="siding"]').forEach(function (el) {
       el.addEventListener('change', function () {

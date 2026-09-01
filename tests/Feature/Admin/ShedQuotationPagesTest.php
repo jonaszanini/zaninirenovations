@@ -37,6 +37,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Asphalt shingles')
             ->assertSee('Metal — Black')
             ->assertSee('Metal — Silver')
+            ->assertSee('House wrap')
             ->assertSee('Weather coat')
             ->assertSee('Not now')
             ->assertSee('Hardie board')

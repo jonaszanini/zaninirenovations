@@ -192,7 +192,7 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Roof</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips covering. Weather coat seals the roof deck. Finish roofs include underlayment, ice & water, drip edge, and ridge vent.']) Covering</label>
+      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips covering. House wrap or weather coat protect the deck until a finish roof. Finish roofs include underlayment, ice & water, drip edge, and ridge vent.']) Covering</label>
       <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::ROOF as $key => $label)
           <label class="sh-choice">
@@ -217,7 +217,7 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Siding</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips siding. Weather coat includes house wrap plus a sealer on the sheathing. Finish siding includes house wrap and corner trim.']) Material</label>
+      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips siding. House wrap or weather coat protect the walls until finish siding. Finish siding includes house wrap and corner trim.']) Material</label>
       <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::SIDING as $key => $label)
           <label class="sh-choice">

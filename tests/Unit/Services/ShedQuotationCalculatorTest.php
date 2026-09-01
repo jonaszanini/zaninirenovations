@@ -262,13 +262,37 @@ class ShedQuotationCalculatorTest extends TestCase
         $wallCoat = collect($calc['materials'])->firstWhere('key', 'weather_coat_siding');
         $this->assertNotNull($roofCoat);
         $this->assertNotNull($wallCoat);
-        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'house_wrap'));
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'house_wrap'));
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'house_wrap_roof'));
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'house_wrap_siding'));
         $this->assertSame('gallon', $roofCoat['unit']);
         $this->assertSame(ShedSettings::weatherCoatGallons((float) $calc['scope']['roof_sf']), (int) $roofCoat['qty']);
         $this->assertNull(collect($calc['materials'])->firstWhere('key', 'asphalt_shingle'));
         $this->assertNull(collect($calc['materials'])->firstWhere('key', 'siding_vinyl'));
         $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'roof_weather'));
         $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'siding_weather'));
+    }
+
+    public function test_house_wrap_quotes_wrap_instead_of_finish(): void
+    {
+        $calc = (new ShedQuotationCalculator)->calculate([
+            'length_ft' => 10,
+            'width_ft' => 12,
+            'roof_type' => 'house_wrap',
+            'siding' => 'house_wrap',
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $keys = collect($calc['materials'])->pluck('key');
+        $this->assertTrue($keys->contains('house_wrap_roof'));
+        $this->assertTrue($keys->contains('house_wrap_siding'));
+        $this->assertFalse($keys->contains('asphalt_shingle'));
+        $this->assertFalse($keys->contains('siding_vinyl'));
+        $this->assertFalse($keys->contains('weather_coat_roof'));
+        $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'roof_wrap'));
+        $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'siding_wrap'));
+        $this->assertSame('House wrap', ShedQuotationCalculator::roofLabel('house_wrap'));
+        $this->assertSame('House wrap', ShedQuotationCalculator::sidingLabel('house_wrap'));
     }
 
     private function settings(): ShedSettings
