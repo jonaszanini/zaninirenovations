@@ -45,6 +45,8 @@ class TrimmingQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Line item')
             ->assertSee('Materials DB')
             ->assertSee('Unit price (CAD$)')
+            ->assertSee('>Each</option>', false)
+            ->assertSee('>Sq ft</option>', false)
             ->assertSee('Material waste')
             ->assertSee('Save configuration');
     }

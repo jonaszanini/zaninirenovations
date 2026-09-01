@@ -51,6 +51,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Line item')
             ->assertSee('Materials DB')
             ->assertSee('Unit price (CAD$)')
+            ->assertSee('>Each</option>', false)
+            ->assertSee('>Sq ft</option>', false)
             ->assertSee('per sq ft', false)
             ->assertSee('From 2x4 stud', false)
             ->assertSee('cannot be linked separately', false)

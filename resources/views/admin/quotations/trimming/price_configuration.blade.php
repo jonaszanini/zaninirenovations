@@ -173,8 +173,12 @@
                          value="{{ $displayName }}">
                 </td>
                 <td data-label="Unit">
-                  <input type="text" class="admin-input" name="materials[{{ $key }}][unit]" maxlength="40"
-                         value="{{ old('materials.'.$key.'.unit', $row['unit']) }}">
+                  @include('admin.partials.quotation_unit_select', [
+                    'name' => 'materials['.$key.'][unit]',
+                    'id' => 'tm-mat-unit-'.$key,
+                    'value' => old('materials.'.$key.'.unit', $row['unit']),
+                    'ariaLabel' => 'Unit for '.$lineLabel,
+                  ])
                 </td>
                 <td data-label="Unit price (CAD$)">
                   <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"

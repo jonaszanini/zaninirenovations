@@ -40,6 +40,10 @@ class ShedSettings extends Model
 
     public const PAINT_SF_PER_GALLON = 350;
 
+    public const WEATHER_COAT_SF_PER_GALLON = 300;
+
+    public const MATERIAL_WEATHER_COAT = 'weather_coat';
+
     public const PAINT_WASTE = 1.1;
 
     public const MATERIAL_WASTE = 1.1;
@@ -157,6 +161,7 @@ class ShedSettings extends Model
             'siding_hardie' => $row('Hardie board siding (per sq ft)', 'sf', 7.20),
             'house_wrap' => $row('House wrap (per sq ft)', 'sf', 0.35),
             'corner_trim' => $row('Corner / trim (lf)', 'lf', 4.20),
+            self::MATERIAL_WEATHER_COAT => $row('Weather coat, 1 gal (each)', 'gallon', 48.00),
             'door_custom' => $row('Custom-built shed door (each)', 'each', 380.00),
             'door_prehung' => $row('Pre-hung exterior door (each)', 'each', 420.00),
             'door_rollup' => $row('Roll-up door (each)', 'each', 890.00),
@@ -280,6 +285,15 @@ class ShedSettings extends Model
         return $key === self::MATERIAL_METAL_BLACK || $key === self::MATERIAL_METAL_GALVANIZED;
     }
 
+    public static function weatherCoatGallons(float $sf): int
+    {
+        if ($sf <= 0 || self::WEATHER_COAT_SF_PER_GALLON <= 0) {
+            return 0;
+        }
+
+        return max(1, (int) ceil(($sf * self::PAINT_WASTE) / self::WEATHER_COAT_SF_PER_GALLON));
+    }
+
     /**
      * Short “what / where / why” copy for price-configuration info icons.
      *
@@ -314,6 +328,7 @@ class ShedSettings extends Model
             'siding_hardie' => 'Fiber-cement wall cladding (Hardie-style), not roof shingles.',
             'house_wrap' => 'Weather barrier on the walls, under the siding.',
             'corner_trim' => 'Trim at outside corners and around doors and windows.',
+            self::MATERIAL_WEATHER_COAT => 'Sealer on roof or wall sheathing until finish covering is installed.',
             'door_custom' => 'Site-built exterior door in the wall opening.',
             'door_prehung' => 'Factory door already in a frame, set in the wall opening.',
             'door_rollup' => 'Overhead door in a wide wall opening.',

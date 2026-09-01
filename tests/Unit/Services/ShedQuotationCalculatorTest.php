@@ -222,6 +222,52 @@ class ShedQuotationCalculatorTest extends TestCase
         $this->assertSame('metal_galvanized', ShedQuotationCalculator::normalizeRoofType('metal_silver'));
     }
 
+    public function test_not_now_skips_roof_covering_and_siding(): void
+    {
+        $calc = (new ShedQuotationCalculator)->calculate([
+            'length_ft' => 10,
+            'width_ft' => 12,
+            'roof_type' => 'none',
+            'siding' => 'none',
+            'include_paint' => true,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $keys = collect($calc['materials'])->pluck('key');
+        $this->assertFalse($keys->contains('asphalt_shingle'));
+        $this->assertFalse($keys->contains('siding_vinyl'));
+        $this->assertFalse($keys->contains('house_wrap'));
+        $this->assertFalse($keys->contains('underlayment'));
+        $this->assertFalse($keys->contains('paint_exterior'));
+        $this->assertTrue($keys->contains('osb_58_roof'));
+        $this->assertNull(collect($calc['labor'])->firstWhere('key', 'roof_cover'));
+        $this->assertNull(collect($calc['labor'])->firstWhere('key', 'siding'));
+        $this->assertSame('Not now', ShedQuotationCalculator::roofLabel('none'));
+        $this->assertSame('Not now', ShedQuotationCalculator::sidingLabel('none'));
+    }
+
+    public function test_weather_coat_quotes_sealer_instead_of_finish(): void
+    {
+        $calc = (new ShedQuotationCalculator)->calculate([
+            'length_ft' => 10,
+            'width_ft' => 12,
+            'roof_type' => 'weather_coat',
+            'siding' => 'weather_coat',
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $roofCoat = collect($calc['materials'])->firstWhere('key', 'weather_coat_roof');
+        $wallCoat = collect($calc['materials'])->firstWhere('key', 'weather_coat_siding');
+        $this->assertNotNull($roofCoat);
+        $this->assertNotNull($wallCoat);
+        $this->assertSame('gallon', $roofCoat['unit']);
+        $this->assertSame(ShedSettings::weatherCoatGallons((float) $calc['scope']['roof_sf']), (int) $roofCoat['qty']);
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'asphalt_shingle'));
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'siding_vinyl'));
+        $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'roof_weather'));
+        $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'siding_weather'));
+    }
+
     private function settings(): ShedSettings
     {
         return new ShedSettings([

@@ -20,6 +20,7 @@
       }
   }
   $inputs['roof_type'] = ShedQuotationCalculator::normalizeRoofType($inputs['roof_type'] ?? 'asphalt');
+  $inputs['siding'] = ShedQuotationCalculator::normalizeSiding($inputs['siding'] ?? 'vinyl');
   $sectionList = $sections ?? ShedQuotationCalculator::SECTIONS;
   $previewLabor = is_array($initialPreview['labor'] ?? null) ? $initialPreview['labor'] : [];
   $previewMats = array_merge(

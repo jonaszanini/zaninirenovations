@@ -188,9 +188,13 @@
                          value="{{ $displayName }}">
                 </td>
                 <td data-label="Unit">
-                  <input type="text" class="admin-input" name="materials[{{ $key }}][unit]" maxlength="40"
-                         value="{{ old('materials.'.$key.'.unit', $row['unit']) }}"
-                         @if ($derivedPlate) readonly aria-readonly="true" @endif>
+                  @include('admin.partials.quotation_unit_select', [
+                    'name' => 'materials['.$key.'][unit]',
+                    'id' => 'sh-mat-unit-'.$key,
+                    'value' => old('materials.'.$key.'.unit', $row['unit']),
+                    'derivedPlate' => $derivedPlate,
+                    'ariaLabel' => 'Unit for '.$lineLabel,
+                  ])
                 </td>
                 <td data-label="Unit price (CAD$)">
                   <div class="br-config-price-wrap">

@@ -115,6 +115,19 @@
     });
     syncFoundation();
 
+    function syncPaintWrap() {
+      var siding = (form.querySelector('[name="siding"]:checked') || {}).value || 'vinyl';
+      var wrap = document.getElementById('sh-paint-wrap');
+      if (wrap) wrap.hidden = (siding === 'none' || siding === 'weather_coat');
+    }
+    form.querySelectorAll('[name="siding"]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        syncPaintWrap();
+        schedulePreview();
+      });
+    });
+    syncPaintWrap();
+
     function syncAreaReadout() {
       var len = parseFloat((document.getElementById('sh-length') || {}).value || 0);
       var wid = parseFloat((document.getElementById('sh-width') || {}).value || 0);

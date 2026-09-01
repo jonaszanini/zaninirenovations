@@ -37,6 +37,8 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Asphalt shingles')
             ->assertSee('Metal — Black')
             ->assertSee('Metal — Silver')
+            ->assertSee('Weather coat')
+            ->assertSee('Not now')
             ->assertSee('Hardie board')
             ->assertSee('Fully finished')
             ->assertSee('fa-info-circle', false)
@@ -57,7 +59,11 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Sold in bundles (~33.3 sq ft), not squares.')
             ->assertSee('Metal roof Black (36×93 panel)')
             ->assertSee('Metal roof Silver (36×93 panel)')
-            ->assertSee('Fiber-cement wall cladding (Hardie-style), not roof shingles.');
+            ->assertSee('Weather coat, 1 gal (each)')
+            ->assertSee('Fiber-cement wall cladding (Hardie-style), not roof shingles.')
+            ->assertSee('>Each</option>', false)
+            ->assertSee('>Sq ft</option>', false)
+            ->assertSee('>Bundle</option>', false);
     }
 
     public function test_project_context_sits_between_price_configuration_and_next(): void

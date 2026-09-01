@@ -192,8 +192,8 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Roof</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Underlayment, ice & water, drip edge, fascia, and ridge vent are included from Price configuration.']) Covering</label>
-      <div class="sh-choice-grid sh-choice-grid--3">
+      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips covering. Weather coat seals the roof deck. Finish roofs include underlayment, ice & water, drip edge, and ridge vent.']) Covering</label>
+      <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::ROOF as $key => $label)
           <label class="sh-choice">
             <input type="radio" name="roof_type" value="{{ $key }}" class="sh-preview" @checked($shVal('roof_type', 'asphalt') === $key)>
@@ -217,7 +217,7 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Siding</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'House wrap and corner trim are included. Door and window openings are subtracted.']) Material</label>
+      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips siding. Weather coat seals the wall sheathing. Finish siding includes house wrap and corner trim.']) Material</label>
       <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::SIDING as $key => $label)
           <label class="sh-choice">
@@ -227,6 +227,7 @@
         @endforeach
       </div>
     </div>
+    <div id="sh-paint-wrap">
     @include('admin.partials.checkbox', [
       'name' => 'include_paint',
       'hiddenFallback' => true,
@@ -235,6 +236,7 @@
       'info' => 'Adds paint labor and gallons for wood, Hardie, or board-and-batten. Skip for pre-finished vinyl.',
       'inputClass' => 'admin-checkbox__input sh-preview',
     ])
+    </div>
   </div>
 </details>
 

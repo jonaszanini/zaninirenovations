@@ -43,12 +43,16 @@ class ShedQuotationCalculator
         'bnb' => 'Board and batten',
         'wood' => 'Wood',
         'hardie' => 'Hardie board',
+        'weather_coat' => 'Weather coat',
+        'none' => 'Not now',
     ];
 
     public const ROOF = [
         'asphalt' => 'Asphalt shingles',
         'metal_black' => 'Metal — Black',
         'metal_galvanized' => 'Metal — Silver',
+        'weather_coat' => 'Weather coat',
+        'none' => 'Not now',
     ];
 
     public const DOOR_TYPES = [
@@ -129,9 +133,26 @@ class ShedQuotationCalculator
 
     public static function sidingLabel(string $type): string
     {
-        $key = array_key_exists($type, self::SIDING) ? $type : 'vinyl';
+        $key = self::normalizeSiding($type);
 
         return self::SIDING[$key];
+    }
+
+    public static function normalizeSiding(mixed $type): string
+    {
+        $value = strtolower(trim((string) $type));
+
+        return array_key_exists($value, self::SIDING) ? $value : 'vinyl';
+    }
+
+    public static function hasFinishSiding(string $type): bool
+    {
+        return in_array(self::normalizeSiding($type), ['vinyl', 'bnb', 'wood', 'hardie'], true);
+    }
+
+    public static function hasWeatherCoatSiding(string $type): bool
+    {
+        return self::normalizeSiding($type) === 'weather_coat';
     }
 
     public static function roofLabel(string $type): string
@@ -156,6 +177,18 @@ class ShedQuotationCalculator
         $key = self::normalizeRoofType($type);
 
         return $key === 'metal_black' || $key === 'metal_galvanized';
+    }
+
+    public static function hasFinishRoof(string $type): bool
+    {
+        $key = self::normalizeRoofType($type);
+
+        return $key === 'asphalt' || self::isMetalRoof($key);
+    }
+
+    public static function hasWeatherCoatRoof(string $type): bool
+    {
+        return self::normalizeRoofType($type) === 'weather_coat';
     }
 
     public static function metalMaterialKey(string $type): string
@@ -202,6 +235,7 @@ class ShedQuotationCalculator
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $inputs['shed_type'] = self::normalizeShedType($inputs['shed_type'] ?? 'gable');
         $inputs['roof_type'] = self::normalizeRoofType($inputs['roof_type'] ?? 'asphalt');
+        $inputs['siding'] = self::normalizeSiding($inputs['siding'] ?? 'vinyl');
 
         $length = round(max(0, (float) $inputs['length_ft']), 2);
         $width = round(max(0, (float) $inputs['width_ft']), 2);
@@ -403,36 +437,48 @@ class ShedQuotationCalculator
         $addMat('fasteners', 'framing', 1, 'fasteners');
 
         $addLabor('roof_frame', 'roof', 'Roof framing', number_format($roofSf, 0).' sq ft', $perHr($roofSf, (float) $prod['roof_frame_sf_per_hr']));
-        $addLabor('roof_cover', 'roof', 'Roof covering', self::roofLabel((string) $inputs['roof_type']), $perHr($roofSf, (float) $prod['roof_cover_sf_per_hr']));
         $rafterCount = max(4, (int) ceil(($length * 12) / 16) + 1) * 2;
         $addMat('lumber_2x6_rafters', 'roof', $rafterCount, 'lumber_2x6', 'Roof rafters');
         $roofSheets = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::PANEL_SF));
         $addMat('osb_58_roof', 'roof', $roofSheets, 'osb_58', 'Roof sheathing');
-        $addMat('underlayment', 'roof', round($roofSf * $waste, 0), 'underlayment');
-        $eaveLf = round(($length + 2 * $overhangFt) * 2, 0);
-        $addMat('ice_water', 'roof', round($eaveLf * 3, 0), 'ice_water');
-        $addMat('drip_edge', 'roof', round($perimeter + 8 * $overhangFt, 0), 'drip_edge');
         $addMat('fascia', 'roof', round($perimeter + 8 * $overhangFt, 0), 'fascia');
-        $addMat('ridge_vent', 'roof', round($length + 2 * $overhangFt, 0), 'ridge_vent');
-        if (self::isMetalRoof((string) $inputs['roof_type'])) {
-            $panels = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::METAL_PANEL_SF));
-            $metalKey = self::metalMaterialKey((string) $inputs['roof_type']);
-            $addMat($metalKey, 'roof', $panels, $metalKey);
-        } else {
-            $bundles = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::SHINGLE_SF_PER_BUNDLE));
-            $addMat('asphalt_shingle', 'roof', $bundles, 'asphalt_shingle');
+        $roofType = (string) $inputs['roof_type'];
+        if (self::hasFinishRoof($roofType)) {
+            $addLabor('roof_cover', 'roof', 'Roof covering', self::roofLabel($roofType), $perHr($roofSf, (float) $prod['roof_cover_sf_per_hr']));
+            $addMat('underlayment', 'roof', round($roofSf * $waste, 0), 'underlayment');
+            $eaveLf = round(($length + 2 * $overhangFt) * 2, 0);
+            $addMat('ice_water', 'roof', round($eaveLf * 3, 0), 'ice_water');
+            $addMat('drip_edge', 'roof', round($perimeter + 8 * $overhangFt, 0), 'drip_edge');
+            $addMat('ridge_vent', 'roof', round($length + 2 * $overhangFt, 0), 'ridge_vent');
+            if (self::isMetalRoof($roofType)) {
+                $panels = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::METAL_PANEL_SF));
+                $metalKey = self::metalMaterialKey($roofType);
+                $addMat($metalKey, 'roof', $panels, $metalKey);
+            } else {
+                $bundles = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::SHINGLE_SF_PER_BUNDLE));
+                $addMat('asphalt_shingle', 'roof', $bundles, 'asphalt_shingle');
+            }
+        } elseif (self::hasWeatherCoatRoof($roofType)) {
+            $addLabor('roof_weather', 'roof', 'Roof weather coat', number_format($roofSf, 0).' sq ft', $perHr($roofSf, (float) $prod['paint_sf_per_hr']));
+            $addMat('weather_coat_roof', 'roof', ShedSettings::weatherCoatGallons($roofSf), ShedSettings::MATERIAL_WEATHER_COAT);
         }
 
-        $sidingKey = match ((string) ($inputs['siding'] ?? 'vinyl')) {
-            'bnb' => 'siding_bnb',
-            'wood' => 'siding_wood',
-            'hardie' => 'siding_hardie',
-            default => 'siding_vinyl',
-        };
-        $addLabor('siding', 'siding', 'Siding', self::sidingLabel((string) $inputs['siding']).' — '.number_format($wallNet, 0).' sq ft', $perHr($wallNet, (float) $prod['siding_sf_per_hr']));
-        $addMat('house_wrap', 'siding', round($wallNet * $waste, 0), 'house_wrap');
-        $addMat($sidingKey, 'siding', round($wallNet * $waste, 0), $sidingKey);
-        $addMat('corner_trim', 'siding', round($height * 4 + $perimeter * 0.15, 0), 'corner_trim');
+        $sidingType = (string) $inputs['siding'];
+        if (self::hasFinishSiding($sidingType)) {
+            $sidingKey = match ($sidingType) {
+                'bnb' => 'siding_bnb',
+                'wood' => 'siding_wood',
+                'hardie' => 'siding_hardie',
+                default => 'siding_vinyl',
+            };
+            $addLabor('siding', 'siding', 'Siding', self::sidingLabel($sidingType).' — '.number_format($wallNet, 0).' sq ft', $perHr($wallNet, (float) $prod['siding_sf_per_hr']));
+            $addMat('house_wrap', 'siding', round($wallNet * $waste, 0), 'house_wrap');
+            $addMat($sidingKey, 'siding', round($wallNet * $waste, 0), $sidingKey);
+            $addMat('corner_trim', 'siding', round($height * 4 + $perimeter * 0.15, 0), 'corner_trim');
+        } elseif (self::hasWeatherCoatSiding($sidingType)) {
+            $addLabor('siding_weather', 'siding', 'Wall weather coat', number_format($wallNet, 0).' sq ft', $perHr($wallNet, (float) $prod['paint_sf_per_hr']));
+            $addMat('weather_coat_siding', 'siding', ShedSettings::weatherCoatGallons($wallNet), ShedSettings::MATERIAL_WEATHER_COAT);
+        }
 
         $doorMat = match ((string) ($inputs['door_type'] ?? 'custom')) {
             'prehung' => 'door_prehung',
@@ -476,7 +522,7 @@ class ShedQuotationCalculator
             $addMat('loft_osb', 'interior', max(1, (int) ceil(($loftSf * $waste) / ShedSettings::PANEL_SF)), 'loft_osb');
         }
 
-        if (! empty($inputs['include_paint'])) {
+        if (! empty($inputs['include_paint']) && self::hasFinishSiding((string) $inputs['siding'])) {
             $addLabor('paint', 'siding', 'Exterior paint / stain', number_format($wallNet, 0).' sq ft', $perHr($wallNet, (float) $prod['paint_sf_per_hr']));
             $gallons = max(1, (int) ceil(($wallNet * ShedSettings::PAINT_WASTE) / ShedSettings::PAINT_SF_PER_GALLON));
             $addMat('paint_exterior', 'siding', $gallons, 'paint_exterior');
