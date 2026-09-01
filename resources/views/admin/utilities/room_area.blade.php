@@ -96,50 +96,67 @@
     <div class="util-ra-workspace" data-ra-workspace hidden>
       {{-- Compact setup + save row --}}
       <section class="admin-card util-ra-controls">
-        <div class="util-ra-controls__grid">
-          <div class="util-ra-controls__block util-ra-controls__scale">
-            <span class="util-ra-controls__heading">Scale</span>
-            <div class="util-ra-scale-row">
-              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-calibrate-toggle>
-                <i class="fa fa-arrows-h"></i> Calibrate
-              </button>
+        <div class="util-ra-controls__bar">
+          <div class="util-ra-tool-group">
+            <span class="util-ra-tool-group__label">Scale</span>
+            <div class="util-ra-tool-group__actions">
+              <span class="util-ra-tip" data-tooltip="Calibrate scale from a known wall">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-calibrate-toggle aria-label="Calibrate scale from a known wall">
+                  <i class="fa fa-arrows-h" aria-hidden="true"></i>
+                </button>
+              </span>
               <div class="admin-form-group util-ra-scale-input">
-                <label for="ra-known-length">Known length</label>
-                <input class="admin-input" type="text" id="ra-known-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-known-length disabled>
+                <label for="ra-known-length" class="util-sr-only">Known length</label>
+                <input class="admin-input" type="text" id="ra-known-length" inputmode="decimal" placeholder="e.g. 12.5 ft" data-ra-known-length disabled>
               </div>
-              <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-apply-scale disabled>
-                Apply
-              </button>
+              <span class="util-ra-tip" data-tooltip="Apply known length">
+                <button type="button" class="admin-btn admin-btn--primary util-ra-icon-btn" data-ra-apply-scale disabled aria-label="Apply known length">
+                  <i class="fa fa-check" aria-hidden="true"></i>
+                </button>
+              </span>
             </div>
           </div>
-          <div class="util-ra-controls__block util-ra-controls__bg">
-            <span class="util-ra-controls__heading">Floor plan <span class="util-ra-optional">(per room)</span></span>
-            <div class="util-ra-bg-actions">
-              <label class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-file-label">
-                <i class="fa fa-upload"></i> Upload
-                <input type="file" accept="image/jpeg,image/png,image/webp" data-ra-bg-file hidden>
-              </label>
-              <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-bg-remove hidden>
-                <i class="fa fa-trash"></i> Delete image
-              </button>
+
+          <div class="util-ra-tool-group">
+            <span class="util-ra-tool-group__label">Floor plan</span>
+            <div class="util-ra-tool-group__actions">
+              <span class="util-ra-tip" data-tooltip="Upload floor plan">
+                <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-file-label">
+                  <i class="fa fa-upload" aria-hidden="true"></i>
+                  <span class="util-sr-only">Upload floor plan</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" data-ra-bg-file hidden>
+                </label>
+              </span>
+              <span class="util-ra-tip" data-tooltip="Delete floor plan image">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-btn--danger-ghost" data-ra-bg-remove hidden aria-label="Delete floor plan image">
+                  <i class="fa fa-trash" aria-hidden="true"></i>
+                </button>
+              </span>
             </div>
           </div>
-          <div class="util-ra-controls__block util-ra-controls__save">
-            <span class="util-ra-controls__heading" data-ra-save-card-title>Save room</span>
-            <div class="util-ra-save-row">
-              <div class="admin-form-group">
-                <label for="ra-room-name">Room name</label>
-                <input class="admin-input" type="text" id="ra-room-name" maxlength="120" placeholder="e.g. Basement rec room" data-ra-room-name>
+
+          <div class="util-ra-tool-group util-ra-tool-group--room">
+            <span class="util-ra-tool-group__label">Room</span>
+            <div class="util-ra-tool-group__actions">
+              <div class="admin-form-group util-ra-room-name">
+                <label for="ra-room-name" class="util-sr-only">Room name</label>
+                <input class="admin-input" type="text" id="ra-room-name" maxlength="120" placeholder="Room name" data-ra-room-name>
               </div>
-              <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-save-room disabled>
-                <i class="fa fa-save"></i> Save room
-              </button>
-              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-cancel-edit hidden>
-                Cancel edit
-              </button>
-              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-room>
-                <i class="fa fa-plus"></i> New room
-              </button>
+              <span class="util-ra-tip" data-tooltip="Save room" data-ra-save-tip>
+                <button type="button" class="admin-btn admin-btn--primary util-ra-icon-btn" data-ra-save-room disabled aria-label="Save room">
+                  <i class="fa fa-save" aria-hidden="true"></i>
+                </button>
+              </span>
+              <span class="util-ra-tip" data-tooltip="Cancel edit">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-cancel-edit hidden aria-label="Cancel edit">
+                  <i class="fa fa-times" aria-hidden="true"></i>
+                </button>
+              </span>
+              <span class="util-ra-tip" data-tooltip="New room">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-new-room aria-label="New room">
+                  <i class="fa fa-plus" aria-hidden="true"></i>
+                </button>
+              </span>
             </div>
           </div>
         </div>

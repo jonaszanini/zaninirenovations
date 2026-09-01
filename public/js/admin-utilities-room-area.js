@@ -93,7 +93,7 @@
     feedback: root.querySelector('[data-ra-feedback]'),
     roomName: root.querySelector('[data-ra-room-name]'),
     saveRoom: root.querySelector('[data-ra-save-room]'),
-    saveCardTitle: root.querySelector('[data-ra-save-card-title]'),
+    saveTip: root.querySelector('[data-ra-save-tip]'),
     cancelEdit: root.querySelector('[data-ra-cancel-edit]'),
     newRoom: root.querySelector('[data-ra-new-room]'),
     newRoomSecondary: root.querySelector('[data-ra-new-room-secondary]'),
@@ -4782,13 +4782,12 @@
 
   function updateEditUI() {
     var editing = !!state.editingRoomId;
+    var saveLabel = editing ? 'Save changes' : 'Save room';
     if (els.saveRoom) {
-      els.saveRoom.innerHTML = editing
-        ? '<i class="fa fa-save"></i> Save changes'
-        : '<i class="fa fa-save"></i> Save room';
+      els.saveRoom.setAttribute('aria-label', saveLabel);
     }
-    if (els.saveCardTitle) {
-      els.saveCardTitle.textContent = editing ? 'Save changes' : 'Save room';
+    if (els.saveTip) {
+      els.saveTip.setAttribute('data-tooltip', saveLabel);
     }
     show(els.cancelEdit, editing);
     renderRooms();
