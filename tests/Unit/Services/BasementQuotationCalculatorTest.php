@@ -656,6 +656,15 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEmpty(collect($calc['materials'])->firstWhere('key', 'baseboard'));
     }
 
+    public function test_bathroom_preset_still_enables_electrical_and_plumbing_for_pricing(): void
+    {
+        $keys = BasementQuotationCalculator::presetEnabledSections('bathroom');
+        $this->assertContains('electrical', $keys);
+        $this->assertContains('plumbing', $keys);
+        $this->assertContains('bathroom', $keys);
+        $this->assertNotContains('flooring', $keys);
+    }
+
     public function test_wall_preset_uses_partition_for_drywall_and_paint(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

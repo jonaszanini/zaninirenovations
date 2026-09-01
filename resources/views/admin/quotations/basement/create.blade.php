@@ -119,7 +119,9 @@
         @foreach ($sectionList as $key => $label)
           @php $n++; @endphp
           <button type="button" class="br-progress__item{{ $n === 1 ? ' is-current' : '' }}" data-br-goto="{{ $key }}"
-                  @if ($key !== 'overview' && ! in_array($key, $enabledNow, true)) hidden @endif>
+                  @if ($key !== 'overview' && ! in_array($key, $enabledNow, true)) hidden
+                  @elseif ($scopePreset === 'bathroom' && in_array($key, ['electrical', 'plumbing'], true)) hidden
+                  @endif>
             <span class="br-progress__num">{{ $n }}</span>
             <span class="br-progress__label">{{ $label }}</span>
           </button>
@@ -193,7 +195,7 @@
             </fieldset>
             <fieldset class="br-bath-provide" id="br-provide-bath-items">
               <legend class="br-bath-provide__title">Bathroom items</legend>
-              <p class="admin-form-help">Client buys these fixtures; you still install them. Tile, fan, and lights stay on the Bathroom / Electrical sections above.</p>
+              <p class="admin-form-help">Client buys these fixtures; you still install them. Tile, fan, and lights stay on the Bathroom step (or Electrical when quoting living-area lights).</p>
               <div class="br-bath-provide__grid">
                 @foreach (\App\Services\BasementQuotationCalculator::clientProvidesBathItemLabels() as $itemKey => $itemLabel)
                   @include('admin.partials.checkbox', [

@@ -53,6 +53,8 @@ class BasementQuotationCalculator
         $preset = self::normalizePreset($preset);
 
         return match ($preset) {
+            // Electrical + plumbing stay enabled for pricing; the wizard nests
+            // those fields inside the Bathroom step for this preset.
             'bathroom' => ['overview', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
             'wall' => ['overview', 'framing', 'drywall', 'painting', 'finishing'],
             'custom' => ['overview'],

@@ -181,9 +181,12 @@
 
   function rebuildWizardKeys() {
     var enabled = enabledTradeKeys();
+    var nest = currentPreset() === 'bathroom';
     var next = [];
     allSectionKeys.forEach(function (k) {
-      if (enabled.indexOf(k) !== -1) next.push(k);
+      if (enabled.indexOf(k) === -1) return;
+      if (nest && (k === 'electrical' || k === 'plumbing')) return;
+      next.push(k);
     });
     sectionKeys = next;
     wizardKeys = next.concat(['review']);
@@ -363,7 +366,51 @@
     if (wizardKeys[currentIndex] !== 'review' && sectionKeys.indexOf(wizardKeys[currentIndex]) < 0) {
       currentIndex = 0;
     }
+    relocateNestedTrades();
     syncBathroomElectricalHints();
+  }
+
+  function relocateNestedTrades() {
+    var nest = currentPreset() === 'bathroom';
+    [
+      ['br-electrical-fields', 'br-electrical-slot-step', 'br-electrical-slot-bath'],
+      ['br-plumbing-fields', 'br-plumbing-slot-step', 'br-plumbing-slot-bath']
+    ].forEach(function (ids) {
+      var fields = document.getElementById(ids[0]);
+      var stepSlot = document.getElementById(ids[1]);
+      var bathSlot = document.getElementById(ids[2]);
+      if (!fields || !stepSlot || !bathSlot) return;
+      (nest ? bathSlot : stepSlot).appendChild(fields);
+      bathSlot.hidden = !nest;
+    });
+    ['electrical', 'plumbing'].forEach(function (k) {
+      var cb = form.querySelector('[data-br-enabled-section="' + k + '"]');
+      var row = cb ? cb.closest('.admin-checkbox') : null;
+      if (row) {
+        row.classList.toggle('br-trade-nested', nest);
+        if (nest) cb.checked = true;
+      }
+      var step = sectionEl(k);
+      if (nest && step) {
+        step.hidden = true;
+        step.classList.remove('is-active');
+        if (!isEdit) step.removeAttribute('open');
+      }
+      form.querySelectorAll('.br-progress__item[data-br-goto="' + k + '"]').forEach(function (btn) {
+        if (nest) btn.hidden = true;
+      });
+    });
+    var includeWrap = form.querySelector('[data-br-bath-include-wrap]');
+    if (includeWrap) includeWrap.hidden = nest;
+    var stepHint = form.querySelector('[data-br-bath-step-hint]');
+    if (stepHint) stepHint.hidden = nest;
+    var livingHint = form.querySelector('[data-br-living-area-light-hint]');
+    if (livingHint) livingHint.hidden = nest;
+    if (nest) {
+      setNamedCheck('include_bathroom', true);
+      var bathFields = document.getElementById('br-bath-fields');
+      if (bathFields) bathFields.hidden = false;
+    }
   }
 
   function applyElectricalDefaults(preset) {

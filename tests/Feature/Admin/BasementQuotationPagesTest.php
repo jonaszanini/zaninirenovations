@@ -116,7 +116,11 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             '/data-br-goto="flooring"[^>]*\bhidden\b/s',
             $html
         );
-        $this->assertDoesNotMatchRegularExpression(
+        $this->assertMatchesRegularExpression(
+            '/data-br-goto="electrical"[^>]*\bhidden\b/s',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
             '/data-br-goto="plumbing"[^>]*\bhidden\b/s',
             $html
         );
@@ -127,7 +131,6 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('Light fixture', $html);
         $this->assertStringContainsString('Spot light', $html);
         $this->assertStringContainsString('1 at the sink', $html);
-        $this->assertStringContainsString('Living-area lights stay on the Electrical step.', $html);
         $this->assertStringContainsString('fa-info-circle', $html);
         $this->assertStringContainsString('New drain, vent, and hot/cold supply', $html);
         $this->assertStringContainsString('Add tile area', $html);
@@ -136,6 +139,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             '/id="br-lighting-fixture-qty"[^>]*\bhidden\b/',
             $html
         );
+        $this->assertStringContainsString('id="br-electrical-slot-bath"', $html);
+        $this->assertStringContainsString('id="br-plumbing-slot-bath"', $html);
     }
 
     public function test_price_configuration_keeps_active_tab_after_save(): void

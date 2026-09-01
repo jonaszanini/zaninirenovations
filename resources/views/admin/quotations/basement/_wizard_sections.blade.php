@@ -25,6 +25,7 @@
       'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
   ]);
   $enabledCount = $enabledCount ?? max(1, count($enabledNow));
+  $bathNestTrades = $scopePreset === 'bathroom';
   $qtyDimsPosted = old('qty_dims', $inputs['qty_dims'] ?? []);
   if (! is_array($qtyDimsPosted)) {
       $qtyDimsPosted = [];
@@ -109,13 +110,13 @@
       'paint_trim_lf' => 'Base and casing to paint. Blank uses baseboard plus door casing length.',
       'paint_colors' => 'One color = walls and ceiling the same. Two colors packs extra paint and cut-in labor.',
       'paint_coats' => 'Finish coats after primer. Two is typical on new drywall.',
-      'include_bathroom' => 'Adds bathroom fixture install and tile. Turn on bathroom rough-in under Plumbing if the pipes are new.',
+      'include_bathroom' => 'Adds bathroom fixture install and tile. Bathroom-only quotes keep electrical and plumbing on this step; otherwise turn on rough-in under Plumbing if the pipes are new.',
       'bath_type' => 'Full bath includes shower or tub. Half bath is toilet and vanity only.',
       'include_vanity' => 'Vanity cabinet, top, and faucet install (fixture cost from Price configuration).',
       'include_toilet' => 'Toilet supply, set, and connect.',
       'include_shower' => 'Shower unit or valve and surround install. Tile area is the field below.',
       'include_tub' => 'Bathtub set and connect, instead of or in addition to a shower.',
-      'include_exhaust_fan' => 'Bath fan, duct, and roof/soffit cap. Pair with a switch on the Electrical step.',
+      'include_exhaust_fan' => 'Bath fan, duct, and roof/soffit cap. Count a switch with the electrical switches.',
       'include_bath_fixture' => 'Ceiling or vanity light fixture in the bathroom. Check this and set how many.',
       'include_bath_spot' => 'Recessed pot / spot in the bathroom (for example a shower pot). You can use this together with a light fixture.',
       'bath_fixture_qty' => 'How many bathroom light fixtures to hang.',
@@ -139,7 +140,7 @@
   ];
   $presetHelp = [
       'full' => 'Walks every trade. Area auto-fills insulation, drywall, flooring, paint, and cleanup.',
-      'bathroom' => 'Plumbing, electrical, drywall, paint, fixtures, and cleanup — not whole-basement flooring or insulation.',
+      'bathroom' => 'Plumbing, electrical, drywall, paint, fixtures, and cleanup in one bathroom flow — not whole-basement flooring or insulation.',
       'wall' => 'Framing, drywall, paint, and cleanup. Drywall and paint use wall length × height × both sides.',
       'custom' => 'Only the trades you check below. Overview and Review always stay.',
   ];
@@ -174,6 +175,7 @@
           'label' => $tradeLabel,
           'info' => $tradeInfo[$tradeKey] ?? null,
           'inputClass' => 'admin-checkbox__input br-preview',
+          'class' => ($bathNestTrades && in_array($tradeKey, ['electrical', 'plumbing'], true)) ? 'br-trade-nested' : '',
           'attrs' => ['data-br-enabled-section' => $tradeKey],
         ])
       @endforeach
@@ -316,88 +318,26 @@
 
 {{-- 4. Electrical --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="electrical" @unless(in_array('electrical', $enabledNow, true)) hidden @endunless>
+<details class="br-acc admin-card" data-br-step="electrical" @if($bathNestTrades || ! in_array('electrical', $enabledNow, true)) hidden @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Electrical</summary>
   <div class="br-acc__body">
-    <div class="admin-form-grid-2">
-      <div class="admin-form-group">
-        <label for="br-outlets">@include('admin.partials.info_tip', ['text' => $brInfo['outlet_qty']]) New outlets</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-outlets" name="outlet_qty"
-               value="{{ $brVal('outlet_qty', 0) }}">
-        <p class="admin-form-help" data-br-bathroom-electrical-hint @if($scopePreset !== 'bathroom') hidden @endif>Typical bathroom: 1 at the sink, 2 on the wall. Change the count if this job differs.</p>
-      </div>
-      <div class="admin-form-group">
-        <label for="br-switches">@include('admin.partials.info_tip', ['text' => $brInfo['switch_qty']]) Switches</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-switches" name="switch_qty"
-               value="{{ $brVal('switch_qty', 0) }}">
-        <p class="admin-form-help" data-br-bathroom-electrical-hint @if($scopePreset !== 'bathroom') hidden @endif>Typical bathroom: 1 for the light, 1 for the exhaust.</p>
-      </div>
-      <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
-        <label for="br-lighting-type">@include('admin.partials.info_tip', ['text' => $brInfo['lighting_type']]) Basement ceiling lighting</label>
-        <select class="admin-input br-preview" id="br-lighting-type" name="lighting_type" data-br-lighting-type>
-          <option value="fixture" @selected($brVal('lighting_type', 'spot') === 'fixture')>Light fixtures</option>
-          <option value="spot" @selected($brVal('lighting_type', 'spot') === 'spot')>Spot lights (pots / recessed)</option>
-          <option value="both" @selected($brVal('lighting_type') === 'both')>Light fixtures and spot lights</option>
-        </select>
-        <p class="admin-form-help">Living-area lights only. Bathroom fixtures and spots are on the Bathroom step. Set unit prices under Price configuration.</p>
-      </div>
-      <div class="admin-form-group" id="br-lighting-fixture-qty" data-br-basement-lighting @if($scopePreset === 'bathroom' || $brVal('lighting_type', 'spot') !== 'both') hidden @endif>
-        <label for="br-fixtures">@include('admin.partials.info_tip', ['text' => $brInfo['fixture_qty']]) How many light fixtures</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-fixtures" name="fixture_qty"
-               value="{{ $brVal('fixture_qty', 0) }}">
-      </div>
-      <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
-        <label for="br-lights">@include('admin.partials.info_tip', ['text' => $brInfo['light_qty']]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'How many light fixtures' : 'How many spot lights' }}</span></label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
-               value="{{ $brVal('light_qty', 0) }}">
-        <p class="admin-form-help" id="br-spot-hint" @if($brVal('lighting_type', 'spot') === 'fixture') hidden @endif>Optional extra pots in the basement rooms.</p>
-      </div>
-      <div class="admin-form-group">
-        <label for="br-detectors">@include('admin.partials.info_tip', ['text' => $brInfo['detector_qty']]) Smoke / CO detectors</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-detectors" name="detector_qty"
-               value="{{ $brVal('detector_qty', 2) }}"
-               title="Ontario typically requires interconnected smoke/CO on each level.">
-      </div>
-      <div class="admin-form-group">
-        <label for="br-runs">@include('admin.partials.info_tip', ['text' => $brInfo['wiring_runs']]) Wiring runs</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-runs" name="wiring_runs"
-               value="{{ $brVal('wiring_runs', 0) }}" placeholder="Auto: outlets + switches + lights">
-        <p class="admin-form-help">Leave 0 to estimate one run per device.</p>
-      </div>
-    </div>
-    <div style="margin-top:8px;">
-      @include('admin.partials.checkbox', [
-        'name' => 'panel_upgrade',
-        'hiddenFallback' => true,
-        'checked' => $brOn('panel_upgrade'),
-        'label' => 'Panel upgrade needed',
-        'info' => $brInfo['panel_upgrade'],
-        'inputClass' => 'admin-checkbox__input br-preview',
-      ])
+    <div id="br-electrical-slot-step">
+      @unless($bathNestTrades)
+        @include('admin.quotations.basement._electrical_fields')
+      @endunless
     </div>
   </div>
 </details>
 
 {{-- 5. Plumbing --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="plumbing" @unless(in_array('plumbing', $enabledNow, true)) hidden @endunless>
+<details class="br-acc admin-card" data-br-step="plumbing" @if($bathNestTrades || ! in_array('plumbing', $enabledNow, true)) hidden @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Plumbing</summary>
   <div class="br-acc__body">
-    @include('admin.partials.checkbox', [
-      'name' => 'include_plumbing',
-      'hiddenFallback' => true,
-      'checked' => $brOn('include_plumbing'),
-      'label' => 'Include plumbing rough-in',
-      'info' => $brInfo['include_plumbing'],
-      'inputClass' => 'admin-checkbox__input br-preview',
-      'attrs' => ['data-br-reveal' => 'br-plumb-fields'],
-    ])
-    <div id="br-plumb-fields" class="br-check-stack" style="margin-top:12px;" @unless($brOn('include_plumbing')) hidden @endunless>
-      @include('admin.partials.checkbox', ['name' => 'bath_rough_in', 'hiddenFallback' => true, 'checked' => $brOn('bath_rough_in'), 'label' => 'Bathroom rough-in (drain / vent / supply)', 'info' => $brInfo['bath_rough_in'], 'inputClass' => 'admin-checkbox__input br-preview'])
-      @include('admin.partials.checkbox', ['name' => 'sink_laundry', 'hiddenFallback' => true, 'checked' => $brOn('sink_laundry'), 'label' => 'Sink / laundry hookup', 'info' => $brInfo['sink_laundry'], 'inputClass' => 'admin-checkbox__input br-preview'])
-      @include('admin.partials.checkbox', ['name' => 'wet_bar', 'hiddenFallback' => true, 'checked' => $brOn('wet_bar'), 'label' => 'Wet bar', 'info' => $brInfo['wet_bar'], 'inputClass' => 'admin-checkbox__input br-preview'])
-      @include('admin.partials.checkbox', ['name' => 'floor_drain', 'hiddenFallback' => true, 'checked' => $brOn('floor_drain'), 'label' => 'Floor drain', 'info' => $brInfo['floor_drain'], 'inputClass' => 'admin-checkbox__input br-preview'])
-      @include('admin.partials.checkbox', ['name' => 'wh_reloc', 'hiddenFallback' => true, 'checked' => $brOn('wh_reloc'), 'label' => 'Water heater relocation', 'info' => $brInfo['wh_reloc'], 'inputClass' => 'admin-checkbox__input br-preview'])
+    <div id="br-plumbing-slot-step">
+      @unless($bathNestTrades)
+        @include('admin.quotations.basement._plumbing_fields')
+      @endunless
     </div>
   </div>
 </details>
@@ -691,17 +631,19 @@
 <details class="br-acc admin-card" data-br-step="bathroom" @unless(in_array('bathroom', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Bathroom</summary>
   <div class="br-acc__body">
-    @include('admin.partials.checkbox', [
-      'name' => 'include_bathroom',
-      'hiddenFallback' => true,
-      'checked' => $brOn('include_bathroom'),
-      'label' => 'Include a bathroom in this basement',
-      'info' => $brInfo['include_bathroom'],
-      'inputClass' => 'admin-checkbox__input br-preview',
-      'attrs' => ['data-br-reveal' => 'br-bath-fields'],
-    ])
-    <div id="br-bath-fields" style="margin-top:12px;" @unless($brOn('include_bathroom')) hidden @endunless>
-      <p class="admin-form-help">Turn on bathroom rough-in under Plumbing if new drains are needed.</p>
+    <div data-br-bath-include-wrap @if($bathNestTrades) hidden @endif>
+      @include('admin.partials.checkbox', [
+        'name' => 'include_bathroom',
+        'hiddenFallback' => true,
+        'checked' => $brOn('include_bathroom') || $bathNestTrades,
+        'label' => 'Include a bathroom in this basement',
+        'info' => $brInfo['include_bathroom'],
+        'inputClass' => 'admin-checkbox__input br-preview',
+        'attrs' => ['data-br-reveal' => 'br-bath-fields'],
+      ])
+    </div>
+    <div id="br-bath-fields" style="margin-top:12px;" @unless($brOn('include_bathroom') || $bathNestTrades) hidden @endunless>
+      <p class="admin-form-help" data-br-bath-step-hint @if($bathNestTrades) hidden @endif>Turn on bathroom rough-in under Plumbing if new drains are needed.</p>
       <div class="admin-form-group">
         <label for="br-bath-type">@include('admin.partials.info_tip', ['text' => $brInfo['bath_type']]) Bathroom type</label>
         <select class="admin-input br-preview" id="br-bath-type" name="bath_type">
@@ -716,6 +658,22 @@
         @include('admin.partials.checkbox', ['name' => 'include_tub', 'hiddenFallback' => true, 'checked' => $brOn('include_tub'), 'label' => 'Tub', 'info' => $brInfo['include_tub'], 'inputClass' => 'admin-checkbox__input br-preview'])
         @include('admin.partials.checkbox', ['name' => 'include_exhaust_fan', 'hiddenFallback' => true, 'checked' => $brOn('include_exhaust_fan', true), 'label' => 'Exhaust fan', 'info' => $brInfo['include_exhaust_fan'], 'inputClass' => 'admin-checkbox__input br-preview'])
       </div>
+      <div class="br-nested-trade" id="br-plumbing-slot-bath" @unless($bathNestTrades) hidden @endunless>
+        <div class="br-tile-areas__head">
+          <span class="br-tile-areas__title">Plumbing</span>
+        </div>
+        @if($bathNestTrades)
+          @include('admin.quotations.basement._plumbing_fields')
+        @endif
+      </div>
+      <div class="br-nested-trade" id="br-electrical-slot-bath" @unless($bathNestTrades) hidden @endunless>
+        <div class="br-tile-areas__head">
+          <span class="br-tile-areas__title">Electrical</span>
+        </div>
+        @if($bathNestTrades)
+          @include('admin.quotations.basement._electrical_fields')
+        @endif
+      </div>
       <div class="br-bath-lighting">
         <div class="br-tile-areas__head">
           <span class="br-tile-areas__title">
@@ -723,7 +681,7 @@
             Bathroom lighting
           </span>
         </div>
-        <p class="admin-form-help">Living-area lights stay on the Electrical step.</p>
+        <p class="admin-form-help" data-br-living-area-light-hint @if($bathNestTrades) hidden @endif>Living-area lights stay on the Electrical step.</p>
         <div class="br-bath-light-row">
           @include('admin.partials.checkbox', [
             'name' => 'include_bath_fixture',
