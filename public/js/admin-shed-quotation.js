@@ -241,6 +241,7 @@
     function runPreview() {
       if (!previewUrl) return;
       var body = new FormData(form);
+      body.delete('_method'); // Edit forms include @method('PUT'); must not spoof preview POST as PUT.
       fetch(previewUrl, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },

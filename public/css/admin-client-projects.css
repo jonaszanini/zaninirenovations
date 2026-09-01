@@ -7221,6 +7221,9 @@ body.cp-modal-open {
   color: #9a3412;
   font-size: 13px;
 }
+.sh-permit[hidden] {
+  display: none;
+}
 .sh-permit i {
   margin-top: 2px;
 }

@@ -110,6 +110,46 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             ->assertJsonPath('eta.scenarios.0.crew', 1);
     }
 
+    public function test_edit_preview_endpoint_returns_live_totals(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->post(route('admin.quotations.shed.store'), [
+            'save_intent' => 'draft',
+            'client_name' => 'Live Preview Client',
+            'length_ft' => 8,
+            'width_ft' => 8,
+            'wall_height_ft' => 8,
+            'shed_type' => 'gable',
+            'foundation' => 'skids',
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'include_commute' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ]);
+
+        $quote = ShedQuotation::query()->where('client_name', 'Live Preview Client')->first();
+        $this->assertNotNull($quote);
+
+        $this->post(route('admin.quotations.shed.calculate-existing', $quote), [
+            'length_ft' => 13,
+            'width_ft' => 3,
+            'wall_height_ft' => 6.75,
+            'shed_type' => 'gable',
+            'foundation' => 'skids',
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ])->assertOk()
+            ->assertJsonPath('scope.area_sqft', 39);
+
+        $this->post(route('admin.quotations.shed.calculate-existing', $quote), [
+            '_method' => 'PUT',
+            'length_ft' => 13,
+            'width_ft' => 3,
+        ])->assertStatus(405);
+    }
+
     public function test_store_publishes_a_standalone_quotation(): void
     {
         $this->actingAsAdmin();
