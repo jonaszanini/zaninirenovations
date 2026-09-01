@@ -45,6 +45,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
             ->assertSee('Labor productivity')
+            ->assertSee('class="admin-form-grid-4"', false)
             ->assertSee('Default materials')
             ->assertSee('>Rates</button>', false)
             ->assertSee('>Materials</button>', false)

@@ -11,7 +11,7 @@
   <form method="post" action="{{ route('admin.quotations.stairs.database.update') }}" enctype="multipart/form-data" class="sq-db-form">
     @csrf
 
-    <div class="pq-form-grid sq-db-global-grid" style="margin-bottom:20px;">
+    <div class="admin-form-grid-4 sq-db-global-grid" style="margin-bottom:20px;">
       <div class="admin-form-group">
         <label for="sq-db-carpet">Carpet removal ($/step)</label>
         <input type="text" id="sq-db-carpet" name="carpet_removal_per_step" class="admin-input cp-money-input" inputmode="decimal" required

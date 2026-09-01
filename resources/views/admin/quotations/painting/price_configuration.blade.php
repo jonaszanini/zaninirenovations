@@ -4,8 +4,6 @@
 
 @push('head')
   <style>
-    .pq-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (max-width: 700px) { .pq-form-grid { grid-template-columns: 1fr; } }
     .pq-hint { color: #64748b; font-size: 11px; margin-top: 2px; }
     .pt-paint-line-row {
       display: grid;
@@ -43,7 +41,7 @@
       These rates feed the live painting calculator (labor per sq ft, paint per gallon, expendables, and coverage).
     </p>
 
-    <div class="pq-form-grid">
+    <div class="admin-form-grid-4">
       <div class="admin-form-group">
         <label for="labor_per_sqf">Base labor price per sq ft (CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"

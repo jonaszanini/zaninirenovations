@@ -102,4 +102,22 @@ class ShedSettingsTest extends TestCase
             $this->assertNotSame('', trim($tips[$key]));
         }
     }
+
+    public function test_price_config_packs_two_field_groups_on_one_row(): void
+    {
+        $html = view('admin.partials.quotation_productivity_groups', [
+            'productivityGroups' => ShedSettings::productivityGroups(),
+            'productivity' => [],
+        ])->render();
+
+        $this->assertStringContainsString('br-prod-pair', $html);
+        $this->assertStringContainsString('admin-form-grid-4', $html);
+
+        $pairStart = strpos($html, 'br-prod-pair');
+        $this->assertNotFalse($pairStart);
+        $pairHtml = substr($html, $pairStart, 1800);
+        $this->assertStringContainsString('Floor &amp; walls', $pairHtml);
+        $this->assertStringContainsString('Openings', $pairHtml);
+        $this->assertStringNotContainsString('Roof &amp; siding', $pairHtml);
+    }
 }

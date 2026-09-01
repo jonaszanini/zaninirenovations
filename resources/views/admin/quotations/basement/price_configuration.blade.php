@@ -57,7 +57,7 @@
              data-panel="rates" id="br-config-rates" role="tabpanel" aria-labelledby="br-tab-rates">
       <h3 class="br-config-heading">Labor rates</h3>
       <p class="admin-form-help br-config-help">Defaults for new basement quotations. Each quote can still override owner and helper rates.</p>
-      <div class="admin-form-grid-2">
+      <div class="admin-form-grid-4">
         <div class="admin-form-group">
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
@@ -82,19 +82,7 @@
       <h3 class="br-config-heading">Labor productivity</h3>
       <p class="admin-form-help br-config-help">Hours per unit of work. Higher numbers mean faster production (more units per hour) except where the label says “hours each”.</p>
 
-      @foreach ($productivityGroups as $group => $rows)
-        <h4 class="br-review-heading">{{ $group }}</h4>
-        <div class="admin-form-grid-2">
-          @foreach ($rows as $key => $label)
-            <div class="admin-form-group">
-              <label for="prod-{{ $key }}">{{ $label }}</label>
-              <input type="number" step="0.01" min="0" class="admin-input" id="prod-{{ $key }}"
-                     name="productivity[{{ $key }}]"
-                     value="{{ old('productivity.'.$key, $productivity[$key] ?? '') }}">
-            </div>
-          @endforeach
-        </div>
-      @endforeach
+      @include('admin.partials.quotation_productivity_groups')
     </section>
 
     <section class="cp-tab-panel{{ $startTab === 'materials' ? ' is-active' : '' }}"

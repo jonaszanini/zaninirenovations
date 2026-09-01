@@ -5,9 +5,6 @@
 @push('head')
   <style>
     .pq-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (min-width: 900px) {
-      .sq-db-global-grid.pq-form-grid { grid-template-columns: 1fr 1fr 1fr; }
-    }
     @media (max-width: 700px) { .pq-form-grid { grid-template-columns: 1fr; } }
     .pq-hint { color: #64748b; font-size: 11px; margin-top: 2px; }
     .sq-db-open-block {
@@ -67,8 +64,18 @@
     }
     .sq-db-rate-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 12px 20px;
+    }
+    @media (min-width: 700px) {
+      .sq-db-rate-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (min-width: 900px) {
+      .sq-db-rate-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
     }
     .sq-db-rate-grid .admin-form-group {
       margin-bottom: 0;

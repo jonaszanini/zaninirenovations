@@ -1838,6 +1838,48 @@ a:hover .cp-expense-receipt-pdf {
     grid-template-columns: 1fr;
   }
 }
+.admin-form-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 700px) {
+  .admin-form-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 900px) {
+  .admin-form-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.br-prod-pack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.br-prod-block {
+  min-width: 0;
+}
+.br-prod-block .br-review-heading {
+  margin: 0 0 8px;
+}
+.br-prod-block .admin-form-group {
+  margin-bottom: 0;
+}
+.br-prod-pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+@media (min-width: 900px) {
+  .br-prod-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .br-prod-pair .admin-form-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .admin-form-section {
   margin: 18px 0;
   padding-top: 16px;
@@ -4468,8 +4510,18 @@ body.cp-modal-open {
 }
 .fq-formula-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
   gap: 14px;
+}
+@media (min-width: 700px) {
+  .fq-formula-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 900px) {
+  .fq-formula-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 .fq-formula-grid .admin-form-group {
   margin-bottom: 0;

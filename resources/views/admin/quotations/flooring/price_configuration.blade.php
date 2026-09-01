@@ -43,7 +43,7 @@
       Default rates for optional line items in the flooring quotation form.
     </p>
 
-    <div class="pq-form-grid">
+    <div class="admin-form-grid-4">
       <div class="admin-form-group">
         <label for="remove_carpet_dispose_rate">Remove carpet &amp; dispose (per sq ft, CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
