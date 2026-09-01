@@ -1536,6 +1536,8 @@ class ClientProject extends Model
             ClientProjectQuotation::SOURCE_FLOORING => 'Flooring calculator',
             ClientProjectQuotation::SOURCE_TILE => 'Tile calculator',
             ClientProjectQuotation::SOURCE_BASEMENT => 'Basement calculator',
+            ClientProjectQuotation::SOURCE_SHED => 'Shed calculator',
+            ClientProjectQuotation::SOURCE_TRIMMING => 'Trimming calculator',
             ClientProjectQuotation::SOURCE_LOW_DECK => 'Low deck calculator',
             ClientProjectQuotation::SOURCE_MANUAL => 'Manual / legacy',
             null, '' => 'Manual / legacy',

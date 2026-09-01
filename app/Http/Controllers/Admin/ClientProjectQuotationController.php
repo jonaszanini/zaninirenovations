@@ -16,6 +16,8 @@ use App\Models\PavingQuotation;
 use App\Models\StairsQuotation;
 use App\Models\StandardQuotation;
 use App\Models\BasementQuotation;
+use App\Models\ShedQuotation;
+use App\Models\TrimmingQuotation;
 use App\Models\TileQuotation;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
@@ -117,6 +119,18 @@ class ClientProjectQuotationController extends Controller
             $br = BasementQuotation::find($quotation->source_id);
             if ($br) {
                 return redirect()->route('admin.quotations.basement.edit', [$br, 'return' => 'project']);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_SHED && $quotation->source_id) {
+            $sh = ShedQuotation::find($quotation->source_id);
+            if ($sh) {
+                return redirect()->route('admin.quotations.shed.edit', [$sh, 'return' => 'project']);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_TRIMMING && $quotation->source_id) {
+            $tm = TrimmingQuotation::find($quotation->source_id);
+            if ($tm) {
+                return redirect()->route('admin.quotations.trimming.edit', [$tm, 'return' => 'project']);
             }
         }
 

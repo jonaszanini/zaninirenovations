@@ -52,6 +52,10 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_BASEMENT = 'basement';
 
+    public const SOURCE_SHED = 'shed';
+
+    public const SOURCE_TRIMMING = 'trimming';
+
     protected $fillable = [
         'client_project_id',
         'title',
@@ -266,6 +270,20 @@ class ClientProjectQuotation extends Model
             }
         }
 
+        if ($this->source_type === self::SOURCE_SHED && $this->source_id) {
+            $shed = ShedQuotation::query()->find($this->source_id);
+            if ($shed) {
+                return $shed->displayTitle();
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_TRIMMING && $this->source_id) {
+            $trimming = TrimmingQuotation::query()->find($this->source_id);
+            if ($trimming) {
+                return $trimming->displayTitle();
+            }
+        }
+
         $stored = trim((string) ($this->title ?? ''));
 
         return $stored !== '' ? $stored : $this->typeLabel();
@@ -322,6 +340,20 @@ class ClientProjectQuotation extends Model
             $bq = BasementQuotation::query()->find($this->source_id);
             if ($bq) {
                 return $bq->scopeDescriptionForPdf();
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_SHED && $this->source_id) {
+            $sq = ShedQuotation::query()->find($this->source_id);
+            if ($sq) {
+                return $sq->scopeDescriptionForPdf();
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_TRIMMING && $this->source_id) {
+            $tq = TrimmingQuotation::query()->find($this->source_id);
+            if ($tq) {
+                return $tq->scopeDescriptionForPdf();
             }
         }
 
@@ -834,6 +866,8 @@ class ClientProjectQuotation extends Model
             self::SOURCE_FLOORING => FlooringQuotation::class,
             self::SOURCE_TILE => TileQuotation::class,
             self::SOURCE_BASEMENT => BasementQuotation::class,
+            self::SOURCE_SHED => ShedQuotation::class,
+            self::SOURCE_TRIMMING => TrimmingQuotation::class,
             default => null,
         };
         if ($class === null) {
@@ -965,6 +999,8 @@ class ClientProjectQuotation extends Model
                     self::SOURCE_TILE => TileQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_LOW_DECK => LowDeckQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_BASEMENT => BasementQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_SHED => ShedQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_TRIMMING => TrimmingQuotation::query()->whereKey($sourceId)->delete(),
                     default => null,
                 };
             }
@@ -1040,6 +1076,14 @@ class ClientProjectQuotation extends Model
             return true;
         }
 
+        if ($this->source_type === self::SOURCE_SHED && $this->source_id) {
+            return true;
+        }
+
+        if ($this->source_type === self::SOURCE_TRIMMING && $this->source_id) {
+            return true;
+        }
+
         return (bool) $this->labour;
     }
 
@@ -1076,6 +1120,18 @@ class ClientProjectQuotation extends Model
             $basement = BasementQuotation::query()->find($this->source_id);
 
             return $basement?->includesMaterialCharge() ?? false;
+        }
+
+        if ($this->source_type === self::SOURCE_SHED && $this->source_id) {
+            $shed = ShedQuotation::query()->find($this->source_id);
+
+            return $shed?->includesMaterialCharge() ?? false;
+        }
+
+        if ($this->source_type === self::SOURCE_TRIMMING && $this->source_id) {
+            $trimming = TrimmingQuotation::query()->find($this->source_id);
+
+            return $trimming?->includesMaterialCharge() ?? false;
         }
 
         return (bool) $this->material;

@@ -22,6 +22,7 @@ class QuotationWorkDescriptionContextBuilder
             'low_deck' => $this->lowDeck($context),
             'paving' => $this->paving($context),
             'standard' => $this->standard($context),
+            'trimming' => $this->trimming($context),
             default => $this->generic($type, $context),
         };
     }
@@ -260,6 +261,39 @@ class QuotationWorkDescriptionContextBuilder
         }
 
         $this->appendBlock($lines, 'Totals snapshot', $c['totals_summary'] ?? null);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function trimming(array $c): string
+    {
+        $lines = ['Quotation type: Interior trimming'];
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+
+        $enabled = $c['enabled_families'] ?? [];
+        if (is_array($enabled) && $enabled !== []) {
+            $labels = [];
+            foreach ($enabled as $key) {
+                $label = TrimmingQuotationCalculator::FAMILIES[(string) $key] ?? null;
+                if (is_string($label) && $label !== '') {
+                    $labels[] = $label;
+                }
+            }
+            if ($labels !== []) {
+                $lines[] = 'Families: '.implode(', ', $labels);
+            }
+        }
+
+        $this->appendLine($lines, 'Door openings', $c['door_qty'] ?? null);
+        $this->appendLine($lines, 'Window openings', $c['window_qty'] ?? null);
+        $this->appendLine($lines, 'Floor-to-wall linear feet', $c['floor_lf'] ?? null);
+        $this->appendLine($lines, 'Crown linear feet', $c['crown_lf'] ?? null);
+        $this->appendLine($lines, 'Cove linear feet', $c['cove_lf'] ?? null);
+        $this->appendLine($lines, 'Chair rail linear feet', $c['chair_rail_lf'] ?? null);
+        $this->appendLine($lines, 'Wainscot wall linear feet', $c['wainscot_wall_lf'] ?? null);
 
         return implode("\n", $lines);
     }

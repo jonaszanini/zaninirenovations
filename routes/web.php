@@ -674,6 +674,60 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::delete('quotations/basement/{basement_quotation}', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'destroy'])
         ->name('quotations.basement.destroy');
 
+    Route::get('quotations/shed', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'index'])
+        ->name('quotations.shed.index');
+    Route::get('quotations/shed/create', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'create'])
+        ->name('quotations.shed.create');
+    Route::get('quotations/shed/price-configuration', [\App\Http\Controllers\Admin\ShedDatabaseController::class, 'edit'])
+        ->name('quotations.shed.price-configuration');
+    Route::post('quotations/shed-calculate', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'preview'])
+        ->name('quotations.shed.calculate');
+    Route::post('quotations/shed/database', [\App\Http\Controllers\Admin\ShedDatabaseController::class, 'update'])
+        ->name('quotations.shed.database.update');
+    Route::post('quotations/shed', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'store'])
+        ->name('quotations.shed.store');
+    Route::post('quotations/shed/preview', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'preview'])
+        ->name('quotations.shed.preview');
+    Route::get('quotations/shed/{shed_quotation}/edit', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'edit'])
+        ->name('quotations.shed.edit');
+    Route::post('quotations/shed/{shed_quotation}/calculate', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'preview'])
+        ->name('quotations.shed.calculate-existing');
+    Route::put('quotations/shed/{shed_quotation}', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'update'])
+        ->name('quotations.shed.update');
+    Route::post('quotations/shed/{shed_quotation}/link', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'linkToProject'])
+        ->name('quotations.shed.link');
+    Route::post('quotations/shed/{shed_quotation}/create-project', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.shed.create-project');
+    Route::delete('quotations/shed/{shed_quotation}', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'destroy'])
+        ->name('quotations.shed.destroy');
+
+    Route::get('quotations/trimming', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'index'])
+        ->name('quotations.trimming.index');
+    Route::get('quotations/trimming/create', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'create'])
+        ->name('quotations.trimming.create');
+    Route::get('quotations/trimming/price-configuration', [\App\Http\Controllers\Admin\TrimmingDatabaseController::class, 'edit'])
+        ->name('quotations.trimming.price-configuration');
+    Route::post('quotations/trimming-calculate', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'preview'])
+        ->name('quotations.trimming.calculate');
+    Route::post('quotations/trimming/database', [\App\Http\Controllers\Admin\TrimmingDatabaseController::class, 'update'])
+        ->name('quotations.trimming.database.update');
+    Route::post('quotations/trimming', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'store'])
+        ->name('quotations.trimming.store');
+    Route::post('quotations/trimming/preview', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'preview'])
+        ->name('quotations.trimming.preview');
+    Route::get('quotations/trimming/{trimming_quotation}/edit', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'edit'])
+        ->name('quotations.trimming.edit');
+    Route::post('quotations/trimming/{trimming_quotation}/calculate', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'preview'])
+        ->name('quotations.trimming.calculate-existing');
+    Route::put('quotations/trimming/{trimming_quotation}', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'update'])
+        ->name('quotations.trimming.update');
+    Route::post('quotations/trimming/{trimming_quotation}/link', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'linkToProject'])
+        ->name('quotations.trimming.link');
+    Route::post('quotations/trimming/{trimming_quotation}/create-project', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.trimming.create-project');
+    Route::delete('quotations/trimming/{trimming_quotation}', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'destroy'])
+        ->name('quotations.trimming.destroy');
+
     Route::resource('client-projects', \App\Http\Controllers\Admin\ClientProjectController::class)
         ->parameters(['client-projects' => 'client_project']);
 

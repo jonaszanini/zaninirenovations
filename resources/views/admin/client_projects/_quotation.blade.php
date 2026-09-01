@@ -14,6 +14,8 @@
   use App\Models\StairsQuotation;
   use App\Models\StandardQuotation;
   use App\Models\BasementQuotation;
+  use App\Models\ShedQuotation;
+  use App\Models\TrimmingQuotation;
   use App\Models\TileQuotation;
   use App\Services\MoceanSmsService;
   use Illuminate\Support\Facades\URL;
@@ -479,6 +481,8 @@
               ClientProjectQuotation::SOURCE_FLOORING => FlooringQuotation::find($quotation->source_id),
               ClientProjectQuotation::SOURCE_TILE     => TileQuotation::find($quotation->source_id),
               ClientProjectQuotation::SOURCE_BASEMENT => BasementQuotation::find($quotation->source_id),
+              ClientProjectQuotation::SOURCE_SHED     => ShedQuotation::find($quotation->source_id),
+              ClientProjectQuotation::SOURCE_TRIMMING => TrimmingQuotation::find($quotation->source_id),
               default                                  => null,
           };
       }

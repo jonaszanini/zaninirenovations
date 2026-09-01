@@ -135,5 +135,36 @@
         <h4>Basement Renovation</h4>
       </div>
     </a>
+
+    <a href="{{ route('admin.quotations.trimming.index', $pq) }}" class="fq-hub-card">
+      <div class="fq-hub-card-image-wrap fq-hub-card-image-wrap--svg" aria-hidden="true">
+        <svg class="fq-hub-card-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
+          <rect x="8" y="8" width="48" height="48" rx="2" fill="#eef4f8" stroke="#024768" stroke-width="1.5"/>
+          <rect x="8" y="48" width="48" height="8" fill="#c4a574" stroke="#024768" stroke-width="1.5"/>
+          <rect x="14" y="14" width="14" height="22" rx="1" fill="#f0e6d6" stroke="#024768" stroke-width="1"/>
+          <rect x="12" y="12" width="18" height="4" fill="#d4b896" stroke="#024768" stroke-width="1"/>
+          <line x1="8" y1="22" x2="56" y2="22" stroke="#c4a574" stroke-width="2"/>
+          <path d="M8 8 Q32 18 56 8" fill="none" stroke="#8b6914" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Trimming</h4>
+      </div>
+    </a>
+
+    <a href="{{ route('admin.quotations.shed.index', $pq) }}" class="fq-hub-card">
+      <div class="fq-hub-card-image-wrap fq-hub-card-image-wrap--svg" aria-hidden="true">
+        <svg class="fq-hub-card-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
+          <polygon points="8,28 32,10 56,28" fill="#d7e6ef" stroke="#024768" stroke-width="1.5" stroke-linejoin="round"/>
+          <rect x="12" y="28" width="40" height="26" fill="#eef4f8" stroke="#024768" stroke-width="1.5"/>
+          <rect x="28" y="36" width="10" height="18" rx="1" fill="#c4a574" stroke="#024768" stroke-width="1"/>
+          <rect x="16" y="34" width="9" height="8" rx="1" fill="#b9d9ee" stroke="#024768" stroke-width="1"/>
+          <line x1="8" y1="28" x2="56" y2="28" stroke="#024768" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Shed</h4>
+      </div>
+    </a>
   </div>
 @endsection

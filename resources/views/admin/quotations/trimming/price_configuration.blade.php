@@ -1,0 +1,204 @@
+@extends('admin.layouts.app')
+
+@section('heading', 'Trimming price configuration')
+
+@section('content')
+  @php
+    $qparam = $qpid ? ['project' => $qpid] : [];
+    $catalogById = collect($catalogPickerOptions ?? [])->keyBy('id');
+    $materialErrors = $errors->has('materials') || collect($errors->keys())->contains(function ($key) {
+        return str_starts_with((string) $key, 'materials.');
+    });
+    $requestedTab = old('tab', request('tab', 'rates'));
+    $startTab = in_array($requestedTab, ['rates', 'materials'], true) ? $requestedTab : 'rates';
+    if ($materialErrors) {
+        $startTab = 'materials';
+    }
+  @endphp
+  <div class="admin-toolbar fq-list-toolbar">
+    <div class="admin-toolbar-group">
+      <a href="{{ route('admin.quotations.trimming.index', $qparam) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-arrow-left"></i> Back to list
+      </a>
+      <a href="{{ route('admin.materials.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <i class="fa fa-cubes"></i> Materials catalog
+      </a>
+    </div>
+    <div class="admin-toolbar-group admin-toolbar-actions">
+      <button type="submit" form="tm-config-form" class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-save"></i> Save configuration
+      </button>
+    </div>
+  </div>
+
+  <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
+
+  <form method="post" action="{{ route('admin.quotations.trimming.database.update', $qparam) }}" class="admin-card" id="tm-config-form">
+    @csrf
+    @if ($qpid)
+      <input type="hidden" name="project" value="{{ $qpid }}">
+    @endif
+    <input type="hidden" name="tab" id="tm-config-tab" value="{{ $startTab }}">
+
+    <div class="cp-tabs br-config-tabs" role="tablist" aria-label="Price configuration">
+      <button type="button" class="cp-tab{{ $startTab === 'rates' ? ' is-active' : '' }}"
+              id="tm-tab-rates" data-tab="rates" role="tab"
+              aria-selected="{{ $startTab === 'rates' ? 'true' : 'false' }}"
+              aria-controls="tm-config-rates">Rates</button>
+      <button type="button" class="cp-tab{{ $startTab === 'materials' ? ' is-active' : '' }}"
+              id="tm-tab-materials" data-tab="materials" role="tab"
+              aria-selected="{{ $startTab === 'materials' ? 'true' : 'false' }}"
+              aria-controls="tm-config-materials">Materials</button>
+    </div>
+
+    <section class="cp-tab-panel{{ $startTab === 'rates' ? ' is-active' : '' }}"
+             data-panel="rates" id="tm-config-rates" role="tabpanel" aria-labelledby="tm-tab-rates">
+      <h3 class="br-config-heading">Labor rates</h3>
+      <div class="admin-form-grid-2">
+        <div class="admin-form-group">
+          <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
+          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                 class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
+                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required>
+        </div>
+        <div class="admin-form-group">
+          <label for="helper_hourly_rate">Helper hourly rate (CAD$)</label>
+          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                 class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
+                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required>
+        </div>
+        <div class="admin-form-group">
+          <label for="hours_per_day">@include('admin.partials.info_tip', ['text' => 'Used for calendar-day estimates (1 / 2 / 3 people).']) Hours per working day</label>
+          <input type="number" step="0.25" min="0.5" max="16" class="admin-input" id="hours_per_day" name="hours_per_day"
+                 value="{{ old('hours_per_day', $settings->hours_per_day) }}" required>
+        </div>
+        <div class="admin-form-group">
+          <label for="waste_percent">@include('admin.partials.info_tip', ['text' => 'Extra stick length for cuts and waste. Applied when packing 8 ft sticks.']) Material waste (%)</label>
+          <input type="number" step="0.5" min="0" max="50" class="admin-input" id="waste_percent" name="waste_percent"
+                 value="{{ old('waste_percent', $settings->waste_percent) }}" required>
+        </div>
+      </div>
+
+      <hr class="br-config-divider">
+      <h3 class="br-config-heading">Labor productivity</h3>
+      @foreach ($productivityGroups as $group => $rows)
+        <h4 class="br-review-heading">{{ $group }}</h4>
+        <div class="admin-form-grid-2">
+          @foreach ($rows as $key => $label)
+            <div class="admin-form-group">
+              <label for="prod-{{ $key }}">{{ $label }}</label>
+              <input type="number" step="0.01" min="0" class="admin-input" id="prod-{{ $key }}"
+                     name="productivity[{{ $key }}]"
+                     value="{{ old('productivity.'.$key, $productivity[$key] ?? '') }}">
+            </div>
+          @endforeach
+        </div>
+      @endforeach
+    </section>
+
+    <section class="cp-tab-panel{{ $startTab === 'materials' ? ' is-active' : '' }}"
+             data-panel="materials" id="tm-config-materials" role="tabpanel" aria-labelledby="tm-tab-materials">
+      <h3 class="br-config-heading">Default materials</h3>
+      <p class="br-config-legend" aria-label="How to read material rows">
+        <span class="br-config-source br-config-source--linked"><i class="fa fa-link" aria-hidden="true"></i> Catalog</span>
+        linked
+        <span class="br-config-source br-config-source--manual"><i class="fa fa-pencil" aria-hidden="true"></i> Manual</span>
+        typed
+      </p>
+
+      @php $materialDefaults = \App\Models\TrimmingSettings::defaultMaterials(); @endphp
+      <div class="admin-table-scroll">
+        <table class="admin-table br-config-table">
+          <thead>
+            <tr>
+              <th>Line item</th>
+              <th>Materials DB</th>
+              <th>Display name</th>
+              <th>Unit</th>
+              <th>Unit price (CAD$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($materials as $key => $row)
+              @php
+                $catalogId = (int) old('materials.'.$key.'.catalog_material_id', $row['catalog_material_id'] ?? 0);
+                $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;
+                $lineLabel = $materialDefaults[$key]['name'] ?? $row['name'];
+                $fallbackName = $materialDefaults[$key]['name'] ?? $row['name'];
+                $fallbackPrice = number_format((float) ($materialDefaults[$key]['unit_price'] ?? $row['unit_price']), 4, '.', '');
+                $displayName = old('materials.'.$key.'.name', $row['name']);
+                $displayPrice = old(
+                    'materials.'.$key.'.unit_price',
+                    number_format((float) $row['unit_price'], 4, '.', '')
+                );
+              @endphp
+              <tr class="br-config-row{{ $catalogId > 0 ? ' is-linked' : ' is-manual' }}"
+                  data-br-config-row data-br-material-key="{{ $key }}">
+                <td data-label="Line item">
+                  <div class="br-config-line-wrap">
+                    <strong class="br-config-line">{{ $lineLabel }}</strong>
+                    @if ($catalogId > 0)
+                      <span class="br-config-source br-config-source--linked" data-br-cfg-source>
+                        <i class="fa fa-link" aria-hidden="true"></i> Catalog
+                      </span>
+                    @else
+                      <span class="br-config-source br-config-source--manual" data-br-cfg-source>
+                        <i class="fa fa-pencil" aria-hidden="true"></i> Manual
+                      </span>
+                    @endif
+                  </div>
+                </td>
+                <td data-label="Materials DB">
+                  @include('admin.partials.search_select', [
+                    'id' => 'tm-mat-pick-'.$key,
+                    'name' => 'materials['.$key.'][catalog_material_id]',
+                    'value' => $catalogId > 0 ? $catalogId : '',
+                    'hideLabel' => true,
+                    'placeholder' => 'Search Materials DB…',
+                    'ariaLabel' => 'Catalog material for '.$lineLabel,
+                    'wrapperClass' => $catalogId > 0 ? 'is-selected' : '',
+                    'optionsSource' => 'admin-ss-catalog-options',
+                    'selectedOption' => $selected,
+                    'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
+                    'metaKeys' => ['sku', 'price_label', 'delivery_label'],
+                    'emptyMessage' => 'No matching materials',
+                    'maxOptions' => 80,
+                    'listParent' => 'body',
+                  ])
+                </td>
+                <td data-label="Display name">
+                  <input type="text" class="admin-input" data-br-cfg-name id="tm-mat-name-{{ $key }}"
+                         name="materials[{{ $key }}][name]" maxlength="160"
+                         data-fallback-name="{{ $fallbackName }}"
+                         value="{{ $displayName }}">
+                </td>
+                <td data-label="Unit">
+                  <input type="text" class="admin-input" name="materials[{{ $key }}][unit]" maxlength="40"
+                         value="{{ old('materials.'.$key.'.unit', $row['unit']) }}">
+                </td>
+                <td data-label="Unit price (CAD$)">
+                  <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                         class="admin-input cp-money-input"
+                         data-br-cfg-price id="tm-mat-price-{{ $key }}"
+                         name="materials[{{ $key }}][unit_price]"
+                         data-fallback-price="{{ $fallbackPrice }}"
+                         value="{{ $displayPrice }}">
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="admin-form-actions">
+      <button type="submit" class="admin-btn admin-btn--primary">
+        <i class="fa fa-save"></i> Save configuration
+      </button>
+    </div>
+  </form>
+@endsection
+
+@push('scripts')
+  <script src="{{ asset('js/admin-trimming-quotation.js') }}?v={{ @filemtime(public_path('js/admin-trimming-quotation.js')) ?: time() }}"></script>
+@endpush
