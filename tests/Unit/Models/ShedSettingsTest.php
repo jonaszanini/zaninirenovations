@@ -62,4 +62,35 @@ class ShedSettingsTest extends TestCase
             0.0001
         );
     }
+
+    public function test_metal_roof_defaults_are_black_and_silver_panels(): void
+    {
+        $mats = ShedSettings::defaultMaterials();
+
+        $this->assertArrayNotHasKey('metal_roof', $mats);
+        $this->assertSame('panel', $mats[ShedSettings::MATERIAL_METAL_BLACK]['unit']);
+        $this->assertSame('panel', $mats[ShedSettings::MATERIAL_METAL_GALVANIZED]['unit']);
+        $this->assertEqualsWithDelta(72.28, $mats[ShedSettings::MATERIAL_METAL_BLACK]['unit_price'], 0.001);
+        $this->assertEqualsWithDelta(63.38, $mats[ShedSettings::MATERIAL_METAL_GALVANIZED]['unit_price'], 0.001);
+    }
+
+    public function test_legacy_metal_roof_row_maps_to_black_panel(): void
+    {
+        $settings = new ShedSettings([
+            'materials' => [
+                'metal_roof' => [
+                    'name' => 'Old metal sheet',
+                    'unit' => 'sf',
+                    'unit_price' => 4.25,
+                    'catalog_material_id' => 44,
+                ],
+            ],
+        ]);
+
+        $row = $settings->resolvedMaterials()[ShedSettings::MATERIAL_METAL_BLACK];
+        $this->assertSame('panel', $row['unit']);
+        $this->assertSame(44, $row['catalog_material_id']);
+        $this->assertSame('Old metal sheet', $row['name']);
+        $this->assertEqualsWithDelta(72.28, $row['unit_price'], 0.001);
+    }
 }

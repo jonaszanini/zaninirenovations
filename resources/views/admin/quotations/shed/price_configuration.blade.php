@@ -138,10 +138,14 @@
                   @if ($derivedPlate) data-br-derived-from="{{ $derivedFrom }}" @endif>
                 <td data-label="Line item">
                   <div class="br-config-line-wrap">
-                    <strong class="br-config-line">{{ $lineLabel }}</strong>
-                    @if ($key === 'asphalt_shingle')
-                      <p class="admin-form-help admin-form-help--tight">Home Depot sells by the bundle (~33.3 sq ft). This line is priced and counted in bundles, not roofing squares.</p>
-                    @endif
+                    <strong class="br-config-line">
+                      {{ $lineLabel }}
+                      @if ($key === 'asphalt_shingle')
+                        @include('admin.partials.info_tip', ['text' => 'Priced per bundle (33.3 sq ft), not per square.'])
+                      @elseif (\App\Models\ShedSettings::isMetalRoofPanel($key))
+                        @include('admin.partials.info_tip', ['text' => 'Vicwest UltraVic 36×93 in panel (23.25 sq ft).'])
+                      @endif
+                    </strong>
                     @if ($derivedPlate)
                       <span class="br-config-source br-config-source--derived" data-br-cfg-source>
                         <i class="fa fa-lock" aria-hidden="true"></i> From stud

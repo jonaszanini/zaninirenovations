@@ -31,6 +31,13 @@ class ShedSettings extends Model
     /** Typical architectural bundle (3 bundles ≈ 1 square). */
     public const SHINGLE_SF_PER_BUNDLE = 33.3;
 
+    public const MATERIAL_METAL_BLACK = 'metal_roof_black';
+
+    public const MATERIAL_METAL_GALVANIZED = 'metal_roof_galvanized';
+
+    /** Vicwest UltraVic 36 in × 93 in panel. */
+    public const METAL_PANEL_SF = 23.25;
+
     public const PAINT_SF_PER_GALLON = 350;
 
     public const PAINT_WASTE = 1.1;
@@ -137,7 +144,8 @@ class ShedSettings extends Model
                 'bundle',
                 round(95.00 * self::SHINGLE_SF_PER_BUNDLE / self::SHINGLE_SF_PER_SQUARE, 4)
             ),
-            'metal_roof' => $row('Metal roofing (per sq ft)', 'sf', 4.25),
+            self::MATERIAL_METAL_BLACK => $row('Metal roof Black (36×93 panel)', 'panel', 72.28),
+            self::MATERIAL_METAL_GALVANIZED => $row('Metal roof Silver (36×93 panel)', 'panel', 63.38),
             'underlayment' => $row('Roof underlayment (per sq ft)', 'sf', 0.45),
             'ice_water' => $row('Ice & water shield (per sq ft)', 'sf', 1.10),
             'drip_edge' => $row('Drip edge (lf)', 'lf', 2.40),
@@ -193,6 +201,9 @@ class ShedSettings extends Model
     {
         $defaults = self::defaultMaterials();
         $stored = is_array($this->materials) ? $this->materials : [];
+        if (! isset($stored[self::MATERIAL_METAL_BLACK]) && isset($stored['metal_roof']) && is_array($stored['metal_roof'])) {
+            $stored[self::MATERIAL_METAL_BLACK] = $stored['metal_roof'];
+        }
         foreach ($defaults as $key => $row) {
             if (! isset($stored[$key]) || ! is_array($stored[$key])) {
                 continue;
@@ -262,6 +273,11 @@ class ShedSettings extends Model
     public static function isDerivedPlate(string $key): bool
     {
         return $key === self::MATERIAL_PLATE_2X4 || $key === self::MATERIAL_PLATE_2X6;
+    }
+
+    public static function isMetalRoofPanel(string $key): bool
+    {
+        return $key === self::MATERIAL_METAL_BLACK || $key === self::MATERIAL_METAL_GALVANIZED;
     }
 
     /**

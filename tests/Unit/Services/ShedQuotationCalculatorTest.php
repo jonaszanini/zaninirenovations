@@ -176,6 +176,52 @@ class ShedQuotationCalculatorTest extends TestCase
         $this->assertGreaterThan(1, $expected);
     }
 
+    public function test_metal_black_and_silver_are_counted_in_panels(): void
+    {
+        $base = [
+            'length_ft' => 10,
+            'width_ft' => 12,
+            'wall_height_ft' => 8,
+            'roof_pitch' => 6,
+            'owner_hourly_rate' => 80,
+        ];
+        $black = (new ShedQuotationCalculator)->calculate(array_merge($base, ['roof_type' => 'metal_black']), $this->settings());
+        $silver = (new ShedQuotationCalculator)->calculate(array_merge($base, ['roof_type' => 'metal_galvanized']), $this->settings());
+
+        $blackRow = collect($black['materials'])->firstWhere('key', ShedSettings::MATERIAL_METAL_BLACK);
+        $silverRow = collect($silver['materials'])->firstWhere('key', ShedSettings::MATERIAL_METAL_GALVANIZED);
+        $this->assertNotNull($blackRow);
+        $this->assertNotNull($silverRow);
+        $this->assertNull(collect($black['materials'])->firstWhere('key', 'asphalt_shingle'));
+        $this->assertSame('panel', $blackRow['unit']);
+        $this->assertSame('panel', $silverRow['unit']);
+
+        $expected = max(1, (int) ceil(
+            ((float) $black['scope']['roof_sf'] * ShedSettings::MATERIAL_WASTE) / ShedSettings::METAL_PANEL_SF
+        ));
+        $this->assertSame((float) $expected, (float) $blackRow['qty']);
+        $this->assertSame((float) $expected, (float) $silverRow['qty']);
+        $this->assertEqualsWithDelta(72.28, (float) $blackRow['unit_price'], 0.001);
+        $this->assertEqualsWithDelta(63.38, (float) $silverRow['unit_price'], 0.001);
+    }
+
+    public function test_legacy_metal_roof_type_uses_black_panels(): void
+    {
+        $calc = (new ShedQuotationCalculator)->calculate([
+            'length_ft' => 10,
+            'width_ft' => 12,
+            'roof_type' => 'metal',
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', ShedSettings::MATERIAL_METAL_BLACK));
+        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'asphalt_shingle'));
+        $this->assertSame('Metal — Black', ShedQuotationCalculator::roofLabel('metal'));
+        $this->assertSame('Metal — Silver', ShedQuotationCalculator::roofLabel('metal_silver'));
+        $this->assertSame('metal_black', ShedQuotationCalculator::normalizeRoofType('metal'));
+        $this->assertSame('metal_galvanized', ShedQuotationCalculator::normalizeRoofType('metal_silver'));
+    }
+
     private function settings(): ShedSettings
     {
         return new ShedSettings([

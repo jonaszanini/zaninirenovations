@@ -6809,11 +6809,9 @@ body.cp-modal-open {
 }
 .br-config-table tr.is-linked,
 .br-extra-row.is-linked {
-  box-shadow: inset 4px 0 0 var(--admin-primary);
   background: var(--admin-primary-soft);
 }
 .br-config-table tr.is-derived {
-  box-shadow: inset 4px 0 0 var(--admin-border-strong);
   background: var(--admin-surface-hover);
 }
 .br-config-table tr.is-linked td,
@@ -6858,6 +6856,7 @@ body.cp-modal-open {
 }
 .br-extra-row.is-linked {
   padding-left: 0.75rem;
+  border-left: 4px solid var(--admin-primary);
   border-radius: 8px;
 }
 .br-config-table tr.is-linked,
@@ -6870,6 +6869,11 @@ body.cp-modal-open {
 .br-config-table thead {
   display: none;
 }
+.admin-table.br-config-table {
+  min-width: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
 .br-config-table {
   min-width: 0;
 }
@@ -6881,15 +6885,23 @@ body.cp-modal-open {
   width: 100%;
 }
 .br-config-table tr {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--admin-border);
+  padding: 0.75rem 0.75rem 0.75rem 0.7rem;
+  margin: 0 0 0.5rem;
+  border: 0;
+  border-left: 4px solid transparent;
+  background-clip: padding-box;
 }
-.br-config-table tr.is-linked,
+.br-config-table tr:not(.is-linked):not(.is-derived) {
+  box-shadow: 0 1px 0 var(--admin-border);
+}
+.br-config-table tr.is-linked {
+  border-left-color: var(--admin-primary);
+}
 .br-config-table tr.is-derived {
-  padding-left: 0.75rem;
+  border-left-color: var(--admin-border-strong);
 }
 .br-config-table tbody tr:last-child {
-  border-bottom: 0;
+  margin-bottom: 0;
 }
 .br-config-table td {
   padding: 0.35rem 0;
@@ -6922,6 +6934,9 @@ body.cp-modal-open {
   line-height: 1.3;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+.br-config-line .admin-info-tip {
+  vertical-align: -0.15em;
 }
 .br-config-derived {
   margin: 0;
@@ -7018,13 +7033,19 @@ body.cp-modal-open {
   .br-config-table tr {
     display: table-row;
     padding: 0;
+    margin: 0;
     border: 0;
+    background: transparent;
   }
   .br-config-table tr.is-linked,
   .br-config-table tr.is-derived {
     box-shadow: none;
     padding-left: 0;
     background: transparent;
+    border-radius: 0;
+  }
+  .br-config-table tr:not(.is-linked):not(.is-derived) {
+    box-shadow: none;
   }
   .br-config-table tr.is-linked td {
     background: var(--admin-primary-soft);
@@ -7032,11 +7053,17 @@ body.cp-modal-open {
   .br-config-table tr.is-derived td {
     background: var(--admin-surface-hover);
   }
+  .br-config-table th:first-child,
+  .br-config-table td:first-child {
+    border-left: 4px solid transparent;
+  }
   .br-config-table tr.is-linked td:first-child {
-    box-shadow: inset 4px 0 0 var(--admin-primary);
+    box-shadow: none;
+    border-left-color: var(--admin-primary);
   }
   .br-config-table tr.is-derived td:first-child {
-    box-shadow: inset 4px 0 0 var(--admin-border-strong);
+    box-shadow: none;
+    border-left-color: var(--admin-border-strong);
   }
   .admin-table.br-config-table tr.is-linked:hover td {
     background: rgba(2, 71, 104, 0.12);
@@ -7049,7 +7076,7 @@ body.cp-modal-open {
   .br-config-table td[data-label]:not(:first-child) {
     display: table-cell;
     width: auto;
-    padding: 0.5rem 0.75rem 0.5rem 0;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--admin-border);
     vertical-align: middle;
   }
@@ -7137,6 +7164,9 @@ body.cp-modal-open {
 .sh-choice-grid--2 {
   grid-template-columns: 1fr 1fr;
 }
+.sh-choice-grid--3 {
+  grid-template-columns: 1fr 1fr;
+}
 .sh-choice {
   display: flex;
   align-items: center;
@@ -7202,10 +7232,14 @@ body.cp-modal-open {
   .sh-choice-grid--2 {
     grid-template-columns: 1fr 1fr;
   }
+  .sh-choice-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 @media (max-width: 480px) {
   .sh-choice-grid,
-  .sh-choice-grid--2 {
+  .sh-choice-grid--2,
+  .sh-choice-grid--3 {
     grid-template-columns: 1fr 1fr;
   }
 }

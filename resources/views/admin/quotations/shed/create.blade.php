@@ -19,6 +19,7 @@
           $inputs[$k] = $v;
       }
   }
+  $inputs['roof_type'] = ShedQuotationCalculator::normalizeRoofType($inputs['roof_type'] ?? 'asphalt');
   $sectionList = $sections ?? ShedQuotationCalculator::SECTIONS;
   $previewLabor = is_array($initialPreview['labor'] ?? null) ? $initialPreview['labor'] : [];
   $previewMats = array_merge(

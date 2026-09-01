@@ -47,7 +47,8 @@ class ShedQuotationCalculator
 
     public const ROOF = [
         'asphalt' => 'Asphalt shingles',
-        'metal' => 'Metal roof',
+        'metal_black' => 'Metal — Black',
+        'metal_galvanized' => 'Metal — Silver',
     ];
 
     public const DOOR_TYPES = [
@@ -135,9 +136,33 @@ class ShedQuotationCalculator
 
     public static function roofLabel(string $type): string
     {
-        $key = array_key_exists($type, self::ROOF) ? $type : 'asphalt';
+        $key = self::normalizeRoofType($type);
 
         return self::ROOF[$key];
+    }
+
+    public static function normalizeRoofType(mixed $type): string
+    {
+        $value = strtolower(trim((string) $type));
+        if ($value === 'metal' || $value === 'metal_roof' || $value === 'metal_silver') {
+            return $value === 'metal_silver' ? 'metal_galvanized' : 'metal_black';
+        }
+
+        return array_key_exists($value, self::ROOF) ? $value : 'asphalt';
+    }
+
+    public static function isMetalRoof(string $type): bool
+    {
+        $key = self::normalizeRoofType($type);
+
+        return $key === 'metal_black' || $key === 'metal_galvanized';
+    }
+
+    public static function metalMaterialKey(string $type): string
+    {
+        return self::normalizeRoofType($type) === 'metal_galvanized'
+            ? ShedSettings::MATERIAL_METAL_GALVANIZED
+            : ShedSettings::MATERIAL_METAL_BLACK;
     }
 
     public static function normalizeShedType(mixed $type): string
@@ -176,6 +201,7 @@ class ShedQuotationCalculator
         $matCatalog = $this->resolveMaterialCatalog($settings);
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $inputs['shed_type'] = self::normalizeShedType($inputs['shed_type'] ?? 'gable');
+        $inputs['roof_type'] = self::normalizeRoofType($inputs['roof_type'] ?? 'asphalt');
 
         $length = round(max(0, (float) $inputs['length_ft']), 2);
         $width = round(max(0, (float) $inputs['width_ft']), 2);
@@ -388,8 +414,10 @@ class ShedQuotationCalculator
         $addMat('drip_edge', 'roof', round($perimeter + 8 * $overhangFt, 0), 'drip_edge');
         $addMat('fascia', 'roof', round($perimeter + 8 * $overhangFt, 0), 'fascia');
         $addMat('ridge_vent', 'roof', round($length + 2 * $overhangFt, 0), 'ridge_vent');
-        if (($inputs['roof_type'] ?? 'asphalt') === 'metal') {
-            $addMat('metal_roof', 'roof', round($roofSf * $waste, 0), 'metal_roof');
+        if (self::isMetalRoof((string) $inputs['roof_type'])) {
+            $panels = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::METAL_PANEL_SF));
+            $metalKey = self::metalMaterialKey((string) $inputs['roof_type']);
+            $addMat($metalKey, 'roof', $panels, $metalKey);
         } else {
             $bundles = max(1, (int) ceil(($roofSf * $waste) / ShedSettings::SHINGLE_SF_PER_BUNDLE));
             $addMat('asphalt_shingle', 'roof', $bundles, 'asphalt_shingle');

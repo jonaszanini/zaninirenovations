@@ -193,7 +193,7 @@
   <div class="br-acc__body">
     <div class="admin-form-group">
       <label>@include('admin.partials.info_tip', ['text' => 'Underlayment, ice & water, drip edge, fascia, and ridge vent are included from Price configuration.']) Covering</label>
-      <div class="sh-choice-grid sh-choice-grid--2">
+      <div class="sh-choice-grid sh-choice-grid--3">
         @foreach (ShedQuotationCalculator::ROOF as $key => $label)
           <label class="sh-choice">
             <input type="radio" name="roof_type" value="{{ $key }}" class="sh-preview" @checked($shVal('roof_type', 'asphalt') === $key)>

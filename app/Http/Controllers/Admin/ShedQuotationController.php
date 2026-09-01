@@ -279,6 +279,7 @@ class ShedQuotationController extends Controller
                 $previewInputs[$key] = $value;
             }
         }
+        $previewInputs['roof_type'] = ShedQuotationCalculator::normalizeRoofType($previewInputs['roof_type'] ?? 'asphalt');
         $initialPreview = (new ShedQuotationCalculator)->calculate($previewInputs, $settings);
 
         return view('admin.quotations.shed.create', [
@@ -398,9 +399,7 @@ class ShedQuotationController extends Controller
         if (! array_key_exists($out['siding'], ShedQuotationCalculator::SIDING)) {
             $out['siding'] = 'vinyl';
         }
-        if (! array_key_exists($out['roof_type'], ShedQuotationCalculator::ROOF)) {
-            $out['roof_type'] = 'asphalt';
-        }
+        $out['roof_type'] = ShedQuotationCalculator::normalizeRoofType($out['roof_type']);
         if (! array_key_exists($out['door_type'], ShedQuotationCalculator::DOOR_TYPES)) {
             $out['door_type'] = 'custom';
         }
