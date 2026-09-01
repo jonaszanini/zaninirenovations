@@ -6258,6 +6258,33 @@ body.cp-modal-open {
 .br-check-stack .admin-checkbox {
   min-height: 44px;
 }
+.br-check-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px 12px;
+  align-items: center;
+}
+.br-check-grid .admin-checkbox {
+  min-height: 44px;
+  margin: 0;
+}
+.br-check-grid--inset {
+  margin-top: 6px;
+}
+.br-check-grid[hidden] {
+  display: none !important;
+}
+.br-qty-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px 16px;
+}
+.br-qty-grid .admin-form-group {
+  margin-bottom: 0;
+}
+.br-electrical-fields__toggles {
+  margin-top: 8px;
+}
 .br-review-heading {
   margin: 20px 0 8px;
   color: #024768;
@@ -6345,12 +6372,39 @@ body.cp-modal-open {
   display: none !important;
 }
 .br-nested-trade {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
   border-top: 1px solid var(--admin-border, #d8dee4);
 }
 .br-nested-trade[hidden] {
   display: none !important;
+}
+.br-nested-trade .br-tile-areas__head {
+  margin-bottom: 6px;
+}
+.br-bath-include {
+  margin-bottom: 4px;
+}
+.br-bath-include[hidden] {
+  display: none !important;
+}
+.br-bath-include .admin-checkbox {
+  min-height: 44px;
+}
+.br-bath-fields {
+  margin-top: 8px;
+}
+.br-bath-fields .br-bath-block .br-tile-areas__head {
+  margin-bottom: 4px;
+}
+.br-bath-top .admin-form-group {
+  margin-bottom: 10px;
+}
+@media (min-width: 700px) {
+  .br-bath-top .admin-form-group {
+    max-width: 18rem;
+    margin-bottom: 10px;
+  }
 }
 .br-overview-geom {
   margin-bottom: 1rem;
@@ -6479,12 +6533,17 @@ body.cp-modal-open {
 .br-bath-lighting {
   margin-top: 0.75rem;
 }
+.br-bath-light-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px 16px;
+}
 .br-bath-light-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(96px, 140px);
-  gap: 8px 12px;
-  align-items: end;
-  margin-bottom: 8px;
+  grid-template-columns: 1fr;
+  gap: 4px 12px;
+  align-items: stretch;
+  margin-bottom: 0;
 }
 .br-bath-light-row .admin-form-group {
   margin-bottom: 0;
@@ -6492,11 +6551,8 @@ body.cp-modal-open {
 .br-bath-light-row .admin-form-group[hidden] {
   display: none !important;
 }
-@media (max-width: 700px) {
-  .br-bath-light-row {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
+.br-bath-light-row .admin-checkbox {
+  min-height: 44px;
 }
 .br-tile-areas__head {
   display: flex;
@@ -6796,6 +6852,20 @@ body.cp-modal-open {
 }
 
 @media (min-width: 700px) {
+  .br-check-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .br-qty-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .br-bath-light-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+  .br-bath-light-row {
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 140px);
+    align-items: end;
+  }
   .br-provide-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -6886,6 +6956,12 @@ body.cp-modal-open {
 }
 
 @media (min-width: 900px) {
+  .br-check-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .br-qty-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
   .br-shell {
     display: grid;
     grid-template-columns: 200px minmax(0, 1fr);

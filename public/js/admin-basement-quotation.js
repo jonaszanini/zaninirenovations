@@ -402,10 +402,6 @@
     });
     var includeWrap = form.querySelector('[data-br-bath-include-wrap]');
     if (includeWrap) includeWrap.hidden = nest;
-    var stepHint = form.querySelector('[data-br-bath-step-hint]');
-    if (stepHint) stepHint.hidden = nest;
-    var livingHint = form.querySelector('[data-br-living-area-light-hint]');
-    if (livingHint) livingHint.hidden = nest;
     if (nest) {
       setNamedCheck('include_bathroom', true);
       var bathFields = document.getElementById('br-bath-fields');
@@ -432,9 +428,6 @@
 
   function syncBathroomElectricalHints() {
     var bath = currentPreset() === 'bathroom';
-    form.querySelectorAll('[data-br-bathroom-electrical-hint]').forEach(function (el) {
-      el.hidden = !bath;
-    });
     form.querySelectorAll('[data-br-basement-lighting]').forEach(function (el) {
       if (bath) {
         el.hidden = true;
