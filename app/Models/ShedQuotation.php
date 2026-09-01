@@ -171,14 +171,6 @@ class ShedQuotation extends Model
             : 'Rough / shell';
         $lines[] = 'Interior: '.$finish;
 
-        $warnings = is_array($scope['permit_warnings'] ?? null) ? $scope['permit_warnings'] : [];
-        foreach ($warnings as $warning) {
-            $text = trim((string) $warning);
-            if ($text !== '') {
-                $lines[] = 'Permit note: '.$text;
-            }
-        }
-
         foreach ($calc['labor'] ?? [] as $row) {
             if (! is_array($row) || (float) ($row['hours'] ?? 0) <= 0) {
                 continue;

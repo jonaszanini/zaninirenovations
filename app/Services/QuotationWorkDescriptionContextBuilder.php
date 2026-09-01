@@ -383,7 +383,6 @@ class QuotationWorkDescriptionContextBuilder
 
         $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
         $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
-        $this->appendBlock($lines, 'Permit notes', $c['permit_notes'] ?? null);
 
         return implode("\n", $lines);
     }

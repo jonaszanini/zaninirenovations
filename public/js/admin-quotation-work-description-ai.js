@@ -299,7 +299,6 @@
       client_provides_all: isChecked(form, 'client_provides_all'),
       labor_summary: tableScopeLines('sh-labor-rows'),
       materials_summary: tableScopeLines('sh-mat-rows'),
-      permit_notes: panelText('sh-permit-list'),
       breakdown_summary: panelText('sh-live-root')
     };
   }
