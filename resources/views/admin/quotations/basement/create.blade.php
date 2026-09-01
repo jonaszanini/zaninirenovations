@@ -231,7 +231,7 @@
                 <tbody id="br-labor-rows">
                   @forelse ($previewLabor as $row)
                     <tr data-br-labor-key="{{ $row['key'] }}">
-                      <td>{{ $row['label'] }}<br><span class="admin-form-help">{{ $row['detail'] ?? '' }}</span></td>
+                      <td>{{ $row['label'] }}@if (filled(trim((string) ($row['detail'] ?? '')))) <span class="admin-form-help">- {{ $row['detail'] }}</span>@endif</td>
                       <td data-br-labor-hrs>{{ number_format((float) ($row['hours'] ?? 0), 2) }}</td>
                       <td class="cp-col-amount" data-br-labor-amt>{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>

@@ -174,7 +174,7 @@
                 <tbody id="sh-labor-rows">
                   @forelse ($previewLabor as $row)
                     <tr data-sh-labor-key="{{ $row['key'] }}">
-                      <td>{{ $row['label'] }}<br><span class="admin-form-help">{{ $row['detail'] ?? '' }}</span></td>
+                      <td>{{ $row['label'] }}@if (filled(trim((string) ($row['detail'] ?? '')))) <span class="admin-form-help">- {{ $row['detail'] }}</span>@endif</td>
                       <td data-sh-labor-hrs>{{ number_format((float) ($row['hours'] ?? 0), 2) }}</td>
                       <td class="cp-col-amount" data-sh-labor-amt>{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>

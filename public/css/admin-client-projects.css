@@ -243,6 +243,13 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.br-review-table th,
+.br-review-table td {
+  padding: 0.4rem 0.75rem;
+}
+.br-review-table td:first-child {
+  white-space: nowrap;
+}
 .br-review-table th:not(:first-child),
 .br-review-table td:not(:first-child) {
   text-align: right;

@@ -303,8 +303,10 @@
         return;
       }
       tbody.innerHTML = rows.map(function (row) {
+        var trade = escapeHtml(row.label);
+        if (row.detail) trade += ' <span class="admin-form-help">- ' + escapeHtml(row.detail) + '</span>';
         return '<tr data-sh-labor-key="' + escapeHtml(row.key) + '">'
-          + '<td>' + escapeHtml(row.label) + '<br><span class="admin-form-help">' + escapeHtml(row.detail || '') + '</span></td>'
+          + '<td>' + trade + '</td>'
           + '<td>' + Number(row.hours || 0).toFixed(2) + '</td>'
           + '<td class="cp-col-amount">' + fmt(row.amount || 0) + '</td>'
           + '</tr>';
