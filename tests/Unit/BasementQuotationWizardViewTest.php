@@ -53,6 +53,8 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/data-br-step="framing"[^>]*\bhidden\b/', $html);
         $this->assertMatchesRegularExpression('/data-br-step="flooring"[^>]*\bhidden\b/', $html);
         $this->assertStringContainsString('Auto: wall length × 2', $html);
+        $this->assertStringContainsString('Auto: wall length × height × both sides', $html);
+        $this->assertMatchesRegularExpression('/data-br-skip-on-wall[^>]*\bhidden\b/', $html);
         $this->assertContains('doors_trim', $enabledNow);
     }
 

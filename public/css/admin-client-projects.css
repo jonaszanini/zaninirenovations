@@ -6502,6 +6502,9 @@ body.cp-modal-open {
 .br-nested-trade[hidden] {
   display: none !important;
 }
+[data-br-skip-on-wall][hidden] {
+  display: none !important;
+}
 .br-nested-trade .br-tile-areas__head {
   margin-bottom: 6px;
 }

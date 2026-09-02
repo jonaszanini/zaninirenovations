@@ -844,6 +844,65 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertStringContainsString('40', $base['detail']);
     }
 
+    public function test_wall_preset_drywall_is_both_sides_and_skips_ceiling(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 800,
+            'ceiling_height_ft' => 8,
+            'scope_preset' => 'wall',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('wall'),
+            'partition_lf' => 13.3,
+            'door_qty' => 1,
+            'framing_door_openings' => 1,
+            'drywall_ceiling_sf' => 800,
+            'paint_ceiling_sf' => 800,
+            'ceiling_type' => 'drywall',
+            'include_touchups' => false,
+            'include_cleaning' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+
+        $labor = collect($calc['labor']);
+        $hang = $labor->firstWhere('key', 'dw_hang');
+        $mud = $labor->firstWhere('key', 'dw_finish');
+        $paintCeil = $labor->firstWhere('key', 'paint_ceiling');
+        $this->assertNotNull($hang);
+        $this->assertNotNull($mud);
+        $this->assertNull($paintCeil);
+        $this->assertStringContainsString('213', $hang['detail']);
+        $this->assertStringContainsString('213', $mud['detail']);
+        $this->assertStringNotContainsString('800', $hang['detail']);
+        $this->assertEqualsWithDelta(13.3 * 8 * 2 / 20, $mud['hours'], 0.02);
+        $this->assertEqualsWithDelta(13.3 * 8 * 2 / 35, $hang['hours'], 0.02);
+        $this->assertNull($labor->firstWhere('key', 'fin_touch'));
+        $this->assertLessThan(40, $calc['summary']['total_hours']);
+        $this->assertGreaterThan(15, $calc['summary']['total_hours']);
+    }
+
+    public function test_wall_preset_level_4_mud_hours_match_finish_rate_not_a_second_wall(): void
+    {
+        $settings = $this->settings();
+        $prod = $settings->resolvedProductivity();
+        $sf = 13.3 * 8 * 2;
+        $expectedHours = round($sf / (float) $prod['drywall_finish_l4_sf_per_hr'], 2);
+        $expectedAmount = round($expectedHours * 85, 2);
+
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 0,
+            'ceiling_height_ft' => 8,
+            'scope_preset' => 'wall',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('wall'),
+            'partition_lf' => 13.3,
+            'include_touchups' => false,
+            'owner_hourly_rate' => 85,
+        ], $settings);
+
+        $mud = collect($calc['labor'])->firstWhere('key', 'dw_finish');
+        $this->assertNotNull($mud);
+        $this->assertEqualsWithDelta($expectedHours, $mud['hours'], 0.02);
+        $this->assertEqualsWithDelta($expectedAmount, $mud['amount'], 0.05);
+    }
+
     public function test_wall_preset_enables_doors_trim(): void
     {
         $keys = BasementQuotationCalculator::presetEnabledSections('wall');

@@ -27,6 +27,17 @@
               $inputs[$elecKey] = $elecVal;
           }
       }
+      if ($scopePreset === 'wall') {
+          if (old('ceiling_type') === null) {
+              $inputs['ceiling_type'] = 'none';
+          }
+          if (old('include_touchups') === null) {
+              $inputs['include_touchups'] = false;
+          }
+          if (old('include_cleaning') === null) {
+              $inputs['include_cleaning'] = false;
+          }
+      }
   }
   $enabledNow = BasementQuotationCalculator::enabledSections([
       'scope_preset' => $scopePreset,

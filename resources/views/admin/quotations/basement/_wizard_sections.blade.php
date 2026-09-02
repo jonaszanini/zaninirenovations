@@ -94,8 +94,8 @@
       'insulation_ceiling_sf' => 'Ceiling area to insulate. Blank uses the work area.',
       'underslab' => 'Rigid foam under a new slab or on the existing concrete before flooring, where specified.',
       'underslab_sf' => 'Floor area of under-slab foam. Blank uses the work area.',
-      'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses area × height (or both sides of a new wall on the wall preset). Bathroom-only also adds both sides of a new wall and duct boxing.',
-      'drywall_ceiling_sf' => 'Ceiling area to hang. Blank follows Ceiling type (skipped for drop ceiling or skip).',
+      'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses area × height. On New wall, blank is wall length × ceiling height × both sides.',
+      'drywall_ceiling_sf' => 'Ceiling area to hang. Blank follows Ceiling type (skipped for drop ceiling or skip). New wall quotes skip ceiling — the basement is already finished.',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_openings' => 'Door and window openings to cut and bead, counted each.',
       'finish_level' => 'How smooth the mud work is. Level 4 is standard paint-ready for living space.',
@@ -110,8 +110,8 @@
       'baseboard_lf' => 'Baseboard length. Blank uses the room perimeter from the work area, or both sides of the new wall on the wall preset.',
       'casing_openings' => 'Door openings to case (both sides). Blank uses the interior door count.',
       'window_trim_qty' => 'Window openings to wrap with stool, apron, and casing.',
-      'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area.',
-      'paint_ceiling_sf' => 'Ceiling area to paint. Blank follows drywall ceiling unless you chose a drop ceiling.',
+      'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area (both sides of a new wall on the wall preset).',
+      'paint_ceiling_sf' => 'Ceiling area to paint. Blank follows drywall ceiling unless you chose a drop ceiling. Hidden on New wall — no ceiling work.',
       'paint_trim_lf' => 'Base and casing to paint. Blank uses baseboard plus door casing length.',
       'paint_colors' => 'One color = walls and ceiling the same. Two colors packs paint separately and adds tape / cut-in labor plus extra drywall finish time.',
       'paint_coats' => 'Finish coats after primer. Two is typical on new drywall.',
@@ -418,9 +418,10 @@
         'mode' => $qtyDim('drywall_wall_sf')['mode'],
         'lengthValue' => $qtyDim('drywall_wall_sf')['length'],
         'widthValue' => $qtyDim('drywall_wall_sf')['width'],
-        'placeholder' => 'Auto from area × height',
+        'placeholder' => $scopePreset === 'wall' ? 'Auto: wall length × height × both sides' : 'Auto from area × height',
         'info' => $brInfo['drywall_wall_sf'],
       ])
+      <div data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'drywall_ceiling_sf',
         'id' => 'br-dw-ceil',
@@ -435,6 +436,7 @@
         'placeholder' => 'Auto if ceiling is drywall',
         'info' => $brInfo['drywall_ceiling_sf'],
       ])
+      </div>
       <div class="admin-form-group">
         <label for="br-dw-corners">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_corners']]) Outside corners</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-dw-corners" name="drywall_corners"
@@ -581,9 +583,10 @@
         'mode' => $qtyDim('paint_wall_sf')['mode'],
         'lengthValue' => $qtyDim('paint_wall_sf')['length'],
         'widthValue' => $qtyDim('paint_wall_sf')['width'],
-        'placeholder' => 'Auto from drywall walls',
+        'placeholder' => $scopePreset === 'wall' ? 'Auto: both sides of the new wall' : 'Auto from drywall walls',
         'info' => $brInfo['paint_wall_sf'],
       ])
+      <div data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'paint_ceiling_sf',
         'id' => 'br-p-ceil',
@@ -598,6 +601,7 @@
         'placeholder' => 'Auto unless drop ceiling',
         'info' => $brInfo['paint_ceiling_sf'],
       ])
+      </div>
       <div class="admin-form-group">
         <label for="br-p-trim">@include('admin.partials.info_tip', ['text' => $brInfo['paint_trim_lf']]) Trim (linear ft)</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-p-trim" name="paint_trim_lf"
@@ -806,8 +810,8 @@
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-hw" name="hardware_sets"
                value="{{ $brVal('hardware_sets', 0) }}">
       </div>
-      @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', true), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_cleaning')])
-      @include('admin.partials.checkbox', ['name' => 'include_touchups', 'hiddenFallback' => true, 'checked' => $brOn('include_touchups', true), 'label' => 'Touch-ups / punch list', 'info' => $brInfo['include_touchups'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_touchups')])
+      @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', $scopePreset !== 'wall'), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_cleaning')])
+      @include('admin.partials.checkbox', ['name' => 'include_touchups', 'hiddenFallback' => true, 'checked' => $brOn('include_touchups', $scopePreset !== 'wall'), 'label' => 'Touch-ups / punch list', 'info' => $brInfo['include_touchups'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_touchups')])
     </div>
   </div>
 </details>

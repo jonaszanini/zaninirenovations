@@ -833,7 +833,8 @@ class BasementQuotationCalculator
         // --- Drywall ---
         if ($on('drywall')) {
             $dwWall = $this->qtyOr($inputs['drywall_wall_sf'], $dwWallFallback);
-            $dwCeil = $this->qtyOr(
+            $skipCeilingFinish = $inputs['scope_preset'] === 'wall' && ! $on('ceiling');
+            $dwCeil = $skipCeilingFinish ? 0.0 : $this->qtyOr(
                 $inputs['drywall_ceiling_sf'],
                 $on('ceiling') && in_array($ceilingType, ['drywall', 'paint'], true) ? $area : 0
             );
@@ -919,7 +920,8 @@ class BasementQuotationCalculator
         if ($on('painting')) {
             $coats = max(1, (int) ($inputs['paint_coats'] ?? 2));
             $pWall = $this->qtyOr($inputs['paint_wall_sf'], $dwWall ?: $dwWallFallback);
-            $pCeil = $this->qtyOr(
+            $skipCeilingFinish = $inputs['scope_preset'] === 'wall' && ! $on('ceiling');
+            $pCeil = $skipCeilingFinish ? 0.0 : $this->qtyOr(
                 $inputs['paint_ceiling_sf'],
                 (! $on('ceiling') || in_array($ceilingType, ['drop', 'none'], true)) ? 0 : ($dwCeil ?: $area)
             );

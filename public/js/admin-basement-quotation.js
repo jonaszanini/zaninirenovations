@@ -376,6 +376,18 @@
     if (baseEl) {
       baseEl.placeholder = currentPreset() === 'wall' ? 'Auto: wall length × 2' : 'Auto: room perimeter';
     }
+    var wallOnly = currentPreset() === 'wall';
+    form.querySelectorAll('[data-br-skip-on-wall]').forEach(function (el) {
+      el.hidden = wallOnly;
+    });
+    var dwWall = document.getElementById('br-dw-wall');
+    if (dwWall) {
+      dwWall.placeholder = wallOnly ? 'Auto: wall length × height × both sides' : 'Auto from area × height';
+    }
+    var pWall = document.getElementById('br-p-wall');
+    if (pWall) {
+      pWall.placeholder = wallOnly ? 'Auto: both sides of the new wall' : 'Auto from drywall walls';
+    }
     if (currentIndex >= wizardKeys.length) {
       currentIndex = 0;
     }
@@ -489,12 +501,16 @@
       setNamedCheck('insulate_walls', false);
       setNamedValue('flooring_type', 'none');
       setNamedValue('detector_qty', 0);
-      setNamedCheck('include_cleaning', true);
-      setNamedCheck('include_touchups', true);
+      setNamedValue('ceiling_type', 'none');
+      setNamedValue('drywall_ceiling_sf', '');
+      setNamedValue('paint_ceiling_sf', '');
+      setNamedCheck('include_cleaning', false);
+      setNamedCheck('include_touchups', false);
     } else if (preset === 'full') {
       setNamedCheck('insulate_walls', true);
       setNamedValue('flooring_type', 'lvp');
       setNamedValue('detector_qty', 2);
+      setNamedValue('ceiling_type', 'drywall');
       setNamedCheck('include_cleaning', true);
       setNamedCheck('include_touchups', true);
     }
