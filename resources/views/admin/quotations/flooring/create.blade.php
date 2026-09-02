@@ -106,16 +106,6 @@
 @endpush
 
 @section('content')
-  <div class="admin-toolbar" style="margin-bottom:16px;">
-    <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to list
-    </a>
-    @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-    <a href="{{ route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm" style="margin-left:8px;">
-      <i class="fa fa-cog"></i> Price configuration
-    </a>
-  </div>
-
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
       <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.client-projects.show', $quotation->project) }}#quotation"><strong>{{ $quotation->project->name }}</strong></a>
@@ -337,6 +327,9 @@
           <i class="fa fa-cog"></i> Price configuration
         </a>
         @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
+        <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-arrow-left"></i> Back to list
+        </a>
         <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])

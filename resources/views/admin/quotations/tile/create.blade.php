@@ -75,14 +75,7 @@
     <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ old('is_draft', $isEdit && $quotation->is_draft ? '1' : '0') }}">
     
     <div class="fq-form-toolbar">
-      <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-arrow-left"></i> Back to list
-      </a>
       <div class="fq-form-toolbar-right">
-        <a href="{{ route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
         @if ($linkProject)
           <div class="fq-linked-banner">
             <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.client-projects.show', $linkProject) }}">{{ $linkProject->name }}</a>
@@ -286,6 +279,9 @@
           <i class="fa fa-cog"></i> Price configuration
         </a>
         @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
+        <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-arrow-left"></i> Back to list
+        </a>
         <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
       

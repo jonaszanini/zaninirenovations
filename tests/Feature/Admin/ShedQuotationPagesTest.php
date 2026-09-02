@@ -96,7 +96,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
         $this->assertNotFalse($context);
         $this->assertNotFalse($next);
         $this->assertNotFalse($live);
-        $this->assertLessThan($context, $price);
+        $this->assertLessThan($price, $context);
         $this->assertLessThan($next, $context);
         $this->assertLessThan($live, $next);
     }

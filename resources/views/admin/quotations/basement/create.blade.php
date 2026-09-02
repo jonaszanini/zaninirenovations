@@ -66,16 +66,6 @@
 @section('heading', $title)
 
 @section('content')
-  <div class="admin-toolbar" style="margin-bottom:16px;">
-    <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to list
-    </a>
-    @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-    <a href="{{ route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm" style="margin-left:8px;">
-      <i class="fa fa-cog"></i> Price configuration
-    </a>
-  </div>
-
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
@@ -112,6 +102,9 @@
           <i class="fa fa-cog"></i> Price configuration
         </a>
         @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
+        <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-arrow-left"></i> Back to list
+        </a>
         <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
       <div class="br-step-nav" id="br-step-nav">

@@ -156,18 +156,6 @@
 @endpush
 
 @section('content')
-  <div class="fq-form-toolbar">
-    <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to list
-    </a>
-    <div class="fq-form-toolbar-right">
-      <a href="{{ route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-cog"></i> Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-    </div>
-  </div>
-
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
       <i class="fa fa-link"></i>
@@ -322,6 +310,9 @@
           <i class="fa fa-cog"></i> Price configuration
         </a>
         @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
+        <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-arrow-left"></i> Back to list
+        </a>
         <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
       @if ($isEdit && $linkedCpq && $quotation->project && ! $quotation->is_draft)
