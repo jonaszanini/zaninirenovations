@@ -196,7 +196,7 @@ class StandardQuotation extends Model
     }
 
     /**
-     * Itemized rows for the client PDF (materials, contingency, labour).
+     * Client PDF rows: one Material subtotal (not each SKU), then contingency and labour.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -205,30 +205,20 @@ class StandardQuotation extends Model
         $computed = $this->computedTotals();
         $lines = [];
 
-        foreach ($computed['materials'] as $material) {
-            $parts = array_values(array_filter([
-                trim((string) ($material['short_name'] ?? '')),
-                trim((string) ($material['description'] ?? '')),
-            ]));
-            $label = $parts !== [] ? implode(' — ', $parts) : 'Material';
-            $qty = (float) ($material['quantity'] ?? 0);
-            $unit = (float) ($material['unit_price'] ?? 0);
-            $delivery = round(max(0.0, (float) ($material['delivery_cad'] ?? 0)), 2);
-            if ($qty > 0 && $unit >= 0) {
-                $label .= sprintf(
-                    ' (%s × $%s',
-                    self::formatPdfQty($qty),
-                    number_format($unit, 2, '.', ',')
-                );
-                if ($delivery > 0) {
-                    $label .= sprintf(' + $%s delivery', number_format($delivery, 2, '.', ','));
-                }
-                $label .= ')';
-            }
+        $taxable = round((float) ($computed['materials_subtotal_taxable'] ?? 0), 2);
+        $exempt = round((float) ($computed['materials_subtotal_exempt'] ?? 0), 2);
+        if ($taxable > 0) {
             $lines[] = [
-                'description' => $label,
-                'amount' => round((float) $material['line_subtotal'], 2),
-                'apply_hst' => (bool) $material['apply_hst'],
+                'description' => 'Material',
+                'amount' => $taxable,
+                'apply_hst' => true,
+            ];
+        }
+        if ($exempt > 0) {
+            $lines[] = [
+                'description' => $taxable > 0 ? 'Material — HST exempt' : 'Material',
+                'amount' => $exempt,
+                'apply_hst' => false,
             ];
         }
 

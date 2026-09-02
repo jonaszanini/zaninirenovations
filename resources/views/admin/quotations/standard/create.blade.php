@@ -212,7 +212,7 @@
                 <label class="cp-checkbox-row">
                   <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
                     @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
-                  <span><strong>Detailed</strong> — list each material, price, and labour with HST columns</span>
+                  <span><strong>Detailed</strong> — Material subtotal, labour, and HST columns (not each SKU)</span>
                 </label>
               </div>
               <p class="admin-form-help sq-intro-option-help">Controls what the client sees when you download or email the PDF from the project.</p>
