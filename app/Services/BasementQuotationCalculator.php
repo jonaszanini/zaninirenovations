@@ -1218,6 +1218,10 @@ class BasementQuotationCalculator
                 'grand_total' => $grand,
                 'final_quote_total' => $grand,
                 'client_provides_all' => $providesAll,
+                'trades' => [
+                    'electrical' => $this->totalsForTrade($labor, array_merge($materials, $extraMaterials), 'electrical'),
+                    'plumbing' => $this->totalsForTrade($labor, array_merge($materials, $extraMaterials), 'plumbing'),
+                ],
             ],
         ];
     }
@@ -1441,6 +1445,34 @@ class BasementQuotationCalculator
     }
 
     /**
+     * Pre-HST labor and materials for one wizard trade (electrical, plumbing, …).
+     *
+     * @param  list<array<string, mixed>>  $labor
+     * @param  list<array<string, mixed>>  $materials
+     * @return array{labor_pre_hst: float, materials_pre_hst: float}
+     */
+    private function totalsForTrade(array $labor, array $materials, string $trade): array
+    {
+        $laborPre = 0.0;
+        foreach ($labor as $row) {
+            if (($row['section'] ?? '') === $trade) {
+                $laborPre += (float) ($row['amount'] ?? 0);
+            }
+        }
+        $matPre = 0.0;
+        foreach ($materials as $row) {
+            if (($row['section'] ?? '') === $trade) {
+                $matPre += (float) ($row['amount'] ?? 0);
+            }
+        }
+
+        return [
+            'labor_pre_hst' => round($laborPre, 2),
+            'materials_pre_hst' => round($matPre, 2),
+        ];
+    }
+
+    /**
      * Count of bags, boxes, rolls, or sticks for a continuous takeoff.
      */
     private function packages(float $needed, float $perPackage): float
@@ -1505,6 +1537,10 @@ class BasementQuotationCalculator
                 'grand_total' => 0.0,
                 'final_quote_total' => 0.0,
                 'client_provides_all' => ! empty($inputs['client_provides_all']),
+                'trades' => [
+                    'electrical' => ['labor_pre_hst' => 0.0, 'materials_pre_hst' => 0.0],
+                    'plumbing' => ['labor_pre_hst' => 0.0, 'materials_pre_hst' => 0.0],
+                ],
             ],
         ];
     }

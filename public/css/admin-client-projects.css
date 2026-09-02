@@ -6744,9 +6744,12 @@ body.cp-modal-open {
 .br-tile-row__sqft-controls .br-lw-segment {
   align-self: center;
 }
-.br-tile-row__finish .admin-input {
+.br-tile-row__finish .br-lw-segment {
   width: 100%;
-  max-width: 9.5rem;
+  max-width: 12rem;
+}
+.br-tile-row__finish .br-lw-segment__item {
+  flex: 1 1 0;
 }
 .br-tile-row__name .admin-input {
   max-width: 9.5rem;
@@ -6770,7 +6773,7 @@ body.cp-modal-open {
 }
 @media (min-width: 700px) {
   .br-tile-row__main {
-    grid-template-columns: max-content minmax(6.5rem, 8.5rem) minmax(7rem, 9.5rem) 44px;
+    grid-template-columns: max-content minmax(8.5rem, 12rem) minmax(7rem, 9.5rem) 44px;
   }
   .br-tile-row__sqft,
   .br-tile-row__finish,

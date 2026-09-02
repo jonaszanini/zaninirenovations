@@ -70,6 +70,57 @@ class BasementQuotationCalculatorTest extends TestCase
             $calc['eta']['scenarios'][0]['calendar_days']
         );
         $this->assertSame(800.0, $calc['scope']['area_sqft']);
+        $this->assertGreaterThan(0, $calc['summary']['trades']['electrical']['labor_pre_hst']);
+        $this->assertGreaterThan(0, $calc['summary']['trades']['electrical']['materials_pre_hst']);
+        $this->assertSame(0.0, $calc['summary']['trades']['plumbing']['labor_pre_hst']);
+        $this->assertLessThanOrEqual(
+            $calc['summary']['labor_pre_hst'],
+            $calc['summary']['trades']['electrical']['labor_pre_hst']
+        );
+        $this->assertEquals(
+            $calc['summary']['grand_total'],
+            round(
+                $calc['summary']['labor_after_hst'] + $calc['summary']['materials_after_hst'],
+                2
+            )
+        );
+    }
+
+    public function test_summary_splits_electrical_and_plumbing_without_changing_grand_total(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'include_plumbing' => true,
+            'bath_rough_in' => true,
+            'outlet_qty' => 4,
+            'switch_qty' => 2,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $elec = $calc['summary']['trades']['electrical'];
+        $plumb = $calc['summary']['trades']['plumbing'];
+        $grand = $calc['summary']['grand_total'];
+
+        $this->assertGreaterThan(0, $elec['labor_pre_hst']);
+        $this->assertGreaterThan(0, $elec['materials_pre_hst']);
+        $this->assertGreaterThan(0, $plumb['labor_pre_hst']);
+        $this->assertGreaterThan(0, $plumb['materials_pre_hst']);
+        $this->assertLessThanOrEqual(
+            $calc['summary']['labor_pre_hst'],
+            round($elec['labor_pre_hst'] + $plumb['labor_pre_hst'], 2)
+        );
+        $this->assertLessThanOrEqual(
+            $calc['summary']['materials_pre_hst'],
+            round($elec['materials_pre_hst'] + $plumb['materials_pre_hst'], 2)
+        );
+        $this->assertEqualsWithDelta(
+            round($calc['summary']['labor_after_hst'] + $calc['summary']['materials_after_hst'], 2),
+            $grand,
+            0.01
+        );
     }
 
     public function test_client_provided_materials_zero_material_total(): void

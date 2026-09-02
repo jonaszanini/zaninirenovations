@@ -279,7 +279,7 @@
     var vinyl = 0;
     list.querySelectorAll('[data-br-tile-row]').forEach(function (row) {
       var qty = row.querySelector('[data-br-lw-qty]');
-      var finish = row.querySelector('[data-br-tile-finish]');
+      var finish = row.querySelector('[data-br-tile-finish]:checked') || row.querySelector('[data-br-tile-finish]');
       var n = qty ? parseFloat(qty.value) : NaN;
       if (!isFinite(n) || n <= 0) return;
       if (finish && String(finish.value).toLowerCase() === 'vinyl') vinyl += n;
@@ -634,12 +634,25 @@
     html += '<div class="pq-row pq-row--group"><span>Materials (pre-HST)</span><span>' + fmt(matPre) + '</span></div>';
     html += '<div class="pq-row"><span>Materials HST</span><span>' + fmt(matHst) + '</span></div>';
     html += '<div class="pq-row pq-row--sub"><span>Total materials</span><span>' + fmt(matPre + matHst) + '</span></div>';
+    html += tradeBreakdownHtml('Electrical', summary.trades && summary.trades.electrical);
+    html += tradeBreakdownHtml('Plumbing', summary.trades && summary.trades.plumbing);
     if (lastDebrisAmount > 0) {
       html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
     }
     var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
     html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
     body.innerHTML = html;
+  }
+
+  function tradeBreakdownHtml(label, trade) {
+    var labor = Number((trade && trade.labor_pre_hst) || 0);
+    var mats = Number((trade && trade.materials_pre_hst) || 0);
+    if (labor <= 0 && mats <= 0) {
+      return '';
+    }
+    var html = '<div class="pq-row pq-row--group"><span>' + label + ' labor (pre-HST)</span><span>' + fmt(labor) + '</span></div>';
+    html += '<div class="pq-row"><span>' + label + ' materials (pre-HST)</span><span>' + fmt(mats) + '</span></div>';
+    return html;
   }
 
   function rebuildLaborTable(rows) {

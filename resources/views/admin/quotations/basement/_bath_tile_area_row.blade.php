@@ -42,12 +42,19 @@
       </div>
     </div>
     <div class="admin-form-group br-tile-row__finish">
-      <label for="br-tile-finish-{{ $i }}">Finish</label>
-      <select class="admin-input br-preview" id="br-tile-finish-{{ $i }}"
-              name="bath_tile_areas[{{ $i }}][finish]" data-br-tile-finish>
-        <option value="tile" @selected($finish === 'tile')>Tile</option>
-        <option value="vinyl" @selected($finish === 'vinyl')>Vinyl (LVP)</option>
-      </select>
+      <label id="br-tile-finish-{{ $i }}-label">Finish</label>
+      <div class="br-lw-segment" role="radiogroup" aria-labelledby="br-tile-finish-{{ $i }}-label">
+        <label class="br-lw-segment__item">
+          <input type="radio" class="br-preview" name="bath_tile_areas[{{ $i }}][finish]" value="tile"
+                 data-br-tile-finish @checked($finish === 'tile')>
+          <span>Tile</span>
+        </label>
+        <label class="br-lw-segment__item">
+          <input type="radio" class="br-preview" name="bath_tile_areas[{{ $i }}][finish]" value="vinyl"
+                 data-br-tile-finish @checked($finish === 'vinyl')>
+          <span>Vinyl</span>
+        </label>
+      </div>
     </div>
     <div class="admin-form-group br-tile-row__name">
       <label for="br-tile-label-{{ $i }}">Area name</label>

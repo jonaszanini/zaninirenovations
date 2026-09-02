@@ -785,7 +785,7 @@
           <span class="br-tile-areas__title">
             @include('admin.partials.info_tip', ['text' => $brInfo['bath_tile_sf']])
             @include('admin.quotations.basement._client_filled', ['key' => 'bath_tile_areas', 'filledKeys' => $filledKeys])
-            Tile work
+            Tile / vinyl
           </span>
           <span class="admin-form-help" data-br-tile-total>Combined: {{ $tileTotal > 0 ? rtrim(rtrim(number_format($tileTotal, 2, '.', ''), '0'), '.').' sq ft' : '0 sq ft' }}</span>
         </div>
@@ -795,7 +795,7 @@
           @endforeach
         </div>
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-tile-add" style="margin-top:8px;">
-          <i class="fa fa-plus"></i> Add tile area
+          <i class="fa fa-plus"></i> Add area
         </button>
         <template id="br-tile-template">
           @include('admin.quotations.basement._bath_tile_area_row', ['i' => '__I__', 'area' => \App\Services\BasementQuotationCalculator::blankBathTileArea()])
