@@ -372,6 +372,10 @@
       };
       areaLabel.textContent = labels[currentPreset()] || labels.full;
     }
+    var baseEl = document.getElementById('br-base');
+    if (baseEl) {
+      baseEl.placeholder = currentPreset() === 'wall' ? 'Auto: wall length × 2' : 'Auto: room perimeter';
+    }
     if (currentIndex >= wizardKeys.length) {
       currentIndex = 0;
     }

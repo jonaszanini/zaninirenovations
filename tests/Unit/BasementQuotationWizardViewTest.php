@@ -41,6 +41,21 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertMatchesRegularExpression('/id="br-framing-slot-bath"[^>]*\bhidden\b/', $html);
     }
 
+    public function test_wall_wizard_includes_doors_trim_step(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $inputs['scope_preset'] = 'wall';
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('wall');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'wall', $enabledNow))->render();
+
+        $this->assertDoesNotMatchRegularExpression('/data-br-step="doors_trim"[^>]*\bhidden\b/', $html);
+        $this->assertDoesNotMatchRegularExpression('/data-br-step="framing"[^>]*\bhidden\b/', $html);
+        $this->assertMatchesRegularExpression('/data-br-step="flooring"[^>]*\bhidden\b/', $html);
+        $this->assertStringContainsString('Auto: wall length × 2', $html);
+        $this->assertContains('doors_trim', $enabledNow);
+    }
+
     /**
      * @param  array<string, mixed>  $inputs
      * @param  list<string>  $enabledNow

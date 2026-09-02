@@ -59,7 +59,7 @@ class BasementQuotationCalculator
             // Electrical, plumbing, and framing stay enabled for pricing; the
             // wizard nests those fields inside the Bathroom step for this preset.
             'bathroom' => ['overview', 'framing', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
-            'wall' => ['overview', 'framing', 'drywall', 'painting', 'finishing'],
+            'wall' => ['overview', 'framing', 'drywall', 'doors_trim', 'painting', 'finishing'],
             'custom' => ['overview'],
             default => array_keys(self::SECTIONS),
         };
@@ -897,7 +897,8 @@ class BasementQuotationCalculator
         // --- Doors / trim ---
         if ($on('doors_trim')) {
             $doors = max(0, (int) $inputs['door_qty']);
-            $baseLf = $this->qtyOr($inputs['baseboard_lf'], $perimeter);
+            $baseFallback = $inputs['scope_preset'] === 'wall' ? round($partitionLf * 2, 2) : $perimeter;
+            $baseLf = $this->qtyOr($inputs['baseboard_lf'], $baseFallback);
             $casing = max(0, (int) $inputs['casing_openings']);
             if ($casing <= 0) {
                 $casing = $doors;

@@ -107,7 +107,7 @@
       'subfloor_prep' => 'Level or patch the concrete/subfloor before underlayment and finish flooring.',
       'underlayment' => 'Foam or cork under LVP, laminate, or carpet. Not used with tile or epoxy.',
       'door_qty' => 'Prehung or slab interior doors to hang, including bath and closet doors.',
-      'baseboard_lf' => 'Baseboard length. Blank uses the room perimeter from the work area.',
+      'baseboard_lf' => 'Baseboard length. Blank uses the room perimeter from the work area, or both sides of the new wall on the wall preset.',
       'casing_openings' => 'Door openings to case (both sides). Blank uses the interior door count.',
       'window_trim_qty' => 'Window openings to wrap with stool, apron, and casing.',
       'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area.',
@@ -147,7 +147,7 @@
   $presetHelp = [
       'full' => 'Walks every trade. Area auto-fills insulation, drywall, flooring, paint, and cleanup.',
       'bathroom' => 'Plumbing, electrical, drywall, paint, fixtures, and cleanup in one bathroom flow — not whole-basement flooring or insulation.',
-      'wall' => 'Framing, drywall, paint, and cleanup. Drywall and paint use wall length × height × both sides.',
+      'wall' => 'Framing, drywall, doors / trim / baseboard, paint, and cleanup. Drywall, paint, and baseboard use both sides of the new wall.',
       'custom' => 'Only the trades you check below. Overview and Review always stay.',
   ];
 @endphp
@@ -548,7 +548,7 @@
       <div class="admin-form-group">
         <label for="br-base">@include('admin.partials.info_tip', ['text' => $brInfo['baseboard_lf']]) Baseboards (linear ft)</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-base" name="baseboard_lf"
-               value="{{ $brQty('baseboard_lf') }}" placeholder="Auto: room perimeter">
+               value="{{ $brQty('baseboard_lf') }}" placeholder="{{ $scopePreset === 'wall' ? 'Auto: wall length × 2' : 'Auto: room perimeter' }}">
       </div>
       <div class="admin-form-group">
         <label for="br-casing">@include('admin.partials.info_tip', ['text' => $brInfo['casing_openings']]) Casing / door trim (openings)</label>

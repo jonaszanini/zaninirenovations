@@ -839,6 +839,18 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertNotContains('fl_install', collect($calc['labor'])->pluck('key')->all());
         $this->assertNotContains('ins_walls', collect($calc['labor'])->pluck('key')->all());
         $this->assertContains('framing_walls', collect($calc['labor'])->pluck('key')->all());
+        $this->assertContains('trim_base', collect($calc['labor'])->pluck('key')->all());
+        $base = collect($calc['labor'])->firstWhere('key', 'trim_base');
+        $this->assertStringContainsString('40', $base['detail']);
+    }
+
+    public function test_wall_preset_enables_doors_trim(): void
+    {
+        $keys = BasementQuotationCalculator::presetEnabledSections('wall');
+        $this->assertContains('doors_trim', $keys);
+        $this->assertContains('framing', $keys);
+        $this->assertNotContains('flooring', $keys);
+        $this->assertNotContains('bathroom', $keys);
     }
 
     public function test_bathroom_electrical_defaults_are_three_outlets_two_switches_and_a_bath_fixture(): void
