@@ -61,13 +61,58 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertNotContains('Plywood', $descriptions);
         $this->assertFalse((bool) preg_grep('/Plywood|2x2|Stainer|Electrical work/', $descriptions));
 
+        $materialsPreHst = 48.98 + 11.64 + 25.0 + 650.0;
+        $contingency = round($materialsPreHst * 0.20, 2);
+
         $material = collect($lines)->firstWhere('description', 'Material');
         $this->assertNotNull($material);
-        $this->assertEqualsWithDelta(48.98 + 11.64 + 25.0 + 650.0, $material['amount'], 0.01);
+        $this->assertEqualsWithDelta($materialsPreHst + $contingency, $material['amount'], 0.01);
         $this->assertTrue($material['apply_hst']);
 
-        $this->assertNotFalse(collect($lines)->first(fn ($row) => str_starts_with((string) $row['description'], 'Contingency')));
+        $this->assertFalse((bool) preg_grep('/Contingency/', $descriptions));
         $this->assertNotFalse(collect($lines)->first(fn ($row) => str_starts_with((string) $row['description'], 'Labour')));
+    }
+
+    public function test_detailed_pdf_folds_contingency_into_material_not_electrical(): void
+    {
+        $quote = new StandardQuotation([
+            'materials' => [
+                [
+                    'short_name' => 'Lumber',
+                    'unit_price' => 85.62,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+                [
+                    'line_kind' => StandardQuotation::LINE_KIND_ELECTRICAL,
+                    'entry_mode' => 'electrical',
+                    'description' => StandardQuotation::ELECTRICAL_LINE_DESCRIPTION,
+                    'unit_price' => 700,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+            ],
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'labour_use_fixed' => false,
+            'contingency_enabled' => true,
+            'contingency_percent' => 20,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $lines = $quote->detailedPdfLineItems();
+        $descriptions = array_column($lines, 'description');
+        $byDesc = collect($lines)->keyBy('description');
+
+        $this->assertFalse((bool) preg_grep('/Contingency/', $descriptions));
+        $this->assertEqualsWithDelta(85.62 + 157.12, $byDesc['Material']['amount'], 0.01);
+        $this->assertEqualsWithDelta(700.0, $byDesc[StandardQuotation::ELECTRICAL_LINE_DESCRIPTION]['amount'], 0.01);
+        $this->assertSame(
+            ['Material', StandardQuotation::ELECTRICAL_LINE_DESCRIPTION],
+            $descriptions
+        );
     }
 
     public function test_detailed_pdf_lists_electrical_work_as_its_own_line(): void

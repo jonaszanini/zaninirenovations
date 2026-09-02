@@ -216,8 +216,9 @@ class StandardQuotation extends Model
     }
 
     /**
-     * Client PDF rows: one Material subtotal (not each SKU), electrical work as
-     * its own line(s), then contingency and labour.
+     * Client PDF rows: one Material subtotal (not each SKU; contingency is
+     * folded in, not shown as its own line), electrical work as its own
+     * line(s), then labour.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -257,6 +258,11 @@ class StandardQuotation extends Model
             }
         }
 
+        if (! empty($computed['contingency_enabled']) && (float) ($computed['contingency_amount'] ?? 0) > 0) {
+            $taxable += round((float) ($computed['contingency_amount_taxable'] ?? 0), 2);
+            $exempt += round((float) ($computed['contingency_amount_exempt'] ?? 0), 2);
+        }
+
         $taxable = round($taxable, 2);
         $exempt = round($exempt, 2);
 
@@ -277,24 +283,6 @@ class StandardQuotation extends Model
 
         foreach ($electricalLines as $electricalLine) {
             $lines[] = $electricalLine;
-        }
-
-        if ($computed['contingency_enabled'] && (float) $computed['contingency_amount'] > 0) {
-            $pct = self::formatPdfQty((float) $computed['contingency_percent']);
-            if ((float) $computed['contingency_amount_taxable'] > 0) {
-                $lines[] = [
-                    'description' => 'Contingency allowance ('.$pct.'%)',
-                    'amount' => round((float) $computed['contingency_amount_taxable'], 2),
-                    'apply_hst' => true,
-                ];
-            }
-            if ((float) $computed['contingency_amount_exempt'] > 0) {
-                $lines[] = [
-                    'description' => 'Contingency allowance ('.$pct.'%) — HST exempt',
-                    'amount' => round((float) $computed['contingency_amount_exempt'], 2),
-                    'apply_hst' => false,
-                ];
-            }
         }
 
         if ((float) $computed['labour_total'] > 0) {
