@@ -185,7 +185,7 @@
     var next = [];
     allSectionKeys.forEach(function (k) {
       if (enabled.indexOf(k) === -1) return;
-      if (nest && (k === 'electrical' || k === 'plumbing')) return;
+      if (nest && (k === 'electrical' || k === 'plumbing' || k === 'framing')) return;
       next.push(k);
     });
     sectionKeys = next;
@@ -386,7 +386,8 @@
     var nest = currentPreset() === 'bathroom';
     [
       ['br-electrical-fields', 'br-electrical-slot-step', 'br-electrical-slot-bath'],
-      ['br-plumbing-fields', 'br-plumbing-slot-step', 'br-plumbing-slot-bath']
+      ['br-plumbing-fields', 'br-plumbing-slot-step', 'br-plumbing-slot-bath'],
+      ['br-framing-fields', 'br-framing-slot-step', 'br-framing-slot-bath']
     ].forEach(function (ids) {
       var fields = document.getElementById(ids[0]);
       var stepSlot = document.getElementById(ids[1]);
@@ -395,7 +396,7 @@
       (nest ? bathSlot : stepSlot).appendChild(fields);
       bathSlot.hidden = !nest;
     });
-    ['electrical', 'plumbing'].forEach(function (k) {
+    ['electrical', 'plumbing', 'framing'].forEach(function (k) {
       var cb = form.querySelector('[data-br-enabled-section="' + k + '"]');
       var row = cb ? cb.closest('.admin-checkbox') : null;
       if (row) {

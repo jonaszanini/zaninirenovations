@@ -6505,6 +6505,9 @@ body.cp-modal-open {
 .br-nested-trade .br-tile-areas__head {
   margin-bottom: 6px;
 }
+.br-framing-fields .admin-form-group {
+  margin-bottom: 0;
+}
 .br-bath-include {
   margin-bottom: 4px;
 }

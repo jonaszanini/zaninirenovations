@@ -127,6 +127,10 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             '/data-br-goto="plumbing"[^>]*\bhidden\b/s',
             $html
         );
+        $this->assertMatchesRegularExpression(
+            '/data-br-goto="framing"[^>]*\bhidden\b/s',
+            $html
+        );
         $this->assertMatchesRegularExpression('/id="br-outlets"[^>]*value="3"/', $html);
         $this->assertMatchesRegularExpression('/id="br-switches"[^>]*value="2"/', $html);
         $this->assertMatchesRegularExpression('/id="br-bath-fixture-qty"[^>]*value="1"/', $html);
@@ -149,6 +153,10 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('Pedestal sink', $html);
         $this->assertStringContainsString('value="pedestal_sink"', $html);
         $this->assertStringContainsString('id="br-plumbing-slot-bath"', $html);
+        $this->assertStringContainsString('id="br-framing-slot-bath"', $html);
+        $this->assertStringContainsString('Walls &amp; ducts', $html);
+        $this->assertStringContainsString('New wall (linear ft)', $html);
+        $this->assertStringContainsString('Work around duct (linear ft)', $html);
     }
 
     public function test_price_configuration_keeps_active_tab_after_save(): void

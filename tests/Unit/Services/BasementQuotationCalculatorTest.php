@@ -774,6 +774,7 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertSame('Bathroom only', $calc['scope']['finish_label']);
         $this->assertContains('bath_vanity', $keys);
         $this->assertContains('plumb_bath', $keys);
+        $this->assertNotContains('framing_walls', $keys);
         $this->assertNotContains('ins_walls', $keys);
         $this->assertNotContains('fl_install', $keys);
         $this->assertNotContains('trim_base', $keys);
@@ -787,8 +788,37 @@ class BasementQuotationCalculatorTest extends TestCase
         $keys = BasementQuotationCalculator::presetEnabledSections('bathroom');
         $this->assertContains('electrical', $keys);
         $this->assertContains('plumbing', $keys);
+        $this->assertContains('framing', $keys);
         $this->assertContains('bathroom', $keys);
         $this->assertNotContains('flooring', $keys);
+    }
+
+    public function test_bathroom_preset_prices_new_wall_and_duct_work(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 80,
+            'ceiling_height_ft' => 8,
+            'scope_preset' => 'bathroom',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+            'include_bathroom' => true,
+            'partition_lf' => 10,
+            'bulkhead_lf' => 6,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $labor = collect($calc['labor']);
+        $this->assertNotNull($labor->firstWhere('key', 'framing_walls'));
+        $this->assertNotNull($labor->firstWhere('key', 'framing_bulkheads'));
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'stud_2x4'));
+
+        $perimeter = round(4 * sqrt(80), 2);
+        $expectedWallSf = round(
+            ($perimeter * 8) + (10 * 8 * 2) + (6 * BasementQuotationCalculator::BULKHEAD_DRYWALL_SF_PER_LF),
+            2
+        );
+        $hang = $labor->firstWhere('key', 'dw_hang');
+        $this->assertNotNull($hang);
+        $this->assertStringContainsString(number_format($expectedWallSf, 0), $hang['detail']);
     }
 
     public function test_wall_preset_uses_partition_for_drywall_and_paint(): void

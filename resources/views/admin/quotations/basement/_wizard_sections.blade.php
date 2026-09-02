@@ -70,8 +70,8 @@
       'demo_flooring_sf' => 'Existing floor covering to pull up. Blank uses the work area; enter 0 if none.',
       'demo_drywall_sf' => 'Existing drywall or ceiling to strip. Enter 0 if the concrete or joists are already exposed.',
       'demo_bin_qty' => 'How many dumpsters / bins. Unit price comes from Price configuration.',
-      'partition_lf' => 'Length of new interior 2x4 walls only. Height uses ceiling height from Overview.',
-      'bulkhead_lf' => 'Length of boxed-in ducts or beams (soffits), not full-height walls.',
+      'partition_lf' => 'Length of a new interior 2x4 wall. Height uses ceiling height from Overview. Use 0 if the bathroom already has walls.',
+      'bulkhead_lf' => 'Length of boxed-in ducts or beams (soffits) to work around, not a full-height wall. Use 0 if none.',
       'header_qty' => 'Load-bearing or wide openings that need a header or beam, counted each.',
       'framing_door_openings' => 'Rough openings to frame in new or existing walls, before hanging the door.',
       'outlet_qty' => 'New receptacles to install (GFCI at wet locations). Count each device, not each gang box if you prefer. Typical bathroom: 1 at the sink, 2 on the wall. Change the count if this job differs.',
@@ -94,7 +94,7 @@
       'insulation_ceiling_sf' => 'Ceiling area to insulate. Blank uses the work area.',
       'underslab' => 'Rigid foam under a new slab or on the existing concrete before flooring, where specified.',
       'underslab_sf' => 'Floor area of under-slab foam. Blank uses the work area.',
-      'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses area × height (or both sides of a new wall on the wall preset).',
+      'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses area × height (or both sides of a new wall on the wall preset). Bathroom-only also adds both sides of a new wall and duct boxing.',
       'drywall_ceiling_sf' => 'Ceiling area to hang. Blank follows Ceiling type (skipped for drop ceiling or skip).',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_openings' => 'Door and window openings to cut and bead, counted each.',
@@ -183,7 +183,7 @@
             'label' => $tradeLabel,
             'info' => $tradeInfo[$tradeKey] ?? null,
             'inputClass' => 'admin-checkbox__input br-preview',
-            'class' => ($bathNestTrades && in_array($tradeKey, ['electrical', 'plumbing'], true)) ? 'br-trade-nested' : '',
+            'class' => ($bathNestTrades && in_array($tradeKey, ['electrical', 'plumbing', 'framing'], true)) ? 'br-trade-nested' : '',
             'attrs' => ['data-br-enabled-section' => $tradeKey],
           ])
         @endforeach
@@ -297,31 +297,13 @@
 
 {{-- 3. Framing --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="framing" @unless(in_array('framing', $enabledNow, true)) hidden @endunless>
+<details class="br-acc admin-card" data-br-step="framing" @if($bathNestTrades || ! in_array('framing', $enabledNow, true)) hidden @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Framing</summary>
   <div class="br-acc__body">
-    <div class="br-qty-grid">
-      <div class="admin-form-group">
-        <label for="br-partition">@include('admin.partials.info_tip', ['text' => $brInfo['partition_lf']]) @include('admin.quotations.basement._client_filled', ['key' => 'partition_lf', 'filledKeys' => $filledKeys]) New partition walls (linear ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-partition" name="partition_lf"
-               value="{{ $brVal('partition_lf', 0) }}"
-               title="Interior walls only. Height uses the ceiling height from Overview.">
-      </div>
-      <div class="admin-form-group">
-        <label for="br-bulkhead">@include('admin.partials.info_tip', ['text' => $brInfo['bulkhead_lf']]) Framing around ducts / bulkheads (linear ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-bulkhead" name="bulkhead_lf"
-               value="{{ $brVal('bulkhead_lf', 0) }}">
-      </div>
-      <div class="admin-form-group">
-        <label for="br-headers">@include('admin.partials.info_tip', ['text' => $brInfo['header_qty']]) Header / beam openings</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-headers" name="header_qty"
-               value="{{ $brVal('header_qty', 0) }}">
-      </div>
-      <div class="admin-form-group">
-        <label for="br-frame-doors">@include('admin.partials.info_tip', ['text' => $brInfo['framing_door_openings']]) Door openings to frame</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-frame-doors" name="framing_door_openings"
-               value="{{ $brVal('framing_door_openings', 0) }}">
-      </div>
+    <div id="br-framing-slot-step">
+      @unless($bathNestTrades)
+        @include('admin.quotations.basement._framing_fields')
+      @endunless
     </div>
   </div>
 </details>
@@ -664,6 +646,14 @@
               <option value="half" @selected($brVal('bath_type') === 'half')>Half bath</option>
             </select>
           </div>
+        </div>
+        <div class="br-nested-trade" id="br-framing-slot-bath" @unless($bathNestTrades) hidden @endunless>
+          <div class="br-tile-areas__head">
+            <span class="br-tile-areas__title">Walls &amp; ducts</span>
+          </div>
+          @if($bathNestTrades)
+            @include('admin.quotations.basement._framing_fields')
+          @endif
         </div>
         <div class="br-tile-areas__head">
           <span class="br-tile-areas__title">Fixtures</span>

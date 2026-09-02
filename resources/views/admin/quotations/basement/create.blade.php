@@ -121,7 +121,7 @@
           @php $n++; @endphp
           <button type="button" class="br-progress__item{{ $n === 1 ? ' is-current' : '' }}" data-br-goto="{{ $key }}"
                   @if ($key !== 'overview' && ! in_array($key, $enabledNow, true)) hidden
-                  @elseif ($scopePreset === 'bathroom' && in_array($key, ['electrical', 'plumbing'], true)) hidden
+                  @elseif ($scopePreset === 'bathroom' && in_array($key, ['electrical', 'plumbing', 'framing'], true)) hidden
                   @endif>
             <span class="br-progress__num">{{ $n }}</span>
             <span class="br-progress__label">{{ $label }}</span>

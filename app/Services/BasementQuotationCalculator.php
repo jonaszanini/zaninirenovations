@@ -9,6 +9,9 @@ use App\Support\CatalogMaterialDelivery;
 
 class BasementQuotationCalculator
 {
+    /** Extra drywall for boxed ducts / soffits (three ~12 in faces) on bathroom-only quotes. */
+    public const BULKHEAD_DRYWALL_SF_PER_LF = 3.0;
+
     public const SECTIONS = [
         'overview' => 'Project Overview',
         'demolition' => 'Demolition & Preparation',
@@ -53,9 +56,9 @@ class BasementQuotationCalculator
         $preset = self::normalizePreset($preset);
 
         return match ($preset) {
-            // Electrical + plumbing stay enabled for pricing; the wizard nests
-            // those fields inside the Bathroom step for this preset.
-            'bathroom' => ['overview', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
+            // Electrical, plumbing, and framing stay enabled for pricing; the
+            // wizard nests those fields inside the Bathroom step for this preset.
+            'bathroom' => ['overview', 'framing', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
             'wall' => ['overview', 'framing', 'drywall', 'painting', 'finishing'],
             'custom' => ['overview'],
             default => array_keys(self::SECTIONS),
@@ -593,6 +596,7 @@ class BasementQuotationCalculator
         $area = round(max(0, (float) $inputs['area_sqft']), 2);
         $height = round(max(0, (float) $inputs['ceiling_height_ft']), 2) ?: 8;
         $partitionLf = max(0, (float) $inputs['partition_lf']);
+        $bulkheadLf = max(0, (float) $inputs['bulkhead_lf']);
         if ($area <= 0 && $partitionLf <= 0) {
             return $this->emptyCalculation($inputs, $settings, $height);
         }
@@ -600,6 +604,14 @@ class BasementQuotationCalculator
         $suggestedWallSf = round($perimeter * $height, 2);
         $wallBothSidesSf = round($partitionLf * $height * 2, 2);
         $dwWallFallback = $inputs['scope_preset'] === 'wall' ? $wallBothSidesSf : $suggestedWallSf;
+        if ($inputs['scope_preset'] === 'bathroom') {
+            $dwWallFallback = round(
+                $suggestedWallSf
+                + ($partitionLf * $height * 2)
+                + ($bulkheadLf * self::BULKHEAD_DRYWALL_SF_PER_LF),
+                2
+            );
+        }
         $paintColors = ((int) ($inputs['paint_colors'] ?? 1) === 2) ? 2 : 1;
         $on = function (string $section) use ($inputs): bool {
             return self::sectionEnabled($inputs, $section);
@@ -728,7 +740,6 @@ class BasementQuotationCalculator
         }
 
         // --- Framing ---
-        $bulkheadLf = max(0, (float) $inputs['bulkhead_lf']);
         $headers = max(0, (int) $inputs['header_qty']);
         $frameDoors = max(0, (int) $inputs['framing_door_openings']);
         if ($on('framing')) {
