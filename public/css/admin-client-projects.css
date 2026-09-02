@@ -4766,7 +4766,9 @@ body.cp-modal-open {
   border-radius: 8px;
   overflow: hidden;
   background: #f8fafc;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 .sq-mat-mode-segment__item {
   margin: 0;
@@ -4781,7 +4783,11 @@ body.cp-modal-open {
   pointer-events: none;
 }
 .sq-mat-mode-segment__item span {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
@@ -4827,6 +4833,13 @@ body.cp-modal-open {
 .sq-mat-row--inputs {
   /* Short name | Description (wider) | Unit price (narrower) | Qty (narrower) */
   grid-template-columns: minmax(120px, 1fr) minmax(260px, 4fr) minmax(90px, 0.6fr) minmax(70px, 0.45fr);
+}
+.sq-material-row--electrical .sq-mat-field--short-name,
+.sq-material-row--electrical .sq-mat-row--url {
+  display: none;
+}
+.sq-material-row--electrical .sq-mat-row--inputs {
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 0.6fr) minmax(70px, 0.45fr);
 }
 .sq-mat-row--url {
   /* Full-width product URL on its own line so it never crowds the
@@ -4927,12 +4940,28 @@ body.cp-modal-open {
   .sq-mat-row--computed {
     grid-template-columns: 1fr 1fr;
   }
+  .sq-material-row--electrical .sq-mat-row--inputs {
+    grid-template-columns: minmax(0, 1fr) minmax(90px, 0.7fr) minmax(70px, 0.55fr);
+  }
 }
 
 /* Phone: stack all fields one per line. */
+@media (max-width: 700px) {
+  .sq-mat-toolbar {
+    flex-wrap: wrap;
+  }
+  .sq-mat-mode-segment {
+    flex: 1 1 auto;
+  }
+  .sq-mat-mode-segment__item span {
+    padding: 8px 10px;
+  }
+}
+
 @media (max-width: 560px) {
   .sq-mat-row--inputs,
-  .sq-mat-row--computed {
+  .sq-mat-row--computed,
+  .sq-material-row--electrical .sq-mat-row--inputs {
     grid-template-columns: 1fr;
   }
   .sq-mat-toolbar {
@@ -4940,6 +4969,14 @@ body.cp-modal-open {
   }
   .sq-mat-mode-segment {
     flex: 1 1 100%;
+  }
+  .sq-mat-mode-segment__item {
+    flex: 1 1 auto;
+  }
+  .sq-mat-mode-segment__item span {
+    white-space: normal;
+    text-align: center;
+    padding: 8px 10px;
   }
   .sq-mat-toolbar .sq-remove-material {
     margin-left: auto;

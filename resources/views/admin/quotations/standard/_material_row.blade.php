@@ -1,17 +1,30 @@
 @php
   $catalogMaterialId = old('materials.'.$i.'.catalog_material_id', $row['catalog_material_id'] ?? '');
-  $sourceMode = old('materials.'.$i.'.entry_mode', filled($catalogMaterialId) ? 'catalog' : 'manual');
+  $postedMode = old('materials.'.$i.'.entry_mode');
+  if ($postedMode !== null) {
+      $sourceMode = in_array($postedMode, ['electrical', 'catalog', 'manual'], true) ? $postedMode : 'manual';
+  } elseif (\App\Models\StandardQuotation::isElectricalMaterialRow($row)) {
+      $sourceMode = 'electrical';
+  } elseif (($row['entry_mode'] ?? '') === 'catalog' || filled($catalogMaterialId)) {
+      $sourceMode = 'catalog';
+  } else {
+      $sourceMode = 'manual';
+  }
   $hasCatalogPick = filled($catalogMaterialId) || filled($row['short_name'] ?? '') || filled($row['description'] ?? '');
   $hstInc = array_key_exists('hst_includes_unit', $row) ? filter_var($row['hst_includes_unit'], FILTER_VALIDATE_BOOLEAN) : false;
   $apply = array_key_exists('apply_hst', $row) ? filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN) : true;
   if ($hstInc) {
       $apply = true;
   }
+  $descriptionValue = $row['description'] ?? '';
+  if ($sourceMode === 'electrical' && trim((string) $descriptionValue) === '') {
+      $descriptionValue = \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION;
+  }
 @endphp
-<div class="sq-material-card sq-material-row">
+<div class="sq-material-card sq-material-row{{ $sourceMode === 'electrical' ? ' sq-material-row--electrical' : '' }}">
   <div class="sq-mat-fields">
     <div class="sq-mat-toolbar">
-      <div class="sq-mat-mode-segment" role="radiogroup" aria-label="How to add this material">
+      <div class="sq-mat-mode-segment" role="radiogroup" aria-label="How to add this line">
         <label class="sq-mat-mode-segment__item">
           <input type="radio" name="materials[{{ $i }}][entry_mode]" value="manual"
                  class="sq-mat-source-radio" @checked($sourceMode === 'manual')>
@@ -21,6 +34,11 @@
           <input type="radio" name="materials[{{ $i }}][entry_mode]" value="catalog"
                  class="sq-mat-source-radio" @checked($sourceMode === 'catalog')>
           <span>From Materials DB</span>
+        </label>
+        <label class="sq-mat-mode-segment__item">
+          <input type="radio" name="materials[{{ $i }}][entry_mode]" value="electrical"
+                 class="sq-mat-source-radio" @checked($sourceMode === 'electrical')>
+          <span>Electrical work</span>
         </label>
       </div>
       <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm sq-remove-material" aria-label="Remove material" title="Remove material">
@@ -51,7 +69,7 @@
     <div class="sq-mat-details-panel"
          @if ($sourceMode === 'catalog' && ! $hasCatalogPick) hidden @endif>
       <div class="sq-mat-row sq-mat-row--inputs">
-        <div class="sq-mat-field sq-mat-field--short-name">
+        <div class="sq-mat-field sq-mat-field--short-name" @if ($sourceMode === 'electrical') hidden @endif>
           <label>Short name</label>
           <input type="text" name="materials[{{ $i }}][short_name]" class="admin-input sq-mat-short-name"
                  maxlength="60" placeholder="e.g. Paint, Primer"
@@ -60,8 +78,8 @@
         <div class="sq-mat-field sq-mat-field--description">
           <label>Description</label>
           <input type="text" name="materials[{{ $i }}][description]" class="admin-input sq-mat-desc"
-                 maxlength="500" placeholder="Material or item"
-                 value="{{ $row['description'] ?? '' }}">
+                 maxlength="500" placeholder="{{ $sourceMode === 'electrical' ? \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION : 'Material or item' }}"
+                 value="{{ $descriptionValue }}">
         </div>
         <div class="sq-mat-field sq-mat-field--unit">
           <label>Unit price ($)</label>
@@ -84,7 +102,7 @@
         Includes {{ \App\Models\ClientProject::formatMoney((float) ($row['delivery_cad'] ?? 0)) }} delivery (once, not × qty).
       </p>
 
-      <div class="sq-mat-row sq-mat-row--url">
+      <div class="sq-mat-row sq-mat-row--url" @if ($sourceMode === 'electrical') hidden @endif>
         <div class="sq-mat-field sq-mat-field--url">
           <label>Product URL <span class="sq-mat-optional">(optional)</span></label>
           <div class="sq-mat-url-control">

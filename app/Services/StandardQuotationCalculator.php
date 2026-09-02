@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\StandardQuotation;
 use App\Support\CatalogMaterialDelivery;
 
 /**
@@ -157,6 +158,8 @@ class StandardQuotationCalculator
                 ? (int) $row['catalog_material_id']
                 : null;
 
+            $lineKind = StandardQuotation::normalizeMaterialLineKind($row);
+
             $cleanMaterials[] = [
                 'short_name' => $shortName,
                 'description' => $desc,
@@ -167,6 +170,10 @@ class StandardQuotationCalculator
                 'apply_hst' => $b['apply_hst'],
                 'hst_includes_unit' => $b['hst_includes_unit'],
                 'catalog_material_id' => $catalogId > 0 ? $catalogId : null,
+                'line_kind' => $lineKind,
+                'entry_mode' => $lineKind === StandardQuotation::LINE_KIND_ELECTRICAL
+                    ? 'electrical'
+                    : (strtolower(trim((string) ($row['entry_mode'] ?? ''))) === 'catalog' || $catalogId > 0 ? 'catalog' : 'manual'),
                 'line_subtotal' => $b['line_subtotal'],
                 'line_hst' => $b['line_hst'],
                 'line_total_with_hst' => $b['line_total_with_hst'],

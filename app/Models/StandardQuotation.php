@@ -21,6 +21,12 @@ class StandardQuotation extends Model
 
     public const PDF_DETAIL_DETAILED = 'detailed';
 
+    public const LINE_KIND_MATERIAL = 'material';
+
+    public const LINE_KIND_ELECTRICAL = 'electrical';
+
+    public const ELECTRICAL_LINE_DESCRIPTION = 'Electrical work (Including material)';
+
     protected $fillable = [
         'client_project_id',
         'document_type',
@@ -195,8 +201,23 @@ class StandardQuotation extends Model
         return max(0, round((float) ($this->labour_total ?? 0), 2));
     }
 
+    public static function isElectricalMaterialRow(array $row): bool
+    {
+        $kind = strtolower(trim((string) ($row['line_kind'] ?? $row['entry_mode'] ?? '')));
+
+        return $kind === self::LINE_KIND_ELECTRICAL;
+    }
+
+    public static function normalizeMaterialLineKind(array $row): string
+    {
+        return self::isElectricalMaterialRow($row)
+            ? self::LINE_KIND_ELECTRICAL
+            : self::LINE_KIND_MATERIAL;
+    }
+
     /**
-     * Client PDF rows: one Material subtotal (not each SKU), then contingency and labour.
+     * Client PDF rows: one Material subtotal (not each SKU), electrical work as
+     * its own line(s), then contingency and labour.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -205,8 +226,40 @@ class StandardQuotation extends Model
         $computed = $this->computedTotals();
         $lines = [];
 
-        $taxable = round((float) ($computed['materials_subtotal_taxable'] ?? 0), 2);
-        $exempt = round((float) ($computed['materials_subtotal_exempt'] ?? 0), 2);
+        $taxable = 0.0;
+        $exempt = 0.0;
+        $electricalLines = [];
+
+        foreach ($computed['materials'] ?? [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $amount = round((float) ($row['line_subtotal'] ?? 0), 2);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            if (self::isElectricalMaterialRow($row)) {
+                $desc = trim((string) ($row['description'] ?? ''));
+                $electricalLines[] = [
+                    'description' => $desc !== '' ? $desc : self::ELECTRICAL_LINE_DESCRIPTION,
+                    'amount' => $amount,
+                    'apply_hst' => (bool) ($row['apply_hst'] ?? true),
+                ];
+                continue;
+            }
+
+            if (filter_var($row['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+                $taxable += $amount;
+            } else {
+                $exempt += $amount;
+            }
+        }
+
+        $taxable = round($taxable, 2);
+        $exempt = round($exempt, 2);
+
         if ($taxable > 0) {
             $lines[] = [
                 'description' => 'Material',
@@ -220,6 +273,10 @@ class StandardQuotation extends Model
                 'amount' => $exempt,
                 'apply_hst' => false,
             ];
+        }
+
+        foreach ($electricalLines as $electricalLine) {
+            $lines[] = $electricalLine;
         }
 
         if ($computed['contingency_enabled'] && (float) $computed['contingency_amount'] > 0) {

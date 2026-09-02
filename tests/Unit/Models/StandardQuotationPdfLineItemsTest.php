@@ -70,6 +70,49 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertNotFalse(collect($lines)->first(fn ($row) => str_starts_with((string) $row['description'], 'Labour')));
     }
 
+    public function test_detailed_pdf_lists_electrical_work_as_its_own_line(): void
+    {
+        $quote = new StandardQuotation([
+            'materials' => [
+                [
+                    'short_name' => 'Plywood',
+                    'description' => '1/2-inch birch',
+                    'unit_price' => 48.98,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+                [
+                    'line_kind' => StandardQuotation::LINE_KIND_ELECTRICAL,
+                    'entry_mode' => 'electrical',
+                    'description' => StandardQuotation::ELECTRICAL_LINE_DESCRIPTION,
+                    'unit_price' => 650,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+            ],
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'labour_use_fixed' => false,
+            'contingency_enabled' => false,
+            'contingency_percent' => 0,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $lines = $quote->detailedPdfLineItems();
+        $byDesc = collect($lines)->keyBy('description');
+
+        $this->assertEqualsWithDelta(48.98, $byDesc['Material']['amount'], 0.01);
+        $this->assertTrue($byDesc['Material']['apply_hst']);
+        $this->assertEqualsWithDelta(650.0, $byDesc[StandardQuotation::ELECTRICAL_LINE_DESCRIPTION]['amount'], 0.01);
+        $this->assertTrue($byDesc[StandardQuotation::ELECTRICAL_LINE_DESCRIPTION]['apply_hst']);
+        $this->assertSame(
+            ['Material', StandardQuotation::ELECTRICAL_LINE_DESCRIPTION],
+            array_column($lines, 'description')
+        );
+    }
+
     public function test_detailed_pdf_splits_hst_exempt_materials(): void
     {
         $quote = new StandardQuotation([

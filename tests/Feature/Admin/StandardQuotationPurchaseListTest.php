@@ -55,7 +55,35 @@ class StandardQuotationPurchaseListTest extends IntegrationTestCase
         $this->get(route('admin.quotations.standard.edit', $quote))
             ->assertOk()
             ->assertSee('Print material list', false)
-            ->assertSee('data-purchase-list-choice', false);
+            ->assertSee('data-purchase-list-choice', false)
+            ->assertSee('Electrical work', false)
+            ->assertSee('value="electrical"', false);
+    }
+
+    public function test_purchase_list_omits_electrical_work_rows(): void
+    {
+        $this->actingAsAdmin();
+        $quote = $this->makeQuote();
+        $materials = $quote->materials;
+        $materials[] = [
+            'line_kind' => 'electrical',
+            'entry_mode' => 'electrical',
+            'description' => 'Electrical work (Including material)',
+            'unit_price' => 650,
+            'quantity' => 1,
+            'apply_hst' => true,
+        ];
+        $quote->materials = $materials;
+        $quote->save();
+
+        $response = $this->get(route('admin.quotations.standard.purchase-list', [
+            'standard_quotation' => $quote,
+            'prices' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Black aluminium spindle', false);
+        $response->assertDontSee('Electrical work (Including material)', false);
     }
 
     private function makeQuote(): StandardQuotation

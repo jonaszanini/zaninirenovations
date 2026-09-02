@@ -137,6 +137,10 @@ class StandardQuotationController extends Controller
 
         $rows = [];
         foreach ($materials as $row) {
+            if (StandardQuotation::isElectricalMaterialRow($row)) {
+                continue;
+            }
+
             $qty = (float) ($row['quantity'] ?? 0);
             if ($qty <= 0) {
                 continue;
@@ -416,6 +420,11 @@ class StandardQuotationController extends Controller
             'materials.*.hst_includes_unit' => ['nullable'],
             'materials.*.catalog_material_id' => ['nullable', 'integer', 'exists:materials,id'],
             'materials.*.delivery_cad' => ['nullable', 'numeric', 'min:0'],
+            'materials.*.entry_mode' => ['nullable', 'string', Rule::in(['manual', 'catalog', 'electrical'])],
+            'materials.*.line_kind' => ['nullable', 'string', Rule::in([
+                StandardQuotation::LINE_KIND_MATERIAL,
+                StandardQuotation::LINE_KIND_ELECTRICAL,
+            ])],
             'includes_material' => ['nullable'],
             'includes_labour' => ['nullable'],
             'labour_use_fixed' => ['nullable'],
@@ -495,22 +504,45 @@ class StandardQuotationController extends Controller
         );
 
         $materialsForStorage = array_map(static function (array $m): array {
-            $url = trim((string) ($m['url'] ?? ''));
+            $lineKind = StandardQuotation::normalizeMaterialLineKind($m);
+            $isElectrical = $lineKind === StandardQuotation::LINE_KIND_ELECTRICAL;
+            $url = $isElectrical ? '' : trim((string) ($m['url'] ?? ''));
 
-            $catalogId = isset($m['catalog_material_id']) && $m['catalog_material_id'] !== ''
+            $catalogId = ! $isElectrical && isset($m['catalog_material_id']) && $m['catalog_material_id'] !== ''
                 ? (int) $m['catalog_material_id']
                 : null;
 
+            $description = trim((string) ($m['description'] ?? ''));
+            if ($isElectrical && $description === '') {
+                $description = StandardQuotation::ELECTRICAL_LINE_DESCRIPTION;
+            }
+
+            $entryMode = strtolower(trim((string) ($m['entry_mode'] ?? '')));
+            if ($isElectrical) {
+                $entryMode = 'electrical';
+            } elseif ($catalogId > 0 || $entryMode === 'catalog') {
+                $entryMode = 'catalog';
+            } else {
+                $entryMode = 'manual';
+            }
+
+            $qty = (float) ($m['quantity'] ?? 0);
+            if ($isElectrical && $qty <= 0) {
+                $qty = 1.0;
+            }
+
             return [
-                'short_name' => $m['short_name'] ?? '',
-                'description' => $m['description'],
+                'short_name' => $isElectrical ? '' : ($m['short_name'] ?? ''),
+                'description' => $description,
                 'url' => $url === '' ? null : $url,
                 'unit_price' => $m['unit_price'],
-                'quantity' => $m['quantity'],
+                'quantity' => $qty,
                 'apply_hst' => $m['apply_hst'],
                 'hst_includes_unit' => (bool) ($m['hst_includes_unit'] ?? false),
                 'catalog_material_id' => $catalogId > 0 ? $catalogId : null,
-                'delivery_cad' => round(max(0.0, (float) ($m['delivery_cad'] ?? 0)), 2),
+                'delivery_cad' => $isElectrical ? 0.0 : round(max(0.0, (float) ($m['delivery_cad'] ?? 0)), 2),
+                'line_kind' => $lineKind,
+                'entry_mode' => $entryMode,
             ];
         }, $computed['materials']);
 

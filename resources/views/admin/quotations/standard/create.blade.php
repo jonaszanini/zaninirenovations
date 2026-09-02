@@ -271,7 +271,8 @@
           <h3 class="cp-form-help-flush">Materials</h3>
         </div>
         <p class="admin-form-help sq-materials-intro">
-          Each row: <strong>Type manually</strong> or <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>).
+          Each row: <strong>Type manually</strong>, <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>),
+          or <strong>Electrical work</strong> (its own line on the client PDF).
           Unit price is before tax unless you check <strong>Price includes HST</strong>.
         </p>
 
@@ -547,6 +548,7 @@
   'use strict';
   var HST = 0.13;
   var HPD = 8;
+  var ELECTRICAL_DESC = @json(\App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION);
   var sqCatalogOptions = [];
   try {
     var catalogJson = document.getElementById('admin-ss-catalog-options');
@@ -835,9 +837,38 @@
       || (descEl && String(descEl.value || '').trim() !== '');
   }
 
+  function clearCatalogSelection(row) {
+    var hidden = row.querySelector('.admin-search-select__value');
+    if (hidden) hidden.value = '';
+    var input = row.querySelector('.admin-search-select__input');
+    if (input) input.value = '';
+  }
+
+  function applyElectricalDefaults(row, forceDescription) {
+    var descEl = row.querySelector('.sq-mat-desc');
+    if (descEl && (forceDescription || String(descEl.value || '').trim() === '')) {
+      descEl.value = ELECTRICAL_DESC;
+    }
+    var shortEl = row.querySelector('.sq-mat-short-name');
+    if (shortEl) shortEl.value = '';
+    var urlEl = row.querySelector('.sq-mat-url');
+    if (urlEl) {
+      urlEl.value = '';
+      if (typeof syncUrlOpenLink === 'function') syncUrlOpenLink(urlEl);
+    }
+    var qtyEl = row.querySelector('.sq-mat-qty');
+    if (qtyEl && String(qtyEl.value || '').trim() === '') {
+      qtyEl.value = '1';
+    }
+    var deliveryEl = row.querySelector('.sq-mat-delivery');
+    if (deliveryEl) deliveryEl.value = '0.00';
+    clearCatalogSelection(row);
+  }
+
   function syncMatDetailsVisibility(row) {
     var checked = row.querySelector('.sq-mat-source-radio:checked');
-    var isCatalog = checked && checked.value === 'catalog';
+    var mode = checked ? checked.value : 'manual';
+    var isCatalog = mode === 'catalog';
     var details = row.querySelector('.sq-mat-details-panel');
     var emptyHint = row.querySelector('.sq-mat-catalog-empty');
     var showDetails = !isCatalog || rowHasMaterialContent(row);
@@ -845,17 +876,30 @@
     if (emptyHint) emptyHint.hidden = !isCatalog || showDetails;
   }
 
-  function syncMatSourceUI(row) {
+  function syncMatSourceUI(row, options) {
+    var opts = options || {};
     var checked = row.querySelector('.sq-mat-source-radio:checked');
+    var mode = checked ? checked.value : 'manual';
     var catalogWrap = row.querySelector('.sq-mat-catalog-wrap');
-    var isCatalog = checked && checked.value === 'catalog';
+    var isCatalog = mode === 'catalog';
+    var isElectrical = mode === 'electrical';
+    row.classList.toggle('sq-material-row--electrical', isElectrical);
+    var shortField = row.querySelector('.sq-mat-field--short-name');
+    var urlRow = row.querySelector('.sq-mat-row--url');
+    if (shortField) shortField.hidden = isElectrical;
+    if (urlRow) urlRow.hidden = isElectrical;
     if (catalogWrap) catalogWrap.hidden = !isCatalog;
     if (!isCatalog) {
       destroyCatalogPicker(row);
-      var deliveryEl = row.querySelector('.sq-mat-delivery');
-      if (deliveryEl) deliveryEl.value = '0.00';
+      if (!isElectrical) {
+        var deliveryEl = row.querySelector('.sq-mat-delivery');
+        if (deliveryEl) deliveryEl.value = '0.00';
+      }
     } else {
       initCatalogPicker(row);
+    }
+    if (isElectrical) {
+      applyElectricalDefaults(row, !!opts.forceElectricalDescription);
     }
     syncMatDetailsVisibility(row);
   }
@@ -903,7 +947,7 @@
       if (radio.dataset.sqSourceBound === '1') return;
       radio.dataset.sqSourceBound = '1';
       radio.addEventListener('change', function () {
-        syncMatSourceUI(row);
+        syncMatSourceUI(row, { forceElectricalDescription: this.value === 'electrical' });
         recalcMaterials();
       });
     });
