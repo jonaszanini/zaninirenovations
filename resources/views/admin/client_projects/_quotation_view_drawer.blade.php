@@ -242,7 +242,7 @@
                     <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
                   </tr>
                 @else
-                  <tr@if (!empty($row['is_standalone'])) class="items-standalone"@endif>
+                  <tr class="{{ ! empty($row['is_standalone']) ? 'items-standalone' : '' }}">
                     <td>
                       {!! nl2br(e($row['description'])) !!}
                       @if (!empty($row['hst_included']) && empty($row['apply_hst']))

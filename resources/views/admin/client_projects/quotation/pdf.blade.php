@@ -619,7 +619,7 @@
             <td colspan="2">{{ $row['description'] }}</td>
           </tr>
         @else
-        <tr@if (!empty($row['is_standalone'])) class="items-standalone"@endif>
+        <tr class="{{ ! empty($row['is_standalone']) ? 'items-standalone' : '' }}">
           @php
             $desc = e($row['description']);
             $note = 'Note: Material price is subject to change depending on store price at the time of purchase.';
