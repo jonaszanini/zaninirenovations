@@ -6332,6 +6332,26 @@ body.cp-modal-open {
 .br-project-context-slot .cp-project-context-card:not([open]) > .admin-accordion__panel {
   display: none;
 }
+.cp-project-context-notes {
+  margin-bottom: 12px;
+}
+.cp-project-context-notes__label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cp-project-context-notes__body {
+  font-size: 13px;
+  color: #334155;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+.cp-project-context-photos .cp-project-context-notes__label {
+  margin-bottom: 8px;
+}
 .br-toolbar {
   display: flex;
   flex-wrap: wrap;

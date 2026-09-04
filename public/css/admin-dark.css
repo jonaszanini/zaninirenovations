@@ -493,6 +493,14 @@ html.admin-dark .q-commute-field__suffix {
   color: var(--admin-muted);
 }
 
+html.admin-dark .cp-project-context-notes__label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-project-context-notes__body {
+  color: var(--admin-heading);
+}
+
 html.admin-dark .cp-profit-value.is-positive {
   color: #86efac;
   background-color: transparent;
