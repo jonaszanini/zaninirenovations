@@ -404,7 +404,7 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   gap: 12px 20px;
   margin-top: 6px;
   padding-top: 14px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--admin-border, #e5e7eb);
 }
 .cp-header-detail {
   display: flex;
@@ -428,8 +428,8 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--admin-surface-hover, #f1f5f9);
+  color: var(--admin-muted, #64748b);
   font-size: 13px;
 }
 .cp-header-detail__body {
@@ -447,12 +447,12 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
 }
 .cp-header-detail__value {
   font-size: 13px;
-  color: #1f2937;
+  color: var(--admin-text, #1f2937);
   line-height: 1.35;
   word-break: break-word;
 }
 a.cp-header-detail__value {
-  color: #024768;
+  color: var(--admin-primary, #024768);
   text-decoration: none;
 }
 a.cp-header-detail__value:hover {
@@ -533,7 +533,7 @@ a.cp-header-detail__value:hover {
   font-weight: 700;
 }
 .cp-contacted-via-value--website_form {
-  color: #024768;
+  color: var(--admin-primary, #024768);
 }
 .cp-contacted-via-value--sms {
   color: #1ab1bc;
@@ -542,7 +542,7 @@ a.cp-header-detail__value:hover {
   color: #7c3aed;
 }
 .cp-contacted-via-value--call {
-  color: #000000;
+  color: var(--admin-heading, #000000);
 }
 .cp-contacted-via-value--facebook {
   color: #0966fe;
@@ -579,9 +579,9 @@ a.cp-header-detail__value:hover {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid #dbe6f2;
-  background: #f8fbff;
-  color: #56728f;
+  border: 1px solid var(--admin-border, #dbe6f2);
+  background: var(--admin-primary-soft, #f8fbff);
+  color: var(--admin-primary, #56728f);
   font-size: 12px;
 }
 .cp-notes-indicator--btn {
@@ -590,13 +590,13 @@ a.cp-header-detail__value:hover {
   line-height: 1.2;
 }
 .cp-notes-indicator--btn[aria-expanded="true"] {
-  background: #eaf3ff;
-  border-color: #b6d2f0;
-  color: #355f88;
+  background: var(--admin-primary-soft, #eaf3ff);
+  border-color: var(--admin-primary-ring, #b6d2f0);
+  color: var(--admin-primary, #355f88);
 }
 .cp-notes-indicator .fa {
   margin-right: 0;
-  color: #6f8ba8;
+  color: var(--admin-muted, #6f8ba8);
 }
 .cp-notes-popover {
   position: absolute;
@@ -2487,6 +2487,7 @@ a:hover .cp-expense-receipt-pdf {
   gap: 10px;
   padding: 4px 0;
   cursor: pointer;
+  color: var(--admin-text, inherit);
 }
 .cp-checkbox-row:not(.admin-checkbox) input[type="radio"] {
   width: auto;
@@ -4585,8 +4586,8 @@ body.cp-modal-open {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--admin-surface-hover, #f8fafc);
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
 }
 .sq-work-toggle {
   display: inline-flex;
@@ -4597,13 +4598,13 @@ body.cp-modal-open {
   flex-shrink: 0;
   border: 0;
   background: transparent;
-  color: #334155;
+  color: var(--admin-muted, #334155);
   cursor: pointer;
   border-radius: 8px;
 }
 .sq-work-toggle:hover,
 .sq-work-toggle:focus-visible {
-  background: #e2e8f0;
+  background: var(--admin-border, #e2e8f0);
 }
 .sq-work-card.is-open .sq-work-toggle i {
   transform: rotate(180deg);
@@ -4614,7 +4615,7 @@ body.cp-modal-open {
 .sq-work-number {
   font-weight: 700;
   font-size: 14px;
-  color: #0f172a;
+  color: var(--admin-heading, #0f172a);
   flex-shrink: 0;
   min-width: 52px;
 }
@@ -4626,7 +4627,7 @@ body.cp-modal-open {
 .sq-work-subtotal {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #0c4a6e;
+  color: var(--admin-primary, #0c4a6e);
   white-space: nowrap;
 }
 .sq-remove-work {
@@ -4644,7 +4645,7 @@ body.cp-modal-open {
 .sq-panel--nested {
   background: transparent;
   box-shadow: none;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 8px;
   padding: 14px;
 }
@@ -4693,8 +4694,8 @@ body.cp-modal-open {
 .sq-materials-table .sq-col-qty { width: 88px; }
 .sq-materials-table .sq-col-hst-pct { width: 88px; text-align: right; }
 .sq-materials-table .sq-cell-readonly {
-  background: #f8fafc;
-  color: #334155;
+  background: var(--admin-surface-hover, #f8fafc);
+  color: var(--admin-muted, #334155);
   font-variant-numeric: tabular-nums;
   font-size: 13px;
 }
@@ -4716,8 +4717,8 @@ body.cp-modal-open {
 .sq-contingency-block {
   margin-top: 14px;
   padding: 12px 14px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--admin-primary-soft, #f0f9ff);
+  border: 1px solid var(--admin-primary-ring, #bae6fd);
   border-radius: 8px;
 }
 .sq-contingency-row {
@@ -4728,7 +4729,7 @@ body.cp-modal-open {
 }
 .sq-contingency-toggle {
   font-weight: 700;
-  color: #0c4a6e;
+  color: var(--admin-primary, #0c4a6e);
 }
 .sq-contingency-pct-field {
   position: relative;
@@ -4742,8 +4743,8 @@ body.cp-modal-open {
   font-variant-numeric: tabular-nums;
 }
 .sq-contingency-pct-field .sq-contingency-percent:disabled {
-  background: #f1f5f9;
-  color: #94a3b8;
+  background: var(--admin-surface-hover, #f1f5f9);
+  color: var(--admin-muted, #94a3b8);
   cursor: not-allowed;
 }
 .sq-contingency-pct-suffix {
@@ -4758,11 +4759,11 @@ body.cp-modal-open {
   margin: 0;
   flex: 1 1 240px;
   min-width: 220px;
-  color: #334155;
+  color: var(--admin-muted, #334155);
 }
 .sq-mat-contingency-row,
 .sq-grand-row--contingency {
-  color: #0c4a6e;
+  color: var(--admin-primary, #0c4a6e);
 }
 
 /* =================================================================
@@ -4798,10 +4799,10 @@ body.cp-modal-open {
   /* Slightly more vertical padding so the numbered badge that floats
      out of the top-left corner doesn't crowd the SHORT NAME label. */
   padding: 18px 16px 16px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-surface, #fff);
+  border: 1px solid var(--admin-border, #e2e8f0);
   /* Coloured left rail to reinforce that each block is one item. */
-  border-left: 4px solid #cbd5e1;
+  border-left: 4px solid var(--admin-border-strong, #cbd5e1);
   border-radius: 8px;
   position: relative;
   counter-increment: sq-material;
@@ -4809,20 +4810,20 @@ body.cp-modal-open {
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 .sq-materials-list > .sq-material-card:hover {
-  border-color: #cbd5e1;
-  border-left-color: #94a3b8;
+  border-color: var(--admin-border-strong, #cbd5e1);
+  border-left-color: var(--admin-muted, #94a3b8);
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
 }
 /* Zebra striping: odd rows get a soft slate tint. The even rows stay
    pure white. Inputs/readouts already have their own backgrounds so
    the tint only paints the card chrome around them. */
 .sq-materials-list > .sq-material-card:nth-child(odd) {
-  background: #f8fafc;
-  border-left-color: #94a3b8;
+  background: var(--admin-surface-hover, #f8fafc);
+  border-left-color: var(--admin-muted, #94a3b8);
 }
 .sq-materials-list > .sq-material-card:nth-child(even) {
-  background: #ffffff;
-  border-left-color: #cbd5e1;
+  background: var(--admin-surface, #ffffff);
+  border-left-color: var(--admin-border-strong, #cbd5e1);
 }
 /* "#N" pill badge anchored at the top-left of every card, bumping
    slightly out of the card so it reads as a label for that block. */
@@ -4860,7 +4861,7 @@ body.cp-modal-open {
   gap: 12px;
   margin-bottom: 4px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
 }
 .sq-mat-toolbar-start {
   display: flex;
@@ -4894,10 +4895,10 @@ body.cp-modal-open {
 }
 .sq-mat-mode-segment {
   display: inline-flex;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--admin-border, #cbd5e1);
   border-radius: 8px;
   overflow: hidden;
-  background: #f8fafc;
+  background: var(--admin-surface-hover, #f8fafc);
   flex-shrink: 1;
   min-width: 0;
   flex-wrap: wrap;
@@ -4924,17 +4925,17 @@ body.cp-modal-open {
   font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
-  color: #64748b;
+  color: var(--admin-muted, #64748b);
   white-space: nowrap;
   transition: background 120ms ease, color 120ms ease;
 }
 .sq-mat-mode-segment__item:has(input:checked) span {
-  background: #024768;
+  background: var(--admin-primary, #024768);
   color: #fff;
   font-weight: 600;
 }
 .sq-mat-mode-segment__item + .sq-mat-mode-segment__item {
-  border-left: 1px solid #cbd5e1;
+  border-left: 1px solid var(--admin-border, #cbd5e1);
 }
 .sq-mat-catalog-group {
   margin: 0 0 0.5rem;
@@ -4943,16 +4944,16 @@ body.cp-modal-open {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #334155;
+  color: var(--admin-muted, #334155);
   margin-bottom: 6px;
 }
 .sq-mat-catalog-empty {
   margin: 0.25rem 0 0;
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  border: 1px dashed #cbd5e1;
-  background: #f8fafc;
-  color: #64748b;
+  border: 1px dashed var(--admin-border, #cbd5e1);
+  background: var(--admin-surface-hover, #f8fafc);
+  color: var(--admin-muted, #64748b);
   text-align: center;
 }
 .sq-mat-catalog-group .admin-search-select {
@@ -5022,9 +5023,9 @@ body.cp-modal-open {
    not-allowed cursor — visually communicates "this is computed, you
    can't type in it" while staying legible. */
 .sq-mat-readout {
-  background: #ffffff;
-  color: #94a3b8;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-input-bg, #ffffff);
+  color: var(--admin-muted, #94a3b8);
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 6px;
   padding: 8px 10px;
   font-variant-numeric: tabular-nums;
@@ -5278,14 +5279,14 @@ body.cp-modal-open {
   margin-top: 18px;
   padding: 12px 14px;
   border-radius: 8px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-surface-hover, #f1f5f9);
+  border: 1px solid var(--admin-border, #e2e8f0);
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 15px;
 }
-.sq-labour-total-box strong { font-size: 18px; color: #024768; }
+.sq-labour-total-box strong { font-size: 18px; color: var(--admin-primary, #024768); }
 .sq-grand-card {
   margin-bottom: 20px;
 }
@@ -5293,7 +5294,7 @@ body.cp-modal-open {
   margin: 0 0 14px;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--admin-heading, #111827);
 }
 .sq-grand-rows {
   max-width: 560px;
@@ -5303,8 +5304,8 @@ body.cp-modal-open {
 }
 .sq-grand-section {
   padding: 12px 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-surface-hover, #f8fafc);
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 8px;
 }
 .sq-grand-section__title {
@@ -5313,9 +5314,9 @@ body.cp-modal-open {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--admin-muted, #64748b);
   padding-bottom: 6px;
-  border-bottom: 1px solid #e8edf2;
+  border-bottom: 1px solid var(--admin-border, #e8edf2);
 }
 .sq-grand-section__body {
   display: flex;
@@ -5329,13 +5330,13 @@ body.cp-modal-open {
   gap: 16px;
   padding: 4px 0;
   font-size: 13px;
-  color: #374151;
+  color: var(--admin-muted, #374151);
 }
 .sq-grand-row span:last-child {
   flex-shrink: 0;
   text-align: right;
   font-weight: 600;
-  color: #111827;
+  color: var(--admin-heading, #111827);
 }
 .sq-grand-row--sub span:first-child {
   padding-left: 8px;
@@ -5349,38 +5350,38 @@ body.cp-modal-open {
 .sq-grand-row--section-total {
   margin-top: 4px;
   padding-top: 8px;
-  border-top: 1px solid #d8dee4;
+  border-top: 1px solid var(--admin-border, #d8dee4);
   font-size: 14px;
   font-weight: 600;
 }
 .sq-grand-row--section-total span:first-child {
-  color: #024768;
+  color: var(--admin-primary, #024768);
   font-weight: 600;
 }
 .sq-grand-row--section-total span:last-child {
-  color: #024768;
+  color: var(--admin-primary, #024768);
   font-weight: 700;
 }
 .sq-grand-row--commute {
   padding: 10px 14px;
-  background: #fff;
-  border: 1px dashed #cbd5e1;
+  background: var(--admin-surface, #fff);
+  border: 1px dashed var(--admin-border, #cbd5e1);
   border-radius: 8px;
   font-size: 13px;
 }
 .sq-grand-row--final {
   margin-top: 2px;
   padding: 12px 14px;
-  border: 2px solid #024768;
+  border: 2px solid var(--admin-primary, #024768);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-surface, #fff);
   font-size: 16px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary, #024768);
 }
 .sq-grand-row--final span:last-child {
   font-size: 18px;
-  color: #024768;
+  color: var(--admin-primary, #024768);
 }
 .sq-form-actions {
   margin-bottom: 24px;
@@ -5392,10 +5393,10 @@ body.cp-modal-open {
   gap: 16px;
 }
 .sq-field-box {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 8px;
   padding: 14px 16px;
-  background: #fafbfc;
+  background: var(--admin-surface, #fafbfc);
 }
 .sq-field-box-title {
   margin: 0 0 12px;
@@ -5403,7 +5404,7 @@ body.cp-modal-open {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--admin-muted, #64748b);
 }
 .sq-field-box .admin-form-group {
   margin-bottom: 0;
@@ -5427,11 +5428,11 @@ body.cp-modal-open {
 .sq-intro-option-title {
   margin: 0 0 10px;
   padding-bottom: 7px;
-  border-bottom: 1px solid #dbe3ea;
+  border-bottom: 1px solid var(--admin-border, #dbe3ea);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.3;
-  color: #024768;
+  color: var(--admin-primary, #024768);
   letter-spacing: 0.01em;
 }
 .sq-intro-choice-row {
@@ -6240,8 +6241,8 @@ body.cp-modal-open {
 .q-commute-metric {
   padding: 10px 12px;
   border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: var(--admin-surface-hover, #f8fafc);
+  border: 1px solid var(--admin-border, #e5e7eb);
 }
 
 .q-commute-metric__label {
@@ -6256,7 +6257,7 @@ body.cp-modal-open {
 .q-commute-metric__value {
   font-weight: 700;
   font-size: 1.05rem;
-  color: #111827;
+  color: var(--admin-heading, #111827);
 }
 
 .q-commute-metric__value--hl {
@@ -7441,9 +7442,10 @@ body.cp-modal-open {
   min-height: 44px;
   margin: 0;
   padding: 8px 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-surface, #fff);
+  color: var(--admin-text, inherit);
   cursor: pointer;
   gap: 8px;
 }
@@ -7451,13 +7453,13 @@ body.cp-modal-open {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  accent-color: #024768;
+  accent-color: var(--admin-primary, #024768);
 }
 .sh-choice:has(input:checked) {
-  border-color: #024768;
-  background: #f0f7fb;
+  border-color: var(--admin-primary, #024768);
+  background: var(--admin-primary-soft, #f0f7fb);
   font-weight: 600;
-  color: #024768;
+  color: var(--admin-primary, #024768);
 }
 .sh-area-readout {
   margin: 0;

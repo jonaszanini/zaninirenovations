@@ -74,14 +74,14 @@
     margin: 0 0 6px;
     font-size: 1.05rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--admin-heading, #0f172a);
   }
   .q-debris-card__intro { margin: 0 0 14px; }
   .q-debris-card__body {
     margin-top: 4px;
     padding: 12px 14px;
-    background: #f8fafc;
-    border: 1px dashed #cbd5e1;
+    background: var(--admin-surface-hover, #f8fafc);
+    border: 1px dashed var(--admin-border, #cbd5e1);
     border-radius: 8px;
   }
   .q-debris-amount-group { margin-bottom: 0; }

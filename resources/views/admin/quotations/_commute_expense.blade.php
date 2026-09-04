@@ -117,19 +117,20 @@
     gap: 8px;
     margin: 0;
     padding: 10px 14px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--admin-border, #cbd5e1);
     border-radius: 10px;
-    background: #fff;
+    background: var(--admin-surface, #fff);
+    color: var(--admin-text, #0f172a);
     cursor: pointer;
   }
   .q-commute-choice__option.is-selected,
   .q-commute-choice__option:has(:checked) {
     border-color: var(--admin-primary, #024768);
-    background: #f0f9ff;
+    background: var(--admin-primary-soft, #f0f9ff);
     box-shadow: 0 0 0 1px var(--admin-primary, #024768);
   }
   .q-commute-choice__input { margin: 0; }
-  .q-commute-choice__text { font-size: 0.9rem; color: #0f172a; }
+  .q-commute-choice__text { font-size: 0.9rem; color: var(--admin-heading, #0f172a); }
   .util-sr-only {
     position: absolute;
     width: 1px;

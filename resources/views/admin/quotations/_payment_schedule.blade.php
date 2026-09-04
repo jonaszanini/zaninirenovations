@@ -101,7 +101,7 @@
     margin: 0 0 6px;
     font-size: 1.05rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--admin-heading, #0f172a);
   }
   .q-payment-schedule-card__intro { margin: 0 0 14px; }
   .q-payment-schedule-options {
@@ -122,19 +122,20 @@
     gap: 10px;
     margin: 0;
     padding: 12px 12px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--admin-border, #cbd5e1);
     border-radius: 10px;
-    background: #fff;
+    background: var(--admin-surface, #fff);
+    color: var(--admin-text, #0f172a);
     cursor: pointer;
     transition: border-color .15s, box-shadow .15s, background .15s;
   }
   .q-payment-schedule-option:hover {
-    border-color: #94a3b8;
+    border-color: var(--admin-border-strong, #94a3b8);
   }
   .q-payment-schedule-option.is-selected,
   .q-payment-schedule-option:has(:checked) {
     border-color: var(--admin-primary, #024768);
-    background: #f0f9ff;
+    background: var(--admin-primary-soft, #f0f9ff);
     box-shadow: 0 0 0 1px var(--admin-primary, #024768);
   }
   .q-payment-schedule-option__input {
@@ -150,24 +151,24 @@
   .q-payment-schedule-option__label {
     font-weight: 700;
     font-size: 0.92rem;
-    color: #0f172a;
+    color: var(--admin-heading, #0f172a);
   }
   .q-payment-schedule-option__summary {
     font-size: 0.8rem;
-    color: #64748b;
+    color: var(--admin-muted, #64748b);
     font-variant-numeric: tabular-nums;
   }
 
   .q-payment-schedule-panel {
-    background: #f8fafc;
-    border: 1px dashed #cbd5e1;
+    background: var(--admin-surface-hover, #f8fafc);
+    border: 1px dashed var(--admin-border, #cbd5e1);
     border-radius: 8px;
     padding: 12px 14px;
   }
   .q-payment-schedule-panel__title {
     font-size: 0.85rem;
     font-weight: 700;
-    color: #334155;
+    color: var(--admin-muted, #334155);
     margin-bottom: 10px;
     text-transform: uppercase;
     letter-spacing: 0.03em;
