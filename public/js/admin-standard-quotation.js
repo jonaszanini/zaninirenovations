@@ -1,0 +1,768 @@
+(function () {
+  'use strict';
+
+  var form = document.getElementById('sq-standard-form');
+  if (!form) return;
+
+  var HST = 0.13;
+  var HPD = 8;
+  var ELECTRICAL_DESC = form.getAttribute('data-electrical-desc') || 'Electrical work (Including material)';
+  var worksRoot = document.getElementById('sq-works');
+  var materialTemplate = document.getElementById('sq-material-template');
+  var workTemplate = document.getElementById('sq-work-template');
+
+  var sqCatalogOptions = [];
+  try {
+    var catalogJson = document.getElementById('admin-ss-catalog-options');
+    sqCatalogOptions = catalogJson ? JSON.parse(catalogJson.textContent || '[]') : [];
+  } catch (e) {
+    sqCatalogOptions = [];
+  }
+  var sqCatalogOptionMap = {};
+  sqCatalogOptions.forEach(function (item) {
+    sqCatalogOptionMap[String(item.id)] = item;
+  });
+
+  function money(n) {
+    var v = Number(n || 0);
+    return 'CA$' + v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function parseMoney(raw) {
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
+      return window.cpMoneyMask.parse(raw);
+    }
+    if (raw == null) return 0;
+    var s = String(raw).replace(/[^\d.-]/g, '');
+    if (s === '' || s === '-') return 0;
+    var v = parseFloat(s);
+    return isFinite(v) ? v : 0;
+  }
+
+  function parseQty(raw) {
+    var v = parseFloat(raw);
+    return isFinite(v) && v >= 0 ? v : 0;
+  }
+
+  function workCards() {
+    return worksRoot ? Array.prototype.slice.call(worksRoot.querySelectorAll('.sq-work-card')) : [];
+  }
+
+  var elMatSub = document.getElementById('sq-mat-subtotal');
+  var elMatHst = document.getElementById('sq-mat-with-hst');
+  var gMatSub = document.getElementById('sq-g-mat-sub');
+  var gMatHst = document.getElementById('sq-g-mat-hst');
+  var gMatTot = document.getElementById('sq-g-mat-total');
+  var gLab = document.getElementById('sq-g-labour');
+  var gLabHst = document.getElementById('sq-g-labour-hst');
+  var gLabTot = document.getElementById('sq-g-labour-total');
+  var gGrand = document.getElementById('sq-g-grand');
+  var gCommuteRow = document.getElementById('sq-g-commute-row');
+  var gCommute = document.getElementById('sq-g-commute');
+  var gDebrisRow = document.getElementById('sq-g-debris-row');
+  var gDebris = document.getElementById('sq-g-debris');
+  var gJobsWrap = document.getElementById('sq-g-jobs-wrap');
+  var gJobs = document.getElementById('sq-g-jobs');
+  var lastCommuteAmount = 0;
+  var lastDebrisAmount = 0;
+
+  var contEnabled = document.getElementById('sq-contingency-enabled');
+  var contPercent = document.getElementById('sq-contingency-percent');
+  var matContRow = document.getElementById('sq-mat-contingency-row');
+  var matContPct = document.getElementById('sq-mat-contingency-pct');
+  var matContVal = document.getElementById('sq-mat-contingency');
+  var gContRow = document.getElementById('sq-g-contingency-row');
+  var gContPct = document.getElementById('sq-g-contingency-pct');
+  var gContVal = document.getElementById('sq-g-contingency');
+
+  function contingencyPctValue() {
+    var raw = contPercent ? contPercent.value : '';
+    var v = parseFloat(String(raw).replace(/[^0-9.]/g, ''));
+    if (!isFinite(v) || v < 0) return 0;
+    if (v > 100) return 100;
+    return v;
+  }
+
+  function labourMode(card) {
+    var m = card.querySelector('.sq-labour-mode:checked');
+    return m ? m.value : 'hours';
+  }
+
+  function syncFixedLabourUI(card) {
+    var useFixedCb = card.querySelector('.sq-labour-use-fixed-cb');
+    var rateFields = card.querySelector('.sq-labour-rate-fields');
+    var rateInput = card.querySelector('.sq-labour-rate');
+    var qtyInput = card.querySelector('.sq-labour-qty');
+    var modeRadios = card.querySelectorAll('.sq-labour-mode');
+    var fixedAmtInput = card.querySelector('.sq-labour-fixed-amount');
+    var fixedHstInc = card.querySelector('.sq-labour-fixed-hst-inc-cb');
+    var on = useFixedCb && useFixedCb.checked;
+    if (rateFields) {
+      rateFields.style.opacity = on ? '0.55' : '';
+      rateFields.style.pointerEvents = on ? 'none' : '';
+    }
+    if (rateInput) {
+      rateInput.disabled = !!on;
+      if (on) {
+        rateInput.removeAttribute('required');
+      } else {
+        rateInput.setAttribute('required', 'required');
+      }
+    }
+    if (qtyInput) qtyInput.disabled = !!on;
+    modeRadios.forEach(function (r) { r.disabled = !!on; });
+    if (fixedAmtInput) fixedAmtInput.disabled = !on;
+    if (fixedHstInc) fixedHstInc.disabled = !on;
+  }
+
+  function syncHstToggles(row) {
+    var inc = row.querySelector('.sq-mat-hst-inclusive-cb');
+    var apply = row.querySelector('.sq-mat-hst-cb');
+    if (!inc || !apply) return;
+    if (inc.checked) {
+      apply.checked = true;
+      apply.disabled = true;
+    } else {
+      apply.disabled = false;
+    }
+  }
+
+  function setText(el, value) {
+    if (el) el.textContent = value;
+  }
+
+  function recalcJob(card) {
+    var list = card.querySelector('.sq-materials-list');
+    var rows = list ? list.querySelectorAll('.sq-material-row') : [];
+    var subSum = 0;
+    var hstSum = 0;
+    var withSum = 0;
+
+    rows.forEach(function (row) {
+      syncHstToggles(row);
+      var unitEl = row.querySelector('.sq-mat-unit');
+      var qtyEl = row.querySelector('.sq-mat-qty');
+      if (!unitEl || !qtyEl) return;
+      var unit = parseMoney(unitEl.value);
+      var qty = parseQty(qtyEl.value);
+      var deliveryEl = row.querySelector('.sq-mat-delivery');
+      var delivery = deliveryEl ? parseMoney(deliveryEl.value) : 0;
+      var inclusive = row.querySelector('.sq-mat-hst-inclusive-cb') && row.querySelector('.sq-mat-hst-inclusive-cb').checked;
+      var applyCb = row.querySelector('.sq-mat-hst-cb');
+      var chargePreTax = applyCb && applyCb.checked;
+      var lineGross = Math.round((unit * qty + delivery) * 100) / 100;
+      var lineSub;
+      var lineHst;
+      var lineTot;
+      if (inclusive) {
+        lineSub = Math.round(lineGross / (1 + HST) * 100) / 100;
+        lineHst = Math.round((lineGross - lineSub) * 100) / 100;
+        lineTot = lineGross;
+      } else if (chargePreTax) {
+        lineSub = lineGross;
+        lineHst = Math.round(lineSub * HST * 100) / 100;
+        lineTot = Math.round((lineSub + lineHst) * 100) / 100;
+      } else {
+        lineSub = lineGross;
+        lineHst = 0;
+        lineTot = lineSub;
+      }
+
+      setText(row.querySelector('.sq-mat-sub'), money(lineSub));
+      setText(row.querySelector('.sq-mat-hst'), (inclusive || chargePreTax) ? money(lineHst) : '—');
+      setText(row.querySelector('.sq-mat-total'), money(lineTot));
+
+      var note = row.querySelector('.sq-mat-delivery-note');
+      if (note) {
+        if (delivery > 0) {
+          note.hidden = false;
+          note.textContent = 'Includes ' + money(delivery) + ' delivery (once, not × qty).';
+        } else {
+          note.hidden = true;
+        }
+      }
+
+      subSum += lineSub;
+      hstSum += lineHst;
+      withSum += lineTot;
+    });
+
+    subSum = Math.round(subSum * 100) / 100;
+    hstSum = Math.round(hstSum * 100) / 100;
+    withSum = Math.round(withSum * 100) / 100;
+
+    var useFixedCb = card.querySelector('.sq-labour-use-fixed-cb');
+    var useFixed = useFixedCb && useFixedCb.checked;
+    var fixedAmtInput = card.querySelector('.sq-labour-fixed-amount');
+    var fixedHstInc = card.querySelector('.sq-labour-fixed-hst-inc-cb');
+    var rateInput = card.querySelector('.sq-labour-rate');
+    var qtyInput = card.querySelector('.sq-labour-qty');
+    var qtyLabel = card.querySelector('.sq-labour-qty-label');
+    var equivEl = card.querySelector('.sq-labour-equiv');
+    var lab;
+    var labHst;
+    var labWithHst;
+    if (useFixed) {
+      var fa = parseMoney(fixedAmtInput ? fixedAmtInput.value : '');
+      if (fixedHstInc && fixedHstInc.checked) {
+        lab = Math.round(fa / (1 + HST) * 100) / 100;
+        labHst = Math.round((fa - lab) * 100) / 100;
+        labWithHst = fa;
+      } else {
+        lab = Math.round(fa * 100) / 100;
+        labHst = Math.round(lab * HST * 100) / 100;
+        labWithHst = Math.round((lab + labHst) * 100) / 100;
+      }
+    } else {
+      var rate = parseMoney(rateInput ? rateInput.value : '');
+      var q = parseQty(qtyInput ? qtyInput.value : '');
+      var hrs = labourMode(card) === 'days' ? q * HPD : q;
+      lab = Math.round(rate * hrs * 100) / 100;
+      labHst = Math.round(lab * HST * 100) / 100;
+      labWithHst = Math.round((lab + labHst) * 100) / 100;
+    }
+
+    setText(card.querySelector('.sq-job-mat-subtotal'), money(subSum));
+    setText(card.querySelector('.sq-job-mat-with-hst'), money(withSum));
+    setText(card.querySelector('.sq-job-labour-total'), money(lab));
+    setText(card.querySelector('.sq-job-labour-hst'), money(labHst));
+    setText(card.querySelector('.sq-job-labour-with-hst'), money(labWithHst));
+    setText(card.querySelector('.sq-work-subtotal'), money(subSum + lab));
+
+    if (useFixed) {
+      if (equivEl) equivEl.textContent = '';
+    } else if (qtyInput) {
+      var lq = parseQty(qtyInput.value);
+      if (labourMode(card) === 'days') {
+        if (qtyLabel) qtyLabel.textContent = 'Estimated days';
+        var hrsFromDays = lq * HPD;
+        if (equivEl) equivEl.textContent = lq > 0 ? ('≈ ' + (Math.round(hrsFromDays * 100) / 100) + ' hours') : '';
+      } else {
+        if (qtyLabel) qtyLabel.textContent = 'Estimated hours';
+        var daysFromHrs = lq / HPD;
+        if (equivEl) equivEl.textContent = lq > 0 ? ('≈ ' + (Math.round(daysFromHrs * 1000) / 1000) + ' days (8 h/day)') : '';
+      }
+    }
+
+    var titleEl = card.querySelector('.sq-work-title');
+    return {
+      title: titleEl ? String(titleEl.value || '').trim() : '',
+      subSum: subSum,
+      hstSum: hstSum,
+      withSum: withSum,
+      lab: lab,
+      labHst: labHst,
+      labWithHst: labWithHst
+    };
+  }
+
+  function recalcAll() {
+    var jobs = workCards().map(recalcJob);
+    var subSum = 0;
+    var hstSum = 0;
+    var withSum = 0;
+    var lab = 0;
+    var labHst = 0;
+    var labWithHst = 0;
+    jobs.forEach(function (j) {
+      subSum += j.subSum;
+      hstSum += j.hstSum;
+      withSum += j.withSum;
+      lab += j.lab;
+      labHst += j.labHst;
+      labWithHst += j.labWithHst;
+    });
+    subSum = Math.round(subSum * 100) / 100;
+    hstSum = Math.round(hstSum * 100) / 100;
+    withSum = Math.round(withSum * 100) / 100;
+    lab = Math.round(lab * 100) / 100;
+    labHst = Math.round(labHst * 100) / 100;
+    labWithHst = Math.round(labWithHst * 100) / 100;
+
+    var contOn = !!(contEnabled && contEnabled.checked);
+    var contPct = contingencyPctValue();
+    var contAmt = 0;
+    var contHst = 0;
+    if (contOn && subSum > 0 && contPct > 0) {
+      contAmt = Math.round(subSum * (contPct / 100) * 100) / 100;
+      var effRate = subSum > 0 ? (hstSum / subSum) : 0;
+      contHst = Math.round(contAmt * effRate * 100) / 100;
+    }
+
+    var hstWithCont = Math.round((hstSum + contHst) * 100) / 100;
+    var withSumWithCont = Math.round((withSum + contAmt + contHst) * 100) / 100;
+
+    if (contPercent) contPercent.disabled = !contOn;
+    var pctLabel = (Math.round(contPct * 100) / 100).toString();
+    setText(matContPct, pctLabel);
+    setText(gContPct, pctLabel);
+    if (matContRow) matContRow.style.display = contOn ? '' : 'none';
+    if (gContRow) gContRow.style.display = contOn ? '' : 'none';
+    setText(matContVal, '+' + money(contAmt));
+    setText(gContVal, '+' + money(contAmt));
+    setText(elMatSub, money(subSum));
+    setText(elMatHst, money(withSumWithCont));
+    setText(gMatSub, money(subSum));
+    setText(gMatHst, money(hstWithCont));
+    setText(gMatTot, money(withSumWithCont));
+    setText(gLab, money(lab));
+    setText(gLabHst, money(labHst));
+    setText(gLabTot, money(labWithHst));
+    if (gCommuteRow) gCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount > 0));
+    setText(gCommute, money(lastCommuteAmount));
+    if (gDebrisRow) gDebrisRow.classList.toggle('is-hidden', !(lastDebrisAmount > 0));
+    setText(gDebris, money(lastDebrisAmount));
+    setText(gGrand, money(withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount));
+
+    if (gJobsWrap && gJobs) {
+      var multi = jobs.length >= 2;
+      gJobsWrap.hidden = !multi;
+      if (multi) {
+        gJobs.innerHTML = '';
+        jobs.forEach(function (j, idx) {
+          var row = document.createElement('div');
+          row.className = 'sq-grand-row sq-grand-row--sub';
+          var label = document.createElement('span');
+          label.textContent = j.title !== '' ? j.title : ('Job ' + (idx + 1));
+          var amt = document.createElement('span');
+          amt.textContent = money(j.subSum + j.lab);
+          row.appendChild(label);
+          row.appendChild(amt);
+          gJobs.appendChild(row);
+        });
+      }
+    }
+  }
+
+  function catalogRoot(row) {
+    return row.querySelector('[data-admin-search-select]');
+  }
+
+  function destroyCatalogPicker(row) {
+    var root = catalogRoot(row);
+    if (root && window.AdminSearchSelect) {
+      AdminSearchSelect.destroy(root);
+    }
+  }
+
+  function rowHasMaterialContent(row) {
+    var shortEl = row.querySelector('.sq-mat-short-name');
+    var descEl = row.querySelector('.sq-mat-desc');
+    var root = catalogRoot(row);
+    var catalogVal = root && window.AdminSearchSelect
+      ? AdminSearchSelect.getValue(root)
+      : (root && root.querySelector('.admin-search-select__value') ? root.querySelector('.admin-search-select__value').value : '');
+    return !!(catalogVal && String(catalogVal) !== '0')
+      || (shortEl && String(shortEl.value || '').trim() !== '')
+      || (descEl && String(descEl.value || '').trim() !== '');
+  }
+
+  function clearCatalogSelection(row) {
+    var hidden = row.querySelector('.admin-search-select__value');
+    if (hidden) hidden.value = '';
+    var input = row.querySelector('.admin-search-select__input');
+    if (input) input.value = '';
+  }
+
+  function applyElectricalDefaults(row, forceDescription) {
+    var descEl = row.querySelector('.sq-mat-desc');
+    if (descEl && (forceDescription || String(descEl.value || '').trim() === '')) {
+      descEl.value = ELECTRICAL_DESC;
+    }
+    var shortEl = row.querySelector('.sq-mat-short-name');
+    if (shortEl) shortEl.value = '';
+    var urlEl = row.querySelector('.sq-mat-url');
+    if (urlEl) {
+      urlEl.value = '';
+      syncUrlOpenLink(urlEl);
+    }
+    var imageEl = row.querySelector('.sq-mat-image-url');
+    if (imageEl) imageEl.value = '';
+    syncImagePreview(row);
+    var qtyEl = row.querySelector('.sq-mat-qty');
+    if (qtyEl && String(qtyEl.value || '').trim() === '') {
+      qtyEl.value = '1';
+    }
+    var deliveryEl = row.querySelector('.sq-mat-delivery');
+    if (deliveryEl) deliveryEl.value = '0.00';
+    clearCatalogSelection(row);
+  }
+
+  function syncMatDetailsVisibility(row) {
+    var checked = row.querySelector('.sq-mat-source-radio:checked');
+    var mode = checked ? checked.value : 'manual';
+    var isCatalog = mode === 'catalog';
+    var details = row.querySelector('.sq-mat-details-panel');
+    var emptyHint = row.querySelector('.sq-mat-catalog-empty');
+    var showDetails = !isCatalog || rowHasMaterialContent(row);
+    if (details) details.hidden = !showDetails;
+    if (emptyHint) emptyHint.hidden = !isCatalog || showDetails;
+  }
+
+  function syncMatSourceUI(row, options) {
+    var opts = options || {};
+    var checked = row.querySelector('.sq-mat-source-radio:checked');
+    var mode = checked ? checked.value : 'manual';
+    var catalogWrap = row.querySelector('.sq-mat-catalog-wrap');
+    var isCatalog = mode === 'catalog';
+    var isElectrical = mode === 'electrical';
+    row.classList.toggle('sq-material-row--electrical', isElectrical);
+    var shortField = row.querySelector('.sq-mat-field--short-name');
+    var urlRow = row.querySelector('.sq-mat-row--url');
+    if (shortField) shortField.hidden = isElectrical;
+    if (urlRow) urlRow.hidden = isElectrical;
+    if (catalogWrap) catalogWrap.hidden = !isCatalog;
+    if (!isCatalog) {
+      destroyCatalogPicker(row);
+      if (!isElectrical) {
+        var deliveryEl = row.querySelector('.sq-mat-delivery');
+        if (deliveryEl) deliveryEl.value = '0.00';
+      }
+    } else {
+      initCatalogPicker(row);
+    }
+    if (isElectrical) {
+      applyElectricalDefaults(row, !!opts.forceElectricalDescription);
+    }
+    syncMatDetailsVisibility(row);
+    syncImagePreview(row);
+  }
+
+  function applyCatalogToRow(row, item) {
+    var deliveryEl = row.querySelector('.sq-mat-delivery');
+    if (!item) {
+      if (deliveryEl) deliveryEl.value = '0.00';
+      syncMatDetailsVisibility(row);
+      recalcAll();
+      return;
+    }
+    var shortEl = row.querySelector('.sq-mat-short-name');
+    var descEl = row.querySelector('.sq-mat-desc');
+    var unitEl = row.querySelector('.sq-mat-unit');
+    var urlEl = row.querySelector('.sq-mat-url');
+    if (shortEl) shortEl.value = item.name || '';
+    if (descEl) {
+      descEl.value = item.description || item.store_name || item.name || '';
+    }
+    if (unitEl) unitEl.value = item.price || '';
+    if (deliveryEl) deliveryEl.value = item.delivery || '0.00';
+    if (urlEl) {
+      urlEl.value = item.url || '';
+      syncUrlOpenLink(urlEl);
+    }
+    var imageEl = row.querySelector('.sq-mat-image-url');
+    if (imageEl) imageEl.value = item.image || '';
+    syncImagePreview(row);
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function' && unitEl) {
+      window.cpMoneyMask.wire([unitEl]);
+    }
+    syncMatDetailsVisibility(row);
+    recalcAll();
+  }
+
+  function initCatalogPicker(row) {
+    var checked = row.querySelector('.sq-mat-source-radio:checked');
+    if (!checked || checked.value !== 'catalog') return;
+    var root = catalogRoot(row);
+    if (!root || !window.AdminSearchSelect) return;
+    AdminSearchSelect.init(root);
+  }
+
+  function initMaterialRow(row) {
+    syncMatSourceUI(row);
+    syncImagePreview(row);
+    row.querySelectorAll('.sq-mat-source-radio').forEach(function (radio) {
+      if (radio.dataset.sqSourceBound === '1') return;
+      radio.dataset.sqSourceBound = '1';
+      radio.addEventListener('change', function () {
+        syncMatSourceUI(row, { forceElectricalDescription: this.value === 'electrical' });
+        recalcAll();
+      });
+    });
+  }
+
+  function rewriteAttr(el, attr, w, i) {
+    var val = el.getAttribute(attr);
+    if (!val) return;
+    var next = val
+      .replace(/works\[(?:\d+|__W__)]/g, 'works[' + w + ']')
+      .replace(/materials\[(?:\d+|__I__)]/g, 'materials[' + i + ']')
+      .replace(/sq-mat-catalog-w(?:\d+|__W__)-(?:\d+|__I__)/g, 'sq-mat-catalog-w' + w + '-' + i)
+      .replace(/sq-w(?:\d+|__W__)/g, 'sq-w' + w);
+    if (next !== val) el.setAttribute(attr, next);
+  }
+
+  function reindexMaterialNames(card, w) {
+    var list = card.querySelector('.sq-materials-list');
+    if (!list) return;
+    var rows = list.querySelectorAll('.sq-material-row');
+    rows.forEach(function (row, i) {
+      destroyCatalogPicker(row);
+      row.querySelectorAll('[name], [id], [for]').forEach(function (el) {
+        ['name', 'id', 'for'].forEach(function (attr) {
+          rewriteAttr(el, attr, w, i);
+        });
+      });
+      initMaterialRow(row);
+    });
+  }
+
+  function reindexAll() {
+    workCards().forEach(function (card, w) {
+      card.setAttribute('data-work-index', String(w));
+      card.querySelectorAll('[name], [id], [for]').forEach(function (el) {
+        ['name', 'id', 'for'].forEach(function (attr) {
+          rewriteAttr(el, attr, w, 0);
+        });
+      });
+      var num = card.querySelector('.sq-work-number-val');
+      if (num) num.textContent = String(w + 1);
+      reindexMaterialNames(card, w);
+      syncFixedLabourUI(card);
+    });
+    updateWorkChrome();
+  }
+
+  function updateWorkChrome() {
+    var cards = workCards();
+    var n = cards.length;
+    if (worksRoot) worksRoot.setAttribute('data-count', String(n));
+    cards.forEach(function (card) {
+      var rm = card.querySelector('.sq-remove-work');
+      if (rm) rm.hidden = n < 2;
+      var title = card.querySelector('.sq-work-title');
+      if (title) {
+        title.required = n >= 2;
+        title.placeholder = n >= 2 ? 'e.g. Replace vanity' : 'Job name (optional)';
+      }
+    });
+    var choices = document.getElementById('sq-pdf-detail-choices');
+    var help = document.getElementById('sq-pdf-detail-help');
+    var note = document.getElementById('sq-pdf-jobs-note');
+    var multi = n >= 2;
+    if (choices) choices.hidden = multi;
+    if (help) help.hidden = multi;
+    if (note) note.hidden = !multi;
+  }
+
+  function addMaterialRow(card) {
+    if (!materialTemplate) return;
+    var list = card.querySelector('.sq-materials-list');
+    if (!list) return;
+    var w = workCards().indexOf(card);
+    if (w < 0) w = 0;
+    var html = materialTemplate.innerHTML
+      .replace(/__W__/g, String(w))
+      .replace(/__I__/g, String(list.querySelectorAll('.sq-material-row').length));
+    var wrap = document.createElement('div');
+    wrap.innerHTML = html.trim();
+    var newRow = wrap.firstElementChild;
+    list.appendChild(newRow);
+    reindexMaterialNames(card, w);
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+      window.cpMoneyMask.wire(newRow.querySelectorAll('.cp-money-input'));
+    }
+    recalcAll();
+  }
+
+  function addWorkCard() {
+    if (!workTemplate || !worksRoot) return;
+    var html = workTemplate.innerHTML.replace(/__W__/g, String(workCards().length));
+    var wrap = document.createElement('div');
+    wrap.innerHTML = html.trim();
+    var card = wrap.querySelector('.sq-work-card') || wrap.firstElementChild;
+    worksRoot.appendChild(card);
+    if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+      workCards().forEach(function (c) {
+        if (c !== card) {
+          c.classList.remove('is-open');
+          var tog = c.querySelector('.sq-work-toggle');
+          if (tog) tog.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+    card.classList.add('is-open');
+    var toggle = card.querySelector('.sq-work-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    reindexAll();
+    if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+      window.cpMoneyMask.wire(card.querySelectorAll('.cp-money-input'));
+    }
+    card.querySelectorAll('.sq-material-row').forEach(initMaterialRow);
+    recalcAll();
+    var title = card.querySelector('.sq-work-title');
+    if (title) title.focus();
+  }
+
+  function sanitizeDecimalInput(input) {
+    var raw = input.value;
+    var cleaned = raw.replace(/[^0-9.]/g, '');
+    var firstDot = cleaned.indexOf('.');
+    if (firstDot !== -1) {
+      cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
+    }
+    if (cleaned !== raw) {
+      var pos = input.selectionStart;
+      input.value = cleaned;
+      try { input.setSelectionRange(pos - (raw.length - cleaned.length), pos - (raw.length - cleaned.length)); } catch (_) {}
+    }
+  }
+
+  function syncUrlOpenLink(input) {
+    var control = input.closest('.sq-mat-url-control');
+    if (!control) return;
+    var open = control.querySelector('.sq-mat-url-open');
+    if (!open) return;
+    var val = String(input.value || '').trim();
+    if (val === '') {
+      open.hidden = true;
+      open.setAttribute('href', '#');
+    } else {
+      open.hidden = false;
+      open.setAttribute('href', val);
+    }
+  }
+
+  function syncImagePreview(row) {
+    if (!row) return;
+    var input = row.querySelector('.sq-mat-image-url');
+    var wrap = row.querySelector('.sq-mat-thumb');
+    var img = row.querySelector('.sq-mat-thumb-img');
+    if (!wrap || !img) return;
+    var checked = row.querySelector('.sq-mat-source-radio:checked');
+    var isElectrical = checked && checked.value === 'electrical';
+    var val = input ? String(input.value || '').trim() : '';
+    if (isElectrical || val === '' || !/^https?:\/\//i.test(val)) {
+      wrap.hidden = true;
+      img.removeAttribute('src');
+      return;
+    }
+    img.onload = function () {
+      wrap.hidden = false;
+    };
+    img.onerror = function () {
+      wrap.hidden = true;
+    };
+    wrap.hidden = false;
+    if (img.getAttribute('src') !== val) {
+      img.src = val;
+    } else if (img.complete && img.naturalWidth === 0) {
+      wrap.hidden = true;
+    }
+  }
+
+  form.addEventListener('click', function (e) {
+    var addMat = e.target.closest('.sq-add-material');
+    if (addMat) {
+      var card = addMat.closest('.sq-work-card');
+      if (card) addMaterialRow(card);
+      return;
+    }
+    var rmMat = e.target.closest('.sq-remove-material');
+    if (rmMat) {
+      var row = rmMat.closest('.sq-material-row');
+      var cardRm = rmMat.closest('.sq-work-card');
+      var list = cardRm ? cardRm.querySelector('.sq-materials-list') : null;
+      if (!row || !list) return;
+      if (list.querySelectorAll('.sq-material-row').length <= 1) return;
+      destroyCatalogPicker(row);
+      row.remove();
+      reindexMaterialNames(cardRm, workCards().indexOf(cardRm));
+      recalcAll();
+      return;
+    }
+    var rmWork = e.target.closest('.sq-remove-work');
+    if (rmWork) {
+      if (workCards().length <= 1) return;
+      var cardDel = rmWork.closest('.sq-work-card');
+      if (!cardDel) return;
+      cardDel.querySelectorAll('.sq-material-row').forEach(destroyCatalogPicker);
+      cardDel.remove();
+      reindexAll();
+      recalcAll();
+      return;
+    }
+    var tog = e.target.closest('.sq-work-toggle');
+    if (tog) {
+      var cardT = tog.closest('.sq-work-card');
+      if (!cardT) return;
+      var open = !cardT.classList.contains('is-open');
+      cardT.classList.toggle('is-open', open);
+      tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+  });
+
+  var addWorkBtn = document.getElementById('sq-add-work');
+  if (addWorkBtn) addWorkBtn.addEventListener('click', addWorkCard);
+
+  form.addEventListener('admin-search-select:change', function (e) {
+    var row = e.target && e.target.closest ? e.target.closest('.sq-material-row') : null;
+    if (!row) return;
+    var option = e.detail && e.detail.option
+      ? e.detail.option
+      : (e.detail && e.detail.id ? sqCatalogOptionMap[String(e.detail.id)] : null);
+    applyCatalogToRow(row, option);
+  });
+
+  form.addEventListener('input', function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-qty')) {
+      sanitizeDecimalInput(e.target);
+    }
+    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-url')) {
+      syncUrlOpenLink(e.target);
+    }
+    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-image-url')) {
+      var imageRow = e.target.closest('.sq-material-row');
+      if (imageRow) syncImagePreview(imageRow);
+    }
+    if (e.target && e.target.id === 'sq-contingency-percent') {
+      sanitizeDecimalInput(e.target);
+    }
+    if (e.target && e.target.closest('.sq-work-card, #sq-contingency-block')) {
+      recalcAll();
+    }
+  });
+
+  form.addEventListener('paste', function (e) {
+    if (!e.target || !e.target.classList || !e.target.classList.contains('sq-mat-image-url')) return;
+    var pastedRow = e.target.closest('.sq-material-row');
+    if (!pastedRow) return;
+    setTimeout(function () { syncImagePreview(pastedRow); }, 0);
+  });
+
+  form.addEventListener('change', function (e) {
+    if (!e.target) return;
+    if (
+      e.target.classList.contains('sq-mat-hst-cb') ||
+      e.target.classList.contains('sq-mat-hst-inclusive-cb') ||
+      e.target.classList.contains('sq-labour-mode') ||
+      e.target.id === 'sq-contingency-enabled' ||
+      e.target.classList.contains('sq-labour-use-fixed-cb') ||
+      e.target.classList.contains('sq-labour-fixed-hst-inc-cb')
+    ) {
+      if (e.target.classList.contains('sq-labour-use-fixed-cb')) {
+        var card = e.target.closest('.sq-work-card');
+        if (card) syncFixedLabourUI(card);
+      }
+      recalcAll();
+    }
+  });
+
+  workCards().forEach(function (card) {
+    card.querySelectorAll('.sq-material-row').forEach(initMaterialRow);
+    syncFixedLabourUI(card);
+  });
+  updateWorkChrome();
+  recalcAll();
+
+  document.addEventListener('commute-expense:change', function (e) {
+    var d = e.detail || {};
+    lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+    recalcAll();
+  });
+  document.addEventListener('debris-removal:change', function (e) {
+    var d = e.detail || {};
+    lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+    recalcAll();
+  });
+})();

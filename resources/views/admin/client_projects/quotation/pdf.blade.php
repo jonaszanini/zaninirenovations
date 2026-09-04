@@ -336,6 +336,12 @@
     .items tbody tr:nth-child(even) td {
       background: #f9fafb;
     }
+    .items tbody tr.items-heading td {
+      background: #e8eef2;
+      font-weight: 700;
+      color: #024768;
+      border-top: 2pt solid #024768;
+    }
     .items tfoot td {
       background: #ffffff;
       border: 0 none transparent;
@@ -597,6 +603,11 @@
     </thead>
     <tbody>
       @foreach ($items as $row)
+        @if (!empty($row['is_heading']))
+          <tr class="items-heading">
+            <td colspan="2">{{ $row['description'] }}</td>
+          </tr>
+        @else
         <tr>
           @php
             $desc = e($row['description']);
@@ -608,6 +619,7 @@
           <td>{!! nl2br($desc) !!}</td>
           <td class="amount">{{ $fmt($row['amount']) }}</td>
         </tr>
+        @endif
       @endforeach
     </tbody>
     <tfoot>

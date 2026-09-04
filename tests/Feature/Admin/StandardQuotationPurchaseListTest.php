@@ -59,7 +59,8 @@ class StandardQuotationPurchaseListTest extends IntegrationTestCase
             ->assertSee('Electrical work', false)
             ->assertSee('value="electrical"', false)
             ->assertSee('Image URL', false)
-            ->assertSee('name="materials[0][image_url]"', false);
+            ->assertSee('name="works[0][materials][0][image_url]"', false)
+            ->assertSee('Add another job', false);
     }
 
     public function test_purchase_list_omits_electrical_work_rows(): void
@@ -86,6 +87,51 @@ class StandardQuotationPurchaseListTest extends IntegrationTestCase
         $response->assertOk();
         $response->assertSee('Black aluminium spindle', false);
         $response->assertDontSee('Electrical work (Including material)', false);
+    }
+
+    public function test_purchase_list_includes_materials_from_all_jobs(): void
+    {
+        $this->actingAsAdmin();
+        $quote = $this->makeQuote();
+        $quote->works = [
+            [
+                'title' => 'Job one',
+                'materials' => $quote->materials,
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 100,
+                'labour_mode' => 'hours',
+                'labour_quantity' => 0,
+                'labour_hourly_rate' => 0,
+            ],
+            [
+                'title' => 'Job two',
+                'materials' => [
+                    [
+                        'short_name' => 'Screws',
+                        'description' => 'Deck screws box',
+                        'unit_price' => 8.50,
+                        'quantity' => 2,
+                        'apply_hst' => true,
+                    ],
+                ],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 50,
+                'labour_mode' => 'hours',
+                'labour_quantity' => 0,
+                'labour_hourly_rate' => 0,
+            ],
+        ];
+        $quote->save();
+
+        $response = $this->get(route('admin.quotations.standard.purchase-list', [
+            'standard_quotation' => $quote,
+            'prices' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Black aluminium spindle', false);
+        $response->assertSee('Deck screws box', false);
+        $response->assertSee('CA$8.50', false);
     }
 
     private function makeQuote(): StandardQuotation

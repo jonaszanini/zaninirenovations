@@ -420,7 +420,7 @@ class ClientProjectQuotation extends Model
         if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
             $sq = StandardQuotation::query()->find($this->source_id);
             if ($sq) {
-                if ($sq->usesDetailedPdf()) {
+                if ($sq->hasMultipleWorks() || $sq->usesDetailedPdf()) {
                     $detailed = $sq->detailedPdfLineItems();
                     $items = $detailed !== [] ? $detailed : $this->cleanItems();
                 } else {
@@ -470,7 +470,15 @@ class ClientProjectQuotation extends Model
     /** Pre-tax subtotal for {@see pdfLineItems()}. */
     public function pdfSubtotal(): float
     {
-        return round(array_sum(array_column($this->pdfLineItems(), 'amount')), 2);
+        $sum = 0.0;
+        foreach ($this->pdfLineItems() as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            $sum += (float) ($row['amount'] ?? 0);
+        }
+
+        return round($sum, 2);
     }
 
     /** HST for {@see pdfLineItems()}. */
@@ -478,6 +486,9 @@ class ClientProjectQuotation extends Model
     {
         $sum = 0.0;
         foreach ($this->pdfLineItems() as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
             $sum += self::lineHstAmount($row);
         }
 
@@ -616,6 +627,9 @@ class ClientProjectQuotation extends Model
         $candidates = [];
 
         foreach ($items as $i => $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
             $desc = (string) ($row['description'] ?? '');
             if (stripos($desc, 'HST exempt') !== false) {
                 continue;
@@ -654,6 +668,9 @@ class ClientProjectQuotation extends Model
         $candidates = [];
 
         foreach ($items as $i => $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
             if (empty($row['apply_hst'])) {
                 continue;
             }

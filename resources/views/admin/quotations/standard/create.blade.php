@@ -20,27 +20,24 @@
     : route('admin.quotations.standard.store');
   $formMethod = $isEdit ? 'PUT' : 'POST';
 
-  $matRows = old('materials');
-  if ($matRows === null && $isEdit) {
-      $matRows = is_array($quotation->materials) ? $quotation->materials : [];
+  $emptyMaterialRow = ['short_name' => '', 'description' => '', 'url' => '', 'image_url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false, 'catalog_material_id' => null, 'delivery_cad' => 0];
+  $emptyWork = [
+      'title' => '',
+      'materials' => [$emptyMaterialRow],
+      'labour_mode' => 'hours',
+      'labour_quantity' => '',
+      'labour_hourly_rate' => '65.00',
+      'labour_use_fixed' => false,
+      'labour_fixed_amount' => '',
+      'labour_fixed_hst_included' => false,
+  ];
+  $workRows = old('works');
+  if ($workRows === null && $isEdit) {
+      $workRows = $quotation->resolvedWorks();
   }
-  if (!is_array($matRows) || count($matRows) === 0) {
-      $matRows = [['short_name' => '', 'description' => '', 'url' => '', 'image_url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false, 'catalog_material_id' => null, 'delivery_cad' => 0]];
+  if (!is_array($workRows) || count($workRows) === 0) {
+      $workRows = [$emptyWork];
   }
-
-  $labourMode = old('labour_mode', $isEdit ? $quotation->labour_mode : 'hours');
-  $labourQty = old('labour_quantity', $isEdit ? (string) $quotation->labour_quantity : '');
-  $labourRate = old('labour_hourly_rate', $isEdit ? number_format((float) $quotation->labour_hourly_rate, 2, '.', '') : '65.00');
-
-  $labourUseFixed = old('labour_use_fixed', $isEdit ? (bool) ($quotation->labour_use_fixed ?? false) : false);
-  $labourFixedAmount = old('labour_fixed_amount');
-  if ($labourFixedAmount === null && $isEdit && $quotation->labour_fixed_amount !== null) {
-      $labourFixedAmount = number_format((float) $quotation->labour_fixed_amount, 2, '.', '');
-  }
-  if ($labourFixedAmount === null) {
-      $labourFixedAmount = '';
-  }
-  $labourFixedHstInc = old('labour_fixed_hst_included', $isEdit ? (bool) ($quotation->labour_fixed_hst_included ?? false) : false);
 
   // Contingency allowance defaults: enabled with 10% on new quotes; for
   // existing quotes use whatever was saved (column was added with default
@@ -146,7 +143,8 @@
     </div>
   @endif
 
-  <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor>
+  <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor
+        data-electrical-desc="{{ \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION }}">
     @csrf
     @if ($isEdit)
       @method('PUT')
@@ -201,9 +199,9 @@
               @error('document_type') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
 
-            <div class="sq-intro-option-block">
+            <div class="sq-intro-option-block" id="sq-pdf-detail-block">
               <h5 class="sq-intro-option-title">Client PDF line items</h5>
-              <div class="sq-intro-choice-col">
+              <div class="sq-intro-choice-col" id="sq-pdf-detail-choices">
                 <label class="cp-checkbox-row">
                   <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
                     @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
@@ -215,7 +213,8 @@
                   <span><strong>Detailed</strong> — Material subtotal, labour, and HST columns (not each SKU)</span>
                 </label>
               </div>
-              <p class="admin-form-help sq-intro-option-help">Controls what the client sees when you download or email the PDF from the project.</p>
+              <p class="admin-form-help sq-intro-option-help" id="sq-pdf-detail-help">Controls what the client sees when you download or email the PDF from the project.</p>
+              <p class="admin-form-help sq-intro-option-help" id="sq-pdf-jobs-note" hidden>With several jobs, the PDF lists each job's material and labour amounts, then the grand total.</p>
               @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
 
@@ -264,163 +263,68 @@
       </div>
     </div>
 
-    <div class="sq-layout">
-      {{-- Materials ------------------------------------------------ --}}
-      <div class="admin-card sq-panel">
-        <div class="sq-panel-head">
-          <h3 class="cp-form-help-flush">Materials</h3>
-        </div>
-        <p class="admin-form-help sq-materials-intro">
-          Each row: <strong>Type manually</strong>, <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>),
-          or <strong>Electrical work</strong> (its own line on the client PDF).
-          Unit price is before tax unless you check <strong>Price includes HST</strong>.
-        </p>
+    @php
+      $workCount = count($workRows);
+    @endphp
+    <div class="sq-works" id="sq-works" data-count="{{ $workCount }}">
+      @foreach ($workRows as $w => $work)
+        @include('admin.quotations.standard._work_card', [
+          'workIndex' => $w,
+          'work' => $work,
+          'workCount' => $workCount,
+          'isOpen' => $w === $workCount - 1,
+        ])
+      @endforeach
+    </div>
 
-        {{-- Each material is rendered as a small two-line "form card" so
-             the inputs stop getting squeezed on narrow viewports. Line 1
-             holds the editable fields (short name, description, unit
-             price, qty); line 2 holds the live-computed values (subtotal,
-             HST, total) plus the per-row HST toggle. The delete button
-             sits at the far right and is vertically centred across both
-             lines via grid alignment. --}}
-        <div class="sq-materials-list" id="sq-materials-list">
-          @foreach ($matRows as $i => $row)
-            @include('admin.quotations.standard._material_row', ['i' => $i, 'row' => $row])
-          @endforeach
-        </div>
+    <div class="sq-add-work-wrap">
+      <button type="button" class="admin-btn admin-btn--ghost sq-add-work" id="sq-add-work">
+        <i class="fa fa-plus"></i> Add another job
+      </button>
+    </div>
 
-        <div class="sq-add-material-wrap">
-          <button type="button" class="admin-btn admin-btn--ghost sq-add-material-wide" id="sq-add-material">
-            <i class="fa fa-plus"></i> Add material
-          </button>
-        </div>
-
-        {{-- Contingency Allowance ---------------------------------- --}}
-        {{-- Sits between the material rows and the totals box. When
-             enabled, applies the entered percentage on top of the
-             materials pre-HST subtotal. The resulting dollars (and a
-             prorated share of HST, mirroring the materials' effective
-             rate) are folded into the materials totals below. --}}
-        <div class="sq-contingency-block" id="sq-contingency-block">
-          <div class="sq-contingency-row">
-            <input type="hidden" name="contingency_enabled" value="0">
-            <label class="admin-checkbox sq-checkbox-label sq-contingency-toggle">
-              <input type="checkbox" id="sq-contingency-enabled" name="contingency_enabled" value="1" class="admin-checkbox__input" @checked($contingencyEnabled)>
-              <span class="admin-checkbox__mark" aria-hidden="true"></span>
-              <span class="admin-checkbox__text">Contingency allowance</span>
-            </label>
-            <div class="sq-contingency-pct-field">
-              <input type="text" inputmode="decimal" autocomplete="off" id="sq-contingency-percent"
-                     name="contingency_percent" class="admin-input sq-contingency-percent"
-                     maxlength="6" placeholder="10" value="{{ $contingencyPercent }}"
-                     @disabled(!$contingencyEnabled)>
-              <span class="sq-contingency-pct-suffix">%</span>
-            </div>
-            <p class="admin-form-help sq-contingency-help">
-              Buffer applied on top of <em>Total materials (before HST)</em>. HST follows the materials' effective rate.
-            </p>
+    <div class="admin-card sq-panel" id="sq-quote-materials-card">
+      <div class="sq-contingency-block" id="sq-contingency-block">
+        <div class="sq-contingency-row">
+          <input type="hidden" name="contingency_enabled" value="0">
+          <label class="admin-checkbox sq-checkbox-label sq-contingency-toggle">
+            <input type="checkbox" id="sq-contingency-enabled" name="contingency_enabled" value="1" class="admin-checkbox__input" @checked($contingencyEnabled)>
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text">Contingency allowance</span>
+          </label>
+          <div class="sq-contingency-pct-field">
+            <input type="text" inputmode="decimal" autocomplete="off" id="sq-contingency-percent"
+                   name="contingency_percent" class="admin-input sq-contingency-percent"
+                   maxlength="6" placeholder="10" value="{{ $contingencyPercent }}"
+                   @disabled(!$contingencyEnabled)>
+            <span class="sq-contingency-pct-suffix">%</span>
           </div>
-          @error('contingency_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
+          <p class="admin-form-help sq-contingency-help">
+            Buffer applied on top of <em>all jobs' materials (before HST)</em>. HST follows the materials' effective rate.
+          </p>
         </div>
+        @error('contingency_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
 
-        <div class="cp-quotation-totals sq-materials-totals">
-          <div class="cp-quotation-totals-row">
-            <span>Total materials (before HST)</span>
-            <span id="sq-mat-subtotal">CA$0.00</span>
-          </div>
-          <div class="cp-quotation-totals-row sq-mat-contingency-row" id="sq-mat-contingency-row" style="{{ $contingencyEnabled ? '' : 'display:none;' }}">
-            <span>Contingency (<span id="sq-mat-contingency-pct">{{ $contingencyPercent }}</span>%)</span>
-            <span id="sq-mat-contingency">+CA$0.00</span>
-          </div>
-          <div class="cp-quotation-totals-row">
-            <span>Total materials with HST</span>
-            <span id="sq-mat-with-hst">CA$0.00</span>
-          </div>
+      <div class="cp-quotation-totals sq-materials-totals">
+        <div class="cp-quotation-totals-row">
+          <span>Total materials (before HST)</span>
+          <span id="sq-mat-subtotal">CA$0.00</span>
         </div>
-
-        {{-- Convenience save: same submit as the bottom action so the
-             user can persist after entering only materials without
-             scrolling all the way down. --}}
-        <div class="sq-panel-save">
-          <button type="submit" class="admin-btn admin-btn--primary">
-            <i class="fa fa-save"></i> Save
-          </button>
+        <div class="cp-quotation-totals-row sq-mat-contingency-row" id="sq-mat-contingency-row" style="{{ $contingencyEnabled ? '' : 'display:none;' }}">
+          <span>Contingency (<span id="sq-mat-contingency-pct">{{ $contingencyPercent }}</span>%)</span>
+          <span id="sq-mat-contingency">+CA$0.00</span>
+        </div>
+        <div class="cp-quotation-totals-row">
+          <span>Total materials with HST</span>
+          <span id="sq-mat-with-hst">CA$0.00</span>
         </div>
       </div>
 
-      {{-- Labour --------------------------------------------------- --}}
-      <div class="admin-card sq-panel">
-        <h3 style="margin:0 0 8px;">Labour</h3>
-        <p class="admin-form-help">Labour is <strong>HST-taxable</strong> at 13%. Use a <strong>flat labour fee</strong> for a fixed dollar amount, or estimate by <strong>rate × hours/days</strong> (<span title="1 day = 8 hours">8 h = 1 day</span>).</p>
-
-        <div class="admin-form-group sq-labour-fixed-block">
-          <input type="hidden" name="labour_use_fixed" value="0">
-          <label class="admin-checkbox sq-checkbox-label cp-geometry-hint">
-            <input type="checkbox" name="labour_use_fixed" value="1" id="sq-labour-use-fixed" class="admin-checkbox__input sq-labour-use-fixed-cb" @checked($labourUseFixed)>
-            <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text"><strong>Flat labour fee</strong> (skip rate &amp; hours)</span>
-          </label>
-          <div class="sq-labour-fixed-fields" id="sq-labour-fixed-fields">
-            <label for="sq-labour-fixed-amount">Amount (CAD)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" id="sq-labour-fixed-amount" name="labour_fixed_amount"
-                   class="admin-input cp-money-input" placeholder="0.00" value="{{ $labourFixedAmount }}">
-            <div class="cp-form-group-spaced">
-              <input type="hidden" name="labour_fixed_hst_included" value="0">
-              <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label" style="display:inline-flex;">
-                <input type="checkbox" name="labour_fixed_hst_included" value="1" id="sq-labour-fixed-hst-inc" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
-                <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">HST included</span>
-              </label>
-            </div>
-            <p class="admin-form-help" style="margin-top:8px;">When <strong>HST included</strong> is checked, the amount is the total with tax; before-tax labour is calculated the same way as materials with <strong>HST-incl. price</strong>.</p>
-          </div>
-          @error('labour_fixed_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
-        </div>
-
-        <div class="sq-labour-rate-fields" id="sq-labour-rate-fields">
-        <div class="admin-form-group">
-          <label for="sq-labour-rate">Hourly rate (CAD) @unless($labourUseFixed)<span class="cp-required">*</span>@endunless</label>
-          <input type="text" inputmode="decimal" id="sq-labour-rate" name="labour_hourly_rate" class="admin-input cp-money-input"
-                 @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}">
-          @error('labour_hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
-        </div>
-
-        <fieldset class="sq-labour-mode-fieldset">
-          <legend class="admin-form-label">Estimate by</legend>
-          <label class="cp-checkbox-row">
-            <input type="radio" name="labour_mode" value="hours" class="sq-labour-mode" @checked($labourMode === 'hours')>
-            <span>Hours</span>
-          </label>
-          <label class="cp-checkbox-row">
-            <input type="radio" name="labour_mode" value="days" class="sq-labour-mode" @checked($labourMode === 'days')>
-            <span>Days</span> <span class="admin-form-help">(× 8 h)</span>
-          </label>
-        </fieldset>
-
-        <div class="admin-form-group">
-          <label for="sq-labour-qty" id="sq-labour-qty-label">Estimated hours</label>
-          <input type="number" id="sq-labour-qty" name="labour_quantity" class="admin-input" min="0" step="0.01"
-                 value="{{ $labourQty }}" placeholder="0">
-          @error('labour_quantity') <p class="admin-form-error">{{ $message }}</p> @enderror
-          @error('labour_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
-          <p class="admin-form-help" id="sq-labour-equiv" style="margin-top:6px;"></p>
-        </div>
-        </div>
-
-        <div class="cp-quotation-totals sq-labour-totals">
-          <div class="cp-quotation-totals-row">
-            <span>Total labour (before HST)</span>
-            <span id="sq-labour-total">CA$0.00</span>
-          </div>
-          <div class="cp-quotation-totals-row">
-            <span>HST on labour (13%)</span>
-            <span id="sq-labour-hst">CA$0.00</span>
-          </div>
-          <div class="cp-quotation-totals-row">
-            <span>Total labour with HST</span>
-            <span id="sq-labour-with-hst">CA$0.00</span>
-          </div>
-        </div>
+      <div class="sq-panel-save">
+        <button type="submit" class="admin-btn admin-btn--primary">
+          <i class="fa fa-save"></i> Save
+        </button>
       </div>
     </div>
 
@@ -432,6 +336,10 @@
     <div class="admin-card sq-grand-card">
       <h3 class="sq-grand-card__title">Totals</h3>
       <div class="sq-grand-rows">
+        <section class="sq-grand-section" id="sq-g-jobs-wrap" hidden>
+          <h4 class="sq-grand-section__title">Jobs</h4>
+          <div class="sq-grand-section__body" id="sq-g-jobs"></div>
+        </section>
         <section class="sq-grand-section">
           <h4 class="sq-grand-section__title">Materials</h4>
           <div class="sq-grand-section__body">
@@ -526,6 +434,7 @@
   <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
   <template id="sq-material-template">
     @include('admin.quotations.standard._material_row', [
+      'workIndex' => '__W__',
       'i' => '__I__',
       'row' => [
         'short_name' => '',
@@ -541,596 +450,36 @@
       ],
     ])
   </template>
+  <template id="sq-work-template">
+    @include('admin.quotations.standard._work_card', [
+      'workIndex' => '__W__',
+      'work' => [
+        'title' => '',
+        'materials' => [[
+          'short_name' => '',
+          'description' => '',
+          'url' => '',
+          'image_url' => '',
+          'unit_price' => '',
+          'quantity' => '1',
+          'apply_hst' => true,
+          'hst_includes_unit' => false,
+          'catalog_material_id' => null,
+          'delivery_cad' => 0,
+        ]],
+        'labour_mode' => 'hours',
+        'labour_quantity' => '',
+        'labour_hourly_rate' => '65.00',
+        'labour_use_fixed' => false,
+        'labour_fixed_amount' => '',
+        'labour_fixed_hst_included' => false,
+      ],
+      'workCount' => 2,
+      'isOpen' => true,
+    ])
+  </template>
 @endsection
 
 @push('scripts')
-<script>
-(function () {
-  'use strict';
-  var HST = 0.13;
-  var HPD = 8;
-  var ELECTRICAL_DESC = @json(\App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION);
-  var sqCatalogOptions = [];
-  try {
-    var catalogJson = document.getElementById('admin-ss-catalog-options');
-    sqCatalogOptions = catalogJson ? JSON.parse(catalogJson.textContent || '[]') : [];
-  } catch (e) {
-    sqCatalogOptions = [];
-  }
-  var sqCatalogOptionMap = {};
-  sqCatalogOptions.forEach(function (item) {
-    sqCatalogOptionMap[String(item.id)] = item;
-  });
-
-  function money(n) {
-    var v = Number(n || 0);
-    return 'CA$' + v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
-  function parseMoney(raw) {
-    if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
-      return window.cpMoneyMask.parse(raw);
-    }
-    if (raw == null) return 0;
-    var s = String(raw).replace(/[^\d.-]/g, '');
-    if (s === '' || s === '-') return 0;
-    var v = parseFloat(s);
-    return isFinite(v) ? v : 0;
-  }
-
-  function parseQty(raw) {
-    var v = parseFloat(raw);
-    return isFinite(v) && v>= 0 ? v : 0;
-  }
-
-  var list = document.getElementById('sq-materials-list');
-  var addBtn = document.getElementById('sq-add-material');
-  var template = document.getElementById('sq-material-template');
-  var rateInput = document.getElementById('sq-labour-rate');
-  var qtyInput = document.getElementById('sq-labour-qty');
-  var modeRadios = document.querySelectorAll('.sq-labour-mode');
-  var qtyLabel = document.getElementById('sq-labour-qty-label');
-  var equivEl = document.getElementById('sq-labour-equiv');
-  var useFixedCb = document.getElementById('sq-labour-use-fixed');
-  var fixedAmtInput = document.getElementById('sq-labour-fixed-amount');
-  var fixedHstInc = document.getElementById('sq-labour-fixed-hst-inc');
-  var rateFields = document.getElementById('sq-labour-rate-fields');
-
-  function syncFixedLabourUI() {
-    var on = useFixedCb && useFixedCb.checked;
-    if (rateFields) {
-      rateFields.style.opacity = on ? '0.55' : '';
-      rateFields.style.pointerEvents = on ? 'none' : '';
-    }
-    if (rateInput) {
-      rateInput.disabled = !!on;
-      if (on) {
-        rateInput.removeAttribute('required');
-      } else {
-        rateInput.setAttribute('required', 'required');
-      }
-    }
-    if (qtyInput) qtyInput.disabled = !!on;
-    modeRadios.forEach(function (r) { r.disabled = !!on; });
-    if (fixedAmtInput) fixedAmtInput.disabled = !on;
-    if (fixedHstInc) fixedHstInc.disabled = !on;
-  }
-
-  var elMatSub = document.getElementById('sq-mat-subtotal');
-  var elMatHst = document.getElementById('sq-mat-with-hst');
-  var elLabour = document.getElementById('sq-labour-total');
-  var elLabourHst = document.getElementById('sq-labour-hst');
-  var elLabourWithHst = document.getElementById('sq-labour-with-hst');
-  var gMatSub = document.getElementById('sq-g-mat-sub');
-  var gMatHst = document.getElementById('sq-g-mat-hst');
-  var gMatTot = document.getElementById('sq-g-mat-total');
-  var gLab = document.getElementById('sq-g-labour');
-  var gLabHst = document.getElementById('sq-g-labour-hst');
-  var gLabTot = document.getElementById('sq-g-labour-total');
-  var gGrand = document.getElementById('sq-g-grand');
-  var gCommuteRow = document.getElementById('sq-g-commute-row');
-  var gCommute = document.getElementById('sq-g-commute');
-  var gDebrisRow = document.getElementById('sq-g-debris-row');
-  var gDebris = document.getElementById('sq-g-debris');
-  var lastCommuteAmount = 0;
-  var lastDebrisAmount = 0;
-
-  // Contingency controls + readouts
-  var contEnabled = document.getElementById('sq-contingency-enabled');
-  var contPercent = document.getElementById('sq-contingency-percent');
-  var matContRow = document.getElementById('sq-mat-contingency-row');
-  var matContPct = document.getElementById('sq-mat-contingency-pct');
-  var matContVal = document.getElementById('sq-mat-contingency');
-  var gContRow = document.getElementById('sq-g-contingency-row');
-  var gContPct = document.getElementById('sq-g-contingency-pct');
-  var gContVal = document.getElementById('sq-g-contingency');
-
-  function contingencyPctValue() {
-    var raw = contPercent ? contPercent.value : '';
-    var v = parseFloat(String(raw).replace(/[^0-9.]/g, ''));
-    if (!isFinite(v) || v < 0) return 0;
-    if (v> 100) return 100;
-    return v;
-  }
-
-  function labourMode() {
-    var m = document.querySelector('.sq-labour-mode:checked');
-    return m ? m.value : 'hours';
-  }
-
-  function labourHoursTotal() {
-    var q = parseQty(qtyInput.value);
-    return labourMode() === 'days' ? q * HPD : q;
-  }
-
-  function syncHstToggles(row) {
-    var inc = row.querySelector('.sq-mat-hst-inclusive-cb');
-    var apply = row.querySelector('.sq-mat-hst-cb');
-    if (!inc || !apply) return;
-    if (inc.checked) {
-      apply.checked = true;
-      apply.disabled = true;
-    } else {
-      apply.disabled = false;
-    }
-  }
-
-  function recalcMaterials() {
-    var rows = list.querySelectorAll('.sq-material-row');
-    var subSum = 0;
-    var hstSum = 0;
-    var withSum = 0;
-
-    rows.forEach(function (row) {
-      syncHstToggles(row);
-      var unit = parseMoney(row.querySelector('.sq-mat-unit').value);
-      var qty = parseQty(row.querySelector('.sq-mat-qty').value);
-      var deliveryEl = row.querySelector('.sq-mat-delivery');
-      var delivery = deliveryEl ? parseMoney(deliveryEl.value) : 0;
-      var inclusive = row.querySelector('.sq-mat-hst-inclusive-cb') && row.querySelector('.sq-mat-hst-inclusive-cb').checked;
-      var applyCb = row.querySelector('.sq-mat-hst-cb');
-      var chargePreTax = applyCb && applyCb.checked;
-      var lineGross = Math.round((unit * qty + delivery) * 100) / 100;
-      var lineSub;
-      var lineHst;
-      var lineTot;
-      if (inclusive) {
-        lineSub = Math.round(lineGross / (1 + HST) * 100) / 100;
-        lineHst = Math.round((lineGross - lineSub) * 100) / 100;
-        lineTot = lineGross;
-      } else if (chargePreTax) {
-        lineSub = lineGross;
-        lineHst = Math.round(lineSub * HST * 100) / 100;
-        lineTot = Math.round((lineSub + lineHst) * 100) / 100;
-      } else {
-        lineSub = lineGross;
-        lineHst = 0;
-        lineTot = lineSub;
-      }
-
-      row.querySelector('.sq-mat-sub').textContent = money(lineSub);
-      row.querySelector('.sq-mat-hst').textContent = (inclusive || chargePreTax) ? money(lineHst) : '—';
-      row.querySelector('.sq-mat-total').textContent = money(lineTot);
-
-      var note = row.querySelector('.sq-mat-delivery-note');
-      if (note) {
-        if (delivery > 0) {
-          note.hidden = false;
-          note.textContent = 'Includes ' + money(delivery) + ' delivery (once, not × qty).';
-        } else {
-          note.hidden = true;
-        }
-      }
-
-      subSum += lineSub;
-      hstSum += lineHst;
-      withSum += lineTot;
-    });
-
-    subSum = Math.round(subSum * 100) / 100;
-    hstSum = Math.round(hstSum * 100) / 100;
-    withSum = Math.round(withSum * 100) / 100;
-
-    // Contingency: % of pre-HST materials, with HST prorated to match
-    // the materials' effective HST rate. Mirrors backend calculator.
-    var contOn = !!(contEnabled && contEnabled.checked);
-    var contPct = contingencyPctValue();
-    var contAmt = 0;
-    var contHst = 0;
-    if (contOn && subSum> 0 && contPct> 0) {
-      contAmt = Math.round(subSum * (contPct / 100) * 100) / 100;
-      var effRate = subSum> 0 ? (hstSum / subSum) : 0;
-      contHst = Math.round(contAmt * effRate * 100) / 100;
-    }
-
-    var hstWithCont = Math.round((hstSum + contHst) * 100) / 100;
-    var withSumWithCont = Math.round((withSum + contAmt + contHst) * 100) / 100;
-
-    if (contPercent) {
-      contPercent.disabled = !contOn;
-    }
-
-    var pctLabel = (Math.round(contPct * 100) / 100).toString();
-    if (matContPct) matContPct.textContent = pctLabel;
-    if (gContPct) gContPct.textContent = pctLabel;
-    if (matContRow) matContRow.style.display = contOn ? '' : 'none';
-    if (gContRow) gContRow.style.display = contOn ? '' : 'none';
-    if (matContVal) matContVal.textContent = '+' + money(contAmt);
-    if (gContVal) gContVal.textContent = '+' + money(contAmt);
-
-    elMatSub.textContent = money(subSum);
-    elMatHst.textContent = money(withSumWithCont);
-
-    var useFixed = useFixedCb && useFixedCb.checked;
-    var lab;
-    var labHst;
-    var labWithHst;
-    if (useFixed) {
-      var fa = parseMoney(fixedAmtInput ? fixedAmtInput.value : '');
-      if (fixedHstInc && fixedHstInc.checked) {
-        lab = Math.round(fa / (1 + HST) * 100) / 100;
-        labHst = Math.round((fa - lab) * 100) / 100;
-        labWithHst = fa;
-      } else {
-        lab = Math.round(fa * 100) / 100;
-        labHst = Math.round(lab * HST * 100) / 100;
-        labWithHst = Math.round((lab + labHst) * 100) / 100;
-      }
-    } else {
-      var rate = parseMoney(rateInput.value);
-      var hrs = labourHoursTotal();
-      lab = Math.round(rate * hrs * 100) / 100;
-      labHst = Math.round(lab * HST * 100) / 100;
-      labWithHst = Math.round((lab + labHst) * 100) / 100;
-    }
-    elLabour.textContent = money(lab);
-    if (elLabourHst) elLabourHst.textContent = money(labHst);
-    if (elLabourWithHst) elLabourWithHst.textContent = money(labWithHst);
-
-    gMatSub.textContent = money(subSum);
-    gMatHst.textContent = money(hstWithCont);
-    gMatTot.textContent = money(withSumWithCont);
-    gLab.textContent = money(lab);
-    if (gLabHst) gLabHst.textContent = money(labHst);
-    if (gLabTot) gLabTot.textContent = money(labWithHst);
-    if (gCommuteRow) gCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount> 0));
-    if (gCommute) gCommute.textContent = money(lastCommuteAmount);
-    if (gDebrisRow) gDebrisRow.classList.toggle('is-hidden', !(lastDebrisAmount > 0));
-    if (gDebris) gDebris.textContent = money(lastDebrisAmount);
-    gGrand.textContent = money(withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount);
-
-    if (useFixed) {
-      if (equivEl) equivEl.textContent = '';
-    } else {
-    var lq = parseQty(qtyInput.value);
-    if (labourMode() === 'days') {
-      qtyLabel.textContent = 'Estimated days';
-      var hrsFromDays = lq * HPD;
-      equivEl.textContent = lq> 0 ? ('≈ ' + (Math.round(hrsFromDays * 100) / 100) + ' hours') : '';
-    } else {
-      qtyLabel.textContent = 'Estimated hours';
-      var daysFromHrs = lq / HPD;
-      equivEl.textContent = lq> 0 ? ('≈ ' + (Math.round(daysFromHrs * 1000) / 1000) + ' days (8 h/day)') : '';
-    }
-    }
-  }
-
-  function catalogRoot(row) {
-    return row.querySelector('[data-admin-search-select]');
-  }
-
-  function destroyCatalogPicker(row) {
-    var root = catalogRoot(row);
-    if (root && window.AdminSearchSelect) {
-      AdminSearchSelect.destroy(root);
-    }
-  }
-
-  function rowHasMaterialContent(row) {
-    var shortEl = row.querySelector('.sq-mat-short-name');
-    var descEl = row.querySelector('.sq-mat-desc');
-    var root = catalogRoot(row);
-    var catalogVal = root && window.AdminSearchSelect
-      ? AdminSearchSelect.getValue(root)
-      : (root && root.querySelector('.admin-search-select__value') ? root.querySelector('.admin-search-select__value').value : '');
-    return !!(catalogVal && String(catalogVal) !== '0')
-      || (shortEl && String(shortEl.value || '').trim() !== '')
-      || (descEl && String(descEl.value || '').trim() !== '');
-  }
-
-  function clearCatalogSelection(row) {
-    var hidden = row.querySelector('.admin-search-select__value');
-    if (hidden) hidden.value = '';
-    var input = row.querySelector('.admin-search-select__input');
-    if (input) input.value = '';
-  }
-
-  function applyElectricalDefaults(row, forceDescription) {
-    var descEl = row.querySelector('.sq-mat-desc');
-    if (descEl && (forceDescription || String(descEl.value || '').trim() === '')) {
-      descEl.value = ELECTRICAL_DESC;
-    }
-    var shortEl = row.querySelector('.sq-mat-short-name');
-    if (shortEl) shortEl.value = '';
-    var urlEl = row.querySelector('.sq-mat-url');
-    if (urlEl) {
-      urlEl.value = '';
-      if (typeof syncUrlOpenLink === 'function') syncUrlOpenLink(urlEl);
-    }
-    var imageEl = row.querySelector('.sq-mat-image-url');
-    if (imageEl) imageEl.value = '';
-    if (typeof syncImagePreview === 'function') syncImagePreview(row);
-    var qtyEl = row.querySelector('.sq-mat-qty');
-    if (qtyEl && String(qtyEl.value || '').trim() === '') {
-      qtyEl.value = '1';
-    }
-    var deliveryEl = row.querySelector('.sq-mat-delivery');
-    if (deliveryEl) deliveryEl.value = '0.00';
-    clearCatalogSelection(row);
-  }
-
-  function syncMatDetailsVisibility(row) {
-    var checked = row.querySelector('.sq-mat-source-radio:checked');
-    var mode = checked ? checked.value : 'manual';
-    var isCatalog = mode === 'catalog';
-    var details = row.querySelector('.sq-mat-details-panel');
-    var emptyHint = row.querySelector('.sq-mat-catalog-empty');
-    var showDetails = !isCatalog || rowHasMaterialContent(row);
-    if (details) details.hidden = !showDetails;
-    if (emptyHint) emptyHint.hidden = !isCatalog || showDetails;
-  }
-
-  function syncMatSourceUI(row, options) {
-    var opts = options || {};
-    var checked = row.querySelector('.sq-mat-source-radio:checked');
-    var mode = checked ? checked.value : 'manual';
-    var catalogWrap = row.querySelector('.sq-mat-catalog-wrap');
-    var isCatalog = mode === 'catalog';
-    var isElectrical = mode === 'electrical';
-    row.classList.toggle('sq-material-row--electrical', isElectrical);
-    var shortField = row.querySelector('.sq-mat-field--short-name');
-    var urlRow = row.querySelector('.sq-mat-row--url');
-    if (shortField) shortField.hidden = isElectrical;
-    if (urlRow) urlRow.hidden = isElectrical;
-    if (catalogWrap) catalogWrap.hidden = !isCatalog;
-    if (!isCatalog) {
-      destroyCatalogPicker(row);
-      if (!isElectrical) {
-        var deliveryEl = row.querySelector('.sq-mat-delivery');
-        if (deliveryEl) deliveryEl.value = '0.00';
-      }
-    } else {
-      initCatalogPicker(row);
-    }
-    if (isElectrical) {
-      applyElectricalDefaults(row, !!opts.forceElectricalDescription);
-    }
-    syncMatDetailsVisibility(row);
-    syncImagePreview(row);
-  }
-
-  function applyCatalogToRow(row, item) {
-    var deliveryEl = row.querySelector('.sq-mat-delivery');
-    if (!item) {
-      if (deliveryEl) deliveryEl.value = '0.00';
-      syncMatDetailsVisibility(row);
-      recalcMaterials();
-      return;
-    }
-    var shortEl = row.querySelector('.sq-mat-short-name');
-    var descEl = row.querySelector('.sq-mat-desc');
-    var unitEl = row.querySelector('.sq-mat-unit');
-    var urlEl = row.querySelector('.sq-mat-url');
-    if (shortEl) shortEl.value = item.name || '';
-    if (descEl) {
-      descEl.value = item.description || item.store_name || item.name || '';
-    }
-    if (unitEl) unitEl.value = item.price || '';
-    if (deliveryEl) deliveryEl.value = item.delivery || '0.00';
-    if (urlEl) {
-      urlEl.value = item.url || '';
-      syncUrlOpenLink(urlEl);
-    }
-    var imageEl = row.querySelector('.sq-mat-image-url');
-    if (imageEl) imageEl.value = item.image || '';
-    syncImagePreview(row);
-    if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function' && unitEl) {
-      window.cpMoneyMask.wire([unitEl]);
-    }
-    syncMatDetailsVisibility(row);
-    recalcMaterials();
-  }
-
-  function initCatalogPicker(row) {
-    var checked = row.querySelector('.sq-mat-source-radio:checked');
-    if (!checked || checked.value !== 'catalog') return;
-    var root = catalogRoot(row);
-    if (!root || !window.AdminSearchSelect) return;
-    AdminSearchSelect.init(root);
-  }
-
-  function initMaterialRow(row) {
-    syncMatSourceUI(row);
-    syncImagePreview(row);
-    row.querySelectorAll('.sq-mat-source-radio').forEach(function (radio) {
-      if (radio.dataset.sqSourceBound === '1') return;
-      radio.dataset.sqSourceBound = '1';
-      radio.addEventListener('change', function () {
-        syncMatSourceUI(row, { forceElectricalDescription: this.value === 'electrical' });
-        recalcMaterials();
-      });
-    });
-  }
-
-  function reindexMaterialNames() {
-    var rows = list.querySelectorAll('.sq-material-row');
-    rows.forEach(function (row, i) {
-      destroyCatalogPicker(row);
-      row.querySelectorAll('[name]').forEach(function (el) {
-        el.name = el.name.replace(/materials\[\d+]/, 'materials[' + i + ']');
-        el.name = el.name.replace(/materials\[__I__]/, 'materials[' + i + ']');
-      });
-      initMaterialRow(row);
-    });
-  }
-
-  function addRow() {
-    var html = template.innerHTML.replace(/__I__/g, String(list.querySelectorAll('.sq-material-row').length));
-    var wrap = document.createElement('div');
-    wrap.innerHTML = html.trim();
-    var newRow = wrap.firstElementChild;
-    list.appendChild(newRow);
-    reindexMaterialNames();
-    if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
-      window.cpMoneyMask.wire(newRow.querySelectorAll('.cp-money-input'));
-    }
-    recalcMaterials();
-  }
-
-  list.addEventListener('click', function (e) {
-    var rm = e.target.closest('.sq-remove-material');
-    if (!rm) return;
-    var row = rm.closest('.sq-material-row');
-    if (!row) return;
-    if (list.querySelectorAll('.sq-material-row').length <= 1) return;
-    destroyCatalogPicker(row);
-    row.remove();
-    reindexMaterialNames();
-    recalcMaterials();
-  });
-
-  if (addBtn) addBtn.addEventListener('click', addRow);
-
-  list.addEventListener('admin-search-select:change', function (e) {
-    var row = e.target && e.target.closest ? e.target.closest('.sq-material-row') : null;
-    if (!row) return;
-    var option = e.detail && e.detail.option
-      ? e.detail.option
-      : (e.detail && e.detail.id ? sqCatalogOptionMap[String(e.detail.id)] : null);
-    applyCatalogToRow(row, option);
-  });
-
-  // Strip anything that isn't a digit or a single decimal point from the
-  // material-row qty inputs. We use type=text so we can fully control what
-  // gets accepted, including supporting decimals like "1.5". Mobile keyboards
-  // still come up numeric thanks to inputmode="decimal".
-  function sanitizeDecimalInput(input) {
-    var raw = input.value;
-    // Remove any character that isn't 0-9 or ".".
-    var cleaned = raw.replace(/[^0-9.]/g, '');
-    // Collapse repeated dots: keep only the first one.
-    var firstDot = cleaned.indexOf('.');
-    if (firstDot !== -1) {
-      cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
-    }
-    if (cleaned !== raw) {
-      var pos = input.selectionStart;
-      input.value = cleaned;
-      // Best-effort caret restore (may be off by 1 if chars were stripped).
-      try { input.setSelectionRange(pos - (raw.length - cleaned.length), pos - (raw.length - cleaned.length)); } catch (_) {}
-    }
-  }
-
-  function syncUrlOpenLink(input) {
-    var control = input.closest('.sq-mat-url-control');
-    if (!control) return;
-    var open = control.querySelector('.sq-mat-url-open');
-    if (!open) return;
-    var val = String(input.value || '').trim();
-    if (val === '') {
-      open.hidden = true;
-      open.setAttribute('href', '#');
-    } else {
-      open.hidden = false;
-      open.setAttribute('href', val);
-    }
-  }
-
-  function syncImagePreview(row) {
-    if (!row) return;
-    var input = row.querySelector('.sq-mat-image-url');
-    var wrap = row.querySelector('.sq-mat-thumb');
-    var img = row.querySelector('.sq-mat-thumb-img');
-    if (!wrap || !img) return;
-    var checked = row.querySelector('.sq-mat-source-radio:checked');
-    var isElectrical = checked && checked.value === 'electrical';
-    var val = input ? String(input.value || '').trim() : '';
-    if (isElectrical || val === '' || !/^https?:\/\//i.test(val)) {
-      wrap.hidden = true;
-      img.removeAttribute('src');
-      return;
-    }
-    img.onload = function () {
-      wrap.hidden = false;
-    };
-    img.onerror = function () {
-      wrap.hidden = true;
-    };
-    wrap.hidden = false;
-    if (img.getAttribute('src') !== val) {
-      img.src = val;
-    } else if (img.complete && img.naturalWidth === 0) {
-      wrap.hidden = true;
-    }
-  }
-
-  document.getElementById('sq-standard-form').addEventListener('input', function (e) {
-    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-qty')) {
-      sanitizeDecimalInput(e.target);
-    }
-    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-url')) {
-      syncUrlOpenLink(e.target);
-    }
-    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-image-url')) {
-      var imageRow = e.target.closest('.sq-material-row');
-      if (imageRow) syncImagePreview(imageRow);
-    }
-    if (e.target && e.target.id === 'sq-contingency-percent') {
-      sanitizeDecimalInput(e.target);
-    }
-    if (e.target && e.target.closest('#sq-materials-list, #sq-labour-rate, #sq-labour-qty, #sq-contingency-block, #sq-labour-fixed-fields')) {
-      recalcMaterials();
-    }
-  });
-  document.getElementById('sq-standard-form').addEventListener('paste', function (e) {
-    if (!e.target || !e.target.classList || !e.target.classList.contains('sq-mat-image-url')) return;
-    var pastedRow = e.target.closest('.sq-material-row');
-    if (!pastedRow) return;
-    setTimeout(function () { syncImagePreview(pastedRow); }, 0);
-  });
-  document.getElementById('sq-standard-form').addEventListener('change', function (e) {
-    if (e.target && (
-        e.target.classList.contains('sq-mat-hst-cb') ||
-        e.target.classList.contains('sq-mat-hst-inclusive-cb') ||
-        e.target.classList.contains('sq-labour-mode') ||
-        e.target.id === 'sq-contingency-enabled' ||
-        e.target.id === 'sq-labour-use-fixed' ||
-        e.target.classList.contains('sq-labour-fixed-hst-inc-cb')
-    )) {
-      if (e.target.id === 'sq-labour-use-fixed') syncFixedLabourUI();
-      recalcMaterials();
-    }
-  });
-
-  modeRadios.forEach(function (r) {
-    r.addEventListener('change', recalcMaterials);
-  });
-
-  list.querySelectorAll('.sq-material-row').forEach(initMaterialRow);
-
-  syncFixedLabourUI();
-  recalcMaterials();
-
-  document.addEventListener('commute-expense:change', function (e) {
-    var d = e.detail || {};
-    lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
-    recalcMaterials();
-  });
-  document.addEventListener('debris-removal:change', function (e) {
-    var d = e.detail || {};
-    lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
-    recalcMaterials();
-  });
-})();
-</script>
+<script src="{{ asset('js/admin-standard-quotation.js') }}?v={{ @filemtime(public_path('js/admin-standard-quotation.js')) ?: time() }}"></script>
 @endpush

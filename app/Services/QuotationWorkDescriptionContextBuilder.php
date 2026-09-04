@@ -246,6 +246,18 @@ class QuotationWorkDescriptionContextBuilder
             }
         }
 
+        $jobs = is_array($c['jobs'] ?? null) ? $c['jobs'] : [];
+        if (count($jobs) > 1) {
+            $lines[] = 'Jobs:';
+            foreach ($jobs as $i => $job) {
+                if (! is_array($job)) {
+                    continue;
+                }
+                $title = trim((string) ($job['title'] ?? ''));
+                $lines[] = '  - '.($title !== '' ? $title : 'Job '.($i + 1));
+            }
+        }
+
         if (filter_var($c['contingency_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $this->appendLine($lines, 'Contingency allowance', ($c['contingency_percent'] ?? '').'%');
         }

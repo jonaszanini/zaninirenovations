@@ -1,6 +1,10 @@
 @php
-  $catalogMaterialId = old('materials.'.$i.'.catalog_material_id', $row['catalog_material_id'] ?? '');
-  $postedMode = old('materials.'.$i.'.entry_mode');
+  $workIndex = $workIndex ?? 0;
+  $namePrefix = 'works['.$workIndex.'][materials]['.$i.']';
+  $oldDot = 'works.'.$workIndex.'.materials.'.$i;
+  $catalogId = 'sq-mat-catalog-w'.$workIndex.'-'.$i;
+  $catalogMaterialId = old($oldDot.'.catalog_material_id', $row['catalog_material_id'] ?? '');
+  $postedMode = old($oldDot.'.entry_mode');
   if ($postedMode !== null) {
       $sourceMode = in_array($postedMode, ['electrical', 'catalog', 'manual'], true) ? $postedMode : 'manual';
   } elseif (\App\Models\StandardQuotation::isElectricalMaterialRow($row)) {
@@ -31,17 +35,17 @@
         </div>
         <div class="sq-mat-mode-segment" role="radiogroup" aria-label="How to add this line">
           <label class="sq-mat-mode-segment__item">
-            <input type="radio" name="materials[{{ $i }}][entry_mode]" value="manual"
+            <input type="radio" name="{{ $namePrefix }}[entry_mode]" value="manual"
                    class="sq-mat-source-radio" @checked($sourceMode === 'manual')>
             <span>Type manually</span>
           </label>
           <label class="sq-mat-mode-segment__item">
-            <input type="radio" name="materials[{{ $i }}][entry_mode]" value="catalog"
+            <input type="radio" name="{{ $namePrefix }}[entry_mode]" value="catalog"
                    class="sq-mat-source-radio" @checked($sourceMode === 'catalog')>
             <span>From Materials DB</span>
           </label>
           <label class="sq-mat-mode-segment__item">
-            <input type="radio" name="materials[{{ $i }}][entry_mode]" value="electrical"
+            <input type="radio" name="{{ $namePrefix }}[entry_mode]" value="electrical"
                    class="sq-mat-source-radio" @checked($sourceMode === 'electrical')>
             <span>Electrical work</span>
           </label>
@@ -54,10 +58,10 @@
 
     <div class="sq-mat-catalog-wrap" @if ($sourceMode !== 'catalog') hidden @endif>
       <div class="admin-form-group sq-mat-catalog-group">
-        <label class="sq-mat-catalog-label" for="sq-mat-catalog-{{ $i }}-input">Search materials</label>
+        <label class="sq-mat-catalog-label" for="{{ $catalogId }}-input">Search materials</label>
         @include('admin.partials.search_select', [
-          'id' => 'sq-mat-catalog-'.$i,
-          'name' => 'materials['.$i.'][catalog_material_id]',
+          'id' => $catalogId,
+          'name' => $namePrefix.'[catalog_material_id]',
           'value' => (int) $catalogMaterialId ?: '',
           'hideLabel' => true,
           'placeholder' => 'Search name or SKU…',
@@ -77,28 +81,28 @@
       <div class="sq-mat-row sq-mat-row--inputs">
         <div class="sq-mat-field sq-mat-field--short-name" @if ($sourceMode === 'electrical') hidden @endif>
           <label>Short name</label>
-          <input type="text" name="materials[{{ $i }}][short_name]" class="admin-input sq-mat-short-name"
+          <input type="text" name="{{ $namePrefix }}[short_name]" class="admin-input sq-mat-short-name"
                  maxlength="60" placeholder="e.g. Paint, Primer"
                  value="{{ $row['short_name'] ?? '' }}">
         </div>
         <div class="sq-mat-field sq-mat-field--description">
           <label>Description</label>
-          <input type="text" name="materials[{{ $i }}][description]" class="admin-input sq-mat-desc"
+          <input type="text" name="{{ $namePrefix }}[description]" class="admin-input sq-mat-desc"
                  maxlength="500" placeholder="{{ $sourceMode === 'electrical' ? \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION : 'Material or item' }}"
                  value="{{ $descriptionValue }}">
         </div>
         <div class="sq-mat-field sq-mat-field--unit">
           <label>Unit price ($)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" name="materials[{{ $i }}][unit_price]"
+          <input type="text" inputmode="decimal" autocomplete="off" name="{{ $namePrefix }}[unit_price]"
                  class="admin-input cp-money-input sq-mat-unit" placeholder="0.00"
                  value="{{ isset($row['unit_price']) && $row['unit_price'] !== '' ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
-          <input type="hidden" name="materials[{{ $i }}][delivery_cad]" class="sq-mat-delivery"
+          <input type="hidden" name="{{ $namePrefix }}[delivery_cad]" class="sq-mat-delivery"
                  value="{{ isset($row['delivery_cad']) && $row['delivery_cad'] !== '' ? number_format((float) $row['delivery_cad'], 2, '.', '') : '0.00' }}">
         </div>
         <div class="sq-mat-field sq-mat-field--qty">
           <label>Qty</label>
           <input type="text" inputmode="decimal" autocomplete="off"
-                 name="materials[{{ $i }}][quantity]"
+                 name="{{ $namePrefix }}[quantity]"
                  class="admin-input sq-mat-qty" placeholder="1"
                  value="{{ $row['quantity'] ?? '' }}">
         </div>
@@ -113,7 +117,7 @@
           <label>Product URL <span class="sq-mat-optional">(optional)</span></label>
           <div class="sq-mat-url-control">
             <input type="url" inputmode="url" autocomplete="off"
-                   name="materials[{{ $i }}][url]"
+                   name="{{ $namePrefix }}[url]"
                    class="admin-input sq-mat-url" maxlength="2000"
                    placeholder="https://supplier.com/product"
                    value="{{ $row['url'] ?? '' }}">
@@ -128,7 +132,7 @@
         <div class="sq-mat-field sq-mat-field--image-url">
           <label>Image URL <span class="sq-mat-optional">(optional)</span></label>
           <input type="url" inputmode="url" autocomplete="off"
-                 name="materials[{{ $i }}][image_url]"
+                 name="{{ $namePrefix }}[image_url]"
                  class="admin-input sq-mat-image-url" maxlength="2000"
                  placeholder="https://supplier.com/image.jpg"
                  value="{{ $row['image_url'] ?? '' }}">
@@ -151,15 +155,15 @@
         <div class="sq-mat-field sq-mat-field--apply">
           <span class="sq-mat-hst-toggles-label">Tax on this line</span>
           <div class="sq-mat-hst-toggles">
-            <input type="hidden" name="materials[{{ $i }}][hst_includes_unit]" value="0">
+            <input type="hidden" name="{{ $namePrefix }}[hst_includes_unit]" value="0">
             <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
-              <input type="checkbox" name="materials[{{ $i }}][hst_includes_unit]" value="1" class="admin-checkbox__input sq-mat-hst-inclusive-cb" @checked($hstInc)>
+              <input type="checkbox" name="{{ $namePrefix }}[hst_includes_unit]" value="1" class="admin-checkbox__input sq-mat-hst-inclusive-cb" @checked($hstInc)>
               <span class="admin-checkbox__mark" aria-hidden="true"></span>
               <span class="admin-checkbox__text">Price includes HST</span>
             </label>
-            <input type="hidden" name="materials[{{ $i }}][apply_hst]" value="0">
+            <input type="hidden" name="{{ $namePrefix }}[apply_hst]" value="0">
             <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
-              <input type="checkbox" name="materials[{{ $i }}][apply_hst]" value="1" class="admin-checkbox__input sq-mat-hst-cb" @checked($apply)>
+              <input type="checkbox" name="{{ $namePrefix }}[apply_hst]" value="1" class="admin-checkbox__input sq-mat-hst-cb" @checked($apply)>
               <span class="admin-checkbox__mark" aria-hidden="true"></span>
               <span class="admin-checkbox__text">Add 13% HST</span>
             </label>

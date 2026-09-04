@@ -96,4 +96,64 @@ class StandardQuotationCalculatorTest extends TestCase
         $this->assertSame('https://supplier.com/image.jpg', $computed['materials'][0]['image_url']);
         $this->assertSame('https://supplier.com/product', $computed['materials'][0]['url']);
     }
+
+    public function test_compute_works_sums_jobs_and_applies_quote_level_contingency(): void
+    {
+        $calc = new StandardQuotationCalculator();
+        $job1Rows = [[
+            'short_name' => 'Vanity',
+            'description' => '',
+            'unit_price' => 200,
+            'quantity' => 1,
+            'apply_hst' => true,
+        ]];
+        $job2Rows = [[
+            'short_name' => 'Towel bar',
+            'description' => '',
+            'unit_price' => 40,
+            'quantity' => 1,
+            'apply_hst' => true,
+        ]];
+
+        $job1 = $calc->compute($job1Rows, 65, 'hours', 2, false, 0);
+        $job2 = $calc->compute($job2Rows, 0, 'hours', 0, false, 0, true, 80, false);
+
+        $computed = $calc->computeWorks([
+            [
+                'title' => 'Replace vanity',
+                'materials' => $job1Rows,
+                'labour_hourly_rate' => 65,
+                'labour_mode' => 'hours',
+                'labour_quantity' => 2,
+                'labour_use_fixed' => false,
+            ],
+            [
+                'title' => 'Install towel bar',
+                'materials' => $job2Rows,
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 80,
+                'labour_fixed_hst_included' => false,
+            ],
+        ], true, 10);
+
+        $this->assertCount(2, $computed['works']);
+        $this->assertSame('Replace vanity', $computed['works'][0]['title']);
+        $this->assertEqualsWithDelta(240.0, $computed['materials_subtotal_before_hst'], 0.01);
+        $this->assertEqualsWithDelta(24.0, $computed['contingency_amount'], 0.01);
+        $this->assertEqualsWithDelta(
+            round($job1['labour_total'] + $job2['labour_total'], 2),
+            $computed['labour_total'],
+            0.01
+        );
+        $this->assertEqualsWithDelta(
+            round($job1['labour_hst'] + $job2['labour_hst'], 2),
+            $computed['labour_hst'],
+            0.01
+        );
+        $this->assertEqualsWithDelta(
+            round($computed['materials_with_hst'] + $computed['labour_total'] + $computed['labour_hst'], 2),
+            $computed['grand_total'],
+            0.01
+        );
+    }
 }

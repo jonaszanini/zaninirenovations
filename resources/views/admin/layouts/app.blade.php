@@ -6,6 +6,15 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="robots" content="noindex, nofollow">
   <title>Zanini Renovations</title>
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('zanini-admin-theme') === 'dark') {
+          document.documentElement.classList.add('admin-dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
   <link rel="stylesheet" href="{{ asset('css/font-awesome.min.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) ?: time() }}">
@@ -31,8 +40,14 @@
   <link rel="stylesheet" href="{{ asset('css/admin-blog.css') }}?v={{ @filemtime(public_path('css/admin-blog.css')) ?: time() }}">
   @endif
   @stack('head')
+  <link rel="stylesheet" href="{{ asset('css/admin-dark.css') }}?v={{ @filemtime(public_path('css/admin-dark.css')) ?: time() }}">
 </head>
 <body class="admin-body">
+  <script>
+    if (document.documentElement.classList.contains('admin-dark')) {
+      document.body.classList.add('admin-dark');
+    }
+  </script>
   <div class="admin-app" id="admin-app">
     <div class="admin-nav-backdrop" id="admin-nav-backdrop" aria-hidden="true" hidden></div>
     <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
@@ -254,6 +269,22 @@
         @endif
       </ul>
       <div class="admin-sidebar-footer">
+        <div class="admin-theme-toggle">
+          <button type="button"
+                  class="admin-theme-toggle__btn"
+                  id="admin-theme-toggle"
+                  role="switch"
+                  aria-checked="false"
+                  aria-pressed="false"
+                  aria-label="Switch to dark theme">
+            <span class="admin-theme-toggle__icon" aria-hidden="true">
+              <i class="fa fa-moon-o" data-theme-icon="moon"></i>
+              <i class="fa fa-sun-o" data-theme-icon="sun" hidden></i>
+            </span>
+            <span class="admin-theme-toggle__label">Dark theme</span>
+            <span class="admin-theme-toggle__switch" aria-hidden="true"></span>
+          </button>
+        </div>
         <div class="admin-sidebar-user">{{ auth()->user()->email }}</div>
         <form action="{{ route('admin.logout') }}" method="post">
           @csrf
@@ -314,6 +345,7 @@
     </div>
   </div>
 
+  <script src="{{ asset('js/admin-theme.js') }}?v={{ @filemtime(public_path('js/admin-theme.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-dialog.js') }}?v={{ @filemtime(public_path('js/admin-dialog.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-search-select.js') }}?v={{ @filemtime(public_path('js/admin-search-select.js')) ?: time() }}"></script>
   <script>

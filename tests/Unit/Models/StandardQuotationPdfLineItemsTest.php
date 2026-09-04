@@ -190,4 +190,73 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertEqualsWithDelta(40.0, $byDesc['Material — HST exempt']['amount'], 0.01);
         $this->assertFalse($byDesc['Material — HST exempt']['apply_hst']);
     }
+
+    public function test_multi_job_pdf_lists_each_job_material_and_labour(): void
+    {
+        $quote = new StandardQuotation([
+            'works' => [
+                [
+                    'title' => 'Replace vanity',
+                    'materials' => [
+                        [
+                            'short_name' => 'Vanity',
+                            'unit_price' => 200,
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                        ],
+                    ],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 150,
+                    'labour_fixed_hst_included' => false,
+                    'labour_hourly_rate' => 0,
+                    'labour_mode' => 'hours',
+                    'labour_quantity' => 0,
+                ],
+                [
+                    'title' => 'Install towel bar',
+                    'materials' => [
+                        [
+                            'short_name' => 'Bar',
+                            'unit_price' => 40,
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                        ],
+                    ],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 80,
+                    'labour_fixed_hst_included' => false,
+                    'labour_hourly_rate' => 0,
+                    'labour_mode' => 'hours',
+                    'labour_quantity' => 0,
+                ],
+            ],
+            'contingency_enabled' => true,
+            'contingency_percent' => 10,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $this->assertTrue($quote->hasMultipleWorks());
+        $lines = $quote->detailedPdfLineItems();
+        $descriptions = array_column($lines, 'description');
+
+        $this->assertSame('Replace vanity', $descriptions[0]);
+        $this->assertTrue(! empty($lines[0]['is_heading']));
+        $this->assertContains('Install towel bar', $descriptions);
+        $this->assertNotContains('Vanity', $descriptions);
+        $this->assertNotContains('Bar', $descriptions);
+
+        $materialLines = array_values(array_filter($lines, fn ($row) => ($row['description'] ?? '') === 'Material'));
+        $this->assertCount(2, $materialLines);
+        $this->assertEqualsWithDelta(220.0, $materialLines[0]['amount'], 0.01);
+        $this->assertEqualsWithDelta(44.0, $materialLines[1]['amount'], 0.01);
+
+        $labourLines = array_values(array_filter(
+            $lines,
+            fn ($row) => str_starts_with((string) ($row['description'] ?? ''), 'Labour')
+        ));
+        $this->assertCount(2, $labourLines);
+        $this->assertEqualsWithDelta(150.0, $labourLines[0]['amount'], 0.01);
+        $this->assertEqualsWithDelta(80.0, $labourLines[1]['amount'], 0.01);
+    }
 }

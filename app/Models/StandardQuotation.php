@@ -40,6 +40,7 @@ class StandardQuotation extends Model
         'includes_labour',
         'pdf_detail_mode',
         'materials',
+        'works',
         'labour_mode',
         'labour_quantity',
         'labour_hours',
@@ -72,6 +73,7 @@ class StandardQuotation extends Model
         'includes_material' => 'boolean',
         'includes_labour' => 'boolean',
         'materials' => 'array',
+        'works' => 'array',
         'labour_quantity' => 'decimal:2',
         'labour_hours' => 'decimal:2',
         'labour_hourly_rate' => 'decimal:2',
@@ -168,20 +170,64 @@ class StandardQuotation extends Model
     }
 
     /**
+     * Jobs for editing/PDF. Legacy quotes (no `works` JSON) wrap the root
+     * materials + labour columns as a single job.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function resolvedWorks(): array
+    {
+        $works = $this->works;
+        if (is_array($works) && $works !== []) {
+            return array_values($works);
+        }
+
+        return [[
+            'title' => '',
+            'materials' => is_array($this->materials) ? $this->materials : [],
+            'labour_mode' => $this->labour_mode ?? 'hours',
+            'labour_quantity' => $this->labour_quantity,
+            'labour_hourly_rate' => $this->labour_hourly_rate,
+            'labour_use_fixed' => (bool) $this->labour_use_fixed,
+            'labour_fixed_amount' => $this->labour_fixed_amount,
+            'labour_fixed_hst_included' => (bool) $this->labour_fixed_hst_included,
+        ]];
+    }
+
+    public function hasMultipleWorks(): bool
+    {
+        return count($this->resolvedWorks()) >= 2;
+    }
+
+    /**
+     * Material rows from every job (legacy quotes: the root `materials` column).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function flattenedMaterials(): array
+    {
+        $out = [];
+        foreach ($this->resolvedWorks() as $work) {
+            $mats = is_array($work['materials'] ?? null) ? $work['materials'] : [];
+            foreach ($mats as $row) {
+                if (is_array($row)) {
+                    $out[] = $row;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function computedTotals(): array
     {
-        return (new StandardQuotationCalculator)->compute(
-            is_array($this->materials) ? $this->materials : [],
-            (float) $this->labour_hourly_rate,
-            (string) ($this->labour_mode ?? 'hours'),
-            (float) $this->labour_quantity,
+        return (new StandardQuotationCalculator)->computeWorks(
+            $this->resolvedWorks(),
             (bool) $this->contingency_enabled,
             (float) ($this->contingency_percent ?? 0),
-            (bool) $this->labour_use_fixed,
-            (float) ($this->labour_fixed_amount ?? 0),
-            (bool) ($this->labour_fixed_hst_included ?? false),
         );
     }
 
@@ -218,12 +264,17 @@ class StandardQuotation extends Model
     /**
      * Client PDF rows: one Material subtotal (not each SKU; contingency is
      * folded in, not shown as its own line), electrical work as its own
-     * line(s), then labour.
+     * line(s), then labour. Two or more jobs list each job with its own
+     * material and labour amounts.
      *
-     * @return list<array{description: string, amount: float, apply_hst: bool}>
+     * @return list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>
      */
     public function detailedPdfLineItems(): array
     {
+        if ($this->hasMultipleWorks()) {
+            return $this->multiJobPdfLineItems();
+        }
+
         $computed = $this->computedTotals();
         $lines = [];
 
@@ -287,7 +338,12 @@ class StandardQuotation extends Model
 
         if ((float) $computed['labour_total'] > 0) {
             $lines[] = [
-                'description' => self::labourPdfDescription($this, $computed),
+                'description' => self::labourPdfDescriptionFromFields(
+                    (bool) $this->labour_use_fixed,
+                    (string) ($this->labour_mode ?? 'hours'),
+                    (float) $this->labour_quantity,
+                    (float) $this->labour_hourly_rate
+                ),
                 'amount' => round((float) $computed['labour_total'], 2),
                 'apply_hst' => true,
             ];
@@ -316,19 +372,162 @@ class StandardQuotation extends Model
     }
 
     /**
-     * @param  array<string, mixed>  $computed
+     * @return list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>
      */
-    protected static function labourPdfDescription(self $sq, array $computed): string
+    protected function multiJobPdfLineItems(): array
     {
-        if ($sq->labour_use_fixed) {
+        $computed = $this->computedTotals();
+        $jobs = is_array($computed['works'] ?? null) ? $computed['works'] : [];
+        $lines = [];
+        $totalMatPre = (float) ($computed['materials_subtotal_before_hst'] ?? 0);
+        $contAmt = ! empty($computed['contingency_enabled'])
+            ? (float) ($computed['contingency_amount'] ?? 0)
+            : 0.0;
+        $contTaxable = $contAmt > 0 ? (float) ($computed['contingency_amount_taxable'] ?? 0) : 0.0;
+        $allocatedCont = 0.0;
+        $allocatedContTax = 0.0;
+        $jobCount = count($jobs);
+
+        foreach ($jobs as $idx => $job) {
+            if (! is_array($job)) {
+                continue;
+            }
+
+            $title = trim((string) ($job['title'] ?? ''));
+            if ($title === '') {
+                $title = 'Job '.($idx + 1);
+            }
+
+            $lines[] = [
+                'description' => $title,
+                'amount' => 0.0,
+                'apply_hst' => false,
+                'is_heading' => true,
+            ];
+
+            $jobMatPre = (float) ($job['materials_subtotal_before_hst'] ?? 0);
+            $isLast = $idx === $jobCount - 1;
+            if ($totalMatPre > 0 && $contAmt > 0) {
+                if ($isLast) {
+                    $jobCont = round($contAmt - $allocatedCont, 2);
+                    $jobContTax = round($contTaxable - $allocatedContTax, 2);
+                } else {
+                    $ratio = $jobMatPre / $totalMatPre;
+                    $jobCont = round($contAmt * $ratio, 2);
+                    $jobContTax = round($contTaxable * $ratio, 2);
+                    $allocatedCont += $jobCont;
+                    $allocatedContTax += $jobContTax;
+                }
+            } else {
+                $jobCont = 0.0;
+                $jobContTax = 0.0;
+            }
+            $jobContExempt = round($jobCont - $jobContTax, 2);
+
+            $taxable = 0.0;
+            $exempt = 0.0;
+            $electricalLines = [];
+
+            foreach ($job['materials'] ?? [] as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                $amount = round((float) ($row['line_subtotal'] ?? 0), 2);
+                if ($amount <= 0) {
+                    continue;
+                }
+
+                if (self::isElectricalMaterialRow($row)) {
+                    $desc = trim((string) ($row['description'] ?? ''));
+                    $electricalLines[] = [
+                        'description' => $desc !== '' ? $desc : self::ELECTRICAL_LINE_DESCRIPTION,
+                        'amount' => $amount,
+                        'apply_hst' => (bool) ($row['apply_hst'] ?? true),
+                    ];
+                    continue;
+                }
+
+                if (filter_var($row['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+                    $taxable += $amount;
+                } else {
+                    $exempt += $amount;
+                }
+            }
+
+            $taxable = round($taxable + $jobContTax, 2);
+            $exempt = round($exempt + $jobContExempt, 2);
+
+            if ($taxable > 0) {
+                $lines[] = [
+                    'description' => 'Material',
+                    'amount' => $taxable,
+                    'apply_hst' => true,
+                ];
+            }
+            if ($exempt > 0) {
+                $lines[] = [
+                    'description' => $taxable > 0 ? 'Material — HST exempt' : 'Material',
+                    'amount' => $exempt,
+                    'apply_hst' => false,
+                ];
+            }
+
+            foreach ($electricalLines as $electricalLine) {
+                $lines[] = $electricalLine;
+            }
+
+            if ((float) ($job['labour_total'] ?? 0) > 0) {
+                $lines[] = [
+                    'description' => self::labourPdfDescriptionFromFields(
+                        (bool) ($job['labour_use_fixed'] ?? false),
+                        (string) ($job['labour_mode'] ?? 'hours'),
+                        (float) ($job['labour_quantity'] ?? 0),
+                        (float) ($job['labour_hourly_rate'] ?? 0)
+                    ),
+                    'amount' => round((float) $job['labour_total'], 2),
+                    'apply_hst' => true,
+                ];
+            }
+        }
+
+        if ($this->include_commute && (float) $this->commute_amount > 0) {
+            $commuteLine = \App\Services\CommuteExpenseService::projectLineItem(
+                (float) $this->commute_amount,
+                (int) ($this->commute_estimated_trips ?? 1)
+            );
+            if ($commuteLine !== null) {
+                $lines[] = $commuteLine;
+            }
+        }
+
+        if ($this->include_debris_removal && (float) $this->debris_removal_amount > 0) {
+            $debrisLine = \App\Services\DebrisRemovalExpenseService::projectLineItem(
+                (float) $this->debris_removal_amount
+            );
+            if ($debrisLine !== null) {
+                $lines[] = $debrisLine;
+            }
+        }
+
+        return $lines;
+    }
+
+    protected static function labourPdfDescriptionFromFields(
+        bool $useFixed,
+        string $mode,
+        float $qty,
+        float $rate
+    ): string {
+        if ($useFixed) {
             return 'Labour (flat fee)';
         }
 
-        $mode = ($sq->labour_mode ?? 'hours') === 'days' ? 'days' : 'hours';
-        $qtyLabel = self::formatPdfQty((float) $sq->labour_quantity).' '.$mode;
-        $rate = number_format((float) $sq->labour_hourly_rate, 2, '.', ',');
+        $mode = $mode === 'days' ? 'days' : 'hours';
+        $qtyLabel = self::formatPdfQty($qty).' '.$mode;
+        $rateLabel = number_format($rate, 2, '.', ',');
 
-        return 'Labour ('.$qtyLabel.' @ $'.$rate.'/hr)';
+        return 'Labour ('.$qtyLabel.' @ $'.$rateLabel.'/hr)';
     }
 
     protected static function formatPdfQty(float $qty): string

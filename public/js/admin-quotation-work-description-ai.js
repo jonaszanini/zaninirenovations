@@ -166,12 +166,29 @@
       });
     });
 
+    var jobs = [];
+    form.querySelectorAll('.sq-work-card').forEach(function (card) {
+      var title = card.querySelector('.sq-work-title');
+      var useFixed = card.querySelector('.sq-labour-use-fixed-cb');
+      var fixedAmt = card.querySelector('.sq-labour-fixed-amount');
+      var rate = card.querySelector('.sq-labour-rate');
+      var qty = card.querySelector('.sq-labour-qty');
+      jobs.push({
+        title: title ? title.value.trim() : '',
+        labour_use_fixed: !!(useFixed && useFixed.checked),
+        labour_fixed_amount: fixedAmt ? fixedAmt.value.trim() : '',
+        labour_hourly_rate: rate ? rate.value.trim() : '',
+        labour_quantity: qty ? qty.value.trim() : '',
+      });
+    });
+
+    var first = jobs[0] || {};
     var docTypeEl = form.querySelector('input[name="document_type"]:checked');
     var pdfModeEl = form.querySelector('input[name="pdf_detail_mode"]:checked');
 
     var totals = [
       panelText('sq-mat-with-hst') ? 'Materials w/ HST: ' + panelText('sq-mat-with-hst') : '',
-      panelText('sq-labour-with-hst') ? 'Labour w/ HST: ' + panelText('sq-labour-with-hst') : '',
+      panelText('sq-g-labour-total') ? 'Labour w/ HST: ' + panelText('sq-g-labour-total') : '',
       panelText('sq-g-grand') ? 'Grand total: ' + panelText('sq-g-grand') : '',
     ].filter(Boolean).join('; ');
 
@@ -184,11 +201,12 @@
       includes_labour: form.elements['includes_labour'] && form.elements['includes_labour'].checked,
       contingency_enabled: form.elements['contingency_enabled'] && form.elements['contingency_enabled'].checked,
       contingency_percent: formValue(form, 'contingency_percent'),
-      labour_use_fixed: form.elements['sq-labour-use-fixed'] && form.elements['sq-labour-use-fixed'].checked,
-      labour_fixed_amount: formValue(form, 'labour_fixed_amount'),
-      labour_hourly_rate: formValue(form, 'labour_hourly_rate'),
-      labour_quantity: formValue(form, 'labour_quantity'),
+      labour_use_fixed: !!first.labour_use_fixed,
+      labour_fixed_amount: first.labour_fixed_amount || '',
+      labour_hourly_rate: first.labour_hourly_rate || '',
+      labour_quantity: first.labour_quantity || '',
       materials: materials,
+      jobs: jobs,
       totals_summary: totals,
     };
   }

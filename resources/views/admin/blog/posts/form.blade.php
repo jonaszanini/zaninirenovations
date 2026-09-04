@@ -245,6 +245,7 @@
 
       tinymce.init({
         selector: '#bp-editor',
+        skin: document.documentElement.classList.contains('admin-dark') ? 'oxide-dark' : 'oxide',
         menubar: 'edit insert view format table tools',
         plugins: 'advlist autolink lists link image table code preview searchreplace fullscreen visualblocks wordcount paste help',
         toolbar: 'undo redo | blocks | bold italic underline strikethrough | alignleft aligncenter alignright | bullist numlist | link table image | bpwordwrap | removeformat code preview fullscreen help',

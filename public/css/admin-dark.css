@@ -1,0 +1,637 @@
+/* Zanini Renovations — authenticated admin dark theme.
+   Loaded only from admin.layouts.app (after page CSS). All rules are scoped
+   to html.admin-dark so public pages and the login screen are never affected. */
+
+html.admin-dark {
+  color-scheme: dark;
+  scrollbar-color: #334155 #0f172a;
+}
+
+html.admin-dark,
+html.admin-dark body.admin-body {
+  --admin-primary: #38bdf8;
+  --admin-primary-hover: #7dd3fc;
+  --admin-primary-soft: rgba(56, 189, 248, 0.14);
+  --admin-primary-ring: rgba(56, 189, 248, 0.32);
+  --admin-bg: #0f172a;
+  --admin-surface: #1e293b;
+  --admin-surface-hover: #1f2937;
+  --admin-border: #334155;
+  --admin-border-strong: #475569;
+  --admin-text: #e2e8f0;
+  --admin-heading: #f8fafc;
+  --admin-muted: #94a3b8;
+  --admin-input-bg: #0f172a;
+  --admin-elevated: #1e293b;
+  --admin-table-hover: rgba(51, 65, 85, 0.45);
+  --admin-danger: #f87171;
+  --admin-chevron-color: #38bdf8;
+  --admin-danger-soft: rgba(248, 113, 113, 0.16);
+  --admin-success: #4ade80;
+  --admin-success-soft: rgba(74, 222, 128, 0.16);
+  --admin-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --admin-shadow-md: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --admin-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+html.admin-dark body.admin-body {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+html.admin-dark .admin-content h1,
+html.admin-dark .admin-content h2,
+html.admin-dark .admin-content h3,
+html.admin-dark .admin-content h4,
+html.admin-dark .admin-content h5,
+html.admin-dark .admin-topbar h1,
+html.admin-dark .admin-dialog-title,
+html.admin-dark .admin-modal-title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .admin-form-group label,
+html.admin-dark .admin-form-group-label,
+html.admin-dark .admin-form-help,
+html.admin-dark .admin-toolbar-lede {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .admin-sidebar-brand {
+  background: #024768;
+}
+
+html.admin-dark .admin-nav a:hover,
+html.admin-dark .admin-nav-details > summary:hover {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .admin-nav a.is-active,
+html.admin-dark .admin-nav-parent.is-active {
+  color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+html.admin-dark .admin-btn--primary,
+html.admin-dark .admin-pagination-nav span[aria-current="page"],
+html.admin-dark .admin-pagination span[aria-current="page"] {
+  background: #024768;
+  color: #fff;
+  border-color: #0369a1;
+}
+
+html.admin-dark .admin-btn--primary:hover {
+  background: #0369a1;
+  color: #fff;
+}
+
+html.admin-dark .admin-btn--outline {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .admin-btn--outline:hover {
+  background: rgba(56, 189, 248, 0.22);
+  color: var(--admin-primary-hover);
+  border-color: var(--admin-primary-hover);
+}
+
+html.admin-dark .admin-btn--secondary {
+  background: var(--admin-surface);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch {
+  background: #024768;
+}
+
+/* Forms */
+html.admin-dark .admin-input,
+html.admin-dark .admin-form-group input[type="text"]:not(.admin-checkbox__input),
+html.admin-dark .admin-form-group input[type="email"],
+html.admin-dark .admin-form-group input[type="url"],
+html.admin-dark .admin-form-group input[type="password"],
+html.admin-dark .admin-form-group input[type="date"],
+html.admin-dark .admin-form-group input[type="datetime-local"],
+html.admin-dark .admin-form-group input[type="time"],
+html.admin-dark .admin-form-group input[type="search"],
+html.admin-dark .admin-form-group input[type="tel"],
+html.admin-dark .admin-form-group input[type="number"],
+html.admin-dark .admin-form-group input[type="file"],
+html.admin-dark .admin-form-group select,
+html.admin-dark .admin-form-group textarea,
+html.admin-dark .admin-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="file"]):not([type="range"]):not([type="color"]),
+html.admin-dark .admin-content select,
+html.admin-dark .admin-content textarea,
+html.admin-dark .admin-topbar input,
+html.admin-dark #admin-dialog input,
+html.admin-dark #admin-dialog textarea,
+html.admin-dark #admin-dialog select {
+  background-color: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+  color-scheme: dark;
+}
+
+html.admin-dark .admin-input:focus,
+html.admin-dark .admin-form-group input:focus:not(.admin-checkbox__input),
+html.admin-dark .admin-form-group select:focus,
+html.admin-dark .admin-form-group textarea:focus,
+html.admin-dark .admin-content input:focus:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]),
+html.admin-dark .admin-content select:focus,
+html.admin-dark .admin-content textarea:focus {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+
+html.admin-dark .admin-input::placeholder,
+html.admin-dark .admin-content input::placeholder,
+html.admin-dark .admin-content textarea::placeholder,
+html.admin-dark .admin-topbar input::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+html.admin-dark input:-webkit-autofill,
+html.admin-dark input:-webkit-autofill:hover,
+html.admin-dark input:-webkit-autofill:focus,
+html.admin-dark textarea:-webkit-autofill,
+html.admin-dark select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #0f172a inset;
+  -webkit-text-fill-color: #f8fafc;
+  caret-color: #f8fafc;
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .admin-body select:not([multiple]):not([size]),
+html.admin-dark .admin-body select:not([multiple])[size="1"],
+html.admin-dark .admin-select,
+html.admin-dark .admin-content select:not([multiple]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 12px 8px;
+  background-color: var(--admin-input-bg);
+}
+
+html.admin-dark .admin-input.is-invalid,
+html.admin-dark .admin-form-group input.is-invalid:not(.admin-checkbox__input),
+html.admin-dark .admin-form-group select.is-invalid,
+html.admin-dark .admin-form-group textarea.is-invalid,
+html.admin-dark input.is-invalid:not(.admin-checkbox__input),
+html.admin-dark select.is-invalid,
+html.admin-dark textarea.is-invalid {
+  border-color: #f87171;
+  background-color: rgba(248, 113, 113, 0.12);
+  color: #fecaca;
+}
+
+html.admin-dark .admin-checkbox__mark,
+html.admin-dark input[type="checkbox"].admin-checkbox__input--standalone {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .admin-checkbox__input:checked + .admin-checkbox__mark,
+html.admin-dark input[type="checkbox"].admin-checkbox__input--standalone:checked {
+  background: #024768;
+  border-color: #0369a1;
+}
+
+html.admin-dark .admin-checkbox-tile {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Tables */
+html.admin-dark .admin-table tr:hover td,
+html.admin-dark .admin-content tr:hover > td {
+  background: var(--admin-table-hover);
+}
+
+html.admin-dark .admin-content table {
+  color: inherit;
+}
+
+html.admin-dark .admin-content th {
+  background-color: var(--admin-surface-hover);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .admin-content td {
+  border-color: var(--admin-border);
+}
+
+/* Alerts */
+html.admin-dark .admin-flash--success {
+  background: var(--admin-success-soft);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+html.admin-dark .admin-flash--error,
+html.admin-dark .admin-flash--danger {
+  background: var(--admin-danger-soft);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+html.admin-dark .admin-flash--warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+html.admin-dark .admin-flash--info {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border-color: var(--admin-primary-ring);
+}
+
+html.admin-dark .cl-duplicate-warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+html.admin-dark .cl-duplicate-warning__title {
+  color: #fcd34d;
+}
+
+html.admin-dark .cl-duplicate-warning__list li {
+  background: var(--admin-surface);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+html.admin-dark .admin-info-tip__bubble,
+html.admin-dark .admin-ai-icon-btn,
+html.admin-dark .admin-ai-instruction-edit-link,
+html.admin-dark .admin-ai-text-history-btn,
+html.admin-dark .admin-ai-text-history-modal {
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .admin-ai-text-history-btn__count {
+  border-color: var(--admin-surface);
+  background: #024768;
+}
+
+/* Dialogs / modals */
+html.admin-dark #admin-dialog .admin-dialog-backdrop,
+html.admin-dark #admin-photo-edit-modal .admin-modal-backdrop,
+html.admin-dark .cp-modal-backdrop,
+html.admin-dark .admin-ai-text-history-backdrop,
+html.admin-dark .admin-nav-backdrop {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+html.admin-dark #admin-dialog .admin-dialog-panel,
+html.admin-dark #admin-photo-edit-modal .admin-modal-panel,
+html.admin-dark .cp-modal,
+html.admin-dark #cp-cancel-modal .cp-status-modal-panel {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark #admin-dialog .admin-dialog-title,
+html.admin-dark #admin-photo-edit-modal .admin-modal-title,
+html.admin-dark .cp-modal-header h3,
+html.admin-dark #cp-cancel-modal .cp-status-modal-title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark #admin-dialog .admin-dialog-message,
+html.admin-dark #admin-photo-edit-modal .admin-modal-hint,
+html.admin-dark #cp-cancel-modal .cp-status-modal-label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark #admin-dialog .admin-dialog-panel--danger .admin-dialog-title {
+  color: #fca5a5;
+}
+
+html.admin-dark #admin-dialog .admin-dialog-icon-wrap--danger {
+  background: rgba(248, 113, 113, 0.16);
+  color: #f87171;
+}
+
+html.admin-dark .cp-modal-header,
+html.admin-dark .cp-modal-footer {
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-modal-close {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-modal-close:hover {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-notes-popover {
+  background: #0b1220;
+  color: var(--admin-heading);
+  border: 1px solid var(--admin-border);
+}
+
+/* Search-select */
+html.admin-dark .admin-search-select__list {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  box-shadow: var(--admin-shadow-md);
+}
+
+html.admin-dark .admin-search-select__option-thumb {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .admin-search-select__option:hover,
+html.admin-dark .admin-search-select__option.is-active {
+  background: var(--admin-primary-soft);
+}
+
+html.admin-dark .admin-search-select__clear:hover,
+html.admin-dark .admin-search-select__clear:focus-visible {
+  color: var(--admin-text);
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete {
+  color-scheme: dark;
+  background-color: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-directory-address-hint {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .admin-badge {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+
+/* Project-page surfaces that still hardcode #fff */
+html.admin-dark .dash-card,
+html.admin-dark .portfolio-admin-card,
+html.admin-dark .fq-hub-card,
+html.admin-dark .cp-profit-tile,
+html.admin-dark .cp-installment-row,
+html.admin-dark .cp-time-entry,
+html.admin-dark .cp-edit-project-actions-aside,
+html.admin-dark .cp-quotation-items-card,
+html.admin-dark .cp-quotation-accordion,
+html.admin-dark .cp-quotation-accordion__empty-body,
+html.admin-dark .cp-quotation-accordion__panel .cp-quotation-preview,
+html.admin-dark .cp-quotation-items tfoot td,
+html.admin-dark #cp-invoice-items tr.cp-quotation-row,
+html.admin-dark .sq-materials-list > .sq-material-card,
+html.admin-dark .sq-mat-readout,
+html.admin-dark .sq-grand-row--commute,
+html.admin-dark .sq-grand-row--final,
+html.admin-dark .sh-choice,
+html.admin-dark .br-progress__item,
+html.admin-dark .cp-calendar-link--btn {
+  background-color: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark a.cp-projects-scope-chip {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark a.cp-projects-scope-chip:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-profit-card {
+  background: var(--admin-surface);
+  border-top-color: #024768;
+}
+
+html.admin-dark .cp-locked {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+html.admin-dark .cp-locked h3 {
+  color: #fbbf24;
+}
+
+html.admin-dark .sq-mat-thumb,
+html.admin-dark .cp-quotation-pdf-photos__item {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
+/* Project-page ink that still hardcodes slate-900 / gray-700 */
+html.admin-dark .admin-form-section h3,
+html.admin-dark .cp-header-name,
+html.admin-dark .cp-header-client,
+html.admin-dark .cp-header-detail__value,
+html.admin-dark .cp-table-project-name,
+html.admin-dark .cp-party-name,
+html.admin-dark .cp-profit-value,
+html.admin-dark .cp-hourly-summary-value,
+html.admin-dark .cp-billing-option strong,
+html.admin-dark .cp-billing-type,
+html.admin-dark .cp-dl dd,
+html.admin-dark .cp-tab,
+html.admin-dark .cp-quotation-accordion__title,
+html.admin-dark .cp-quotation-items-header h4,
+html.admin-dark .cp-quotation-primary-heading,
+html.admin-dark .cp-quotation-primary-heading__display-title,
+html.admin-dark .cp-quotation-control__label,
+html.admin-dark .cp-quotation-totals-row,
+html.admin-dark .cp-installment-label,
+html.admin-dark .cp-time-entry__summary,
+html.admin-dark .cp-helper-entry__name,
+html.admin-dark .cp-visit-toggle__label,
+html.admin-dark .sq-grand-card__title,
+html.admin-dark .sq-grand-row,
+html.admin-dark .sq-work-number,
+html.admin-dark .sq-work-toggle,
+html.admin-dark .q-commute-metric__value {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-projects-scope-label,
+html.admin-dark .cp-hint,
+html.admin-dark .cp-final-dates,
+html.admin-dark .cp-quotation-accordion__desc,
+html.admin-dark .cp-quotation-intro,
+html.admin-dark .cp-quotation-closing,
+html.admin-dark .cp-quotation-work-description-body,
+html.admin-dark .cp-status-form-label,
+html.admin-dark .cp-reopen-form-label,
+html.admin-dark .cp-reopen-note-label,
+html.admin-dark .cp-mark-paid-method-label,
+html.admin-dark .cp-mark-paid-method-option,
+html.admin-dark .cp-mark-paid-project-status-legend,
+html.admin-dark .cp-installments-remaining,
+html.admin-dark .cp-time-entry__note,
+html.admin-dark .cp-time-saved-heading,
+html.admin-dark .cp-calendar-legend,
+html.admin-dark .cp-schedule-summary,
+html.admin-dark .cp-notes-box,
+html.admin-dark .sq-mat-field > label,
+html.admin-dark .sq-mat-catalog-label,
+html.admin-dark .sq-mat-hst-toggles-label,
+html.admin-dark .sq-contingency-help,
+html.admin-dark .q-commute-field__suffix {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-profit-value.is-positive {
+  color: #86efac;
+  background-color: transparent;
+}
+
+html.admin-dark .cp-profit-value.is-negative {
+  color: #fca5a5;
+  background-color: transparent;
+}
+
+html.admin-dark .cp-installments-remaining.is-ok {
+  background-color: rgba(74, 222, 128, 0.14);
+  color: #86efac;
+}
+
+html.admin-dark .cp-installments-remaining.is-error {
+  background-color: rgba(248, 113, 113, 0.14);
+  color: #fca5a5;
+}
+
+html.admin-dark .cp-badge--sent {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+}
+
+html.admin-dark .cp-badge--paid,
+html.admin-dark .cp-badge--hourly,
+html.admin-dark .cp-badge--materials {
+  background: rgba(74, 222, 128, 0.16);
+  color: #86efac;
+}
+
+html.admin-dark .cp-badge--draft {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+html.admin-dark .cp-badge--manual {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+html.admin-dark .sq-work-card__header,
+html.admin-dark .sq-panel-head {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .sq-work-toggle:hover,
+html.admin-dark .sq-work-toggle:focus-visible {
+  background: var(--admin-border);
+}
+
+html.admin-dark .admin-content hr {
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-contract-preview {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+/* Calendar */
+html.admin-dark .fc {
+  --fc-page-bg-color: var(--admin-surface);
+  --fc-neutral-bg-color: var(--admin-surface-hover);
+  --fc-neutral-text-color: var(--admin-muted);
+  --fc-border-color: var(--admin-border);
+  --fc-button-text-color: #fff;
+  --fc-button-bg-color: #024768;
+  --fc-button-border-color: #0369a1;
+  --fc-button-hover-bg-color: #0369a1;
+  --fc-button-hover-border-color: #0369a1;
+  --fc-button-active-bg-color: #013a52;
+  --fc-today-bg-color: rgba(56, 189, 248, 0.12);
+  --fc-now-indicator-color: #38bdf8;
+  --fc-list-event-hover-bg-color: rgba(51, 65, 85, 0.5);
+  --fc-event-text-color: #f8fafc;
+  --fc-page-text-color: var(--admin-text);
+}
+
+html.admin-dark .fc .fc-col-header-cell-cushion,
+html.admin-dark .fc .fc-daygrid-day-number,
+html.admin-dark .fc .fc-list-day-cushion,
+html.admin-dark .fc .fc-toolbar-title {
+  color: var(--admin-text);
+}
+
+html.admin-dark .tox-tinymce {
+  border-color: var(--admin-border) !important;
+}
+
+html.admin-dark .tox .tox-edit-area__iframe {
+  background: var(--admin-input-bg);
+}
+
+html.admin-dark .tox .tox-menubar,
+html.admin-dark .tox .tox-toolbar,
+html.admin-dark .tox .tox-toolbar__overflow,
+html.admin-dark .tox .tox-toolbar__primary,
+html.admin-dark .tox .tox-statusbar {
+  background: var(--admin-surface-hover) !important;
+  border-color: var(--admin-border) !important;
+}
+
+html.admin-dark .tox .tox-tbtn,
+html.admin-dark .tox .tox-mbtn,
+html.admin-dark .tox .tox-statusbar__path-item,
+html.admin-dark .tox .tox-statusbar__wordcount {
+  color: var(--admin-muted) !important;
+}
+
+html.admin-dark .tox .tox-tbtn:hover,
+html.admin-dark .tox .tox-mbtn:hover {
+  background: var(--admin-primary-soft) !important;
+  color: var(--admin-primary) !important;
+}
+
+html.admin-dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html.admin-dark ::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+html.admin-dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+
+html.admin-dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+html.admin-dark ::selection {
+  background: rgba(56, 189, 248, 0.35);
+  color: #f8fafc;
+}

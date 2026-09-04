@@ -279,6 +279,127 @@ class StandardQuotationCalculator
     }
 
     /**
+     * Compute one or more jobs, then apply quote-level contingency on the
+     * combined materials pre-HST. Labour is the sum of each job.
+     *
+     * @param  list<array<string, mixed>>  $works
+     * @return array<string, mixed>
+     */
+    public function computeWorks(
+        array $works,
+        bool $contingencyEnabled = true,
+        float $contingencyPercent = 10.0
+    ): array {
+        if ($works === []) {
+            $works = [[
+                'title' => '',
+                'materials' => [],
+                'labour_hourly_rate' => 0,
+                'labour_mode' => 'hours',
+                'labour_quantity' => 0,
+                'labour_use_fixed' => false,
+                'labour_fixed_amount' => 0,
+                'labour_fixed_hst_included' => false,
+            ]];
+        }
+
+        $jobResults = [];
+        $allMaterials = [];
+        $labourHours = 0.0;
+        $labourTotal = 0.0;
+        $labourHst = 0.0;
+
+        foreach ($works as $work) {
+            if (! is_array($work)) {
+                continue;
+            }
+
+            $job = $this->compute(
+                is_array($work['materials'] ?? null) ? $work['materials'] : [],
+                (float) ($work['labour_hourly_rate'] ?? 0),
+                (string) ($work['labour_mode'] ?? 'hours'),
+                (float) ($work['labour_quantity'] ?? 0),
+                false,
+                0.0,
+                filter_var($work['labour_use_fixed'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                (float) ($work['labour_fixed_amount'] ?? 0),
+                filter_var($work['labour_fixed_hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN)
+            );
+
+            $jobResults[] = array_merge($job, [
+                'title' => trim((string) ($work['title'] ?? '')),
+                'labour_use_fixed' => filter_var($work['labour_use_fixed'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'labour_mode' => (($work['labour_mode'] ?? 'hours') === 'days') ? 'days' : 'hours',
+                'labour_quantity' => round((float) ($work['labour_quantity'] ?? 0), 2),
+                'labour_hourly_rate' => round((float) ($work['labour_hourly_rate'] ?? 0), 2),
+                'labour_fixed_amount' => round((float) ($work['labour_fixed_amount'] ?? 0), 2),
+                'labour_fixed_hst_included' => filter_var($work['labour_fixed_hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            ]);
+
+            foreach ($job['materials'] as $row) {
+                $allMaterials[] = $row;
+            }
+
+            $labourHours += (float) $job['labour_hours'];
+            $labourTotal += (float) $job['labour_total'];
+            $labourHst += (float) $job['labour_hst'];
+        }
+
+        $labourHours = round($labourHours, 2);
+        $labourTotal = round($labourTotal, 2);
+        $labourHst = round($labourHst, 2);
+
+        $combined = $this->compute(
+            $allMaterials,
+            0.0,
+            'hours',
+            0.0,
+            $contingencyEnabled,
+            $contingencyPercent,
+            false,
+            0.0,
+            false
+        );
+
+        $preHstTaxable = round(
+            (float) $combined['materials_subtotal_taxable']
+            + (float) $combined['contingency_amount_taxable']
+            + $labourTotal,
+            2
+        );
+        $preHstExempt = round(
+            (float) $combined['materials_subtotal_exempt']
+            + (float) $combined['contingency_amount_exempt'],
+            2
+        );
+        $totalHst = round((float) $combined['materials_hst'] + $labourHst, 2);
+        $grand = round((float) $combined['materials_with_hst'] + $labourTotal + $labourHst, 2);
+
+        return [
+            'works' => $jobResults,
+            'materials' => $combined['materials'],
+            'materials_subtotal_before_hst' => $combined['materials_subtotal_before_hst'],
+            'materials_subtotal_taxable' => $combined['materials_subtotal_taxable'],
+            'materials_subtotal_exempt' => $combined['materials_subtotal_exempt'],
+            'materials_hst' => $combined['materials_hst'],
+            'materials_with_hst' => $combined['materials_with_hst'],
+            'contingency_enabled' => $combined['contingency_enabled'],
+            'contingency_percent' => $combined['contingency_percent'],
+            'contingency_amount' => $combined['contingency_amount'],
+            'contingency_amount_taxable' => $combined['contingency_amount_taxable'],
+            'contingency_amount_exempt' => $combined['contingency_amount_exempt'],
+            'contingency_hst' => $combined['contingency_hst'],
+            'labour_hours' => $labourHours,
+            'labour_total' => $labourTotal,
+            'labour_hst' => $labourHst,
+            'pre_hst_taxable' => $preHstTaxable,
+            'pre_hst_exempt' => $preHstExempt,
+            'total_hst' => $totalHst,
+            'grand_total' => $grand,
+        ];
+    }
+
+    /**
      * Overlay live catalog delivery onto linked rows (once per line, not × qty).
      *
      * @param  list<array<string, mixed>>  $materialRows

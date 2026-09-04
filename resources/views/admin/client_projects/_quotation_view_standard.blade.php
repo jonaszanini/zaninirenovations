@@ -1,7 +1,9 @@
 {{-- Standard quotation — read-only detail partial for the View drawer.
      Expects: $sourceModel (StandardQuotation) --}}
 @php
-  $materials = is_array($sourceModel->materials) ? $sourceModel->materials : [];
+  $works = $sourceModel->resolvedWorks();
+  $multiJobs = count($works) >= 2;
+  $materials = $sourceModel->flattenedMaterials();
   $labourMode = $sourceModel->labour_mode ?? 'hours';
   $labourQty  = (float) $sourceModel->labour_quantity;
   $labourRate = (float) $sourceModel->labour_hourly_rate;
@@ -35,7 +37,43 @@
   </div>
 </div>
 
-{{-- Materials --}}
+{{-- Jobs (multi-job quotes) --}}
+@if ($multiJobs)
+  <div class="cp-vd-section">
+    <div class="cp-vd-section__title">Jobs ({{ count($works) }})</div>
+    @foreach ($works as $wIdx => $job)
+      @php
+        $jobTitle = trim((string) ($job['title'] ?? ''));
+        if ($jobTitle === '') {
+            $jobTitle = 'Job '.($wIdx + 1);
+        }
+        $jobMats = is_array($job['materials'] ?? null) ? $job['materials'] : [];
+        $jobMatPre = 0.0;
+        foreach ($jobMats as $jm) {
+            if (!is_array($jm)) continue;
+            $jq = (float) ($jm['quantity'] ?? 0);
+            $ju = (float) ($jm['unit_price'] ?? 0);
+            $jd = round(max(0.0, (float) ($jm['delivery_cad'] ?? 0)), 2);
+            $jobMatPre += (float) ($jm['line_subtotal'] ?? (($jq * $ju) + $jd));
+        }
+        $jobUseFixed = (bool) ($job['labour_use_fixed'] ?? false);
+        $jobLab = $jobUseFixed
+            ? (float) ($job['labour_fixed_amount'] ?? 0)
+            : ((float) ($job['labour_hourly_rate'] ?? 0) * (
+                (($job['labour_mode'] ?? 'hours') === 'days')
+                    ? ((float) ($job['labour_quantity'] ?? 0) * 8)
+                    : (float) ($job['labour_quantity'] ?? 0)
+            ));
+      @endphp
+      <div class="cp-vd-grid" style="margin-bottom:12px;">
+        <div class="cp-vd-field cp-vd-field--full">
+          <span class="cp-vd-field__label">{{ $jobTitle }}</span>
+          <span class="cp-vd-field__value">Materials {{ \App\Models\ClientProject::formatMoney($jobMatPre) }} · Labour {{ \App\Models\ClientProject::formatMoney($jobLab) }}</span>
+        </div>
+      </div>
+    @endforeach
+  </div>
+@endif
 @if (!empty($materials))
   <div class="cp-vd-section">
     <div class="cp-vd-section__title">Materials ({{ count($materials) }})</div>
@@ -83,6 +121,7 @@
 @endif
 
 {{-- Labour --}}
+@if (!$multiJobs)
 <div class="cp-vd-section">
   <div class="cp-vd-section__title">Labour</div>
   <div class="cp-vd-grid">
@@ -111,6 +150,7 @@
     @endif
   </div>
 </div>
+@endif
 
 {{-- Contingency --}}
 @if ($contingOn && $contingAmt > 0)
