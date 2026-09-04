@@ -58,7 +58,7 @@
              value="{{ $debrisAmount }}"
              data-cp-debris-amount
              @if ($includeDebrisChoice === true) required @endif>
-      <p class="admin-form-help">Incl. HST — added to the grand total; hidden from the client PDF.</p>
+      <p class="admin-form-help">Incl. HST — listed as its own line on the client PDF.</p>
       @error('debris_removal_amount')
         <p class="admin-form-error">{{ $message }}</p>
       @enderror

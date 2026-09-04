@@ -8,11 +8,18 @@ use Illuminate\Http\Request;
  * Optional debris-removal charge on quotations.
  *
  * Amount is treated as HST-inclusive (same as commute): it is added to the
- * quotation grand total and folded into labour on the client PDF so clients
- * never see a dedicated "Debris removal" line.
+ * quotation grand total. The client PDF lists it as its own pre-tax line
+ * ("Debris removal and disposal") with HST in the footer.
  */
 class DebrisRemovalExpenseService
 {
+    public const LINE_DESCRIPTION = 'Debris removal and disposal';
+
+    public static function isLineDescription(string $description): bool
+    {
+        return str_starts_with($description, 'Debris removal');
+    }
+
     /** @return array<string, mixed> */
     public static function validationRules(): array
     {
@@ -75,7 +82,7 @@ class DebrisRemovalExpenseService
         }
 
         return [
-            'description' => 'Debris removal',
+            'description' => self::LINE_DESCRIPTION,
             'amount' => round($amount, 2),
             'apply_hst' => false,
             'hst_included' => true,

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -400,6 +401,9 @@ class ClientProjectQuotation extends Model
             if (array_key_exists('hst_taxable_amount', $row)) {
                 $cleanRow['hst_taxable_amount'] = round((float) $row['hst_taxable_amount'], 2);
             }
+            if (! empty($row['is_heading'])) {
+                $cleanRow['is_heading'] = true;
+            }
             $clean[] = $cleanRow;
         }
 
@@ -409,9 +413,11 @@ class ClientProjectQuotation extends Model
     /**
      * Line items rendered on the client PDF. Standard quotations can show
      * either the linked summary lines or a full material/labour breakdown.
-     * Commute fuel and debris removal are rolled into the primary labour/material
-     * line (pre-tax) with HST in the footer — never shown as their own rows to clients.
-     * Additional costs are rolled into the materials line the same way.
+     * Commute fuel is never shown as its own row: the pre-tax amount is split
+     * evenly across each job's Labour line (remainder cents on the last job)
+     * so HST stays in the footer. Additional costs are rolled into the
+     * materials line. Debris removal is listed as its own pre-tax line after
+     * the job rows.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -436,7 +442,9 @@ class ClientProjectQuotation extends Model
             }
         }
 
-        return $this->normalizeInternalExpensesForClientFacing($items);
+        return $this->normalizeDebrisRemovalForClientFacing(
+            $this->normalizeInternalExpensesForClientFacing($items)
+        );
     }
 
     /**
@@ -501,8 +509,36 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Client PDFs: merge commute (stored HST-inclusive) into the primary
-     * labour/material line as pre-tax, so HST (13%) includes commute tax.
+     * Client PDFs: show debris as its own pre-tax line (HST in the footer).
+     * Stored amount is HST-inclusive.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    protected function normalizeDebrisRemovalForClientFacing(array $items): array
+    {
+        foreach ($items as &$row) {
+            $desc = (string) ($row['description'] ?? '');
+            if (! DebrisRemovalExpenseService::isLineDescription($desc)) {
+                continue;
+            }
+
+            $row['description'] = DebrisRemovalExpenseService::LINE_DESCRIPTION;
+
+            if (! empty($row['hst_included']) && empty($row['apply_hst'])) {
+                $row['amount'] = self::preTaxFromHstIncluded((float) ($row['amount'] ?? 0));
+                $row['apply_hst'] = true;
+                unset($row['hst_included']);
+            }
+        }
+        unset($row);
+
+        return $items;
+    }
+
+    /**
+     * Client PDFs: merge a hidden HST-inclusive expense into one labour or
+     * materials line as pre-tax, so HST (13%) includes that tax.
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
@@ -536,10 +572,128 @@ class ClientProjectQuotation extends Model
             $filtered = $this->mergeHiddenTaxInExpenseIntoTarget($filtered, $materialsHiddenGross, 'materials');
         }
         if ($labourHiddenGross > 0) {
-            $filtered = $this->mergeHiddenTaxInExpenseIntoTarget($filtered, $labourHiddenGross, 'labour');
+            $filtered = $this->mergeCommuteIntoLabourLines($filtered, $labourHiddenGross);
         }
 
         return array_values($filtered);
+    }
+
+    /**
+     * Split an HST-inclusive commute amount evenly across job labour lines.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    protected function mergeCommuteIntoLabourLines(array $items, float $hiddenGross): array
+    {
+        $indexes = $this->commuteLabourLineIndexes($items);
+        if ($indexes === []) {
+            return $items;
+        }
+
+        $allTaxIn = true;
+        foreach ($indexes as $idx) {
+            $row = $items[$idx];
+            if (empty($row['hst_included']) || ! empty($row['apply_hst'])) {
+                $allTaxIn = false;
+                break;
+            }
+        }
+
+        $total = $allTaxIn ? round($hiddenGross, 2) : self::preTaxFromHstIncluded($hiddenGross);
+        if ($total <= 0) {
+            return $items;
+        }
+
+        $shares = self::splitAmountEvenly($total, count($indexes));
+        foreach ($indexes as $i => $idx) {
+            $row = &$items[$idx];
+            $this->addAmountToPdfLine($row, $shares[$i]);
+            unset($row);
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return list<int>
+     */
+    protected function commuteLabourLineIndexes(array $items): array
+    {
+        $indexes = [];
+        foreach ($items as $i => $row) {
+            if (self::isPdfLabourLine($row)) {
+                $indexes[] = $i;
+            }
+        }
+
+        if ($indexes !== []) {
+            return $indexes;
+        }
+
+        $one = $this->commuteMergeTargetIndex($items);
+
+        return $one !== null ? [$one] : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected static function isPdfLabourLine(array $row): bool
+    {
+        if (! empty($row['is_heading'])) {
+            return false;
+        }
+
+        $desc = (string) ($row['description'] ?? '');
+        if (stripos($desc, 'HST exempt') !== false) {
+            return false;
+        }
+        if (DebrisRemovalExpenseService::isLineDescription($desc)) {
+            return false;
+        }
+
+        return $desc === 'Labour' || str_ends_with($desc, ' — Labour');
+    }
+
+    /**
+     * @return list<float>
+     */
+    public static function splitAmountEvenly(float $total, int $parts): array
+    {
+        if ($parts <= 0) {
+            return [];
+        }
+
+        $cents = (int) round($total * 100);
+        $base = intdiv($cents, $parts);
+        $remainder = $cents % $parts;
+        $shares = [];
+        for ($i = 0; $i < $parts; $i++) {
+            $extra = ($i === $parts - 1) ? $remainder : 0;
+            $shares[] = round(($base + $extra) / 100, 2);
+        }
+
+        return $shares;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function addAmountToPdfLine(array &$row, float $add): void
+    {
+        if ($add == 0.0) {
+            return;
+        }
+
+        $row['amount'] = round((float) ($row['amount'] ?? 0) + $add, 2);
+
+        if (! empty($row['apply_hst'])) {
+            $taxableBase = array_key_exists('hst_taxable_amount', $row)
+                ? (float) $row['hst_taxable_amount']
+                : (float) $row['amount'] - $add;
+            $row['hst_taxable_amount'] = round($taxableBase + $add, 2);
+        }
     }
 
     /**
@@ -605,8 +759,7 @@ class ClientProjectQuotation extends Model
 
     protected static function isLabourHiddenInternalExpenseLineDescription(string $description): bool
     {
-        return str_starts_with($description, 'Commute expense')
-            || str_starts_with($description, 'Debris removal');
+        return str_starts_with($description, 'Commute expense');
     }
 
     protected static function isMaterialsHiddenInternalExpenseLineDescription(string $description): bool
@@ -632,6 +785,9 @@ class ClientProjectQuotation extends Model
             }
             $desc = (string) ($row['description'] ?? '');
             if (stripos($desc, 'HST exempt') !== false) {
+                continue;
+            }
+            if (DebrisRemovalExpenseService::isLineDescription($desc)) {
                 continue;
             }
 
@@ -677,6 +833,9 @@ class ClientProjectQuotation extends Model
 
             $desc = (string) ($row['description'] ?? '');
             if (stripos($desc, 'HST exempt') !== false) {
+                continue;
+            }
+            if (DebrisRemovalExpenseService::isLineDescription($desc)) {
                 continue;
             }
 

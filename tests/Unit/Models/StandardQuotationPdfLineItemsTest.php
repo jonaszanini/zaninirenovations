@@ -264,4 +264,68 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertEqualsWithDelta(80.0, $labourLines[1]['amount'], 0.01);
         $this->assertFalse((bool) preg_grep('/hours|days|\/hr|flat fee/i', $descriptions));
     }
+
+    public function test_multi_job_pdf_lists_debris_after_jobs_not_inside_job_one(): void
+    {
+        $quote = new StandardQuotation([
+            'works' => [
+                [
+                    'title' => 'Cut part of the counter top',
+                    'materials' => [
+                        [
+                            'short_name' => 'Plywood',
+                            'unit_price' => 44,
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                        ],
+                    ],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 437.50,
+                    'labour_fixed_hst_included' => false,
+                    'labour_hourly_rate' => 0,
+                    'labour_mode' => 'hours',
+                    'labour_quantity' => 0,
+                ],
+                [
+                    'title' => 'Install towel bar',
+                    'materials' => [
+                        [
+                            'short_name' => 'Bar',
+                            'unit_price' => 40,
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                        ],
+                    ],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 80,
+                    'labour_fixed_hst_included' => false,
+                    'labour_hourly_rate' => 0,
+                    'labour_mode' => 'hours',
+                    'labour_quantity' => 0,
+                ],
+            ],
+            'contingency_enabled' => false,
+            'contingency_percent' => 0,
+            'include_commute' => false,
+            'include_debris_removal' => true,
+            'debris_removal_amount' => 300,
+        ]);
+
+        $lines = $quote->detailedPdfLineItems();
+        $descriptions = array_column($lines, 'description');
+        $labourLines = array_values(array_filter(
+            $lines,
+            fn ($row) => ($row['description'] ?? '') === 'Labour'
+        ));
+
+        $this->assertEqualsWithDelta(437.50, $labourLines[0]['amount'], 0.01);
+        $this->assertSame(
+            \App\Services\DebrisRemovalExpenseService::LINE_DESCRIPTION,
+            end($descriptions)
+        );
+        $debris = collect($lines)->last();
+        $this->assertEqualsWithDelta(300.0, $debris['amount'], 0.01);
+        $this->assertTrue($debris['hst_included']);
+        $this->assertFalse($debris['apply_hst']);
+    }
 }
