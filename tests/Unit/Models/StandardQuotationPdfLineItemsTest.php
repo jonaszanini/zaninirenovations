@@ -70,7 +70,11 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertTrue($material['apply_hst']);
 
         $this->assertFalse((bool) preg_grep('/Contingency/', $descriptions));
-        $this->assertNotFalse(collect($lines)->first(fn ($row) => str_starts_with((string) $row['description'], 'Labour')));
+
+        $labour = collect($lines)->first(fn ($row) => ($row['description'] ?? '') === 'Labour');
+        $this->assertNotNull($labour);
+        $this->assertEqualsWithDelta(480.0, $labour['amount'], 0.01);
+        $this->assertFalse((bool) preg_grep('/hours|days|\/hr|flat fee/i', $descriptions));
     }
 
     public function test_detailed_pdf_folds_contingency_into_material_not_electrical(): void
@@ -253,10 +257,11 @@ class StandardQuotationPdfLineItemsTest extends TestCase
 
         $labourLines = array_values(array_filter(
             $lines,
-            fn ($row) => str_starts_with((string) ($row['description'] ?? ''), 'Labour')
+            fn ($row) => ($row['description'] ?? '') === 'Labour'
         ));
         $this->assertCount(2, $labourLines);
         $this->assertEqualsWithDelta(150.0, $labourLines[0]['amount'], 0.01);
         $this->assertEqualsWithDelta(80.0, $labourLines[1]['amount'], 0.01);
+        $this->assertFalse((bool) preg_grep('/hours|days|\/hr|flat fee/i', $descriptions));
     }
 }

@@ -283,6 +283,7 @@
           <i class="fa fa-arrow-left"></i> Back to list
         </a>
         <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+        @include('admin.partials.quotation_view_pdf')
       </div>
       
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])

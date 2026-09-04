@@ -808,6 +808,21 @@ class ClientProjectQuotation extends Model
     }
 
     /**
+     * Project quotation row synced from a specialized calculator (standard, fence, …).
+     */
+    public static function findForSource(string $sourceType, int $sourceId): ?self
+    {
+        if ($sourceId < 1 || $sourceType === '') {
+            return null;
+        }
+
+        return static::query()
+            ->where('source_type', $sourceType)
+            ->where('source_id', $sourceId)
+            ->first();
+    }
+
+    /**
      * Sum of line-item pre-tax amounts (ignores {@see $subtotal_override}).
      */
     public function lineItemsSubtotal(): float

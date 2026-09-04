@@ -192,6 +192,7 @@
       </a>
       @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
       <a href="{{ route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+      @include('admin.partials.quotation_view_pdf')
       <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sq-btn-draft">Save as draft</button>
       <button type="submit" form="sq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="sq-btn-publish">
         <i class="fa fa-save"></i> Save quotation

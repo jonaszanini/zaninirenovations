@@ -389,6 +389,8 @@ html.admin-dark .cp-edit-project-actions-aside,
 html.admin-dark .cp-quotation-items-card,
 html.admin-dark .cp-quotation-accordion,
 html.admin-dark .cp-quotation-accordion__empty-body,
+html.admin-dark .cp-quotation-preview,
+html.admin-dark .cp-contract-preview,
 html.admin-dark .cp-quotation-accordion__panel .cp-quotation-preview,
 html.admin-dark .cp-quotation-items tfoot td,
 html.admin-dark #cp-invoice-items tr.cp-quotation-row,
@@ -470,9 +472,6 @@ html.admin-dark .cp-projects-scope-label,
 html.admin-dark .cp-hint,
 html.admin-dark .cp-final-dates,
 html.admin-dark .cp-quotation-accordion__desc,
-html.admin-dark .cp-quotation-intro,
-html.admin-dark .cp-quotation-closing,
-html.admin-dark .cp-quotation-work-description-body,
 html.admin-dark .cp-status-form-label,
 html.admin-dark .cp-reopen-form-label,
 html.admin-dark .cp-reopen-note-label,
@@ -559,9 +558,117 @@ html.admin-dark .admin-content hr {
   border-color: var(--admin-border);
 }
 
-html.admin-dark .cp-contract-preview {
-  background: #f8fafc;
-  color: #1e293b;
+html.admin-dark .cp-quotation-controls,
+html.admin-dark .cp-quotation-pdf-photos,
+html.admin-dark .cp-quotation-accordion__panel,
+html.admin-dark .cp-quotation-doc-client,
+html.admin-dark .cp-quotation-work-description,
+html.admin-dark .cp-contract-parties-table td {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-quotation-items tbody tr:nth-child(even) td,
+html.admin-dark .cp-contract-preview-body table th {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .cp-quotation-items tbody tr.items-heading td,
+html.admin-dark .cp-vd-totals-table tbody tr.items-heading td {
+  background: var(--admin-surface-hover);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .cp-quotation-items th,
+html.admin-dark .cp-quotation-items td,
+html.admin-dark .cp-quotation-doc-meta,
+html.admin-dark .cp-quotation-work-description-body {
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-quotation-doc-title,
+html.admin-dark .cp-quotation-doc-display-title,
+html.admin-dark .cp-quotation-pdf-photos__title,
+html.admin-dark .cp-quotation-work-description-title,
+html.admin-dark .cp-quotation-supply-scope-headline,
+html.admin-dark .cp-party-label,
+html.admin-dark .cp-contract-preview-body h1,
+html.admin-dark .cp-contract-preview-body h2,
+html.admin-dark .cp-contract-preview-body h3,
+html.admin-dark .cp-contract-preview-body h4,
+html.admin-dark .cp-quotation-items tfoot tr.grand-row td {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .cp-quotation-doc-date,
+html.admin-dark .cp-quotation-pdf-photos__count,
+html.admin-dark .cp-quotation-items td.cp-quotation-hst-col,
+html.admin-dark .cp-quotation-items tfoot td.totals-label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-view-drawer__panel {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  box-shadow: var(--admin-shadow-lg);
+}
+
+html.admin-dark .cp-view-drawer__header,
+html.admin-dark .cp-vd-section,
+html.admin-dark .cp-vd-footer-actions {
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-view-drawer__title,
+html.admin-dark .cp-vd-field__value {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-view-drawer__type-label,
+html.admin-dark .cp-view-drawer__subtitle,
+html.admin-dark .cp-vd-meta-hint,
+html.admin-dark .cp-vd-section__title,
+html.admin-dark .cp-vd-field__label,
+html.admin-dark .cp-vd-field-value--multiline,
+html.admin-dark .cp-vd-bool,
+html.admin-dark .cp-vd-totals-table__footer-label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-view-drawer__close {
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-view-drawer__close:hover {
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-vd-side-chip {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-vd-materials-table th,
+html.admin-dark .cp-vd-materials-table td,
+html.admin-dark .cp-vd-totals-table th,
+html.admin-dark .cp-vd-totals-table td {
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-vd-materials-table th,
+html.admin-dark .cp-vd-totals-table th {
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-vd-field--highlight .cp-vd-field__value,
+html.admin-dark .cp-vd-totals-table__grand td,
+html.admin-dark .cp-vd-totals-table__grand .cp-vd-totals-table__footer-label {
+  color: var(--admin-primary);
 }
 
 /* Calendar */

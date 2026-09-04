@@ -266,10 +266,10 @@ class ShedQuotationController extends Controller
 
         $linkedCpq = null;
         if ($quotation) {
-            $linkedCpq = ClientProjectQuotation::query()
-                ->where('source_type', ClientProjectQuotation::SOURCE_SHED)
-                ->where('source_id', $quotation->id)
-                ->first();
+            $linkedCpq = ClientProjectQuotation::findForSource(
+                ClientProjectQuotation::SOURCE_SHED,
+                (int) $quotation->id
+            );
         }
 
         $previewInputs = ShedQuotationCalculator::defaultInputs();

@@ -501,6 +501,7 @@
                data-purchase-list-title="Print material list">
               <i class="fa fa-print"></i> Print Material List
             </a>
+            @include('admin.partials.quotation_view_pdf')
           @endif
           <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
         </div>

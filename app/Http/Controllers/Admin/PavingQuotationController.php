@@ -323,6 +323,12 @@ class PavingQuotationController extends Controller
             'marbleTypes' => $marbleTypes,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
+            'linkedCpq' => $quotation
+                ? ClientProjectQuotation::findForSource(
+                    ClientProjectQuotation::SOURCE_PAVING,
+                    (int) $quotation->id
+                )
+                : null,
         ]);
     }
 

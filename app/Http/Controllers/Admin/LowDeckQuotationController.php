@@ -362,6 +362,12 @@ class LowDeckQuotationController extends Controller
             'zeroPricedMaterials' => $zeroPricedKeys,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
+            'linkedCpq' => $quotation
+                ? ClientProjectQuotation::findForSource(
+                    ClientProjectQuotation::SOURCE_LOW_DECK,
+                    (int) $quotation->id
+                )
+                : null,
         ];
     }
 

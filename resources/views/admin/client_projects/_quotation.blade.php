@@ -257,11 +257,17 @@
                 </thead>
                 <tbody>
                   @foreach ($items as $row)
-                    <tr>
-                      <td>{!! nl2br(e($row['description'])) !!}</td>
-                      <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
-                      <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
-                    </tr>
+                    @if (!empty($row['is_heading']))
+                      <tr class="items-heading">
+                        <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
+                      </tr>
+                    @else
+                      <tr>
+                        <td>{!! nl2br(e($row['description'])) !!}</td>
+                        <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
+                        <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
+                      </tr>
+                    @endif
                   @endforeach
                 </tbody>
                 <tfoot>
@@ -410,11 +416,17 @@
             </thead>
             <tbody>
               @foreach ($items as $row)
-                <tr>
-                  <td>{!! nl2br(e($row['description'])) !!}</td>
-                  <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
-                  <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
-                </tr>
+                @if (!empty($row['is_heading']))
+                  <tr class="items-heading">
+                    <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
+                  </tr>
+                @else
+                  <tr>
+                    <td>{!! nl2br(e($row['description'])) !!}</td>
+                    <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
+                    <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
+                  </tr>
+                @endif
               @endforeach
             </tbody>
             <tfoot>

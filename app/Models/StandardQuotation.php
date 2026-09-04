@@ -338,12 +338,7 @@ class StandardQuotation extends Model
 
         if ((float) $computed['labour_total'] > 0) {
             $lines[] = [
-                'description' => self::labourPdfDescriptionFromFields(
-                    (bool) $this->labour_use_fixed,
-                    (string) ($this->labour_mode ?? 'hours'),
-                    (float) $this->labour_quantity,
-                    (float) $this->labour_hourly_rate
-                ),
+                'description' => 'Labour',
                 'amount' => round((float) $computed['labour_total'], 2),
                 'apply_hst' => true,
             ];
@@ -479,12 +474,7 @@ class StandardQuotation extends Model
 
             if ((float) ($job['labour_total'] ?? 0) > 0) {
                 $lines[] = [
-                    'description' => self::labourPdfDescriptionFromFields(
-                        (bool) ($job['labour_use_fixed'] ?? false),
-                        (string) ($job['labour_mode'] ?? 'hours'),
-                        (float) ($job['labour_quantity'] ?? 0),
-                        (float) ($job['labour_hourly_rate'] ?? 0)
-                    ),
+                    'description' => 'Labour',
                     'amount' => round((float) $job['labour_total'], 2),
                     'apply_hst' => true,
                 ];
@@ -511,30 +501,5 @@ class StandardQuotation extends Model
         }
 
         return $lines;
-    }
-
-    protected static function labourPdfDescriptionFromFields(
-        bool $useFixed,
-        string $mode,
-        float $qty,
-        float $rate
-    ): string {
-        if ($useFixed) {
-            return 'Labour (flat fee)';
-        }
-
-        $mode = $mode === 'days' ? 'days' : 'hours';
-        $qtyLabel = self::formatPdfQty($qty).' '.$mode;
-        $rateLabel = number_format($rate, 2, '.', ',');
-
-        return 'Labour ('.$qtyLabel.' @ $'.$rateLabel.'/hr)';
-    }
-
-    protected static function formatPdfQty(float $qty): string
-    {
-        $formatted = number_format($qty, 2, '.', ',');
-        $formatted = rtrim(rtrim($formatted, '0'), '.');
-
-        return $formatted === '' ? '0' : $formatted;
     }
 }

@@ -384,6 +384,7 @@
            data-purchase-list-title="Print material list">
           <i class="fa fa-print"></i> Print Material List
         </a>
+        @include('admin.partials.quotation_view_pdf')
       @endif
       <button type="submit" form="fq-form" class="admin-btn admin-btn--primary admin-btn--sm">
         <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}

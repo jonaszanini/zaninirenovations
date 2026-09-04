@@ -265,10 +265,10 @@ class TrimmingQuotationController extends Controller
 
         $linkedCpq = null;
         if ($quotation) {
-            $linkedCpq = ClientProjectQuotation::query()
-                ->where('source_type', ClientProjectQuotation::SOURCE_TRIMMING)
-                ->where('source_id', $quotation->id)
-                ->first();
+            $linkedCpq = ClientProjectQuotation::findForSource(
+                ClientProjectQuotation::SOURCE_TRIMMING,
+                (int) $quotation->id
+            );
         }
 
         $previewInputs = TrimmingQuotationCalculator::defaultInputs();

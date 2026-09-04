@@ -259,10 +259,10 @@ class PaintingQuotationController extends Controller
 
         $linkedCpq = null;
         if ($quotation) {
-            $linkedCpq = ClientProjectQuotation::query()
-                ->where('source_type', ClientProjectQuotation::SOURCE_PAINTING)
-                ->where('source_id', $quotation->id)
-                ->first();
+            $linkedCpq = ClientProjectQuotation::findForSource(
+                ClientProjectQuotation::SOURCE_PAINTING,
+                (int) $quotation->id
+            );
         }
 
         return view('admin.quotations.painting.create', [

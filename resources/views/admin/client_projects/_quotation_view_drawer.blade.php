@@ -237,11 +237,17 @@
             </thead>
             <tbody>
               @foreach ($items as $row)
-                <tr>
-                  <td>{!! nl2br(e($row['description'])) !!}</td>
-                  <td class="cp-vd-totals-table__hst">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
-                  <td class="cp-vd-totals-table__amt">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
-                </tr>
+                @if (!empty($row['is_heading']))
+                  <tr class="items-heading">
+                    <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
+                  </tr>
+                @else
+                  <tr>
+                    <td>{!! nl2br(e($row['description'])) !!}</td>
+                    <td class="cp-vd-totals-table__hst">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
+                    <td class="cp-vd-totals-table__amt">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
+                  </tr>
+                @endif
               @endforeach
             </tbody>
             <tfoot>
@@ -314,10 +320,11 @@
         position: relative;
         width: min(620px, 100vw);
         height: 100%;
-        background: #fff;
+        background: var(--admin-surface);
+        color: var(--admin-text);
         display: flex;
         flex-direction: column;
-        box-shadow: -6px 0 32px rgba(0,0,0,0.18);
+        box-shadow: var(--admin-shadow-lg);
         animation: cpVdSlideIn 0.22s cubic-bezier(.22,.68,0,1.2);
         overflow: hidden;
       }
@@ -338,7 +345,7 @@
         justify-content: space-between;
         gap: 12px;
         padding: 20px 24px 16px;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--admin-border);
         flex-shrink: 0;
       }
       .cp-view-drawer__header-text { flex: 1 1 0; min-width: 0; }
@@ -347,7 +354,7 @@
         font-weight: 700;
         letter-spacing: 0.07em;
         text-transform: uppercase;
-        color: #6b7280;
+        color: var(--admin-muted);
         display: block;
         margin-bottom: 4px;
       }
@@ -355,18 +362,18 @@
         margin: 0;
         font-size: 20px;
         font-weight: 700;
-        color: #111827;
+        color: var(--admin-heading);
         line-height: 1.2;
       }
       .cp-view-drawer__subtitle {
         margin: 4px 0 0;
         font-size: 13px;
-        color: #6b7280;
+        color: var(--admin-muted);
       }
       .cp-view-drawer__close {
         flex-shrink: 0;
         background: none;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--admin-border);
         border-radius: 6px;
         width: 32px;
         height: 32px;
@@ -374,11 +381,14 @@
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        color: #6b7280;
+        color: var(--admin-muted);
         font-size: 14px;
         transition: background 0.15s, color 0.15s;
       }
-      .cp-view-drawer__close:hover { background: #f3f4f6; color: #111827; }
+      .cp-view-drawer__close:hover {
+        background: var(--admin-surface-hover);
+        color: var(--admin-heading);
+      }
 
       /* Body */
       .cp-view-drawer__body {
@@ -399,12 +409,12 @@
       }
       .cp-vd-meta-hint {
         font-size: 12px;
-        color: #9ca3af;
+        color: var(--admin-muted);
       }
 
       /* Section */
       .cp-vd-section {
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid var(--admin-border);
         padding-top: 16px;
       }
       .cp-vd-section__title {
@@ -412,7 +422,7 @@
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: #64748b;
+        color: var(--admin-muted);
         margin: 0 0 12px;
       }
 
@@ -430,25 +440,25 @@
       .cp-vd-field__label {
         font-size: 11px;
         font-weight: 600;
-        color: #9ca3af;
+        color: var(--admin-muted);
         text-transform: uppercase;
         letter-spacing: 0.04em;
       }
       .cp-vd-field__value {
         font-size: 14px;
-        color: #111827;
+        color: var(--admin-heading);
         font-weight: 500;
       }
       .cp-vd-field--full { grid-column: 1 / -1; }
       .cp-vd-field--highlight .cp-vd-field__value {
-        color: #024768;
+        color: var(--admin-primary);
         font-weight: 700;
         font-size: 15px;
       }
 
       .cp-vd-field-value--multiline {
         font-size: 14px;
-        color: #374151;
+        color: var(--admin-text);
         line-height: 1.6;
         white-space: pre-wrap;
       }
@@ -459,10 +469,10 @@
         align-items: center;
         gap: 5px;
         font-size: 13px;
-        color: #374151;
+        color: var(--admin-text);
       }
-      .cp-vd-bool .fa-check-square { color: #16a34a; }
-      .cp-vd-bool .fa-square-o { color: #9ca3af; }
+      .cp-vd-bool .fa-check-square { color: var(--admin-success); }
+      .cp-vd-bool .fa-square-o { color: var(--admin-muted); }
 
       /* Sides list (fence) */
       .cp-vd-sides-list {
@@ -474,12 +484,12 @@
         gap: 6px;
       }
       .cp-vd-side-chip {
-        background: #f1f5f9;
-        border: 1px solid #e2e8f0;
+        background: var(--admin-surface-hover);
+        border: 1px solid var(--admin-border);
         border-radius: 6px;
         padding: 4px 10px;
         font-size: 13px;
-        color: #374151;
+        color: var(--admin-text);
         font-weight: 500;
       }
 
@@ -492,17 +502,17 @@
       .cp-vd-materials-table th,
       .cp-vd-materials-table td {
         padding: 6px 8px;
-        border-bottom: 1px solid #f0f2f5;
+        border-bottom: 1px solid var(--admin-border);
         text-align: left;
         vertical-align: top;
       }
       .cp-vd-materials-table th {
-        background: #f8fafc;
+        background: var(--admin-surface-hover);
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        color: #6b7280;
+        color: var(--admin-muted);
       }
       .cp-vd-materials-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -515,17 +525,17 @@
       .cp-vd-totals-table th,
       .cp-vd-totals-table td {
         padding: 6px 8px;
-        border-bottom: 1px solid #f0f2f5;
+        border-bottom: 1px solid var(--admin-border);
         text-align: left;
         vertical-align: top;
       }
       .cp-vd-totals-table th {
-        background: #f8fafc;
+        background: var(--admin-surface-hover);
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        color: #6b7280;
+        color: var(--admin-muted);
       }
       .cp-vd-totals-table__hst,
       .cp-vd-totals-table__amt {
@@ -534,25 +544,30 @@
         font-variant-numeric: tabular-nums;
         width: 64px;
       }
+      .cp-vd-totals-table tbody tr.items-heading td {
+        font-weight: 700;
+        color: var(--admin-primary);
+        background: var(--admin-surface-hover);
+      }
       .cp-vd-totals-table__footer-label {
-        color: #6b7280;
+        color: var(--admin-muted);
         font-size: 12px;
       }
       .cp-vd-totals-table__grand td {
         font-weight: 700;
-        color: #024768;
+        color: var(--admin-primary);
         font-size: 15px;
-        border-top: 2px solid #024768;
+        border-top: 2px solid var(--admin-primary);
         padding-top: 10px;
       }
-      .cp-vd-totals-table__grand .cp-vd-totals-table__footer-label { color: #024768; }
+      .cp-vd-totals-table__grand .cp-vd-totals-table__footer-label { color: var(--admin-primary); }
 
       /* Footer actions */
       .cp-vd-footer-actions {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid var(--admin-border);
         padding-top: 16px;
         margin-top: auto;
       }

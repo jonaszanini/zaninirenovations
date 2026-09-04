@@ -59,6 +59,7 @@ class StandardQuotationController extends Controller
             'quotation' => null,
             'linkableProjects' => collect(),
             'linkProject' => $linkProject,
+            'linkedCpq' => null,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
         ]);
     }
@@ -114,6 +115,10 @@ class StandardQuotationController extends Controller
             'quotation' => $standard_quotation,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
+            'linkedCpq' => ClientProjectQuotation::findForSource(
+                ClientProjectQuotation::SOURCE_STANDARD,
+                (int) $standard_quotation->id
+            ),
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
         ]);
     }

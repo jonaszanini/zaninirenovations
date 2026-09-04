@@ -184,6 +184,7 @@
            class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-print"></i> Print Layout Diagrams
         </a>
+        @include('admin.partials.quotation_view_pdf')
       @endif
       <button type="submit" form="ld-form" class="admin-btn admin-btn--primary admin-btn--sm">
         <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}

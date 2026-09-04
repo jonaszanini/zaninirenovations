@@ -261,10 +261,10 @@ class FlooringQuotationController extends Controller
 
         $linkedCpq = null;
         if ($quotation) {
-            $linkedCpq = ClientProjectQuotation::query()
-                ->where('source_type', ClientProjectQuotation::SOURCE_FLOORING)
-                ->where('source_id', $quotation->id)
-                ->first();
+            $linkedCpq = ClientProjectQuotation::findForSource(
+                ClientProjectQuotation::SOURCE_FLOORING,
+                (int) $quotation->id
+            );
         }
 
         $previewInputs = FlooringQuotationCalculator::defaultInputs();

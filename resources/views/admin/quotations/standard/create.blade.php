@@ -105,6 +105,7 @@
            data-purchase-list-title="Print material list">
           <i class="fa fa-print"></i> Print material list
         </a>
+        @include('admin.partials.quotation_view_pdf')
       @endif
       <button type="submit"
               form="sq-standard-form"
