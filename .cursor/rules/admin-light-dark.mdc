@@ -1,0 +1,32 @@
+---
+description: All new admin UI must work in both light and dark themes without being asked
+globs: resources/views/admin/**/*.blade.php,public/css/admin*.css,public/js/admin*.js
+alwaysApply: true
+---
+
+# Admin light and dark themes (mandatory)
+
+Every new or changed **authenticated admin** UI — pages, partials, CSS, and JS-injected markup — MUST look correct in **both** light and dark mode. Do this even when the user does not mention theme.
+
+Public site, client-facing pages, PDFs, emails, and `/admin/login` stay **light only**. Never put dark styles in shared public CSS.
+
+## How to implement
+
+1. Prefer `var(--admin-*)` tokens from `public/css/admin.css` (`--admin-bg`, `--admin-surface`, `--admin-surface-hover`, `--admin-border`, `--admin-text`, `--admin-heading`, `--admin-muted`, `--admin-input-bg`, `--admin-elevated`, `--admin-primary`, etc.). Dark mode redefines these on `html.admin-dark` in `public/css/admin-dark.css`.
+2. Do **not** hard-code light-only colors (`#fff`, `#ffffff`, `#1e293b`, `#334155`, `#edf0f2`, `#f4f6f8`) on new admin rules. If a hex is unavoidable, add a matching `html.admin-dark …` override in `admin-dark.css`.
+3. Load page-specific admin CSS via `@stack('head')` so `admin-dark.css` (linked after the stack in `admin.layouts.app`) can override leftovers.
+4. Keep brand fills on primary buttons (`#024768`); use tokens for text, borders, surfaces, and focus rings.
+
+```css
+/* ❌ BAD — light-only, breaks dark mode */
+.cp-panel { background: #fff; color: #1e293b; border: 1px solid #e5e7eb; }
+
+/* ✅ GOOD — follows both themes */
+.cp-panel {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+}
+```
+
+Before finishing an admin UI task, sanity-check the new surface with `html.admin-dark` (sidebar toggle). Semantic status colors (success/danger/warning) must stay readable on dark cards.

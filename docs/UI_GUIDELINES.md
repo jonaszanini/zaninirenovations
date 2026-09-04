@@ -36,7 +36,9 @@ Living design-system reference for **public site** and **admin panel**. All new 
 
 ### Admin CSS variables (`public/css/admin.css`)
 
-Always prefer `var(--admin-*)` in new admin CSS. Do not hard-code slate grays (`#475569`, `#cbd5e1`) in new rules — use `--admin-border`, `--admin-muted`, etc.
+Always prefer `var(--admin-*)` in new admin CSS. Do not hard-code slate grays (`#475569`, `#cbd5e1`) or light-only whites (`#fff`) in new rules — use `--admin-border`, `--admin-muted`, `--admin-surface`, `--admin-input-bg`, etc.
+
+Authenticated admin UI must support **light and dark**. Dark tokens live on `html.admin-dark` in `public/css/admin-dark.css` (loaded only from `admin.layouts.app`). Public site, login, PDFs, and emails stay light-only.
 
 ### Public theme
 

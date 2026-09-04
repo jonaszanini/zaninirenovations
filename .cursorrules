@@ -26,6 +26,16 @@ public site sections — MUST be designed mobile-first:
 6. Before marking any UI task complete, verify the layout at a phone-width
    viewport (~375-414px) in addition to desktop.
 
+## Admin light and dark themes (mandatory)
+
+All present and future **authenticated admin** UI MUST work in both light and
+dark mode, even when the user does not mention theme. Use `var(--admin-*)`
+tokens; put leftover dark overrides in `public/css/admin-dark.css` scoped to
+`html.admin-dark`. Public pages, PDFs, emails, and the login screen stay light
+only — never leak dark styles into shared public CSS.
+
+See `.cursor/rules/admin-light-dark.mdc`.
+
 See `docs/UI_GUIDELINES.md` and `.cursor/rules/admin-layout-compact.mdc` /
 `admin-button-field-sizing.mdc` for full detail — this file is the
 top-level mandate; those files are the implementation reference.
