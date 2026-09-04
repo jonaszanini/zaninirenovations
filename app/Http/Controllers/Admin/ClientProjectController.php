@@ -385,6 +385,38 @@ class ClientProjectController extends Controller
         return back()->with('success', 'File removed.');
     }
 
+    public function file(ClientProject $client_project, ClientProjectPhoto $photo)
+    {
+        if ((int) $photo->client_project_id !== (int) $client_project->id) {
+            abort(404);
+        }
+
+        $rel = ltrim(str_replace('\\', '/', (string) $photo->path), '/');
+        $bytes = \App\Support\PrivateAppFile::get($rel);
+        abort_if($bytes === null, 404);
+
+        $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+        $mime = 'application/octet-stream';
+        if ($photo->isPdf() || $ext === 'pdf') {
+            $mime = 'application/pdf';
+        } elseif ($photo->isVideo()) {
+            $mime = match ($ext) {
+                'webm' => 'video/webm',
+                'mov' => 'video/quicktime',
+                default => 'video/mp4',
+            };
+        } else {
+            $mime = $ext === 'webp' ? 'image/webp' : 'image/jpeg';
+        }
+
+        return response($bytes, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.basename($rel).'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
     public function rotatePhoto(Request $request, ClientProject $client_project, ClientProjectPhoto $photo, ClientProjectPhotoStorage $photoStorage)
     {
         if ((int) $photo->client_project_id !== (int) $client_project->id) {

@@ -95,7 +95,7 @@
       $shareLinkUrl = $hasContent
           ? URL::temporarySignedRoute(
               'public.client-project.quotation-pdf',
-              now()->addYear(),
+              \App\Support\SignedPublicLink::expiresAt(),
               ['client_project' => $project, 'quotation' => $quotation],
           )
           : null;

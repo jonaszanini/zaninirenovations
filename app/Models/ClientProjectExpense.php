@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class ClientProjectExpense extends Model
 {
@@ -31,11 +30,7 @@ class ClientProjectExpense extends Model
                 return;
             }
             $rel = ltrim(str_replace('\\', '/', (string) $expense->receipt_path), '/');
-            Storage::disk('public')->delete($rel);
-            $mirror = public_path('storage/'.$rel);
-            if (is_file($mirror)) {
-                @unlink($mirror);
-            }
+            \App\Support\PrivateAppFile::delete($rel);
         });
     }
 
@@ -75,14 +70,17 @@ class ClientProjectExpense extends Model
         return str_ends_with($base, '.webp');
     }
 
-    /** Public URL for the receipt file, or null when none. */
+    /** Authenticated admin URL for the receipt file, or null when none. */
     public function receiptUrl(): ?string
     {
-        if (! filled($this->receipt_path)) {
+        if (! filled($this->receipt_path) || ! $this->id || ! $this->client_project_id) {
             return null;
         }
 
-        return asset('storage/'.ltrim(str_replace('\\', '/', $this->receipt_path), '/'));
+        return route('admin.client-projects.expenses.receipt', [
+            'client_project' => $this->client_project_id,
+            'expense' => $this->id,
+        ], false);
     }
 
     public function project(): BelongsTo

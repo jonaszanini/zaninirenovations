@@ -19,7 +19,7 @@ class BlogHtmlContentProcessor
             return $html;
         }
 
-        return preg_replace_callback(
+        $html = preg_replace_callback(
             '/<img([^>]*)\ssrc=["\']data:image\/([^;]+);base64,([^"\']+)["\']([^>]*)>/i',
             function (array $m) use ($postId) {
                 $ext = strtolower($m[2]);
@@ -63,11 +63,14 @@ class BlogHtmlContentProcessor
             },
             $html
         ) ?? $html;
+
+        return \App\Support\HtmlContentSanitizer::sanitize((string) $html);
     }
 
-    /** Ensure img tags have loading="lazy" for public output. */
+    /** Sanitize blog HTML and ensure img tags have loading="lazy" for public output. */
     public function addLazyLoadToImages(string $html): string
     {
+        $html = \App\Support\HtmlContentSanitizer::sanitize($html);
         if ($html === '') {
             return $html;
         }

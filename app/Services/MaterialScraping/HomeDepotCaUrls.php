@@ -82,6 +82,30 @@ class HomeDepotCaUrls
         return null;
     }
 
+    /**
+     * True when the URL host is Home Depot Canada (not a substring spoof).
+     */
+    public static function hostIsHomeDepot(string $url): bool
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return false;
+        }
+        if (! preg_match('~^https?://~i', $url)) {
+            $url = 'https://'.$url;
+        }
+
+        $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+        if ($host === '') {
+            return false;
+        }
+
+        return $host === 'homedepot.ca'
+            || $host === 'www.homedepot.ca'
+            || $host === 'images.homedepot.ca'
+            || str_ends_with($host, '.homedepot.ca');
+    }
+
     public static function isValidSku(?string $sku): bool
     {
         return $sku !== null && preg_match('/^\d{6,}$/', $sku) === 1;

@@ -9,7 +9,7 @@ class SeoStructuredData
      */
     public static function toJsonLd(array $data): string
     {
-        $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+        $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
         if (defined('JSON_INVALID_UTF8_IGNORE')) {
             $flags |= (int) constant('JSON_INVALID_UTF8_IGNORE');
         }

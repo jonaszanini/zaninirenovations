@@ -57,7 +57,9 @@ class StandardQuotationPurchaseListTest extends IntegrationTestCase
             ->assertSee('Print material list', false)
             ->assertSee('data-purchase-list-choice', false)
             ->assertSee('Electrical work', false)
-            ->assertSee('value="electrical"', false);
+            ->assertSee('value="electrical"', false)
+            ->assertSee('Image URL', false)
+            ->assertSee('name="materials[0][image_url]"', false);
     }
 
     public function test_purchase_list_omits_electrical_work_rows(): void

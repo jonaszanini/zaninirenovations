@@ -61,8 +61,10 @@ class ProjectPhotoWebpStorage
             return null;
         }
 
-        $absolute = Storage::disk('public')->path($relativePath);
-        if (! is_file($absolute)) {
+        $absolute = \App\Support\PrivateAppFile::isPrivateRelative($relativePath)
+            ? \App\Support\PrivateAppFile::absolutePath($relativePath)
+            : Storage::disk('public')->path($relativePath);
+        if ($absolute === null || ! is_file($absolute)) {
             return null;
         }
 
@@ -72,7 +74,7 @@ class ProjectPhotoWebpStorage
         $after = (int) filesize($absolute);
         $changed = $after !== $before;
 
-        if ($changed) {
+        if ($changed && ! \App\Support\PrivateAppFile::isPrivateRelative($relativePath)) {
             $this->syncPublicStorageFallback($relativePath);
         }
 
@@ -182,8 +184,12 @@ class ProjectPhotoWebpStorage
             if ($bytes === false || $bytes === '') {
                 throw new RuntimeException('Could not read the PDF file.');
             }
-            Storage::disk('public')->put($relativePath, $bytes);
-            $this->syncPublicStorageFallback($relativePath);
+            if (\App\Support\PrivateAppFile::isPrivateRelative($relativePath)) {
+                \App\Support\PrivateAppFile::put($relativePath, $bytes);
+            } else {
+                Storage::disk('public')->put($relativePath, $bytes);
+                $this->syncPublicStorageFallback($relativePath);
+            }
 
             return $relativePath;
         }
@@ -232,8 +238,12 @@ class ProjectPhotoWebpStorage
 
             $webp = $this->reencodeWebpFromPath($realPath);
             $webp = $this->fitWebpBudget($webp);
-            Storage::disk('public')->put($relativePath, $webp);
-            $this->syncPublicStorageFallback($relativePath);
+            if (\App\Support\PrivateAppFile::isPrivateRelative($relativePath)) {
+                \App\Support\PrivateAppFile::put($relativePath, $webp);
+            } else {
+                Storage::disk('public')->put($relativePath, $webp);
+                $this->syncPublicStorageFallback($relativePath);
+            }
 
             return $relativePath;
         }
@@ -245,8 +255,12 @@ class ProjectPhotoWebpStorage
 
         $webp = $this->convertRasterToWebp($file, $mime, $ext, $path);
         $webp = $this->fitWebpBudget($webp);
-        Storage::disk('public')->put($relativePath, $webp);
-        $this->syncPublicStorageFallback($relativePath);
+        if (\App\Support\PrivateAppFile::isPrivateRelative($relativePath)) {
+            \App\Support\PrivateAppFile::put($relativePath, $webp);
+        } else {
+            Storage::disk('public')->put($relativePath, $webp);
+            $this->syncPublicStorageFallback($relativePath);
+        }
 
         return $relativePath;
     }

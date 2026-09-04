@@ -7,6 +7,7 @@ use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
 use App\Support\EasternStandardTimeDisplay;
+use App\Support\SignedPublicLink;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -157,7 +158,7 @@ class ClientProjectInvoiceReminderService
 
         $signedUrl = URL::temporarySignedRoute(
             'public.client-project.invoice-pdf',
-            now()->addYear(),
+            SignedPublicLink::expiresAt(),
             ['client_project' => $project, 'invoice' => $invoice],
         );
 

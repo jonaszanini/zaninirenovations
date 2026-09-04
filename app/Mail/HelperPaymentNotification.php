@@ -6,6 +6,7 @@ use App\Models\ClientProjectHelperPayment;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use App\Support\SignedPublicLink;
 use Illuminate\Support\Facades\URL;
 
 class HelperPaymentNotification extends Mailable
@@ -19,9 +20,11 @@ class HelperPaymentNotification extends Mailable
     public function __construct(ClientProjectHelperPayment $payment)
     {
         $this->payment = $payment;
-        $this->acknowledgeUrl = URL::signedRoute('public.helper-payment.acknowledge', [
-            'helper_payment' => $payment->id,
-        ]);
+        $this->acknowledgeUrl = URL::temporarySignedRoute(
+            'public.helper-payment.acknowledge',
+            SignedPublicLink::expiresAt(),
+            ['helper_payment' => $payment->id],
+        );
     }
 
     public function build(): self

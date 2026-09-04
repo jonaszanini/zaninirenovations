@@ -70,4 +70,30 @@ class StandardQuotationCalculatorTest extends TestCase
         $this->assertSame('electrical', $computed['materials'][0]['entry_mode']);
         $this->assertEqualsWithDelta(650.0, $computed['materials_subtotal_before_hst'], 0.01);
     }
+
+    public function test_compute_preserves_manual_image_url(): void
+    {
+        $computed = (new StandardQuotationCalculator)->compute(
+            [
+                [
+                    'entry_mode' => 'manual',
+                    'short_name' => 'Paint',
+                    'description' => 'Interior paint',
+                    'url' => 'https://supplier.com/product',
+                    'image_url' => 'https://supplier.com/image.jpg',
+                    'unit_price' => 20,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+            ],
+            0,
+            'hours',
+            0,
+            false,
+            0
+        );
+
+        $this->assertSame('https://supplier.com/image.jpg', $computed['materials'][0]['image_url']);
+        $this->assertSame('https://supplier.com/product', $computed['materials'][0]['url']);
+    }
 }

@@ -23,17 +23,11 @@ class PasswordResetController extends Controller
             'email' => ['required', 'string', 'email'],
         ]);
 
-        $status = Password::sendResetLink([
+        Password::sendResetLink([
             'email' => trim((string) $request->input('email')),
         ]);
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
-        }
-
-        throw ValidationException::withMessages([
-            'email' => [__($status)],
-        ]);
+        return back()->with('status', __(Password::RESET_LINK_SENT));
     }
 
     public function showResetForm(Request $request, string $token)
@@ -49,7 +43,7 @@ class PasswordResetController extends Controller
         $request->validate([
             'token' => ['required'],
             'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'confirmed', PasswordRule::min(8)],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ]);
 
         $status = Password::reset(

@@ -85,7 +85,7 @@ class ClientProjectPhotoStorage
         $path = $photo->path;
         $photo->delete();
         if (is_string($path) && $path !== '') {
-            Storage::disk('public')->delete($path);
+            \App\Support\PrivateAppFile::delete($path);
         }
     }
 
@@ -100,15 +100,13 @@ class ClientProjectPhotoStorage
             throw new \RuntimeException('Only WebP photos can be rotated.');
         }
 
-        $disk = Storage::disk('public');
-        if (! $disk->exists($relative)) {
+        $fullPath = \App\Support\PrivateAppFile::absolutePath($relative);
+        if ($fullPath === null || ! is_file($fullPath)) {
             throw new \RuntimeException('Photo file is missing on disk.');
         }
 
-        $fullPath = $disk->path($relative);
         app(ProjectPhotoRotationService::class)->rotateWebp($fullPath, $direction);
         $this->converter->recompressWebpAtPath($fullPath);
-        $this->syncPublicStorageMirror($relative);
         $photo->touch();
     }
 
@@ -116,7 +114,7 @@ class ClientProjectPhotoStorage
     {
         foreach ($project->photos as $photo) {
             if (filled($photo->path)) {
-                Storage::disk('public')->delete($photo->path);
+                \App\Support\PrivateAppFile::delete($photo->path);
             }
         }
         $project->photos()->delete();
@@ -291,8 +289,7 @@ class ClientProjectPhotoStorage
             throw new \RuntimeException('Could not read the uploaded file.');
         }
 
-        Storage::disk('public')->put($relativePath, $bytes);
-        $this->syncPublicStorageMirror($relativePath);
+        \App\Support\PrivateAppFile::put($relativePath, $bytes);
 
         return $relativePath;
     }

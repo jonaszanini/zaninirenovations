@@ -430,6 +430,24 @@ class ClientProjectFinanceController extends Controller
         return back()->with('success', 'Expense removed.');
     }
 
+    public function receipt(ClientProject $client_project, ClientProjectExpense $expense)
+    {
+        abort_unless((int) $expense->client_project_id === (int) $client_project->id, 404);
+
+        $rel = ltrim(str_replace('\\', '/', (string) ($expense->receipt_path ?? '')), '/');
+        abort_if($rel === '', 404);
+
+        $bytes = \App\Support\PrivateAppFile::get($rel);
+        abort_if($bytes === null, 404);
+
+        return response($bytes, 200, [
+            'Content-Type' => $expense->receiptAttachmentMime(),
+            'Content-Disposition' => 'inline; filename="'.$expense->receiptAttachmentBasename().'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
     public function updateExpense(Request $request, ClientProject $client_project, ClientProjectExpense $expense)
     {
         if (! $client_project->isAccepted()) {

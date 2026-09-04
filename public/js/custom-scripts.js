@@ -1328,6 +1328,7 @@ jQuery(function ($) {
                         ajaxHeaders["X-CSRF-TOKEN"] = csrfToken;
                     }
 
+                    var contactSafetyKey = $('meta[name="contact-safety-key"]').attr("content") || "";
                     $.ajax({
                     url: contactPostUrl,
                     type: 'POST',
@@ -1335,7 +1336,7 @@ jQuery(function ($) {
                     headers: ajaxHeaders,
                     data: (function () {
                         var payload = {
-                            safety_key: 'dynatf',
+                            safety_key: contactSafetyKey,
                             user_name: $user_name.val(),
                             user_email: $user_email.val(),
                             email_subject: $email_subject.val(),

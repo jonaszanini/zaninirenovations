@@ -16,6 +16,7 @@ use App\Services\Invoice\InvoiceCreationService;
 use App\Services\Invoice\InvoicePdfService;
 use App\Services\Invoice\InvoiceTotalsCalculator;
 use App\Services\MoceanSmsService;
+use App\Support\SignedPublicLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -503,7 +504,7 @@ class ClientProjectInvoiceController extends Controller
 
         $signedUrl = URL::temporarySignedRoute(
             'public.client-project.invoice-pdf',
-            now()->addYear(),
+            SignedPublicLink::expiresAt(),
             ['client_project' => $client_project, 'invoice' => $invoice],
         );
 
@@ -899,7 +900,7 @@ class ClientProjectInvoiceController extends Controller
 
         $signedUrl = URL::temporarySignedRoute(
             'public.client-project.receipt-pdf',
-            now()->addYear(),
+            SignedPublicLink::expiresAt(),
             ['client_project' => $project, 'invoice' => $invoice],
         );
 

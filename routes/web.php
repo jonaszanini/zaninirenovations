@@ -119,7 +119,8 @@ Route::get('/blog/{post:slug}', [\App\Http\Controllers\BlogController::class, 's
 
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');
-    Route::post('/admin/login', [LoginController::class, 'login']);
+    Route::post('/admin/login', [LoginController::class, 'login'])
+        ->middleware('throttle:5,1');
 
     // Password recovery / reset.
     Route::get('/admin/forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])
@@ -283,6 +284,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.expenses.store');
     Route::post('client-projects/{client_project}/expenses/send', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'sendExpensesToClient'])
         ->name('client-projects.expenses.send');
+    Route::get('client-projects/{client_project}/expenses/{expense}/receipt', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'receipt'])
+        ->name('client-projects.expenses.receipt');
     Route::delete('client-projects/{client_project}/expenses/{expense}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'destroyExpense'])
         ->name('client-projects.expenses.destroy');
     Route::put('client-projects/{client_project}/expenses/{expense}', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'updateExpense'])
@@ -395,6 +398,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.time-tracking-summary.send');
     Route::post('client-projects/{client_project}/photos', [\App\Http\Controllers\Admin\ClientProjectController::class, 'storePhotos'])
         ->name('client-projects.photos.store');
+    Route::get('client-projects/{client_project}/photos/{photo}/file', [\App\Http\Controllers\Admin\ClientProjectController::class, 'file'])
+        ->name('client-projects.photos.file');
     Route::post('client-projects/{client_project}/photos/{photo}/rotate', [\App\Http\Controllers\Admin\ClientProjectController::class, 'rotatePhoto'])
         ->name('client-projects.photos.rotate');
     Route::delete('client-projects/{client_project}/photos/{photo}', [\App\Http\Controllers\Admin\ClientProjectController::class, 'destroyPhoto'])

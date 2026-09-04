@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="contact-post-url" content="{{ url('/contact-email') }}">
+  <meta name="contact-safety-key" content="{{ \App\Support\ContactSafetyKey::token() }}">
   <title>@yield('page_title', 'Zanini Renovations')</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="@yield('meta_description', 'Zanini Renovations — carpentry and renovations in Carleton Place and the Ottawa region.')">

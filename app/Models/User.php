@@ -48,13 +48,12 @@ class User extends Authenticatable
     }
 
     /**
-     * 'admin' (default, full access incl. deleting records) vs 'staff'
-     * (day-to-day use, blocked from destructive actions). New accounts
-     * default to 'admin' at the DB level — this is opt-in restriction,
-     * not opt-in access.
+     * 'admin' (full access incl. deleting records) vs 'staff'
+     * (day-to-day use, blocked from destructive actions). Unknown or
+     * missing role is treated as staff.
      */
     public function isAdmin(): bool
     {
-        return ($this->role ?? self::ROLE_ADMIN) === self::ROLE_ADMIN;
+        return $this->role === self::ROLE_ADMIN;
     }
 }

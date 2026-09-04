@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class ClientProjectPhoto extends Model
 {
@@ -74,29 +73,32 @@ class ClientProjectPhoto extends Model
         }
 
         $relative = ltrim(str_replace('\\', '/', $this->path), '/');
-        $diskPath = Storage::disk('public')->path($relative);
-        if (is_file($diskPath)) {
-            return str_replace('\\', '/', $diskPath);
-        }
-
-        $mirror = public_path('storage/'.$relative);
-        if (is_file($mirror)) {
-            return str_replace('\\', '/', $mirror);
+        $diskPath = \App\Support\PrivateAppFile::absolutePath($relative);
+        if ($diskPath !== null && is_file($diskPath)) {
+            return $diskPath;
         }
 
         return null;
     }
 
-    /** Root-relative public URL (works when APP_URL differs from browser host). */
+    /** Root-relative admin URL (auth required). Cache-bust with updated_at. */
     public function url(): string
     {
-        $path = ltrim(str_replace('\\', '/', $this->path), '/');
-        $url = '/storage/'.$path;
-        if ($this->updated_at !== null) {
-            $url .= '?v='.$this->updated_at->timestamp;
+        if ($this->id && $this->client_project_id) {
+            $url = route('admin.client-projects.photos.file', [
+                'client_project' => $this->client_project_id,
+                'photo' => $this->id,
+            ], false);
+            if ($this->updated_at !== null) {
+                $url .= '?v='.$this->updated_at->timestamp;
+            }
+
+            return $url;
         }
 
-        return $url;
+        $path = ltrim(str_replace('\\', '/', $this->path), '/');
+
+        return '/storage/'.$path;
     }
 
     public static function inferMediaTypeFromPath(?string $path): string

@@ -20,26 +20,32 @@
   if ($sourceMode === 'electrical' && trim((string) $descriptionValue) === '') {
       $descriptionValue = \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION;
   }
+  $imageUrl = $sourceMode === 'electrical' ? '' : trim((string) ($row['image_url'] ?? ''));
 @endphp
 <div class="sq-material-card sq-material-row{{ $sourceMode === 'electrical' ? ' sq-material-row--electrical' : '' }}">
   <div class="sq-mat-fields">
     <div class="sq-mat-toolbar">
-      <div class="sq-mat-mode-segment" role="radiogroup" aria-label="How to add this line">
-        <label class="sq-mat-mode-segment__item">
-          <input type="radio" name="materials[{{ $i }}][entry_mode]" value="manual"
-                 class="sq-mat-source-radio" @checked($sourceMode === 'manual')>
-          <span>Type manually</span>
-        </label>
-        <label class="sq-mat-mode-segment__item">
-          <input type="radio" name="materials[{{ $i }}][entry_mode]" value="catalog"
-                 class="sq-mat-source-radio" @checked($sourceMode === 'catalog')>
-          <span>From Materials DB</span>
-        </label>
-        <label class="sq-mat-mode-segment__item">
-          <input type="radio" name="materials[{{ $i }}][entry_mode]" value="electrical"
-                 class="sq-mat-source-radio" @checked($sourceMode === 'electrical')>
-          <span>Electrical work</span>
-        </label>
+      <div class="sq-mat-toolbar-start">
+        <div class="sq-mat-thumb" @if ($imageUrl === '') hidden @endif>
+          <img @if ($imageUrl !== '') src="{{ $imageUrl }}" @endif alt="" class="sq-mat-thumb-img" decoding="async" referrerpolicy="no-referrer">
+        </div>
+        <div class="sq-mat-mode-segment" role="radiogroup" aria-label="How to add this line">
+          <label class="sq-mat-mode-segment__item">
+            <input type="radio" name="materials[{{ $i }}][entry_mode]" value="manual"
+                   class="sq-mat-source-radio" @checked($sourceMode === 'manual')>
+            <span>Type manually</span>
+          </label>
+          <label class="sq-mat-mode-segment__item">
+            <input type="radio" name="materials[{{ $i }}][entry_mode]" value="catalog"
+                   class="sq-mat-source-radio" @checked($sourceMode === 'catalog')>
+            <span>From Materials DB</span>
+          </label>
+          <label class="sq-mat-mode-segment__item">
+            <input type="radio" name="materials[{{ $i }}][entry_mode]" value="electrical"
+                   class="sq-mat-source-radio" @checked($sourceMode === 'electrical')>
+            <span>Electrical work</span>
+          </label>
+        </div>
       </div>
       <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm sq-remove-material" aria-label="Remove material" title="Remove material">
         <i class="fa fa-trash"></i>
@@ -118,6 +124,14 @@
               <i class="fa fa-external-link"></i>
             </a>
           </div>
+        </div>
+        <div class="sq-mat-field sq-mat-field--image-url">
+          <label>Image URL <span class="sq-mat-optional">(optional)</span></label>
+          <input type="url" inputmode="url" autocomplete="off"
+                 name="materials[{{ $i }}][image_url]"
+                 class="admin-input sq-mat-image-url" maxlength="2000"
+                 placeholder="https://supplier.com/image.jpg"
+                 value="{{ $row['image_url'] ?? '' }}">
         </div>
       </div>
 

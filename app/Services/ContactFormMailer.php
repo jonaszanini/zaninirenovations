@@ -16,7 +16,7 @@ class ContactFormMailer
      */
     public static function handle(array $input): array
     {
-        if (($input['safety_key'] ?? '') !== 'dynatf') {
+        if (($input['safety_key'] ?? '') === '' || ! \App\Support\ContactSafetyKey::check((string) $input['safety_key'])) {
             return ['status' => 0, 'msg' => 'Invalid request.'];
         }
 

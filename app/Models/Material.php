@@ -161,7 +161,7 @@ class Material extends Model
             return 'amazon';
         }
 
-        if (str_contains($url, 'homedepot.ca')) {
+        if (HomeDepotCaUrls::hostIsHomeDepot($url)) {
             return 'home_depot';
         }
 
@@ -192,9 +192,7 @@ class Material extends Model
 
     public function isHomeDepotUrl(): bool
     {
-        $url = strtolower((string) $this->product_url);
-
-        return str_contains($url, 'homedepot.ca');
+        return HomeDepotCaUrls::hostIsHomeDepot((string) $this->product_url);
     }
 
     public function isAmazonUrl(): bool

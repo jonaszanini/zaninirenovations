@@ -414,6 +414,7 @@ class StandardQuotationController extends Controller
             'materials.*.short_name' => ['nullable', 'string', 'max:60'],
             'materials.*.description' => ['nullable', 'string', 'max:500'],
             'materials.*.url' => ['nullable', 'string', 'max:2000'],
+            'materials.*.image_url' => ['nullable', 'string', 'max:2000'],
             'materials.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'materials.*.quantity' => ['nullable', 'numeric', 'min:0'],
             'materials.*.apply_hst' => ['nullable'],
@@ -507,6 +508,7 @@ class StandardQuotationController extends Controller
             $lineKind = StandardQuotation::normalizeMaterialLineKind($m);
             $isElectrical = $lineKind === StandardQuotation::LINE_KIND_ELECTRICAL;
             $url = $isElectrical ? '' : trim((string) ($m['url'] ?? ''));
+            $imageUrl = $isElectrical ? '' : trim((string) ($m['image_url'] ?? ''));
 
             $catalogId = ! $isElectrical && isset($m['catalog_material_id']) && $m['catalog_material_id'] !== ''
                 ? (int) $m['catalog_material_id']
@@ -535,6 +537,7 @@ class StandardQuotationController extends Controller
                 'short_name' => $isElectrical ? '' : ($m['short_name'] ?? ''),
                 'description' => $description,
                 'url' => $url === '' ? null : $url,
+                'image_url' => $imageUrl === '' ? null : $imageUrl,
                 'unit_price' => $m['unit_price'],
                 'quantity' => $qty,
                 'apply_hst' => $m['apply_hst'],

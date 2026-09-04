@@ -144,6 +144,7 @@ class StandardQuotationCalculator
             $shortName = trim((string) ($row['short_name'] ?? ''));
             $desc = trim((string) ($row['description'] ?? ''));
             $url = trim((string) ($row['url'] ?? ''));
+            $imageUrl = trim((string) ($row['image_url'] ?? ''));
             $unit = round((float) ($row['unit_price'] ?? 0), 2);
             $qty = (float) ($row['quantity'] ?? 0);
             $delivery = round(max(0.0, (float) ($row['delivery_cad'] ?? 0)), 2);
@@ -164,6 +165,7 @@ class StandardQuotationCalculator
                 'short_name' => $shortName,
                 'description' => $desc,
                 'url' => $url,
+                'image_url' => $lineKind === StandardQuotation::LINE_KIND_ELECTRICAL ? '' : $imageUrl,
                 'unit_price' => $unit,
                 'quantity' => $qty,
                 'delivery_cad' => $delivery,

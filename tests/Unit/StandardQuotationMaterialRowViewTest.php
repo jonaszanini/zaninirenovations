@@ -34,4 +34,31 @@ class StandardQuotationMaterialRowViewTest extends TestCase
         $this->assertStringContainsString('Unit price', $html);
         $this->assertStringContainsString('name="materials[0][quantity]"', $html);
     }
+
+    public function test_manual_mode_includes_image_url_field_and_preview(): void
+    {
+        $html = view('admin.quotations.standard._material_row', [
+            'i' => 0,
+            'row' => [
+                'entry_mode' => 'manual',
+                'short_name' => 'Paint',
+                'description' => 'Interior paint',
+                'url' => 'https://supplier.com/product',
+                'image_url' => 'https://supplier.com/image.jpg',
+                'unit_price' => 20,
+                'quantity' => 1,
+                'apply_hst' => true,
+                'hst_includes_unit' => false,
+                'catalog_material_id' => null,
+                'delivery_cad' => 0,
+            ],
+        ])->render();
+
+        $this->assertStringContainsString('name="materials[0][image_url]"', $html);
+        $this->assertStringContainsString('sq-mat-image-url', $html);
+        $this->assertStringContainsString('Image URL', $html);
+        $this->assertStringContainsString('https://supplier.com/image.jpg', $html);
+        $this->assertStringContainsString('sq-mat-thumb', $html);
+        $this->assertDoesNotMatchRegularExpression('/sq-mat-thumb"[^>]*\bhidden\b/', $html);
+    }
 }

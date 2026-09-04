@@ -4760,6 +4760,36 @@ body.cp-modal-open {
   padding-bottom: 12px;
   border-bottom: 1px solid #e2e8f0;
 }
+.sq-mat-toolbar-start {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.sq-mat-thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  overflow: hidden;
+}
+.sq-mat-thumb[hidden] {
+  display: none !important;
+}
+.sq-mat-thumb-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+  box-sizing: border-box;
+}
+.sq-material-row--electrical .sq-mat-thumb {
+  display: none !important;
+}
 .sq-mat-mode-segment {
   display: inline-flex;
   border: 1px solid #cbd5e1;
@@ -4842,9 +4872,8 @@ body.cp-modal-open {
   grid-template-columns: minmax(0, 1fr) minmax(90px, 0.6fr) minmax(70px, 0.45fr);
 }
 .sq-mat-row--url {
-  /* Full-width product URL on its own line so it never crowds the
-     short name / description / price inputs above it. */
-  grid-template-columns: 1fr;
+  /* Product URL and Image URL share one row on tablet/desktop. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 .sq-mat-url-control {
   display: flex;
@@ -4950,11 +4979,17 @@ body.cp-modal-open {
   .sq-mat-toolbar {
     flex-wrap: wrap;
   }
+  .sq-mat-toolbar-start {
+    flex: 1 1 auto;
+  }
   .sq-mat-mode-segment {
     flex: 1 1 auto;
   }
   .sq-mat-mode-segment__item span {
     padding: 8px 10px;
+  }
+  .sq-mat-row--url {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -4966,6 +5001,10 @@ body.cp-modal-open {
   }
   .sq-mat-toolbar {
     flex-wrap: wrap;
+  }
+  .sq-mat-thumb {
+    width: 48px;
+    height: 48px;
   }
   .sq-mat-mode-segment {
     flex: 1 1 100%;

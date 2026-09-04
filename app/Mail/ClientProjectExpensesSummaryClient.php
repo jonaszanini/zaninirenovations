@@ -6,7 +6,6 @@ use App\Models\ClientProject;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Sends the client a table of project expenses and attaches receipt files (WebP or PDF) when present.
@@ -37,12 +36,12 @@ class ClientProjectExpensesSummaryClient extends Mailable
                 continue;
             }
             $path = ltrim(str_replace('\\', '/', (string) $expense->receipt_path), '/');
-            if (! Storage::disk('public')->exists($path)) {
+            $absolute = \App\Support\PrivateAppFile::absolutePath($path);
+            if ($absolute === null) {
                 continue;
             }
             $as = $expense->receiptAttachmentBasename();
-            // Third arg is the attachment display name; fourth is options (not a single options array as arg 3).
-            $this->attachFromStorageDisk('public', $path, $as, ['mime' => $expense->receiptAttachmentMime()]);
+            $this->attach($absolute, ['as' => $as, 'mime' => $expense->receiptAttachmentMime()]);
         }
 
         return $this;

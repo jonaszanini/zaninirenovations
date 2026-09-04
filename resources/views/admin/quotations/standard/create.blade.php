@@ -25,7 +25,7 @@
       $matRows = is_array($quotation->materials) ? $quotation->materials : [];
   }
   if (!is_array($matRows) || count($matRows) === 0) {
-      $matRows = [['short_name' => '', 'description' => '', 'url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false, 'catalog_material_id' => null, 'delivery_cad' => 0]];
+      $matRows = [['short_name' => '', 'description' => '', 'url' => '', 'image_url' => '', 'unit_price' => '', 'quantity' => '1', 'apply_hst' => true, 'hst_includes_unit' => false, 'catalog_material_id' => null, 'delivery_cad' => 0]];
   }
 
   $labourMode = old('labour_mode', $isEdit ? $quotation->labour_mode : 'hours');
@@ -531,6 +531,7 @@
         'short_name' => '',
         'description' => '',
         'url' => '',
+        'image_url' => '',
         'unit_price' => '',
         'quantity' => '1',
         'apply_hst' => true,
@@ -856,6 +857,9 @@
       urlEl.value = '';
       if (typeof syncUrlOpenLink === 'function') syncUrlOpenLink(urlEl);
     }
+    var imageEl = row.querySelector('.sq-mat-image-url');
+    if (imageEl) imageEl.value = '';
+    if (typeof syncImagePreview === 'function') syncImagePreview(row);
     var qtyEl = row.querySelector('.sq-mat-qty');
     if (qtyEl && String(qtyEl.value || '').trim() === '') {
       qtyEl.value = '1';
@@ -902,6 +906,7 @@
       applyElectricalDefaults(row, !!opts.forceElectricalDescription);
     }
     syncMatDetailsVisibility(row);
+    syncImagePreview(row);
   }
 
   function applyCatalogToRow(row, item) {
@@ -926,6 +931,9 @@
       urlEl.value = item.url || '';
       syncUrlOpenLink(urlEl);
     }
+    var imageEl = row.querySelector('.sq-mat-image-url');
+    if (imageEl) imageEl.value = item.image || '';
+    syncImagePreview(row);
     if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function' && unitEl) {
       window.cpMoneyMask.wire([unitEl]);
     }
@@ -943,6 +951,7 @@
 
   function initMaterialRow(row) {
     syncMatSourceUI(row);
+    syncImagePreview(row);
     row.querySelectorAll('.sq-mat-source-radio').forEach(function (radio) {
       if (radio.dataset.sqSourceBound === '1') return;
       radio.dataset.sqSourceBound = '1';
@@ -1037,6 +1046,34 @@
     }
   }
 
+  function syncImagePreview(row) {
+    if (!row) return;
+    var input = row.querySelector('.sq-mat-image-url');
+    var wrap = row.querySelector('.sq-mat-thumb');
+    var img = row.querySelector('.sq-mat-thumb-img');
+    if (!wrap || !img) return;
+    var checked = row.querySelector('.sq-mat-source-radio:checked');
+    var isElectrical = checked && checked.value === 'electrical';
+    var val = input ? String(input.value || '').trim() : '';
+    if (isElectrical || val === '' || !/^https?:\/\//i.test(val)) {
+      wrap.hidden = true;
+      img.removeAttribute('src');
+      return;
+    }
+    img.onload = function () {
+      wrap.hidden = false;
+    };
+    img.onerror = function () {
+      wrap.hidden = true;
+    };
+    wrap.hidden = false;
+    if (img.getAttribute('src') !== val) {
+      img.src = val;
+    } else if (img.complete && img.naturalWidth === 0) {
+      wrap.hidden = true;
+    }
+  }
+
   document.getElementById('sq-standard-form').addEventListener('input', function (e) {
     if (e.target && e.target.classList && e.target.classList.contains('sq-mat-qty')) {
       sanitizeDecimalInput(e.target);
@@ -1044,12 +1081,22 @@
     if (e.target && e.target.classList && e.target.classList.contains('sq-mat-url')) {
       syncUrlOpenLink(e.target);
     }
+    if (e.target && e.target.classList && e.target.classList.contains('sq-mat-image-url')) {
+      var imageRow = e.target.closest('.sq-material-row');
+      if (imageRow) syncImagePreview(imageRow);
+    }
     if (e.target && e.target.id === 'sq-contingency-percent') {
       sanitizeDecimalInput(e.target);
     }
     if (e.target && e.target.closest('#sq-materials-list, #sq-labour-rate, #sq-labour-qty, #sq-contingency-block, #sq-labour-fixed-fields')) {
       recalcMaterials();
     }
+  });
+  document.getElementById('sq-standard-form').addEventListener('paste', function (e) {
+    if (!e.target || !e.target.classList || !e.target.classList.contains('sq-mat-image-url')) return;
+    var pastedRow = e.target.closest('.sq-material-row');
+    if (!pastedRow) return;
+    setTimeout(function () { syncImagePreview(pastedRow); }, 0);
   });
   document.getElementById('sq-standard-form').addEventListener('change', function (e) {
     if (e.target && (

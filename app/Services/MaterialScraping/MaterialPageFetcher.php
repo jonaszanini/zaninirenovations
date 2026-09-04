@@ -12,6 +12,10 @@ class MaterialPageFetcher
 {
     public function fetch(string $url): string
     {
+        if (! \App\Support\SafeOutboundHttp::isAllowedPublicHttpsUrl($url)) {
+            throw new RuntimeException('Refusing to fetch a non-public HTTPS URL.');
+        }
+
         $fetcher = (string) config('materials.scraper.fetcher', 'http');
 
         if ($fetcher === 'browsershot' && class_exists(\Spatie\Browsershot\Browsershot::class)) {

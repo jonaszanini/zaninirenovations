@@ -23,6 +23,7 @@ use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientSmsService;
 use App\Services\MoceanSmsService;
+use App\Support\SignedPublicLink;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -581,7 +582,7 @@ class ClientProjectQuotationController extends Controller
     {
         return URL::temporarySignedRoute(
             'public.client-project.quotation-pdf',
-            now()->addYear(),
+            SignedPublicLink::expiresAt(),
             ['client_project' => $project, 'quotation' => $quotation],
         );
     }
