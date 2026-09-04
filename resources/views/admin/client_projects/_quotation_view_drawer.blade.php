@@ -242,8 +242,13 @@
                     <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
                   </tr>
                 @else
-                  <tr>
-                    <td>{!! nl2br(e($row['description'])) !!}</td>
+                  <tr@if (!empty($row['is_standalone'])) class="items-standalone"@endif>
+                    <td>
+                      {!! nl2br(e($row['description'])) !!}
+                      @if (!empty($row['hst_included']) && empty($row['apply_hst']))
+                        <span class="items-hst-note">HST included</span>
+                      @endif
+                    </td>
                     <td class="cp-vd-totals-table__hst">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
                     <td class="cp-vd-totals-table__amt">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
                   </tr>
@@ -548,6 +553,9 @@
         font-weight: 700;
         color: var(--admin-primary);
         background: var(--admin-surface-hover);
+      }
+      .cp-vd-totals-table tbody tr.items-standalone td {
+        border-top: 2px solid var(--admin-primary);
       }
       .cp-vd-totals-table__footer-label {
         color: var(--admin-muted);

@@ -416,8 +416,8 @@ class ClientProjectQuotation extends Model
      * Commute fuel is never shown as its own row: the pre-tax amount is split
      * evenly across each job's Labour line (remainder cents on the last job)
      * so HST stays in the footer. Additional costs are rolled into the
-     * materials line. Debris removal is listed as its own pre-tax line after
-     * the job rows.
+     * materials line. Debris removal is listed as its own HST-included line
+     * after the job rows (the amount entered on the form).
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -509,8 +509,8 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Client PDFs: show debris as its own pre-tax line (HST in the footer).
-     * Stored amount is HST-inclusive.
+     * Client PDFs: show debris as its own line using the entered (HST-inclusive)
+     * amount so it matches the calculator. Do not charge HST again in the footer.
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
@@ -524,12 +524,9 @@ class ClientProjectQuotation extends Model
             }
 
             $row['description'] = DebrisRemovalExpenseService::LINE_DESCRIPTION;
-
-            if (! empty($row['hst_included']) && empty($row['apply_hst'])) {
-                $row['amount'] = self::preTaxFromHstIncluded((float) ($row['amount'] ?? 0));
-                $row['apply_hst'] = true;
-                unset($row['hst_included']);
-            }
+            $row['is_standalone'] = true;
+            $row['apply_hst'] = false;
+            $row['hst_included'] = true;
         }
         unset($row);
 
@@ -878,6 +875,12 @@ class ClientProjectQuotation extends Model
         foreach ($items as $row) {
             $description = (string) ($row['description'] ?? '');
             $amount = (float) ($row['amount'] ?? 0);
+
+            if (DebrisRemovalExpenseService::isLineDescription($description)) {
+                $normalized[] = $row;
+
+                continue;
+            }
 
             if (! empty($row['hst_included'])) {
                 $normalized[] = [

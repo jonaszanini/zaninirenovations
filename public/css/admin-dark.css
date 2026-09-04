@@ -580,6 +580,11 @@ html.admin-dark .cp-vd-totals-table tbody tr.items-heading td {
   color: var(--admin-primary);
 }
 
+html.admin-dark .cp-quotation-items tbody tr.items-standalone td,
+html.admin-dark .cp-vd-totals-table tbody tr.items-standalone td {
+  border-top-color: var(--admin-primary);
+}
+
 html.admin-dark .cp-quotation-items th,
 html.admin-dark .cp-quotation-items td,
 html.admin-dark .cp-quotation-doc-meta,

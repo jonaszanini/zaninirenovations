@@ -7,9 +7,9 @@ use Illuminate\Http\Request;
 /**
  * Optional debris-removal charge on quotations.
  *
- * Amount is treated as HST-inclusive (same as commute): it is added to the
- * quotation grand total. The client PDF lists it as its own pre-tax line
- * ("Debris removal and disposal") with HST in the footer.
+     * Amount is treated as HST-inclusive (same as commute): it is added to the
+     * quotation grand total. The client PDF lists the entered amount as its own
+     * line ("Debris removal and disposal") with HST included in that figure.
  */
 class DebrisRemovalExpenseService
 {

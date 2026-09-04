@@ -3252,6 +3252,18 @@ a:hover .cp-expense-receipt-pdf {
   color: var(--admin-primary);
   border-top: 2px solid var(--admin-primary);
 }
+.cp-quotation-items tbody tr.items-standalone td {
+  border-top: 2px solid var(--admin-primary);
+}
+.cp-quotation-items .items-hst-note,
+.cp-vd-totals-table .items-hst-note {
+  display: block;
+  font-size: 11px;
+  color: var(--admin-muted);
+  font-style: italic;
+  font-weight: 400;
+  margin-top: 2px;
+}
 .cp-quotation-items tfoot td {
   border: 0;
   border-top: 1px solid var(--admin-border);

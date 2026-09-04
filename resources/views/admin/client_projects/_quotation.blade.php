@@ -262,8 +262,13 @@
                         <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
                       </tr>
                     @else
-                      <tr>
-                        <td>{!! nl2br(e($row['description'])) !!}</td>
+                      <tr@if (!empty($row['is_standalone'])) class="items-standalone"@endif>
+                        <td>
+                          {!! nl2br(e($row['description'])) !!}
+                          @if (!empty($row['hst_included']) && empty($row['apply_hst']))
+                            <span class="items-hst-note">HST included</span>
+                          @endif
+                        </td>
                         <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
                         <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
                       </tr>
@@ -421,8 +426,13 @@
                     <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
                   </tr>
                 @else
-                  <tr>
-                    <td>{!! nl2br(e($row['description'])) !!}</td>
+                  <tr@if (!empty($row['is_standalone'])) class="items-standalone"@endif>
+                    <td>
+                      {!! nl2br(e($row['description'])) !!}
+                      @if (!empty($row['hst_included']) && empty($row['apply_hst']))
+                        <span class="items-hst-note">HST included</span>
+                      @endif
+                    </td>
                     <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
                     <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
                   </tr>

@@ -342,6 +342,17 @@
       color: #024768;
       border-top: 2pt solid #024768;
     }
+    .items tbody tr.items-standalone td {
+      border-top: 2pt solid #024768;
+    }
+    .items tbody tr.items-standalone .items-hst-note {
+      display: block;
+      font-size: 8.5pt;
+      color: #6b7280;
+      font-weight: 400;
+      font-style: italic;
+      margin-top: 2pt;
+    }
     .items tfoot td {
       background: #ffffff;
       border: 0 none transparent;
@@ -608,7 +619,7 @@
             <td colspan="2">{{ $row['description'] }}</td>
           </tr>
         @else
-        <tr>
+        <tr@if (!empty($row['is_standalone'])) class="items-standalone"@endif>
           @php
             $desc = e($row['description']);
             $note = 'Note: Material price is subject to change depending on store price at the time of purchase.';
@@ -616,7 +627,12 @@
                 $desc = str_replace($note, '<span style="font-size: 9pt; color: #6b7280; font-style: italic;">' . $note . '</span>', $desc);
             }
           @endphp
-          <td>{!! nl2br($desc) !!}</td>
+          <td>
+            {!! nl2br($desc) !!}
+            @if (!empty($row['hst_included']) && empty($row['apply_hst']))
+              <span class="items-hst-note">HST included</span>
+            @endif
+          </td>
           <td class="amount">{{ $fmt($row['amount']) }}</td>
         </tr>
         @endif
