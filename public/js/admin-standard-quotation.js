@@ -572,15 +572,13 @@
     wrap.innerHTML = html.trim();
     var card = wrap.querySelector('.sq-work-card') || wrap.firstElementChild;
     worksRoot.appendChild(card);
-    if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
-      workCards().forEach(function (c) {
-        if (c !== card) {
-          c.classList.remove('is-open');
-          var tog = c.querySelector('.sq-work-toggle');
-          if (tog) tog.setAttribute('aria-expanded', 'false');
-        }
-      });
-    }
+    workCards().forEach(function (c) {
+      if (c !== card) {
+        c.classList.remove('is-open');
+        var tog = c.querySelector('.sq-work-toggle');
+        if (tog) tog.setAttribute('aria-expanded', 'false');
+      }
+    });
     card.classList.add('is-open');
     var toggle = card.querySelector('.sq-work-toggle');
     if (toggle) toggle.setAttribute('aria-expanded', 'true');
@@ -686,11 +684,22 @@
     if (tog) {
       var cardT = tog.closest('.sq-work-card');
       if (!cardT) return;
-      var open = !cardT.classList.contains('is-open');
-      cardT.classList.toggle('is-open', open);
-      tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggleWorkCard(cardT);
+      return;
+    }
+    var header = e.target.closest('.sq-work-card__header');
+    if (header && !e.target.closest('input, textarea, select, a, .sq-remove-work, label')) {
+      var cardH = header.closest('.sq-work-card');
+      if (cardH) toggleWorkCard(cardH);
     }
   });
+
+  function toggleWorkCard(card) {
+    var open = !card.classList.contains('is-open');
+    card.classList.toggle('is-open', open);
+    var btn = card.querySelector('.sq-work-toggle');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
 
   var addWorkBtn = document.getElementById('sq-add-work');
   if (addWorkBtn) addWorkBtn.addEventListener('click', addWorkCard);
