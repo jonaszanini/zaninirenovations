@@ -224,6 +224,47 @@ html.admin-dark .admin-content td {
   border-color: var(--admin-border);
 }
 
+/* Travel estimate table: row labels are <th>, so the generic th rule
+   above would mute Outbound/Return/Total. Keep them as body copy. */
+html.admin-dark .cp-travel-breakdown thead th {
+  background: transparent;
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-travel-breakdown tbody th,
+html.admin-dark .cp-travel-breakdown tbody td,
+html.admin-dark .cp-travel-breakdown__leg,
+html.admin-dark .cp-travel-breakdown__num {
+  background: transparent;
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-travel-breakdown__leg-sub {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-travel-breakdown__fuel,
+html.admin-dark .cp-travel-breakdown td.cp-travel-breakdown__fuel {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .cp-travel-breakdown tfoot th,
+html.admin-dark .cp-travel-breakdown tfoot td {
+  background: var(--admin-primary-soft);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-travel-cost-card__manage {
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-travel-breakdown tbody tr:hover > td,
+html.admin-dark .cp-travel-breakdown tbody tr:hover > th,
+html.admin-dark .cp-travel-breakdown tfoot tr:hover > td,
+html.admin-dark .cp-travel-breakdown tfoot tr:hover > th {
+  background: transparent;
+}
+
 /* Alerts */
 html.admin-dark .admin-flash--success {
   background: var(--admin-success-soft);
@@ -406,6 +447,11 @@ html.admin-dark .cp-calendar-link--btn {
   color: var(--admin-text);
 }
 
+html.admin-dark a.cp-calendar-link,
+html.admin-dark a.cp-calendar-link--btn {
+  color: var(--admin-primary);
+}
+
 html.admin-dark a.cp-projects-scope-chip {
   background: var(--admin-surface);
   border-color: var(--admin-border);
@@ -483,6 +529,10 @@ html.admin-dark .cp-time-saved-heading,
 html.admin-dark .cp-calendar-legend,
 html.admin-dark .cp-schedule-summary,
 html.admin-dark .cp-notes-box,
+html.admin-dark .cp-header-detail__label,
+html.admin-dark .cp-header-client-row,
+html.admin-dark .cp-header-ref-sep,
+html.admin-dark .cp-updated,
 html.admin-dark .sq-mat-field > label,
 html.admin-dark .sq-mat-catalog-label,
 html.admin-dark .sq-mat-hst-toggles-label,

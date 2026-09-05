@@ -224,7 +224,7 @@
         background: none;
         border: 1px solid transparent;
         border-radius: 5px;
-        color: #6b7280;
+        color: var(--admin-muted);
         cursor: pointer;
         font-size: 11px;
         padding: 0;
@@ -233,9 +233,9 @@
         transition: background 0.15s, color 0.15s, border-color 0.15s;
       }
       .cp-notes-edit-icon-btn:hover {
-        background: #f3f4f6;
-        border-color: #d1d5db;
-        color: #024768;
+        background: var(--admin-surface-hover);
+        border-color: var(--admin-border);
+        color: var(--admin-primary);
       }
 
       /* ── "Add notes" insert button ────────────────────────────────────── */
@@ -244,18 +244,18 @@
         align-items: center;
         gap: 5px;
         background: none;
-        border: 1px dashed #c9d3e0;
+        border: 1px dashed var(--admin-border);
         border-radius: 6px;
         padding: 3px 9px;
         font-size: 12px;
-        color: #6b7280;
+        color: var(--admin-muted);
         cursor: pointer;
         transition: background 0.15s, color 0.15s, border-color 0.15s;
       }
       .cp-notes-insert-btn:hover {
-        background: #f0f7ff;
-        border-color: #6faacd;
-        color: #024768;
+        background: var(--admin-primary-soft);
+        border-color: var(--admin-primary);
+        color: var(--admin-primary);
       }
 
       /* ── Notes drawer shell ───────────────────────────────────────────── */
@@ -272,7 +272,7 @@
       .cp-nd__overlay {
         position: absolute;
         inset: 0;
-        background: rgba(15, 23, 42, 0.4);
+        background: rgba(15, 23, 42, 0.45);
         cursor: pointer;
         animation: cpNdFade 0.16s ease;
       }
@@ -281,10 +281,11 @@
         position: relative;
         width: min(480px, 100vw);
         height: 100%;
-        background: #fff;
+        background: var(--admin-surface);
+        color: var(--admin-text);
         display: flex;
         flex-direction: column;
-        box-shadow: -4px 0 28px rgba(0,0,0,0.16);
+        box-shadow: var(--admin-shadow-lg, -4px 0 28px rgba(0,0,0,0.16));
         animation: cpNdSlide 0.2s cubic-bezier(.22,.68,0,1.2);
       }
 
@@ -297,21 +298,21 @@
         justify-content: space-between;
         gap: 10px;
         padding: 18px 20px 14px;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--admin-border);
         flex-shrink: 0;
       }
       .cp-nd__title {
         margin: 0;
         font-size: 17px;
         font-weight: 700;
-        color: #111827;
+        color: var(--admin-heading);
         display: flex;
         align-items: center;
         gap: 8px;
       }
       .cp-nd__close {
         background: none;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--admin-border);
         border-radius: 6px;
         width: 30px;
         height: 30px;
@@ -319,12 +320,12 @@
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        color: #6b7280;
+        color: var(--admin-muted);
         font-size: 13px;
         flex-shrink: 0;
         transition: background 0.12s, color 0.12s;
       }
-      .cp-nd__close:hover { background: #f3f4f6; color: #111827; }
+      .cp-nd__close:hover { background: var(--admin-surface-hover); color: var(--admin-heading); }
 
       .cp-nd__form   { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
       .cp-nd__body   { flex: 1 1 0; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -332,7 +333,7 @@
       .cp-nd__label {
         font-size: 13px;
         font-weight: 600;
-        color: #374151;
+        color: var(--admin-heading);
         display: flex;
         flex-direction: column;
         gap: 2px;
@@ -340,7 +341,7 @@
       .cp-nd__label-hint {
         font-size: 11px;
         font-weight: 400;
-        color: #9ca3af;
+        color: var(--admin-muted);
       }
 
       .cp-nd__textarea {
@@ -349,12 +350,18 @@
         min-height: 180px;
         font-size: 14px;
         line-height: 1.6;
-        color: #111827;
+        color: var(--admin-text);
+        background: var(--admin-input-bg);
+        border-color: var(--admin-border-strong);
         box-sizing: border-box;
+      }
+      .cp-nd__textarea::placeholder {
+        color: var(--admin-muted);
+        opacity: 1;
       }
       .cp-nd__char-hint {
         font-size: 11px;
-        color: #9ca3af;
+        color: var(--admin-muted);
         text-align: right;
         margin: 0;
       }
@@ -365,15 +372,16 @@
         gap: 8px;
         align-items: center;
         padding: 14px 20px;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid var(--admin-border);
         flex-shrink: 0;
+        background: var(--admin-surface);
       }
       .cp-nd__clear-btn {
         margin-left: auto;
-        color: #b91c1c !important;
-        border-color: #fca5a5 !important;
+        color: var(--admin-danger) !important;
+        border-color: var(--admin-danger) !important;
       }
-      .cp-nd__clear-btn:hover { background: #fef2f2 !important; }
+      .cp-nd__clear-btn:hover { background: var(--admin-danger-soft) !important; }
     </style>
 
     <script>
