@@ -15,8 +15,10 @@
 <div class="cp-document-links" id="{{ $rootId }}-form">
 @endif
   <div class="admin-form-group">
-    <span class="cp-document-links-label">Document links <span class="admin-form-help cp-inline-help">(optional)</span></span>
-    <p class="admin-form-help">Paste Word, Excel, or PowerPoint share links (OneDrive, SharePoint, Google Docs, or a direct file URL). Type is detected from the link; you can override it. Add as many as you need.</p>
+    <span class="cp-document-links-label">
+      Document links <span class="admin-form-help cp-inline-help">(optional)</span>
+      @include('admin.partials.info_tip', ['text' => 'Paste Word, Excel, or PowerPoint share links (OneDrive, SharePoint, Google Docs, or a direct file URL). Type is detected from the link; you can override it. Add as many as you need.'])
+    </span>
   </div>
 
   <div class="cp-document-links-rows" data-cp-doc-link-rows>

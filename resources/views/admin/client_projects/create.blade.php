@@ -224,19 +224,13 @@
               <input type="radio" name="billing_type" value="{{ \App\Models\ClientProject::BILLING_FIXED }}"
                      data-cp-billing
                      @checked($billingType === \App\Models\ClientProject::BILLING_FIXED)>
-              <span>
-                <strong>Fixed price</strong>
-                <small>One total amount, paid in 1–4 installments.</small>
-              </span>
+              <strong>Fixed price</strong>
             </label>
             <label class="cp-billing-option">
               <input type="radio" name="billing_type" value="{{ \App\Models\ClientProject::BILLING_HOURLY }}"
                      data-cp-billing
                      @checked($billingType === \App\Models\ClientProject::BILLING_HOURLY)>
-              <span>
-                <strong>Hourly rate</strong>
-                <small>Set a rate per hour — earnings = rate × logged hours.</small>
-              </span>
+              <strong>Hourly rate</strong>
             </label>
           </div>
           @error('billing_type') <p class="admin-form-error">{{ $message }}</p> @enderror

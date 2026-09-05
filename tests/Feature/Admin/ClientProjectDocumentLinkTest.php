@@ -20,7 +20,8 @@ class ClientProjectDocumentLinkTest extends IntegrationTestCase
         $this->get(route('admin.client-projects.edit', $project))
             ->assertOk()
             ->assertSee('Document links')
-            ->assertSee('Save links');
+            ->assertSee('Save links')
+            ->assertDontSee('e.g. Material list');
     }
 
     public function test_can_save_multiple_document_links_and_detect_types(): void
@@ -32,9 +33,9 @@ class ClientProjectDocumentLinkTest extends IntegrationTestCase
         $this->from(route('admin.client-projects.edit', $project))
             ->post(route('admin.client-projects.document-links.store', $project), [
                 'document_links' => [
-                    ['url' => 'https://files.example.com/scope.docx', 'title' => 'Scope', 'kind' => 'auto'],
-                    ['url' => 'https://1drv.ms/x/s!abc', 'title' => '', 'kind' => 'auto'],
-                    ['url' => 'https://docs.google.com/presentation/d/xyz/edit', 'title' => 'Walkthrough', 'kind' => 'auto'],
+                    ['url' => 'https://files.example.com/scope.docx', 'kind' => 'auto'],
+                    ['url' => 'https://1drv.ms/x/s!abc', 'kind' => 'auto'],
+                    ['url' => 'https://onedrive.live.com/edit.aspx?file=Patricia%20bathroom.pptx', 'kind' => 'auto'],
                 ],
             ])
             ->assertRedirect(route('admin.client-projects.edit', $project));
@@ -42,10 +43,10 @@ class ClientProjectDocumentLinkTest extends IntegrationTestCase
         $links = $project->documentLinks()->orderBy('sort_order')->get();
         $this->assertCount(3, $links);
         $this->assertSame(ClientProjectDocumentLink::KIND_WORD, $links[0]->kind);
-        $this->assertSame('Scope', $links[0]->title);
+        $this->assertSame('scope.docx', $links[0]->title);
         $this->assertSame(ClientProjectDocumentLink::KIND_EXCEL, $links[1]->kind);
         $this->assertSame(ClientProjectDocumentLink::KIND_PPT, $links[2]->kind);
-        $this->assertSame('Walkthrough', $links[2]->title);
+        $this->assertSame('Patricia bathroom.pptx', $links[2]->title);
     }
 
     public function test_rejects_javascript_urls(): void
