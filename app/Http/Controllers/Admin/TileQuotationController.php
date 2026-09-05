@@ -52,7 +52,9 @@ class TileQuotationController extends Controller
         $groutTypes = TileGroutType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
         $products = TileProduct::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
 
-        return view('admin.quotations.tile.create', compact('linkProject', 'mortarTypes', 'groutTypes', 'products'));
+        return view('admin.quotations.tile.create', compact('linkProject', 'mortarTypes', 'groutTypes', 'products') + [
+            'linkedCpq' => null,
+        ]);
     }
 
     public function store(Request $request, TileQuotationCalculator $calculator)
@@ -180,7 +182,12 @@ class TileQuotationController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('admin.quotations.tile.create', compact('quotation', 'mortarTypes', 'groutTypes', 'products', 'returnToProject', 'linkProject', 'linkableProjects'));
+        return view('admin.quotations.tile.create', compact('quotation', 'mortarTypes', 'groutTypes', 'products', 'returnToProject', 'linkProject', 'linkableProjects') + [
+            'linkedCpq' => ClientProjectQuotation::findForSource(
+                ClientProjectQuotation::SOURCE_TILE,
+                (int) $quotation->id
+            ),
+        ]);
     }
 
     public function update(Request $request, TileQuotation $quotation, TileQuotationCalculator $calculator)

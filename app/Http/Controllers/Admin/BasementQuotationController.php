@@ -305,10 +305,10 @@ class BasementQuotationController extends Controller
             if ($quotation->supportsClientIntake()) {
                 $quotation->ensureIntakeToken();
             }
-            $linkedCpq = ClientProjectQuotation::query()
-                ->where('source_type', ClientProjectQuotation::SOURCE_BASEMENT)
-                ->where('source_id', $quotation->id)
-                ->first();
+            $linkedCpq = ClientProjectQuotation::findForSource(
+                ClientProjectQuotation::SOURCE_BASEMENT,
+                (int) $quotation->id
+            );
         }
 
         $previewInputs = BasementQuotationCalculator::defaultInputs();

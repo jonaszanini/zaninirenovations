@@ -257,11 +257,22 @@
                 </thead>
                 <tbody>
                   @foreach ($items as $row)
-                    <tr>
-                      <td>{!! nl2br(e($row['description'])) !!}</td>
-                      <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
-                      <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
-                    </tr>
+                    @if (!empty($row['is_heading']))
+                      <tr class="items-heading">
+                        <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
+                      </tr>
+                    @else
+                      <tr class="{{ ! empty($row['is_standalone']) ? 'items-standalone' : '' }}">
+                        <td>
+                          {!! nl2br(e($row['description'])) !!}
+                          @if (!empty($row['hst_included']) && empty($row['apply_hst']))
+                            <span class="items-hst-note">HST included</span>
+                          @endif
+                        </td>
+                        <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
+                        <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
+                      </tr>
+                    @endif
                   @endforeach
                 </tbody>
                 <tfoot>
@@ -410,11 +421,22 @@
             </thead>
             <tbody>
               @foreach ($items as $row)
-                <tr>
-                  <td>{!! nl2br(e($row['description'])) !!}</td>
-                  <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
-                  <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
-                </tr>
+                @if (!empty($row['is_heading']))
+                  <tr class="items-heading">
+                    <td colspan="3">{!! nl2br(e($row['description'])) !!}</td>
+                  </tr>
+                @else
+                  <tr class="{{ ! empty($row['is_standalone']) ? 'items-standalone' : '' }}">
+                    <td>
+                      {!! nl2br(e($row['description'])) !!}
+                      @if (!empty($row['hst_included']) && empty($row['apply_hst']))
+                        <span class="items-hst-note">HST included</span>
+                      @endif
+                    </td>
+                    <td class="cp-quotation-hst-col">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
+                    <td class="amount">{{ \App\Models\ClientProject::formatMoney($row['amount']) }}</td>
+                  </tr>
+                @endif
               @endforeach
             </tbody>
             <tfoot>

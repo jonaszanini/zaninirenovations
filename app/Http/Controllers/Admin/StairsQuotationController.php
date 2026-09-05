@@ -266,6 +266,12 @@ class StairsQuotationController extends Controller
             'settings' => $settings,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
+            'linkedCpq' => $quotation
+                ? ClientProjectQuotation::findForSource(
+                    ClientProjectQuotation::SOURCE_STAIRS,
+                    (int) $quotation->id
+                )
+                : null,
         ]);
     }
 

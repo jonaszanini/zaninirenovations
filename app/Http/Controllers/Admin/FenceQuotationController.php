@@ -86,6 +86,7 @@ class FenceQuotationController extends Controller
             'zeroPricedMaterials' => $zeroPricedKeys,
             'linkableProjects' => collect(),
             'linkProject' => $linkProject,
+            'linkedCpq' => null,
         ]);
     }
 
@@ -148,6 +149,10 @@ class FenceQuotationController extends Controller
             'zeroPricedMaterials' => $zeroPricedKeys,
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
+            'linkedCpq' => ClientProjectQuotation::findForSource(
+                ClientProjectQuotation::SOURCE_FENCE,
+                (int) $fence_quotation->id
+            ),
         ]);
     }
 

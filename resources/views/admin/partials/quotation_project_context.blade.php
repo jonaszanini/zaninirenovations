@@ -9,15 +9,15 @@
     </summary>
     <div class="admin-accordion__panel">
       @if (filled($project->notes))
-        <div style="margin-bottom: 12px;">
-          <h5 style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Notes</h5>
-          <div style="font-size: 13px; color: #334155; white-space: pre-wrap; line-height: 1.4;">{{ $project->notes }}</div>
+        <div class="cp-project-context-notes">
+          <h5 class="cp-project-context-notes__label">Notes</h5>
+          <div class="cp-project-context-notes__body">{{ $project->notes }}</div>
         </div>
       @endif
 
       @if ($project->photos->isNotEmpty() || $project->documentLinks->isNotEmpty())
-        <div>
-          <h5 style="margin: 0 0 8px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Photos &amp; Files</h5>
+        <div class="cp-project-context-photos">
+          <h5 class="cp-project-context-notes__label">Photos &amp; Files</h5>
           @include('admin.client_projects._project_photos_gallery', [
             'project' => $project,
             'galleryId' => 'cp-quotation-context-photos',
