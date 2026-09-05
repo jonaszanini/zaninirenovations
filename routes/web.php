@@ -404,6 +404,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.photos.rotate');
     Route::delete('client-projects/{client_project}/photos/{photo}', [\App\Http\Controllers\Admin\ClientProjectController::class, 'destroyPhoto'])
         ->name('client-projects.photos.destroy');
+    Route::post('client-projects/{client_project}/document-links', [\App\Http\Controllers\Admin\ClientProjectController::class, 'storeDocumentLinks'])
+        ->name('client-projects.document-links.store');
+    Route::delete('client-projects/{client_project}/document-links/{document_link}', [\App\Http\Controllers\Admin\ClientProjectController::class, 'destroyDocumentLink'])
+        ->name('client-projects.document-links.destroy');
 
     // -----------------------------------------------------------------
     // Standalone Quotation module (separate from per-project quotations).

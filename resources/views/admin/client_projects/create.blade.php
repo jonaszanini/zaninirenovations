@@ -303,6 +303,11 @@
       'existingCount' => 0,
       'formId' => 'cp-create-project-form',
     ])
+    @include('admin.client_projects._project_document_links_form', [
+      'standalone' => false,
+      'formId' => 'cp-create-project-form',
+      'rootId' => 'cp-create-document-links',
+    ])
   </div>
 
   <script>

@@ -434,7 +434,7 @@
       })();
     </script>
 
-    @if ($project->photos->isNotEmpty())
+    @if ($project->photos->isNotEmpty() || $project->documentLinks->isNotEmpty())
       @include('admin.client_projects._project_photos_gallery', [
         'project' => $project,
         'galleryId' => 'cp-show-project-photos',

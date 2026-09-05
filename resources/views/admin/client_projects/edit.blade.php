@@ -271,6 +271,12 @@
         </div>
       </form>
     @endif
+
+    @include('admin.client_projects._project_document_links_form', [
+      'project' => $project,
+      'standalone' => true,
+      'rootId' => 'cp-edit-document-links',
+    ])
   </div>
 
   <div class="admin-card cp-danger-card">

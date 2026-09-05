@@ -3864,9 +3864,9 @@ body.cp-modal-open {
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
-  color: #024768;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface-hover);
+  color: var(--admin-primary);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .cp-project-photos-thumb-media .fa {
@@ -3941,15 +3941,15 @@ body.cp-modal-open {
   padding: 0;
   border: 0;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--admin-elevated);
   color: var(--admin-danger, #c62828);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.16);
+  box-shadow: var(--admin-shadow-sm);
   cursor: pointer;
 }
 .cp-project-photos-delete:hover,
 .cp-project-photos-delete:focus-visible {
-  background: #fff;
-  color: #8e1b1b;
+  background: var(--admin-surface);
+  color: var(--admin-danger, #8e1b1b);
 }
 @media (hover: none) {
   .cp-project-photos-actions {
@@ -3963,7 +3963,99 @@ body.cp-modal-open {
 .cp-edit-project-photos-form {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed #e5e7eb;
+  border-top: 1px dashed var(--admin-border);
+}
+
+.cp-doc-link-thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.cp-doc-link-thumb .cp-project-photos-thumb-media {
+  padding: 8px;
+  min-height: 96px;
+}
+.cp-doc-link-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--admin-muted);
+}
+.cp-project-photos-thumb-media--word {
+  color: #2b579a;
+}
+.cp-project-photos-thumb-media--excel {
+  color: #217346;
+}
+.cp-project-photos-thumb-media--ppt {
+  color: #d24726;
+}
+.cp-project-photos-thumb-media--other {
+  color: var(--admin-primary);
+}
+
+.cp-document-links {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--admin-border);
+}
+.cp-document-links-label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--admin-heading);
+}
+.cp-document-links-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cp-document-links-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface-hover);
+}
+.cp-document-links-row .admin-form-group {
+  margin: 0;
+}
+.cp-document-links-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: end;
+}
+.cp-document-links-remove {
+  justify-self: start;
+  width: var(--admin-control-height);
+  min-width: var(--admin-control-height);
+  padding: 0;
+}
+.cp-document-links-remove[hidden] {
+  display: none !important;
+}
+.cp-document-links-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  margin-top: 12px;
+}
+@media (min-width: 700px) {
+  .cp-document-links-meta {
+    grid-template-columns: minmax(0, 1fr) 160px auto;
+  }
 }
 
 /* Quotation tab — PDF photo picker */

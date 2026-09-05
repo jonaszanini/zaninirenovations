@@ -671,3 +671,13 @@ html.admin-dark .admin-text-link {
 html.admin-dark a.cp-header-detail__value {
   color: var(--admin-primary);
 }
+
+html.admin-dark .cp-project-photos-thumb-media--word {
+  color: #7eb8f7;
+}
+html.admin-dark .cp-project-photos-thumb-media--excel {
+  color: #4ade80;
+}
+html.admin-dark .cp-project-photos-thumb-media--ppt {
+  color: #fb7185;
+}
