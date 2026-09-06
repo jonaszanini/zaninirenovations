@@ -35,6 +35,15 @@ class BasementQuotationCalculator
         'custom' => 'Custom',
     ];
 
+    /** Gypsum finish levels. Level 0 is hang only — no tape, mud, or sand. */
+    public const FINISH_LEVELS = [
+        0 => 'Level 0 — hang only (no tape)',
+        1 => 'Level 1 — fire tape',
+        2 => 'Level 2 — tape + coat',
+        3 => 'Level 3 — paint-ready economy',
+        4 => 'Level 4 — standard paint-ready',
+    ];
+
     /**
      * Trade steps shown as include-checkboxes (Overview is always on).
      *
@@ -71,6 +80,16 @@ class BasementQuotationCalculator
         $value = strtolower(trim((string) $preset));
 
         return in_array($preset = $value, ['full', 'bathroom', 'wall', 'custom'], true) ? $preset : 'full';
+    }
+
+    public static function normalizeFinishLevel(mixed $level, int $default = 4): int
+    {
+        if ($level === null || $level === '') {
+            return $default;
+        }
+        $level = (int) $level;
+
+        return array_key_exists($level, self::FINISH_LEVELS) ? $level : $default;
     }
 
     /**
@@ -517,6 +536,7 @@ class BasementQuotationCalculator
             'drywall_wall_sf' => null,
             'drywall_ceiling_sf' => null,
             'drywall_corners' => 0,
+            'drywall_inside_corners' => 0,
             'drywall_openings' => 0,
             'finish_level' => 4,
             'ceiling_type' => 'drywall',
@@ -808,24 +828,43 @@ class BasementQuotationCalculator
                 $on('ceiling') && in_array($ceilingType, ['drywall', 'paint'], true) ? $area : 0
             );
             $dwSf = $dwWall + $dwCeil;
-            $level = max(1, min(4, (int) ($inputs['finish_level'] ?? 4)));
-            $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
-            $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
-            $finishDetail = number_format($dwSf, 0).' sq ft';
-            if ($paintColors === 2) {
-                $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
-                $finishDetail .= ', two-color';
-            }
+            $level = self::normalizeFinishLevel($inputs['finish_level'] ?? 4);
+            $hangOnly = $level === 0;
             $addLabor('dw_hang', 'drywall', 'Hang drywall', number_format($dwSf, 0).' sq ft', $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
-            $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
+            if (! $hangOnly) {
+                $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
+                $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
+                $finishDetail = number_format($dwSf, 0).' sq ft';
+                if ($paintColors === 2) {
+                    $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
+                    $finishDetail .= ', two-color';
+                }
+                $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
+            }
             $sheets = $dwSf > 0 ? max(1, (int) ceil($dwSf / BasementSettings::PANEL_SF * 1.1)) : 0;
             $addMat('drywall_sheet', 'drywall', $sheets, 'drywall_sheet');
-            $addMat('joint_compound', 'drywall', $this->packages($dwSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
-            $addMat('drywall_tape', 'drywall', $this->packages($dwSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
             $corners = max(0, (int) $inputs['drywall_corners']);
+            $insideCorners = max(0, (int) ($inputs['drywall_inside_corners'] ?? 0));
             $openings = max(0, (int) $inputs['drywall_openings']);
-            $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
-            $addLabor('dw_openings', 'drywall', 'Cut & finish openings', $openings.' opening(s)', $openings * (float) ($prod['drywall_opening_hours_each'] ?? 0.4));
+            if (! $hangOnly) {
+                $addMat('joint_compound', 'drywall', $this->packages($dwSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
+                $addMat('drywall_tape', 'drywall', $this->packages($dwSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
+                $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
+                $addLabor(
+                    'dw_inside_corners',
+                    'drywall',
+                    'Tape inside corners',
+                    $insideCorners.' corner(s)',
+                    $insideCorners * (float) ($prod['drywall_inside_corner_hours_each'] ?? 0.3)
+                );
+            }
+            $addLabor(
+                'dw_openings',
+                'drywall',
+                $hangOnly ? 'Cut openings' : 'Cut & finish openings',
+                $openings.' opening(s)',
+                $openings * (float) ($prod['drywall_opening_hours_each'] ?? 0.4)
+            );
         }
 
         // --- Ceiling ---

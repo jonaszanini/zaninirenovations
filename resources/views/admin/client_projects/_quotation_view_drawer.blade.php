@@ -112,6 +112,10 @@
             @include('admin.client_projects._quotation_view_trimming', ['sourceModel' => $sourceModel])
           @break
 
+          @case(ClientProjectQuotation::SOURCE_MILLWORK)
+            @include('admin.client_projects._quotation_view_millwork', ['sourceModel' => $sourceModel])
+          @break
+
           @default
             <div class="cp-vd-section">
               <p class="admin-form-help">No additional calculator details available for this quotation type.</p>

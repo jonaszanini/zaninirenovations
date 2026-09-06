@@ -1912,7 +1912,7 @@
   padding: 0.35rem 0.65rem;
   border-radius: 8px;
   border: 1px solid var(--admin-border);
-  background: #fff;
+  background: var(--admin-input-bg);
 }
 
 .util-ra-canvas-card {
@@ -2093,13 +2093,15 @@
   align-items: stretch;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-input-bg);
 }
 
 .util-ra-btn-cluster .util-ra-icon-btn {
   border: none;
   border-radius: 0;
   box-shadow: none;
+  background: transparent;
+  color: var(--admin-muted);
 }
 
 .util-ra-btn-cluster .util-ra-tip:first-child .util-ra-icon-btn {
@@ -2173,7 +2175,8 @@
   border: 1px solid var(--admin-border);
   border-radius: 10px;
   overflow: hidden;
-  background: #fafbfc;
+  background: var(--admin-input-bg);
+  --ra-grid-stroke: #d8dee4;
   cursor: crosshair;
   line-height: 0;
 }
@@ -2254,7 +2257,7 @@
   padding: 0 1rem;
   border-radius: 10px;
   border: 1px dashed var(--admin-border);
-  background: #fafbfc;
+  background: var(--admin-bg);
   pointer-events: none;
   user-select: none;
 }
@@ -2346,7 +2349,7 @@
 .util-ra-live-area__row--total {
   margin-top: 0.35rem;
   padding-top: 0.35rem;
-  border-top: 1px solid rgba(2, 71, 104, 0.12);
+  border-top: 1px solid var(--admin-border);
 }
 
 .util-ra-live-area-groups {
@@ -2369,7 +2372,7 @@
   width: 0.85rem;
   height: 0.85rem;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--admin-border);
   flex-shrink: 0;
 }
 
@@ -2387,7 +2390,7 @@
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
   background: var(--admin-primary-soft, #e8f1f5);
-  border: 1px solid rgba(2, 71, 104, 0.12);
+  border: 1px solid var(--admin-border);
   font-size: 0.82rem;
   white-space: nowrap;
 }
@@ -2396,7 +2399,7 @@
   width: 0.75rem;
   height: 0.75rem;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--admin-border);
 }
 
 .util-ra-group-chip__label {
@@ -2418,8 +2421,8 @@
   gap: 0.35rem;
   padding: 0.2rem 0.55rem 0.2rem 0.4rem;
   border-radius: 999px;
-  background: rgba(2, 71, 104, 0.06);
-  border: 1px solid rgba(2, 71, 104, 0.1);
+  background: var(--admin-primary-soft);
+  border: 1px solid var(--admin-border);
   font-size: 0.8rem;
   color: var(--admin-text);
   line-height: 1.2;
@@ -2429,7 +2432,7 @@
   width: 0.7rem;
   height: 0.7rem;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--admin-border);
   flex-shrink: 0;
 }
 
@@ -2515,7 +2518,8 @@
   padding: 0.35rem 0.55rem 0.35rem 0.7rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-bg);
+  color: var(--admin-text);
 }
 
 .util-ra-rooms-empty {
@@ -2525,7 +2529,7 @@
   border-radius: 10px;
   font-size: 0.9rem;
   color: var(--admin-muted);
-  background: rgba(2, 71, 104, 0.02);
+  background: var(--admin-bg);
 }
 
 .util-ra-rooms-list {
@@ -2545,7 +2549,7 @@
   padding: 0.75rem 0.9rem;
   border: 1px solid var(--admin-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--admin-input-bg);
 }
 
 .util-ra-rooms-item__main {
@@ -2625,6 +2629,7 @@
 .util-ra-total__value {
   font-size: 0.92rem;
   font-variant-numeric: tabular-nums;
+  color: var(--admin-text);
 }
 
 .util-ra-total__value strong {
@@ -2638,7 +2643,7 @@
   padding: 0.65rem 0.9rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-input-bg);
   color: var(--admin-text);
   font-family: inherit;
   font-size: 0.95rem;
@@ -2758,7 +2763,7 @@
   }
 
   .util-ra-rooms-item.is-editing .util-ra-rooms-item__actions {
-    border-top-color: rgba(2, 71, 104, 0.18);
+    border-top-color: var(--admin-primary);
   }
 
   .util-ra-area-name {

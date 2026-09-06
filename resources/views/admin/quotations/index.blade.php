@@ -166,5 +166,21 @@
         <h4>Shed</h4>
       </div>
     </a>
+
+    <a href="{{ route('admin.quotations.millwork.index', $pq) }}" class="fq-hub-card">
+      <div class="fq-hub-card-image-wrap fq-hub-card-image-wrap--svg" aria-hidden="true">
+        <svg class="fq-hub-card-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
+          <rect x="8" y="8" width="48" height="48" rx="2" fill="#eef4f8" stroke="#024768" stroke-width="1.5"/>
+          <rect x="12" y="34" width="18" height="18" fill="#c4a574" stroke="#024768" stroke-width="1"/>
+          <rect x="12" y="14" width="18" height="18" fill="#d4b896" stroke="#024768" stroke-width="1"/>
+          <rect x="34" y="14" width="18" height="18" fill="#e8d4b8" stroke="#024768" stroke-width="1"/>
+          <line x1="30" y1="8" x2="30" y2="56" stroke="#024768" stroke-width="1" stroke-dasharray="3 2"/>
+          <line x1="8" y1="32" x2="56" y2="32" stroke="#024768" stroke-width="1" stroke-dasharray="3 2"/>
+        </svg>
+      </div>
+      <div class="fq-hub-card-body">
+        <h4>Custom Millwork</h4>
+      </div>
+    </a>
   </div>
 @endsection

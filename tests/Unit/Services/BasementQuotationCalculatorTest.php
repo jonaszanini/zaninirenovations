@@ -910,6 +910,63 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta($expectedAmount, $mud['amount'], 0.05);
     }
 
+    public function test_finish_level_zero_hangs_drywall_without_tape_or_mud(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'ceiling_height_ft' => 8,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 400,
+            'drywall_corners' => 6,
+            'drywall_inside_corners' => 8,
+            'drywall_openings' => 2,
+            'finish_level' => 0,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+
+        $labor = collect($calc['labor']);
+        $materials = collect($calc['materials']);
+        $this->assertNotNull($labor->firstWhere('key', 'dw_hang'));
+        $this->assertNull($labor->firstWhere('key', 'dw_finish'));
+        $this->assertNull($labor->firstWhere('key', 'dw_inside_corners'));
+        $this->assertSame('Cut openings', $labor->firstWhere('key', 'dw_openings')['label']);
+        $this->assertNotNull($materials->firstWhere('key', 'drywall_sheet'));
+        $this->assertNull($materials->firstWhere('key', 'joint_compound'));
+        $this->assertNull($materials->firstWhere('key', 'drywall_tape'));
+        $this->assertNull($materials->firstWhere('key', 'corner_bead'));
+    }
+
+    public function test_inside_corners_add_tape_labor(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 0,
+            'drywall_inside_corners' => 10,
+            'finish_level' => 4,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+
+        $inside = collect($calc['labor'])->firstWhere('key', 'dw_inside_corners');
+        $this->assertNotNull($inside);
+        $this->assertEqualsWithDelta(3.0, $inside['hours'], 0.02);
+        $this->assertStringContainsString('10', $inside['detail']);
+    }
+
     public function test_wall_preset_enables_doors_trim(): void
     {
         $keys = BasementQuotationCalculator::presetEnabledSections('wall');

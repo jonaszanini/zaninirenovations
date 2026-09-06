@@ -18,6 +18,7 @@ use App\Models\StandardQuotation;
 use App\Models\BasementQuotation;
 use App\Models\ShedQuotation;
 use App\Models\TrimmingQuotation;
+use App\Models\MillworkQuotation;
 use App\Models\TileQuotation;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
@@ -132,6 +133,12 @@ class ClientProjectQuotationController extends Controller
             $tm = TrimmingQuotation::find($quotation->source_id);
             if ($tm) {
                 return redirect()->route('admin.quotations.trimming.edit', [$tm, 'return' => 'project']);
+            }
+        }
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_MILLWORK && $quotation->source_id) {
+            $mw = MillworkQuotation::find($quotation->source_id);
+            if ($mw) {
+                return redirect()->route('admin.quotations.millwork.edit', [$mw, 'return' => 'project']);
             }
         }
 

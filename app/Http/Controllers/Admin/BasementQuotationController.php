@@ -403,7 +403,7 @@ class BasementQuotationController extends Controller
         $ints = [
             'room_count', 'demo_bin_qty', 'header_qty', 'framing_door_openings',
             'outlet_qty', 'switch_qty', 'light_qty', 'detector_qty',
-            'drywall_corners', 'drywall_openings', 'finish_level', 'transition_qty',
+            'drywall_corners', 'drywall_inside_corners', 'drywall_openings', 'finish_level', 'transition_qty',
             'door_qty', 'casing_openings', 'window_trim_qty', 'paint_coats', 'paint_colors',
             'fixture_qty', 'hardware_sets', 'bath_fixture_qty', 'bath_spot_qty',
         ];
@@ -433,6 +433,7 @@ class BasementQuotationController extends Controller
         foreach ($ints as $key) {
             $out[$key] = max(0, (int) $request->input($key, $defaults[$key]));
         }
+        $out['finish_level'] = BasementQuotationCalculator::normalizeFinishLevel($out['finish_level']);
         foreach ($bools as $key) {
             $out[$key] = $request->boolean($key);
         }

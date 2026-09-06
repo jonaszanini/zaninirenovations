@@ -957,3 +957,90 @@ html.admin-dark .cp-project-photos-thumb-media--excel {
 html.admin-dark .cp-project-photos-thumb-media--ppt {
   color: #fb7185;
 }
+
+/* Room Area calculator leftovers */
+html.admin-dark .util-ra-desktop-notice {
+  background: rgba(250, 204, 21, 0.12);
+  border-color: rgba(250, 204, 21, 0.35);
+  color: #fde68a;
+}
+
+html.admin-dark .util-ra-ruler-edit {
+  border-color: #c084fc;
+  background: rgba(168, 85, 247, 0.16);
+}
+
+html.admin-dark .util-ra-ruler-edit .util-ra-wall-edit__label {
+  color: #d8b4fe;
+}
+
+html.admin-dark .util-ra-canvas-wrap {
+  --ra-grid-stroke: #334155;
+}
+
+html.admin-dark .util-ra-canvas-wrap.is-ruler-edit {
+  outline-color: rgba(192, 132, 252, 0.45);
+}
+
+html.admin-dark .util-ra-btn--danger-ghost:hover:not(:disabled),
+html.admin-dark .util-ra-btn--danger-ghost:focus-visible:not(:disabled) {
+  background: var(--admin-danger-soft);
+}
+
+html.admin-dark .util-ra-rooms-head .util-ra-total,
+html.admin-dark .util-ra-total {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-total .admin-btn--ghost,
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--ghost {
+  background: var(--admin-surface);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-total .admin-btn--ghost:hover,
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--ghost:hover {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+html.admin-dark .util-ra-rooms-item {
+  background: var(--admin-bg);
+}
+
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--danger {
+  background: var(--admin-danger-soft);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--danger:hover {
+  background: rgba(248, 113, 113, 0.24);
+  color: #fecaca;
+}
+
+html.admin-dark .mw-cut-part-fill {
+  fill: rgba(56, 189, 248, 0.22);
+  stroke: #38bdf8;
+}
+html.admin-dark .mw-cut-stock {
+  fill: #0f172a;
+  stroke: #e2e8f0;
+}
+html.admin-dark .mw-cut-offcut {
+  fill: #1e293b;
+  stroke: #64748b;
+}
+html.admin-dark .mw-cut-offcut-label {
+  fill: #94a3b8;
+}
+html.admin-dark .mw-cut-part-label,
+html.admin-dark .mw-cut-part-dim,
+html.admin-dark .mw-cut-dim {
+  fill: #f8fafc;
+}
+

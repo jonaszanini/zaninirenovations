@@ -99,6 +99,7 @@ class BasementSettings extends Model
             'drywall_finish_l3_sf_per_hr' => 30,
             'drywall_finish_l4_sf_per_hr' => 20,
             'drywall_opening_hours_each' => 0.4,
+            'drywall_inside_corner_hours_each' => 0.3,
             'ceiling_drop_sf_per_hr' => 25,
             'subfloor_sf_per_hr' => 40,
             'underlayment_sf_per_hr' => 80,
@@ -333,6 +334,7 @@ class BasementSettings extends Model
                 'drywall_finish_l3_sf_per_hr' => 'Finish Level 3 (sq ft / hour)',
                 'drywall_finish_l4_sf_per_hr' => 'Finish Level 4 (sq ft / hour)',
                 'drywall_opening_hours_each' => 'Cut & finish openings (hours each)',
+                'drywall_inside_corner_hours_each' => 'Tape inside corners (hours each)',
                 'ceiling_drop_sf_per_hr' => 'Drop ceiling (sq ft / hour)',
             ],
             'Flooring' => [

@@ -42,6 +42,38 @@
   var DEFAULT_GROUP_COLOR = GROUP_COLORS[0];
   var INACTIVE_POLYGON_OPACITY = 0.45;
 
+  function isAdminDark() {
+    return document.documentElement.classList.contains('admin-dark');
+  }
+
+  function gridStrokeColor() {
+    var wrap = els.canvasWrap;
+    if (wrap) {
+      var color = window.getComputedStyle(wrap).getPropertyValue('--ra-grid-stroke').trim();
+      if (color) return color;
+    }
+    return isAdminDark() ? '#334155' : '#d8dee4';
+  }
+
+  function canvasTagFill(selected) {
+    if (selected) return 'rgba(249, 168, 37, 0.95)';
+    return isAdminDark() ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255,255,255,0.92)';
+  }
+
+  function canvasBrandStroke() {
+    return isAdminDark() ? '#38bdf8' : '#024768';
+  }
+
+  function canvasBrandText(selected) {
+    if (selected) return '#5d4037';
+    return isAdminDark() ? '#7dd3fc' : '#024768';
+  }
+
+  function canvasRulerText(selected) {
+    if (selected) return '#5d4037';
+    return isAdminDark() ? '#e9d5ff' : '#4a148c';
+  }
+
   var els = {
     projectSelect: root.querySelector('[data-ra-project-select]'),
     newProjectToggle: root.querySelector('[data-ra-new-project-toggle]'),
@@ -1529,10 +1561,6 @@
     return dist(p, proj);
   }
 
-  function hitTolerance(base) {
-    return base / Math.max(state.viewport.scale, 0.001);
-  }
-
   function findVertexAtPoint(pos) {
     if (!pos) return -1;
     var hit = hitTolerance(VERTEX_HIT);
@@ -2580,8 +2608,18 @@
     return Math.max(state.viewport.scale, 0.001);
   }
 
+  /**
+   * Size in world units for a control that should read as `base` CSS pixels at
+   * 100% zoom. Zooming in keeps that world size so labels/handles grow with the
+   * drawing; zooming out enlarges the world size so they stay at least `base`
+   * pixels on screen.
+   */
   function uiSize(base) {
-    return base / uiScale();
+    return base / Math.min(uiScale(), 1);
+  }
+
+  function hitTolerance(base) {
+    return uiSize(base);
   }
 
   function updateShapeHoverCursor() {
@@ -2762,6 +2800,8 @@
     redrawLabels();
     redrawWalls();
     redrawCalib();
+    redrawRulers();
+    redrawDrawPreview();
   }
 
   function panToWorldPoint(x, y) {
@@ -3102,7 +3142,7 @@
     for (var x = 0; x <= w; x += step) {
       layer.add(new Konva.Line({
         points: [x, 0, x, h],
-        stroke: '#d8dee4',
+        stroke: gridStrokeColor(),
         strokeWidth: x % (step * 5) === 0 ? 1 : 0.5,
         listening: false
       }));
@@ -3110,7 +3150,7 @@
     for (var y = 0; y <= h; y += step) {
       layer.add(new Konva.Line({
         points: [0, y, w, y],
-        stroke: '#d8dee4',
+        stroke: gridStrokeColor(),
         strokeWidth: y % (step * 5) === 0 ? 1 : 0.5,
         listening: false
       }));
@@ -3529,7 +3569,7 @@
         listening: false
       });
       kLabel.add(new Konva.Tag({
-        fill: 'rgba(255,255,255,0.9)',
+        fill: canvasTagFill(false),
         stroke: color,
         strokeWidth: uiSize(1),
         cornerRadius: uiSize(4),
@@ -3773,8 +3813,8 @@
         bindWallDrag(kLabel, wallIndex);
         bindWallSplit(kLabel, wallIndex);
         kLabel.add(new Konva.Tag({
-          fill: isSelected ? 'rgba(249, 168, 37, 0.95)' : 'rgba(255,255,255,0.92)',
-          stroke: isSelected ? '#f57f17' : '#024768',
+          fill: canvasTagFill(isSelected),
+          stroke: isSelected ? '#f57f17' : canvasBrandStroke(),
           strokeWidth: uiSize(isSelected ? 2 : 1),
           cornerRadius: uiSize(4),
           pointerDirection: 'none'
@@ -3783,7 +3823,7 @@
           text: lenLabel,
           fontSize: uiSize(11),
           fontFamily: 'Open Sans, sans-serif',
-          fill: isSelected ? '#5d4037' : '#024768',
+          fill: canvasBrandText(isSelected),
           padding: uiSize(4)
         }));
         labelLayer.add(kLabel);
@@ -3887,7 +3927,7 @@
         listening: false
       });
       kLabel.add(new Konva.Tag({
-        fill: 'rgba(255,255,255,0.92)',
+        fill: canvasTagFill(false),
         stroke: entry.group.color || DEFAULT_GROUP_COLOR,
         strokeWidth: uiSize(isActive ? 1.5 : 1),
         cornerRadius: uiSize(4),
@@ -4067,7 +4107,7 @@
       });
     }
     kLabel.add(new Konva.Tag({
-      fill: isSelected ? 'rgba(249, 168, 37, 0.95)' : 'rgba(255, 255, 255, 0.94)',
+      fill: canvasTagFill(isSelected),
       stroke: isSelected ? '#f57f17' : '#6a1b9a',
       strokeWidth: uiSize(1),
       cornerRadius: uiSize(4),
@@ -4081,7 +4121,7 @@
       fontFamily: 'system-ui, sans-serif',
       fontSize: uiSize(12),
       fontStyle: 'bold',
-      fill: isSelected ? '#5d4037' : '#4a148c',
+      fill: canvasRulerText(isSelected),
       padding: uiSize(5)
     }));
     layer.add(kLabel);
@@ -4139,7 +4179,7 @@
       });
     }
     label.add(new Konva.Tag({
-      fill: isSelected ? 'rgba(249, 168, 37, 0.95)' : 'rgba(255, 255, 255, 0.94)',
+      fill: canvasTagFill(isSelected),
       stroke: isSelected ? '#f57f17' : '#6a1b9a',
       strokeWidth: uiSize(1),
       cornerRadius: uiSize(4),
@@ -4153,7 +4193,7 @@
       fontFamily: 'system-ui, sans-serif',
       fontSize: uiSize(12),
       fontStyle: 'bold',
-      fill: isSelected ? '#5d4037' : '#4a148c',
+      fill: canvasRulerText(isSelected),
       padding: uiSize(5)
     });
     label.add(labelText);
@@ -5457,6 +5497,11 @@
     }
 
     window.addEventListener('resize', scheduleStageResize);
+
+    document.addEventListener('admin-theme-change', function () {
+      drawGrid();
+      redrawAll();
+    });
 
     window.addEventListener('beforeunload', function (e) {
       if (!hasUnsavedChanges()) return;

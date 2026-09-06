@@ -96,8 +96,9 @@
       'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses area × height. On New wall, blank is wall length × ceiling height × both sides.',
       'drywall_ceiling_sf' => 'Ceiling area to hang. Blank follows Ceiling type (skipped for drop ceiling or skip). New wall quotes skip ceiling — the basement is already finished.',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
+      'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
       'drywall_openings' => 'Door and window openings to cut and bead, counted each.',
-      'finish_level' => 'How smooth the mud work is. Level 4 is standard paint-ready for living space.',
+      'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drop ceiling uses grid and tiles instead of hanging drywall.',
       'ceiling_sf' => 'Ceiling area. Blank uses the work area.',
       'flooring_type' => 'Finish floor product. Skip if the client is keeping existing floor or hiring flooring out.',
@@ -443,6 +444,11 @@
                value="{{ $brVal('drywall_corners', 0) }}">
       </div>
       <div class="admin-form-group">
+        <label for="br-dw-inside-corners">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_inside_corners']]) Inside corners</label>
+        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-dw-inside-corners" name="drywall_inside_corners"
+               value="{{ $brVal('drywall_inside_corners', 0) }}">
+      </div>
+      <div class="admin-form-group">
         <label for="br-dw-open">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_openings']]) Openings (doors / windows)</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-dw-open" name="drywall_openings"
                value="{{ $brVal('drywall_openings', 0) }}">
@@ -450,7 +456,7 @@
       <div class="admin-form-group">
         <label for="br-finish">@include('admin.partials.info_tip', ['text' => $brInfo['finish_level']]) Level of finish</label>
         <select class="admin-input br-preview" id="br-finish" name="finish_level">
-          @foreach ([1 => 'Level 1 — fire tape', 2 => 'Level 2 — tape + coat', 3 => 'Level 3 — paint-ready economy', 4 => 'Level 4 — standard paint-ready'] as $lvl => $lbl)
+          @foreach (\App\Services\BasementQuotationCalculator::FINISH_LEVELS as $lvl => $lbl)
             <option value="{{ $lvl }}" @selected((int) $brVal('finish_level', 4) === $lvl)>{{ $lbl }}</option>
           @endforeach
         </select>

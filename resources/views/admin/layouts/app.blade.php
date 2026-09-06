@@ -35,6 +35,7 @@
   @endphp
   @if ($loadsClientProjectsCss)
   <link rel="stylesheet" href="{{ asset('css/admin-client-projects.css') }}?v={{ @filemtime(public_path('css/admin-client-projects.css')) ?: time() }}">
+  <link rel="stylesheet" href="{{ asset('css/admin-millwork.css') }}?v={{ @filemtime(public_path('css/admin-millwork.css')) ?: time() }}">
   @endif
   @if ($loadsBlogCss)
   <link rel="stylesheet" href="{{ asset('css/admin-blog.css') }}?v={{ @filemtime(public_path('css/admin-blog.css')) ?: time() }}">
