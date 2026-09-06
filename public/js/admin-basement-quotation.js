@@ -518,6 +518,7 @@
     applyScope();
     syncRevealTargets();
     syncBathroomElectricalHints();
+    syncBathSinkQty();
   }
 
   function setWizardStep(index, scroll) {
@@ -666,14 +667,11 @@
   }
 
   function tradeBreakdownHtml(label, trade) {
-    var labor = Number((trade && trade.labor_pre_hst) || 0);
-    var mats = Number((trade && trade.materials_pre_hst) || 0);
-    if (labor <= 0 && mats <= 0) {
+    var taxIn = Number((trade && trade.tax_in) || 0);
+    if (taxIn <= 0) {
       return '';
     }
-    var html = '<div class="pq-row pq-row--group"><span>' + label + ' labor (pre-HST)</span><span>' + fmt(labor) + '</span></div>';
-    html += '<div class="pq-row"><span>' + label + ' materials (pre-HST)</span><span>' + fmt(mats) + '</span></div>';
-    return html;
+    return '<div class="pq-row pq-row--group"><span>' + label + ' (incl. HST)</span><span>' + fmt(taxIn) + '</span></div>';
   }
 
   function rebuildLaborTable(rows) {
@@ -727,10 +725,14 @@
       if (!groups[group]) groups[group] = [];
       groups[group].push(el);
       el.addEventListener('change', function () {
-        if (!el.checked) return;
+        if (!el.checked) {
+          syncBathSinkQty();
+          return;
+        }
         groups[group].forEach(function (other) {
           if (other !== el) other.checked = false;
         });
+        syncBathSinkQty();
       });
     });
     Object.keys(groups).forEach(function (group) {
@@ -743,9 +745,18 @@
     });
   }
 
+  function syncBathSinkQty() {
+    var vanity = form.querySelector('#br-include-vanity');
+    var pedestal = form.querySelector('#br-include-pedestal');
+    var wrap = document.getElementById('br-bath-sink-qty');
+    if (!wrap) return;
+    wrap.hidden = !((vanity && vanity.checked) || (pedestal && pedestal.checked));
+  }
+
   form.querySelectorAll('.br-preview').forEach(bindPreview);
   initTileAreas();
   initExclusiveChecks();
+  syncBathSinkQty();
 
   var extraList = document.getElementById('br-extra-list');
   var extraTpl = document.getElementById('br-extra-template');
@@ -834,6 +845,16 @@
     lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
     lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
     if (lastPreviewData) renderPreview(lastPreviewData);
+  });
+  document.addEventListener('trade-lines:change', function () {
+    schedulePreview();
+  });
+  document.addEventListener('amount-lines:row-added', function (e) {
+    var row = e.detail && e.detail.row;
+    if (row) {
+      row.querySelectorAll('.br-preview').forEach(bindPreview);
+    }
+    schedulePreview();
   });
 
   if (cfg.initialPreview) {

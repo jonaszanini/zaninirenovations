@@ -45,6 +45,23 @@ class BasementClientIntakeMapperTest extends TestCase
         $this->assertContains('include_pedestal_sink', $mapped['filled_keys']);
     }
 
+    public function test_bath_sink_qty_maps_one_or_two(): void
+    {
+        $one = (new BasementClientIntakeMapper)->apply($this->bathroomAnswers([
+            'sink' => 'vanity',
+            'bath_sink_qty' => '1',
+        ]), $this->bathroomInputs());
+        $this->assertSame(1, $one['inputs']['bath_sink_qty']);
+
+        $two = (new BasementClientIntakeMapper)->apply($this->bathroomAnswers([
+            'sink' => 'pedestal',
+            'bath_sink_qty' => '2',
+        ]), $this->bathroomInputs());
+        $this->assertSame(2, $two['inputs']['bath_sink_qty']);
+        $this->assertTrue((bool) $two['inputs']['include_pedestal_sink']);
+        $this->assertContains('bath_sink_qty', $two['filled_keys']);
+    }
+
     public function test_client_provides_bath_items_zeros_those_materials(): void
     {
         $mapped = (new BasementClientIntakeMapper)->apply($this->bathroomAnswers([

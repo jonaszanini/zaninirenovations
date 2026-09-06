@@ -6598,19 +6598,19 @@ body.cp-modal-open {
   gap: 8px;
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #fff;
-  color: #334155;
+  background: var(--admin-surface);
+  color: var(--admin-text);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
   scroll-snap-align: start;
 }
 .br-progress__item.is-current {
-  border-color: #024768;
-  background: #f0f7fb;
-  color: #024768;
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
   font-weight: 700;
 }
 .br-progress__num {
@@ -6620,12 +6620,13 @@ body.cp-modal-open {
   min-width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: #e8eef3;
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
   font-size: 12px;
   font-weight: 700;
 }
 .br-progress__item.is-current .br-progress__num {
-  background: #024768;
+  background: var(--admin-primary);
   color: #fff;
 }
 .br-progress__label {

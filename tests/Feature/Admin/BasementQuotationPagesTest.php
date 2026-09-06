@@ -59,7 +59,6 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('cannot be linked separately', false)
             ->assertSee('17 L', false)
             ->assertSee('2x4x8', false)
-            ->assertSee('75 m', false)
             ->assertSee('5 gal', false)
             ->assertSee('Trim paint', false)
             ->assertSee('Tape / cut-in two colors', false)

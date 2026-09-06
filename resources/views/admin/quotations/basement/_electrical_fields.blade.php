@@ -1,4 +1,7 @@
 <div id="br-electrical-fields" class="br-electrical-fields">
+  <p class="admin-form-help br-trade-scope-hint">
+    These answers are scope for a licensed electrician — they are not Zanini labor or materials. Type their quote as priced lines below.
+  </p>
   <div class="br-qty-grid">
     <div class="admin-form-group">
       <label for="br-outlets">@include('admin.partials.info_tip', ['text' => $brInfo['outlet_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'outlet_qty', 'filledKeys' => $filledKeys ?? []]) New outlets</label>
@@ -34,11 +37,6 @@
              value="{{ $brVal('detector_qty', 2) }}"
              title="Ontario typically requires interconnected smoke/CO on each level.">
     </div>
-    <div class="admin-form-group">
-      <label for="br-runs">@include('admin.partials.info_tip', ['text' => $brInfo['wiring_runs']]) Wiring runs</label>
-      <input type="number" step="1" min="0" class="admin-input br-preview" id="br-runs" name="wiring_runs"
-             value="{{ $brVal('wiring_runs', 0) }}" placeholder="Auto: outlets + switches + lights">
-    </div>
   </div>
   <div class="br-check-grid br-electrical-fields__toggles">
     @include('admin.partials.checkbox', [
@@ -51,4 +49,15 @@
       'clientFilled' => isset($brFilled) && $brFilled('panel_upgrade'),
     ])
   </div>
+  @include('admin.quotations._amount_lines', [
+    'field' => 'electrical_lines',
+    'idPrefix' => 'br-elec-line',
+    'intro' => 'Priced electrical work from the licensed electrician. Each filled line appears on the client quotation.',
+    'addLabel' => 'Add line',
+    'placeholder' => 'e.g. Rough-in, pot lights, panel',
+    'rows' => is_array($inputs['electrical_lines'] ?? null) ? $inputs['electrical_lines'] : [],
+    'inputClass' => 'br-preview',
+    'eventName' => 'trade-lines:change',
+    'summaryMode' => 'tax-in',
+  ])
 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AdditionalCostsService;
 use App\Services\BasementQuotationCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -205,6 +206,16 @@ class BasementQuotation extends Model
         if (! empty($inputs['include_bathroom'])) {
             $type = ($inputs['bath_type'] ?? '') === 'half' ? 'Half bath' : 'Full bath';
             $lines[] = 'Bathroom: '.$type;
+        }
+
+        foreach (['electrical_lines' => 'Electrical', 'plumbing_lines' => 'Plumbing'] as $key => $heading) {
+            $rows = AdditionalCostsService::normalizeRows($inputs[$key] ?? [], $heading.' work');
+            foreach ($rows as $row) {
+                $label = trim((string) ($row['description'] ?? ''));
+                if ($label !== '') {
+                    $lines[] = '  • '.$heading.': '.$label;
+                }
+            }
         }
 
         $notes = trim((string) ($inputs['existing_notes'] ?? ''));

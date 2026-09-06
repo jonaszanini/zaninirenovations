@@ -39,6 +39,12 @@
   text-transform: uppercase;
   color: #024768;
 }
+.bi-card__lead {
+  margin: -4px 0 14px;
+  color: #5a6570;
+  font-size: 14px;
+  line-height: 1.45;
+}
 .bi-field {
   margin: 0 0 14px;
 }

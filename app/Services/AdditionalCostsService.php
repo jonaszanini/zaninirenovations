@@ -20,22 +20,38 @@ class AdditionalCostsService
     /** @return array<string, mixed> */
     public static function validationRules(): array
     {
+        return self::validationRulesFor('additional_costs', 'additional cost');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function validationRulesFor(string $field, string $human = 'line'): array
+    {
         return [
-            'additional_costs' => ['nullable', 'array', 'max:40'],
-            'additional_costs.*.description' => ['nullable', 'string', 'max:200'],
-            'additional_costs.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999'],
-            'additional_costs.*.hst_included' => ['nullable', 'in:0,1'],
+            $field => ['nullable', 'array', 'max:40'],
+            $field.'.*.description' => ['nullable', 'string', 'max:200'],
+            $field.'.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            $field.'.*.hst_included' => ['nullable', 'in:0,1'],
         ];
     }
 
     /** @return array<string, string> */
     public static function validationMessages(): array
     {
+        return self::validationMessagesFor('additional_costs', 'additional cost');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function validationMessagesFor(string $field, string $human = 'line'): array
+    {
         return [
-            'additional_costs.max' => 'You can add at most 40 additional costs.',
-            'additional_costs.*.description.max' => 'Keep each additional cost description under 200 characters.',
-            'additional_costs.*.amount.numeric' => 'Enter a valid additional cost amount.',
-            'additional_costs.*.amount.min' => 'Additional cost amounts cannot be negative.',
+            $field.'.max' => 'You can add at most 40 '.$human.'s.',
+            $field.'.*.description.max' => 'Keep each '.$human.' description under 200 characters.',
+            $field.'.*.amount.numeric' => 'Enter a valid '.$human.' amount.',
+            $field.'.*.amount.min' => $human.' amounts cannot be negative.',
         ];
     }
 
@@ -56,12 +72,13 @@ class AdditionalCostsService
      * @param  mixed  $rows
      * @return list<array{description: string, amount: float, hst_included: bool}>
      */
-    public static function normalizeRows($rows): array
+    public static function normalizeRows($rows, string $emptyDescription = 'Additional cost'): array
     {
         if (! is_array($rows)) {
             return [];
         }
 
+        $fallback = trim($emptyDescription) !== '' ? trim($emptyDescription) : 'Additional cost';
         $out = [];
         foreach ($rows as $row) {
             if (! is_array($row)) {
@@ -88,7 +105,7 @@ class AdditionalCostsService
             }
 
             $out[] = [
-                'description' => $description !== '' ? $description : 'Additional cost',
+                'description' => $description !== '' ? $description : $fallback,
                 'amount' => $amount,
                 'hst_included' => $hstIncluded,
             ];
@@ -184,5 +201,33 @@ class AdditionalCostsService
     public static function isAdditionalCostLineDescription(string $description): bool
     {
         return str_starts_with($description, self::LINE_PREFIX);
+    }
+
+    /**
+     * Visible PDF / project lines (tax-inclusive amounts), using the typed description.
+     *
+     * @param  list<array{description?: string, amount?: float|int|string, hst_included?: bool|int|string}>  $rows
+     * @return list<array{description: string, amount: float, apply_hst: bool, hst_included: bool}>
+     */
+    public static function visibleProjectLineItems(array $rows, string $emptyDescription = 'Additional cost'): array
+    {
+        $lines = [];
+        foreach (self::normalizeRows($rows, $emptyDescription) as $row) {
+            $taxIn = $row['hst_included']
+                ? (float) $row['amount']
+                : round((float) $row['amount'] * (1 + self::HST_RATE), 2);
+            if ($taxIn <= 0) {
+                continue;
+            }
+
+            $lines[] = [
+                'description' => (string) $row['description'],
+                'amount' => $taxIn,
+                'apply_hst' => false,
+                'hst_included' => true,
+            ];
+        }
+
+        return $lines;
     }
 }

@@ -1,12 +1,12 @@
 /**
- * Dynamic additional-costs rows on quotation forms.
- * Emits additional-costs:change with materialsPreTax, materialsHst, taxInclusiveTotal.
+ * Dynamic description / amount / HST rows on quotation forms.
+ * Additional-cost cards emit additional-costs:change.
+ * Trade-line cards emit the event named on data-ac-event.
  */
 (function () {
   'use strict';
 
   var HST_RATE = 0.13;
-  var rowIndex = 0;
 
   function parseAmount(raw) {
     var n = parseFloat(String(raw == null ? '' : raw).replace(/,/g, ''));
@@ -34,6 +34,23 @@
       : Math.round(amount * (1 + HST_RATE) * 100) / 100;
   }
 
+  function attr(card, name, fallback) {
+    var v = card.getAttribute(name);
+    return v != null && v !== '' ? v : fallback;
+  }
+
+  function fieldName(card) {
+    return attr(card, 'data-ac-field', 'additional_costs');
+  }
+
+  function idPrefix(card) {
+    return attr(card, 'data-ac-id-prefix', 'q-ac');
+  }
+
+  function extraInputClass(card) {
+    return attr(card, 'data-ac-input-class', '');
+  }
+
   function collect(card) {
     var materialsPreTax = 0;
     var taxInclusiveTotal = 0;
@@ -58,21 +75,27 @@
   function notify(card) {
     var detail = collect(card);
     var sumEl = card.querySelector('[data-ac-summary]');
+    var mode = attr(card, 'data-ac-summary-mode', 'materials');
     if (sumEl) {
       if (detail.taxInclusiveTotal > 0) {
         sumEl.hidden = false;
-        sumEl.textContent = 'Adds ' + money(detail.materialsPreTax) + ' to materials (+ '
-          + money(detail.materialsHst) + ' HST) · ' + money(detail.taxInclusiveTotal) + ' tax-in total';
+        if (mode === 'tax-in') {
+          sumEl.textContent = 'Adds ' + money(detail.taxInclusiveTotal) + ' tax-in to the quote';
+        } else {
+          sumEl.textContent = 'Adds ' + money(detail.materialsPreTax) + ' to materials (+ '
+            + money(detail.materialsHst) + ' HST) · ' + money(detail.taxInclusiveTotal) + ' tax-in total';
+        }
       } else {
         sumEl.hidden = true;
         sumEl.textContent = '';
       }
     }
+    var eventName = attr(card, 'data-ac-event', 'additional-costs:change');
     try {
-      card.dispatchEvent(new CustomEvent('additional-costs:change', { bubbles: true, detail: detail }));
+      card.dispatchEvent(new CustomEvent(eventName, { bubbles: true, detail: detail }));
     } catch (e) { /* IE */ }
-    document.dispatchEvent(new CustomEvent('additional-costs:change', { detail: detail }));
-    if (window.AdditionalCosts && typeof window.AdditionalCosts._notify === 'function') {
+    document.dispatchEvent(new CustomEvent(eventName, { bubbles: true, detail: detail }));
+    if (eventName === 'additional-costs:change' && window.AdditionalCosts && typeof window.AdditionalCosts._notify === 'function') {
       window.AdditionalCosts._notify(detail);
     }
   }
@@ -124,31 +147,40 @@
     }
   }
 
-  function rowHtml(idx, data) {
+  function escapeAttr(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function rowHtml(card, idx, data) {
     data = data || {};
+    var field = fieldName(card);
+    var prefix = idPrefix(card);
+    var extra = extraInputClass(card);
+    var extraCls = extra ? ' ' + extra : '';
     var desc = data.description != null ? String(data.description) : '';
     var amount = data.amount != null && data.amount !== '' ? String(data.amount) : '';
     var hstIncluded = data.hst_included !== false && data.hst_included !== 0 && data.hst_included !== '0';
+    var ph = escapeAttr(attr(card, 'data-ac-placeholder', 'e.g. Dumpster rental, permits'));
     return ''
       + '<div class="q-ac-row" data-ac-row data-ac-index="' + idx + '">'
       +   '<div class="admin-form-group q-ac-row__desc">'
-      +     '<label for="q-ac-desc-' + idx + '">Description</label>'
-      +     '<input type="text" id="q-ac-desc-' + idx + '" name="additional_costs[' + idx + '][description]"'
-      +            ' class="admin-input" maxlength="200" placeholder="e.g. Dumpster rental, permits"'
-      +            ' value="' + desc.replace(/"/g, '&quot;') + '" data-ac-description>'
+      +     '<label for="' + prefix + '-desc-' + idx + '">Description</label>'
+      +     '<input type="text" id="' + prefix + '-desc-' + idx + '" name="' + field + '[' + idx + '][description]"'
+      +            ' class="admin-input' + extraCls + '" maxlength="200" placeholder="' + ph + '"'
+      +            ' value="' + escapeAttr(desc) + '" data-ac-description>'
       +   '</div>'
       +   '<div class="admin-form-group q-ac-row__amount">'
-      +     '<label for="q-ac-amt-' + idx + '">Amount (CA$)</label>'
-      +     '<input type="text" id="q-ac-amt-' + idx + '" name="additional_costs[' + idx + '][amount]"'
-      +            ' class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"'
-      +            ' placeholder="0.00" value="' + amount.replace(/"/g, '&quot;') + '" data-ac-amount>'
+      +     '<label for="' + prefix + '-amt-' + idx + '">Amount (CA$)</label>'
+      +     '<input type="text" id="' + prefix + '-amt-' + idx + '" name="' + field + '[' + idx + '][amount]"'
+      +            ' class="admin-input cp-money-input' + extraCls + '" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"'
+      +            ' placeholder="0.00" value="' + escapeAttr(amount) + '" data-ac-amount>'
       +   '</div>'
       +   '<div class="admin-form-group q-ac-row__hst">'
-      +     '<span class="q-ac-row__hst-label" id="q-ac-hst-label-' + idx + '">Tax</span>'
-      +     '<label class="cp-visit-toggle cp-visit-toggle--compact q-ac-hst-toggle" for="q-ac-hst-' + idx + '">'
-      +       '<input type="hidden" name="additional_costs[' + idx + '][hst_included]" value="0">'
-      +       '<input type="checkbox" id="q-ac-hst-' + idx + '" name="additional_costs[' + idx + '][hst_included]"'
-      +              ' value="1" data-ac-hst-toggle aria-describedby="q-ac-hst-label-' + idx + '"'
+      +     '<span class="q-ac-row__hst-label" id="' + prefix + '-hst-label-' + idx + '">Tax</span>'
+      +     '<label class="cp-visit-toggle cp-visit-toggle--compact q-ac-hst-toggle" for="' + prefix + '-hst-' + idx + '">'
+      +       '<input type="hidden" name="' + field + '[' + idx + '][hst_included]" value="0">'
+      +       '<input type="checkbox" id="' + prefix + '-hst-' + idx + '" name="' + field + '[' + idx + '][hst_included]"'
+      +              ' value="1" data-ac-hst-toggle aria-describedby="' + prefix + '-hst-label-' + idx + '"'
       +              (hstIncluded ? ' checked' : '') + '>'
       +       '<span class="cp-visit-toggle__control" aria-hidden="true"></span>'
       +       '<span class="cp-visit-toggle__label" data-ac-hst-text">'
@@ -157,7 +189,7 @@
       +   '</div>'
       +   '<div class="q-ac-row__actions">'
       +     '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ac-remove'
-      +             ' title="Remove cost" aria-label="Remove additional cost">'
+      +             ' title="Remove line" aria-label="Remove line">'
       +       '<i class="fa fa-times" aria-hidden="true"></i>'
       +     '</button>'
       +   '</div>'
@@ -169,13 +201,16 @@
     if (!list) return;
     var idx = nextIndex(card);
     var wrap = document.createElement('div');
-    wrap.innerHTML = rowHtml(idx, data);
+    wrap.innerHTML = rowHtml(card, idx, data);
     var row = wrap.firstElementChild;
     list.appendChild(row);
     bindRow(card, row);
     if (window.cpMoneyMask) {
       window.cpMoneyMask.wire(row.querySelector('[data-ac-amount]'));
     }
+    try {
+      document.dispatchEvent(new CustomEvent('amount-lines:row-added', { bubbles: true, detail: { card: card, row: row } }));
+    } catch (e) { /* IE */ }
     var focus = row.querySelector('[data-ac-description]');
     if (focus && data && data.focus) focus.focus();
   }
@@ -200,7 +235,7 @@
   }
 
   function boot() {
-    document.querySelectorAll('[data-cp-additional-costs]').forEach(init);
+    document.querySelectorAll('[data-ac-card]').forEach(init);
   }
 
   window.AdditionalCosts = window.AdditionalCosts || {

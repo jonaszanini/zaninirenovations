@@ -58,6 +58,23 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertContains('doors_trim', $enabledNow);
     }
 
+    public function test_electrical_and_plumbing_steps_render_priced_lines_and_scope_hint(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('name="electrical_lines[0][description]"', $html);
+        $this->assertStringContainsString('name="plumbing_lines[0][description]"', $html);
+        $this->assertStringContainsString('licensed electrician', $html);
+        $this->assertStringContainsString('licensed plumber', $html);
+        $this->assertStringNotContainsString('name="wiring_runs"', $html);
+        $this->assertStringContainsString('name="outlet_qty"', $html);
+        $this->assertStringContainsString('name="bath_sink_qty"', $html);
+        $this->assertStringContainsString('How many sinks?', $html);
+    }
+
     /**
      * @param  array<string, mixed>  $inputs
      * @param  list<string>  $enabledNow

@@ -259,6 +259,7 @@ class BasementClientIntakeTest extends IntegrationTestCase
             'bath_rough_in' => '1',
             'bath_type' => 'full',
             'sink' => 'vanity',
+            'bath_sink_qty' => '1',
             'sink_provide' => 'we',
             'faucet_provide' => 'we',
             'include_toilet' => '1',

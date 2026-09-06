@@ -536,6 +536,24 @@ html.admin-dark .cp-calendar-link--btn {
   color: var(--admin-text);
 }
 
+html.admin-dark .br-progress__item.is-current {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .br-progress__num {
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border: 1px solid var(--admin-border);
+}
+
+html.admin-dark .br-progress__item.is-current .br-progress__num {
+  background: #024768;
+  color: #fff;
+  border-color: #024768;
+}
+
 html.admin-dark a.cp-calendar-link,
 html.admin-dark a.cp-calendar-link--btn {
   color: var(--admin-primary);

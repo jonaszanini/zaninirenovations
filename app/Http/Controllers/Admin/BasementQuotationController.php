@@ -347,9 +347,9 @@ class BasementQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), AdditionalCostsService::validationRulesFor('electrical_lines', 'electrical line'), AdditionalCostsService::validationRulesFor('plumbing_lines', 'plumbing line')), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ], QuotationPaymentSchedule::validationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), AdditionalCostsService::validationMessagesFor('electrical_lines', 'electrical line'), AdditionalCostsService::validationMessagesFor('plumbing_lines', 'plumbing line')));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft);
         if (! $draft) {
@@ -402,7 +402,7 @@ class BasementQuotationController extends Controller
         ];
         $ints = [
             'room_count', 'demo_bin_qty', 'header_qty', 'framing_door_openings',
-            'outlet_qty', 'switch_qty', 'light_qty', 'detector_qty', 'wiring_runs',
+            'outlet_qty', 'switch_qty', 'light_qty', 'detector_qty',
             'drywall_corners', 'drywall_openings', 'finish_level', 'transition_qty',
             'door_qty', 'casing_openings', 'window_trim_qty', 'paint_coats', 'paint_colors',
             'fixture_qty', 'hardware_sets', 'bath_fixture_qty', 'bath_spot_qty',
@@ -443,6 +443,7 @@ class BasementQuotationController extends Controller
             $out['lighting_type'] = 'spot';
         }
         $out['paint_colors'] = ((int) $out['paint_colors'] === 2) ? 2 : 1;
+        $out['bath_sink_qty'] = ((int) $request->input('bath_sink_qty', $defaults['bath_sink_qty'])) === 2 ? 2 : 1;
         $out['scope_preset'] = BasementQuotationCalculator::normalizePreset($out['scope_preset'] ?? 'full');
         $out['qty_dims'] = $this->qtyDimsFromRequest($request);
         $out['bath_tile_areas'] = $request->input('bath_tile_areas', []);
@@ -472,6 +473,8 @@ class BasementQuotationController extends Controller
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
+        $out['electrical_lines'] = AdditionalCostsService::normalizeRows($request->input('electrical_lines', []), 'Electrical work');
+        $out['plumbing_lines'] = AdditionalCostsService::normalizeRows($request->input('plumbing_lines', []), 'Plumbing work');
         unset($draft);
 
         return $out;
@@ -617,6 +620,14 @@ class BasementQuotationController extends Controller
                 'amount' => $materialAmt,
                 'apply_hst' => true,
             ];
+        }
+
+        $inputs = is_array($quote->inputs) ? $quote->inputs : [];
+        foreach (AdditionalCostsService::visibleProjectLineItems($inputs['electrical_lines'] ?? [], 'Electrical work') as $line) {
+            $items[] = $line;
+        }
+        foreach (AdditionalCostsService::visibleProjectLineItems($inputs['plumbing_lines'] ?? [], 'Plumbing work') as $line) {
+            $items[] = $line;
         }
 
         $this->appendDebrisRemovalProjectLine($items, $quote);
