@@ -429,11 +429,74 @@ html.admin-dark .admin-search-select__clear:focus-visible {
   background: var(--admin-surface-hover);
 }
 
+html.admin-dark .admin-places-autocomplete-wrap {
+  --gmp-mat-color-surface: var(--admin-elevated);
+  --gmp-mat-color-on-surface: var(--admin-heading);
+  --gmp-mat-color-on-surface-variant: var(--admin-muted);
+  --gmp-mat-color-outline-decorative: var(--admin-border);
+  --gmp-mat-color-primary: var(--admin-primary);
+  --gmp-mat-color-neutral-container: var(--admin-surface-hover);
+  --gmp-mat-color-on-neutral-container: var(--admin-muted);
+}
+
+html.admin-dark gmp-place-autocomplete,
 html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete {
   color-scheme: dark;
   background-color: var(--admin-input-bg);
   border-color: var(--admin-border);
   color: var(--admin-heading);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-list) {
+  background: var(--admin-elevated);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item),
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-main-text),
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-match),
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-nonmatch) {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-secondary-text),
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-icon) {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-selected) {
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pac-container {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+  box-shadow: var(--admin-shadow-md);
+}
+
+html.admin-dark .pac-item,
+html.admin-dark .pac-item-query {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pac-item:hover,
+html.admin-dark .pac-item.pac-item-selected {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .pac-item-query {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pac-matched {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .admin-places-status--ok {
+  color: var(--admin-success);
 }
 
 html.admin-dark .cp-directory-address-hint {

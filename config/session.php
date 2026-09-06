@@ -4,7 +4,9 @@ use Illuminate\Support\Str;
 
 return [
     'driver' => env('SESSION_DRIVER', 'file'),
-    'lifetime' => env('SESSION_LIFETIME', 120),
+    // 576000 minutes = 400 days (Chrome/Safari cookie cap). Idle timeout
+    // used to be 120 minutes, which forced a login after a night away.
+    'lifetime' => (int) env('SESSION_LIFETIME', 576000),
     'expire_on_close' => false,
     'encrypt' => false,
     'files' => storage_path('framework/sessions'),

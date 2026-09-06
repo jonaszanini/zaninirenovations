@@ -156,12 +156,19 @@
     return loadPromise;
   }
 
+  function isAdminDark() {
+    return document.documentElement.classList.contains('admin-dark');
+  }
+
   function styleAutocompleteElement(element) {
     element.style.setProperty('width', '100%');
-    element.style.setProperty('color-scheme', 'light');
-    element.style.setProperty('background-color', '#fff');
-    element.style.setProperty('border', '1px solid #d8dee4');
-    element.style.setProperty('border-radius', '8px');
+    element.style.setProperty('color-scheme', isAdminDark() ? 'dark' : 'light');
+    element.style.removeProperty('background-color');
+    element.style.removeProperty('border');
+  }
+
+  function restyleAllAutocompleteElements() {
+    document.querySelectorAll('gmp-place-autocomplete').forEach(styleAutocompleteElement);
   }
 
   function findMountByInputId(inputId) {
@@ -337,4 +344,6 @@
   } else {
     initAll();
   }
+
+  document.addEventListener('admin-theme-change', restyleAllAutocompleteElements);
 })();

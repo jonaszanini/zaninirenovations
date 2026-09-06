@@ -36,6 +36,7 @@
     }
     persist(dark);
     syncToggle(dark);
+    document.dispatchEvent(new CustomEvent('admin-theme-change', { detail: { dark: dark } }));
   }
 
   function init() {

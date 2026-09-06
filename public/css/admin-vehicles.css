@@ -354,7 +354,7 @@
 }
 
 .admin-places-status--ok {
-  color: #166534;
+  color: var(--admin-success, #2e7d4a);
 }
 
 /* Quotation editors — commute expense */
