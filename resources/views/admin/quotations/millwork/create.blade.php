@@ -159,7 +159,17 @@
                     <strong>{{ $layout['stats']['label'] ?? 'Sheet' }}</strong>
                     <span>Used {{ $layout['stats']['used_pct'] ?? 0 }}% · waste {{ $layout['stats']['waste_pct'] ?? 0 }}%</span>
                   </div>
-                  {!! $layout['svg'] ?? '' !!}
+                  <div class="mw-cut-svg-wrap">{!! $layout['svg'] ?? '' !!}</div>
+                  @if (! empty($layout['legend']))
+                    <ul class="mw-cut-legend">
+                      @foreach ($layout['legend'] as $row)
+                        <li>
+                          <span class="mw-cut-legend__n">{{ $row['n'] ?? '' }}</span>
+                          <span>{{ $row['label'] ?? 'Part' }} · {{ $row['size'] ?? '' }}@if (! empty($row['rotated'])) · rotated @endif</span>
+                        </li>
+                      @endforeach
+                    </ul>
+                  @endif
                   @if (! empty($layout['cuts']))
                     <ol class="mw-cut-steps">
                       @foreach ($layout['cuts'] as $step)

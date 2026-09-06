@@ -1285,6 +1285,35 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertArrayHasKey('vanity', BasementSettings::defaultMaterials());
     }
 
+    public function test_measured_perimeter_beats_square_room_assumption(): void
+    {
+        $square = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 100,
+            'ceiling_height_ft' => 8,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $measured = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 100,
+            'ceiling_height_ft' => 8,
+            'perimeter_lf' => 50,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertSame(40.0, $square['scope']['suggested_perimeter_lf']);
+        $this->assertFalse($square['scope']['measured_perimeter']);
+        $this->assertSame(50.0, $measured['scope']['suggested_perimeter_lf']);
+        $this->assertTrue($measured['scope']['measured_perimeter']);
+        $this->assertSame(400.0, $measured['scope']['suggested_wall_sf']);
+
+        $squareHang = collect($square['labor'])->firstWhere('key', 'dw_hang');
+        $measuredHang = collect($measured['labor'])->firstWhere('key', 'dw_hang');
+        $this->assertNotNull($squareHang);
+        $this->assertNotNull($measuredHang);
+        $this->assertStringContainsString('420', $squareHang['detail']);
+        $this->assertStringContainsString('500', $measuredHang['detail']);
+    }
+
     private function settings(?array $materials = null): BasementSettings
     {
         return new BasementSettings([

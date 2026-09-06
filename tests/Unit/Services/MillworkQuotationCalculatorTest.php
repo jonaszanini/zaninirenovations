@@ -43,6 +43,7 @@ class MillworkQuotationCalculatorTest extends TestCase
         $this->assertGreaterThan(0, $calc['summary']['materials_pre_hst']);
         $this->assertNotEmpty($calc['cut_plan']['layouts'][0]['svg'] ?? '');
         $this->assertStringContainsString('svg', $calc['cut_plan']['layouts'][0]['svg']);
+        $this->assertNotEmpty($calc['cut_plan']['layouts'][0]['legend'] ?? []);
     }
 
     public function test_floating_shelf_counts_box_parts(): void

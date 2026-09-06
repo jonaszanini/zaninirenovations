@@ -38,6 +38,7 @@
   border-radius: 10px;
   padding: 10px;
   background: var(--admin-surface);
+  color: var(--admin-text);
 }
 .mw-cut-sheet__stats {
   display: flex;
@@ -48,29 +49,63 @@
   color: var(--admin-text);
   font-size: 14px;
 }
+.mw-cut-svg-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+  max-width: 22rem;
+  padding: 8px;
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+}
+.mw-cut-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.mw-cut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--admin-text);
+  font-size: 13px;
+}
+.mw-cut-legend li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 28px;
+  line-height: 1.35;
+}
+.mw-cut-legend__n {
+  flex: 0 0 auto;
+  min-width: 1.4em;
+  font-weight: 700;
+  color: var(--admin-primary);
+}
 .mw-cut-steps {
   margin: 10px 0 0;
   padding-left: 1.2em;
   color: var(--admin-text);
   font-size: 14px;
 }
-.mw-cut-svg {
-  width: 100%;
-  height: auto;
-  display: block;
-  max-height: 70vh;
-}
 .mw-cut-bg { fill: var(--admin-bg); }
 .mw-cut-stock {
   fill: var(--admin-elevated);
   stroke: var(--admin-heading);
-  stroke-width: 0.6;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
 }
 .mw-cut-offcut {
   fill: var(--admin-surface-hover);
   stroke: var(--admin-muted);
-  stroke-width: 0.35;
-  stroke-dasharray: 2 2;
+  stroke-width: 1px;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
 }
 .mw-cut-offcut-label {
   fill: var(--admin-muted);
@@ -79,17 +114,24 @@
 .mw-cut-part-fill {
   fill: var(--admin-primary-soft, rgba(2, 71, 104, 0.18));
   stroke: var(--admin-primary, #024768);
-  stroke-width: 0.45;
+  stroke-width: 1.25px;
+  vector-effect: non-scaling-stroke;
 }
 .mw-cut-part-label,
 .mw-cut-part-dim,
 .mw-cut-dim {
   fill: var(--admin-heading);
   font-family: sans-serif;
+  font-weight: 600;
+  paint-order: stroke fill;
+  stroke: var(--admin-elevated);
+  stroke-width: 0.12em;
+  stroke-linejoin: round;
 }
 .mw-cut-dim-line {
   stroke: var(--admin-muted);
-  stroke-width: 0.3;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
 }
 
 [data-mw-show] { display: none; }
@@ -124,6 +166,9 @@
 @media (min-width: 768px) {
   .mw-cut-plan {
     grid-template-columns: 1fr;
+  }
+  .mw-cut-svg-wrap {
+    max-width: 26rem;
   }
   .mw-piece {
     padding: 16px;

@@ -78,5 +78,34 @@ class CutOptimizerEngineTest extends TestCase
         $this->assertStringContainsString('<svg', $svg);
         $this->assertStringContainsString('Shelf A', $svg);
         $this->assertStringContainsString('mw-cut-part', $svg);
+        $this->assertStringContainsString('clipPath', $svg);
+    }
+
+    public function test_svg_clips_and_numbers_thin_strips_instead_of_stacking_names(): void
+    {
+        $sheet = new GuillotineSheet('s2x4', 24, 48, 0.125, 0, 0, 0, 0, 0, '2×4');
+        $sheet->insert(new Part('panel', 'FS1 top', 23.75, 38, 1), SplitHeuristic::VERTICAL_FIRST);
+        $this->assertTrue($sheet->insert(new Part('e1', 'FS1 end', 12, 1.5, 1), SplitHeuristic::HORIZONTAL_FIRST));
+        $this->assertTrue($sheet->insert(new Part('e2', 'FS1 end', 12, 1.5, 1), SplitHeuristic::HORIZONTAL_FIRST));
+
+        $visual = new SvgVisualizer();
+        $svg = $visual->renderSheet($sheet);
+        $legend = $visual->legend($sheet);
+
+        $this->assertStringContainsString('clip-path=', $svg);
+        $this->assertStringNotContainsString('(rotated)</text>', $svg);
+        $this->assertGreaterThanOrEqual(3, count($legend));
+        $this->assertSame('FS1 end', $legend[1]['label']);
+
+        preg_match_all('/<g class="mw-cut-part">.*?<\/g>\s*<\/g>/s', $svg, $groups);
+        $this->assertGreaterThanOrEqual(3, count($groups[0]));
+        $thin = $groups[0][1];
+        $this->assertMatchesRegularExpression('/font-size="[0-9.]+"/', $thin);
+        preg_match_all('/font-size="([0-9.]+)"/', $thin, $sizes);
+        foreach ($sizes[1] as $size) {
+            $this->assertLessThan(1.8, (float) $size);
+        }
+        $this->assertStringContainsString('48"', $svg);
+        $this->assertStringContainsString('24"', $svg);
     }
 }

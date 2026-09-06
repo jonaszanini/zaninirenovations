@@ -1023,9 +1023,36 @@ html.admin-dark .util-ra-rooms-item__actions .admin-btn--danger:hover {
   color: #fecaca;
 }
 
+html.admin-dark .br-layout .pq-summary-card,
+html.admin-dark .tm-layout .pq-summary-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .br-layout .pq-row,
+html.admin-dark .tm-layout .pq-row {
+  color: var(--admin-text);
+}
+html.admin-dark .br-layout .pq-row--group,
+html.admin-dark .br-layout .pq-row--hl,
+html.admin-dark .tm-layout .pq-row--hl {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .br-layout .pq-row--hl,
+html.admin-dark .tm-layout .pq-row--hl {
+  color: var(--admin-primary);
+}
+html.admin-dark .br-layout .pq-summary-card h4,
+html.admin-dark .br-layout .fl-step-card h4 {
+  color: var(--admin-heading);
+}
+html.admin-dark .br-layout .fl-breakdown-section {
+  color: var(--admin-muted);
+}
+
 html.admin-dark .mw-cut-part-fill {
-  fill: rgba(56, 189, 248, 0.22);
-  stroke: #38bdf8;
+  fill: rgba(56, 189, 248, 0.34);
+  stroke: #7dd3fc;
 }
 html.admin-dark .mw-cut-stock {
   fill: #0f172a;
@@ -1042,5 +1069,9 @@ html.admin-dark .mw-cut-part-label,
 html.admin-dark .mw-cut-part-dim,
 html.admin-dark .mw-cut-dim {
   fill: #f8fafc;
+  stroke: #0f172a;
+}
+html.admin-dark .mw-cut-legend__n {
+  color: var(--admin-primary);
 }
 

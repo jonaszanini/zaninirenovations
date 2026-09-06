@@ -45,6 +45,20 @@
   $brFilled = function (string $key) use ($filledKeys): bool {
       return in_array($key, $filledKeys, true);
   };
+  $layoutClientProjectId = (int) ($layoutClientProjectId ?? 0);
+  $layoutSearchUrl = route('admin.utilities.room-area.layouts', array_filter([
+      'client_project_id' => $layoutClientProjectId > 0 ? $layoutClientProjectId : null,
+  ]));
+  $layoutImportId = trim((string) $brVal('room_area_import_id', ''));
+  $layoutImportLabel = trim((string) $brVal('room_area_import_label', ''));
+  $layoutSelected = $layoutImportId !== ''
+      ? [
+          'id' => $layoutImportId,
+          'name' => $layoutImportLabel !== '' ? $layoutImportLabel : $layoutImportId,
+          'label' => $layoutImportLabel !== '' ? $layoutImportLabel : $layoutImportId,
+      ]
+      : null;
+  $layoutPerimeter = $brQty('perimeter_lf');
   $tradeInfo = [
       'demolition' => 'Tear-out of existing flooring, drywall, or ceiling, plus dumpster / bin cost.',
       'framing' => 'New wood walls, bulkheads around ducts, headers, and door openings.',
@@ -61,7 +75,7 @@
   ];
   $brInfo = [
       'scope_preset' => 'Pick a starting point, then add or skip trades. Unused steps stay out of the wizard.',
-      'area_sqft' => 'Finished floor area of the work. Leave later quantity fields blank to auto-fill from this. Enter 0 on a field to skip it.',
+      'area_sqft' => 'Finished floor area of the work. Leave later quantity fields blank to auto-fill from this. Enter 0 on a field to skip it. For an irregular room, import the Room Area drawing on the Drywall step so walls use the real perimeter instead of a square.',
       'room_count' => 'Rooms as they will exist when the work is done, including new dividing walls — not the current open basement. Example: rec room + bedroom + bath = 3, even if it is open now. Enter new wall length on the Framing step.',
       'owner_hourly_rate' => 'Your labor rate used in the live total. Helpers use the helper rate.',
       'helper_hourly_rate' => 'Hourly rate for each helper in the 2- and 3-person ETA scenarios.',
@@ -93,11 +107,12 @@
       'insulation_ceiling_sf' => 'Ceiling area to insulate. Blank uses the work area.',
       'underslab' => 'Rigid foam under a new slab or on the existing concrete before flooring, where specified.',
       'underslab_sf' => 'Floor area of under-slab foam. Blank uses the work area.',
-      'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses area × height. On New wall, blank is wall length × ceiling height × both sides.',
+      'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses the imported Room Area perimeter × ceiling height, or a square from the floor area if you have not imported a layout. On New wall, blank is wall length × ceiling height × both sides.',
       'drywall_ceiling_sf' => 'Ceiling area to hang. Blank follows Ceiling type (skipped for drop ceiling or skip). New wall quotes skip ceiling — the basement is already finished.',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
       'drywall_openings' => 'Door and window openings to cut and bead, counted each.',
+      'room_area_import' => 'Saved Room Area drawing. Wall drywall becomes the real perimeter × ceiling height (not a square from the floor area). Ceiling drywall uses the floor square footage. Inside and outside corners are counted from the outline. Openings are not imported — enter those separately.',
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drop ceiling uses grid and tiles instead of hanging drywall.',
       'ceiling_sf' => 'Ceiling area. Blank uses the work area.',
@@ -407,6 +422,35 @@
 <details class="br-acc admin-card" data-br-step="drywall" @unless(in_array('drywall', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Drywall / Mud / Tape / Sand</summary>
   <div class="br-acc__body">
+    <div class="br-layout-import" data-br-layout-import data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
+      <input type="hidden" name="perimeter_lf" id="br-perimeter-lf" class="br-preview" value="{{ $layoutPerimeter }}">
+      <input type="hidden" name="room_area_import_label" id="br-layout-import-label" value="{{ $layoutImportLabel }}">
+      <div class="admin-form-group br-layout-import__field">
+        <label for="br-layout-import-input">@include('admin.partials.info_tip', ['text' => $brInfo['room_area_import']]) Import layout</label>
+        @include('admin.partials.search_select', [
+          'id' => 'br-layout-import',
+          'name' => 'room_area_import_id',
+          'value' => $layoutImportId,
+          'hideLabel' => true,
+          'placeholder' => 'Search saved Room Area rooms…',
+          'ariaLabel' => 'Import a Room Area layout',
+          'searchUrl' => $layoutSearchUrl,
+          'selectedOption' => $layoutSelected,
+          'metaKeys' => ['meta'],
+          'emptyMessage' => 'No matching Room Area layouts',
+          'emptyQueryMessage' => 'Type a room name, or pick a saved layout',
+          'listParent' => 'body',
+          'wrapperClass' => 'br-layout-import__picker',
+          'trailing' => '<a href="'.e(route('admin.utilities.room-area')).'" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener" title="Open Room Area"><i class="fa fa-object-ungroup" aria-hidden="true"></i><span class="br-layout-import__open-label">Room Area</span></a>',
+          'attrs' => ['data-br-layout-picker' => '1'],
+        ])
+      </div>
+      <p class="admin-form-help br-layout-import__status" id="br-layout-import-status" @if($layoutPerimeter === '' || (float) $layoutPerimeter <= 0) hidden @endif>
+        @if ($layoutPerimeter !== '' && (float) $layoutPerimeter > 0)
+          Using measured walls: {{ rtrim(rtrim(number_format((float) $layoutPerimeter, 2, '.', ''), '0'), '.') }} lf perimeter.
+        @endif
+      </p>
+    </div>
     <div class="br-qty-grid">
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'drywall_wall_sf',

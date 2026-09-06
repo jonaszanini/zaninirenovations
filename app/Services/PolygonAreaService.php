@@ -14,6 +14,17 @@ class PolygonAreaService
      */
     public function shoelaceArea(array $vertices): float
     {
+        return abs($this->signedShoelaceArea($vertices));
+    }
+
+    /**
+     * Signed shoelace area in vertex units. Positive means counter-clockwise
+     * in a Y-up coordinate system (clockwise on a typical screen/canvas).
+     *
+     * @param  list<array{x: float|int, y: float|int}>  $vertices
+     */
+    public function signedShoelaceArea(array $vertices): float
+    {
         $count = count($vertices);
         if ($count < 3) {
             return 0.0;
@@ -26,7 +37,89 @@ class PolygonAreaService
                 - ((float) $vertices[$j]['x'] * (float) $vertices[$i]['y']);
         }
 
-        return abs($sum) / 2.0;
+        return $sum / 2.0;
+    }
+
+    /**
+     * Closed-polygon perimeter in feet (sum of edge lengths).
+     *
+     * @param  list<array{x: float|int, y: float|int}>  $pixelVertices
+     */
+    public function verticesToPerimeterFeet(array $pixelVertices, float $pixelsPerFoot): float
+    {
+        if ($pixelsPerFoot <= 0) {
+            throw new InvalidArgumentException('Scale must be greater than zero.');
+        }
+
+        $count = count($pixelVertices);
+        if ($count < 3) {
+            return 0.0;
+        }
+
+        $sum = 0.0;
+        for ($i = 0; $i < $count; $i++) {
+            $a = $pixelVertices[$i];
+            $b = $pixelVertices[($i + 1) % $count];
+            $dx = ((float) $b['x'] - (float) $a['x']) / $pixelsPerFoot;
+            $dy = ((float) $b['y'] - (float) $a['y']) / $pixelsPerFoot;
+            $sum += hypot($dx, $dy);
+        }
+
+        return round($sum, 2);
+    }
+
+    /**
+     * Count drywall inside (tape) vs outside (bead) corners from polygon turns.
+     * Nearly collinear vertices are skipped.
+     *
+     * @param  list<array{x: float|int, y: float|int}>  $pixelVertices
+     * @return array{inside: int, outside: int}
+     */
+    public function cornerCounts(array $pixelVertices, float $minTurnDegrees = 20.0): array
+    {
+        $count = count($pixelVertices);
+        if ($count < 3) {
+            return ['inside' => 0, 'outside' => 0];
+        }
+
+        $signed = $this->signedShoelaceArea($pixelVertices);
+        if (abs($signed) < 1e-9) {
+            return ['inside' => 0, 'outside' => 0];
+        }
+
+        $positiveWinding = $signed > 0;
+        $minTurn = deg2rad($minTurnDegrees);
+        $inside = 0;
+        $outside = 0;
+
+        for ($i = 0; $i < $count; $i++) {
+            $prev = $pixelVertices[($i - 1 + $count) % $count];
+            $curr = $pixelVertices[$i];
+            $next = $pixelVertices[($i + 1) % $count];
+            $inX = (float) $curr['x'] - (float) $prev['x'];
+            $inY = (float) $curr['y'] - (float) $prev['y'];
+            $outX = (float) $next['x'] - (float) $curr['x'];
+            $outY = (float) $next['y'] - (float) $curr['y'];
+            if (hypot($inX, $inY) < 1e-6 || hypot($outX, $outY) < 1e-6) {
+                continue;
+            }
+
+            $cross = ($inX * $outY) - ($inY * $outX);
+            $dot = ($inX * $outX) + ($inY * $outY);
+            $angle = atan2($cross, $dot);
+            if (abs($angle) < $minTurn) {
+                continue;
+            }
+
+            $convex = ($cross > 0) === $positiveWinding;
+            if ($convex) {
+                $inside++;
+            } else {
+                $outside++;
+            }
+        }
+
+        return ['inside' => $inside, 'outside' => $outside];
     }
 
     /**

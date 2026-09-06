@@ -5,13 +5,14 @@ namespace App\Services\CutOptimizer;
 class SvgVisualizer
 {
     /**
-     * @return array{svg: string, cuts: list<array<string, mixed>>, stats: array<string, mixed>}
+     * @return array{svg: string, cuts: list<array<string, mixed>>, stats: array<string, mixed>, legend: list<array<string, mixed>>}
      */
     public function describe(GuillotineSheet $sheet): array
     {
         return [
             'svg' => $this->renderSheet($sheet),
             'cuts' => $this->humanCuts($sheet),
+            'legend' => $this->legend($sheet),
             'stats' => [
                 'id' => $sheet->id,
                 'label' => $sheet->label !== '' ? $sheet->label : $this->inchPair($sheet->width, $sheet->length),
@@ -30,31 +31,43 @@ class SvgVisualizer
 
     public function renderSheet(GuillotineSheet $sheet): string
     {
-        $pad = 28.0;
-        $vbW = $sheet->width + ($pad * 2);
-        $vbH = $sheet->length + ($pad * 2);
+        $padL = 18.0;
+        $padR = 8.0;
+        $padT = 6.0;
+        $padB = 14.0;
+        $vbW = $sheet->width + $padL + $padR;
+        $vbH = $sheet->length + $padT + $padB;
         $flipY = $sheet->length;
+        $clipPrefix = 'mw-clip-'.preg_replace('/[^A-Za-z0-9_-]/', '', $sheet->id);
 
         $svg = [];
         $svg[] = '<svg class="mw-cut-svg" viewBox="0 0 '.$this->n($vbW).' '.$this->n($vbH).'" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cut plan '.$this->esc($sheet->label).'">';
         $svg[] = '<rect class="mw-cut-bg" x="0" y="0" width="'.$this->n($vbW).'" height="'.$this->n($vbH).'" />';
+        $svg[] = '<defs>';
+        $i = 0;
+        foreach ($sheet->placedParts as $p) {
+            $i++;
+            $y = $flipY - $p->y - $p->height;
+            $svg[] = '<clipPath id="'.$clipPrefix.'-'.$i.'"><rect x="'.$this->n($p->x).'" y="'.$this->n($y).'" width="'.$this->n($p->width).'" height="'.$this->n($p->height).'" /></clipPath>';
+        }
+        $svg[] = '</defs>';
 
-        $ox = $pad;
-        $oy = $pad;
-
-        $svg[] = '<g transform="translate('.$this->n($ox).' '.$this->n($oy).')">';
+        $svg[] = '<g transform="translate('.$this->n($padL).' '.$this->n($padT).')">';
         $svg[] = '<rect class="mw-cut-stock" x="0" y="0" width="'.$this->n($sheet->width).'" height="'.$this->n($sheet->length).'" />';
 
         foreach ($sheet->freeRectangles as $offcut) {
+            if (min($offcut->width, $offcut->height) < 2.5) {
+                continue;
+            }
             $y = $flipY - $offcut->y - $offcut->height;
             $svg[] = '<rect class="mw-cut-offcut" x="'.$this->n($offcut->x).'" y="'.$this->n($y).'" width="'.$this->n($offcut->width).'" height="'.$this->n($offcut->height).'" />';
-            if ($offcut->width >= 6 && $offcut->height >= 6) {
+            if ($offcut->width >= 10 && $offcut->height >= 8) {
                 $svg[] = $this->label(
                     $offcut->x + ($offcut->width / 2),
                     $y + ($offcut->height / 2),
                     $this->inchPair($offcut->width, $offcut->height),
                     'mw-cut-offcut-label',
-                    2.6
+                    min(2.2, min($offcut->width, $offcut->height) / 8)
                 );
             }
         }
@@ -62,29 +75,11 @@ class SvgVisualizer
         $i = 0;
         foreach ($sheet->placedParts as $p) {
             $i++;
-            $y = $flipY - $p->y - $p->height;
-            $svg[] = '<g class="mw-cut-part">';
-            $svg[] = '<rect class="mw-cut-part-fill" x="'.$this->n($p->x).'" y="'.$this->n($y).'" width="'.$this->n($p->width).'" height="'.$this->n($p->height).'" />';
-            $title = $p->part->label.($p->rotated ? ' (rotated)' : '');
-            $svg[] = $this->label(
-                $p->x + ($p->width / 2),
-                $y + ($p->height / 2) - 2.2,
-                $title,
-                'mw-cut-part-label',
-                min(4.2, max(2.4, min($p->width, $p->height) / 8))
-            );
-            $svg[] = $this->label(
-                $p->x + ($p->width / 2),
-                $y + ($p->height / 2) + 2.4,
-                $this->inchPair($p->width, $p->height),
-                'mw-cut-part-dim',
-                min(3.6, max(2.2, min($p->width, $p->height) / 10))
-            );
-            $svg[] = '</g>';
+            $svg[] = $this->partGroup($p, $flipY, $i, $clipPrefix.'-'.$i);
         }
 
-        $svg[] = $this->dimLine(0, $sheet->length + 8, $sheet->width, $sheet->length + 8, $this->inch($sheet->width), false);
-        $svg[] = $this->dimLine(-10, $sheet->length, -10, 0, $this->inch($sheet->length), true);
+        $svg[] = $this->dimLine(0, $sheet->length + 7, $sheet->width, $sheet->length + 7, $this->inch($sheet->width), false);
+        $svg[] = $this->dimLine(-7, $sheet->length, -7, 0, $this->inch($sheet->length), true);
         $svg[] = '</g>';
         $svg[] = '</svg>';
 
@@ -122,26 +117,104 @@ class SvgVisualizer
         return $steps;
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function legend(GuillotineSheet $sheet): array
+    {
+        $rows = [];
+        $n = 0;
+        foreach ($sheet->placedParts as $p) {
+            $n++;
+            $rows[] = [
+                'n' => $n,
+                'label' => $p->part->label,
+                'size' => $this->inchPair($p->width, $p->height),
+                'rotated' => $p->rotated,
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function partGroup(PlacedPart $p, float $flipY, int $n, string $clipId): string
+    {
+        $y = $flipY - $p->y - $p->height;
+        $cx = $p->x + ($p->width / 2);
+        $cy = $y + ($p->height / 2);
+        $minD = min($p->width, $p->height);
+        $maxD = max($p->width, $p->height);
+        $alongH = $p->width >= $p->height;
+        $along = $alongH ? $p->width : $p->height;
+        $across = $alongH ? $p->height : $p->width;
+        $dim = $this->inchPair($p->width, $p->height);
+        $hover = $p->part->label.' — '.$dim.($p->rotated ? ' (rotated)' : '');
+
+        $out = [];
+        $out[] = '<g class="mw-cut-part">';
+        $out[] = '<title>'.$this->esc($hover).'</title>';
+        $out[] = '<rect class="mw-cut-part-fill" x="'.$this->n($p->x).'" y="'.$this->n($y).'" width="'.$this->n($p->width).'" height="'.$this->n($p->height).'" />';
+        $out[] = '<g clip-path="url(#'.$clipId.')">';
+
+        if ($minD >= 7.5) {
+            $nameSize = $this->fitFont($p->part->label, $p->width * 0.88, $minD * 0.28, 2.4);
+            $dimSize = $this->fitFont($dim, $p->width * 0.88, $minD * 0.22, 2.0);
+            $out[] = $this->label($cx, $cy - ($minD * 0.14), $p->part->label, 'mw-cut-part-label', $nameSize);
+            $out[] = $this->label($cx, $cy + ($minD * 0.16), $dim, 'mw-cut-part-dim', $dimSize);
+        } elseif ($maxD >= 5.5 && $minD >= 2.4) {
+            $compact = $n.' '.$this->plainInch($p->width).'×'.$this->plainInch($p->height);
+            $size = $this->fitFont($compact, $along * 0.92, $across * 0.7, 1.7);
+            if ($size < 0.85) {
+                $compact = (string) $n;
+                $size = min(1.3, $across * 0.62);
+            }
+            $out[] = $this->label($cx, $cy, $compact, 'mw-cut-part-dim', $size, ! $alongH);
+        } else {
+            $size = min(1.35, $minD * 0.7);
+            $out[] = $this->label($cx, $cy, (string) $n, 'mw-cut-part-label', $size);
+        }
+
+        $out[] = '</g>';
+        $out[] = '</g>';
+
+        return implode("\n", $out);
+    }
+
     private function dimLine(float $x1, float $y1, float $x2, float $y2, string $text, bool $vertical): string
     {
         $mx = ($x1 + $x2) / 2;
         $my = ($y1 + $y2) / 2;
-        $label = $this->label($mx + ($vertical ? -6 : 0), $my + ($vertical ? 0 : 5), $text, 'mw-cut-dim', 3.2);
+        $label = $this->label($mx + ($vertical ? -4.5 : 0), $my + ($vertical ? 0 : 4.2), $text, 'mw-cut-dim', 2.1);
 
         return '<line class="mw-cut-dim-line" x1="'.$this->n($x1).'" y1="'.$this->n($y1).'" x2="'.$this->n($x2).'" y2="'.$this->n($y2).'" />'.$label;
     }
 
-    private function label(float $x, float $y, string $text, string $class, float $size): string
+    private function label(float $x, float $y, string $text, string $class, float $size, bool $vertical = false): string
     {
-        return '<text class="'.$class.'" x="'.$this->n($x).'" y="'.$this->n($y).'" font-size="'.$this->n($size).'" text-anchor="middle" dominant-baseline="middle">'.$this->esc($text).'</text>';
+        $rot = $vertical ? ' transform="rotate(-90 '.$this->n($x).' '.$this->n($y).')"' : '';
+
+        return '<text class="'.$class.'" x="'.$this->n($x).'" y="'.$this->n($y).'" font-size="'.$this->n($size).'" text-anchor="middle" dominant-baseline="middle"'.$rot.'>'.$this->esc($text).'</text>';
+    }
+
+    private function fitFont(string $text, float $along, float $across, float $preferred): float
+    {
+        $len = max(1, strlen($text));
+        $byAlong = $along / ($len * 0.56);
+        $byAcross = $across * 0.85;
+
+        return max(0.7, min($preferred, $byAlong, $byAcross));
+    }
+
+    private function plainInch(float $n): string
+    {
+        $rounded = round($n, 2);
+
+        return rtrim(rtrim(number_format($rounded, 2, '.', ''), '0'), '.');
     }
 
     private function inch(float $n): string
     {
-        $rounded = round($n, 2);
-        $str = rtrim(rtrim(number_format($rounded, 2, '.', ''), '0'), '.');
-
-        return $str.'"';
+        return $this->plainInch($n).'"';
     }
 
     private function inchPair(float $a, float $b): string

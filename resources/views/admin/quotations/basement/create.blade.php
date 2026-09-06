@@ -172,6 +172,9 @@
             'enabledNow' => $enabledNow,
             'enabledCount' => $enabledCount,
             'filledKeys' => $filledKeys,
+            'layoutClientProjectId' => $isEdit
+                ? ($quotation->client_project_id ?? null)
+                : optional($linkProject)->id,
         ])
 
         <details class="br-acc admin-card" data-br-step="review" @if ($isEdit) open @endif>

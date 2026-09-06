@@ -533,6 +533,9 @@ class BasementQuotationCalculator
             'insulation_ceiling_sf' => null,
             'underslab' => false,
             'underslab_sf' => null,
+            'perimeter_lf' => null,
+            'room_area_import_id' => '',
+            'room_area_import_label' => '',
             'drywall_wall_sf' => null,
             'drywall_ceiling_sf' => null,
             'drywall_corners' => 0,
@@ -637,7 +640,9 @@ class BasementQuotationCalculator
         if ($area <= 0 && $partitionLf <= 0) {
             return $this->emptyCalculation($inputs, $settings, $height);
         }
-        $perimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
+        $measuredPerimeter = round(max(0, (float) ($inputs['perimeter_lf'] ?? 0)), 2);
+        $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
+        $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
         $suggestedWallSf = round($perimeter * $height, 2);
         $wallBothSidesSf = round($partitionLf * $height * 2, 2);
         $dwWallFallback = $inputs['scope_preset'] === 'wall' ? $wallBothSidesSf : $suggestedWallSf;
@@ -1204,6 +1209,7 @@ class BasementQuotationCalculator
                 'room_count' => max(0, (int) $inputs['room_count']),
                 'suggested_wall_sf' => $suggestedWallSf,
                 'suggested_perimeter_lf' => $perimeter,
+                'measured_perimeter' => $measuredPerimeter > 0,
                 'finish_label' => $finishLabel,
                 'ceiling_type' => $ceilingType,
                 'flooring_type' => $flType,

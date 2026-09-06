@@ -6514,10 +6514,11 @@ body.cp-modal-open {
   box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.06));
 }
 .br-layout .pq-summary-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 10px;
   padding: 16px;
-  background: #fafbfc;
+  background: var(--admin-surface, #fafbfc);
+  color: var(--admin-text);
 }
 .br-layout .pq-row {
   display: flex;
@@ -6525,6 +6526,7 @@ body.cp-modal-open {
   gap: 12px;
   padding: 4px 0;
   font-size: 13px;
+  color: var(--admin-text);
 }
 .br-layout .pq-row--sub {
   font-weight: 600;
@@ -6532,13 +6534,13 @@ body.cp-modal-open {
 .br-layout .pq-row--group {
   margin-top: 8px;
   padding-top: 10px;
-  border-top: 1px solid #d8dee4;
+  border-top: 1px solid var(--admin-border, #d8dee4);
 }
 .br-layout .pq-row--hl {
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary, #024768);
   font-size: 16px;
-  border-top: 1px solid #d8dee4;
+  border-top: 1px solid var(--admin-border, #d8dee4);
   margin-top: 8px;
   padding-top: 10px;
 }
@@ -6561,11 +6563,14 @@ body.cp-modal-open {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--admin-muted, #64748b);
 }
 .br-layout .fl-step-card h4 {
   margin: 0 0 12px;
-  color: #024768;
+  color: var(--admin-heading, #024768);
+}
+.br-layout .pq-summary-card h4 {
+  color: var(--admin-heading, #024768);
 }
 .br-aside {
   display: flex;
@@ -6706,6 +6711,25 @@ body.cp-modal-open {
 }
 .br-qty-grid[hidden] {
   display: none !important;
+}
+.br-layout-import {
+  margin-bottom: 12px;
+}
+.br-layout-import__field {
+  margin-bottom: 0;
+}
+.br-layout-import__picker {
+  min-width: 0;
+}
+.br-layout-import__status {
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+}
+.br-layout-import__status.is-set {
+  color: var(--admin-text);
+}
+.br-layout-import__open-label {
+  margin-left: 6px;
 }
 .br-toggle-qty-grid {
   display: grid;
@@ -7701,10 +7725,11 @@ body.cp-modal-open {
   top: 88px;
 }
 .tm-layout .pq-summary-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 10px;
   padding: 14px;
-  background: #fafbfc;
+  background: var(--admin-surface, #fafbfc);
+  color: var(--admin-text);
 }
 .tm-layout .pq-row {
   display: flex;
@@ -7712,12 +7737,13 @@ body.cp-modal-open {
   gap: 12px;
   padding: 4px 0;
   font-size: 13px;
+  color: var(--admin-text);
 }
 .tm-layout .pq-row--hl {
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary, #024768);
   font-size: 16px;
-  border-top: 1px solid #d8dee4;
+  border-top: 1px solid var(--admin-border, #d8dee4);
   margin-top: 8px;
   padding-top: 10px;
 }

@@ -399,6 +399,7 @@ class BasementQuotationController extends Controller
             'flooring_sf', 'baseboard_lf',
             'paint_wall_sf', 'paint_ceiling_sf', 'paint_trim_lf',
             'area_length_ft', 'area_width_ft',
+            'perimeter_lf',
         ];
         $ints = [
             'room_count', 'demo_bin_qty', 'header_qty', 'framing_door_openings',
@@ -416,7 +417,7 @@ class BasementQuotationController extends Controller
             'include_cleaning', 'include_touchups',
             'client_provides_all',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label'];
 
         $out = $defaults;
         foreach ($floats as $key) {

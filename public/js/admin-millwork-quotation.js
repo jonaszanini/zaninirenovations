@@ -224,10 +224,16 @@
         var cuts = (layout.cuts || []).map(function (c) {
           return '<li>' + escapeHtml(c.instruction || '') + '</li>';
         }).join('');
+        var legend = (layout.legend || []).map(function (row) {
+          return '<li><span class="mw-cut-legend__n">' + escapeHtml(row.n || '') + '</span>'
+            + '<span>' + escapeHtml(row.label || 'Part') + ' · ' + escapeHtml(row.size || '')
+            + (row.rotated ? ' · rotated' : '') + '</span></li>';
+        }).join('');
         return '<div class="mw-cut-sheet">'
           + '<div class="mw-cut-sheet__stats"><strong>' + escapeHtml(stats.label || 'Sheet') + '</strong>'
           + '<span>Used ' + escapeHtml(stats.used_pct || 0) + '% · waste ' + escapeHtml(stats.waste_pct || 0) + '%</span></div>'
-          + (layout.svg || '')
+          + '<div class="mw-cut-svg-wrap">' + (layout.svg || '') + '</div>'
+          + (legend ? '<ul class="mw-cut-legend">' + legend + '</ul>' : '')
           + (cuts ? '<ol class="mw-cut-steps">' + cuts + '</ol>' : '')
           + '</div>';
       }).join('');
