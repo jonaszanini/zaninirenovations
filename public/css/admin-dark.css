@@ -363,7 +363,33 @@ html.admin-dark #admin-dialog .admin-dialog-icon-wrap--danger {
 
 html.admin-dark .cp-modal-header,
 html.admin-dark .cp-modal-footer {
+  background: var(--admin-surface-hover);
   border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-contract-context-checklist-wrap {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-contract-gemini-btn {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-contract-gemini-btn:hover:not(:disabled) {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+}
+
+html.admin-dark .cp-contract-copy-feedback,
+html.admin-dark .cp-contract-gemini-status {
+  color: var(--admin-success);
+}
+
+html.admin-dark .cp-contract-gemini-status.is-error {
+  color: var(--admin-danger);
 }
 
 html.admin-dark .cp-modal-close {

@@ -2264,7 +2264,7 @@ a:hover .cp-expense-receipt-pdf {
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 16px 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--admin-border);
 }
 
 /* On-screen preview of the contract body (mirrors the PDF look). */
@@ -3550,9 +3550,10 @@ body.cp-modal-open {
   overflow: hidden;
 }
 .cp-modal {
-  background: #ffffff;
+  background: var(--admin-surface);
+  color: var(--admin-text);
   border-radius: 12px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+  box-shadow: var(--admin-shadow-lg);
   width: 100%;
   max-width: 480px;
   overflow: hidden;
@@ -3564,24 +3565,24 @@ body.cp-modal-open {
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid #eef1f4;
+  border-bottom: 1px solid var(--admin-border);
 }
 .cp-modal-header h3 {
   margin: 0;
   font-size: 17px;
-  color: #024768;
+  color: var(--admin-heading);
 }
 .cp-modal-close {
   background: transparent;
   border: 0;
   font-size: 22px;
   line-height: 1;
-  color: #6b7280;
+  color: var(--admin-muted);
   cursor: pointer;
   padding: 0 4px;
 }
 .cp-modal-close:hover {
-  color: #1f2937;
+  color: var(--admin-heading);
 }
 .cp-modal-body {
   padding: 16px 18px;
@@ -3591,17 +3592,17 @@ body.cp-modal-open {
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 18px;
-  border-top: 1px solid #eef1f4;
-  background: #f9fafb;
+  border-top: 1px solid var(--admin-border);
+  background: var(--admin-surface-hover);
 }
 
 /* Contract drafting context — readiness checklist */
 .cp-contract-context-checklist-wrap {
   margin: 0 0 12px;
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-border);
   border-radius: 10px;
-  background: #f9fafb;
+  background: var(--admin-surface-hover);
 }
 .cp-contract-context-checklist-head {
   display: flex;
@@ -3616,15 +3617,15 @@ body.cp-modal-open {
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--admin-muted);
 }
 .cp-contract-context-checklist-summary {
   font-size: 12px;
   font-weight: 600;
-  color: #15803d;
+  color: var(--admin-success);
 }
 .cp-contract-context-checklist-summary.is-incomplete {
-  color: #b91c1c;
+  color: var(--admin-danger);
 }
 .cp-contract-context-checklist {
   list-style: none;
@@ -3653,26 +3654,26 @@ body.cp-modal-open {
   font-size: 10px;
 }
 .cp-contract-context-check.is-present .cp-contract-context-check__icon {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--admin-success-soft);
+  color: var(--admin-success);
 }
 .cp-contract-context-check.is-present .cp-contract-context-check__label {
-  color: #166534;
+  color: var(--admin-success);
 }
 .cp-contract-context-check.is-missing .cp-contract-context-check__icon {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
 }
 .cp-contract-context-check.is-missing .cp-contract-context-check__label {
-  color: #b91c1c;
+  color: var(--admin-danger);
   font-weight: 600;
 }
 .cp-contract-context-check.is-optional .cp-contract-context-check__icon {
-  background: #f3f4f6;
-  color: #9ca3af;
+  background: var(--admin-input-bg);
+  color: var(--admin-muted);
 }
 .cp-contract-context-check.is-optional .cp-contract-context-check__label {
-  color: #6b7280;
+  color: var(--admin-muted);
 }
 .cp-contract-context-check__hint {
   font-size: 10px;
@@ -3693,19 +3694,20 @@ body.cp-modal-open {
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--admin-border);
   border-radius: 10px;
-  background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
-  color: #1f2937;
+  background: var(--admin-elevated);
+  color: var(--admin-heading);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(55, 52, 53, 0.06);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: var(--admin-shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 .cp-contract-gemini-btn:hover:not(:disabled) {
-  border-color: #9ca3af;
-  box-shadow: 0 4px 14px rgba(66, 133, 244, 0.12);
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface-hover);
+  box-shadow: 0 4px 14px var(--admin-primary-ring);
 }
 .cp-contract-gemini-btn:disabled {
   opacity: 0.65;
@@ -3717,11 +3719,15 @@ body.cp-modal-open {
 }
 .cp-contract-gemini-status {
   font-size: 12px;
-  color: #15803d;
+  color: var(--admin-success);
   margin: 0;
 }
 .cp-contract-gemini-status.is-error {
-  color: #b91c1c;
+  color: var(--admin-danger);
+}
+.cp-contract-copy-feedback {
+  margin: 0;
+  color: var(--admin-success);
 }
 
 /* Mobile tweaks. */
