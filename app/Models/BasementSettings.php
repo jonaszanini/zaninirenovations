@@ -87,7 +87,9 @@ class BasementSettings extends Model
     {
         return [
             'demo_floor_sf_per_hr' => 50,
+            'demo_studs_lf_per_hr' => 25,
             'demo_drywall_sf_per_hr' => 40,
+            'demo_baseboard_lf_per_hr' => 40,
             'bin_hours_each' => 0.75,
             'framing_lf_per_hr' => 8,
             'bulkhead_lf_per_hr' => 6,
@@ -338,7 +340,9 @@ class BasementSettings extends Model
         return [
             'Demolition & preparation' => [
                 'demo_floor_sf_per_hr' => 'Remove flooring (sq ft / hour)',
+                'demo_studs_lf_per_hr' => 'Remove studs (linear ft / hour)',
                 'demo_drywall_sf_per_hr' => 'Remove drywall / ceiling (sq ft / hour)',
+                'demo_baseboard_lf_per_hr' => 'Remove baseboard (linear ft / hour)',
                 'bin_hours_each' => 'Debris bin handling (hours each)',
             ],
             'Framing' => [

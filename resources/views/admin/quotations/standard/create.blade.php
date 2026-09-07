@@ -184,7 +184,10 @@
           <h4 class="sq-field-box-title">PDF &amp; document</h4>
           <div class="sq-intro-pdf-options">
             <div class="sq-intro-option-block">
-              <h5 class="sq-intro-option-title">Document type</h5>
+              <h5 class="sq-intro-option-title">
+                Document type
+                @include('admin.partials.info_tip', ['text' => 'You can switch between quotation and estimate at any time; the document number prefix updates when you save.'])
+              </h5>
               @php $docSel = old('document_type', $defaultDocType); @endphp
               <div class="sq-intro-choice-row">
                 <label class="cp-checkbox-row">
@@ -196,31 +199,40 @@
                   <span>Estimate</span>
                 </label>
               </div>
-              <p class="admin-form-help sq-intro-option-help">You can switch between quotation and estimate at any time; the document number prefix updates when you save.</p>
               @error('document_type') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
 
             <div class="sq-intro-option-block" id="sq-pdf-detail-block">
-              <h5 class="sq-intro-option-title">Client PDF line items</h5>
-              <div class="sq-intro-choice-col" id="sq-pdf-detail-choices">
-                <label class="cp-checkbox-row">
-                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
-                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
-                  <span><strong>Summary</strong> — one line with subtotal, HST, and total</span>
-                </label>
-                <label class="cp-checkbox-row">
-                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
-                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
-                  <span><strong>Detailed</strong> — Material subtotal, labour, and HST columns (not each SKU)</span>
-                </label>
+              <h5 class="sq-intro-option-title">
+                Client PDF line items
+                @include('admin.partials.info_tip', ['text' => "With several jobs, the PDF lists each job's material and labour amounts, then the grand total."])
+              </h5>
+              <div class="sq-intro-choice-row" id="sq-pdf-detail-choices">
+                <div class="sq-intro-choice-with-tip">
+                  <label class="cp-checkbox-row">
+                    <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
+                      @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
+                    <span>Summary</span>
+                  </label>
+                  @include('admin.partials.info_tip', ['text' => 'One line with subtotal, HST, and total.'])
+                </div>
+                <div class="sq-intro-choice-with-tip">
+                  <label class="cp-checkbox-row">
+                    <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
+                      @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
+                    <span>Detailed</span>
+                  </label>
+                  @include('admin.partials.info_tip', ['text' => 'Material subtotal, labour, and HST columns (not each SKU).'])
+                </div>
               </div>
-              <p class="admin-form-help sq-intro-option-help" id="sq-pdf-detail-help">Controls what the client sees when you download or email the PDF from the project.</p>
-              <p class="admin-form-help sq-intro-option-help" id="sq-pdf-jobs-note" hidden>With several jobs, the PDF lists each job's material and labour amounts, then the grand total.</p>
               @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
 
             <div class="sq-intro-option-block">
-              <h5 class="sq-intro-option-title">Includes (PDF wording)</h5>
+              <h5 class="sq-intro-option-title">
+                Includes (PDF wording)
+                @include('admin.partials.info_tip', ['text' => 'Controls the summary line on the client PDF (e.g. Labour and material or Labour).'])
+              </h5>
               @php
                 $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '1';
                 $labDef = $isEdit ? (($quotation->includes_labour ?? true) ? '1' : '0') : '1';
@@ -239,7 +251,6 @@
                   <span class="admin-checkbox__text">Labour</span>
                 </label>
               </div>
-              <p class="admin-form-help sq-intro-option-help">Controls the summary line on the client PDF (e.g. Labour and material or Labour).</p>
               @error('includes_material') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
           </div>

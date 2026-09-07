@@ -41,6 +41,24 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertMatchesRegularExpression('/id="br-framing-slot-bath"[^>]*\bhidden\b/', $html);
     }
 
+    public function test_demolition_step_has_tear_out_checkboxes(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('What to tear out', $html);
+        $this->assertStringContainsString('name="demo_include_flooring"', $html);
+        $this->assertStringContainsString('name="demo_include_studs"', $html);
+        $this->assertStringContainsString('name="demo_include_drywall"', $html);
+        $this->assertStringContainsString('name="demo_include_baseboard"', $html);
+        $this->assertStringContainsString('name="demo_studs_lf"', $html);
+        $this->assertStringContainsString('name="demo_baseboard_lf"', $html);
+        $this->assertStringContainsString('id="br-demo-studs-fields"', $html);
+        $this->assertStringContainsString('id="br-demo-base-fields"', $html);
+    }
+
     public function test_wall_wizard_includes_doors_trim_step(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();

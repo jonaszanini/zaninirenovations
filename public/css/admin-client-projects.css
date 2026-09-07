@@ -5161,8 +5161,9 @@ body.cp-modal-open {
    Quotation — link to project card (shared across quotation types)
    ================================================================= */
 .fq-link-project-card {
-  border: 1px dashed #c9d3e0;
-  background: #fbfcfd;
+  border: 1px dashed var(--admin-border, #c9d3e0);
+  background: var(--admin-surface, #fbfcfd);
+  color: var(--admin-text);
   border-radius: 10px;
   padding: 18px 20px;
   margin-top: 20px;
@@ -5194,18 +5195,18 @@ body.cp-modal-open {
   margin: 0 0 10px;
   font-size: 14px;
   font-weight: 600;
-  color: #024768;
+  color: var(--admin-primary, #024768);
 }
 .fq-link-divider {
   border: 0;
-  border-top: 1px solid #d7e4ef;
+  border-top: 1px solid var(--admin-border, #d7e4ef);
   margin: 16px 0;
 }
 @media (min-width: 900px) {
   .fq-link-divider {
     margin: 0;
     border-top: 0;
-    border-left: 1px solid #d7e4ef;
+    border-left: 1px solid var(--admin-border, #d7e4ef);
     align-self: stretch;
     width: 0;
     height: auto;
@@ -5438,15 +5439,18 @@ body.cp-modal-open {
 .sq-intro-pdf-options {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 .sq-intro-option-block .admin-form-label {
   display: block;
   margin-bottom: 8px;
 }
 .sq-intro-option-title {
-  margin: 0 0 10px;
-  padding-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0 0 6px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--admin-border, #dbe3ea);
   font-size: 13px;
   font-weight: 700;
@@ -5454,11 +5458,26 @@ body.cp-modal-open {
   color: var(--admin-primary, #024768);
   letter-spacing: 0.01em;
 }
+.sq-intro-option-title .admin-info-tip {
+  margin: -10px -8px -10px -4px;
+}
 .sq-intro-choice-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 20px;
+  gap: 4px 16px;
   align-items: center;
+}
+.sq-intro-choice-row .cp-checkbox-row {
+  min-height: 44px;
+}
+.sq-intro-choice-with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: 44px;
+}
+.sq-intro-choice-with-tip .admin-info-tip {
+  margin: -10px -8px -10px -6px;
 }
 .sq-intro-choice-col {
   display: flex;
@@ -5467,6 +5486,19 @@ body.cp-modal-open {
 }
 .sq-intro-option-help {
   margin: 8px 0 0;
+}
+@media (min-width: 768px) {
+  .sq-intro-pdf-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    align-items: start;
+  }
+}
+@media (min-width: 900px) {
+  .sq-intro-pdf-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .sq-intro-work-desc textarea {
   min-height: 120px;
@@ -6387,10 +6419,11 @@ body.cp-modal-open {
   box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.06));
 }
 .br-layout .pq-summary-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 10px;
   padding: 16px;
-  background: #fafbfc;
+  background: var(--admin-surface, #fafbfc);
+  color: var(--admin-text);
 }
 .br-layout .pq-row {
   display: flex;
@@ -6405,13 +6438,13 @@ body.cp-modal-open {
 .br-layout .pq-row--group {
   margin-top: 8px;
   padding-top: 10px;
-  border-top: 1px solid #d8dee4;
+  border-top: 1px solid var(--admin-border, #d8dee4);
 }
 .br-layout .pq-row--hl {
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary, #024768);
   font-size: 16px;
-  border-top: 1px solid #d8dee4;
+  border-top: 1px solid var(--admin-border, #d8dee4);
   margin-top: 8px;
   padding-top: 10px;
 }
@@ -6434,11 +6467,11 @@ body.cp-modal-open {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--admin-muted, #64748b);
 }
 .br-layout .fl-step-card h4 {
   margin: 0 0 12px;
-  color: #024768;
+  color: var(--admin-primary, #024768);
 }
 .br-aside {
   display: flex;
@@ -6471,19 +6504,19 @@ body.cp-modal-open {
   gap: 8px;
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 8px;
-  background: #fff;
-  color: #334155;
+  background: var(--admin-surface, #fff);
+  color: var(--admin-text, #334155);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
   scroll-snap-align: start;
 }
 .br-progress__item.is-current {
-  border-color: #024768;
-  background: #f0f7fb;
-  color: #024768;
+  border-color: var(--admin-primary, #024768);
+  background: var(--admin-primary-soft, #f0f7fb);
+  color: var(--admin-primary, #024768);
   font-weight: 700;
 }
 .br-progress__num {
@@ -6493,7 +6526,8 @@ body.cp-modal-open {
   min-width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: #e8eef3;
+  background: var(--admin-surface-hover, #e8eef3);
+  color: var(--admin-heading, inherit);
   font-size: 12px;
   font-weight: 700;
 }
@@ -6516,7 +6550,7 @@ body.cp-modal-open {
   min-height: 44px;
   cursor: pointer;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary, #024768);
   padding: 4px 2px;
 }
 .br-acc__summary::-webkit-details-marker {
@@ -6601,12 +6635,21 @@ body.cp-modal-open {
 .br-toggle-qty__fields[hidden] {
   display: none !important;
 }
+.br-demo-scope-label {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-heading);
+}
+#br-demo-fields[hidden] {
+  display: none !important;
+}
 .br-electrical-fields__toggles {
   margin-top: 8px;
 }
 .br-review-heading {
   margin: 20px 0 8px;
-  color: #024768;
+  color: var(--admin-primary, #024768);
   font-size: 15px;
 }
 .br-provide-grid {

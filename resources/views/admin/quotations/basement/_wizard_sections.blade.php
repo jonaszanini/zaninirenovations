@@ -46,7 +46,7 @@
       return in_array($key, $filledKeys, true);
   };
   $tradeInfo = [
-      'demolition' => 'Tear-out of existing flooring, drywall, or ceiling, plus dumpster / bin cost.',
+      'demolition' => 'Tear-out of existing flooring, studs, drywall, and/or baseboard, plus dumpster / bin cost.',
       'framing' => 'New wood walls, bulkheads around ducts, headers, and door openings.',
       'electrical' => 'Outlets, switches, lights, detectors, cable runs, and optional panel upgrade.',
       'plumbing' => 'Drain, vent, and supply piping for a bath, laundry, wet bar, floor drain, or water-heater move.',
@@ -66,9 +66,15 @@
       'owner_hourly_rate' => 'Your labor rate used in the live total. Helpers use the helper rate.',
       'helper_hourly_rate' => 'Hourly rate for each helper in the 2- and 3-person ETA scenarios.',
       'existing_notes' => 'Site notes for you (moisture, headroom, existing bath). Not printed on the client PDF unless you copy them into the description.',
-      'include_demolition' => 'Adds tear-out labor and dumpster cost. Uncheck if the space is already stripped.',
+      'include_demolition' => 'Adds tear-out labor and dumpster cost. Then check flooring, studs, drywall, and/or baseboard and enter the quantities. Uncheck if the space is already stripped.',
+      'demo_include_flooring' => 'Pull up existing floor covering. Uncheck if the floor stays.',
+      'demo_include_studs' => 'Tear out existing stud walls. Enter linear feet, or leave blank to use the new partition length from Framing.',
+      'demo_include_drywall' => 'Strip existing drywall or ceiling. Uncheck if the concrete or joists are already exposed.',
+      'demo_include_baseboard' => 'Pry off existing baseboard. Blank uses the room perimeter from the work area.',
       'demo_flooring_sf' => 'Existing floor covering to pull up. Blank uses the work area; enter 0 if none.',
-      'demo_drywall_sf' => 'Existing drywall or ceiling to strip. Enter 0 if the concrete or joists are already exposed.',
+      'demo_studs_lf' => 'Linear feet of existing wall to strip. Blank uses the new partition length from Framing; enter 0 if none.',
+      'demo_drywall_sf' => 'Existing drywall or ceiling to strip. Enter 0 if none.',
+      'demo_baseboard_lf' => 'Existing baseboard to remove. Blank uses the room perimeter; enter 0 if none.',
       'demo_bin_qty' => 'How many dumpsters / bins. Unit price comes from Price configuration.',
       'partition_lf' => 'Length of a new interior 2x4 wall. Height uses ceiling height from Overview. Use 0 if the bathroom already has walls.',
       'bulkhead_lf' => 'Length of boxed-in ducts or beams (soffits) to work around, not a full-height wall. Use 0 if none.',
@@ -256,40 +262,109 @@
       'attrs' => ['data-br-reveal' => 'br-demo-fields'],
       'clientFilled' => $brFilled('include_demolition'),
     ])
-    <div id="br-demo-fields" class="br-qty-grid br-qty-grid--inset" @unless($brOn('include_demolition')) hidden @endunless>
-      @include('admin.quotations.basement._qty_lw', [
-        'name' => 'demo_flooring_sf',
-        'id' => 'br-demo-floor',
-        'label' => 'Existing flooring removal (sq ft)',
-        'value' => $brQty('demo_flooring_sf'),
-        'modeName' => 'qty_dims[demo_flooring_sf][mode]',
-        'lengthName' => 'qty_dims[demo_flooring_sf][length_ft]',
-        'widthName' => 'qty_dims[demo_flooring_sf][width_ft]',
-        'mode' => $qtyDim('demo_flooring_sf')['mode'],
-        'lengthValue' => $qtyDim('demo_flooring_sf')['length'],
-        'widthValue' => $qtyDim('demo_flooring_sf')['width'],
-        'placeholder' => 'Auto: basement area',
-        'info' => $brInfo['demo_flooring_sf'],
-      ])
-      @include('admin.quotations.basement._qty_lw', [
-        'name' => 'demo_drywall_sf',
-        'id' => 'br-demo-dw',
-        'label' => 'Existing drywall / ceiling removal (sq ft)',
-        'value' => $brQty('demo_drywall_sf'),
-        'modeName' => 'qty_dims[demo_drywall_sf][mode]',
-        'lengthName' => 'qty_dims[demo_drywall_sf][length_ft]',
-        'widthName' => 'qty_dims[demo_drywall_sf][width_ft]',
-        'mode' => $qtyDim('demo_drywall_sf')['mode'],
-        'lengthValue' => $qtyDim('demo_drywall_sf')['length'],
-        'widthValue' => $qtyDim('demo_drywall_sf')['width'],
-        'placeholder' => '0 if none',
-        'info' => $brInfo['demo_drywall_sf'],
-      ])
-      <div class="admin-form-group">
-        <label for="br-bins">@include('admin.partials.info_tip', ['text' => $brInfo['demo_bin_qty']]) Debris bins</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bins" name="demo_bin_qty"
-               value="{{ $brVal('demo_bin_qty', 1) }}"
-               title="Dumpster / bin count. Price comes from the basement materials database.">
+    <div id="br-demo-fields" @unless($brOn('include_demolition')) hidden @endunless>
+      <p class="br-demo-scope-label">What to tear out</p>
+      <div class="br-toggle-qty-grid br-qty-grid--inset">
+        <div class="br-toggle-qty">
+          @include('admin.partials.checkbox', [
+            'name' => 'demo_include_flooring',
+            'hiddenFallback' => true,
+            'checked' => $brOn('demo_include_flooring', true),
+            'label' => 'Flooring',
+            'info' => $brInfo['demo_include_flooring'],
+            'inputClass' => 'admin-checkbox__input br-preview',
+            'attrs' => ['data-br-reveal' => 'br-demo-floor-fields'],
+            'clientFilled' => $brFilled('demo_include_flooring'),
+          ])
+          <div id="br-demo-floor-fields" class="br-toggle-qty__fields" @unless($brOn('demo_include_flooring', true)) hidden @endunless>
+            @include('admin.quotations.basement._qty_lw', [
+              'name' => 'demo_flooring_sf',
+              'id' => 'br-demo-floor',
+              'label' => 'Existing flooring removal (sq ft)',
+              'value' => $brQty('demo_flooring_sf'),
+              'modeName' => 'qty_dims[demo_flooring_sf][mode]',
+              'lengthName' => 'qty_dims[demo_flooring_sf][length_ft]',
+              'widthName' => 'qty_dims[demo_flooring_sf][width_ft]',
+              'mode' => $qtyDim('demo_flooring_sf')['mode'],
+              'lengthValue' => $qtyDim('demo_flooring_sf')['length'],
+              'widthValue' => $qtyDim('demo_flooring_sf')['width'],
+              'placeholder' => 'Auto: basement area',
+              'info' => $brInfo['demo_flooring_sf'],
+            ])
+          </div>
+        </div>
+        <div class="br-toggle-qty">
+          @include('admin.partials.checkbox', [
+            'name' => 'demo_include_studs',
+            'hiddenFallback' => true,
+            'checked' => $brOn('demo_include_studs'),
+            'label' => 'Studs',
+            'info' => $brInfo['demo_include_studs'],
+            'inputClass' => 'admin-checkbox__input br-preview',
+            'attrs' => ['data-br-reveal' => 'br-demo-studs-fields'],
+            'clientFilled' => $brFilled('demo_include_studs'),
+          ])
+          <div id="br-demo-studs-fields" class="br-toggle-qty__fields" @unless($brOn('demo_include_studs')) hidden @endunless>
+            <div class="admin-form-group">
+              <label for="br-demo-studs">@include('admin.partials.info_tip', ['text' => $brInfo['demo_studs_lf']]) Existing studs (lf)</label>
+              <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-demo-studs" name="demo_studs_lf"
+                     value="{{ $brQty('demo_studs_lf') }}" placeholder="Auto: partition wall length">
+            </div>
+          </div>
+        </div>
+        <div class="br-toggle-qty">
+          @include('admin.partials.checkbox', [
+            'name' => 'demo_include_drywall',
+            'hiddenFallback' => true,
+            'checked' => $brOn('demo_include_drywall', true),
+            'label' => 'Drywall',
+            'info' => $brInfo['demo_include_drywall'],
+            'inputClass' => 'admin-checkbox__input br-preview',
+            'attrs' => ['data-br-reveal' => 'br-demo-dw-fields'],
+            'clientFilled' => $brFilled('demo_include_drywall'),
+          ])
+          <div id="br-demo-dw-fields" class="br-toggle-qty__fields" @unless($brOn('demo_include_drywall', true)) hidden @endunless>
+            @include('admin.quotations.basement._qty_lw', [
+              'name' => 'demo_drywall_sf',
+              'id' => 'br-demo-dw',
+              'label' => 'Existing drywall / ceiling removal (sq ft)',
+              'value' => $brQty('demo_drywall_sf'),
+              'modeName' => 'qty_dims[demo_drywall_sf][mode]',
+              'lengthName' => 'qty_dims[demo_drywall_sf][length_ft]',
+              'widthName' => 'qty_dims[demo_drywall_sf][width_ft]',
+              'mode' => $qtyDim('demo_drywall_sf')['mode'],
+              'lengthValue' => $qtyDim('demo_drywall_sf')['length'],
+              'widthValue' => $qtyDim('demo_drywall_sf')['width'],
+              'placeholder' => '0 if none',
+              'info' => $brInfo['demo_drywall_sf'],
+            ])
+          </div>
+        </div>
+        <div class="br-toggle-qty">
+          @include('admin.partials.checkbox', [
+            'name' => 'demo_include_baseboard',
+            'hiddenFallback' => true,
+            'checked' => $brOn('demo_include_baseboard'),
+            'label' => 'Baseboard',
+            'info' => $brInfo['demo_include_baseboard'],
+            'inputClass' => 'admin-checkbox__input br-preview',
+            'attrs' => ['data-br-reveal' => 'br-demo-base-fields'],
+            'clientFilled' => $brFilled('demo_include_baseboard'),
+          ])
+          <div id="br-demo-base-fields" class="br-toggle-qty__fields" @unless($brOn('demo_include_baseboard')) hidden @endunless>
+            <div class="admin-form-group">
+              <label for="br-demo-base">@include('admin.partials.info_tip', ['text' => $brInfo['demo_baseboard_lf']]) Existing baseboard (lf)</label>
+              <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-demo-base" name="demo_baseboard_lf"
+                     value="{{ $brQty('demo_baseboard_lf') }}" placeholder="Auto: room perimeter">
+            </div>
+          </div>
+        </div>
+        <div class="admin-form-group">
+          <label for="br-bins">@include('admin.partials.info_tip', ['text' => $brInfo['demo_bin_qty']]) Debris bins</label>
+          <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bins" name="demo_bin_qty"
+                 value="{{ $brVal('demo_bin_qty', 1) }}"
+                 title="Dumpster / bin count. Price comes from the basement materials database.">
+        </div>
       </div>
     </div>
   </div>

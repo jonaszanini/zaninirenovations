@@ -30,6 +30,20 @@ class QuotationWorkDescriptionContextBuilderTest extends TestCase
         $this->assertStringNotContainsString('m²', $text);
     }
 
+    public function test_basement_demolition_lists_checked_tear_out_items(): void
+    {
+        $text = (new QuotationWorkDescriptionContextBuilder)->build('basement', [
+            'include_demolition' => true,
+            'demo_include_flooring' => false,
+            'demo_include_studs' => true,
+            'demo_include_drywall' => true,
+            'demo_include_baseboard' => true,
+        ]);
+
+        $this->assertStringContainsString('Demolition: studs, drywall, baseboard', $text);
+        $this->assertStringNotContainsString('flooring', strtolower($text));
+    }
+
     public function test_from_quote_instruction_file_has_context_placeholder(): void
     {
         $instruction = require database_path('data/ai_instruction_quotation_work_description_from_quote.php');

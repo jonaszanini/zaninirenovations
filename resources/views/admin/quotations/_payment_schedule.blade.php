@@ -218,7 +218,7 @@
     position: absolute;
     right: 10px;
     font-size: 0.85rem;
-    color: #64748b;
+    color: var(--admin-muted, #64748b);
     pointer-events: none;
   }
 </style>

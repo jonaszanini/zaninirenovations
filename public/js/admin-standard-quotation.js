@@ -537,12 +537,7 @@
       }
     });
     var choices = document.getElementById('sq-pdf-detail-choices');
-    var help = document.getElementById('sq-pdf-detail-help');
-    var note = document.getElementById('sq-pdf-jobs-note');
-    var multi = n >= 2;
-    if (choices) choices.hidden = multi;
-    if (help) help.hidden = multi;
-    if (note) note.hidden = !multi;
+    if (choices) choices.hidden = n >= 2;
   }
 
   function addMaterialRow(card) {

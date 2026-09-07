@@ -393,7 +393,7 @@ class BasementQuotationController extends Controller
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
         ];
         $optionalQty = [
-            'demo_flooring_sf', 'demo_drywall_sf',
+            'demo_flooring_sf', 'demo_drywall_sf', 'demo_studs_lf', 'demo_baseboard_lf',
             'insulation_wall_sf', 'insulation_ceiling_sf', 'underslab_sf',
             'drywall_wall_sf', 'drywall_ceiling_sf', 'ceiling_sf',
             'flooring_sf', 'baseboard_lf',
@@ -408,7 +408,9 @@ class BasementQuotationController extends Controller
             'fixture_qty', 'hardware_sets', 'bath_fixture_qty', 'bath_spot_qty',
         ];
         $bools = [
-            'include_demolition', 'panel_upgrade', 'include_plumbing', 'bath_rough_in',
+            'include_demolition', 'demo_include_flooring', 'demo_include_studs',
+            'demo_include_drywall', 'demo_include_baseboard',
+            'panel_upgrade', 'include_plumbing', 'bath_rough_in',
             'sink_laundry', 'wet_bar', 'floor_drain', 'wh_reloc', 'insulate_walls',
             'insulate_ceiling', 'underslab', 'subfloor_prep', 'underlayment',
             'include_bathroom', 'include_vanity', 'include_pedestal_sink', 'include_toilet', 'include_shower',
@@ -435,6 +437,11 @@ class BasementQuotationController extends Controller
         }
         foreach ($bools as $key) {
             $out[$key] = $request->boolean($key);
+        }
+        foreach (['demo_include_flooring', 'demo_include_studs', 'demo_include_drywall', 'demo_include_baseboard'] as $key) {
+            if (! $request->exists($key)) {
+                $out[$key] = (bool) $defaults[$key];
+            }
         }
         foreach ($strings as $key) {
             $out[$key] = trim((string) $request->input($key, $defaults[$key]));

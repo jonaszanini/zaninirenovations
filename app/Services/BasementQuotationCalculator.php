@@ -470,8 +470,14 @@ class BasementQuotationCalculator
             'scope_preset' => 'full',
             'enabled_sections' => null,
             'include_demolition' => false,
+            'demo_include_flooring' => true,
+            'demo_include_studs' => false,
+            'demo_include_drywall' => true,
+            'demo_include_baseboard' => false,
             'demo_flooring_sf' => null,
             'demo_drywall_sf' => 0,
+            'demo_studs_lf' => null,
+            'demo_baseboard_lf' => null,
             'demo_bin_qty' => 1,
             'partition_lf' => 0,
             'bulkhead_lf' => 0,
@@ -730,11 +736,24 @@ class BasementQuotationCalculator
 
         // --- Demolition ---
         if ($on('demolition') && ! empty($inputs['include_demolition'])) {
-            $demoFloor = $this->qtyOr($inputs['demo_flooring_sf'], $area);
-            $demoDrywall = $this->qtyOr($inputs['demo_drywall_sf'], 0);
+            if (! empty($inputs['demo_include_flooring'])) {
+                $demoFloor = $this->qtyOr($inputs['demo_flooring_sf'], $area);
+                $addLabor('demo_floor', 'demolition', 'Remove existing flooring', number_format($demoFloor, 0).' sq ft', $perHr($demoFloor, (float) $prod['demo_floor_sf_per_hr']));
+            }
+            if (! empty($inputs['demo_include_studs'])) {
+                $demoStuds = $this->qtyOr($inputs['demo_studs_lf'], $partitionLf);
+                $addLabor('demo_studs', 'demolition', 'Remove existing studs', number_format($demoStuds, 0).' lf', $perHr($demoStuds, (float) $prod['demo_studs_lf_per_hr']));
+            }
+            if (! empty($inputs['demo_include_drywall'])) {
+                $demoDrywall = $this->qtyOr($inputs['demo_drywall_sf'], 0);
+                $addLabor('demo_drywall', 'demolition', 'Remove drywall / ceiling', number_format($demoDrywall, 0).' sq ft', $perHr($demoDrywall, (float) $prod['demo_drywall_sf_per_hr']));
+            }
+            if (! empty($inputs['demo_include_baseboard'])) {
+                $demoBaseFallback = $inputs['scope_preset'] === 'wall' ? round($partitionLf * 2, 2) : $perimeter;
+                $demoBase = $this->qtyOr($inputs['demo_baseboard_lf'], $demoBaseFallback);
+                $addLabor('demo_baseboard', 'demolition', 'Remove existing baseboard', number_format($demoBase, 0).' lf', $perHr($demoBase, (float) $prod['demo_baseboard_lf_per_hr']));
+            }
             $bins = max(0, (int) $inputs['demo_bin_qty']);
-            $addLabor('demo_floor', 'demolition', 'Remove existing flooring', number_format($demoFloor, 0).' sq ft', $perHr($demoFloor, (float) $prod['demo_floor_sf_per_hr']));
-            $addLabor('demo_drywall', 'demolition', 'Remove drywall / ceiling', number_format($demoDrywall, 0).' sq ft', $perHr($demoDrywall, (float) $prod['demo_drywall_sf_per_hr']));
             $addLabor('demo_bins', 'demolition', 'Debris bins / haul-away', $bins.' bin(s)', $bins * (float) $prod['bin_hours_each']);
             $addMat('dump_bin', 'demolition', $bins, 'dump_bin');
         }

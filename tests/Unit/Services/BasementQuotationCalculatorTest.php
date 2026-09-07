@@ -1177,6 +1177,105 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertStringNotContainsString('400', $demo['detail']);
     }
 
+    public function test_legacy_demolition_inputs_still_price_flooring_and_drywall(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'include_demolition' => true,
+            'demo_flooring_sf' => 400,
+            'demo_drywall_sf' => 56,
+            'demo_bin_qty' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $keys = collect($calc['labor'])->pluck('key')->all();
+        $this->assertContains('demo_floor', $keys);
+        $this->assertContains('demo_drywall', $keys);
+        $this->assertNotContains('demo_studs', $keys);
+        $this->assertNotContains('demo_baseboard', $keys);
+    }
+
+    public function test_demolition_scope_checkboxes_price_only_checked_items(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'partition_lf' => 40,
+            'include_demolition' => true,
+            'demo_include_flooring' => false,
+            'demo_include_studs' => true,
+            'demo_include_drywall' => true,
+            'demo_include_baseboard' => true,
+            'demo_flooring_sf' => 400,
+            'demo_studs_lf' => 24,
+            'demo_drywall_sf' => 56,
+            'demo_baseboard_lf' => 80,
+            'demo_bin_qty' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $labor = collect($calc['labor']);
+        $this->assertNull($labor->firstWhere('key', 'demo_floor'));
+
+        $studs = $labor->firstWhere('key', 'demo_studs');
+        $this->assertNotNull($studs);
+        $this->assertStringContainsString('24', $studs['detail']);
+        $this->assertEqualsWithDelta(24 / 25, $studs['hours'], 0.02);
+
+        $drywall = $labor->firstWhere('key', 'demo_drywall');
+        $this->assertNotNull($drywall);
+        $this->assertStringContainsString('56', $drywall['detail']);
+
+        $base = $labor->firstWhere('key', 'demo_baseboard');
+        $this->assertNotNull($base);
+        $this->assertStringContainsString('80', $base['detail']);
+        $this->assertEqualsWithDelta(80 / 40, $base['hours'], 0.02);
+    }
+
+    public function test_unchecked_drywall_skips_labor_even_when_qty_is_set(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'include_demolition' => true,
+            'demo_include_flooring' => false,
+            'demo_include_studs' => false,
+            'demo_include_drywall' => false,
+            'demo_include_baseboard' => false,
+            'demo_drywall_sf' => 56,
+            'demo_bin_qty' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $keys = collect($calc['labor'])->pluck('key')->all();
+        $this->assertNotContains('demo_drywall', $keys);
+        $this->assertNotContains('demo_floor', $keys);
+        $this->assertNotContains('demo_studs', $keys);
+        $this->assertNotContains('demo_baseboard', $keys);
+    }
+
+    public function test_checked_studs_and_baseboard_use_auto_quantities_when_blank(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 400,
+            'partition_lf' => 32,
+            'include_demolition' => true,
+            'demo_include_flooring' => false,
+            'demo_include_studs' => true,
+            'demo_include_drywall' => false,
+            'demo_include_baseboard' => true,
+            'demo_bin_qty' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $labor = collect($calc['labor']);
+        $studs = $labor->firstWhere('key', 'demo_studs');
+        $this->assertNotNull($studs);
+        $this->assertStringContainsString('32', $studs['detail']);
+
+        $base = $labor->firstWhere('key', 'demo_baseboard');
+        $this->assertNotNull($base);
+        $this->assertStringContainsString((string) (int) round(4 * sqrt(400)), $base['detail']);
+    }
+
     private function settings(?array $materials = null): BasementSettings
     {
         return new BasementSettings([

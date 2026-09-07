@@ -778,10 +778,29 @@ html.admin-dark .sq-intro-card,
 html.admin-dark .sq-panel:not(.sq-panel--nested),
 html.admin-dark .q-commute-card,
 html.admin-dark .q-debris-card,
-html.admin-dark .q-payment-schedule-card {
+html.admin-dark .q-payment-schedule-card,
+html.admin-dark .q-additional-costs-card,
+html.admin-dark .fq-link-project-card,
+html.admin-dark .br-layout .pq-summary-card {
   background: var(--admin-surface);
   border-color: var(--admin-border);
   color: var(--admin-text);
+}
+
+html.admin-dark .fq-link-project-card .admin-form-help,
+html.admin-dark .fq-link-project-card .admin-form-help strong,
+html.admin-dark .fq-link-project-card .cp-form-help-flush {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .fq-link-project-card h4,
+html.admin-dark .q-additional-costs-card__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .q-ac-row {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
 }
 
 html.admin-dark .admin-text-link {

@@ -416,7 +416,20 @@ class QuotationWorkDescriptionContextBuilder
             $lines[] = 'Bathroom: yes';
         }
         if (! empty($c['include_demolition'])) {
-            $lines[] = 'Demolition: yes';
+            $demoParts = [];
+            if (! empty($c['demo_include_flooring'])) {
+                $demoParts[] = 'flooring';
+            }
+            if (! empty($c['demo_include_studs'])) {
+                $demoParts[] = 'studs';
+            }
+            if (! empty($c['demo_include_drywall'])) {
+                $demoParts[] = 'drywall';
+            }
+            if (! empty($c['demo_include_baseboard'])) {
+                $demoParts[] = 'baseboard';
+            }
+            $lines[] = 'Demolition: '.($demoParts !== [] ? implode(', ', $demoParts) : 'yes');
         }
         $this->appendBlock($lines, 'Site notes', $c['existing_notes'] ?? null);
         $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
@@ -425,7 +438,8 @@ class QuotationWorkDescriptionContextBuilder
         $this->flattenInto($lines, $c, '', [
             'client_name', 'scope_preset', 'area_sqft', 'area_entry_mode', 'area_length_ft', 'area_width_ft',
             'ceiling_height_ft', 'room_count', 'flooring_type', 'ceiling_type', 'include_bathroom',
-            'include_demolition', 'existing_notes', 'labor_summary', 'materials_summary', 'breakdown_summary',
+            'include_demolition', 'demo_include_flooring', 'demo_include_studs', 'demo_include_drywall',
+            'demo_include_baseboard', 'existing_notes', 'labor_summary', 'materials_summary', 'breakdown_summary',
         ]);
 
         return implode("\n", $lines);
