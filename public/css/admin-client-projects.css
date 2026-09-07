@@ -5066,9 +5066,9 @@ body.cp-modal-open {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  min-height: 44px;
-  padding: 8px 14px;
-  font-size: 13px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.2;
   color: var(--admin-muted, #64748b);
@@ -6952,38 +6952,39 @@ body.cp-modal-open {
 .br-notes-field {
   margin-bottom: 0;
 }
+.br-lw {
+  --br-lw-segment-height: 28px;
+}
+.br-lw__primary {
+  min-width: 0;
+}
 .br-lw__head {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.4rem;
-  margin-bottom: 0.65rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem 0.65rem;
+  margin-bottom: 0.4rem;
 }
 .br-lw__head > label {
   margin-bottom: 0;
 }
-@media (min-width: 768px) {
-  .br-lw__head {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-}
 .br-lw-segment {
+  --br-lw-segment-height: 28px;
   display: inline-flex;
   border: 1px solid var(--admin-border);
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   background: var(--admin-surface);
   flex-shrink: 0;
-  align-self: flex-start;
+  align-self: center;
 }
 .admin-form-group .br-lw-segment__item {
   margin: 0;
   cursor: pointer;
   position: relative;
-  display: block;
+  display: flex;
   text-transform: none;
   letter-spacing: 0;
   font-size: inherit;
@@ -7001,13 +7002,14 @@ body.cp-modal-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 0.75rem;
-  font-size: 13px;
+  min-height: var(--br-lw-segment-height, 28px);
+  padding: 0 0.6rem;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.2;
   color: var(--admin-muted);
   white-space: nowrap;
+  flex: 1;
 }
 .admin-form-group .br-lw-segment__item:has(input:checked) span {
   background: var(--admin-primary);
@@ -7028,6 +7030,10 @@ body.cp-modal-open {
 .br-lw__dim,
 .br-lw__companion-field {
   min-width: 0;
+}
+.br-lw--with-companion .br-lw__companion-field > label {
+  min-height: var(--br-lw-segment-height, 28px);
+  margin-bottom: 0.4rem;
 }
 .br-lw__dims {
   display: grid;
@@ -7050,16 +7056,8 @@ body.cp-modal-open {
     grid-template-columns: 1fr 1fr;
   }
   .br-lw--with-companion .br-lw__fields {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .br-lw--with-companion .br-lw__dims {
-    display: contents;
-  }
-  .br-lw--with-companion .br-lw__fields:has([data-br-lw-sqft]:not([hidden])) {
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.75fr);
-  }
-  .br-lw--with-companion .br-lw__fields:has([data-br-lw-sqft]:not([hidden])) .br-lw__companion {
-    grid-column: 2;
+    align-items: start;
   }
 }
 .br-progress__item[hidden],

@@ -912,7 +912,8 @@ html.admin-dark ::selection {
 }
 
 /* Quotation builder + project header leftovers */
-html.admin-dark .sq-mat-mode-segment__item:has(input:checked) span {
+html.admin-dark .sq-mat-mode-segment__item:has(input:checked) span,
+html.admin-dark .admin-form-group .br-lw-segment__item:has(input:checked) span {
   background: #024768;
   color: #fff;
 }

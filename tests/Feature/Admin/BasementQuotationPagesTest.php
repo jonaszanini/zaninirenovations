@@ -44,7 +44,9 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('fa-info-circle', false)
             ->assertSee('New drain, vent, and hot/cold supply')
             ->assertSee('Import layout')
-            ->assertSee('Search saved Room Area rooms', false);
+            ->assertSee('Search saved Room Area rooms', false)
+            ->assertSee('Project description', false)
+            ->assertSee('admin-form-help">(optional — appears on client PDF)', false);
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()

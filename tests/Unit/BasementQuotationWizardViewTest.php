@@ -4,10 +4,16 @@ namespace Tests\Unit;
 
 use App\Models\BasementSettings;
 use App\Services\BasementQuotationCalculator;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class BasementQuotationWizardViewTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->app['view']->share('errors', new ViewErrorBag);
+    }
     public function test_bathroom_wizard_nests_new_wall_and_duct_fields(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();
@@ -91,6 +97,34 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="outlet_qty"', $html);
         $this->assertStringContainsString('name="bath_sink_qty"', $html);
         $this->assertStringContainsString('How many sinks?', $html);
+    }
+
+    public function test_work_area_mode_toggle_sits_beside_the_label(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $overview = strstr($html, 'data-br-step="overview"');
+        $this->assertNotFalse($overview);
+        $overview = strstr($overview, 'br-overview-geom');
+        $this->assertNotFalse($overview);
+        $overview = substr($overview, 0, (int) strpos($overview, 'data-br-step="demolition"'));
+
+        $primary = strpos($overview, 'br-lw__primary');
+        $head = strpos($overview, 'br-lw__head');
+        $segment = strpos($overview, 'br-lw-segment');
+        $companion = strpos($overview, 'br-lw__companion');
+
+        $this->assertNotFalse($primary);
+        $this->assertNotFalse($head);
+        $this->assertNotFalse($segment);
+        $this->assertNotFalse($companion);
+        $this->assertGreaterThan($primary, $head);
+        $this->assertGreaterThan($head, $segment);
+        $this->assertGreaterThan($segment, $companion);
+        $this->assertStringContainsString('id="br-height"', $overview);
     }
 
     /**
