@@ -373,6 +373,11 @@ class ClientProject extends Model
         return $this->hasMany(ClientProjectPhoto::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function documentLinks(): HasMany
+    {
+        return $this->hasMany(ClientProjectDocumentLink::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function roomAreaProjects(): HasMany
     {
         return $this->hasMany(RoomAreaProject::class)->orderBy('name');
@@ -1538,6 +1543,7 @@ class ClientProject extends Model
             ClientProjectQuotation::SOURCE_BASEMENT => 'Basement calculator',
             ClientProjectQuotation::SOURCE_SHED => 'Shed calculator',
             ClientProjectQuotation::SOURCE_TRIMMING => 'Trimming calculator',
+            ClientProjectQuotation::SOURCE_MILLWORK => 'Custom millwork calculator',
             ClientProjectQuotation::SOURCE_LOW_DECK => 'Low deck calculator',
             ClientProjectQuotation::SOURCE_MANUAL => 'Manual / legacy',
             null, '' => 'Manual / legacy',

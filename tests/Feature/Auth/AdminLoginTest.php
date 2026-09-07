@@ -30,6 +30,7 @@ class AdminLoginTest extends IntegrationTestCase
 
         $response->assertRedirect(route('admin.dashboard'));
         $this->assertAuthenticatedAs($user);
+        $response->assertCookie(\Illuminate\Support\Facades\Auth::guard()->getRecallerName());
     }
 
     public function test_login_fails_with_invalid_credentials(): void

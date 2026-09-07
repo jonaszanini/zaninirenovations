@@ -162,6 +162,7 @@ class BasementClientIntakeController extends Controller
             'sink' => ['required', 'in:vanity,pedestal,none'],
             'sink_provide' => ['exclude_if:sink,none', 'required', 'in:we,client'],
             'faucet_provide' => ['exclude_if:sink,none', 'required', 'in:we,client'],
+            'bath_sink_qty' => ['exclude_if:sink,none', 'required', 'in:1,2'],
             'include_toilet' => $yesNo,
             'toilet_provide' => ['exclude_unless:include_toilet,1', 'required', 'in:we,client'],
             'include_exhaust_fan' => $yesNo,

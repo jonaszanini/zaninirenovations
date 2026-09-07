@@ -35,6 +35,15 @@ class BasementQuotationCalculator
         'custom' => 'Custom',
     ];
 
+    /** Gypsum finish levels. Level 0 is hang only — no tape, mud, or sand. */
+    public const FINISH_LEVELS = [
+        0 => 'Level 0 — hang only (no tape)',
+        1 => 'Level 1 — fire tape',
+        2 => 'Level 2 — tape + coat',
+        3 => 'Level 3 — paint-ready economy',
+        4 => 'Level 4 — standard paint-ready',
+    ];
+
     /**
      * Trade steps shown as include-checkboxes (Overview is always on).
      *
@@ -56,8 +65,9 @@ class BasementQuotationCalculator
         $preset = self::normalizePreset($preset);
 
         return match ($preset) {
-            // Electrical, plumbing, and framing stay enabled for pricing; the
-            // wizard nests those fields inside the Bathroom step for this preset.
+            // Electrical, plumbing, and framing stay enabled; electrical/plumbing
+            // are licensed-trade scope plus priced lines. The wizard nests those
+            // fields inside the Bathroom step for this preset.
             'bathroom' => ['overview', 'framing', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
             'wall' => ['overview', 'framing', 'drywall', 'doors_trim', 'painting', 'finishing'],
             'custom' => ['overview'],
@@ -70,6 +80,16 @@ class BasementQuotationCalculator
         $value = strtolower(trim((string) $preset));
 
         return in_array($preset = $value, ['full', 'bathroom', 'wall', 'custom'], true) ? $preset : 'full';
+    }
+
+    public static function normalizeFinishLevel(mixed $level, int $default = 4): int
+    {
+        if ($level === null || $level === '') {
+            return $default;
+        }
+        $level = (int) $level;
+
+        return array_key_exists($level, self::FINISH_LEVELS) ? $level : $default;
     }
 
     /**
@@ -237,7 +257,21 @@ class BasementQuotationCalculator
             $inputs['include_pedestal_sink'] = false;
         }
 
+        $inputs['bath_sink_qty'] = self::bathSinkQty($inputs) ?: 1;
+
         return $inputs;
+    }
+
+    /**
+     * Vanity or pedestal count. Two sinks means two fixtures and two faucets.
+     */
+    public static function bathSinkQty(array $inputs): int
+    {
+        if (empty($inputs['include_vanity']) && empty($inputs['include_pedestal_sink'])) {
+            return 0;
+        }
+
+        return ((int) ($inputs['bath_sink_qty'] ?? 1) === 2) ? 2 : 1;
     }
 
     /**
@@ -493,7 +527,6 @@ class BasementQuotationCalculator
             'bath_spot_qty' => 0,
             'panel_upgrade' => false,
             'detector_qty' => 2,
-            'wiring_runs' => 0,
             'include_plumbing' => false,
             'bath_rough_in' => false,
             'sink_laundry' => false,
@@ -506,9 +539,13 @@ class BasementQuotationCalculator
             'insulation_ceiling_sf' => null,
             'underslab' => false,
             'underslab_sf' => null,
+            'perimeter_lf' => null,
+            'room_area_import_id' => '',
+            'room_area_import_label' => '',
             'drywall_wall_sf' => null,
             'drywall_ceiling_sf' => null,
             'drywall_corners' => 0,
+            'drywall_inside_corners' => 0,
             'drywall_openings' => 0,
             'finish_level' => 4,
             'ceiling_type' => 'drywall',
@@ -531,6 +568,7 @@ class BasementQuotationCalculator
             'bath_type' => 'full',
             'include_vanity' => true,
             'include_pedestal_sink' => false,
+            'bath_sink_qty' => 1,
             'include_toilet' => true,
             'include_shower' => true,
             'include_tub' => false,
@@ -543,6 +581,8 @@ class BasementQuotationCalculator
             'client_provides_all' => false,
             'client_provides_sections' => [],
             'client_provides_bath_items' => [],
+            'electrical_lines' => [],
+            'plumbing_lines' => [],
             'owner_hourly_rate' => 85,
             'helper_hourly_rate' => 45,
             'extra_materials' => [],
@@ -606,7 +646,9 @@ class BasementQuotationCalculator
         if ($area <= 0 && $partitionLf <= 0) {
             return $this->emptyCalculation($inputs, $settings, $height);
         }
-        $perimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
+        $measuredPerimeter = round(max(0, (float) ($inputs['perimeter_lf'] ?? 0)), 2);
+        $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
+        $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
         $suggestedWallSf = round($perimeter * $height, 2);
         $wallBothSidesSf = round($partitionLf * $height * 2, 2);
         $dwWallFallback = $inputs['scope_preset'] === 'wall' ? $wallBothSidesSf : $suggestedWallSf;
@@ -775,59 +817,11 @@ class BasementQuotationCalculator
         }
 
         // --- Electrical ---
-        if ($on('electrical')) {
-        $outlets = max(0, (int) $inputs['outlet_qty']);
-        $switches = max(0, (int) $inputs['switch_qty']);
-        [, $spots, $fixtures] = $this->lightingCounts($inputs);
-        [$bathSpots, $bathFixtures] = $this->bathroomLightingCounts($inputs);
-        $lightingPoints = $spots + $fixtures + $bathSpots + $bathFixtures;
-        $detectors = max(0, (int) $inputs['detector_qty']);
-        $runs = max(0, (int) $inputs['wiring_runs']);
-        if ($runs <= 0) {
-            $runs = $outlets + $switches + $lightingPoints;
-        }
-        $addLabor('elec_outlets', 'electrical', 'New outlets', $outlets.' location(s)', $outlets * (float) $prod['outlet_hours_each']);
-        $addLabor('elec_switches', 'electrical', 'Switches', $switches.' location(s)', $switches * (float) $prod['switch_hours_each']);
-        $lightDetail = $this->lightingLaborDetail($spots, $fixtures);
-        $addLabor('elec_lights', 'electrical', 'Basement lighting wiring', $lightDetail, ($spots + $fixtures) * (float) $prod['light_hours_each']);
-        if ($fixtures > 0) {
-            $addLabor('elec_fixture_hang', 'electrical', 'Hang light fixtures', $fixtures.' fixture(s)', $fixtures * (float) $prod['fixture_hours_each']);
-        }
-        $addLabor('elec_detectors', 'electrical', 'Smoke / CO detectors', $detectors.' unit(s)', $detectors * (float) $prod['detector_hours_each']);
-        $addLabor('elec_runs', 'electrical', 'Wiring runs', $runs.' run(s)', $runs * (float) $prod['wiring_run_hours_each']);
-        if (! empty($inputs['panel_upgrade'])) {
-            $addLabor('elec_panel', 'electrical', 'Panel upgrade', 'Allowance', (float) $prod['panel_upgrade_hours']);
-            $addMat('panel_upgrade', 'electrical', 1, 'panel_upgrade');
-        }
-        $addMat('outlet_box', 'electrical', $outlets, 'outlet_box');
-        $addMat('switch_device', 'electrical', $switches, 'switch_device');
-        $addMat('pot_light', 'electrical', $spots, 'pot_light');
-        $addMat('light_fixture', 'electrical', $fixtures, 'light_fixture');
-        $addMat('smoke_co', 'electrical', $detectors, 'smoke_co');
-        $addMat('nm_cable', 'electrical', $this->packages($runs * 25, BasementSettings::NMD90_FEET_PER_BOX), 'nm_cable');
-        }
+        // Scope questions (outlets, switches, lights, panel) stay on the form
+        // for a licensed electrician. Pricing is the description/amount lines.
 
         // --- Plumbing ---
-        if ($on('plumbing') && ! empty($inputs['include_plumbing'])) {
-            if (! empty($inputs['bath_rough_in'])) {
-                $addLabor('plumb_bath', 'plumbing', 'Bathroom rough-in', 'Drain / vent / supply', (float) $prod['plumbing_bath_rough_hours']);
-                $addMat('bath_rough_in', 'plumbing', 1, 'bath_rough_in');
-            }
-            if (! empty($inputs['sink_laundry'])) {
-                $addLabor('plumb_sink', 'plumbing', 'Sink / laundry hookup', 'Supply + drain', (float) $prod['sink_hours'] + (float) $prod['laundry_hours'] / 2);
-                $addMat('sink_kit', 'plumbing', 1, 'sink_kit');
-            }
-            if (! empty($inputs['wet_bar'])) {
-                $addLabor('plumb_bar', 'plumbing', 'Wet bar rough-in', 'Supply + drain', (float) $prod['wet_bar_hours']);
-            }
-            if (! empty($inputs['floor_drain'])) {
-                $addLabor('plumb_drain', 'plumbing', 'Floor drain', '1 location', (float) $prod['floor_drain_hours']);
-                $addMat('floor_drain', 'plumbing', 1, 'floor_drain');
-            }
-            if (! empty($inputs['wh_reloc'])) {
-                $addLabor('plumb_wh', 'plumbing', 'Water heater relocation', 'Disconnect / relocate / reconnect', (float) $prod['wh_reloc_hours']);
-            }
-        }
+        // Scope questions stay for a licensed plumber. Pricing is the lines.
 
         // --- Insulation ---
         if ($on('insulation')) {
@@ -858,24 +852,43 @@ class BasementQuotationCalculator
                 $on('ceiling') && in_array($ceilingType, ['drywall', 'paint'], true) ? $area : 0
             );
             $dwSf = $dwWall + $dwCeil;
-            $level = max(1, min(4, (int) ($inputs['finish_level'] ?? 4)));
-            $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
-            $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
-            $finishDetail = number_format($dwSf, 0).' sq ft';
-            if ($paintColors === 2) {
-                $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
-                $finishDetail .= ', two-color';
-            }
+            $level = self::normalizeFinishLevel($inputs['finish_level'] ?? 4);
+            $hangOnly = $level === 0;
             $addLabor('dw_hang', 'drywall', 'Hang drywall', number_format($dwSf, 0).' sq ft', $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
-            $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
+            if (! $hangOnly) {
+                $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
+                $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
+                $finishDetail = number_format($dwSf, 0).' sq ft';
+                if ($paintColors === 2) {
+                    $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
+                    $finishDetail .= ', two-color';
+                }
+                $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
+            }
             $sheets = $dwSf > 0 ? max(1, (int) ceil($dwSf / BasementSettings::PANEL_SF * 1.1)) : 0;
             $addMat('drywall_sheet', 'drywall', $sheets, 'drywall_sheet');
-            $addMat('joint_compound', 'drywall', $this->packages($dwSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
-            $addMat('drywall_tape', 'drywall', $this->packages($dwSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
             $corners = max(0, (int) $inputs['drywall_corners']);
+            $insideCorners = max(0, (int) ($inputs['drywall_inside_corners'] ?? 0));
             $openings = max(0, (int) $inputs['drywall_openings']);
-            $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
-            $addLabor('dw_openings', 'drywall', 'Cut & finish openings', $openings.' opening(s)', $openings * (float) ($prod['drywall_opening_hours_each'] ?? 0.4));
+            if (! $hangOnly) {
+                $addMat('joint_compound', 'drywall', $this->packages($dwSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
+                $addMat('drywall_tape', 'drywall', $this->packages($dwSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
+                $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
+                $addLabor(
+                    'dw_inside_corners',
+                    'drywall',
+                    'Tape inside corners',
+                    $insideCorners.' corner(s)',
+                    $insideCorners * (float) ($prod['drywall_inside_corner_hours_each'] ?? 0.3)
+                );
+            }
+            $addLabor(
+                'dw_openings',
+                'drywall',
+                $hangOnly ? 'Cut openings' : 'Cut & finish openings',
+                $openings.' opening(s)',
+                $openings * (float) ($prod['drywall_opening_hours_each'] ?? 0.4)
+            );
         }
 
         // --- Ceiling ---
@@ -999,20 +1012,27 @@ class BasementQuotationCalculator
         // --- Bathroom ---
         if ($on('bathroom') && ! empty($inputs['include_bathroom'])) {
             $half = ($inputs['bath_type'] ?? 'full') === 'half';
-            if (! empty($inputs['include_vanity'])) {
-                $addLabor('bath_vanity', 'bathroom', 'Vanity', 'Install', (float) $prod['vanity_hours']);
-                $addMat('vanity', 'bathroom', 1, 'vanity');
-                $addMat('faucet', 'bathroom', 1, 'faucet');
-            } elseif (! empty($inputs['include_pedestal_sink'])) {
+            $sinkQty = self::bathSinkQty($inputs);
+            if (! empty($inputs['include_vanity']) && $sinkQty > 0) {
+                $addLabor(
+                    'bath_vanity',
+                    'bathroom',
+                    'Vanity',
+                    $sinkQty === 2 ? 'Install × 2' : 'Install',
+                    (float) $prod['vanity_hours'] * $sinkQty
+                );
+                $addMat('vanity', 'bathroom', $sinkQty, 'vanity');
+                $addMat('faucet', 'bathroom', $sinkQty, 'faucet');
+            } elseif (! empty($inputs['include_pedestal_sink']) && $sinkQty > 0) {
                 $addLabor(
                     'bath_pedestal',
                     'bathroom',
                     'Pedestal sink',
-                    'Install',
-                    (float) $prod['pedestal_sink_hours']
+                    $sinkQty === 2 ? 'Install × 2' : 'Install',
+                    (float) $prod['pedestal_sink_hours'] * $sinkQty
                 );
-                $addMat('pedestal_sink', 'bathroom', 1, 'pedestal_sink');
-                $addMat('faucet', 'bathroom', 1, 'faucet');
+                $addMat('pedestal_sink', 'bathroom', $sinkQty, 'pedestal_sink');
+                $addMat('faucet', 'bathroom', $sinkQty, 'faucet');
             }
             if (! empty($inputs['include_toilet'])) {
                 $addLabor('bath_toilet', 'bathroom', 'Toilet', 'Install', (float) $prod['toilet_hours']);
@@ -1031,26 +1051,6 @@ class BasementQuotationCalculator
                 $addLabor('bath_fan', 'bathroom', 'Exhaust fan', 'Install + duct', (float) $prod['exhaust_fan_hours']);
                 $addMat('exhaust_fan', 'bathroom', 1, 'exhaust_fan');
             }
-            [$bathSpots, $bathFixtures] = $this->bathroomLightingCounts($inputs);
-            $bathLightDetail = $this->lightingLaborDetail($bathSpots, $bathFixtures);
-            $addLabor(
-                'bath_lights',
-                'bathroom',
-                'Bathroom lighting wiring',
-                $bathLightDetail,
-                ($bathSpots + $bathFixtures) * (float) $prod['light_hours_each']
-            );
-            if ($bathFixtures > 0) {
-                $addLabor(
-                    'bath_fixture_hang',
-                    'bathroom',
-                    'Hang bathroom light fixtures',
-                    $bathFixtures.' fixture(s)',
-                    $bathFixtures * (float) $prod['fixture_hours_each']
-                );
-            }
-            $addMat('bath_pot_light', 'bathroom', $bathSpots, 'pot_light', 'Bathroom spot light');
-            $addMat('bath_light_fixture', 'bathroom', $bathFixtures, 'light_fixture', 'Bathroom light fixture');
             $tileAreas = is_array($inputs['bath_tile_areas'] ?? null) ? $inputs['bath_tile_areas'] : [];
             $tileSplit = self::splitBathTileAreasByFinish($tileAreas);
             $tileSf = $tileSplit['tile'];
@@ -1182,7 +1182,8 @@ class BasementQuotationCalculator
         $laborHst = round($laborPre * BasementQuotation::HST_RATE, 2);
         $subtotal = round($laborPre + $matPre, 2);
         $hst = round($laborHst + $matHst, 2);
-        $grand = round($subtotal + $hst, 2);
+        $trade = $this->tradeLineSummary($inputs);
+        $grand = round($subtotal + $hst + $trade['tax_in'], 2);
 
         $eta = $this->etaScenarios($totalHours, $hoursPerDay, $ownerRate, $helperRate);
 
@@ -1227,6 +1228,7 @@ class BasementQuotationCalculator
                 'room_count' => max(0, (int) $inputs['room_count']),
                 'suggested_wall_sf' => $suggestedWallSf,
                 'suggested_perimeter_lf' => $perimeter,
+                'measured_perimeter' => $measuredPerimeter > 0,
                 'finish_label' => $finishLabel,
                 'ceiling_type' => $ceilingType,
                 'flooring_type' => $flType,
@@ -1251,9 +1253,12 @@ class BasementQuotationCalculator
                 'grand_total' => $grand,
                 'final_quote_total' => $grand,
                 'client_provides_all' => $providesAll,
+                'trade_lines_pre_hst' => $trade['pre_hst'],
+                'trade_lines_hst' => $trade['hst'],
+                'trade_lines_tax_in' => $trade['tax_in'],
                 'trades' => [
-                    'electrical' => $this->totalsForTrade($labor, array_merge($materials, $extraMaterials), 'electrical'),
-                    'plumbing' => $this->totalsForTrade($labor, array_merge($materials, $extraMaterials), 'plumbing'),
+                    'electrical' => $trade['electrical'],
+                    'plumbing' => $trade['plumbing'],
                 ],
             ],
         ];
@@ -1422,86 +1427,48 @@ class BasementQuotationCalculator
     }
 
     /**
-     * @param  array<string, mixed>  $inputs
-     * @return array{0: string, 1: int, 2: int}  type, spot qty, fixture qty
-     */
-    private function lightingCounts(array $inputs): array
-    {
-        $type = strtolower(trim((string) ($inputs['lighting_type'] ?? 'spot')));
-        if (! in_array($type, ['fixture', 'spot', 'both'], true)) {
-            $type = 'spot';
-        }
-        $spots = max(0, (int) ($inputs['light_qty'] ?? 0));
-        $fixtures = max(0, (int) ($inputs['fixture_qty'] ?? 0));
-        if ($type === 'spot') {
-            $fixtures = 0;
-        } elseif ($type === 'fixture') {
-            if ($fixtures <= 0) {
-                $fixtures = $spots;
-            }
-            $spots = 0;
-        }
-
-        return [$type, $spots, $fixtures];
-    }
-
-    /**
-     * @param  array<string, mixed>  $inputs
-     * @return array{0: int, 1: int}  spot qty, fixture qty
-     */
-    private function bathroomLightingCounts(array $inputs): array
-    {
-        if (empty($inputs['include_bathroom']) || ! self::sectionEnabled($inputs, 'bathroom')) {
-            return [0, 0];
-        }
-        $fixtures = ! empty($inputs['include_bath_fixture'])
-            ? max(0, (int) ($inputs['bath_fixture_qty'] ?? 0))
-            : 0;
-        $spots = ! empty($inputs['include_bath_spot'])
-            ? max(0, (int) ($inputs['bath_spot_qty'] ?? 0))
-            : 0;
-
-        return [$spots, $fixtures];
-    }
-
-    private function lightingLaborDetail(int $spots, int $fixtures): string
-    {
-        $bits = [];
-        if ($spots > 0) {
-            $bits[] = $spots.' spot light'.($spots === 1 ? '' : 's');
-        }
-        if ($fixtures > 0) {
-            $bits[] = $fixtures.' fixture'.($fixtures === 1 ? '' : 's');
-        }
-
-        return $bits !== [] ? implode(', ', $bits) : 'None';
-    }
-
-    /**
-     * Pre-HST labor and materials for one wizard trade (electrical, plumbing, …).
+     * Licensed electrical / plumbing lines (same HST handling as additional costs).
      *
-     * @param  list<array<string, mixed>>  $labor
-     * @param  list<array<string, mixed>>  $materials
-     * @return array{labor_pre_hst: float, materials_pre_hst: float}
+     * @param  array<string, mixed>  $inputs
+     * @return array{
+     *     electrical: array{labor_pre_hst: float, materials_pre_hst: float, pre_hst: float, hst: float, tax_in: float},
+     *     plumbing: array{labor_pre_hst: float, materials_pre_hst: float, pre_hst: float, hst: float, tax_in: float},
+     *     pre_hst: float,
+     *     hst: float,
+     *     tax_in: float
+     * }
      */
-    private function totalsForTrade(array $labor, array $materials, string $trade): array
+    private function tradeLineSummary(array $inputs): array
     {
-        $laborPre = 0.0;
-        foreach ($labor as $row) {
-            if (($row['section'] ?? '') === $trade) {
-                $laborPre += (float) ($row['amount'] ?? 0);
-            }
-        }
-        $matPre = 0.0;
-        foreach ($materials as $row) {
-            if (($row['section'] ?? '') === $trade) {
-                $matPre += (float) ($row['amount'] ?? 0);
-            }
-        }
+        $elecRows = self::sectionEnabled($inputs, 'electrical')
+            ? AdditionalCostsService::normalizeRows($inputs['electrical_lines'] ?? [], 'Electrical work')
+            : [];
+        $plumbRows = self::sectionEnabled($inputs, 'plumbing')
+            ? AdditionalCostsService::normalizeRows($inputs['plumbing_lines'] ?? [], 'Plumbing work')
+            : [];
+        $elecPre = AdditionalCostsService::materialsPreTaxTotal($elecRows);
+        $elecHst = AdditionalCostsService::materialsHstTotal($elecRows);
+        $elecTax = AdditionalCostsService::taxInclusiveTotal($elecRows);
+        $plumbPre = AdditionalCostsService::materialsPreTaxTotal($plumbRows);
+        $plumbHst = AdditionalCostsService::materialsHstTotal($plumbRows);
+        $plumbTax = AdditionalCostsService::taxInclusiveTotal($plumbRows);
+
+        $trade = function (float $pre, float $hst, float $taxIn): array {
+            return [
+                'labor_pre_hst' => 0.0,
+                'materials_pre_hst' => 0.0,
+                'pre_hst' => $pre,
+                'hst' => $hst,
+                'tax_in' => $taxIn,
+            ];
+        };
 
         return [
-            'labor_pre_hst' => round($laborPre, 2),
-            'materials_pre_hst' => round($matPre, 2),
+            'electrical' => $trade($elecPre, $elecHst, $elecTax),
+            'plumbing' => $trade($plumbPre, $plumbHst, $plumbTax),
+            'pre_hst' => round($elecPre + $plumbPre, 2),
+            'hst' => round($elecHst + $plumbHst, 2),
+            'tax_in' => round($elecTax + $plumbTax, 2),
         ];
     }
 
@@ -1538,6 +1505,7 @@ class BasementQuotationCalculator
         $ownerRate = max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate));
         $helperRate = max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate));
         $hoursPerDay = max(0.5, (float) $settings->hours_per_day);
+        $trade = $this->tradeLineSummary($inputs);
 
         return [
             'scope' => [
@@ -1567,12 +1535,15 @@ class BasementQuotationCalculator
                 'materials_after_hst' => 0.0,
                 'subtotal_pre_hst' => 0.0,
                 'hst' => 0.0,
-                'grand_total' => 0.0,
-                'final_quote_total' => 0.0,
+                'grand_total' => $trade['tax_in'],
+                'final_quote_total' => $trade['tax_in'],
                 'client_provides_all' => ! empty($inputs['client_provides_all']),
+                'trade_lines_pre_hst' => $trade['pre_hst'],
+                'trade_lines_hst' => $trade['hst'],
+                'trade_lines_tax_in' => $trade['tax_in'],
                 'trades' => [
-                    'electrical' => ['labor_pre_hst' => 0.0, 'materials_pre_hst' => 0.0],
-                    'plumbing' => ['labor_pre_hst' => 0.0, 'materials_pre_hst' => 0.0],
+                    'electrical' => $trade['electrical'],
+                    'plumbing' => $trade['plumbing'],
                 ],
             ],
         ];

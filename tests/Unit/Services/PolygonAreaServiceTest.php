@@ -82,6 +82,47 @@ class PolygonAreaServiceTest extends TestCase
         $this->assertSame(144.0, $this->service->verticesToSquareFeet($vertices, $ppf));
     }
 
+    public function test_rectangle_perimeter_and_inside_corners(): void
+    {
+        $vertices = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 100, 'y' => 0],
+            ['x' => 100, 'y' => 50],
+            ['x' => 0, 'y' => 50],
+        ];
+
+        $this->assertSame(30.0, $this->service->verticesToPerimeterFeet($vertices, 10.0));
+        $this->assertSame(['inside' => 4, 'outside' => 0], $this->service->cornerCounts($vertices));
+    }
+
+    public function test_l_shape_perimeter_and_outside_corner(): void
+    {
+        $vertices = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 4, 'y' => 0],
+            ['x' => 4, 'y' => 2],
+            ['x' => 2, 'y' => 2],
+            ['x' => 2, 'y' => 5],
+            ['x' => 0, 'y' => 5],
+        ];
+
+        $this->assertSame(18.0, $this->service->verticesToPerimeterFeet($vertices, 1.0));
+        $this->assertSame(['inside' => 5, 'outside' => 1], $this->service->cornerCounts($vertices));
+    }
+
+    public function test_collinear_vertex_is_not_a_corner(): void
+    {
+        $vertices = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 5, 'y' => 0],
+            ['x' => 10, 'y' => 0],
+            ['x' => 10, 'y' => 5],
+            ['x' => 0, 'y' => 5],
+        ];
+
+        $this->assertSame(['inside' => 4, 'outside' => 0], $this->service->cornerCounts($vertices));
+    }
+
     public function test_vertices_to_square_feet_throws_on_invalid_scale(): void
     {
         $this->expectException(InvalidArgumentException::class);

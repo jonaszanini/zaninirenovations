@@ -25,6 +25,7 @@ class QuotationWorkDescriptionContextBuilder
             'trimming' => $this->trimming($context),
             'shed' => $this->shed($context),
             'basement' => $this->basement($context),
+            'millwork' => $this->millwork($context),
             default => $this->generic($type, $context),
         };
     }
@@ -448,6 +449,27 @@ class QuotationWorkDescriptionContextBuilder
     /**
      * @param  array<string, mixed>  $c
      */
+    private function millwork(array $c): string
+    {
+        $lines = ['Quotation type: Custom millwork'];
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+        $this->appendLine($lines, 'Sheet goods', $c['sheet_id'] ?? null);
+        $this->appendLine($lines, 'Finish', $c['finish_label'] ?? null);
+        $this->appendBlock($lines, 'Pieces', $c['piece_summary'] ?? null);
+        $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
+        $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
+        $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
+        $this->flattenInto($lines, $c, '', [
+            'client_name', 'sheet_id', 'finish_label', 'piece_summary',
+            'labor_summary', 'materials_summary', 'breakdown_summary',
+        ]);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
     private function generic(string $type, array $c): string
     {
         $labels = [
@@ -459,6 +481,7 @@ class QuotationWorkDescriptionContextBuilder
             'paving' => 'Paving stones / hardscape',
             'low_deck' => 'Low floating deck',
             'trimming' => 'Interior trimming',
+            'millwork' => 'Custom millwork',
         ];
         $lines = ['Quotation type: '.($labels[$type] ?? $type)];
         $this->flattenInto($lines, $c);

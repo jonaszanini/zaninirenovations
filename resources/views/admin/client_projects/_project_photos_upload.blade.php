@@ -11,10 +11,19 @@
   $canAdd = max(0, $maxFiles - $existingCount);
   $formId = $formId ?? null;
   $acceptList = implode(',', ClientProjectPhotoStorage::acceptAttributeList());
+  $photosHelp = 'Images — JPEG, PNG, or WebP ('.(ClientProjectPhotoStorage::MAX_IMAGE_KB / 1024).' MB max each). Converted to WebP at '.$webpQuality.'% quality, scaled to at most '.$maxEdge.'px, and compressed to about '.$webpMaxKb.' KB or less. Videos — MP4, WebM, or MOV ('.(ClientProjectPhotoStorage::MAX_VIDEO_KB / 1024).' MB max each). PDFs — '.(ClientProjectPhotoStorage::MAX_PDF_KB / 1024).' MB max each. ';
+  $photosHelp .= $existingCount > 0
+    ? 'You can add up to '.$canAdd.' more ('.$existingCount.' / '.$maxFiles.' already saved).'
+    : 'Up to '.$maxFiles.' files per project.';
 @endphp
 
 <div class="admin-form-group cp-project-photos-upload">
-  <label for="{{ $inputId }}">Photos &amp; files <span class="admin-form-help cp-inline-help">(optional)</span></label>
+  <label for="{{ $inputId }}">
+    Photos &amp; files <span class="admin-form-help cp-inline-help">(optional)</span>
+    @if ($canAdd > 0)
+      @include('admin.partials.info_tip', ['text' => $photosHelp])
+    @endif
+  </label>
   @if ($canAdd> 0)
     <input class="admin-input" type="file"
            id="{{ $inputId }}"
@@ -22,16 +31,6 @@
            @if ($formId) form="{{ $formId }}" @endif
            accept="{{ $acceptList }}"
            multiple>
-    <p class="admin-form-help">
-      <strong>Images</strong> — JPEG, PNG, or WebP ({{ ClientProjectPhotoStorage::MAX_IMAGE_KB / 1024 }} MB max each). Converted to WebP at {{ $webpQuality }}% quality, scaled to at most {{ $maxEdge }}px, and compressed to about {{ $webpMaxKb }}&nbsp;KB or less.
-      <strong>Videos</strong> — MP4, WebM, or MOV ({{ ClientProjectPhotoStorage::MAX_VIDEO_KB / 1024 }} MB max each).
-      <strong>PDFs</strong> — {{ ClientProjectPhotoStorage::MAX_PDF_KB / 1024 }} MB max each.
-      @if ($existingCount> 0)
-        You can add up to {{ $canAdd }} more ({{ $existingCount }} / {{ $maxFiles }} already saved).
-      @else
-        Up to {{ $maxFiles }} files per project.
-      @endif
-    </p>
     <div class="cp-project-photos-preview" id="{{ $previewId }}" hidden aria-live="polite"></div>
   @else
     <p class="admin-form-help">Maximum of {{ $maxFiles }} files reached. Remove one on the project page to add more.</p>

@@ -404,6 +404,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.photos.rotate');
     Route::delete('client-projects/{client_project}/photos/{photo}', [\App\Http\Controllers\Admin\ClientProjectController::class, 'destroyPhoto'])
         ->name('client-projects.photos.destroy');
+    Route::post('client-projects/{client_project}/document-links', [\App\Http\Controllers\Admin\ClientProjectController::class, 'storeDocumentLinks'])
+        ->name('client-projects.document-links.store');
+    Route::delete('client-projects/{client_project}/document-links/{document_link}', [\App\Http\Controllers\Admin\ClientProjectController::class, 'destroyDocumentLink'])
+        ->name('client-projects.document-links.destroy');
 
     // -----------------------------------------------------------------
     // Standalone Quotation module (separate from per-project quotations).
@@ -716,6 +720,35 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::delete('quotations/shed/{shed_quotation}', [\App\Http\Controllers\Admin\ShedQuotationController::class, 'destroy'])
         ->name('quotations.shed.destroy');
 
+    Route::get('quotations/millwork', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'index'])
+        ->name('quotations.millwork.index');
+    Route::get('quotations/millwork/create', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'create'])
+        ->name('quotations.millwork.create');
+    Route::get('quotations/millwork/price-configuration', [\App\Http\Controllers\Admin\MillworkDatabaseController::class, 'edit'])
+        ->name('quotations.millwork.price-configuration');
+    Route::post('quotations/millwork-calculate', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'preview'])
+        ->name('quotations.millwork.calculate');
+    Route::post('quotations/millwork/database', [\App\Http\Controllers\Admin\MillworkDatabaseController::class, 'update'])
+        ->name('quotations.millwork.database.update');
+    Route::post('quotations/millwork', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'store'])
+        ->name('quotations.millwork.store');
+    Route::post('quotations/millwork/preview', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'preview'])
+        ->name('quotations.millwork.preview');
+    Route::get('quotations/millwork/{millwork_quotation}/edit', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'edit'])
+        ->name('quotations.millwork.edit');
+    Route::get('quotations/millwork/{millwork_quotation}/purchase-list', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'purchaseList'])
+        ->name('quotations.millwork.purchase-list');
+    Route::post('quotations/millwork/{millwork_quotation}/calculate', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'preview'])
+        ->name('quotations.millwork.calculate-existing');
+    Route::put('quotations/millwork/{millwork_quotation}', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'update'])
+        ->name('quotations.millwork.update');
+    Route::post('quotations/millwork/{millwork_quotation}/link', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'linkToProject'])
+        ->name('quotations.millwork.link');
+    Route::post('quotations/millwork/{millwork_quotation}/create-project', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'createProjectAndLink'])
+        ->name('quotations.millwork.create-project');
+    Route::delete('quotations/millwork/{millwork_quotation}', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'destroy'])
+        ->name('quotations.millwork.destroy');
+
     Route::get('quotations/trimming', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'index'])
         ->name('quotations.trimming.index');
     Route::get('quotations/trimming/create', [\App\Http\Controllers\Admin\TrimmingQuotationController::class, 'create'])
@@ -817,6 +850,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
 
     Route::get('utilities/room-area', [\App\Http\Controllers\Admin\RoomAreaController::class, 'index'])
         ->name('utilities.room-area');
+    Route::get('utilities/room-area/layouts', [\App\Http\Controllers\Admin\RoomAreaController::class, 'searchLayouts'])
+        ->name('utilities.room-area.layouts');
     Route::post('utilities/room-area/validate', [\App\Http\Controllers\Admin\RoomAreaController::class, 'validateRoom'])
         ->name('utilities.room-area.validate');
     Route::post('utilities/room-area/projects', [\App\Http\Controllers\Admin\RoomAreaController::class, 'storeProject'])

@@ -4,6 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Models\BasementQuotation;
 use App\Models\ClientProject;
+use App\Models\RoomAreaProject;
+use App\Models\RoomAreaRoom;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -40,7 +42,9 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Spot lights', false)
             ->assertSee('Wall / ceiling colors')
             ->assertSee('fa-info-circle', false)
-            ->assertSee('New drain, vent, and hot/cold supply');
+            ->assertSee('New drain, vent, and hot/cold supply')
+            ->assertSee('Import layout')
+            ->assertSee('Search saved Room Area rooms', false);
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
@@ -59,7 +63,6 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('cannot be linked separately', false)
             ->assertSee('17 L', false)
             ->assertSee('2x4x8', false)
-            ->assertSee('75 m', false)
             ->assertSee('5 gal', false)
             ->assertSee('Trim paint', false)
             ->assertSee('Tape / cut-in two colors', false)
@@ -69,6 +72,18 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('br-config-legend', false)
             ->assertSee('form="br-config-form"', false)
             ->assertSee('Save configuration');
+    }
+
+    public function test_drywall_step_offers_room_area_import(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.quotations.basement.create'))
+            ->assertOk()
+            ->assertSee('Import layout')
+            ->assertSee('Search saved Room Area rooms', false)
+            ->assertSee('name="perimeter_lf"', false)
+            ->assertSee('data-br-layout-picker', false);
     }
 
     public function test_project_context_sits_between_price_configuration_and_next(): void
@@ -190,6 +205,22 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertJsonPath('eta.scenarios.0.crew', 1);
     }
 
+    public function test_preview_uses_imported_layout_perimeter(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->post(route('admin.quotations.basement.preview'), [
+            'area_sqft' => 338.3,
+            'ceiling_height_ft' => 8,
+            'perimeter_lf' => 93.04,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ])->assertOk()
+            ->assertJsonPath('scope.suggested_perimeter_lf', 93.04)
+            ->assertJsonPath('scope.measured_perimeter', true)
+            ->assertJsonPath('scope.suggested_wall_sf', 744.32);
+    }
+
     public function test_store_publishes_a_standalone_quotation(): void
     {
         $this->actingAsAdmin();
@@ -258,5 +289,51 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'return' => 'project',
         ]), $payload)
             ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+    }
+
+    public function test_room_area_layout_search_returns_saved_room(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = RoomAreaProject::create([
+            'name' => 'Smith basement',
+            'scale_pixels_per_foot' => 10,
+        ]);
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Rec room',
+            'scale_pixels_per_foot' => 10,
+            'area_sqft' => 50,
+            'vertices' => [
+                'v' => 2,
+                'groups' => [
+                    [
+                        'id' => 'g1',
+                        'color' => '#024768',
+                        'polygons' => [
+                            [
+                                'id' => 'p1',
+                                'vertices' => [
+                                    ['x' => 0, 'y' => 0],
+                                    ['x' => 100, 'y' => 0],
+                                    ['x' => 100, 'y' => 50],
+                                    ['x' => 0, 'y' => 50],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->get(route('admin.utilities.room-area.layouts', ['q' => 'Rec']))
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'room:'.$room->id,
+                'area_sqft' => 50,
+                'perimeter_lf' => 30,
+                'inside_corners' => 4,
+                'outside_corners' => 0,
+            ]);
     }
 }

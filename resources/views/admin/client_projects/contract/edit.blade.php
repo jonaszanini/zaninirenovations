@@ -142,7 +142,7 @@
           <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-contract-copy-context">
             <i class="fa fa-clipboard"></i> Copy to clipboard
           </button>
-          <span id="cp-contract-copy-feedback" class="admin-form-help" style="margin:0;color:#15803d;display:none;" aria-live="polite">Copied.</span>
+          <span id="cp-contract-copy-feedback" class="admin-form-help cp-contract-copy-feedback" style="display:none;" aria-live="polite">Copied.</span>
         </div>
         <textarea id="cp-contract-context-textarea"
                   readonly

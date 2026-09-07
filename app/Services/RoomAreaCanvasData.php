@@ -346,4 +346,67 @@ class RoomAreaCanvasData
     {
         return $this->totalAreaSqFt($this->groupSummaries($canvas, $pixelsPerFoot));
     }
+
+    /**
+     * Floor area, wall perimeter, and drywall corner counts for a saved layout.
+     *
+     * @param  array{v: int, groups: list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>}  $canvas
+     * @return array{area_sqft: float, perimeter_lf: float, inside_corners: int, outside_corners: int, polygon_count: int}
+     */
+    public function layoutMetrics(array $canvas, float $pixelsPerFoot): array
+    {
+        $normalized = $this->normalize($canvas);
+        $area = 0.0;
+        $perimeter = 0.0;
+        $inside = 0;
+        $outside = 0;
+        $polygonCount = 0;
+
+        if ($pixelsPerFoot <= 0) {
+            return $this->emptyLayoutMetrics();
+        }
+
+        foreach ($normalized['groups'] as $group) {
+            foreach ($group['polygons'] as $polygon) {
+                if (count($polygon['vertices']) < 3) {
+                    continue;
+                }
+                if (! $this->polygonArea->isSimplePolygon($polygon['vertices'])) {
+                    continue;
+                }
+                $area += $this->polygonArea->verticesToSquareFeet($polygon['vertices'], $pixelsPerFoot);
+                $perimeter += $this->polygonArea->verticesToPerimeterFeet($polygon['vertices'], $pixelsPerFoot);
+                $corners = $this->polygonArea->cornerCounts($polygon['vertices']);
+                $inside += $corners['inside'];
+                $outside += $corners['outside'];
+                $polygonCount++;
+            }
+        }
+
+        if ($polygonCount === 0) {
+            return $this->emptyLayoutMetrics();
+        }
+
+        return [
+            'area_sqft' => round($area, 2),
+            'perimeter_lf' => round($perimeter, 2),
+            'inside_corners' => $inside,
+            'outside_corners' => $outside,
+            'polygon_count' => $polygonCount,
+        ];
+    }
+
+    /**
+     * @return array{area_sqft: float, perimeter_lf: float, inside_corners: int, outside_corners: int, polygon_count: int}
+     */
+    public function emptyLayoutMetrics(): array
+    {
+        return [
+            'area_sqft' => 0.0,
+            'perimeter_lf' => 0.0,
+            'inside_corners' => 0,
+            'outside_corners' => 0,
+            'polygon_count' => 0,
+        ];
+    }
 }

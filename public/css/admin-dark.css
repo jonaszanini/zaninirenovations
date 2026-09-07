@@ -224,6 +224,47 @@ html.admin-dark .admin-content td {
   border-color: var(--admin-border);
 }
 
+/* Travel estimate table: row labels are <th>, so the generic th rule
+   above would mute Outbound/Return/Total. Keep them as body copy. */
+html.admin-dark .cp-travel-breakdown thead th {
+  background: transparent;
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-travel-breakdown tbody th,
+html.admin-dark .cp-travel-breakdown tbody td,
+html.admin-dark .cp-travel-breakdown__leg,
+html.admin-dark .cp-travel-breakdown__num {
+  background: transparent;
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-travel-breakdown__leg-sub {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-travel-breakdown__fuel,
+html.admin-dark .cp-travel-breakdown td.cp-travel-breakdown__fuel {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .cp-travel-breakdown tfoot th,
+html.admin-dark .cp-travel-breakdown tfoot td {
+  background: var(--admin-primary-soft);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-travel-cost-card__manage {
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-travel-breakdown tbody tr:hover > td,
+html.admin-dark .cp-travel-breakdown tbody tr:hover > th,
+html.admin-dark .cp-travel-breakdown tfoot tr:hover > td,
+html.admin-dark .cp-travel-breakdown tfoot tr:hover > th {
+  background: transparent;
+}
+
 /* Alerts */
 html.admin-dark .admin-flash--success {
   background: var(--admin-success-soft);
@@ -322,7 +363,33 @@ html.admin-dark #admin-dialog .admin-dialog-icon-wrap--danger {
 
 html.admin-dark .cp-modal-header,
 html.admin-dark .cp-modal-footer {
+  background: var(--admin-surface-hover);
   border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-contract-context-checklist-wrap {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-contract-gemini-btn {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-contract-gemini-btn:hover:not(:disabled) {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+}
+
+html.admin-dark .cp-contract-copy-feedback,
+html.admin-dark .cp-contract-gemini-status {
+  color: var(--admin-success);
+}
+
+html.admin-dark .cp-contract-gemini-status.is-error {
+  color: var(--admin-danger);
 }
 
 html.admin-dark .cp-modal-close {
@@ -362,11 +429,74 @@ html.admin-dark .admin-search-select__clear:focus-visible {
   background: var(--admin-surface-hover);
 }
 
+html.admin-dark .admin-places-autocomplete-wrap {
+  --gmp-mat-color-surface: var(--admin-elevated);
+  --gmp-mat-color-on-surface: var(--admin-heading);
+  --gmp-mat-color-on-surface-variant: var(--admin-muted);
+  --gmp-mat-color-outline-decorative: var(--admin-border);
+  --gmp-mat-color-primary: var(--admin-primary);
+  --gmp-mat-color-neutral-container: var(--admin-surface-hover);
+  --gmp-mat-color-on-neutral-container: var(--admin-muted);
+}
+
+html.admin-dark gmp-place-autocomplete,
 html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete {
   color-scheme: dark;
   background-color: var(--admin-input-bg);
   border-color: var(--admin-border);
   color: var(--admin-heading);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-list) {
+  background: var(--admin-elevated);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item),
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-main-text),
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-match),
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-nonmatch) {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-secondary-text),
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-icon) {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .admin-places-autocomplete-wrap gmp-place-autocomplete::part(prediction-item-selected) {
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pac-container {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+  box-shadow: var(--admin-shadow-md);
+}
+
+html.admin-dark .pac-item,
+html.admin-dark .pac-item-query {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pac-item:hover,
+html.admin-dark .pac-item.pac-item-selected {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .pac-item-query {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pac-matched {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .admin-places-status--ok {
+  color: var(--admin-success);
 }
 
 html.admin-dark .cp-directory-address-hint {
@@ -404,6 +534,29 @@ html.admin-dark .cp-calendar-link--btn {
   background-color: var(--admin-surface);
   border-color: var(--admin-border);
   color: var(--admin-text);
+}
+
+html.admin-dark .br-progress__item.is-current {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .br-progress__num {
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border: 1px solid var(--admin-border);
+}
+
+html.admin-dark .br-progress__item.is-current .br-progress__num {
+  background: #024768;
+  color: #fff;
+  border-color: #024768;
+}
+
+html.admin-dark a.cp-calendar-link,
+html.admin-dark a.cp-calendar-link--btn {
+  color: var(--admin-primary);
 }
 
 html.admin-dark a.cp-projects-scope-chip {
@@ -447,7 +600,6 @@ html.admin-dark .cp-table-project-name,
 html.admin-dark .cp-party-name,
 html.admin-dark .cp-profit-value,
 html.admin-dark .cp-hourly-summary-value,
-html.admin-dark .cp-billing-option strong,
 html.admin-dark .cp-dl dd,
 html.admin-dark .cp-tab,
 html.admin-dark .cp-quotation-accordion__title,
@@ -484,6 +636,10 @@ html.admin-dark .cp-time-saved-heading,
 html.admin-dark .cp-calendar-legend,
 html.admin-dark .cp-schedule-summary,
 html.admin-dark .cp-notes-box,
+html.admin-dark .cp-header-detail__label,
+html.admin-dark .cp-header-client-row,
+html.admin-dark .cp-header-ref-sep,
+html.admin-dark .cp-updated,
 html.admin-dark .sq-mat-field > label,
 html.admin-dark .sq-mat-catalog-label,
 html.admin-dark .sq-mat-hst-toggles-label,
@@ -810,3 +966,131 @@ html.admin-dark .admin-text-link {
 html.admin-dark a.cp-header-detail__value {
   color: var(--admin-primary);
 }
+
+html.admin-dark .cp-project-photos-thumb-media--word {
+  color: #7eb8f7;
+}
+html.admin-dark .cp-project-photos-thumb-media--excel {
+  color: #4ade80;
+}
+html.admin-dark .cp-project-photos-thumb-media--ppt {
+  color: #fb7185;
+}
+
+/* Room Area calculator leftovers */
+html.admin-dark .util-ra-desktop-notice {
+  background: rgba(250, 204, 21, 0.12);
+  border-color: rgba(250, 204, 21, 0.35);
+  color: #fde68a;
+}
+
+html.admin-dark .util-ra-ruler-edit {
+  border-color: #c084fc;
+  background: rgba(168, 85, 247, 0.16);
+}
+
+html.admin-dark .util-ra-ruler-edit .util-ra-wall-edit__label {
+  color: #d8b4fe;
+}
+
+html.admin-dark .util-ra-canvas-wrap {
+  --ra-grid-stroke: #334155;
+}
+
+html.admin-dark .util-ra-canvas-wrap.is-ruler-edit {
+  outline-color: rgba(192, 132, 252, 0.45);
+}
+
+html.admin-dark .util-ra-btn--danger-ghost:hover:not(:disabled),
+html.admin-dark .util-ra-btn--danger-ghost:focus-visible:not(:disabled) {
+  background: var(--admin-danger-soft);
+}
+
+html.admin-dark .util-ra-rooms-head .util-ra-total,
+html.admin-dark .util-ra-total {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-total .admin-btn--ghost,
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--ghost {
+  background: var(--admin-surface);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-total .admin-btn--ghost:hover,
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--ghost:hover {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+html.admin-dark .util-ra-rooms-item {
+  background: var(--admin-bg);
+}
+
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--danger {
+  background: var(--admin-danger-soft);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--danger:hover {
+  background: rgba(248, 113, 113, 0.24);
+  color: #fecaca;
+}
+
+html.admin-dark .br-layout .pq-summary-card,
+html.admin-dark .tm-layout .pq-summary-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .br-layout .pq-row,
+html.admin-dark .tm-layout .pq-row {
+  color: var(--admin-text);
+}
+html.admin-dark .br-layout .pq-row--group,
+html.admin-dark .br-layout .pq-row--hl,
+html.admin-dark .tm-layout .pq-row--hl {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .br-layout .pq-row--hl,
+html.admin-dark .tm-layout .pq-row--hl {
+  color: var(--admin-primary);
+}
+html.admin-dark .br-layout .pq-summary-card h4,
+html.admin-dark .br-layout .fl-step-card h4 {
+  color: var(--admin-heading);
+}
+html.admin-dark .br-layout .fl-breakdown-section {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .mw-cut-part-fill {
+  fill: rgba(56, 189, 248, 0.34);
+  stroke: #7dd3fc;
+}
+html.admin-dark .mw-cut-stock {
+  fill: #0f172a;
+  stroke: #e2e8f0;
+}
+html.admin-dark .mw-cut-offcut {
+  fill: #1e293b;
+  stroke: #64748b;
+}
+html.admin-dark .mw-cut-offcut-label {
+  fill: #94a3b8;
+}
+html.admin-dark .mw-cut-part-label,
+html.admin-dark .mw-cut-part-dim,
+html.admin-dark .mw-cut-dim {
+  fill: #f8fafc;
+  stroke: #0f172a;
+}
+html.admin-dark .mw-cut-legend__n {
+  color: var(--admin-primary);
+}
+

@@ -10,9 +10,11 @@ use App\Models\Client;
 use App\Models\ClientCommunicationLog;
 use App\Models\AdminCalendarEvent;
 use App\Models\ClientProject;
+use App\Models\ClientProjectDocumentLink;
 use App\Models\ClientProjectPhoto;
 use App\Services\ClientProjectCalendarService;
 use App\Services\ClientProjectClientMailer;
+use App\Services\ClientProjectDocumentLinkService;
 use App\Services\ClientProjectPhotoStorage;
 use App\Services\ClientProjectStatusService;
 use App\Services\ClientProjectContactService;
@@ -182,7 +184,7 @@ class ClientProjectController extends Controller
         ]);
     }
 
-    public function store(Request $request, ClientProjectStatusService $service, ClientProjectPhotoStorage $photoStorage, ClientProjectContactService $contactService)
+    public function store(Request $request, ClientProjectStatusService $service, ClientProjectPhotoStorage $photoStorage, ClientProjectContactService $contactService, ClientProjectDocumentLinkService $documentLinkService)
     {
         $this->hydrateClientContactFromDirectory($request);
         $this->normalisePhoneOnRequest($request);
@@ -219,7 +221,7 @@ class ClientProjectController extends Controller
             'visit_date' => ['nullable', 'date'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-        ], ClientProjectPhotoStorage::uploadValidationRules()), $this->clientProjectValidationMessages());
+        ], ClientProjectPhotoStorage::uploadValidationRules(), $this->documentLinkValidationRules()), $this->clientProjectValidationMessages());
 
         // Normalise hourly_rate so fixed projects don't carry a stray rate.
         if ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
@@ -240,7 +242,7 @@ class ClientProjectController extends Controller
         // on the projects table — it controls the onCreated side-effect.
         $sendClientEmail = (bool) ($data['send_client_email'] ?? true);
         $syncDirectory = (bool) ($data['sync_client_directory'] ?? true);
-        unset($data['send_client_email'], $data['sync_client_directory'], $data['photos']);
+        unset($data['send_client_email'], $data['sync_client_directory'], $data['photos'], $data['document_links']);
 
         $contactService->applyForCreate($data, $syncDirectory);
 
@@ -272,7 +274,7 @@ class ClientProjectController extends Controller
             $data['visit_date'] ?? null
         );
 
-        $project = DB::transaction(function () use ($data, $initialStatus, $request, $photoStorage) {
+        $project = DB::transaction(function () use ($data, $initialStatus, $request, $photoStorage, $documentLinkService) {
             $project = ClientProject::create(array_merge($data, [
                 'status' => $initialStatus,
                 'status_changed_at' => now(),
@@ -281,6 +283,8 @@ class ClientProjectController extends Controller
             if ($request->hasFile('photos')) {
                 $photoStorage->storeUploads($project, (array) $request->file('photos'));
             }
+
+            $documentLinkService->storeFromRequest($project, $request->input('document_links', []));
 
             return $project;
         });
@@ -331,6 +335,7 @@ class ClientProjectController extends Controller
             'contract',
             'quotations',
             'photos',
+            'documentLinks',
             // invoices.timeEntries is used by the hourly invoice tab to
             // show "N time entries snapshotted" under each invoice row.
             'invoices.timeEntries',
@@ -383,6 +388,33 @@ class ClientProjectController extends Controller
         $photoStorage->deletePhoto($photo);
 
         return back()->with('success', 'File removed.');
+    }
+
+    public function storeDocumentLinks(Request $request, ClientProject $client_project, ClientProjectDocumentLinkService $documentLinkService)
+    {
+        $request->validate($this->documentLinkValidationRules(), $this->clientProjectValidationMessages());
+
+        $added = $documentLinkService->storeFromRequest($client_project, $request->input('document_links', []));
+        if ($added === 0) {
+            return back()
+                ->withErrors(['document_links' => 'Enter at least one valid http or https link.'])
+                ->withInput();
+        }
+
+        $message = $added === 1 ? '1 document link added.' : "{$added} document links added.";
+
+        return back()->with('success', $message);
+    }
+
+    public function destroyDocumentLink(ClientProject $client_project, ClientProjectDocumentLink $document_link)
+    {
+        if ((int) $document_link->client_project_id !== (int) $client_project->id) {
+            abort(404);
+        }
+
+        $document_link->delete();
+
+        return back()->with('success', 'Document link removed.');
     }
 
     public function file(ClientProject $client_project, ClientProjectPhoto $photo)
@@ -459,7 +491,7 @@ class ClientProjectController extends Controller
 
     public function edit(ClientProject $client_project)
     {
-        $client_project->load(['client', 'photos']);
+        $client_project->load(['client', 'photos', 'documentLinks']);
 
         return view('admin.client_projects.edit', [
             'project' => $client_project,
@@ -656,6 +688,36 @@ class ClientProjectController extends Controller
             'end_date.after_or_equal' => 'The end date must be the same day or after the start date. Fix the dates and try again.',
             'hourly_rate.required_if' => 'Hourly rate is required when billing type is "Hourly rate".',
             'hourly_rate.min' => 'Hourly rate must be at least $0.01.',
+            'document_links.*.url.max' => 'That document link is too long.',
+            'document_links.*.kind.in' => 'Choose Auto-detect, Word, Excel, or PowerPoint.',
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    protected function documentLinkValidationRules(): array
+    {
+        return [
+            'document_links' => ['nullable', 'array', 'max:100'],
+            'document_links.*.url' => [
+                'nullable',
+                'string',
+                'max:2000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! filled($value)) {
+                        return;
+                    }
+                    if (ClientProjectDocumentLinkService::normalizeUrl((string) $value) === null) {
+                        $fail('Enter a valid http or https link.');
+                    }
+                },
+            ],
+            'document_links.*.title' => ['nullable', 'string', 'max:255'],
+            'document_links.*.kind' => ['nullable', Rule::in([
+                ClientProjectDocumentLinkService::KIND_AUTO,
+                ClientProjectDocumentLink::KIND_WORD,
+                ClientProjectDocumentLink::KIND_EXCEL,
+                ClientProjectDocumentLink::KIND_PPT,
+            ])],
         ];
     }
 

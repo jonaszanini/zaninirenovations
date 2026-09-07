@@ -1,0 +1,231 @@
+<?php
+
+namespace App\Services\CutOptimizer;
+
+class GuillotineSheet
+{
+    public const EPS = 0.001;
+
+    public float $usableWidth;
+
+    public float $usableLength;
+
+    /** @var list<Rectangle> */
+    public array $freeRectangles = [];
+
+    /** @var list<PlacedPart> */
+    public array $placedParts = [];
+
+    /** @var list<array<string, mixed>> */
+    public array $cutLog = [];
+
+    public function __construct(
+        public string $id,
+        public float $width,
+        public float $length,
+        public float $kerf = 0.125,
+        public float $trimTop = 0.0,
+        public float $trimBottom = 0.0,
+        public float $trimLeft = 0.0,
+        public float $trimRight = 0.0,
+        public float $minOffcut = 0.0,
+        public string $label = ''
+    ) {
+        $this->usableWidth = max(0.0, $this->width - ($this->trimLeft + $this->trimRight));
+        $this->usableLength = max(0.0, $this->length - ($this->trimTop + $this->trimBottom));
+
+        $this->freeRectangles[] = new Rectangle(
+            $this->trimLeft,
+            $this->trimBottom,
+            $this->usableWidth,
+            $this->usableLength
+        );
+    }
+
+    public function insert(Part $part, string $splitStrategy): bool
+    {
+        $bestIndex = null;
+        $bestRotated = false;
+        $bestShortSideFit = INF;
+        $bestLongSideFit = INF;
+
+        $targetW = $part->cuttingWidth;
+        $targetL = $part->cuttingLength;
+
+        foreach ($this->freeRectangles as $index => $free) {
+            $canFitNormal = $this->fits($targetW, $targetL, $free);
+            $canFitRotated = $this->fits($targetL, $targetW, $free);
+
+            if ($part->grain === GrainDirection::LENGTHWISE) {
+                $canFitRotated = false;
+            } elseif ($part->grain === GrainDirection::CROSSWISE) {
+                $canFitNormal = false;
+            }
+
+            if ($canFitNormal) {
+                $leftoverW = abs($free->width - $targetW);
+                $leftoverL = abs($free->height - $targetL);
+                $shortSide = min($leftoverW, $leftoverL);
+                $longSide = max($leftoverW, $leftoverL);
+                if ($shortSide < $bestShortSideFit - self::EPS
+                    || (abs($shortSide - $bestShortSideFit) < self::EPS && $longSide < $bestLongSideFit - self::EPS)) {
+                    $bestIndex = $index;
+                    $bestRotated = false;
+                    $bestShortSideFit = $shortSide;
+                    $bestLongSideFit = $longSide;
+                }
+            }
+
+            if ($canFitRotated) {
+                $leftoverW = abs($free->width - $targetL);
+                $leftoverL = abs($free->height - $targetW);
+                $shortSide = min($leftoverW, $leftoverL);
+                $longSide = max($leftoverW, $leftoverL);
+                if ($shortSide < $bestShortSideFit - self::EPS
+                    || (abs($shortSide - $bestShortSideFit) < self::EPS && $longSide < $bestLongSideFit - self::EPS)) {
+                    $bestIndex = $index;
+                    $bestRotated = true;
+                    $bestShortSideFit = $shortSide;
+                    $bestLongSideFit = $longSide;
+                }
+            }
+        }
+
+        if ($bestIndex === null) {
+            return false;
+        }
+
+        $chosenRect = $this->freeRectangles[$bestIndex];
+        array_splice($this->freeRectangles, $bestIndex, 1);
+
+        $placedWidth = $bestRotated ? $targetL : $targetW;
+        $placedLength = $bestRotated ? $targetW : $targetL;
+
+        $this->placedParts[] = new PlacedPart(
+            $part,
+            $chosenRect->x,
+            $chosenRect->y,
+            $placedWidth,
+            $placedLength,
+            $bestRotated
+        );
+
+        $this->splitFreeRectangle($chosenRect, $placedWidth, $placedLength, $splitStrategy, $part->label);
+
+        return true;
+    }
+
+    public function usedArea(): float
+    {
+        $used = 0.0;
+        foreach ($this->placedParts as $p) {
+            $used += $p->width * $p->height;
+        }
+
+        return $used;
+    }
+
+    public function wastePercentage(): float
+    {
+        $sheetArea = $this->width * $this->length;
+        if ($sheetArea <= 0) {
+            return 0.0;
+        }
+
+        return round(max(0, 100.0 - ($this->usedArea() / $sheetArea * 100.0)), 1);
+    }
+
+    public function totalCutLength(): float
+    {
+        $len = 0.0;
+        foreach ($this->cutLog as $cut) {
+            $len += (float) ($cut['length'] ?? 0);
+        }
+
+        return round($len, 2);
+    }
+
+    private function fits(float $w, float $h, Rectangle $free): bool
+    {
+        return ($free->width - $w) >= -self::EPS && ($free->height - $h) >= -self::EPS;
+    }
+
+    private function splitFreeRectangle(
+        Rectangle $free,
+        float $w,
+        float $h,
+        string $strategy,
+        string $partLabel
+    ): void {
+        $kerf = $this->kerf;
+
+        if ($strategy === SplitHeuristic::HORIZONTAL_FIRST) {
+            $rightW = $free->width - $w - $kerf;
+            $rightH = $h;
+            $topW = $free->width;
+            $topH = $free->height - $h - $kerf;
+
+            if ($rightW > $this->minOffcut) {
+                $this->addOffcut($free->x + $w + $kerf, $free->y, $rightW, $rightH);
+                $this->logCut('rip', $free->x + $w, $free->y, $free->x + $w, $free->y + $h, $h, $partLabel, [
+                    'surplus' => [round($rightW, 3), round($rightH, 3)],
+                ]);
+            }
+            if ($topW > $this->minOffcut && $topH > $this->minOffcut) {
+                $this->addOffcut($free->x, $free->y + $h + $kerf, $topW, $topH);
+                $this->logCut('crosscut', $free->x, $free->y + $h, $free->x + $w, $free->y + $h, $w, $partLabel, [
+                    'surplus' => [round($topW, 3), round($topH, 3)],
+                ]);
+            }
+        } else {
+            $rightW = $free->width - $w - $kerf;
+            $rightH = $free->height;
+            $topW = $w;
+            $topH = $free->height - $h - $kerf;
+
+            if ($rightW > $this->minOffcut && $rightH > $this->minOffcut) {
+                $this->addOffcut($free->x + $w + $kerf, $free->y, $rightW, $rightH);
+                $this->logCut('rip', $free->x + $w, $free->y, $free->x + $w, $free->y + $free->height, $free->height, $partLabel, [
+                    'surplus' => [round($rightW, 3), round($rightH, 3)],
+                ]);
+            }
+            if ($topH > $this->minOffcut) {
+                $this->addOffcut($free->x, $free->y + $h + $kerf, $topW, $topH);
+                $this->logCut('crosscut', $free->x, $free->y + $h, $free->x + $w, $free->y + $h, $w, $partLabel, [
+                    'surplus' => [round($topW, 3), round($topH, 3)],
+                ]);
+            }
+        }
+    }
+
+    private function addOffcut(float $x, float $y, float $w, float $h): void
+    {
+        if ($w > self::EPS && $h > self::EPS) {
+            $this->freeRectangles[] = new Rectangle($x, $y, $w, $h);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    private function logCut(
+        string $type,
+        float $x1,
+        float $y1,
+        float $x2,
+        float $y2,
+        float $length,
+        string $partLabel,
+        array $extra = []
+    ): void {
+        $this->cutLog[] = array_merge([
+            'step' => count($this->cutLog) + 1,
+            'type' => $type,
+            'position' => round($type === 'rip' ? $x1 : $y1, 3),
+            'start' => ['x' => round($x1, 3), 'y' => round($y1, 3)],
+            'end' => ['x' => round($x2, 3), 'y' => round($y2, 3)],
+            'length' => round($length, 3),
+            'part_label' => $partLabel,
+        ], $extra);
+    }
+}

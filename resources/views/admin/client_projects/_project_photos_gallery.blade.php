@@ -1,5 +1,9 @@
 @php
   $photos = $project->photos ?? collect();
+  if ($project && ! $project->relationLoaded('documentLinks')) {
+      $project->load('documentLinks');
+  }
+  $documentLinks = $project->documentLinks ?? collect();
   $galleryId = $galleryId ?? 'cp-project-photo-gallery';
   $editable = (bool) ($editable ?? false);
   $mediaItems = $photos->map(fn ($p) => [
@@ -12,7 +16,7 @@
   ])->values();
 @endphp
 
-@if ($photos->isNotEmpty())
+@if ($photos->isNotEmpty() || $documentLinks->isNotEmpty())
   <section class="cp-project-photos" aria-label="Project photos and files">
     @if ($showHeading ?? true)
       <h3 class="cp-project-photos-heading">Photos &amp; files</h3>
@@ -54,9 +58,41 @@
           @endif
         </figure>
       @endforeach
+
+      @foreach ($documentLinks as $link)
+        <figure class="cp-project-photos-item">
+          <a href="{{ $link->url }}"
+             class="cp-project-photos-thumb cp-project-photos-thumb--link cp-doc-link-thumb"
+             target="_blank"
+             rel="noopener noreferrer"
+             title="{{ $link->displayTitle() }} — opens in a new tab"
+             aria-label="Open {{ $link->kindLabel() }}: {{ $link->displayTitle() }}">
+            <span class="cp-project-photos-thumb-media cp-project-photos-thumb-media--{{ $link->resolvedKind() }}">
+              <i class="fa {{ $link->iconClass() }}" aria-hidden="true"></i>
+              <span class="cp-project-photos-thumb-label">{{ $link->kindLabel() }}</span>
+              <span class="cp-doc-link-name">{{ $link->displayTitle() }}</span>
+            </span>
+          </a>
+          @if ($editable)
+            <div class="cp-project-photos-actions">
+              <form action="{{ route('admin.client-projects.document-links.destroy', [$project, $link]) }}"
+                    method="post"
+                    class="cp-project-photos-action"
+                    onsubmit="return confirm('Remove this document link?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="cp-project-photos-delete" title="Remove link" aria-label="Remove {{ $link->displayTitle() }}">
+                  <i class="fa fa-trash" aria-hidden="true"></i>
+                </button>
+              </form>
+            </div>
+          @endif
+        </figure>
+      @endforeach
     </div>
   </section>
 
+  @if ($photos->isNotEmpty())
   <div class="cp-photo-lightbox" id="{{ $galleryId }}-lightbox" hidden role="dialog" aria-modal="true" aria-label="File viewer">
     <button type="button" class="cp-photo-lightbox-backdrop" data-cp-lightbox-close aria-label="Close"></button>
     <div class="cp-photo-lightbox-inner">
@@ -224,6 +260,7 @@
 
         grid.addEventListener('click', function (e) {
           if (e.target.closest('.cp-project-photos-actions')) return;
+          if (e.target.closest('.cp-doc-link-thumb')) return;
           var btn = e.target.closest('[data-cp-photo-index]');
           if (!btn) return;
           var idx = parseInt(btn.getAttribute('data-cp-photo-index'), 10);
@@ -274,4 +311,5 @@
       })();
     </script>
   @endpush
+  @endif
 @endif

@@ -23,9 +23,7 @@ class LoginController extends Controller
 
         $credentials['email'] = trim($credentials['email']);
 
-        $remember = $request->boolean('remember');
-
-        if (! Auth::attempt($credentials, $remember)) {
+        if (! Auth::attempt($credentials, true)) {
             throw ValidationException::withMessages([
                 'email' => __('These credentials do not match our records.'),
             ]);

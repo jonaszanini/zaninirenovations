@@ -120,6 +120,7 @@ class BasementClientIntakeMapper
             'paint_colors' => ((int) ($inputs['paint_colors'] ?? 1) === 2) ? 2 : 1,
             'bath_type' => ($inputs['bath_type'] ?? 'full') === 'half' ? 'half' : 'full',
             'sink' => $sink,
+            'bath_sink_qty' => ((int) ($inputs['bath_sink_qty'] ?? 1) === 2) ? 2 : 1,
             'sink_provide' => $this->provideFlag($provides, $sink === 'pedestal' ? 'pedestal_sink' : 'vanity'),
             'faucet_provide' => $this->provideFlag($provides, 'faucet'),
             'include_toilet' => ! empty($inputs['include_toilet']),
@@ -265,6 +266,14 @@ class BasementClientIntakeMapper
         }
         $mark('include_vanity');
         $mark('include_pedestal_sink');
+
+        if ($sink === 'none') {
+            $out['bath_sink_qty'] = 1;
+        } else {
+            $qty = $this->int($answers, 'bath_sink_qty', 1);
+            $out['bath_sink_qty'] = $qty === 2 ? 2 : 1;
+        }
+        $mark('bath_sink_qty');
 
         $out['include_toilet'] = $this->bool($answers, 'include_toilet', true);
         $out['include_shower'] = $half ? false : $this->bool($answers, 'include_shower', true);

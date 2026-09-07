@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
-use App\Services\PolygonAreaService;
 use App\Services\RoomAreaCanvasData;
+use App\Services\RoomAreaLayoutQuoteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,6 +35,19 @@ class RoomAreaController extends Controller
             'clientProjects' => $clientProjects,
             'projectsJson' => $projects->map(fn (RoomAreaProject $project) => $this->projectPayload($project))->values(),
         ]);
+    }
+
+    public function searchLayouts(Request $request, RoomAreaLayoutQuoteService $layouts)
+    {
+        $id = trim((string) $request->get('id', ''));
+        $q = trim((string) $request->get('q', ''));
+        $clientProjectId = $request->integer('client_project_id');
+
+        return response()->json($layouts->search(
+            $q,
+            $clientProjectId > 0 ? $clientProjectId : null,
+            $id !== '' ? $id : null,
+        ));
     }
 
     public function storeProject(Request $request)

@@ -297,7 +297,7 @@
 
 .cp-travel-cost-metric--highlight {
   background: var(--admin-primary-soft, rgba(2, 71, 104, 0.08));
-  border-color: rgba(2, 71, 104, 0.22);
+  border-color: var(--admin-border-strong, rgba(2, 71, 104, 0.22));
 }
 
 .cp-travel-cost-metric__label {
@@ -331,7 +331,7 @@
 .cp-travel-cost-card__manage:hover {
   color: var(--admin-primary-hover, #013552);
   border-color: var(--admin-primary, #024768);
-  background: rgba(2, 71, 104, 0.12);
+  background: var(--admin-primary-soft);
 }
 
 .cp-travel-cost-card__manage .fa {
@@ -354,7 +354,7 @@
 }
 
 .admin-places-status--ok {
-  color: #166534;
+  color: var(--admin-success, #2e7d4a);
 }
 
 /* Quotation editors — commute expense */

@@ -1,7 +1,7 @@
 @php
   $project = $project ?? null;
 @endphp
-@if ($project && (filled($project->notes) || $project->photos->isNotEmpty()))
+@if ($project && (filled($project->notes) || $project->photos->isNotEmpty() || $project->documentLinks->isNotEmpty()))
   <details class="admin-accordion admin-card cp-project-context-card">
     <summary class="admin-accordion__summary">
       <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
@@ -15,7 +15,7 @@
         </div>
       @endif
 
-      @if ($project->photos->isNotEmpty())
+      @if ($project->photos->isNotEmpty() || $project->documentLinks->isNotEmpty())
         <div class="cp-project-context-photos">
           <h5 class="cp-project-context-notes__label">Photos &amp; Files</h5>
           @include('admin.client_projects._project_photos_gallery', [

@@ -172,6 +172,9 @@
             'enabledNow' => $enabledNow,
             'enabledCount' => $enabledCount,
             'filledKeys' => $filledKeys,
+            'layoutClientProjectId' => $isEdit
+                ? ($quotation->client_project_id ?? null)
+                : optional($linkProject)->id,
         ])
 
         <details class="br-acc admin-card" data-br-step="review" @if ($isEdit) open @endif>
@@ -208,7 +211,7 @@
             </fieldset>
             <fieldset class="br-bath-provide" id="br-provide-bath-items">
               <legend class="br-bath-provide__title">
-                @include('admin.partials.info_tip', ['text' => 'Client buys these fixtures; you still install them. Tile, fan, and lights stay on the Bathroom step (or Electrical when quoting living-area lights).'])
+                @include('admin.partials.info_tip', ['text' => 'Client buys these fixtures; you still install them. Tile and fan stay on the Bathroom step. Bathroom and living-area lights are electrician scope (priced on Electrical lines).'])
                 @include('admin.quotations.basement._client_filled', ['key' => 'client_provides_bath_items', 'filledKeys' => $filledKeys])
                 Bathroom items
               </legend>

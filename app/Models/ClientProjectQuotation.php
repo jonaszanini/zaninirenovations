@@ -57,6 +57,8 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_TRIMMING = 'trimming';
 
+    public const SOURCE_MILLWORK = 'millwork';
+
     protected $fillable = [
         'client_project_id',
         'title',
@@ -285,6 +287,13 @@ class ClientProjectQuotation extends Model
             }
         }
 
+        if ($this->source_type === self::SOURCE_MILLWORK && $this->source_id) {
+            $millwork = MillworkQuotation::query()->find($this->source_id);
+            if ($millwork) {
+                return $millwork->displayTitle();
+            }
+        }
+
         $stored = trim((string) ($this->title ?? ''));
 
         return $stored !== '' ? $stored : $this->typeLabel();
@@ -355,6 +364,13 @@ class ClientProjectQuotation extends Model
             $tq = TrimmingQuotation::query()->find($this->source_id);
             if ($tq) {
                 return $tq->scopeDescriptionForPdf();
+            }
+        }
+
+        if ($this->source_type === self::SOURCE_MILLWORK && $this->source_id) {
+            $mq = MillworkQuotation::query()->find($this->source_id);
+            if ($mq) {
+                return $mq->scopeDescriptionForPdf();
             }
         }
 
@@ -1062,6 +1078,7 @@ class ClientProjectQuotation extends Model
             self::SOURCE_BASEMENT => BasementQuotation::class,
             self::SOURCE_SHED => ShedQuotation::class,
             self::SOURCE_TRIMMING => TrimmingQuotation::class,
+            self::SOURCE_MILLWORK => MillworkQuotation::class,
             default => null,
         };
         if ($class === null) {
@@ -1195,6 +1212,7 @@ class ClientProjectQuotation extends Model
                     self::SOURCE_BASEMENT => BasementQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_SHED => ShedQuotation::query()->whereKey($sourceId)->delete(),
                     self::SOURCE_TRIMMING => TrimmingQuotation::query()->whereKey($sourceId)->delete(),
+                    self::SOURCE_MILLWORK => MillworkQuotation::query()->whereKey($sourceId)->delete(),
                     default => null,
                 };
             }
@@ -1278,6 +1296,10 @@ class ClientProjectQuotation extends Model
             return true;
         }
 
+        if ($this->source_type === self::SOURCE_MILLWORK && $this->source_id) {
+            return true;
+        }
+
         return (bool) $this->labour;
     }
 
@@ -1326,6 +1348,12 @@ class ClientProjectQuotation extends Model
             $trimming = TrimmingQuotation::query()->find($this->source_id);
 
             return $trimming?->includesMaterialCharge() ?? false;
+        }
+
+        if ($this->source_type === self::SOURCE_MILLWORK && $this->source_id) {
+            $millwork = MillworkQuotation::query()->find($this->source_id);
+
+            return $millwork?->includesMaterialCharge() ?? false;
         }
 
         return (bool) $this->material;

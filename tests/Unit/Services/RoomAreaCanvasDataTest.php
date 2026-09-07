@@ -217,4 +217,39 @@ class RoomAreaCanvasDataTest extends TestCase
 
         $this->assertFalse($result['valid']);
     }
+
+    public function test_layout_metrics_uses_real_perimeter_not_square(): void
+    {
+        $canvas = [
+            'v' => 2,
+            'groups' => [
+                [
+                    'id' => 'g1',
+                    'color' => '#024768',
+                    'polygons' => [
+                        [
+                            'id' => 'p1',
+                            'vertices' => [
+                                ['x' => 0, 'y' => 0],
+                                ['x' => 4, 'y' => 0],
+                                ['x' => 4, 'y' => 2],
+                                ['x' => 2, 'y' => 2],
+                                ['x' => 2, 'y' => 5],
+                                ['x' => 0, 'y' => 5],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $metrics = $this->service->layoutMetrics($canvas, 1.0);
+
+        $this->assertSame(14.0, $metrics['area_sqft']);
+        $this->assertSame(18.0, $metrics['perimeter_lf']);
+        $this->assertSame(5, $metrics['inside_corners']);
+        $this->assertSame(1, $metrics['outside_corners']);
+        $this->assertSame(1, $metrics['polygon_count']);
+        $this->assertGreaterThan(4 * sqrt(14.0), $metrics['perimeter_lf']);
+    }
 }

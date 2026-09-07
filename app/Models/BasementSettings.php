@@ -15,9 +15,6 @@ class BasementSettings extends Model
 
     public const BASEBOARD_FEET_PER_STICK = 8;
 
-    /** 75 m NMD90 box. */
-    public const NMD90_FEET_PER_BOX = 246;
-
     /** 10 ft × 100 ft roll. */
     public const VAPOR_SF_PER_ROLL = 1000;
 
@@ -95,18 +92,6 @@ class BasementSettings extends Model
             'bulkhead_lf_per_hr' => 6,
             'header_hours_each' => 2,
             'door_opening_hours_each' => 1.5,
-            'outlet_hours_each' => 0.4,
-            'switch_hours_each' => 0.35,
-            'light_hours_each' => 0.5,
-            'panel_upgrade_hours' => 8,
-            'detector_hours_each' => 0.4,
-            'wiring_run_hours_each' => 0.6,
-            'plumbing_bath_rough_hours' => 16,
-            'sink_hours' => 4,
-            'laundry_hours' => 6,
-            'wet_bar_hours' => 8,
-            'floor_drain_hours' => 4,
-            'wh_reloc_hours' => 6,
             'insulation_wall_sf_per_hr' => 40,
             'insulation_ceiling_sf_per_hr' => 50,
             'underslab_sf_per_hr' => 30,
@@ -116,6 +101,7 @@ class BasementSettings extends Model
             'drywall_finish_l3_sf_per_hr' => 30,
             'drywall_finish_l4_sf_per_hr' => 20,
             'drywall_opening_hours_each' => 0.4,
+            'drywall_inside_corner_hours_each' => 0.3,
             'ceiling_drop_sf_per_hr' => 25,
             'subfloor_sf_per_hr' => 40,
             'underlayment_sf_per_hr' => 80,
@@ -136,7 +122,6 @@ class BasementSettings extends Model
             'tub_hours' => 10,
             'exhaust_fan_hours' => 2,
             'tile_sf_per_hr' => 12,
-            'fixture_hours_each' => 0.4,
             'hardware_hours' => 2,
             'cleaning_hours_per_100sf' => 0.5,
             'touchup_hours' => 2,
@@ -170,15 +155,6 @@ class BasementSettings extends Model
             'insulation_batt' => $row('R-14 batt insulation, 15 in (bag, ~40 sq ft)', 'bag', round(1.20 * self::BATT_SF_PER_BAG, 4)),
             'vapor_barrier' => $row('6 mil vapor barrier, 10x100 ft roll (each)', 'roll', round(0.25 * self::VAPOR_SF_PER_ROLL, 4)),
             'underslab_insulation' => $row('2 in XPS rigid insulation 4x8 (sheet)', 'sheet', round(2.40 * self::PANEL_SF, 4)),
-            'outlet_box' => $row('Electrical box + receptacle + cover (each)', 'each', 8.50),
-            'switch_device' => $row('Light switch + cover (each)', 'each', 7.50),
-            'pot_light' => $row('Spot light / pot light (each)', 'each', 28.00),
-            'smoke_co' => $row('Smoke / CO combination detector (each)', 'each', 45.00),
-            'nm_cable' => $row('NMD90 14/2 cable, 75 m box (each)', 'box', round(1.20 * self::NMD90_FEET_PER_BOX, 4)),
-            'panel_upgrade' => $row('Electrical panel upgrade (allowance)', 'each', 1800.00),
-            'bath_rough_in' => $row('Bathroom plumbing rough-in kit (allowance)', 'each', 850.00),
-            'sink_kit' => $row('Sink / laundry hookup kit (each)', 'each', 220.00),
-            'floor_drain' => $row('Floor drain assembly (each)', 'each', 95.00),
             'vanity' => $row('Bathroom vanity (each)', 'each', 360.00),
             'pedestal_sink' => $row('Pedestal bathroom sink (each)', 'each', 180.00),
             'faucet' => $row('Bathroom faucet (each)', 'each', 90.00),
@@ -211,7 +187,6 @@ class BasementSettings extends Model
             'trim_paint_half' => $row('Trim paint, 1/2 gal / 1.89 L can (each)', 'can', 38.00),
             'trim_paint_quart' => $row('Trim paint, quart / 946 mL (each)', 'quart', 22.00),
             'drop_ceiling' => $row('Drop ceiling tile + grid (per sq ft)', 'sf', 3.50),
-            'light_fixture' => $row('Light fixture (each)', 'each', 85.00),
             'door_hardware' => $row('Interior door handle set (each)', 'each', 35.00),
             'cleaning' => $row('Final cleaning supplies (lump sum)', 'ls', 75.00),
         ];
@@ -351,23 +326,6 @@ class BasementSettings extends Model
                 'header_hours_each' => 'Header / beam (hours each)',
                 'door_opening_hours_each' => 'Door opening framing (hours each)',
             ],
-            'Electrical' => [
-                'outlet_hours_each' => 'Outlet (hours each)',
-                'switch_hours_each' => 'Switch (hours each)',
-                'light_hours_each' => 'Lighting wiring / pot (hours each)',
-                'fixture_hours_each' => 'Hang light fixture (hours each)',
-                'panel_upgrade_hours' => 'Panel upgrade (hours)',
-                'detector_hours_each' => 'Smoke / CO detector (hours each)',
-                'wiring_run_hours_each' => 'Wiring run (hours each)',
-            ],
-            'Plumbing' => [
-                'plumbing_bath_rough_hours' => 'Bathroom rough-in (hours)',
-                'sink_hours' => 'Sink hookup (hours)',
-                'laundry_hours' => 'Laundry hookup (hours)',
-                'wet_bar_hours' => 'Wet bar rough-in (hours)',
-                'floor_drain_hours' => 'Floor drain (hours)',
-                'wh_reloc_hours' => 'Water heater relocation (hours)',
-            ],
             'Insulation' => [
                 'insulation_wall_sf_per_hr' => 'Wall insulation (sq ft / hour)',
                 'insulation_ceiling_sf_per_hr' => 'Ceiling insulation (sq ft / hour)',
@@ -380,6 +338,7 @@ class BasementSettings extends Model
                 'drywall_finish_l3_sf_per_hr' => 'Finish Level 3 (sq ft / hour)',
                 'drywall_finish_l4_sf_per_hr' => 'Finish Level 4 (sq ft / hour)',
                 'drywall_opening_hours_each' => 'Cut & finish openings (hours each)',
+                'drywall_inside_corner_hours_each' => 'Tape inside corners (hours each)',
                 'ceiling_drop_sf_per_hr' => 'Drop ceiling (sq ft / hour)',
             ],
             'Flooring' => [

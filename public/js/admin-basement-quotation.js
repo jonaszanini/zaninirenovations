@@ -22,6 +22,11 @@
   var fmt = function (n) {
     return 'CA$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
+  var formatLayoutQty = function (n) {
+    var rounded = Math.round(Number(n) * 100) / 100;
+    if (!isFinite(rounded)) return '0';
+    return String(rounded);
+  };
   var escapeHtml = function (s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -265,6 +270,93 @@
     });
   }
 
+  var applyingLayout = false;
+
+  function ceilingHeightFt() {
+    var el = document.getElementById('br-height');
+    var n = el ? parseFloat(el.value) : NaN;
+    return (isFinite(n) && n > 0) ? n : 8;
+  }
+
+  function setLwToSqft(qtyId, value) {
+    var qty = document.getElementById(qtyId);
+    if (!qty) return;
+    var root = qty.closest('[data-br-lw]');
+    if (root) {
+      var radio = root.querySelector('[data-br-lw-mode][value="sqft"]');
+      if (radio && !radio.checked) {
+        radio.checked = true;
+        syncLw(root);
+      }
+    }
+    qty.value = (value === '' || value == null) ? '' : formatLayoutQty(value);
+  }
+
+  function applyRoomLayout(opt) {
+    var periEl = document.getElementById('br-perimeter-lf');
+    var labelEl = document.getElementById('br-layout-import-label');
+    var status = document.getElementById('br-layout-import-status');
+    var wall = document.getElementById('br-dw-wall');
+    if (!opt) {
+      if (labelEl) labelEl.value = '';
+      if (status) {
+        status.hidden = true;
+        status.textContent = '';
+        status.classList.remove('is-set');
+      }
+      return;
+    }
+    applyingLayout = true;
+    var peri = Number(opt.perimeter_lf || 0);
+    var area = Number(opt.area_sqft || 0);
+    var wallSf = peri > 0 ? peri * ceilingHeightFt() : 0;
+    if (periEl) periEl.value = peri > 0 ? formatLayoutQty(peri) : '';
+    if (labelEl) labelEl.value = opt.name || opt.label || '';
+    setLwToSqft('br-area', area > 0 ? area : '');
+    setLwToSqft('br-dw-wall', wallSf > 0 ? wallSf : '');
+    if (wall) wall.setAttribute('data-br-from-layout', '1');
+    setLwToSqft('br-dw-ceil', area > 0 ? area : '');
+    var inside = document.getElementById('br-dw-inside-corners');
+    var outside = document.getElementById('br-dw-corners');
+    if (inside) inside.value = String(Math.max(0, parseInt(opt.inside_corners, 10) || 0));
+    if (outside) outside.value = String(Math.max(0, parseInt(opt.outside_corners, 10) || 0));
+    if (status) {
+      var floor = formatLayoutQty(area);
+      var periLabel = formatLayoutQty(peri);
+      var height = formatLayoutQty(ceilingHeightFt());
+      var walls = formatLayoutQty(wallSf);
+      var name = opt.short_name || opt.name || 'layout';
+      status.hidden = false;
+      status.classList.add('is-set');
+      status.textContent = 'Imported ' + name + ': ' + floor + ' sq ft floor, '
+        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall. Openings are not imported.';
+    }
+    applyingLayout = false;
+    updateDwWallPlaceholder();
+    schedulePreview();
+  }
+
+  function refreshLayoutWallFromHeight() {
+    var wall = document.getElementById('br-dw-wall');
+    var periEl = document.getElementById('br-perimeter-lf');
+    if (!wall || wall.getAttribute('data-br-from-layout') !== '1' || !periEl) return;
+    var peri = parseFloat(periEl.value);
+    if (!isFinite(peri) || peri <= 0) return;
+    applyingLayout = true;
+    setLwToSqft('br-dw-wall', peri * ceilingHeightFt());
+    applyingLayout = false;
+    var status = document.getElementById('br-layout-import-status');
+    var labelEl = document.getElementById('br-layout-import-label');
+    if (status && !status.hidden && periEl) {
+      var areaEl = document.getElementById('br-area');
+      var area = areaEl ? parseFloat(areaEl.value) : 0;
+      var name = (labelEl && labelEl.value) ? labelEl.value : 'layout';
+      status.textContent = 'Imported ' + name + ': ' + formatLayoutQty(area) + ' sq ft floor, '
+        + formatLayoutQty(peri) + ' lf walls × ' + formatLayoutQty(ceilingHeightFt()) + ' ft = '
+        + formatLayoutQty(peri * ceilingHeightFt()) + ' sq ft wall drywall. Openings are not imported.';
+    }
+  }
+
   function formatTileTotal(n) {
     var rounded = Math.round(Number(n) * 100) / 100;
     if (!isFinite(rounded) || rounded <= 0) return '0 sq ft';
@@ -334,6 +426,19 @@
     }
   }
 
+  function updateDwWallPlaceholder() {
+    var dwWall = document.getElementById('br-dw-wall');
+    if (!dwWall) return;
+    var wallOnly = currentPreset() === 'wall';
+    var periEl = document.getElementById('br-perimeter-lf');
+    var peri = periEl ? parseFloat(periEl.value) : 0;
+    if (!wallOnly && isFinite(peri) && peri > 0) {
+      dwWall.placeholder = 'Auto: ' + formatLayoutQty(peri) + ' lf × height';
+    } else {
+      dwWall.placeholder = wallOnly ? 'Auto: wall length × height × both sides' : 'Auto from area × height';
+    }
+  }
+
   function applyScope() {
     rebuildWizardKeys();
     var enabled = enabledTradeKeys();
@@ -380,10 +485,7 @@
     form.querySelectorAll('[data-br-skip-on-wall]').forEach(function (el) {
       el.hidden = wallOnly;
     });
-    var dwWall = document.getElementById('br-dw-wall');
-    if (dwWall) {
-      dwWall.placeholder = wallOnly ? 'Auto: wall length × height × both sides' : 'Auto from area × height';
-    }
+    updateDwWallPlaceholder();
     var pWall = document.getElementById('br-p-wall');
     if (pWall) {
       pWall.placeholder = wallOnly ? 'Auto: both sides of the new wall' : 'Auto from drywall walls';
@@ -518,6 +620,7 @@
     applyScope();
     syncRevealTargets();
     syncBathroomElectricalHints();
+    syncBathSinkQty();
   }
 
   function setWizardStep(index, scroll) {
@@ -666,14 +769,11 @@
   }
 
   function tradeBreakdownHtml(label, trade) {
-    var labor = Number((trade && trade.labor_pre_hst) || 0);
-    var mats = Number((trade && trade.materials_pre_hst) || 0);
-    if (labor <= 0 && mats <= 0) {
+    var taxIn = Number((trade && trade.tax_in) || 0);
+    if (taxIn <= 0) {
       return '';
     }
-    var html = '<div class="pq-row pq-row--group"><span>' + label + ' labor (pre-HST)</span><span>' + fmt(labor) + '</span></div>';
-    html += '<div class="pq-row"><span>' + label + ' materials (pre-HST)</span><span>' + fmt(mats) + '</span></div>';
-    return html;
+    return '<div class="pq-row pq-row--group"><span>' + label + ' (incl. HST)</span><span>' + fmt(taxIn) + '</span></div>';
   }
 
   function rebuildLaborTable(rows) {
@@ -727,10 +827,14 @@
       if (!groups[group]) groups[group] = [];
       groups[group].push(el);
       el.addEventListener('change', function () {
-        if (!el.checked) return;
+        if (!el.checked) {
+          syncBathSinkQty();
+          return;
+        }
         groups[group].forEach(function (other) {
           if (other !== el) other.checked = false;
         });
+        syncBathSinkQty();
       });
     });
     Object.keys(groups).forEach(function (group) {
@@ -743,9 +847,33 @@
     });
   }
 
+  function syncBathSinkQty() {
+    var vanity = form.querySelector('#br-include-vanity');
+    var pedestal = form.querySelector('#br-include-pedestal');
+    var wrap = document.getElementById('br-bath-sink-qty');
+    if (!wrap) return;
+    wrap.hidden = !((vanity && vanity.checked) || (pedestal && pedestal.checked));
+  }
+
   form.querySelectorAll('.br-preview').forEach(bindPreview);
   initTileAreas();
   initExclusiveChecks();
+  syncBathSinkQty();
+
+  var dwWallEl = document.getElementById('br-dw-wall');
+  var layoutImportVal = document.getElementById('br-layout-import-value');
+  if (dwWallEl && layoutImportVal && layoutImportVal.value) {
+    dwWallEl.setAttribute('data-br-from-layout', '1');
+  }
+  if (dwWallEl) {
+    dwWallEl.addEventListener('input', function () {
+      if (!applyingLayout) dwWallEl.removeAttribute('data-br-from-layout');
+    });
+  }
+  var heightEl = document.getElementById('br-height');
+  if (heightEl) {
+    heightEl.addEventListener('input', refreshLayoutWallFromHeight);
+  }
 
   var extraList = document.getElementById('br-extra-list');
   var extraTpl = document.getElementById('br-extra-template');
@@ -803,6 +931,12 @@
   }
 
   document.addEventListener('admin-search-select:change', function (e) {
+    var picker = e.target && e.target.closest ? e.target.closest('[data-br-layout-picker]') : null;
+    if (!picker) return;
+    applyRoomLayout((e.detail && e.detail.option) || null);
+  });
+
+  document.addEventListener('admin-search-select:change', function (e) {
     var row = e.target && e.target.closest ? e.target.closest('[data-br-extra-row]') : null;
     if (!row) return;
     var opt = (e.detail && e.detail.option) || null;
@@ -834,6 +968,16 @@
     lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
     lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
     if (lastPreviewData) renderPreview(lastPreviewData);
+  });
+  document.addEventListener('trade-lines:change', function () {
+    schedulePreview();
+  });
+  document.addEventListener('amount-lines:row-added', function (e) {
+    var row = e.detail && e.detail.row;
+    if (row) {
+      row.querySelectorAll('.br-preview').forEach(bindPreview);
+    }
+    schedulePreview();
   });
 
   if (cfg.initialPreview) {

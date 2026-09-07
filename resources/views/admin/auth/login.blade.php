@@ -47,11 +47,6 @@
               </div>
             </div>
             <div class="admin-form-group admin-login-row">
-              <label class="admin-login-remember">
-                <input type="checkbox" class="admin-checkbox__input" name="remember" value="1" {{ old('remember') ? 'checked' : '' }}>
-                <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">Remember me</span>
-              </label>
               <a class="admin-login-link" href="{{ route('password.request') }}">Forgot your password?</a>
             </div>
             <button type="submit" class="admin-btn admin-btn--primary">Sign in</button>
