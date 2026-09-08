@@ -42,6 +42,10 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Create automatically from quotation')
             ->assertSee('data-mw-show="cabinet cabinet_door bench-drawers"', false)
             ->assertSee('data-mw-hw="cabinet-family"', false)
+            ->assertSee('data-mw-mat="back"', false)
+            ->assertSee('data-mw-mat="edge-banding"', false)
+            ->assertSee('data-mw-mat="paint"', false)
+            ->assertSee('data-mw-mat="stain"', false)
             ->assertSee('id="mw-hinge"', false);
 
         $this->get(route('admin.quotations.millwork.price-configuration'))
@@ -169,6 +173,53 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
                 'sets' => [['qty' => 1, 'length' => 12, 'depth' => 8, 'unit' => 'in']],
             ]],
         ])->assertStatus(405);
+    }
+
+    public function test_materials_and_finish_fields_conditional_visibility(): void
+    {
+        $this->actingAsAdmin();
+
+        // 1. Fresh create page: default shelf has finish: 'none', include_back: false, edge_banding: true
+        $res = $this->get(route('admin.quotations.millwork.create'))
+            ->assertOk();
+        $html = $res->getContent();
+
+        $this->assertMatchesRegularExpression('/data-mw-mat="back"\s+hidden/', $html);
+        $this->assertMatchesRegularExpression('/data-mw-mat="paint"\s+hidden/', $html);
+        $this->assertMatchesRegularExpression('/data-mw-mat="stain"\s+hidden/', $html);
+        $this->assertDoesNotMatchRegularExpression('/data-mw-mat="edge-banding"\s+hidden/', $html);
+
+        // 2. Draft quotation with kallax, include_back: 1, finish: paint, edge_banding: 0
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-COND-1',
+            'client_name' => 'Kallax Client',
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'kallax',
+                    'qty' => 1,
+                    'width' => 35,
+                    'height' => 15,
+                    'depth' => 15,
+                    'columns' => 3,
+                    'rows' => 1,
+                    'finish' => 'paint',
+                    'edge_banding' => 0,
+                    'include_back' => 1,
+                    'unit' => 'in',
+                ]],
+            ],
+            'calculation' => [],
+            'status' => 'draft',
+        ]);
+
+        $resEdit = $this->get(route('admin.quotations.millwork.edit', $quote))
+            ->assertOk();
+        $htmlEdit = $resEdit->getContent();
+
+        $this->assertDoesNotMatchRegularExpression('/data-mw-mat="back"\s+hidden/', $htmlEdit);
+        $this->assertDoesNotMatchRegularExpression('/data-mw-mat="paint"\s+hidden/', $htmlEdit);
+        $this->assertMatchesRegularExpression('/data-mw-mat="stain"\s+hidden/', $htmlEdit);
+        $this->assertMatchesRegularExpression('/data-mw-mat="edge-banding"\s+hidden/', $htmlEdit);
     }
 
     public function test_publish_requires_dimensions(): void

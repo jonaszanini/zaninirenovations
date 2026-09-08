@@ -159,6 +159,8 @@
     });
 
     function schedulePreview() {
+      syncHardwareCatalog();
+      syncMaterialsCatalog();
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(runPreview, 280);
     }
@@ -387,6 +389,7 @@
       var below = piece.querySelector('select[name$="[below]"]');
       piece.setAttribute('data-mw-below', (below && below.value === 'drawers') ? 'drawers' : 'divisions');
       syncHardwareCatalog();
+      syncMaterialsCatalog();
     }
 
     function pieceNeedsCabinetHardware(piece) {
@@ -402,6 +405,50 @@
       });
       form.querySelectorAll('[data-mw-hw="cabinet-family"]').forEach(function (el) {
         el.hidden = !show;
+      });
+    }
+
+    function syncMaterialsCatalog() {
+      var hasBack = false;
+      var hasEdgeBanding = false;
+      var hasPaint = false;
+      var hasStain = false;
+
+      form.querySelectorAll('#mw-piece-list [data-mw-piece]').forEach(function (piece) {
+        var typeInput = piece.querySelector('[data-mw-type-input]:checked');
+        var type = typeInput ? typeInput.value : (piece.getAttribute('data-mw-type') || 'shelf');
+
+        var backSupports = ['floating_shelf', 'kallax', 'cabinet', 'bench'].indexOf(type) !== -1;
+        var backCb = piece.querySelector('input[type="checkbox"][name$="[include_back]"]');
+        if (backSupports && backCb && backCb.checked) {
+          hasBack = true;
+        }
+
+        var ebCb = piece.querySelector('input[type="checkbox"][name$="[edge_banding]"]');
+        if (ebCb && ebCb.checked) {
+          hasEdgeBanding = true;
+        }
+
+        var finishSel = piece.querySelector('select[name$="[finish]"]');
+        var finishVal = finishSel ? finishSel.value : 'none';
+        if (finishVal === 'paint') {
+          hasPaint = true;
+        } else if (finishVal === 'stain') {
+          hasStain = true;
+        }
+      });
+
+      form.querySelectorAll('[data-mw-mat="back"]').forEach(function (el) {
+        el.hidden = !hasBack;
+      });
+      form.querySelectorAll('[data-mw-mat="edge-banding"]').forEach(function (el) {
+        el.hidden = !hasEdgeBanding;
+      });
+      form.querySelectorAll('[data-mw-mat="paint"]').forEach(function (el) {
+        el.hidden = !hasPaint;
+      });
+      form.querySelectorAll('[data-mw-mat="stain"]').forEach(function (el) {
+        el.hidden = !hasStain;
       });
     }
 
@@ -476,6 +523,8 @@
     }
 
     document.querySelectorAll('#mw-piece-list [data-mw-piece]').forEach(initPiece);
+    syncHardwareCatalog();
+    syncMaterialsCatalog();
     var addPiece = document.getElementById('mw-add-piece');
     var pieceTpl = document.getElementById('mw-piece-template');
     var pieceList = document.getElementById('mw-piece-list');

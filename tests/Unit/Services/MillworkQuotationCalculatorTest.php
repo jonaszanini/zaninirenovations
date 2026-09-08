@@ -363,6 +363,36 @@ class MillworkQuotationCalculatorTest extends TestCase
         $this->assertEquals(33.96, (float) $edgeRow2['amount']);
     }
 
+    public function test_unselected_back_and_edge_banding_exclude_materials_and_have_null_objects(): void
+    {
+        $settings = $this->settings();
+        $calc = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'kallax',
+                'qty' => 1,
+                'width' => 35,
+                'height' => 15,
+                'depth' => 15,
+                'columns' => 3,
+                'rows' => 1,
+                'unit' => 'in',
+                'finish' => 'none',
+                'edge_banding' => false,
+                'include_back' => false,
+            ]],
+            'include_install' => false,
+        ], $settings);
+
+        $this->assertNull($calc['back_sheet']);
+        $this->assertNull($calc['edge_banding']);
+        $this->assertSame('Unfinished', $calc['scope']['finish_label']);
+
+        $materialKeys = array_map(fn ($r) => $r['key'] ?? '', $calc['materials']);
+        $this->assertNotContains('edge', $materialKeys);
+        $this->assertNotContains('paint', $materialKeys);
+        $this->assertNotContains('stain', $materialKeys);
+    }
+
     private function sizeKey(float $a, float $b): string
     {
         $lo = round(min($a, $b), 2);

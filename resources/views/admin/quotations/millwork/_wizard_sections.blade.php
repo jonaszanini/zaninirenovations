@@ -15,6 +15,11 @@
       return is_array($catalog[$slot] ?? null) ? $catalog[$slot] : [];
   };
   $needsCabinetHardware = false;
+  $needsBack = false;
+  $needsEdgeBanding = false;
+  $needsPaint = false;
+  $needsStain = false;
+
   foreach ($pieces as $pieceRow) {
       if (! is_array($pieceRow)) {
           continue;
@@ -22,11 +27,21 @@
       $pieceType = MillworkPartBuilder::normalizeType((string) ($pieceRow['type'] ?? 'shelf'));
       if ($pieceType === 'cabinet' || $pieceType === 'cabinet_door') {
           $needsCabinetHardware = true;
-          break;
       }
       if ($pieceType === 'bench' && (($pieceRow['below'] ?? '') === 'drawers')) {
           $needsCabinetHardware = true;
-          break;
+      }
+      if (in_array($pieceType, ['floating_shelf', 'kallax', 'cabinet', 'bench'], true) && ! empty($pieceRow['include_back'])) {
+          $needsBack = true;
+      }
+      if (array_key_exists('edge_banding', $pieceRow) ? ! empty($pieceRow['edge_banding']) : true) {
+          $needsEdgeBanding = true;
+      }
+      $finish = (string) ($pieceRow['finish'] ?? 'none');
+      if ($finish === 'paint') {
+          $needsPaint = true;
+      } elseif ($finish === 'stain') {
+          $needsStain = true;
       }
   }
 @endphp
@@ -67,7 +82,7 @@
           @endforeach
         </select>
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-mw-mat="back" @if (! $needsBack) hidden @endif>
         <label for="mw-back">Back / 1/4" sheet</label>
         <select class="admin-input mw-preview" id="mw-back" name="back_sheet_id">
           @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
@@ -75,7 +90,7 @@
           @endforeach
         </select>
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-mw-mat="edge-banding" @if (! $needsEdgeBanding) hidden @endif>
         <label for="mw-eb">Edge banding</label>
         <select class="admin-input mw-preview" id="mw-eb" name="edge_banding_id">
           @foreach ($opt(MillworkSettings::SLOT_EDGE_BANDING) as $row)
@@ -98,7 +113,7 @@
           @endif
         </p>
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-mw-mat="paint" @if (! $needsPaint) hidden @endif>
         <label for="mw-paint">Paint (quart / half gallon)</label>
         <select class="admin-input mw-preview" id="mw-paint" name="paint_id">
           @foreach ($opt(MillworkSettings::SLOT_PAINTS) as $row)
@@ -106,7 +121,7 @@
           @endforeach
         </select>
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-mw-mat="stain" @if (! $needsStain) hidden @endif>
         <label for="mw-stain">Stain (237 ml / 946 ml)</label>
         <select class="admin-input mw-preview" id="mw-stain" name="stain_id">
           @foreach ($opt(MillworkSettings::SLOT_STAINS) as $row)
