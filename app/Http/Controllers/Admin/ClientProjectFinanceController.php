@@ -8,6 +8,7 @@ use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInstallment;
+use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectReturn;
 use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
@@ -95,7 +96,9 @@ class ClientProjectFinanceController extends Controller
             }
         }
 
-        DB::transaction(function () use ($client_project, $total, $plan, $percentages) {
+        $invoiceSync = ['updated' => 0, 'deleted' => 0];
+
+        DB::transaction(function () use ($client_project, $total, $plan, $percentages, &$invoiceSync) {
             $client_project->total_amount = $total;
             $client_project->payment_plan = $plan;
             $client_project->save();
@@ -133,9 +136,89 @@ class ClientProjectFinanceController extends Controller
                 $idsToDelete = $existing->slice($plan)->pluck('id')->all();
                 ClientProjectInstallment::whereIn('id', $idsToDelete)->delete();
             }
+
+            // Keep draft/sent (unpaid) installment invoices aligned with the
+            // new plan; paid invoices are never touched. Installments that
+            // never had an invoice yet simply pick up the new amounts when
+            // the admin creates them later.
+            $invoiceSync = $this->syncUnpaidInstallmentInvoices($client_project->fresh());
         });
 
-        return back()->with('success', 'Payment plan saved.');
+        $success = 'Payment plan saved.';
+        if ($invoiceSync['deleted'] > 0 || $invoiceSync['updated'] > 0) {
+            $parts = [];
+            if ($invoiceSync['updated'] > 0) {
+                $parts[] = $invoiceSync['updated'].' unpaid invoice(s) updated';
+            }
+            if ($invoiceSync['deleted'] > 0) {
+                $parts[] = $invoiceSync['deleted'].' orphan unpaid invoice(s) removed';
+            }
+            $success .= ' '.implode('; ', $parts).'.';
+        }
+
+        return back()->with('success', $success);
+    }
+
+    /**
+     * Align unpaid installment-linked invoices with the current payment plan.
+     *
+     * - Paid invoices are never modified.
+     * - Unpaid invoices whose installment_number no longer exists are deleted.
+     * - Remaining unpaid invoices get fresh amounts / labels from the plan.
+     *
+     * @return array{updated: int, deleted: int}
+     */
+    private function syncUnpaidInstallmentInvoices(ClientProject $project): array
+    {
+        $plan = (int) ($project->payment_plan ?: 1);
+        $installments = $project->installments()->orderBy('sort_order')->get()->values();
+
+        $updated = 0;
+        $deleted = 0;
+
+        $invoices = $project->invoices()
+            ->whereNotNull('installment_number')
+            ->where('status', '!=', ClientProjectInvoice::STATUS_PAID)
+            ->get();
+
+        foreach ($invoices as $invoice) {
+            $n = (int) $invoice->installment_number;
+            $inst = ($n >= 1 && $n <= $installments->count())
+                ? $installments->get($n - 1)
+                : null;
+
+            if ($inst === null) {
+                $invoice->delete();
+                $deleted++;
+                continue;
+            }
+
+            $description = ClientProjectInvoice::installmentDescriptionFor($plan, $n)
+                ?: (string) $inst->label;
+            $subtotal = round((float) $inst->amount, 2);
+            $hst = $invoice->isHstExempt()
+                ? 0.0
+                : round((float) $inst->effectiveHst(), 2);
+
+            $invoice->installment_description = $description;
+            $invoice->items = [[
+                'description' => $description !== '' ? $description : 'Installment '.$n,
+                'amount' => $subtotal,
+            ]];
+            $invoice->subtotal = $subtotal;
+            $invoice->hst = $hst;
+            $invoice->total = round($subtotal + $hst, 2);
+
+            if (filled($invoice->invoice_pdf_path)) {
+                Storage::disk('local')->delete($invoice->invoice_pdf_path);
+                $invoice->invoice_pdf_path = null;
+            }
+
+            $invoice->save();
+            $updated++;
+        }
+
+        return ['updated' => $updated, 'deleted' => $deleted];
     }
 
     public function togglePaid(

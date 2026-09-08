@@ -973,7 +973,7 @@ class ClientProject extends Model
     /**
      * After the quotation changes, copy its pre-tax subtotal into `total_amount`,
      * seed the Financials payment plan from the quotation's installment split when
-     * the plan is still the unused default, and refresh unpaid installment amounts.
+     * no installment rows exist yet, and refresh unpaid installment amounts.
      */
     public function syncFixedContractTotalsFromQuotation(): bool
     {

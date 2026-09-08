@@ -9,12 +9,15 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Copy the accepted quotation's installment count and % split onto the
- * project's Financials payment plan when nothing has been paid yet.
+ * project's Financials payment plan when nothing has been paid yet and the
+ * plan has never been given installment rows.
  *
  * Quotations store {@see ClientProjectQuotation::$payment_installments} and
  * {@see ClientProjectQuotation::$payment_percentages}; the Financials tab
  * reads {@see ClientProject::$payment_plan} and {@see ClientProjectInstallment}
- * rows. Without this sync the tab stays on the DB default (pay in full).
+ * rows. Without this sync the tab stays on the DB default (pay in full) until
+ * the admin saves a plan. Once installment rows exist — including a saved
+ * pay-in-full plan — this service leaves the structure alone.
  */
 class SeedPaymentPlanFromQuotationService
 {
@@ -87,16 +90,16 @@ class SeedPaymentPlanFromQuotationService
     }
 
     /**
-     * Replace only the unused default (no rows, or pay-in-full). A saved
-     * 2/3/4-installment plan on Financials is left alone.
+     * Replace only when Financials has never been given installment rows.
+     *
+     * Do not treat payment_plan=1 as an unused default once rows exist — that
+     * is also a deliberately saved “Pay in full at the end” plan. Overwriting
+     * it on every project show/quotation sync made pay-in-full appear not to
+     * persist. Saved 2/3/4 plans were already left alone.
      */
     private function shouldReplaceExistingPlan(ClientProject $project): bool
     {
-        if ($project->installments()->count() === 0) {
-            return true;
-        }
-
-        return (int) ($project->payment_plan ?? 1) === 1;
+        return $project->installments()->count() === 0;
     }
 
     /**

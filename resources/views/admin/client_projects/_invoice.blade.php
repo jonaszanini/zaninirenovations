@@ -279,8 +279,9 @@
         HST is applied once at invoice time, sliced proportionally from the
         quotation's actual HST — so HST-exempt quotation lines (e.g. supplied
         material) never get re-taxed here.
-        Existing draft / sent invoices keep their stored values; create a new
-        invoice if you change the payment plan after one was sent.
+        Existing draft / sent invoices are updated when you save a new payment
+        plan on Financials (paid invoices stay as-is). Installments that do not
+        have an invoice yet will use the new amounts when you create them.
       </p>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">

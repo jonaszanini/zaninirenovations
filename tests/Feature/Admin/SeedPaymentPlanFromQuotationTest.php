@@ -128,6 +128,32 @@ class SeedPaymentPlanFromQuotationTest extends IntegrationTestCase
         $this->assertTrue((bool) $project->installments->first()->is_paid);
     }
 
+    public function test_does_not_overwrite_a_saved_pay_in_full_plan(): void
+    {
+        $project = $this->makeProject([
+            'status' => ClientProject::STATUS_PROPOSAL_ACCEPTED,
+            'payment_plan' => 1,
+            'total_amount' => 200,
+        ]);
+        $this->makeAcceptedQuotation($project, 2, [40, 60], 200.00);
+
+        $project->installments()->create([
+            'sort_order' => 0,
+            'label' => ClientProjectFinanceController::installmentLabel(1, 0),
+            'percentage' => 100,
+            'amount' => 200,
+            'is_paid' => false,
+        ]);
+
+        $this->actingAsAdmin();
+        $this->get(route('admin.client-projects.show', $project))->assertOk();
+
+        $project->refresh();
+        $this->assertSame(1, (int) $project->payment_plan);
+        $this->assertCount(1, $project->installments);
+        $this->assertEqualsWithDelta(100.0, (float) $project->installments->first()->percentage, 0.01);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */
