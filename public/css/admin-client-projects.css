@@ -391,27 +391,35 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   letter-spacing: 0.02em;
   color: var(--admin-heading);
 }
-a.cp-header-client {
-  text-decoration: none;
+a.admin-client-link.cp-header-client,
+a.admin-client-link.cp-header-client:link,
+a.admin-client-link.cp-header-client:visited {
+  color: var(--admin-heading);
 }
-a.cp-header-client:hover,
-a.cp-header-client:focus-visible {
-  color: var(--admin-primary, #024768);
+a.admin-client-link.cp-header-client:hover,
+a.admin-client-link.cp-header-client:focus-visible {
+  color: var(--admin-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-a.cp-party-name__link {
+a.admin-client-link.cp-party-name__link,
+a.admin-client-link.cp-party-name__link:link,
+a.admin-client-link.cp-party-name__link:visited {
   color: inherit;
   font-weight: inherit;
-  text-decoration: none;
 }
-a.cp-header-detail__value[href*="/admin/clients/"] {
-  text-decoration: none;
+a.admin-client-link.cp-party-name__link:hover,
+a.admin-client-link.cp-party-name__link:focus-visible {
+  color: var(--admin-primary);
 }
-a.cp-header-detail__value[href*="/admin/clients/"]:hover,
-a.cp-header-detail__value[href*="/admin/clients/"]:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 2px;
+a.admin-client-link.cp-header-detail__value,
+a.admin-client-link.cp-header-detail__value:link,
+a.admin-client-link.cp-header-detail__value:visited {
+  color: var(--admin-heading);
+}
+a.admin-client-link.cp-header-detail__value:hover,
+a.admin-client-link.cp-header-detail__value:focus-visible {
+  color: var(--admin-primary);
 }
 .cp-header-snapshot {
   margin: 0;

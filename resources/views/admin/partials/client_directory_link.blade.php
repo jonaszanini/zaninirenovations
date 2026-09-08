@@ -42,15 +42,16 @@
   }
 
   $labelText = trim((string) ($label ?? ''));
+  $linkClass = trim('admin-client-link'.($class !== '' ? ' '.$class : ''));
 @endphp
 @if ($labelText === '')
   <span @if ($class !== '') class="{{ $class }}" @endif>{{ $empty }}</span>
 @elseif ($clientId)
   <a href="{{ route('admin.clients.edit', $clientId) }}"
-     @if ($class !== '') class="{{ $class }}" @endif
+     class="{{ $linkClass }}"
      title="{{ $title }}">{{ $labelText }}</a>
 @elseif ($fallbackMailto && str_contains($labelText, '@'))
-  <a href="mailto:{{ $labelText }}" @if ($class !== '') class="{{ $class }}" @endif>{{ $labelText }}</a>
+  <a href="mailto:{{ $labelText }}" class="{{ $linkClass }}">{{ $labelText }}</a>
 @else
   <span @if ($class !== '') class="{{ $class }}" @endif>{{ $labelText }}</span>
 @endif

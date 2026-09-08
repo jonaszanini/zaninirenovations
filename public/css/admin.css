@@ -1212,6 +1212,29 @@ textarea.is-invalid:focus {
   border-radius: 3px;
 }
 
+/* Client directory links (name/email → Clients edit). Same brand color for
+   :link and :visited so browsers never paint default blue/purple. */
+a.admin-client-link,
+a.admin-client-link:link,
+a.admin-client-link:visited {
+  color: var(--admin-primary);
+  text-decoration: none;
+}
+a.admin-client-link:hover,
+a.admin-client-link:focus-visible {
+  color: var(--admin-primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+a.admin-client-link:active {
+  color: var(--admin-primary-hover);
+}
+a.admin-client-link:focus-visible {
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
 /* -------------------------------------------------------------------------
    Admin checkbox — use for every checkbox in the admin UI.
    Markup: label.admin-checkbox > input.admin-checkbox__input + span.admin-checkbox__mark + span.admin-checkbox__text
