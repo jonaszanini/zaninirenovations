@@ -148,6 +148,7 @@
   <div data-mw-show="shelf floating_shelf cabinet_door">
     <h4 class="br-review-heading">Size sets</h4>
     <p class="admin-form-help">Add as many size groups as you need (for example 2 of 1×8 ft and 3 of 1×4 ft).</p>
+    <p class="admin-form-help" data-mw-show="floating_shelf">Open-back box: top, bottom, front, and left/right ends. The back stays open so the shelf can slide onto wall rods. Thickness is the outer box height.</p>
     <div data-mw-set-list>
       @foreach ($sets as $si => $set)
         @include('admin.quotations.millwork._set_row', ['pi' => $pi, 'si' => $si, 'set' => is_array($set) ? $set : [], 'unit' => $unit])

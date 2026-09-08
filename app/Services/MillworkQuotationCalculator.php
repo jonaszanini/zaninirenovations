@@ -64,7 +64,7 @@ class MillworkQuotationCalculator
             'edge_banding' => true,
             'finish' => 'none',
             'fastener' => 'screws',
-            'include_back' => true,
+            'include_back' => $type !== 'floating_shelf',
             'include_doors' => true,
             'include_toe_kick' => true,
             'left_side' => 'panel',

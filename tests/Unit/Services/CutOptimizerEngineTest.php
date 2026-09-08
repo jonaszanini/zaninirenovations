@@ -53,6 +53,43 @@ class CutOptimizerEngineTest extends TestCase
         $this->assertEqualsWithDelta(23.96, $part->cuttingLength, 0.0001);
     }
 
+    public function test_full_length_rip_uses_factory_edge_despite_trim(): void
+    {
+        $sheet = new GuillotineSheet('s', 48, 96, 0.125, 0.125, 0.125, 0.125, 0.125, 2.0, '4×8');
+        $part = new Part('p', 'Top', 12, 96, 1, GrainDirection::LENGTHWISE);
+
+        $this->assertTrue($sheet->insert($part, SplitHeuristic::VERTICAL_FIRST));
+        $this->assertCount(1, $sheet->placedParts);
+        $this->assertEqualsWithDelta(12.0, $sheet->placedParts[0]->width, 0.01);
+        $this->assertEqualsWithDelta(96.0, $sheet->placedParts[0]->height, 0.01);
+    }
+
+    public function test_optimize_does_not_drop_full_length_parts_onto_two_by_four(): void
+    {
+        $engine = new CutOptimizerEngine();
+        $parts = [
+            new Part('top', 'Top', 12, 96, 6, GrainDirection::LENGTHWISE),
+            new Part('front', 'Front', 3, 96, 3, GrainDirection::LENGTHWISE),
+            new Part('end', 'End', 3, 12, 6, GrainDirection::ANY),
+        ];
+        $sheets = $engine->optimize($parts, [
+            new StockOption('full', '4×8', 48, 96, 72),
+            new StockOption('half', '4×4', 48, 48, 42),
+            new StockOption('qtr', '2×4', 24, 48, 24),
+        ], 0.125, 0.125, 2);
+
+        $placed = 0;
+        $usesFourByEight = false;
+        foreach ($sheets as $sheet) {
+            $placed += count($sheet->placedParts);
+            if (abs($sheet->width - 48) < 0.2 && abs($sheet->length - 96) < 0.2) {
+                $usesFourByEight = true;
+            }
+        }
+        $this->assertSame(15, $placed);
+        $this->assertTrue($usesFourByEight);
+    }
+
     public function test_prefers_smaller_sheet_when_parts_fit(): void
     {
         $engine = new CutOptimizerEngine();

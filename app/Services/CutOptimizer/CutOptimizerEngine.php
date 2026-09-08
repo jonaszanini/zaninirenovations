@@ -258,20 +258,20 @@ class CutOptimizerEngine
      */
     private function allPartsFitStock(array $parts, StockOption $opt, float $kerf, float $trim): bool
     {
-        $usableW = $opt->width - (2 * $trim);
-        $usableL = $opt->length - (2 * $trim);
+        unset($kerf, $trim);
+
         $area = 0.0;
         foreach ($parts as $part) {
             $w = $part->cuttingWidth;
             $h = $part->cuttingLength;
-            $fits = ($w <= $usableW + GuillotineSheet::EPS && $h <= $usableL + GuillotineSheet::EPS)
-                || ($part->grain === GrainDirection::ANY && $h <= $usableW + GuillotineSheet::EPS && $w <= $usableL + GuillotineSheet::EPS);
+            $fits = ($w <= $opt->width + GuillotineSheet::EPS && $h <= $opt->length + GuillotineSheet::EPS)
+                || ($part->grain === GrainDirection::ANY && $h <= $opt->width + GuillotineSheet::EPS && $w <= $opt->length + GuillotineSheet::EPS);
             if (! $fits) {
                 return false;
             }
             $area += $w * $h;
         }
 
-        return $area <= ($usableW * $usableL) + GuillotineSheet::EPS;
+        return $area <= ($opt->width * $opt->length) + GuillotineSheet::EPS;
     }
 }

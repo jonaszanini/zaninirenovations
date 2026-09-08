@@ -26,6 +26,9 @@ class QuotationWorkDescriptionContextBuilder
             'shed' => $this->shed($context),
             'basement' => $this->basement($context),
             'millwork' => $this->millwork($context),
+            'stairs' => $this->stairs($context),
+            'flooring' => $this->flooring($context),
+            'tile' => $this->tile($context),
             default => $this->generic($type, $context),
         };
     }
@@ -161,8 +164,8 @@ class QuotationWorkDescriptionContextBuilder
         $lines = ['Quotation type: Low floating deck'];
 
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
-        $this->appendLine($lines, 'Width', isset($c['width_ft']) ? $c['width_ft']." ft" : null);
-        $this->appendLine($lines, 'Length', isset($c['length_ft']) ? $c['length_ft']." ft" : null);
+        $this->appendLine($lines, 'Width', isset($c['width_ft']) ? $c['width_ft'].' ft' : null);
+        $this->appendLine($lines, 'Length', isset($c['length_ft']) ? $c['length_ft'].' ft' : null);
         $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) ? $c['joist_spacing_in'].' in (auto, max 15 in.)' : null);
 
         $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
@@ -180,15 +183,32 @@ class QuotationWorkDescriptionContextBuilder
         $lines = ['Quotation type: Paving stones / hardscape'];
 
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
-        $this->appendLine($lines, 'Project area', $c['total_area_sq_ft'] ?? null);
-        $this->appendLine($lines, 'Stone type', $c['stone_type'] ?? null);
-        $this->appendLine($lines, 'Waste factor', $c['waste_factor'] ?? null);
-        $this->appendLine($lines, 'Excavation depth', $c['excavation_depth_in'] ?? null);
-        $this->appendLine($lines, 'Profit margin', $c['profit_margin'] ?? null);
-        $this->appendLine($lines, 'Mini skid steer rental days', $c['mini_skid_days'] ?? null);
-        $this->appendLine($lines, 'Plate compactor rental days', $c['plate_compactor_days'] ?? null);
-        $this->appendLine($lines, 'Helper hourly rate', $c['helper_hourly_rate'] ?? null);
-        $this->appendLine($lines, 'Owner hourly rate', $c['owner_hourly_rate'] ?? null);
+
+        $area = $c['total_area_sq_ft'] ?? null;
+        if ($area !== null && $area !== '') {
+            $areaStr = is_numeric($area) ? $area.' sq ft' : (string) $area;
+            $this->appendLine($lines, 'Project area', $areaStr);
+        }
+
+        $stone = $c['stone_types'] ?? ($c['stone_type'] ?? null);
+        $this->appendLine($lines, 'Stone type(s)', $stone);
+
+        if (! empty($c['excavation_depth_in'])) {
+            $depthStr = is_numeric($c['excavation_depth_in']) ? $c['excavation_depth_in'].' in' : (string) $c['excavation_depth_in'];
+            $this->appendLine($lines, 'Excavation depth', $depthStr);
+        }
+
+        if (! empty($c['waste_factor'])) {
+            $wasteStr = is_numeric($c['waste_factor']) ? $c['waste_factor'].'%' : (string) $c['waste_factor'];
+            $this->appendLine($lines, 'Waste factor', $wasteStr);
+        }
+
+        if ((float) ($c['mini_skid_days'] ?? 0) > 0) {
+            $this->appendLine($lines, 'Mini skid steer rental days', $c['mini_skid_days']);
+        }
+        if ((float) ($c['plate_compactor_days'] ?? 0) > 0) {
+            $this->appendLine($lines, 'Plate compactor rental days', $c['plate_compactor_days']);
+        }
 
         $this->appendBlock($lines, 'Stone details', $c['stone_meta'] ?? null);
         $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
@@ -288,27 +308,111 @@ class QuotationWorkDescriptionContextBuilder
         $lines = ['Quotation type: Interior trimming'];
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
 
-        $enabled = $c['enabled_families'] ?? [];
-        if (is_array($enabled) && $enabled !== []) {
-            $labels = [];
-            foreach ($enabled as $key) {
-                $label = TrimmingQuotationCalculator::FAMILIES[(string) $key] ?? null;
-                if (is_string($label) && $label !== '') {
-                    $labels[] = $label;
-                }
-            }
-            if ($labels !== []) {
-                $lines[] = 'Families: '.implode(', ', $labels);
+        $enabled = is_array($c['enabled_families'] ?? null) ? $c['enabled_families'] : [];
+        $allFamilies = TrimmingQuotationCalculator::FAMILIES;
+        $includedFamilies = [];
+        $excludedFamilies = [];
+        foreach ($allFamilies as $key => $label) {
+            if (in_array((string) $key, $enabled, true)) {
+                $includedFamilies[] = $label;
+            } else {
+                $excludedFamilies[] = $label;
             }
         }
 
-        $this->appendLine($lines, 'Door openings', $c['door_qty'] ?? null);
-        $this->appendLine($lines, 'Window openings', $c['window_qty'] ?? null);
-        $this->appendLine($lines, 'Floor-to-wall linear feet', $c['floor_lf'] ?? null);
-        $this->appendLine($lines, 'Crown linear feet', $c['crown_lf'] ?? null);
-        $this->appendLine($lines, 'Cove linear feet', $c['cove_lf'] ?? null);
-        $this->appendLine($lines, 'Chair rail linear feet', $c['chair_rail_lf'] ?? null);
-        $this->appendLine($lines, 'Wainscot wall linear feet', $c['wainscot_wall_lf'] ?? null);
+        if ($includedFamilies !== []) {
+            $lines[] = 'Included trim families: '.implode(', ', $includedFamilies);
+        }
+        if ($excludedFamilies !== []) {
+            $lines[] = 'Trim families NOT included in this quote: '.implode(', ', $excludedFamilies).'. Strictly DO NOT describe or assume any unquoted trim families.';
+        }
+
+        if (in_array('doors_windows', $enabled, true)) {
+            $doorQty = (int) ($c['door_qty'] ?? 0);
+            $windowQty = (int) ($c['window_qty'] ?? 0);
+            if ($doorQty > 0) {
+                $lines[] = 'Door openings: '.$doorQty;
+            }
+            if ($windowQty > 0) {
+                $lines[] = 'Window openings: '.$windowQty;
+            }
+            if (! empty($c['include_casing'])) {
+                $lines[] = 'Casing: included';
+            }
+            if (! empty($c['include_architrave'])) {
+                $lines[] = 'Architrave: included';
+            }
+            if (! empty($c['include_plinth'])) {
+                $lines[] = 'Plinth blocks: included';
+            }
+            if (! empty($c['include_rosettes'])) {
+                $lines[] = 'Rosettes: included';
+            }
+            if (! empty($c['include_stool_apron'])) {
+                $lines[] = 'Window stool & apron: included';
+            }
+            if (! empty($c['include_jamb_extensions'])) {
+                $lines[] = 'Jamb extensions: included';
+            }
+            if (! empty($c['include_interior_doors'])) {
+                $lines[] = 'Hang interior doors: included';
+            }
+        }
+
+        if (in_array('floor_wall', $enabled, true)) {
+            $floorLf = (float) ($c['floor_lf'] ?? 0);
+            if ($floorLf > 0) {
+                $lines[] = 'Floor perimeter run: '.$floorLf.' lf';
+            }
+            if (! empty($c['include_baseboard'])) {
+                $baseLf = (float) ($c['baseboard_lf'] ?? $floorLf);
+                $lines[] = 'Baseboards: included'.($baseLf > 0 ? ' ('.$baseLf.' lf)' : '');
+            }
+            if (! empty($c['include_base_cap'])) {
+                $capLf = (float) ($c['base_cap_lf'] ?? $floorLf);
+                $lines[] = 'Base cap: included'.($capLf > 0 ? ' ('.$capLf.' lf)' : '');
+            }
+            if (! empty($c['include_shoe'])) {
+                $shoeLf = (float) ($c['shoe_lf'] ?? $floorLf);
+                $lines[] = 'Shoe moulding: included'.($shoeLf > 0 ? ' ('.$shoeLf.' lf)' : '');
+            }
+            if (! empty($c['include_quarter_round'])) {
+                $qrLf = (float) ($c['quarter_round_lf'] ?? $floorLf);
+                $lines[] = 'Quarter round: included'.($qrLf > 0 ? ' ('.$qrLf.' lf)' : '');
+            }
+        }
+
+        if (in_array('ceiling', $enabled, true)) {
+            if (! empty($c['include_crown'])) {
+                $crownLf = (float) ($c['crown_lf'] ?? 0);
+                $lines[] = 'Crown moulding: included'.($crownLf > 0 ? ' ('.$crownLf.' lf)' : '');
+            }
+            if (! empty($c['include_cove'])) {
+                $coveLf = (float) ($c['cove_lf'] ?? 0);
+                $lines[] = 'Cove moulding: included'.($coveLf > 0 ? ' ('.$coveLf.' lf)' : '');
+            }
+        }
+
+        if (in_array('wall_treatments', $enabled, true)) {
+            if (! empty($c['include_chair_rail'])) {
+                $chairRailLf = (float) ($c['chair_rail_lf'] ?? 0);
+                $lines[] = 'Chair rail: included'.($chairRailLf > 0 ? ' ('.$chairRailLf.' lf)' : '');
+            }
+            if (! empty($c['include_picture_rail'])) {
+                $picLf = (float) ($c['picture_rail_lf'] ?? 0);
+                $lines[] = 'Picture rail: included'.($picLf > 0 ? ' ('.$picLf.' lf)' : '');
+            }
+            if (! empty($c['include_box_moulding'])) {
+                $boxLf = (float) ($c['box_moulding_lf'] ?? 0);
+                $lines[] = 'Picture-frame / box moulding: included'.($boxLf > 0 ? ' ('.$boxLf.' lf)' : '');
+            }
+            if (! empty($c['include_wainscoting'])) {
+                $wainscotLf = (float) ($c['wainscot_wall_lf'] ?? 0);
+                $style = $c['wainscot_style'] ?? 'beadboard';
+                $lines[] = 'Wainscoting ('.$style.'): included'.($wainscotLf > 0 ? ' ('.$wainscotLf.' lf)' : '');
+            }
+        }
+
         $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
 
         return implode("\n", $lines);
@@ -394,6 +498,8 @@ class QuotationWorkDescriptionContextBuilder
             $lines[] = 'Client provides all materials: yes';
         }
 
+        $lines[] = 'Note: Only describe the shed components, sizes, and options explicitly listed above. Do not assume or invent unlisted features.';
+
         $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
         $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
 
@@ -407,41 +513,267 @@ class QuotationWorkDescriptionContextBuilder
     {
         $lines = ['Quotation type: Basement renovation'];
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
-        $this->appendLine($lines, 'Scope', $c['scope_preset'] ?? null);
-        $this->appendLine($lines, 'Area', isset($c['area_sqft']) && $c['area_sqft'] !== '' ? $c['area_sqft'].' sq ft' : null);
-        $this->appendLine($lines, 'Ceiling height', isset($c['ceiling_height_ft']) && $c['ceiling_height_ft'] !== '' ? $c['ceiling_height_ft'].' ft' : null);
-        $this->appendLine($lines, 'Room count', $c['room_count'] ?? null);
-        $this->appendLine($lines, 'Flooring', $c['flooring_type'] ?? null);
-        $this->appendLine($lines, 'Ceiling', $c['ceiling_type'] ?? null);
-        if (! empty($c['include_bathroom'])) {
-            $lines[] = 'Bathroom: yes';
+
+        $enabled = BasementQuotationCalculator::enabledSections($c);
+        $area = round(max(0, (float) ($c['area_sqft'] ?? 0)), 2);
+        $height = isset($c['ceiling_height_ft']) ? round(max(0, (float) $c['ceiling_height_ft']), 2) : 0;
+
+        if (isset($c['scope_preset'])) {
+            $this->appendLine($lines, 'Scope', BasementQuotationCalculator::finishLabel($c));
         }
-        if (! empty($c['include_demolition'])) {
-            $demoParts = [];
-            if (! empty($c['demo_include_flooring'])) {
-                $demoParts[] = 'flooring';
+        if ($area > 0) {
+            $this->appendLine($lines, 'Area', number_format($area, 2).' sq ft');
+        }
+        if ($height > 0) {
+            $this->appendLine($lines, 'Ceiling height', $height.' ft');
+        }
+
+        // Explicitly contrast included trades vs excluded trades when custom sections or preset are set
+        $hasCustomSections = (isset($c['enabled_sections']) && is_array($c['enabled_sections'])) || isset($c['scope_preset']);
+        if ($hasCustomSections) {
+            $allTradeKeys = array_keys(BasementQuotationCalculator::tradeSections());
+            $includedTrades = [];
+            $excludedTrades = [];
+            foreach ($allTradeKeys as $tradeKey) {
+                $label = BasementQuotationCalculator::SECTIONS[$tradeKey] ?? $tradeKey;
+                if (in_array($tradeKey, $enabled, true)) {
+                    $includedTrades[] = $label;
+                } else {
+                    $excludedTrades[] = $label;
+                }
             }
+
+            if ($includedTrades !== []) {
+                $lines[] = 'Included trades in this quotation: '.implode(', ', $includedTrades);
+            }
+            if ($excludedTrades !== []) {
+                $lines[] = 'Trades NOT included in this quotation: '.implode(', ', $excludedTrades).'. Strictly DO NOT describe or assume any of these excluded trades.';
+            }
+        }
+
+        // Demolition: only if demolition trade is enabled and items are checked
+        if (in_array('demolition', $enabled, true) && ! empty($c['include_demolition'])) {
+            $demoParts = [];
             if (! empty($c['demo_include_studs'])) {
-                $demoParts[] = 'studs';
+                $studLf = (float) ($c['demo_studs_lf'] ?? 0);
+                $demoParts[] = 'studs'.($studLf > 0 ? ' ('.$studLf.' lf)' : '');
             }
             if (! empty($c['demo_include_drywall'])) {
-                $demoParts[] = 'drywall';
+                $dwSf = (float) ($c['demo_drywall_sf'] ?? 0);
+                $demoParts[] = 'drywall'.($dwSf > 0 ? ' ('.$dwSf.' sq ft)' : '');
+            }
+            if (! empty($c['demo_include_flooring'])) {
+                $flSf = (float) ($c['demo_flooring_sf'] ?? 0);
+                $demoParts[] = 'flooring'.($flSf > 0 ? ' ('.$flSf.' sq ft)' : '');
             }
             if (! empty($c['demo_include_baseboard'])) {
-                $demoParts[] = 'baseboard';
+                $bbLf = (float) ($c['demo_baseboard_lf'] ?? 0);
+                $demoParts[] = 'baseboard'.($bbLf > 0 ? ' ('.$bbLf.' lf)' : '');
             }
-            $lines[] = 'Demolition: '.($demoParts !== [] ? implode(', ', $demoParts) : 'yes');
+            $demoSummary = [];
+            if (! empty($c['demo_include_flooring'])) {
+                $demoSummary[] = 'flooring';
+            }
+            if (! empty($c['demo_include_studs'])) {
+                $demoSummary[] = 'studs';
+            }
+            if (! empty($c['demo_include_drywall'])) {
+                $demoSummary[] = 'drywall';
+            }
+            if (! empty($c['demo_include_baseboard'])) {
+                $demoSummary[] = 'baseboard';
+            }
+            $lines[] = 'Demolition: '.($demoSummary !== [] ? implode(', ', $demoSummary) : 'yes');
+            if ($demoParts !== []) {
+                $lines[] = 'Demolition details: '.implode(', ', $demoParts);
+            }
         }
+
+        // Framing: only if framing trade is enabled
+        if (in_array('framing', $enabled, true)) {
+            $roomCount = (int) ($c['room_count'] ?? 1);
+            if ($roomCount > 1) {
+                $this->appendLine($lines, 'Room count', $roomCount);
+            }
+            if ((float) ($c['partition_lf'] ?? 0) > 0) {
+                $lines[] = 'Partition framing: '.(float) $c['partition_lf'].' lf';
+            }
+        }
+
+        // Drywall: only if drywall trade is enabled
+        if (in_array('drywall', $enabled, true) && ($area > 0 || isset($c['finish_level']))) {
+            $finishLevel = (int) ($c['finish_level'] ?? 4);
+            $levelLabel = BasementQuotationCalculator::FINISH_LEVELS[$finishLevel] ?? 'Level '.$finishLevel;
+            $lines[] = 'Drywall finish level: '.$levelLabel;
+        }
+
+        // Flooring: only if flooring trade is enabled and specified
+        if (in_array('flooring', $enabled, true) && ! empty($c['flooring_type'])) {
+            $this->appendLine($lines, 'Flooring', $c['flooring_type']);
+        }
+
+        // Ceiling: only if ceiling trade is enabled and specified
+        if (in_array('ceiling', $enabled, true) && ! empty($c['ceiling_type'])) {
+            $this->appendLine($lines, 'Ceiling', $c['ceiling_type']);
+        }
+
+        // Doors & Trim: only if doors_trim trade is enabled
+        if (in_array('doors_trim', $enabled, true)) {
+            $doorQty = (int) ($c['door_qty'] ?? 0);
+            if ($doorQty > 0) {
+                $lines[] = 'Interior doors: '.$doorQty;
+            }
+            $casing = (int) ($c['casing_openings'] ?? 0);
+            if ($casing > 0) {
+                $lines[] = 'Door casing openings: '.$casing;
+            }
+            $baseLf = (float) ($c['baseboard_lf'] ?? 0);
+            if ($baseLf > 0) {
+                $lines[] = 'Baseboard: '.$baseLf.' lf';
+            }
+        }
+
+        // Insulation: only if insulation trade is enabled
+        if (in_array('insulation', $enabled, true)) {
+            $insParts = [];
+            if (! empty($c['insulate_walls'])) {
+                $insParts[] = 'wall insulation + vapor barrier';
+            }
+            if (! empty($c['insulate_ceiling'])) {
+                $insParts[] = 'ceiling insulation';
+            }
+            if (! empty($c['soundproof_interior'])) {
+                $insParts[] = 'interior soundproofing';
+            }
+            if ($insParts !== []) {
+                $lines[] = 'Insulation: '.implode(', ', $insParts);
+            }
+        }
+
+        // Electrical: only if electrical trade is enabled
+        if (in_array('electrical', $enabled, true)) {
+            $elec = [];
+            if ((int) ($c['outlet_qty'] ?? 0) > 0) {
+                $elec[] = (int) $c['outlet_qty'].' outlets';
+            }
+            if ((int) ($c['switch_qty'] ?? 0) > 0) {
+                $elec[] = (int) $c['switch_qty'].' switches';
+            }
+            if ((int) ($c['potlight_qty'] ?? 0) > 0) {
+                $elec[] = (int) $c['potlight_qty'].' potlights';
+            }
+            if ((int) ($c['detector_qty'] ?? 0) > 0) {
+                $elec[] = (int) $c['detector_qty'].' smoke/CO detectors';
+            }
+            if ($elec !== []) {
+                $lines[] = 'Electrical scope: '.implode(', ', $elec);
+            }
+        }
+
+        // Bathroom: only if bathroom trade is enabled
+        if (in_array('bathroom', $enabled, true)) {
+            $lines[] = 'Bathroom: yes';
+        }
+
+        // Painting: only if painting trade is enabled
+        if (in_array('painting', $enabled, true)) {
+            $paintParts = [];
+            if (! empty($c['paint_walls'])) {
+                $paintParts[] = 'walls';
+            }
+            if (! empty($c['paint_ceiling'])) {
+                $paintParts[] = 'ceiling';
+            }
+            if (! empty($c['paint_doors'])) {
+                $paintParts[] = 'doors & trim';
+            }
+            if ($paintParts !== []) {
+                $lines[] = 'Painting scope: '.implode(', ', $paintParts);
+            }
+        }
+
+        // Finishing: only if finishing trade is enabled
+        if (in_array('finishing', $enabled, true)) {
+            $finParts = [];
+            if (! empty($c['include_cleaning'])) {
+                $finParts[] = 'final cleaning';
+            }
+            if (! empty($c['include_touchups'])) {
+                $finParts[] = 'touch-ups';
+            }
+            if ($finParts !== []) {
+                $lines[] = 'Final cleanup / details: '.implode(', ', $finParts);
+            }
+        }
+
+        // Calculate accurate labor tasks and materials from the calculator
+        $calculatedLabor = false;
+        $calculatedMats = false;
+        if ($area > 0 || (float) ($c['partition_lf'] ?? 0) > 0) {
+            try {
+                $calc = (new BasementQuotationCalculator)->calculate($c);
+
+                $laborLines = [];
+                foreach ($calc['labor'] ?? [] as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $lbl = trim((string) ($row['label'] ?? ''));
+                    $det = trim((string) ($row['detail'] ?? ''));
+                    if ($lbl !== '') {
+                        $laborLines[] = '  - '.$lbl.($det !== '' ? ' ('.$det.')' : '');
+                    }
+                }
+                if ($laborLines !== []) {
+                    $lines[] = 'Quoted labor tasks:';
+                    $lines = array_merge($lines, $laborLines);
+                    $calculatedLabor = true;
+                }
+
+                $matLines = [];
+                foreach ($calc['materials'] ?? [] as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $lbl = trim((string) ($row['label'] ?? ''));
+                    $qty = (float) ($row['qty'] ?? 0);
+                    $unit = trim((string) ($row['unit'] ?? ''));
+                    $provided = ! empty($row['client_provided']) ? ' [client provided]' : '';
+                    if ($lbl !== '' && $qty > 0) {
+                        $qtyStr = rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.');
+                        $matLines[] = '  - '.$lbl.' ('.$qtyStr.($unit !== '' ? ' '.$unit : '').')'.$provided;
+                    }
+                }
+                foreach ($calc['extra_materials'] ?? [] as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $lbl = trim((string) ($row['name'] ?? ($row['short_name'] ?? '')));
+                    $qty = (float) ($row['quantity'] ?? ($row['qty'] ?? 0));
+                    $unit = trim((string) ($row['unit'] ?? ''));
+                    if ($lbl !== '' && $qty > 0) {
+                        $qtyStr = rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.');
+                        $matLines[] = '  - '.$lbl.' ('.$qtyStr.($unit !== '' ? ' '.$unit : '').')';
+                    }
+                }
+                if ($matLines !== []) {
+                    $lines[] = 'Quoted materials:';
+                    $lines = array_merge($lines, $matLines);
+                    $calculatedMats = true;
+                }
+            } catch (\Throwable $e) {
+                // Fall back to submitted summary blocks if calculation fails
+            }
+        }
+
+        if (! $calculatedLabor) {
+            $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
+        }
+        if (! $calculatedMats) {
+            $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
+        }
+
         $this->appendBlock($lines, 'Site notes', $c['existing_notes'] ?? null);
-        $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
-        $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
-        $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
-        $this->flattenInto($lines, $c, '', [
-            'client_name', 'scope_preset', 'area_sqft', 'area_entry_mode', 'area_length_ft', 'area_width_ft',
-            'ceiling_height_ft', 'room_count', 'flooring_type', 'ceiling_type', 'include_bathroom',
-            'include_demolition', 'demo_include_flooring', 'demo_include_studs', 'demo_include_drywall',
-            'demo_include_baseboard', 'existing_notes', 'labor_summary', 'materials_summary', 'breakdown_summary',
-        ]);
 
         return implode("\n", $lines);
     }
@@ -453,16 +785,208 @@ class QuotationWorkDescriptionContextBuilder
     {
         $lines = ['Quotation type: Custom millwork'];
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
-        $this->appendLine($lines, 'Sheet goods', $c['sheet_id'] ?? null);
-        $this->appendLine($lines, 'Finish', $c['finish_label'] ?? null);
-        $this->appendBlock($lines, 'Pieces', $c['piece_summary'] ?? null);
-        $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
-        $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
+
+        try {
+            $calc = (new MillworkQuotationCalculator)->calculate($c);
+
+            $pieces = is_array($c['pieces'] ?? null) ? $c['pieces'] : [];
+            if ($pieces !== []) {
+                $lines[] = 'Pieces:';
+                foreach ($pieces as $idx => $p) {
+                    if (! is_array($p)) {
+                        continue;
+                    }
+                    $type = trim((string) ($p['piece_type'] ?? $p['type'] ?? 'shelf'));
+                    $type = str_replace('_', ' ', $type);
+                    $qty = max(1, (int) ($p['quantity'] ?? $p['qty'] ?? 1));
+                    $unit = ($p['unit'] ?? 'in') === 'ft' ? 'ft' : 'in';
+                    $dim = [];
+                    $w = $p['width_in'] ?? $p['width'] ?? null;
+                    if (! empty($w)) {
+                        $dim[] = 'W: '.$w.$unit;
+                    }
+                    $l = $p['length_ft'] ?? $p['length'] ?? null;
+                    if (! empty($l)) {
+                        $dim[] = 'L: '.$l.$unit;
+                    }
+                    $h = $p['height_in'] ?? $p['height'] ?? null;
+                    if (! empty($h)) {
+                        $dim[] = 'H: '.$h.$unit;
+                    }
+                    $d = $p['depth_in'] ?? $p['depth'] ?? null;
+                    if (! empty($d)) {
+                        $dim[] = 'D: '.$d.$unit;
+                    }
+                    $dimStr = $dim !== [] ? ' ('.implode(', ', $dim).')' : '';
+                    $lines[] = '  - Piece '.($idx + 1).': '.$qty.' × '.ucwords($type).$dimStr;
+                }
+            }
+
+            $sheetName = $calc['sheet']['name'] ?? $c['sheet_material_type'] ?? null;
+            if (! empty($sheetName)) {
+                $lines[] = 'Sheet material: '.$sheetName;
+            }
+            $edgeName = $calc['edge_banding']['name'] ?? $c['edge_banding_type'] ?? null;
+            if (! empty($edgeName)) {
+                $lines[] = 'Edge banding: '.$edgeName;
+            }
+            $finishName = $calc['finish']['name'] ?? $c['finish_type'] ?? null;
+            if (! empty($finishName)) {
+                $lines[] = 'Finish: '.$finishName;
+            }
+            $hasInstall = ! empty($c['include_install']) || ! empty($c['include_installation']);
+            $lines[] = 'Installation included: '.($hasInstall ? 'yes' : 'no');
+
+            $laborLines = [];
+            foreach ($calc['labor'] ?? [] as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $lbl = trim((string) ($row['label'] ?? ''));
+                $det = trim((string) ($row['detail'] ?? ''));
+                if ($lbl !== '') {
+                    $laborLines[] = '  - '.$lbl.($det !== '' ? ' ('.$det.')' : '');
+                }
+            }
+            if ($laborLines !== []) {
+                $lines[] = 'Quoted labor tasks:';
+                $lines = array_merge($lines, $laborLines);
+            }
+
+            $matLines = [];
+            foreach ($calc['materials'] ?? [] as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $lbl = trim((string) ($row['label'] ?? ''));
+                $qty = (float) ($row['qty'] ?? 0);
+                $unit = trim((string) ($row['unit'] ?? ''));
+                if ($lbl !== '' && $qty > 0) {
+                    $qtyStr = rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.');
+                    $matLines[] = '  - '.$lbl.' ('.$qtyStr.($unit !== '' ? ' '.$unit : '').')';
+                }
+            }
+            if ($matLines !== []) {
+                $lines[] = 'Quoted materials:';
+                $lines = array_merge($lines, $matLines);
+            }
+        } catch (\Throwable $e) {
+            $this->appendLine($lines, 'Sheet goods', $c['sheet_id'] ?? null);
+            $this->appendLine($lines, 'Finish', $c['finish_label'] ?? null);
+            $this->appendBlock($lines, 'Pieces', $c['piece_summary'] ?? null);
+            $this->appendBlock($lines, 'Labor scope', $c['labor_summary'] ?? null);
+            $this->appendBlock($lines, 'Materials', $c['materials_summary'] ?? null);
+        }
+
+        $this->appendBlock($lines, 'Site notes', $c['notes'] ?? ($c['existing_notes'] ?? null));
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function stairs(array $c): string
+    {
+        $lines = ['Quotation type: Stair refinishing'];
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+        $this->appendLine($lines, 'Total steps', $c['total_steps'] ?? null);
+        $this->appendLine($lines, 'Material / wood type', $c['material_type'] ?? null);
+        if (! empty($c['nosing_choice'])) {
+            $this->appendLine($lines, 'Nosing option', $c['nosing_choice']);
+        }
+        if (! empty($c['carpet_removal'])) {
+            $lines[] = 'Carpet removal: yes';
+        }
+        if (! empty($c['requires_stain'])) {
+            $lines[] = 'Staining: yes';
+        }
+        if (! empty($c['requires_clear_coat'])) {
+            $lines[] = 'Clear coat finish: yes';
+        }
         $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
-        $this->flattenInto($lines, $c, '', [
-            'client_name', 'sheet_id', 'finish_label', 'piece_summary',
-            'labor_summary', 'materials_summary', 'breakdown_summary',
-        ]);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function flooring(array $c): string
+    {
+        $lines = ['Quotation type: Flooring installation'];
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+
+        $sqft = $c['square_footage'] ?? null;
+        if ($sqft !== null && (float) $sqft > 0) {
+            $this->appendLine($lines, 'Square footage', $sqft.' sq ft');
+        }
+
+        $mat = trim((string) ($c['material_name'] ?? ($c['flooring_type'] ?? '')));
+        if ($mat !== '') {
+            $this->appendLine($lines, 'Flooring material', $mat);
+        }
+
+        if (! empty($c['remove_carpet'])) {
+            $lines[] = 'Carpet removal: yes';
+        }
+        if (! empty($c['rescrew_subfloor'])) {
+            $lines[] = 'Subfloor re-screwing / preparation: yes';
+        }
+        if (! empty($c['install_shoe_moulding'])) {
+            $shoeLf = (float) ($c['shoe_moulding_linear_ft'] ?? 0);
+            $lines[] = 'Install shoe moulding: yes'.($shoeLf > 0 ? ' ('.$shoeLf.' lf)' : '');
+        }
+        if (! empty($c['caulk_paint_shoe_moulding'])) {
+            $lines[] = 'Caulk and paint shoe moulding: yes';
+        }
+        if (! empty($c['closet_doors'])) {
+            $doors = (int) ($c['closet_door_qty'] ?? 0);
+            $lines[] = 'Closet doors: yes'.($doors > 0 ? ' ('.$doors.' door(s))' : '');
+        }
+
+        $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function tile(array $c): string
+    {
+        $lines = ['Quotation type: Tile installation'];
+        $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
+
+        $len = $c['length_ft'] ?? null;
+        $wid = $c['width_ft'] ?? null;
+        if ($len && $wid) {
+            $this->appendLine($lines, 'Area dimensions', $len.' ft × '.$wid.' ft');
+        }
+
+        if (! empty($c['include_tile_material'])) {
+            $this->appendLine($lines, 'Tile product / material', $c['tile_product_id'] ?? 'Contractor supplied');
+        } else {
+            $lines[] = 'Tile material: Client provided';
+        }
+
+        if (! empty($c['mortar_type_id'])) {
+            $this->appendLine($lines, 'Mortar type', $c['mortar_type_id']);
+        }
+        if (! empty($c['trowel_size'])) {
+            $this->appendLine($lines, 'Trowel size', $c['trowel_size']);
+        }
+        if (! empty($c['grout_type_id'])) {
+            $this->appendLine($lines, 'Grout type', $c['grout_type_id']);
+        }
+        if (! empty($c['include_demolition'])) {
+            $lines[] = 'Demolition: yes';
+        }
+        if (! empty($c['include_disposal_fee'])) {
+            $lines[] = 'Disposal fee: yes';
+        }
+
+        $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
 
         return implode("\n", $lines);
     }
@@ -473,15 +997,15 @@ class QuotationWorkDescriptionContextBuilder
     private function generic(string $type, array $c): string
     {
         $labels = [
-            'stairs' => 'Stair refinishing',
-            'flooring' => 'Flooring',
-            'tile' => 'Tile',
             'painting' => 'Residential interior painting',
             'fence' => 'Fence installation',
             'paving' => 'Paving stones / hardscape',
             'low_deck' => 'Low floating deck',
             'trimming' => 'Interior trimming',
             'millwork' => 'Custom millwork',
+            'stairs' => 'Stair refinishing',
+            'flooring' => 'Flooring installation',
+            'tile' => 'Tile installation',
         ];
         $lines = ['Quotation type: '.($labels[$type] ?? $type)];
         $this->flattenInto($lines, $c);

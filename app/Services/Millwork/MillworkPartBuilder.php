@@ -174,6 +174,9 @@ class MillworkPartBuilder
     }
 
     /**
+     * Open-back hollow box that slides onto wall rods: top, bottom, front, left, right.
+     * Outer thickness is the fascia/end height (not inner cavity height).
+     *
      * @param  array<string, mixed>  $piece
      * @return array<string, mixed>
      */
@@ -200,17 +203,18 @@ class MillworkPartBuilder
             }
             $unitCount += $qty;
             $n++;
-            $innerT = max(0.25, $thk - (2 * $mat));
             $prefix = 'FS'.$n;
             $labels[] = $qty.'× floating '.$this->fmt($len).'×'.$this->fmt($dep).'×'.$this->fmt($thk);
             $parts[] = $this->rect($prefix.'-top', $prefix.' top', $len, $dep, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
             $parts[] = $this->rect($prefix.'-bot', $prefix.' bottom', $len, $dep, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
-            $parts[] = $this->rect($prefix.'-end', $prefix.' end', $dep, $innerT, $qty * 2, GrainDirection::ANY, $band, $eb, 'all');
+            $parts[] = $this->rect($prefix.'-front', $prefix.' front', $len, $thk, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->rect($prefix.'-end', $prefix.' end', $dep, $thk, $qty * 2, GrainDirection::ANY, $band, $eb, 'all');
             if ($includeBack) {
-                $parts[] = $this->rect($prefix.'-back', $prefix.' back', $len, $innerT, $qty, GrainDirection::LENGTHWISE, false, 0, 'none');
+                $innerT = max(0.25, $thk - (2 * $mat));
+                $parts[] = $this->rect($prefix.'-back', $prefix.' back', $len, $innerT, $qty, GrainDirection::LENGTHWISE, false, 0, 'none', 'back');
             }
             if ($band) {
-                $edgeLf += $qty * (($len * 2) + ($dep * 2) + ($innerT * 4)) / 12.0;
+                $edgeLf += $qty * (($len * 3) + ($dep * 4) + ($thk * 4)) / 12.0;
             }
         }
 

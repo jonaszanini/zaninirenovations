@@ -53,18 +53,18 @@ class GuillotineSheet
         $targetL = $part->cuttingLength;
 
         foreach ($this->freeRectangles as $index => $free) {
-            $canFitNormal = $this->fits($targetW, $targetL, $free);
-            $canFitRotated = $this->fits($targetL, $targetW, $free);
+            $normalRect = $this->placementRect($free, $targetW, $targetL);
+            $rotatedRect = $this->placementRect($free, $targetL, $targetW);
 
             if ($part->grain === GrainDirection::LENGTHWISE) {
-                $canFitRotated = false;
+                $rotatedRect = null;
             } elseif ($part->grain === GrainDirection::CROSSWISE) {
-                $canFitNormal = false;
+                $normalRect = null;
             }
 
-            if ($canFitNormal) {
-                $leftoverW = abs($free->width - $targetW);
-                $leftoverL = abs($free->height - $targetL);
+            if ($normalRect !== null) {
+                $leftoverW = abs($normalRect->width - $targetW);
+                $leftoverL = abs($normalRect->height - $targetL);
                 $shortSide = min($leftoverW, $leftoverL);
                 $longSide = max($leftoverW, $leftoverL);
                 if ($shortSide < $bestShortSideFit - self::EPS
@@ -76,9 +76,9 @@ class GuillotineSheet
                 }
             }
 
-            if ($canFitRotated) {
-                $leftoverW = abs($free->width - $targetL);
-                $leftoverL = abs($free->height - $targetW);
+            if ($rotatedRect !== null) {
+                $leftoverW = abs($rotatedRect->width - $targetL);
+                $leftoverL = abs($rotatedRect->height - $targetW);
                 $shortSide = min($leftoverW, $leftoverL);
                 $longSide = max($leftoverW, $leftoverL);
                 if ($shortSide < $bestShortSideFit - self::EPS
@@ -95,11 +95,14 @@ class GuillotineSheet
             return false;
         }
 
-        $chosenRect = $this->freeRectangles[$bestIndex];
-        array_splice($this->freeRectangles, $bestIndex, 1);
-
+        $free = $this->freeRectangles[$bestIndex];
         $placedWidth = $bestRotated ? $targetL : $targetW;
         $placedLength = $bestRotated ? $targetW : $targetL;
+        $chosenRect = $this->placementRect($free, $placedWidth, $placedLength);
+        if ($chosenRect === null) {
+            return false;
+        }
+        array_splice($this->freeRectangles, $bestIndex, 1);
 
         $this->placedParts[] = new PlacedPart(
             $part,
@@ -145,9 +148,50 @@ class GuillotineSheet
         return round($len, 2);
     }
 
-    private function fits(float $w, float $h, Rectangle $free): bool
+    /**
+     * Free space after factory-edge trim, expanded into the trim bands when a
+     * part is as long/wide as the stock (full-length rips along the 8' edge).
+     */
+    private function placementRect(Rectangle $free, float $w, float $h): ?Rectangle
     {
-        return ($free->width - $w) >= -self::EPS && ($free->height - $h) >= -self::EPS;
+        $x = $free->x;
+        $y = $free->y;
+        $availW = $free->width;
+        $availH = $free->height;
+
+        if ($availW + self::EPS < $w) {
+            $growLeft = 0.0;
+            $growRight = 0.0;
+            if ($free->x <= $this->trimLeft + self::EPS) {
+                $growLeft = $free->x;
+            }
+            $freeRight = $free->x + $free->width;
+            if ($freeRight >= $this->width - $this->trimRight - self::EPS) {
+                $growRight = $this->width - $freeRight;
+            }
+            $x = $free->x - $growLeft;
+            $availW = $free->width + $growLeft + $growRight;
+        }
+
+        if ($availH + self::EPS < $h) {
+            $growBottom = 0.0;
+            $growTop = 0.0;
+            if ($free->y <= $this->trimBottom + self::EPS) {
+                $growBottom = $free->y;
+            }
+            $freeTop = $free->y + $free->height;
+            if ($freeTop >= $this->length - $this->trimTop - self::EPS) {
+                $growTop = $this->length - $freeTop;
+            }
+            $y = $free->y - $growBottom;
+            $availH = $free->height + $growBottom + $growTop;
+        }
+
+        if (($availW - $w) < -self::EPS || ($availH - $h) < -self::EPS) {
+            return null;
+        }
+
+        return new Rectangle($x, $y, $availW, $availH);
     }
 
     private function splitFreeRectangle(

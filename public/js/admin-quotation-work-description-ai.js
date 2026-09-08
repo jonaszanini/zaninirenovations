@@ -259,15 +259,22 @@
   }
 
   function collectBasementContext(form) {
+    var enabledSections = [];
+    form.querySelectorAll('input[name="enabled_sections[]"]:checked').forEach(function (el) {
+      enabledSections.push(el.value);
+    });
+
     return {
       client_name: formValue(form, 'client_name'),
       scope_preset: formSelectValue(form, 'scope_preset') || formValue(form, 'scope_preset'),
+      enabled_sections: enabledSections,
       area_sqft: formValue(form, 'area_sqft'),
       area_entry_mode: formValue(form, 'area_entry_mode'),
       area_length_ft: formValue(form, 'area_length_ft'),
       area_width_ft: formValue(form, 'area_width_ft'),
       ceiling_height_ft: formValue(form, 'ceiling_height_ft'),
       room_count: formValue(form, 'room_count'),
+      partition_lf: formValue(form, 'partition_lf'),
       flooring_type: formSelectValue(form, 'flooring_type'),
       ceiling_type: formSelectValue(form, 'ceiling_type'),
       include_bathroom: form.elements['include_bathroom'] && form.elements['include_bathroom'].checked,
@@ -276,10 +283,68 @@
       demo_include_studs: isChecked(form, 'demo_include_studs'),
       demo_include_drywall: isChecked(form, 'demo_include_drywall'),
       demo_include_baseboard: isChecked(form, 'demo_include_baseboard'),
+      demo_studs_lf: formValue(form, 'demo_studs_lf'),
+      demo_drywall_sf: formValue(form, 'demo_drywall_sf'),
+      demo_flooring_sf: formValue(form, 'demo_flooring_sf'),
+      demo_baseboard_lf: formValue(form, 'demo_baseboard_lf'),
+      demo_bin_qty: formValue(form, 'demo_bin_qty'),
+      door_qty: formValue(form, 'door_qty'),
+      casing_openings: formValue(form, 'casing_openings'),
+      baseboard_lf: formValue(form, 'baseboard_lf'),
+      insulate_walls: isChecked(form, 'insulate_walls'),
+      insulate_ceiling: isChecked(form, 'insulate_ceiling'),
+      soundproof_interior: isChecked(form, 'soundproof_interior'),
+      outlet_qty: formValue(form, 'outlet_qty'),
+      switch_qty: formValue(form, 'switch_qty'),
+      potlight_qty: formValue(form, 'potlight_qty'),
+      detector_qty: formValue(form, 'detector_qty'),
+      include_cleaning: isChecked(form, 'include_cleaning'),
+      include_touchups: isChecked(form, 'include_touchups'),
+      paint_walls: isChecked(form, 'paint_walls'),
+      paint_ceiling: isChecked(form, 'paint_ceiling'),
+      paint_doors: isChecked(form, 'paint_doors'),
+      finish_level: formSelectValue(form, 'finish_level') || formValue(form, 'finish_level'),
       existing_notes: formValue(form, 'existing_notes'),
       labor_summary: tableScopeLines('br-labor-rows'),
       materials_summary: tableScopeLines('br-mat-rows'),
       breakdown_summary: panelText('br-live-root')
+    };
+  }
+
+  function collectMillworkContext(form) {
+    var pieces = [];
+    form.querySelectorAll('.mw-piece').forEach(function (el) {
+      var typeInput = el.querySelector('[data-mw-type-input]:checked');
+      var type = typeInput ? typeInput.value : (el.getAttribute('data-mw-type') || 'shelf');
+      var qtyInput = el.querySelector('input[name*="[qty]"]');
+      var unitSelect = el.querySelector('select[name*="[unit]"]');
+      var widthInput = el.querySelector('input[name*="[width]"]');
+      var lengthInput = el.querySelector('input[name*="[length]"]');
+      var heightInput = el.querySelector('input[name*="[height]"]');
+      var depthInput = el.querySelector('input[name*="[depth]"]');
+      pieces.push({
+        type: type,
+        qty: qtyInput ? qtyInput.value : 1,
+        unit: unitSelect ? unitSelect.value : 'in',
+        width: widthInput ? widthInput.value : '',
+        length: lengthInput ? lengthInput.value : '',
+        height: heightInput ? heightInput.value : '',
+        depth: depthInput ? depthInput.value : '',
+      });
+    });
+
+    return {
+      client_name: formValue(form, 'client_name'),
+      sheet_id: formSelectValue(form, 'sheet_id'),
+      back_sheet_id: formSelectValue(form, 'back_sheet_id'),
+      edge_banding_id: formSelectValue(form, 'edge_banding_id'),
+      paint_id: formSelectValue(form, 'paint_id'),
+      stain_id: formSelectValue(form, 'stain_id'),
+      include_install: isChecked(form, 'include_install'),
+      pieces: pieces,
+      labor_summary: tableScopeLines('mw-labor-rows'),
+      materials_summary: tableScopeLines('mw-mat-rows'),
+      breakdown_summary: panelText('mw-live-root')
     };
   }
 
@@ -374,10 +439,16 @@
     var lines = [];
     document.querySelectorAll('#' + tbodyId + ' tr').forEach(function (tr) {
       if (tr.classList.contains('br-empty-row')) return;
-      var first = tr.querySelector('td');
-      if (!first) return;
-      var text = first.innerText.replace(/\s+/g, ' ').trim();
-      if (text) lines.push(text);
+      var tds = tr.querySelectorAll('td');
+      if (!tds.length) return;
+      var label = tds[0].innerText.replace(/\s+/g, ' ').trim();
+      if (!label) return;
+      var qty = tds.length > 1 ? tds[1].innerText.replace(/\s+/g, ' ').trim() : '';
+      if (qty && qty !== '0' && qty !== '0.00') {
+        lines.push(label + ' (' + qty + ')');
+      } else {
+        lines.push(label);
+      }
     });
     return lines.join('\n');
   }
@@ -435,6 +506,7 @@
     flooring: collectFlooringContext,
     tile: collectTileContext,
     basement: collectBasementContext,
+    millwork: collectMillworkContext,
     shed: collectShedContext,
     trimming: collectTrimmingContext,
     low_deck: collectLowDeckContext,

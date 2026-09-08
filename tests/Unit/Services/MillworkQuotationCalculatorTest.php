@@ -57,10 +57,70 @@ class MillworkQuotationCalculatorTest extends TestCase
 
         $this->assertSame(1, $out['unit_count']);
         $qty = 0;
+        $sizes = [];
         foreach ($out['parts'] as $part) {
             $qty += $part->quantity;
+            $sizes[$this->sizeKey($part->width, $part->length)] = ($sizes[$this->sizeKey($part->width, $part->length)] ?? 0) + $part->quantity;
         }
-        $this->assertGreaterThanOrEqual(4, $qty);
+        $this->assertSame(5, $qty);
+        $this->assertSame(2, $sizes[$this->sizeKey(10, 36)] ?? 0);
+        $this->assertSame(1, $sizes[$this->sizeKey(3, 36)] ?? 0);
+        $this->assertSame(2, $sizes[$this->sizeKey(3, 10)] ?? 0);
+        $this->assertArrayNotHasKey($this->sizeKey(1.5, 10), $sizes);
+    }
+
+    public function test_floating_shelf_cut_plan_uses_four_by_eight_for_full_length_box(): void
+    {
+        $calc = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'floating_shelf',
+                'edge_banding' => true,
+                'include_back' => false,
+                'finish' => 'none',
+                'fastener' => 'screws',
+                'sets' => [[
+                    'qty' => 3,
+                    'length' => 96,
+                    'width' => '',
+                    'depth' => 12,
+                    'thickness' => 3,
+                    'unit' => 'in',
+                ]],
+            ]],
+            'include_install' => false,
+        ], $this->settings());
+
+        $out = (new MillworkPartBuilder)->explode([
+            'type' => 'floating_shelf',
+            'edge_banding' => true,
+            'sets' => [['qty' => 3, 'length' => 96, 'depth' => 12, 'thickness' => 3, 'unit' => 'in']],
+        ], 0.75, 0.018);
+
+        $sizes = [];
+        $qty = 0;
+        foreach ($out['parts'] as $part) {
+            $qty += $part->quantity;
+            $sizes[$this->sizeKey($part->width, $part->length)] = ($sizes[$this->sizeKey($part->width, $part->length)] ?? 0) + $part->quantity;
+        }
+        $this->assertSame(15, $qty);
+        $this->assertSame(6, $sizes[$this->sizeKey(12, 96)] ?? 0);
+        $this->assertSame(6, $sizes[$this->sizeKey(3, 12)] ?? 0);
+        $this->assertSame(3, $sizes[$this->sizeKey(3, 96)] ?? 0);
+
+        $placed = 0;
+        $usesFourByEight = false;
+        foreach ($calc['cut_plan']['layouts'] as $layout) {
+            $placed += (int) ($layout['stats']['part_count'] ?? 0);
+            $w = (float) ($layout['stats']['width'] ?? 0);
+            $l = (float) ($layout['stats']['length'] ?? 0);
+            if (abs($w - 48) < 0.2 && abs($l - 96) < 0.2) {
+                $usesFourByEight = true;
+            }
+        }
+        $this->assertSame(15, $placed);
+        $this->assertTrue($usesFourByEight);
+        $this->assertGreaterThan(1, $calc['cut_plan']['sheet_count']);
+        $this->assertGreaterThan(20, $calc['cut_plan']['yield_pct']);
     }
 
     public function test_kallax_cube_count(): void
@@ -250,6 +310,14 @@ class MillworkQuotationCalculatorTest extends TestCase
         ], false);
 
         $this->assertNotEmpty($hints);
+    }
+
+    private function sizeKey(float $a, float $b): string
+    {
+        $lo = round(min($a, $b), 2);
+        $hi = round(max($a, $b), 2);
+
+        return $lo.'x'.$hi;
     }
 
     private function settings(): MillworkSettings
