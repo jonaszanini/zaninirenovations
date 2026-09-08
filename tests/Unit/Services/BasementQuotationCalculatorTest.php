@@ -846,6 +846,43 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertStringContainsString(number_format($expectedWallSf, 0), $hang['detail']);
     }
 
+    public function test_material_waste_percent_bumps_bulk_qtys_but_not_door_counts(): void
+    {
+        $base = [
+            'area_sqft' => 0,
+            'ceiling_height_ft' => 8,
+            'scope_preset' => 'wall',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('wall'),
+            'partition_lf' => 20,
+            'door_qty' => 1,
+            'framing_door_openings' => 1,
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'owner_hourly_rate' => 85,
+        ];
+
+        $withWaste = (new BasementQuotationCalculator)->calculate(array_merge($base, [
+            'material_waste_percent' => 10,
+        ]), $this->settings());
+        $noWaste = (new BasementQuotationCalculator)->calculate(array_merge($base, [
+            'material_waste_percent' => 0,
+        ]), $this->settings());
+
+        $this->assertSame(10.0, $withWaste['summary']['material_waste_percent']);
+        $this->assertSame(0.0, $noWaste['summary']['material_waste_percent']);
+
+        $sheetsWaste = collect($withWaste['materials'])->firstWhere('key', 'drywall_sheet');
+        $sheetsNone = collect($noWaste['materials'])->firstWhere('key', 'drywall_sheet');
+        $this->assertNotNull($sheetsWaste);
+        $this->assertNotNull($sheetsNone);
+        $this->assertGreaterThan((float) $sheetsNone['qty'], (float) $sheetsWaste['qty']);
+
+        $doorsWaste = collect($withWaste['materials'])->firstWhere('key', 'interior_door');
+        $doorsNone = collect($noWaste['materials'])->firstWhere('key', 'interior_door');
+        $this->assertSame(1.0, (float) $doorsWaste['qty']);
+        $this->assertSame(1.0, (float) $doorsNone['qty']);
+    }
+
     public function test_wall_preset_uses_partition_for_drywall_and_paint(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

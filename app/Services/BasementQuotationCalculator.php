@@ -579,6 +579,7 @@ class BasementQuotationCalculator
             'hardware_sets' => 0,
             'include_cleaning' => true,
             'include_touchups' => true,
+            'material_waste_percent' => 10,
             'client_provides_all' => false,
             'client_provides_sections' => [],
             'client_provides_bath_items' => [],
@@ -809,8 +810,8 @@ class BasementQuotationCalculator
             $addLabor('framing_headers', 'framing', 'Headers / beams', $headers.' opening(s)', $headers * (float) $prod['header_hours_each']);
             $addLabor('framing_doors', 'framing', 'Door openings', $frameDoors.' opening(s)', $frameDoors * (float) $prod['door_opening_hours_each']);
             if ($partitionLf > 0) {
-                $studs = max(1, (int) ceil(($partitionLf * 12 / 16) + 2));
-                $plates = round($partitionLf * 3, 0);
+                $studs = max(1, (int) ceil($this->withMaterialWaste(($partitionLf * 12 / 16) + 2, $inputs)));
+                $plates = round($this->withMaterialWaste($partitionLf * 3, $inputs), 0);
                 $addMat('stud_2x4', 'framing', $studs, 'stud_2x4');
                 $addMat('plate_2x4', 'framing', $plates, 'plate_2x4');
             }
@@ -830,16 +831,16 @@ class BasementQuotationCalculator
             $insSlab = $this->qtyOr($inputs['underslab_sf'], ! empty($inputs['underslab']) ? $area : 0);
             if (! empty($inputs['insulate_walls'])) {
                 $addLabor('ins_walls', 'insulation', 'Wall insulation + vapor barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
-                $addMat('insulation_batt', 'insulation', $this->packages($insWall * 1.05, BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
-                $addMat('vapor_barrier', 'insulation', $this->packages($insWall * 1.1, BasementSettings::VAPOR_SF_PER_ROLL), 'vapor_barrier');
+                $addMat('insulation_batt', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
+                $addMat('vapor_barrier', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::VAPOR_SF_PER_ROLL), 'vapor_barrier');
             }
             if (! empty($inputs['insulate_ceiling'])) {
                 $addLabor('ins_ceiling', 'insulation', 'Ceiling insulation', number_format($insCeil, 0).' sq ft', $perHr($insCeil, (float) $prod['insulation_ceiling_sf_per_hr']));
-                $addMat('insulation_batt_ceil', 'insulation', $this->packages($insCeil * 1.05, BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
+                $addMat('insulation_batt_ceil', 'insulation', $this->packages($this->withMaterialWaste($insCeil, $inputs), BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
             }
             if (! empty($inputs['underslab'])) {
                 $addLabor('ins_slab', 'insulation', 'Under-slab insulation', number_format($insSlab, 0).' sq ft', $perHr($insSlab, (float) $prod['underslab_sf_per_hr']));
-                $addMat('underslab_insulation', 'insulation', $this->packages($insSlab, BasementSettings::PANEL_SF), 'underslab_insulation');
+                $addMat('underslab_insulation', 'insulation', $this->packages($this->withMaterialWaste($insSlab, $inputs), BasementSettings::PANEL_SF), 'underslab_insulation');
             }
         }
 
@@ -865,14 +866,15 @@ class BasementQuotationCalculator
                 }
                 $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
             }
-            $sheets = $dwSf > 0 ? max(1, (int) ceil($dwSf / BasementSettings::PANEL_SF * 1.1)) : 0;
+            $dwOrderSf = $this->withMaterialWaste($dwSf, $inputs);
+            $sheets = $dwOrderSf > 0 ? max(1, (int) ceil($dwOrderSf / BasementSettings::PANEL_SF)) : 0;
             $addMat('drywall_sheet', 'drywall', $sheets, 'drywall_sheet');
             $corners = max(0, (int) $inputs['drywall_corners']);
             $insideCorners = max(0, (int) ($inputs['drywall_inside_corners'] ?? 0));
             $openings = max(0, (int) $inputs['drywall_openings']);
             if (! $hangOnly) {
-                $addMat('joint_compound', 'drywall', $this->packages($dwSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
-                $addMat('drywall_tape', 'drywall', $this->packages($dwSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
+                $addMat('joint_compound', 'drywall', $this->packages($dwOrderSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
+                $addMat('drywall_tape', 'drywall', $this->packages($dwOrderSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
                 $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
                 $addLabor(
                     'dw_inside_corners',
@@ -896,7 +898,7 @@ class BasementQuotationCalculator
             $ceilSf = $this->qtyOr($inputs['ceiling_sf'], $area);
             if ($ceilingType === 'drop') {
                 $addLabor('ceil_drop', 'ceiling', 'Drop ceiling', number_format($ceilSf, 0).' sq ft', $perHr($ceilSf, (float) $prod['ceiling_drop_sf_per_hr']));
-                $addMat('drop_ceiling', 'ceiling', $ceilSf * 1.08, 'drop_ceiling');
+                $addMat('drop_ceiling', 'ceiling', $this->withMaterialWaste($ceilSf, $inputs), 'drop_ceiling');
             }
         }
 
@@ -913,14 +915,14 @@ class BasementQuotationCalculator
             if ($flType !== 'none' && $flSf > 0) {
                 if (! empty($inputs['subfloor_prep'])) {
                     $addLabor('fl_subfloor', 'flooring', 'Subfloor prep / leveling', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['subfloor_sf_per_hr']));
-                    $addMat('subfloor_panel', 'flooring', $this->packages($flSf, BasementSettings::PANEL_SF), 'subfloor_panel');
+                    $addMat('subfloor_panel', 'flooring', $this->packages($this->withMaterialWaste($flSf, $inputs), BasementSettings::PANEL_SF), 'subfloor_panel');
                 }
                 if (! empty($inputs['underlayment']) && $flType !== 'epoxy' && $flType !== 'tile') {
                     $addLabor('fl_underlay', 'flooring', 'Underlayment', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['underlayment_sf_per_hr']));
-                    $addMat('underlayment', 'flooring', $this->packages($flSf * 1.08, BasementSettings::UNDERLAYMENT_SF_PER_ROLL), 'underlayment');
+                    $addMat('underlayment', 'flooring', $this->packages($this->withMaterialWaste($flSf, $inputs), BasementSettings::UNDERLAYMENT_SF_PER_ROLL), 'underlayment');
                 }
                 $addLabor('fl_install', 'flooring', $this->flooringLabel($flType).' install', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['flooring_sf_per_hr']));
-                $addMat('flooring_finish', 'flooring', $flSf * 1.08, $flCatalog);
+                $addMat('flooring_finish', 'flooring', $this->withMaterialWaste($flSf, $inputs), $flCatalog);
                 $transitions = max(0, (int) $inputs['transition_qty']);
                 $addLabor('fl_transitions', 'flooring', 'Transitions', $transitions.' piece(s)', $transitions * (float) $prod['transition_hours_each']);
                 $addMat('transition', 'flooring', $transitions, 'transition');
@@ -942,7 +944,7 @@ class BasementQuotationCalculator
             $addLabor('trim_casing', 'doors_trim', 'Door casing', $casing.' opening(s)', $casing * (float) $prod['casing_opening_hours']);
             $addLabor('trim_windows', 'doors_trim', 'Window trim', $windows.' window(s)', $windows * (float) $prod['window_trim_hours_each']);
             $addMat('interior_door', 'doors_trim', $doors, 'interior_door');
-            $addMat('baseboard', 'doors_trim', $this->packages($baseLf * 1.08, BasementSettings::BASEBOARD_FEET_PER_STICK), 'baseboard');
+            $addMat('baseboard', 'doors_trim', $this->packages($this->withMaterialWaste($baseLf, $inputs), BasementSettings::BASEBOARD_FEET_PER_STICK), 'baseboard');
             $addMat('casing', 'doors_trim', $casing, 'casing');
             $addMat('window_trim', 'doors_trim', $windows, 'window_trim');
             $addMat('door_hardware', 'doors_trim', $doors, 'door_hardware');
@@ -985,8 +987,9 @@ class BasementQuotationCalculator
                 );
             }
 
-            $addPaintPack = function (string $prefix, float $sf, int $surfaceCoats, array $sizes, string $note = '') use ($addMat, $matCatalog): void {
-                $packed = $this->packQuarts($this->quartsFromGallons($this->paintGallonsNeeded($sf, $surfaceCoats)), $sizes);
+            $addPaintPack = function (string $prefix, float $sf, int $surfaceCoats, array $sizes, string $note = '') use ($addMat, $matCatalog, $inputs): void {
+                $orderSf = $this->withMaterialWaste($sf, $inputs);
+                $packed = $this->packQuarts($this->quartsFromGallons($this->paintGallonsNeeded($orderSf, $surfaceCoats)), $sizes);
                 foreach ($packed as $catalogKey => $qty) {
                     $name = (string) ($matCatalog[$catalogKey]['name'] ?? $catalogKey);
                     if ($note !== '') {
@@ -1003,7 +1006,7 @@ class BasementQuotationCalculator
             } else {
                 $addPaintPack('paint', $pWall + $pCeil, $coats, BasementSettings::paintCanSizes());
             }
-            $trimQuarts = $this->trimQuartsNeeded($pTrim, $coats);
+            $trimQuarts = $this->trimQuartsNeeded($this->withMaterialWaste($pTrim, $inputs), $coats);
             foreach ($this->packQuarts($trimQuarts, BasementSettings::trimPaintCanSizes()) as $catalogKey => $qty) {
                 $addMat('trim_'.$catalogKey, 'painting', (float) $qty, $catalogKey);
             }
@@ -1063,8 +1066,8 @@ class BasementQuotationCalculator
                     self::bathTileLaborDetail($tileSplit['tile_rows'], $tileSf),
                     $perHr($tileSf, (float) $prod['tile_sf_per_hr'])
                 );
-                $addMat('bath_tile', 'bathroom', $tileSf * 1.1, 'tile');
-                $addMat('thinset_grout', 'bathroom', $this->packages($tileSf * 1.1, BasementSettings::THINSET_SF_PER_BAG), 'thinset_grout');
+                $addMat('bath_tile', 'bathroom', $this->withMaterialWaste($tileSf, $inputs), 'tile');
+                $addMat('thinset_grout', 'bathroom', $this->packages($this->withMaterialWaste($tileSf, $inputs), BasementSettings::THINSET_SF_PER_BAG), 'thinset_grout');
             }
             if ($vinylSf > 0) {
                 $addLabor(
@@ -1077,7 +1080,7 @@ class BasementQuotationCalculator
                 $addMat(
                     'bath_vinyl_underlay',
                     'bathroom',
-                    $this->packages($vinylSf * 1.08, BasementSettings::UNDERLAYMENT_SF_PER_ROLL),
+                    $this->packages($this->withMaterialWaste($vinylSf, $inputs), BasementSettings::UNDERLAYMENT_SF_PER_ROLL),
                     'underlayment',
                     'Bathroom vinyl underlayment'
                 );
@@ -1088,7 +1091,7 @@ class BasementQuotationCalculator
                     self::bathTileLaborDetail($tileSplit['vinyl_rows'], $vinylSf),
                     $perHr($vinylSf, (float) $prod['flooring_sf_per_hr'])
                 );
-                $addMat('bath_vinyl', 'bathroom', $vinylSf * 1.08, 'lvp', 'Bathroom vinyl flooring');
+                $addMat('bath_vinyl', 'bathroom', $this->withMaterialWaste($vinylSf, $inputs), 'lvp', 'Bathroom vinyl flooring');
             }
         }
 
@@ -1185,6 +1188,7 @@ class BasementQuotationCalculator
         $hst = round($laborHst + $matHst, 2);
         $trade = $this->tradeLineSummary($inputs);
         $grand = round($subtotal + $hst + $trade['tax_in'], 2);
+        $wastePercent = $this->materialWastePercent($inputs);
 
         $eta = $this->etaScenarios($totalHours, $hoursPerDay, $ownerRate, $helperRate);
 
@@ -1250,6 +1254,7 @@ class BasementQuotationCalculator
                 'materials_pre_hst' => $matPre,
                 'materials_hst' => $matHst,
                 'materials_after_hst' => round($matPre + $matHst, 2),
+                'material_waste_percent' => $wastePercent,
                 'subtotal_pre_hst' => $subtotal,
                 'hst' => $hst,
                 'grand_total' => $grand,
@@ -1475,6 +1480,33 @@ class BasementQuotationCalculator
     }
 
     /**
+     * Ordering buffer for bulk materials (sheets, sticks, SF coverage). Default 10%.
+     * Counted fixtures (doors, toilets, etc.) are not multiplied.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    private function materialWastePercent(array $inputs): float
+    {
+        if (! array_key_exists('material_waste_percent', $inputs) || $inputs['material_waste_percent'] === null || $inputs['material_waste_percent'] === '') {
+            return 10.0;
+        }
+
+        return round(max(0.0, min(100.0, (float) $inputs['material_waste_percent'])), 2);
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    private function withMaterialWaste(float $qty, array $inputs): float
+    {
+        if ($qty <= 0) {
+            return 0.0;
+        }
+
+        return round($qty * (1 + ($this->materialWastePercent($inputs) / 100)), 4);
+    }
+
+    /**
      * Count of bags, boxes, rolls, or sticks for a continuous takeoff.
      */
     private function packages(float $needed, float $perPackage): float
@@ -1537,6 +1569,7 @@ class BasementQuotationCalculator
                 'materials_pre_hst' => 0.0,
                 'materials_hst' => 0.0,
                 'materials_after_hst' => 0.0,
+                'material_waste_percent' => $this->materialWastePercent($inputs),
                 'subtotal_pre_hst' => 0.0,
                 'hst' => 0.0,
                 'grand_total' => $trade['tax_in'],

@@ -839,6 +839,10 @@
     html += '<div class="pq-row pq-row--group"><span>Materials (pre-HST)</span><span>' + fmt(matPre) + '</span></div>';
     html += '<div class="pq-row"><span>Materials HST</span><span>' + fmt(matHst) + '</span></div>';
     html += '<div class="pq-row pq-row--sub"><span>Total materials</span><span>' + fmt(matPre + matHst) + '</span></div>';
+    var wastePct = Number(summary.material_waste_percent);
+    if (isFinite(wastePct) && wastePct > 0) {
+      html += '<div class="pq-row"><span class="admin-form-help">Material waste in qtys</span><span class="admin-form-help">' + wastePct + '%</span></div>';
+    }
     html += tradeBreakdownHtml('Electrical', summary.trades && summary.trades.electrical);
     html += tradeBreakdownHtml('Plumbing', summary.trades && summary.trades.plumbing);
     if (lastCommuteAmount > 0) {

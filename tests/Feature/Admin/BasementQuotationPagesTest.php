@@ -47,7 +47,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Search saved Room Area rooms', false)
             ->assertSee('Project description', false)
             ->assertSee('admin-form-help">(optional — appears on client PDF)', false)
-            ->assertSee('Commute expense');
+            ->assertSee('Commute expense')
+            ->assertSee('Material waste');
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()

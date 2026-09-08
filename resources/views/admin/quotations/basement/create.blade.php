@@ -263,6 +263,17 @@
             </div>
 
             <h4 class="br-review-heading">Materials</h4>
+            <div class="br-qty-grid br-qty-grid--inset">
+              <div class="admin-form-group">
+                <label for="br-material-waste">
+                  @include('admin.partials.info_tip', ['text' => 'Ordering buffer applied to bulk materials (drywall, lumber, paint, insulation, flooring, trim sticks, etc.). Counted fixtures like doors and toilets stay exact. Default 10%.'])
+                  Material waste (%)
+                </label>
+                <input type="number" step="0.1" min="0" max="100" class="admin-input br-preview" id="br-material-waste"
+                       name="material_waste_percent"
+                       value="{{ old('material_waste_percent', $inputs['material_waste_percent'] ?? 10) }}">
+              </div>
+            </div>
             <div class="admin-table-scroll">
               <table class="admin-table br-review-table">
                 <thead>

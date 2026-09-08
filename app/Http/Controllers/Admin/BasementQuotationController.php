@@ -399,6 +399,7 @@ class BasementQuotationController extends Controller
             'area_sqft', 'ceiling_height_ft',
             'partition_lf', 'bulkhead_lf',
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
+            'material_waste_percent',
         ];
         $optionalQty = [
             'demo_flooring_sf', 'demo_drywall_sf', 'demo_studs_lf', 'demo_baseboard_lf',
