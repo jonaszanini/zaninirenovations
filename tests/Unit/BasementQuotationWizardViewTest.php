@@ -82,6 +82,27 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('Auto: wall length × height × both sides', $html);
         $this->assertMatchesRegularExpression('/data-br-skip-on-wall[^>]*\bhidden\b/', $html);
         $this->assertContains('doors_trim', $enabledNow);
+        $this->assertStringContainsString('id="br-wall-primary-slot"', $html);
+        $this->assertStringContainsString('Include a door', $html);
+        $this->assertStringContainsString('name="partition_lf"', $html);
+        $this->assertMatchesRegularExpression('/data-br-area-overview[^>]*\bhidden\b/', $html);
+        $this->assertMatchesRegularExpression('/data-br-hide-on-wall[^>]*\bhidden\b/', $html);
+        $this->assertStringContainsString('data-br-overview-mode="wall"', $html);
+    }
+
+    public function test_full_basement_keeps_area_on_overview_and_wall_fields_on_framing(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('data-br-overview-mode="area"', $html);
+        $this->assertDoesNotMatchRegularExpression('/data-br-area-overview[^>]*\bhidden\b/', $html);
+        $this->assertMatchesRegularExpression('/data-br-wall-overview[^>]*\bhidden\b/', $html);
+        $this->assertStringContainsString('id="br-framing-primary-slot"', $html);
+        $this->assertStringContainsString('name="partition_lf"', $html);
+        $this->assertStringContainsString('Door openings to frame', $html);
     }
 
     public function test_electrical_and_plumbing_steps_render_priced_lines_and_scope_hint(): void

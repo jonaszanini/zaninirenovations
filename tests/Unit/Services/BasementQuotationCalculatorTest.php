@@ -374,6 +374,24 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertSame([], $draft);
     }
 
+    public function test_validation_requires_wall_length_for_wall_preset(): void
+    {
+        $hints = (new BasementQuotationCalculator)->validationHints([
+            'scope_preset' => 'wall',
+            'area_sqft' => 400,
+            'partition_lf' => 0,
+        ], false);
+        $this->assertNotEmpty($hints);
+        $this->assertStringContainsString('wall length', $hints[0]);
+
+        $ok = (new BasementQuotationCalculator)->validationHints([
+            'scope_preset' => 'wall',
+            'area_sqft' => 0,
+            'partition_lf' => 12,
+        ], false);
+        $this->assertSame([], $ok);
+    }
+
     public function test_bathroom_skip_omits_fixtures(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

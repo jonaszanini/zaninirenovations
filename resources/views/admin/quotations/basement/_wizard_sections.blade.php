@@ -75,8 +75,8 @@
   ];
   $brInfo = [
       'scope_preset' => 'Pick a starting point, then add or skip trades. Unused steps stay out of the wizard.',
-      'area_sqft' => 'Finished floor area of the work. Leave later quantity fields blank to auto-fill from this. Enter 0 on a field to skip it. For an irregular room, import the Room Area drawing on the Drywall step so walls use the real perimeter instead of a square.',
-      'room_count' => 'Rooms as they will exist when the work is done, including new dividing walls — not the current open basement. Example: rec room + bedroom + bath = 3, even if it is open now. Enter new wall length on the Framing step.',
+      'area_sqft' => 'Finished floor area of the work. Leave later quantity fields blank to auto-fill from this. Enter 0 on a field to skip it. For an irregular room, import the Room Area drawing on the Drywall step so walls use the real perimeter instead of a square. Not used on New wall quotes — enter wall length instead.',
+      'room_count' => 'Rooms as they will exist when the work is done, including new dividing walls — not the current open basement. Example: rec room + bedroom + bath = 3, even if it is open now. Enter new wall length on the Framing step (or Overview for New wall).',
       'owner_hourly_rate' => 'Your labor rate used in the live total. Helpers use the helper rate.',
       'helper_hourly_rate' => 'Hourly rate for each helper in the 2- and 3-person ETA scenarios.',
       'existing_notes' => 'Site notes for you (moisture, headroom, existing bath). Not printed on the client PDF unless you copy them into the description.',
@@ -90,7 +90,8 @@
       'demo_drywall_sf' => 'Existing drywall or ceiling to strip. Enter 0 if none.',
       'demo_baseboard_lf' => 'Existing baseboard to remove. Blank uses the room perimeter; enter 0 if none.',
       'demo_bin_qty' => 'How many dumpsters / bins. Unit price comes from Price configuration.',
-      'partition_lf' => 'Length of a new interior 2x4 wall. Height uses ceiling height from Overview. Use 0 if the bathroom already has walls.',
+      'partition_lf' => 'Length of the new interior 2x4 wall in linear feet. Height uses ceiling height. Drywall, paint, and baseboard use both sides. Use 0 if the bathroom already has walls.',
+      'wall_include_door' => 'Adds one rough opening to frame and one interior door to hang. Change the door count later on the Doors step if needed.',
       'bulkhead_lf' => 'Length of boxed-in ducts or beams (soffits) to work around, not a full-height wall. Use 0 if none.',
       'header_qty' => 'Load-bearing or wide openings that need a header or beam, counted each.',
       'framing_door_openings' => 'Rough openings to frame in new or existing walls, before hanging the door.',
@@ -169,9 +170,10 @@
   $presetHelp = [
       'full' => 'Walks every trade. Area auto-fills insulation, drywall, flooring, paint, and cleanup.',
       'bathroom' => 'Plumbing and electrical questions stay as licensed-trade scope, plus drywall, paint, fixtures, and cleanup in one bathroom flow — not whole-basement flooring or insulation.',
-      'wall' => 'Framing, drywall, doors / trim / baseboard, paint, and cleanup. Drywall, paint, and baseboard use both sides of the new wall.',
+      'wall' => 'Enter wall length and whether it needs a door. Framing, drywall, doors / trim / baseboard, paint — both sides of the new wall.',
       'custom' => 'Only the trades you check below. Overview and Review always stay.',
   ];
+  $wallPreset = $scopePreset === 'wall';
 @endphp
 <details class="br-acc admin-card is-active" data-br-step="overview" @if(empty($isEdit)) open @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Project Overview</summary>
@@ -212,31 +214,40 @@
       </div>
     </fieldset>
 
-    <div class="br-overview-geom">
-      @include('admin.quotations.basement._qty_lw', [
-        'name' => 'area_sqft',
-        'id' => 'br-area',
-        'label' => $areaLabels[$scopePreset] ?? $areaLabels['full'],
-        'labelId' => 'br-area-label',
-        'value' => $brVal('area_sqft', 0),
-        'modeName' => 'area_entry_mode',
-        'lengthName' => 'area_length_ft',
-        'widthName' => 'area_width_ft',
-        'mode' => $areaMode,
-        'lengthValue' => $brQty('area_length_ft'),
-        'widthValue' => $brQty('area_width_ft'),
-        'info' => $brInfo['area_sqft'],
-        'title' => 'Finished floor area of the work. Leave other quantity fields blank to auto-calculate from this.',
-        'zeroIfIncomplete' => true,
-        'clientFilled' => $brFilled('area_sqft'),
-        'companion' => view('admin.quotations.basement._ceiling_height_field', [
-            'value' => $brVal('ceiling_height_ft', 8),
-            'filledKeys' => $filledKeys,
-        ])->render(),
+    <div class="br-overview-geom" data-br-overview-geom data-br-overview-mode="{{ $wallPreset ? 'wall' : 'area' }}">
+      <div data-br-area-overview @if($wallPreset) hidden @endif>
+        @include('admin.quotations.basement._qty_lw', [
+          'name' => 'area_sqft',
+          'id' => 'br-area',
+          'label' => $areaLabels[$scopePreset] ?? $areaLabels['full'],
+          'labelId' => 'br-area-label',
+          'value' => $brVal('area_sqft', 0),
+          'modeName' => 'area_entry_mode',
+          'lengthName' => 'area_length_ft',
+          'widthName' => 'area_width_ft',
+          'mode' => $areaMode,
+          'lengthValue' => $brQty('area_length_ft'),
+          'widthValue' => $brQty('area_width_ft'),
+          'info' => $brInfo['area_sqft'],
+          'title' => 'Finished floor area of the work. Leave other quantity fields blank to auto-calculate from this.',
+          'zeroIfIncomplete' => true,
+          'clientFilled' => $brFilled('area_sqft'),
+        ])
+      </div>
+      <div class="br-wall-overview" data-br-wall-overview @unless($wallPreset) hidden @endunless>
+        <div id="br-wall-primary-slot" class="br-wall-primary-slot">
+          @if($wallPreset)
+            @include('admin.quotations.basement._wall_primary_fields')
+          @endif
+        </div>
+      </div>
+      @include('admin.quotations.basement._ceiling_height_field', [
+        'value' => $brVal('ceiling_height_ft', 8),
+        'filledKeys' => $filledKeys,
       ])
     </div>
     <div class="br-qty-grid">
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-br-hide-on-wall @if($wallPreset) hidden @endif>
         <label for="br-rooms">@include('admin.partials.info_tip', ['text' => $brInfo['room_count']]) @include('admin.quotations.basement._client_filled', ['key' => 'room_count', 'filledKeys' => $filledKeys]) Finished rooms / zones (after reno)</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-rooms" name="room_count"
                value="{{ $brVal('room_count', 1) }}"

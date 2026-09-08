@@ -485,6 +485,18 @@
     form.querySelectorAll('[data-br-skip-on-wall]').forEach(function (el) {
       el.hidden = wallOnly;
     });
+    form.querySelectorAll('[data-br-hide-on-wall]').forEach(function (el) {
+      el.hidden = wallOnly;
+    });
+    var areaOverview = form.querySelector('[data-br-area-overview]');
+    var wallOverview = form.querySelector('[data-br-wall-overview]');
+    if (areaOverview) areaOverview.hidden = wallOnly;
+    if (wallOverview) wallOverview.hidden = !wallOnly;
+    var overviewGeom = form.querySelector('[data-br-overview-geom]');
+    if (overviewGeom) {
+      overviewGeom.setAttribute('data-br-overview-mode', wallOnly ? 'wall' : 'area');
+    }
+    relocateWallPrimary();
     updateDwWallPlaceholder();
     var pWall = document.getElementById('br-p-wall');
     if (pWall) {
@@ -538,6 +550,52 @@
       var bathFields = document.getElementById('br-bath-fields');
       if (bathFields) bathFields.hidden = false;
     }
+    relocateWallPrimary();
+  }
+
+  function relocateWallPrimary() {
+    var wall = currentPreset() === 'wall';
+    var fields = document.getElementById('br-wall-primary-fields');
+    var overviewSlot = document.getElementById('br-wall-primary-slot');
+    var framingSlot = document.getElementById('br-framing-primary-slot');
+    if (fields && overviewSlot && framingSlot) {
+      (wall ? overviewSlot : framingSlot).appendChild(fields);
+    }
+    if (fields) {
+      var toggleUi = fields.querySelector('[data-br-door-toggle-ui]');
+      var countUi = fields.querySelector('[data-br-door-count-ui]');
+      if (toggleUi) toggleUi.hidden = !wall;
+      if (countUi) countUi.hidden = wall;
+    }
+    syncWallDoorToggleFromOpenings();
+  }
+
+  function syncWallDoorFromToggle() {
+    var cb = document.getElementById('br-wall-include-door');
+    var openings = document.getElementById('br-frame-doors');
+    var doors = document.getElementById('br-doors');
+    if (!cb || !openings) return;
+    if (cb.checked) {
+      if (Number(openings.value) <= 0) openings.value = '1';
+      if (doors && Number(doors.value) <= 0) doors.value = '1';
+    } else {
+      openings.value = '0';
+      if (doors) doors.value = '0';
+    }
+    try {
+      openings.dispatchEvent(new Event('input', { bubbles: true }));
+      if (doors) doors.dispatchEvent(new Event('input', { bubbles: true }));
+    } catch (err) { /* ignore */ }
+  }
+
+  function syncWallDoorToggleFromOpenings() {
+    var cb = document.getElementById('br-wall-include-door');
+    var openings = document.getElementById('br-frame-doors');
+    var doors = document.getElementById('br-doors');
+    if (!cb) return;
+    var openN = openings ? Number(openings.value) : 0;
+    var doorN = doors ? Number(doors.value) : 0;
+    cb.checked = (isFinite(openN) && openN > 0) || (isFinite(doorN) && doorN > 0);
   }
 
   function applyElectricalDefaults(preset) {
@@ -606,6 +664,7 @@
       setNamedValue('ceiling_type', 'none');
       setNamedValue('drywall_ceiling_sf', '');
       setNamedValue('paint_ceiling_sf', '');
+      setNamedValue('area_sqft', 0);
       setNamedCheck('include_cleaning', false);
       setNamedCheck('include_touchups', false);
     } else if (preset === 'full') {
@@ -681,6 +740,18 @@
       if (!isEdit) setWizardStep(0, false);
       schedulePreview();
     });
+  });
+  form.addEventListener('change', function (e) {
+    if (e.target && e.target.getAttribute('data-br-wall-door') === '1') {
+      syncWallDoorFromToggle();
+      schedulePreview();
+    }
+  });
+  form.addEventListener('input', function (e) {
+    if (!e.target) return;
+    if (e.target.id === 'br-frame-doors' || e.target.id === 'br-doors') {
+      syncWallDoorToggleFromOpenings();
+    }
   });
   form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
     cb.addEventListener('change', function () {

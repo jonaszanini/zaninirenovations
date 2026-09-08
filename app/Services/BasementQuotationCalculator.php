@@ -610,10 +610,8 @@ class BasementQuotationCalculator
         $area = max(0, (float) ($inputs['area_sqft'] ?? 0));
         $partition = max(0, (float) ($inputs['partition_lf'] ?? 0));
         if ($preset === 'wall') {
-            if ($partition <= 0 && $area <= 0) {
-                $hints[] = $mode === 'dimensions'
-                    ? 'Enter the new wall length in linear feet (Framing), or length and width for cleaning.'
-                    : 'Enter the new wall length in linear feet (Framing), or an area for cleaning.';
+            if ($partition <= 0) {
+                $hints[] = 'Enter the new wall length in linear feet.';
             }
         } elseif ($area <= 0) {
             if ($mode === 'dimensions') {

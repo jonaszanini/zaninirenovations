@@ -7020,6 +7020,34 @@ body.cp-modal-open {
 }
 .br-overview-geom {
   margin-bottom: 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+.br-overview-geom .br-lw,
+.br-overview-geom .br-lw__companion-field,
+.br-overview-geom .br-wall-overview {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.br-wall-primary-fields {
+  display: contents;
+}
+.br-wall-primary-slot:empty,
+.br-framing-primary-slot:empty {
+  display: none;
+}
+.br-wall-overview:not([hidden]) {
+  display: contents;
+}
+@media (min-width: 768px) {
+  .br-overview-geom[data-br-overview-mode="area"] {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.75fr);
+  }
+  .br-overview-geom[data-br-overview-mode="wall"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .br-notes-field {
   margin-bottom: 0;
