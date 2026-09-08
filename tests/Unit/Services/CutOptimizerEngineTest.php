@@ -118,6 +118,19 @@ class CutOptimizerEngineTest extends TestCase
         $this->assertStringContainsString('clipPath', $svg);
     }
 
+    public function test_svg_draws_eighth_inch_kerf_between_rips(): void
+    {
+        $sheet = new GuillotineSheet('s', 48, 96, 0.125, 0, 0, 0, 0, 0, '4×8');
+        $this->assertTrue($sheet->insert(new Part('a', 'A', 12, 96, 1, GrainDirection::LENGTHWISE), SplitHeuristic::VERTICAL_FIRST));
+        $this->assertTrue($sheet->insert(new Part('b', 'B', 12, 96, 1, GrainDirection::LENGTHWISE), SplitHeuristic::VERTICAL_FIRST));
+        $this->assertEqualsWithDelta(12.125, $sheet->placedParts[1]->x, 0.01);
+
+        $svg = (new SvgVisualizer)->renderSheet($sheet);
+        $this->assertStringContainsString('mw-cut-kerf', $svg);
+        $this->assertStringContainsString('Kerf 1/8"', $svg);
+        $this->assertSame('1/8"', SvgVisualizer::formatKerfLabel(0.125));
+    }
+
     public function test_svg_clips_and_numbers_thin_strips_instead_of_stacking_names(): void
     {
         $sheet = new GuillotineSheet('s2x4', 24, 48, 0.125, 0, 0, 0, 0, 0, '2×4');

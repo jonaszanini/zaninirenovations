@@ -1089,9 +1089,12 @@ html.admin-dark .mw-cut-part-label,
 html.admin-dark .mw-cut-part-dim,
 html.admin-dark .mw-cut-dim {
   fill: #f8fafc;
-  stroke: #0f172a;
 }
 html.admin-dark .mw-cut-legend__n {
   color: var(--admin-primary);
+}
+html.admin-dark .mw-cut-kerf {
+  fill: #e2e8f0;
+  stroke: #e2e8f0;
 }
 

@@ -24,6 +24,7 @@ class SvgVisualizer
                 'part_count' => count($sheet->placedParts),
                 'total_cuts' => count($sheet->cutLog),
                 'total_cut_length' => $sheet->totalCutLength(),
+                'kerf_in' => $sheet->kerf,
             ],
         ];
     }
@@ -75,6 +76,10 @@ class SvgVisualizer
         foreach ($sheet->placedParts as $p) {
             $i++;
             $svg[] = $this->partGroup($p, $flipY, $i, $clipPrefix.'-'.$i);
+        }
+
+        foreach ($this->kerfRects($sheet, $flipY) as $kerfSvg) {
+            $svg[] = $kerfSvg;
         }
 
         $svg[] = $this->dimLine(0, $sheet->length + 7, $sheet->width, $sheet->length + 7, $this->inch($sheet->width), false);
@@ -193,6 +198,75 @@ class SvgVisualizer
         $rot = $vertical ? ' transform="rotate(-90 '.$this->n($x).' '.$this->n($y).')"' : '';
 
         return '<text class="'.$class.'" x="'.$this->n($x).'" y="'.$this->n($y).'" font-size="'.$this->n($size).'" text-anchor="middle" dominant-baseline="middle"'.$rot.'>'.$this->esc($text).'</text>';
+    }
+
+    /**
+     * 1/8" (or configured) blade slots between parts / offcuts.
+     *
+     * @return list<string>
+     */
+    private function kerfRects(GuillotineSheet $sheet, float $flipY): array
+    {
+        $kerf = $sheet->kerf;
+        if ($kerf <= GuillotineSheet::EPS) {
+            return [];
+        }
+
+        $out = [];
+        $seen = [];
+        foreach ($sheet->cutLog as $cut) {
+            $type = (string) ($cut['type'] ?? '');
+            $x1 = (float) ($cut['start']['x'] ?? 0);
+            $y1 = (float) ($cut['start']['y'] ?? 0);
+            $x2 = (float) ($cut['end']['x'] ?? 0);
+            $y2 = (float) ($cut['end']['y'] ?? 0);
+            if ($type === 'rip') {
+                $x = min($x1, $x2);
+                $yBottom = min($y1, $y2);
+                $h = max(abs($y2 - $y1), (float) ($cut['length'] ?? 0));
+                if ($h <= GuillotineSheet::EPS) {
+                    continue;
+                }
+                $svgY = $flipY - $yBottom - $h;
+                $key = 'r:'.round($x, 3).':'.round($yBottom, 3).':'.round($h, 3);
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $out[] = '<rect class="mw-cut-kerf" x="'.$this->n($x).'" y="'.$this->n($svgY).'" width="'.$this->n($kerf).'" height="'.$this->n($h).'"><title>Kerf '.self::formatKerfLabel($kerf).'</title></rect>';
+            } else {
+                $y = min($y1, $y2);
+                $x = min($x1, $x2);
+                $w = max(abs($x2 - $x1), (float) ($cut['length'] ?? 0));
+                if ($w <= GuillotineSheet::EPS) {
+                    continue;
+                }
+                $svgY = $flipY - $y - $kerf;
+                $key = 'c:'.round($x, 3).':'.round($y, 3).':'.round($w, 3);
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $out[] = '<rect class="mw-cut-kerf" x="'.$this->n($x).'" y="'.$this->n($svgY).'" width="'.$this->n($w).'" height="'.$this->n($kerf).'"><title>Kerf '.self::formatKerfLabel($kerf).'</title></rect>';
+            }
+        }
+
+        return $out;
+    }
+
+    public static function formatKerfLabel(float $inches): string
+    {
+        if ($inches <= 0) {
+            return '';
+        }
+        if (abs($inches - 0.125) < 0.0005) {
+            return '1/8"';
+        }
+        if (abs($inches - 0.25) < 0.0005) {
+            return '1/4"';
+        }
+
+        return rtrim(rtrim(number_format($inches, 3, '.', ''), '0'), '.').'"';
     }
 
     private function fitFont(string $text, float $along, float $across, float $preferred): float

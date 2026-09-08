@@ -111,15 +111,18 @@ h1 { font-size: 22px; margin: 0 0 4px; color: #024768; }
   fill: #111827;
   font-family: sans-serif;
   font-weight: 600;
-  paint-order: stroke fill;
-  stroke: #fff;
-  stroke-width: 0.12em;
-  stroke-linejoin: round;
 }
 .mw-cut-dim-line {
   stroke: #9ca3af;
   stroke-width: 1px;
   vector-effect: non-scaling-stroke;
+}
+.mw-cut-kerf {
+  fill: #111827;
+  stroke: #111827;
+  stroke-width: 1.15px;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.8;
 }
 
 @media print {
@@ -137,7 +140,8 @@ h1 { font-size: 22px; margin: 0 0 4px; color: #024768; }
     break-after: auto;
   }
   .mw-cut-svg-wrap,
-  .mw-cut-part-fill {
+  .mw-cut-part-fill,
+  .mw-cut-kerf {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

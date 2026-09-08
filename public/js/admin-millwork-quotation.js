@@ -27,6 +27,20 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
     };
+    var kerfLabel = function (inches) {
+      var n = Number(inches);
+      if (!(n > 0)) return '';
+      if (Math.abs(n - 0.125) < 0.0005) return '1/8"';
+      if (Math.abs(n - 0.25) < 0.0005) return '1/4"';
+      return String(Math.round(n * 1000) / 1000) + '"';
+    };
+    var cutPlanMetaText = function (plan) {
+      var text = (plan.sheet_count || 0) + ' sheet(s)'
+        + (plan.yield_pct ? ' · ' + plan.yield_pct + '% yield' : '');
+      var kerf = kerfLabel(plan.kerf_in);
+      if (kerf) text += ' · Kerf ' + kerf;
+      return text;
+    };
 
     function findStepKeyForElement(el) {
       var step = el && el.closest ? el.closest('[data-br-step]') : null;
@@ -212,8 +226,7 @@
       var printBtn = document.getElementById('mw-print-cut-list');
       var layouts = plan.layouts || [];
       if (meta) {
-        meta.textContent = (plan.sheet_count || 0) + ' sheet(s)'
-          + (plan.yield_pct ? ' · ' + plan.yield_pct + '% yield' : '');
+        meta.textContent = cutPlanMetaText(plan);
       }
       if (printBtn) printBtn.disabled = !layouts.length;
       if (!root) return;
@@ -247,8 +260,7 @@
       var titleBits = [];
       if (quote) titleBits.push(quote);
       if (client) titleBits.push(client);
-      var meta = (plan.sheet_count || layouts.length) + ' sheet(s)'
-        + (plan.yield_pct ? ' · ' + plan.yield_pct + '% yield' : '');
+      var meta = cutPlanMetaText(plan) + ' · Each sheet prints on its own page.';
       var sheetsHtml = layouts.map(function (layout) {
         var stats = layout.stats || {};
         var legend = (layout.legend || []).map(function (row) {

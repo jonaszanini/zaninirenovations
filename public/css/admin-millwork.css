@@ -133,15 +133,18 @@
   fill: var(--admin-heading);
   font-family: sans-serif;
   font-weight: 600;
-  paint-order: stroke fill;
-  stroke: var(--admin-elevated);
-  stroke-width: 0.12em;
-  stroke-linejoin: round;
 }
 .mw-cut-dim-line {
   stroke: var(--admin-muted);
   stroke-width: 1px;
   vector-effect: non-scaling-stroke;
+}
+.mw-cut-kerf {
+  fill: var(--admin-heading);
+  stroke: var(--admin-heading);
+  stroke-width: 1.15px;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.78;
 }
 
 [data-mw-show] { display: none; }

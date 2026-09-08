@@ -105,6 +105,7 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             'include_install' => 0,
         ])->assertOk()
             ->assertJsonPath('cut_plan.sheet_count', 1)
+            ->assertJsonPath('cut_plan.kerf_in', 0.125)
             ->assertJsonStructure([
                 'summary' => ['labor_pre_hst', 'materials_pre_hst', 'grand_total'],
                 'cut_plan' => ['layouts'],

@@ -421,6 +421,7 @@ class MillworkQuotationCalculator
         return [
             'sheet_count' => $sheetCount,
             'yield_pct' => $totalArea > 0 ? round(100 - ($totalWaste / $totalArea * 100), 1) : 0.0,
+            'kerf_in' => $kerf,
             'layouts' => $layouts,
             'stock_used' => array_values($usedByStock),
         ];

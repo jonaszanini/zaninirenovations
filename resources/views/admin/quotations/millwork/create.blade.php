@@ -157,6 +157,12 @@
               @if (! empty($initialPreview['cut_plan']['yield_pct']))
                 · {{ $initialPreview['cut_plan']['yield_pct'] }}% yield
               @endif
+              @php
+                $kerfLabel = \App\Services\CutOptimizer\SvgVisualizer::formatKerfLabel((float) ($initialPreview['cut_plan']['kerf_in'] ?? 0.125));
+              @endphp
+              @if ($kerfLabel !== '')
+                · Kerf {{ $kerfLabel }}
+              @endif
             </p>
             <div id="mw-cut-plan" class="mw-cut-plan">
               @forelse ($cutLayouts as $layout)

@@ -146,6 +146,7 @@
           <label for="kerf_in">Blade kerf (in)</label>
           <input type="number" step="0.001" min="0" class="admin-input" id="kerf_in" name="cut_settings[kerf_in]"
                  value="{{ old('cut_settings.kerf_in', $cutSettings['kerf_in'] ?? 0.125) }}">
+          <p class="admin-form-help">0.125 = 1/8″. Reserved between every saw cut on the cut plan.</p>
         </div>
         <div class="admin-form-group">
           <label for="trim_in">Factory trim each edge (in)</label>

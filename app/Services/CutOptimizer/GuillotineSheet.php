@@ -209,17 +209,21 @@ class GuillotineSheet
             $topW = $free->width;
             $topH = $free->height - $h - $kerf;
 
+            if (($free->width - $w) > self::EPS) {
+                $this->logCut('rip', $free->x + $w, $free->y, $free->x + $w, $free->y + $h, $h, $partLabel, [
+                    'surplus' => [round(max(0, $rightW), 3), round($rightH, 3)],
+                ]);
+            }
             if ($rightW > $this->minOffcut) {
                 $this->addOffcut($free->x + $w + $kerf, $free->y, $rightW, $rightH);
-                $this->logCut('rip', $free->x + $w, $free->y, $free->x + $w, $free->y + $h, $h, $partLabel, [
-                    'surplus' => [round($rightW, 3), round($rightH, 3)],
+            }
+            if (($free->height - $h) > self::EPS) {
+                $this->logCut('crosscut', $free->x, $free->y + $h, $free->x + $w, $free->y + $h, $w, $partLabel, [
+                    'surplus' => [round($topW, 3), round(max(0, $topH), 3)],
                 ]);
             }
             if ($topW > $this->minOffcut && $topH > $this->minOffcut) {
                 $this->addOffcut($free->x, $free->y + $h + $kerf, $topW, $topH);
-                $this->logCut('crosscut', $free->x, $free->y + $h, $free->x + $w, $free->y + $h, $w, $partLabel, [
-                    'surplus' => [round($topW, 3), round($topH, 3)],
-                ]);
             }
         } else {
             $rightW = $free->width - $w - $kerf;
@@ -227,17 +231,21 @@ class GuillotineSheet
             $topW = $w;
             $topH = $free->height - $h - $kerf;
 
+            if (($free->width - $w) > self::EPS) {
+                $this->logCut('rip', $free->x + $w, $free->y, $free->x + $w, $free->y + $free->height, $free->height, $partLabel, [
+                    'surplus' => [round(max(0, $rightW), 3), round($rightH, 3)],
+                ]);
+            }
             if ($rightW > $this->minOffcut && $rightH > $this->minOffcut) {
                 $this->addOffcut($free->x + $w + $kerf, $free->y, $rightW, $rightH);
-                $this->logCut('rip', $free->x + $w, $free->y, $free->x + $w, $free->y + $free->height, $free->height, $partLabel, [
-                    'surplus' => [round($rightW, 3), round($rightH, 3)],
+            }
+            if (($free->height - $h) > self::EPS) {
+                $this->logCut('crosscut', $free->x, $free->y + $h, $free->x + $w, $free->y + $h, $w, $partLabel, [
+                    'surplus' => [round($topW, 3), round(max(0, $topH), 3)],
                 ]);
             }
             if ($topH > $this->minOffcut) {
                 $this->addOffcut($free->x, $free->y + $h + $kerf, $topW, $topH);
-                $this->logCut('crosscut', $free->x, $free->y + $h, $free->x + $w, $free->y + $h, $w, $partLabel, [
-                    'surplus' => [round($topW, 3), round($topH, 3)],
-                ]);
             }
         }
     }

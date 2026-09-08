@@ -31,6 +31,12 @@
     @if ($yield)
       · {{ $yield }}% yield
     @endif
+    @php
+      $kerfLabel = \App\Services\CutOptimizer\SvgVisualizer::formatKerfLabel((float) ($cut['kerf_in'] ?? 0.125));
+    @endphp
+    @if ($kerfLabel !== '')
+      · Kerf {{ $kerfLabel }} between cuts
+    @endif
     · Each sheet prints on its own page.
   </p>
 
