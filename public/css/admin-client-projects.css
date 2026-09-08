@@ -6615,6 +6615,7 @@ body.cp-modal-open {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin: 0;
 }
@@ -6623,6 +6624,29 @@ body.cp-modal-open {
   min-width: 0;
   justify-content: center;
   min-height: 44px;
+}
+.br-toolbar-grand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 44px;
+  padding: 4px 2px 4px 10px;
+  line-height: 1.2;
+  color: var(--admin-primary, #024768);
+}
+.br-toolbar-grand__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.br-toolbar-grand__amount {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 .br-layout .fl-breakdown-section {
   margin-top: 8px;
@@ -7706,6 +7730,13 @@ body.cp-modal-open {
   .br-layout .pq-sidebar-actions .admin-btn,
   .br-step-nav .admin-btn {
     flex: 1 1 auto;
+  }
+  .br-toolbar-grand {
+    width: 100%;
+    align-items: flex-start;
+    padding-left: 2px;
+    border-top: 1px solid var(--admin-border, #d8dee4);
+    padding-top: 10px;
   }
 }
 

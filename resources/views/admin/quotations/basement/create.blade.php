@@ -118,6 +118,13 @@
         </a>
         <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
         @include('admin.partials.quotation_view_pdf')
+        @php
+          $toolbarGrand = (float) (($initialPreview['summary']['grand_total'] ?? 0));
+        @endphp
+        <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
+          <span class="br-toolbar-grand__label">Grand total</span>
+          <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
+        </div>
       </div>
       <div class="br-step-nav" id="br-step-nav">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>

@@ -1144,8 +1144,12 @@ html.admin-dark .tm-layout .pq-row--hl {
   border-top-color: var(--admin-border);
 }
 html.admin-dark .br-layout .pq-row--hl,
-html.admin-dark .tm-layout .pq-row--hl {
+html.admin-dark .tm-layout .pq-row--hl,
+html.admin-dark .br-toolbar-grand {
   color: var(--admin-primary);
+}
+html.admin-dark .br-toolbar-grand {
+  border-top-color: var(--admin-border);
 }
 html.admin-dark .br-layout .pq-summary-card h4,
 html.admin-dark .br-layout .fl-step-card h4 {

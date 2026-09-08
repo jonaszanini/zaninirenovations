@@ -733,6 +733,13 @@
     }).catch(function () {});
   }
 
+  function updateToolbarGrand(grand) {
+    var amountEl = document.getElementById('br-toolbar-grand-amount');
+    if (amountEl) {
+      amountEl.textContent = fmt(grand);
+    }
+  }
+
   function renderPreview(data) {
     lastPreviewData = data;
     var empty = document.getElementById('br-live-empty');
@@ -740,6 +747,8 @@
     var summary = data.summary || {};
     rebuildLaborTable(data.labor || []);
     rebuildMatTable(data.materials || []);
+    var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
+    updateToolbarGrand(grand);
     if (!summary.grand_total || summary.grand_total <= 0) {
       if (empty) empty.hidden = false;
       if (body) body.hidden = true;
@@ -763,7 +772,6 @@
     if (lastDebrisAmount > 0) {
       html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
     }
-    var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
     html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
     body.innerHTML = html;
   }
