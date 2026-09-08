@@ -37,7 +37,7 @@ class CommunicationLogController extends Controller
         ];
 
         $logs = ClientCommunicationLog::query()
-            ->with('project:id,name,client_name')
+            ->with('project:id,name,client_name,client_id')
             ->channel($filters['channel'] ?: null)
             ->reason($filters['reason'] ?: null)
             ->direction($filters['direction'] ?: null)

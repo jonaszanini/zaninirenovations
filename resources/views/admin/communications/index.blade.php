@@ -83,9 +83,14 @@
               @endphp
               <tr @class(['admin-input', 'cp-comm-row-failed' => $isFailed])>
                 <td>
-                  <strong>{{ $log->clientNameLabel() }}</strong>
                   @if ($isAdminBound)
+                    <strong>{{ $log->clientNameLabel() }}</strong>
                     <div class="cp-subtle"><i class="fa fa-user-secret" aria-hidden="true"></i> Internal</div>
+                  @else
+                    <strong>@include('admin.partials.client_directory_link', [
+                      'project' => $log->project,
+                      'label' => $log->clientNameLabel(),
+                    ])</strong>
                   @endif
                 </td>
                 <td>

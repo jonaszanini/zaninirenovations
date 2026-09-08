@@ -20,7 +20,7 @@
     <div class="cp-vd-grid" style="margin-bottom:10px;">
       <div class="cp-vd-field cp-vd-field--full">
         <span class="cp-vd-field__label">Client name</span>
-        <span class="cp-vd-field__value">{{ $sourceModel->client_name }}</span>
+        <span class="cp-vd-field__value">@include('admin.partials.client_directory_link', ['project' => $project ?? null, 'label' => $sourceModel->client_name])</span>
       </div>
     </div>
   @endif

@@ -391,6 +391,28 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   letter-spacing: 0.02em;
   color: var(--admin-heading);
 }
+a.cp-header-client {
+  text-decoration: none;
+}
+a.cp-header-client:hover,
+a.cp-header-client:focus-visible {
+  color: var(--admin-primary, #024768);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+a.cp-party-name__link {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+a.cp-header-detail__value[href*="/admin/clients/"] {
+  text-decoration: none;
+}
+a.cp-header-detail__value[href*="/admin/clients/"]:hover,
+a.cp-header-detail__value[href*="/admin/clients/"]:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .cp-header-snapshot {
   margin: 0;
   font-size: 12px;

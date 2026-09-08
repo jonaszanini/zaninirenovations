@@ -591,6 +591,13 @@ html.admin-dark .cp-quotation-pdf-photos__item {
   border-color: var(--admin-border);
 }
 
+html.admin-dark a.cp-header-client:hover,
+html.admin-dark a.cp-header-client:focus-visible,
+html.admin-dark a.cp-party-name__link:hover,
+html.admin-dark a.cp-party-name__link:focus-visible {
+  color: var(--admin-primary, #5b9fc4);
+}
+
 /* Project-page ink that still hardcodes slate-900 / gray-700 */
 html.admin-dark .admin-form-section h3,
 html.admin-dark .cp-header-name,

@@ -183,10 +183,14 @@
             </td>
             <td>
               <div class="cp-party-label">CLIENT</div>
-              <div class="cp-party-name">{{ $project->client_name ?: '—' }}</div>
+              <div class="cp-party-name">@include('admin.partials.client_directory_link', ['project' => $project, 'class' => 'cp-party-name__link'])</div>
               <div>Phone: {{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</div>
               <div>Service Address: {{ $project->client_address ?: '—' }}</div>
-              <div>Email: {{ $project->client_email ?: '—' }}</div>
+              <div>Email: @include('admin.partials.client_directory_link', [
+                'project' => $project,
+                'label' => $project->client_email,
+                'fallbackMailto' => true,
+              ])</div>
             </td>
           </tr>
         </table>

@@ -54,7 +54,7 @@
               @endphp
               <tr>
                 <td><strong>{{ $q->quote_number }}</strong></td>
-                <td>{{ $q->client_name }}</td>
+                <td>@include('admin.partials.client_directory_link', ['project' => $q->project, 'label' => $q->client_name])</td>
                 <td>{{ rtrim(rtrim(number_format((float) $q->fence_height_ft, 2), '0'), '.') }}'</td>
                 <td>{{ rtrim(rtrim(number_format($totalFt, 2), '0'), '.') }}</td>
                 <td>{{ $q->gate_count }}</td>

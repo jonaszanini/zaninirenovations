@@ -65,7 +65,7 @@
               @foreach ($projects as $project)
                 <tr>
                   <td><strong>{{ $project->name }}</strong></td>
-                  <td>{{ $project->client_name ?: '—' }}</td>
+                  <td>@include('admin.partials.client_directory_link', ['project' => $project])</td>
                   <td>
                     <span class="admin-badge" style="background:{{ $project->statusColor() }}20;color:{{ $project->statusColor() }};">
                       {{ $project->statusLabel() }}
@@ -101,7 +101,10 @@
                 <tr>
                   <td><code class="admin-code">{{ $quotation->quotation_number ?: '—' }}</code></td>
                   <td>{{ $quotation->resolvedTitle() }}</td>
-                  <td>{{ $quotation->project->client_name ?? '—' }}</td>
+                  <td>@include('admin.partials.client_directory_link', [
+                    'project' => $quotation->project,
+                    'label' => $quotation->project?->client_name,
+                  ])</td>
                   <td>{{ $quotation->statusLabel() }}</td>
                   <td style="white-space:nowrap;">
                     @if ($quotation->project)

@@ -70,7 +70,10 @@
 
 
           <div class="cp-header-client-row">
-            <span class="cp-header-client">{{ $project->client_name }}</span>
+            @include('admin.partials.client_directory_link', [
+              'project' => $project,
+              'class' => 'cp-header-client',
+            ])
             @if ($project->usesClientSnapshot())
               <span class="cp-header-snapshot admin-form-help">
                 <i class="fa fa-lock" aria-hidden="true"></i>
@@ -115,7 +118,12 @@
               <span class="cp-header-detail__icon" aria-hidden="true"><i class="fa fa-envelope"></i></span>
               <span class="cp-header-detail__body">
                 <span class="cp-header-detail__label">Email</span>
-                <a class="cp-header-detail__value" href="mailto:{{ $project->client_email }}">{{ $project->client_email }}</a>
+                @include('admin.partials.client_directory_link', [
+                  'project' => $project,
+                  'label' => $project->client_email,
+                  'class' => 'cp-header-detail__value',
+                  'fallbackMailto' => true,
+                ])
               </span>
             </div>
           @endif
@@ -758,8 +766,12 @@
       <h3>Details</h3>
       <dl class="cp-dl">
         <dt>Project name</dt><dd>{{ $project->name }}</dd>
-        <dt>Client</dt><dd>{{ $project->client_name }}</dd>
-        <dt>Email</dt><dd>{{ $project->client_email ?: '—' }}</dd>
+        <dt>Client</dt><dd>@include('admin.partials.client_directory_link', ['project' => $project])</dd>
+        <dt>Email</dt><dd>@include('admin.partials.client_directory_link', [
+          'project' => $project,
+          'label' => $project->client_email,
+          'fallbackMailto' => true,
+        ])</dd>
         <dt>Secondary email</dt><dd>{{ $project->secondaryClientEmail() ?: '—' }}</dd>
         <dt>Phone</dt><dd>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</dd>
         <dt>Address</dt><dd>{{ $project->client_address ?: '—' }}</dd>

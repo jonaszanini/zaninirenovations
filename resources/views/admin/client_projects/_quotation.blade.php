@@ -225,10 +225,14 @@
                 </div>
                 <div class="cp-quotation-doc-client">
                   <div class="cp-party-label">CLIENT</div>
-                  <div class="cp-party-name">{{ $project->client_name ?: '—' }}</div>
+                  <div class="cp-party-name">@include('admin.partials.client_directory_link', ['project' => $project, 'class' => 'cp-party-name__link'])</div>
                   <div>{{ $project->client_address ?: '—' }}</div>
                   <div>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</div>
-                  <div>{{ $project->client_email ?: '—' }}</div>
+                  <div>@include('admin.partials.client_directory_link', [
+                    'project' => $project,
+                    'label' => $project->client_email,
+                    'fallbackMailto' => true,
+                  ])</div>
                 </div>
               </div>
 
@@ -389,10 +393,14 @@
             </div>
             <div class="cp-quotation-doc-client">
               <div class="cp-party-label">CLIENT</div>
-              <div class="cp-party-name">{{ $project->client_name ?: '—' }}</div>
+              <div class="cp-party-name">@include('admin.partials.client_directory_link', ['project' => $project, 'class' => 'cp-party-name__link'])</div>
               <div>{{ $project->client_address ?: '—' }}</div>
               <div>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</div>
-              <div>{{ $project->client_email ?: '—' }}</div>
+              <div>@include('admin.partials.client_directory_link', [
+                'project' => $project,
+                'label' => $project->client_email,
+                'fallbackMailto' => true,
+              ])</div>
             </div>
           </div>
 

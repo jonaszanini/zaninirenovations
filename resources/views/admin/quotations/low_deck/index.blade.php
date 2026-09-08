@@ -51,7 +51,7 @@
             @foreach ($quotations as $q)
               <tr>
                 <td><strong>{{ $q->quote_number }}</strong></td>
-                <td>{{ $q->client_name }}</td>
+                <td>@include('admin.partials.client_directory_link', ['project' => $q->project, 'label' => $q->client_name])</td>
                 <td>{{ rtrim(rtrim(number_format((float) $q->width_ft, 2), '0'), '.') }}' &times; {{ rtrim(rtrim(number_format((float) $q->length_ft, 2), '0'), '.') }}'</td>
                 <td>{{ rtrim(rtrim(number_format($q->areaSqFt(), 2), '0'), '.') }} sq ft</td>
                 <td>

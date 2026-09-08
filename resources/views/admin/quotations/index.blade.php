@@ -13,7 +13,7 @@
 
   @if ($hubProject ?? null)
     <div class="admin-flash admin-flash--info">
-      Creating quotations for project <strong>{{ $hubProject->name }}</strong> ({{ $hubProject->client_name }}).
+      Creating quotations for project <strong>{{ $hubProject->name }}</strong> (@include('admin.partials.client_directory_link', ['project' => $hubProject])).
       The first saved quotation will attach to this project automatically.
     </div>
   @else

@@ -50,7 +50,7 @@
             @foreach ($quotations as $q)
               <tr>
                 <td><strong>{{ $q->quote_number }}</strong></td>
-                <td>{{ $q->client_name ?: '—' }}</td>
+                <td>@include('admin.partials.client_directory_link', ['project' => $q->project, 'label' => $q->client_name])</td>
                 <td>{{ $q->areaSqft() > 0 ? number_format($q->areaSqft(), 0).' sq ft' : '—' }}</td>
                 <td>{{ $q->is_draft ? 'Yes' : '—' }}</td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($q->final_quote_total) }}</td>

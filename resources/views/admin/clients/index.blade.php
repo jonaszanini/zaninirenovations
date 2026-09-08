@@ -51,7 +51,7 @@
           @forelse ($clients as $client)
             <tr>
               <td>
-                <strong>{{ $client->name }}</strong>
+                <strong>@include('admin.partials.client_directory_link', ['client' => $client])</strong>
                 @if ($client->tags->isNotEmpty())
                   <div class="cl-tag-picker" style="margin-top:4px;">
                     @foreach ($client->tags as $tag)
@@ -60,7 +60,11 @@
                   </div>
                 @endif
               </td>
-              <td>{{ $client->email ?: '—' }}</td>
+              <td>@include('admin.partials.client_directory_link', [
+                'client' => $client,
+                'label' => $client->email,
+                'fallbackMailto' => true,
+              ])</td>
               <td>{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
               <td>{{ $client->projects_count }}</td>
               <td>

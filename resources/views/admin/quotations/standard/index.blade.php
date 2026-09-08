@@ -47,7 +47,7 @@
             @foreach ($quotations as $q)
               <tr>
                 <td><strong>{{ $q->quote_number }}</strong></td>
-                <td>{{ $q->client_name }}</td>
+                <td>@include('admin.partials.client_directory_link', ['project' => $q->project, 'label' => $q->client_name])</td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($q->materials_subtotal_before_hst) }}</td>
                 <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($q->labour_total) }}</td>
                 <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($q->grand_total) }}</strong></td>

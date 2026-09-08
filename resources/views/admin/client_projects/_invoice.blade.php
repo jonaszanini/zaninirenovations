@@ -33,7 +33,7 @@
         <span class="admin-form-help" style="display:block;margin-top:6px;white-space:pre-line;">{{ $project->invoice_billing_address }}</span>
       @endif
     </p>
-    <p class="admin-form-help" style="margin:8px 0 0;">PDFs use this legal name/address. Emails and SMS still use the client contact on file ({{ $project->client_name ?: '—' }}).</p>
+    <p class="admin-form-help" style="margin:8px 0 0;">PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).</p>
     <a href="{{ route('admin.client-projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-form-group-spaced">Edit project</a>
   </div>
 @endif

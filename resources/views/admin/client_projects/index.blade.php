@@ -139,9 +139,16 @@
               @php $url = route('admin.client-projects.show', $project); @endphp
               <tr class="cp-row-link" data-href="{{ $url }}" tabindex="0" role="link" aria-label="Open project {{ $project->name }}">
                 <td>
-                  <strong>{{ $project->clientNameForProjectList() }}</strong>
+                  <strong>@include('admin.partials.client_directory_link', [
+                    'project' => $project,
+                    'label' => $project->clientNameForProjectList(),
+                  ])</strong>
                   @if ($project->client_email)
-                    <div class="cp-subtle">{{ $project->client_email }}</div>
+                    <div class="cp-subtle">@include('admin.partials.client_directory_link', [
+                      'project' => $project,
+                      'label' => $project->client_email,
+                      'fallbackMailto' => true,
+                    ])</div>
                   @endif
                 </td>
                 <td>
