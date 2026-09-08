@@ -5876,11 +5876,12 @@ body.cp-modal-open {
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
   padding: 10px 14px;
   margin-bottom: 12px;
+  color: var(--admin-text);
 }
 .cp-date-picker-selection > div {
   display: flex;
@@ -5891,11 +5892,11 @@ body.cp-modal-open {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6b7280;
+  color: var(--admin-muted);
 }
 .cp-date-picker-selection strong {
   font-size: 15px;
-  color: #024768;
+  color: var(--admin-heading);
 }
 .cp-date-picker-selection-arrow {
   color: var(--admin-chevron-color, var(--admin-primary, #024768));
@@ -5923,7 +5924,7 @@ body.cp-modal-open {
   cursor: pointer;
 }
 .cp-date-picker-calendar .fc-daygrid-day:hover {
-  background: #eff6ff;
+  background: var(--admin-primary-soft);
 }
 .cp-date-picker-calendar .fc .fc-daygrid-day.fc-day-today {
   background: rgba(2, 71, 104, 0.1);

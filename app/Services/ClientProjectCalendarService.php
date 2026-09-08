@@ -92,6 +92,7 @@ class ClientProjectCalendarService
                     'allDay' => true,
                     'backgroundColor' => $p->statusColor(),
                     'borderColor' => $p->statusColor(),
+                    'textColor' => '#ffffff',
                     'extendedProps' => [
                         'kind' => 'job',
                         'status' => $p->statusLabel(),
@@ -114,6 +115,7 @@ class ClientProjectCalendarService
                     'allDay' => true,
                     'backgroundColor' => $visitColor,
                     'borderColor' => $visitColor,
+                    'textColor' => '#ffffff',
                     'extendedProps' => [
                         'kind' => 'visit',
                         'status' => $visitDone ? 'Visit (completed)' : 'Visit — '.$p->statusLabel(),

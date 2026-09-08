@@ -33,6 +33,7 @@ class AdminCalendarEvent extends Model
             'allDay' => true,
             'backgroundColor' => self::CALENDAR_COLOR,
             'borderColor' => self::CALENDAR_COLOR,
+            'textColor' => '#ffffff',
             'extendedProps' => [
                 'kind' => 'personal',
                 'description' => $this->description ?? '',

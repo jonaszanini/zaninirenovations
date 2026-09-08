@@ -847,8 +847,12 @@ html.admin-dark .fc {
   --fc-today-bg-color: rgba(56, 189, 248, 0.12);
   --fc-now-indicator-color: #38bdf8;
   --fc-list-event-hover-bg-color: rgba(51, 65, 85, 0.5);
-  --fc-event-text-color: #f8fafc;
+  --fc-event-text-color: #fff;
   --fc-page-text-color: var(--admin-text);
+  --fc-highlight-color: rgba(56, 189, 248, 0.22);
+  --fc-bg-event-color: #2563eb;
+  --fc-bg-event-opacity: 0.38;
+  --fc-non-business-color: rgba(15, 23, 42, 0.35);
 }
 
 html.admin-dark .fc .fc-col-header-cell-cushion,
@@ -856,6 +860,34 @@ html.admin-dark .fc .fc-daygrid-day-number,
 html.admin-dark .fc .fc-list-day-cushion,
 html.admin-dark .fc .fc-toolbar-title {
   color: var(--admin-text);
+}
+
+html.admin-dark .fc .fc-day-other .fc-daygrid-day-number {
+  color: var(--admin-muted);
+}
+
+/* Colored event chips: keep white titles, no dark-scheme glyph halo/stroke.
+   FullCalendar may set inline `color: #000` on bright status bars; fill must
+   match that color or Chrome draws a black outline around each letter. */
+html.admin-dark .fc .fc-event:not(.fc-bg-event) {
+  color-scheme: light;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+  filter: none;
+}
+
+html.admin-dark .fc .fc-event:not(.fc-bg-event) .fc-event-main,
+html.admin-dark .fc .fc-event:not(.fc-bg-event) .fc-event-title,
+html.admin-dark .fc .fc-event:not(.fc-bg-event) .fc-event-time,
+html.admin-dark .fc .fc-list-event-title,
+html.admin-dark .fc .fc-list-event-time {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
 html.admin-dark .tox-tinymce {
