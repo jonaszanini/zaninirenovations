@@ -345,6 +345,8 @@
       width: 58pt;
       white-space: nowrap;
       font-size: 9.5pt;
+    }
+    .items td.hst {
       color: #4b5563;
     }
     .items tfoot td.hst {
