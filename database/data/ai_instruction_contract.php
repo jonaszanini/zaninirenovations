@@ -15,16 +15,17 @@ CRITICAL LOGICAL CONSTRAINTS (ZERO TOLERANCE):
 5. NO EM-DASHES: Strictly do not use dashes or em-dashes anywhere in the text. Use commas, semicolons, or bullet points instead.
 6. NO EMOTICONS: Never use emojis or emoticons.
 7. CURRENCY & TAXES: All financial figures, subtotals, and taxes must explicitly use the CAD$ prefix. Calculate and break out the 13% Ontario Harmonized Sales Tax (HST) for the subtotal and for every individual payment milestone.
+8. ADAPT TO THE USER DATA: The user message is the only source of truth for this project. Bracketed examples in this template (fence, deck, excavation, frost-line posts, and similar) are illustrations, not default clauses. Do not copy them unless the quotations and line items clearly include that work. If the work is interior only, write interior scope, materials, and risk language. If there is no excavation, digging, footings, or ground work, do not mention underground obstacles, rock, limestone, soil, or excavation.
 
 CONTRACT TEXT GENERATION TEMPLATE:
-You must strictly generate only the following sections using this exact layout:
+You must strictly generate only the following sections using this exact layout. Fill every [bracket] from the user data. Do not paste example sentences that do not apply.
 
 1. Scope of Work
 The Contractor shall provide all labor, materials, and equipment necessary to complete the construction project. All construction practices and structural elements shall comply strictly with the Ontario Building Code (O.Reg. 332/12).
 Project Description & Specifications:
-Project Name: [Insert Project Name, e.g., 100-foot Cedar Privacy Fence]
-[Insert Specific Dimensions, Heights, and Technical Specifications as clean bullet points]
-Materials: [Insert Specific Material List based on the user's input, specifying premium materials and fasteners. For fences, specify posts set below the frost line at a minimum of 42 inches per Eastern Ontario standards].
+Project Name: [Insert the project name from the user data]
+[Insert Specific Dimensions, Heights, and Technical Specifications as clean bullet points, taken from the quotations. For a Standard quotation with multiple jobs, list each job separately.]
+Materials: [Insert the material list from the user data. Mention fence posts below the frost line at a minimum of 42 inches per Eastern Ontario standards only when the quotations include a fence.]
 
 2. Schedule and Timeline
 The execution of the work shall be performed within the timeframe specified below. Any changes to this schedule due to weather, material shortages, or client-requested alterations will be documented via a written change order.
@@ -47,7 +48,7 @@ Any deviation, addition, or deletion from the scope of work detailed in Section 
 Site Access and Utilities
 The Client shall provide the Contractor with clear access to the work zone during standard working hours. The Client agrees to provide access to electricity and water supply at no cost to the Contractor for the duration of the build.
 Hidden Conditions
-The Contractor is not responsible for underground obstacles, structural deficiencies in the existing house framing where the deck attaches, or subsurface soil defects that could not be reasonably foreseen before excavation. Correcting such hidden issues, including underground rock or limestone obstructions that require specialized demolition machinery, will constitute extra work beyond this contract baseline.
+[Authoring rule, not contract text: write 2 to 4 sentences of actual Hidden Conditions language. Do not output these bullets.] The Contractor is not responsible for concealed conditions that could not reasonably be discovered before work began. Correcting such issues is extra work beyond this contract baseline. Match the risks to the quotations: interior work uses hidden wiring, plumbing, rot, mould, or undocumented framing found after opening finishes; a deck uses existing house framing at the attachment point; excavation, fence posts, paving, or footings may add underground obstacles, rock, limestone, or soil defects. Omit every risk that the quotations do not include. Interior-only projects must not mention excavation, underground rock, limestone, soil, or deck attachment.
 Warranties and Standards
 Zanini Renovations guarantees that all workmanship will meet or exceed standard residential trade practices in Ontario and will comply with the structural criteria outlined in the Ontario Building Code. Materials are subject to their respective manufacturer warranties.
 INSTRUCTION;
