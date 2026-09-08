@@ -6,6 +6,7 @@ use App\Models\Material;
 use App\Models\ShedQuotation;
 use App\Models\ShedSettings;
 use App\Support\CatalogMaterialDelivery;
+use App\Support\QuotationHelperLabor;
 
 class ShedQuotationCalculator
 {
@@ -115,6 +116,7 @@ class ShedQuotationCalculator
             'client_provides_sections' => [],
             'owner_hourly_rate' => 85,
             'helper_hourly_rate' => 45,
+            'include_helper' => false,
             'extra_materials' => [],
             'labor_override' => [],
             'materials_override' => [],
@@ -570,16 +572,17 @@ class ShedQuotationCalculator
 
         $ownerRate = max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate));
         $helperRate = max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate));
+        $includeHelper = QuotationHelperLabor::enabled($inputs);
         $hoursPerDay = max(0.5, (float) $settings->hours_per_day);
 
         $totalHours = 0.0;
         foreach ($labor as &$row) {
             $totalHours += $row['hours'];
-            $row['amount'] = round($row['hours'] * $ownerRate, 2);
+            $row['amount'] = QuotationHelperLabor::amount((float) $row['hours'], $ownerRate, $helperRate, $includeHelper);
         }
         unset($row);
         $totalHours = round($totalHours, 2);
-        $laborPre = round($totalHours * $ownerRate, 2);
+        $laborPre = round(QuotationHelperLabor::amount($totalHours, $ownerRate, $helperRate, $includeHelper), 2);
 
         $matPre = 0.0;
         foreach ($materials as $row) {
@@ -633,6 +636,7 @@ class ShedQuotationCalculator
                 'total_hours' => $totalHours,
                 'owner_hourly_rate' => $ownerRate,
                 'helper_hourly_rate' => $helperRate,
+                'include_helper' => $includeHelper,
                 'labor_pre_hst' => $laborPre,
                 'labor_hst' => $laborHst,
                 'labor_after_hst' => round($laborPre + $laborHst, 2),
@@ -731,6 +735,7 @@ class ShedQuotationCalculator
                 'total_hours' => 0.0,
                 'owner_hourly_rate' => (float) $settings->owner_hourly_rate,
                 'helper_hourly_rate' => (float) $settings->helper_hourly_rate,
+                'include_helper' => QuotationHelperLabor::enabled($inputs),
                 'labor_pre_hst' => 0.0,
                 'labor_hst' => 0.0,
                 'labor_after_hst' => 0.0,

@@ -111,6 +111,32 @@ class MillworkPartBuilder
     }
 
     /**
+     * First numeric dimension that is greater than zero.
+     * Empty posted fields (hidden Width on a floating shelf) are skipped.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  list<string>  $keys
+     */
+    public static function positiveDim(array $row, array $keys): float
+    {
+        foreach ($keys as $key) {
+            if (! array_key_exists($key, $row)) {
+                continue;
+            }
+            $raw = $row[$key];
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+            $n = (float) $raw;
+            if ($n > 0) {
+                return $n;
+            }
+        }
+
+        return 0.0;
+    }
+
+    /**
      * @param  array<string, mixed>  $piece
      * @return array<string, mixed>
      */
@@ -123,8 +149,9 @@ class MillworkPartBuilder
         $n = 0;
         foreach ($this->sets($piece) as $set) {
             $qty = max(0, (int) ($set['qty'] ?? 0));
-            $len = self::toInches((float) ($set['length'] ?? 0), (string) ($set['unit'] ?? 'in'));
-            $dep = self::toInches((float) ($set['depth'] ?? $set['width'] ?? 0), (string) ($set['unit'] ?? 'in'));
+            $unit = (string) ($set['unit'] ?? 'in');
+            $len = self::toInches(self::positiveDim($set, ['length', 'height']), $unit);
+            $dep = self::toInches(self::positiveDim($set, ['depth', 'width']), $unit);
             if ($qty <= 0 || $len <= 0 || $dep <= 0) {
                 continue;
             }
@@ -161,9 +188,13 @@ class MillworkPartBuilder
         foreach ($this->sets($piece) as $set) {
             $qty = max(0, (int) ($set['qty'] ?? 0));
             $unit = (string) ($set['unit'] ?? 'in');
-            $len = self::toInches((float) ($set['length'] ?? 0), $unit);
-            $dep = self::toInches((float) ($set['depth'] ?? $set['width'] ?? 0), $unit);
-            $thk = self::toInches((float) ($set['thickness'] ?? $piece['thickness'] ?? 3), $unit);
+            $len = self::toInches(self::positiveDim($set, ['length', 'height']), $unit);
+            $dep = self::toInches(self::positiveDim($set, ['depth', 'width']), $unit);
+            $thkIn = self::positiveDim($set, ['thickness']);
+            if ($thkIn <= 0) {
+                $thkIn = self::positiveDim($piece, ['thickness']) ?: 3;
+            }
+            $thk = self::toInches($thkIn, $unit);
             if ($qty <= 0 || $len <= 0 || $dep <= 0 || $thk <= 0) {
                 continue;
             }
@@ -346,8 +377,8 @@ class MillworkPartBuilder
         foreach ($this->sets($piece) as $set) {
             $qty = max(0, (int) ($set['qty'] ?? 0));
             $unit = (string) ($set['unit'] ?? 'in');
-            $w = self::toInches((float) ($set['width'] ?? $set['depth'] ?? 0), $unit);
-            $h = self::toInches((float) ($set['height'] ?? $set['length'] ?? 0), $unit);
+            $w = self::toInches(self::positiveDim($set, ['width', 'depth']), $unit);
+            $h = self::toInches(self::positiveDim($set, ['height', 'length']), $unit);
             if ($qty <= 0 || $w <= 0 || $h <= 0) {
                 continue;
             }
@@ -417,7 +448,7 @@ class MillworkPartBuilder
             $slides = $qty * $drawers;
         }
         $edgeLf = $band ? $qty * ($len + $h) / 6.0 : 0;
-        $pulls = max(0, (int) ($piece['pull_qty'] ?? $drawers));
+        $pulls = $drawers > 0 ? max(0, (int) ($piece['pull_qty'] ?? $drawers)) : 0;
 
         return [
             'parts' => $parts,

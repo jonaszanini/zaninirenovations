@@ -63,6 +63,8 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="demo_baseboard_lf"', $html);
         $this->assertStringContainsString('id="br-demo-studs-fields"', $html);
         $this->assertStringContainsString('id="br-demo-base-fields"', $html);
+        $this->assertStringContainsString('class="br-demo-types', $html);
+        $this->assertStringContainsString('class="admin-form-group br-demo-bins"', $html);
     }
 
     public function test_wall_wizard_includes_doors_trim_step(): void
@@ -125,6 +127,19 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertGreaterThan($head, $segment);
         $this->assertGreaterThan($segment, $companion);
         $this->assertStringContainsString('id="br-height"', $overview);
+    }
+
+    public function test_overview_step_has_include_helper_checkbox_and_hidden_rate(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('name="include_helper"', $html);
+        $this->assertStringContainsString('Include a helper', $html);
+        $this->assertStringContainsString('id="br-helper-rate-wrap"', $html);
+        $this->assertMatchesRegularExpression('/id="br-helper-rate-wrap"[^>]*\bhidden\b/', $html);
     }
 
     /**

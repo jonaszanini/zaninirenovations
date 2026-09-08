@@ -30,6 +30,15 @@
  *     dollars (13000.00 → thirteen thousand). Same rules as parseHybridCadMoney.
  */
 (function () {
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t || t.type !== 'checkbox') return;
+    var id = t.getAttribute('data-reveal');
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (el) el.hidden = !t.checked;
+  });
+
   // --- CAD money mask ---------------------------------------------------
 
   function moneyPlaces(input) {

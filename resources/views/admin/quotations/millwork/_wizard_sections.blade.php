@@ -1,5 +1,6 @@
 @php
   use App\Models\MillworkSettings;
+  use App\Services\Millwork\MillworkPartBuilder;
   use App\Services\MillworkQuotationCalculator;
 
   $mwVal = function (string $key, $fallback = '') use ($inputs) {
@@ -13,6 +14,21 @@
   $opt = function (string $slot) use ($catalog) {
       return is_array($catalog[$slot] ?? null) ? $catalog[$slot] : [];
   };
+  $needsCabinetHardware = false;
+  foreach ($pieces as $pieceRow) {
+      if (! is_array($pieceRow)) {
+          continue;
+      }
+      $pieceType = MillworkPartBuilder::normalizeType((string) ($pieceRow['type'] ?? 'shelf'));
+      if ($pieceType === 'cabinet' || $pieceType === 'cabinet_door') {
+          $needsCabinetHardware = true;
+          break;
+      }
+      if ($pieceType === 'bench' && (($pieceRow['below'] ?? '') === 'drawers')) {
+          $needsCabinetHardware = true;
+          break;
+      }
+  }
 @endphp
 
 <details class="br-acc admin-card is-active" data-br-step="pieces" open>
@@ -98,7 +114,7 @@
   <summary class="br-acc__summary"><span class="br-acc__num">3</span> Hardware</summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-hinge">Hinges</label>
         <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id">
           @foreach ($opt(MillworkSettings::SLOT_HINGES) as $row)
@@ -106,7 +122,7 @@
           @endforeach
         </select>
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-pull">Pulls</label>
         <select class="admin-input mw-preview" id="mw-pull" name="pull_id">
           @foreach ($opt(MillworkSettings::SLOT_PULLS) as $row)
@@ -130,7 +146,7 @@
           @endforeach
         </select>
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-slide">Drawer slides</label>
         <select class="admin-input mw-preview" id="mw-slide" name="slide_id">
           @foreach ($opt(MillworkSettings::SLOT_DRAWER_SLIDES) as $row)
@@ -155,10 +171,12 @@
                value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate), 2, '.', '')) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-helper-rate">Helper hourly rate (CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
-               class="admin-input cp-money-input mw-preview" id="mw-helper-rate" name="helper_hourly_rate"
-               value="{{ old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate), 2, '.', '')) }}">
+        @include('admin.quotations._include_helper', [
+          'checked' => (bool) old('include_helper', $inputs['include_helper'] ?? false),
+          'previewClass' => 'mw-preview',
+          'rateId' => 'mw-helper-rate',
+          'rateValue' => old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate), 2, '.', '')),
+        ])
       </div>
     </div>
   </div>

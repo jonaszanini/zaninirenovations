@@ -9,6 +9,7 @@ use App\Services\CutOptimizer\Part;
 use App\Services\CutOptimizer\StockOption;
 use App\Services\CutOptimizer\SvgVisualizer;
 use App\Services\Millwork\MillworkPartBuilder;
+use App\Support\QuotationHelperLabor;
 
 class MillworkQuotationCalculator
 {
@@ -43,6 +44,7 @@ class MillworkQuotationCalculator
             'client_provides_all' => false,
             'owner_hourly_rate' => 85,
             'helper_hourly_rate' => 45,
+            'include_helper' => false,
             'extra_materials' => [],
             'labor_override' => [],
             'materials_override' => [],
@@ -106,6 +108,7 @@ class MillworkQuotationCalculator
         $catalog = $settings->resolvedCatalog();
         $ownerRate = round(max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate)), 2);
         $helperRate = round(max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate)), 2);
+        $includeHelper = QuotationHelperLabor::enabled($inputs);
         $providesAll = ! empty($inputs['client_provides_all']);
 
         $sheet = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, (string) ($inputs['sheet_id'] ?? ''));
@@ -188,6 +191,8 @@ class MillworkQuotationCalculator
         $labor = $this->laborRows(
             $prod,
             $ownerRate,
+            $helperRate,
+            $includeHelper,
             $cutPlan['sheet_count'],
             $shelfUnits,
             $floatingUnits,
@@ -264,6 +269,7 @@ class MillworkQuotationCalculator
                 'total_hours' => $totalHours,
                 'owner_hourly_rate' => $ownerRate,
                 'helper_hourly_rate' => $helperRate,
+                'include_helper' => $includeHelper,
                 'labor_pre_hst' => $laborPre,
                 'labor_hst' => $laborHst,
                 'labor_after_hst' => round($laborPre + $laborHst, 2),
@@ -299,17 +305,17 @@ class MillworkQuotationCalculator
             if (in_array($type, ['shelf', 'floating_shelf', 'cabinet_door'], true)) {
                 foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
                     if ((int) ($set['qty'] ?? 0) > 0) {
-                        $len = (float) ($set['length'] ?? $set['height'] ?? 0);
-                        $wid = (float) ($set['width'] ?? $set['depth'] ?? 0);
+                        $len = MillworkPartBuilder::positiveDim($set, ['length', 'height']);
+                        $wid = MillworkPartBuilder::positiveDim($set, ['width', 'depth']);
                         if ($len > 0 && $wid > 0) {
                             $hasPart = true;
                         }
                     }
                 }
             } else {
-                $w = (float) ($piece['width'] ?? $piece['length'] ?? 0);
-                $h = (float) ($piece['height'] ?? 0);
-                $d = (float) ($piece['depth'] ?? 0);
+                $w = MillworkPartBuilder::positiveDim($piece, ['width', 'length']);
+                $h = MillworkPartBuilder::positiveDim($piece, ['height']);
+                $d = MillworkPartBuilder::positiveDim($piece, ['depth']);
                 if ($w > 0 && ($h > 0 || $type === 'bench') && $d > 0) {
                     $hasPart = true;
                 }
@@ -475,6 +481,8 @@ class MillworkQuotationCalculator
     private function laborRows(
         array $prod,
         float $ownerRate,
+        float $helperRate,
+        bool $includeHelper,
         int $sheetCount,
         int $shelfUnits,
         int $floatingUnits,
@@ -489,7 +497,7 @@ class MillworkQuotationCalculator
         array $overrides
     ): array {
         $rows = [];
-        $add = function (string $key, string $label, float $hours) use (&$rows, $ownerRate, $overrides): void {
+        $add = function (string $key, string $label, float $hours) use (&$rows, $ownerRate, $helperRate, $includeHelper, $overrides): void {
             if (isset($overrides[$key]['hours']) && is_numeric($overrides[$key]['hours'])) {
                 $hours = (float) $overrides[$key]['hours'];
             }
@@ -501,7 +509,7 @@ class MillworkQuotationCalculator
                 'key' => $key,
                 'label' => $label,
                 'hours' => $hours,
-                'amount' => round($hours * $ownerRate, 2),
+                'amount' => QuotationHelperLabor::amount($hours, $ownerRate, $helperRate, $includeHelper),
             ];
         };
 

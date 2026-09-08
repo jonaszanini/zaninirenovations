@@ -366,7 +366,7 @@ class ShedQuotationController extends Controller
             'attached', 'include_site_level', 'wall_sheathing', 'double_door',
             'include_electrical', 'include_subpanel', 'include_loft',
             'include_paint', 'include_ramp', 'include_gutters', 'include_plumbing',
-            'client_provides_all',
+            'client_provides_all', 'include_helper',
         ];
         $strings = [
             'shed_type', 'foundation', 'joist_size', 'floor_sheathing',

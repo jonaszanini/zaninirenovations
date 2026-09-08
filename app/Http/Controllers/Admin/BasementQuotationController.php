@@ -417,7 +417,7 @@ class BasementQuotationController extends Controller
             'include_bathroom', 'include_vanity', 'include_pedestal_sink', 'include_toilet', 'include_shower',
             'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
             'include_cleaning', 'include_touchups',
-            'client_provides_all',
+            'client_provides_all', 'include_helper',
         ];
         $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label'];
 

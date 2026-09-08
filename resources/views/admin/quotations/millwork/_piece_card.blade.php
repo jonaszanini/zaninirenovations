@@ -6,7 +6,7 @@
   $sets = is_array($piece['sets'] ?? null) ? $piece['sets'] : [['qty' => 1, 'unit' => 'in']];
   $unit = ($piece['unit'] ?? 'in') === 'ft' ? 'ft' : 'in';
 @endphp
-<article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}">
+<article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}" data-mw-below="{{ (($piece['below'] ?? 'divisions') === 'drawers') ? 'drawers' : 'divisions' }}">
   <div class="mw-piece__head">
     <h4 class="mw-piece__title">Piece <span data-mw-piece-n>{{ is_numeric($pi) ? ((int) $pi + 1) : '1' }}</span></h4>
     <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-remove-piece aria-label="Remove piece">
@@ -135,11 +135,11 @@
         <option value="drawers" @selected(($piece['below'] ?? '') === 'drawers')>Drawers</option>
       </select>
     </div>
-    <div class="admin-form-group">
+    <div class="admin-form-group" data-mw-show="bench-divisions">
       <label>Division count</label>
       <input type="number" min="0" step="1" class="admin-input mw-preview" name="pieces[{{ $pi }}][division_count]" value="{{ $piece['division_count'] ?? 2 }}">
     </div>
-    <div class="admin-form-group">
+    <div class="admin-form-group" data-mw-show="bench-drawers">
       <label>Drawer count</label>
       <input type="number" min="0" step="1" class="admin-input mw-preview" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}">
     </div>
@@ -174,7 +174,7 @@
         <option value="nails" @selected(($piece['fastener'] ?? '') === 'nails')>Nails</option>
       </select>
     </div>
-    <div class="admin-form-group">
+    <div class="admin-form-group" data-mw-show="cabinet cabinet_door bench-drawers">
       <label>Pulls / handles (qty)</label>
       <input type="number" min="0" step="1" class="admin-input mw-preview" name="pieces[{{ $pi }}][pull_qty]" value="{{ $piece['pull_qty'] ?? 0 }}">
     </div>

@@ -50,10 +50,6 @@
     </div>
   @endif
 
-  @if ($errors->has('calculation'))
-    <div class="admin-flash admin-flash--danger">{{ $errors->first('calculation') }}</div>
-  @endif
-
   <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
 
   <form method="post" action="{{ $formAction }}" id="mw-main-form" class="pq-layout br-layout {{ $isEdit ? 'br-layout--edit' : 'br-layout--create' }}"

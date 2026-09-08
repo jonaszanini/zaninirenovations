@@ -148,7 +148,7 @@ class BasementClientIntakeTest extends IntegrationTestCase
             'sink_provide' => 'client',
         ]);
 
-        $this->post(route('public.basement-intake.store', ['token' => $token]), $payload)
+        $response = $this->post(route('public.basement-intake.store', ['token' => $token]), $payload)
             ->assertRedirect(route('public.basement-intake.show', ['token' => $token]));
 
         $quote->refresh();
@@ -160,6 +160,12 @@ class BasementClientIntakeTest extends IntegrationTestCase
         $this->assertContains('pedestal_sink', $quote->inputs['client_provides_bath_items']);
         $this->assertContains('include_pedestal_sink', $quote->clientFilledKeys());
 
+        // Follow first redirect to consume intake_submitted flash
+        $this->get(route('public.basement-intake.show', ['token' => $token]))
+            ->assertOk()
+            ->assertSee('Your answers have been saved');
+
+        // Subsequent visits see "already received your answers"
         $this->get(route('public.basement-intake.show', ['token' => $token]))
             ->assertOk()
             ->assertSee('already received your answers');

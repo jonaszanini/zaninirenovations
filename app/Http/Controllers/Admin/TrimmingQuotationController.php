@@ -367,7 +367,7 @@ class TrimmingQuotationController extends Controller
             'include_baseboard', 'include_base_cap', 'include_shoe', 'include_quarter_round',
             'include_crown', 'include_cove',
             'include_chair_rail', 'include_picture_rail', 'include_box_moulding', 'include_wainscoting',
-            'include_remove_existing', 'include_caulk_paint', 'client_provides_all',
+            'include_remove_existing', 'include_caulk_paint', 'client_provides_all', 'include_helper',
         ];
 
         $out = $defaults;

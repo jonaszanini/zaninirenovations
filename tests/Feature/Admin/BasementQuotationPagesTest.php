@@ -61,7 +61,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('>Each</option>', false)
             ->assertSee('>Sq ft</option>', false)
             ->assertSee('per sq ft', false)
-            ->assertSee('From 2x4 stud', false)
+            ->assertSee('From 2x4x8 stud', false)
             ->assertSee('cannot be linked separately', false)
             ->assertSee('17 L', false)
             ->assertSee('2x4x8', false)
@@ -124,10 +124,36 @@ class BasementQuotationPagesTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
 
-        $html = $this->withInput([
+        $calc = (new \App\Services\BasementQuotationCalculator)->calculate([
             'scope_preset' => 'bathroom',
-            'enabled_sections' => \App\Services\BasementQuotationCalculator::presetEnabledSections('bathroom'),
-        ])->get(route('admin.quotations.basement.create'))
+            'area_sqft' => 50,
+            'outlet_qty' => 3,
+            'switch_qty' => 2,
+            'include_bath_fixture' => true,
+            'bath_fixture_qty' => 1,
+        ]);
+        $quote = BasementQuotation::create([
+            'quote_number' => BasementQuotation::generateNumber(),
+            'client_name' => 'Bath Client',
+            'is_draft' => false,
+            'inputs' => array_merge(
+                \App\Services\BasementQuotationCalculator::defaultInputs(),
+                [
+                    'scope_preset' => 'bathroom',
+                    'area_sqft' => 50,
+                    'outlet_qty' => 3,
+                    'switch_qty' => 2,
+                    'include_bath_fixture' => true,
+                    'bath_fixture_qty' => 1,
+                    'enabled_sections' => \App\Services\BasementQuotationCalculator::presetEnabledSections('bathroom'),
+                ]
+            ),
+            'calculation' => $calc,
+            'final_quote_total' => $calc['summary']['final_quote_total'],
+            'version' => 1,
+        ]);
+
+        $html = $this->get(route('admin.quotations.basement.edit', $quote))
             ->assertOk()
             ->assertSee('Bathroom only')
             ->getContent();
@@ -261,7 +287,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $payload = [
             'save_intent' => 'publish',
-            'client_name' => 'Stay On Quote Client',
+            'client_name' => $project->client_name,
             'area_sqft' => 850,
             'ceiling_height_ft' => 8,
             'room_count' => 3,
@@ -273,7 +299,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $store = $this->post(route('admin.quotations.basement.store', ['project' => $project->id]), $payload);
 
-        $quote = BasementQuotation::query()->where('client_name', 'Stay On Quote Client')->first();
+        $quote = BasementQuotation::query()->where('client_name', $project->client_name)->first();
         $this->assertNotNull($quote);
         $this->assertSame($project->id, $quote->client_project_id);
         $store->assertRedirect(route('admin.quotations.basement.edit', $quote));

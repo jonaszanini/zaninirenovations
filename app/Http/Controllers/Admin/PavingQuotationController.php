@@ -494,6 +494,7 @@ class PavingQuotationController extends Controller
             'stone_additional_cost_description' => $primaryEntry['additional_cost_description'] ?? null,
             'helper_hourly_rate' => (float) $data['helper_hourly_rate'],
             'owner_hourly_rate' => (float) $data['owner_hourly_rate'],
+            'include_helper' => $request->boolean('include_helper'),
             'mini_skid_days' => (int) $data['mini_skid_days'],
             'plate_compactor_days' => (int) $data['plate_compactor_days'],
             'profit_margin' => $profitMargin,

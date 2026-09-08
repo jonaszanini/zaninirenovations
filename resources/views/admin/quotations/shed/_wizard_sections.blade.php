@@ -356,5 +356,13 @@
       'info' => 'Does not add plumbing takeoff. Flags that plumbing voids the OBC shed exemption. Price plumbing via Additional costs.',
       'inputClass' => 'admin-checkbox__input sh-preview',
     ])
+    <div class="admin-form-group" style="margin-top:12px;">
+      @include('admin.quotations._include_helper', [
+        'checked' => $shOn('include_helper'),
+        'previewClass' => 'sh-preview',
+        'rateId' => 'sh-helper-rate',
+        'rateValue' => number_format((float) $shVal('helper_hourly_rate', $settings->helper_hourly_rate), 2, '.', ''),
+      ])
+    </div>
   </div>
 </details>

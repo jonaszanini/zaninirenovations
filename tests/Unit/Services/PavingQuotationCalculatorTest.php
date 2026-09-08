@@ -287,4 +287,29 @@ class PavingQuotationCalculatorTest extends TestCase
         $this->assertGreaterThanOrEqual(70, (int) $bagRow['qty']);
         $this->assertSame(9.0, (float) $bagRow['unit_price']);
     }
+
+    public function test_include_helper_toggles_helper_labor_cost(): void
+    {
+        $calc = new PavingQuotationCalculator(collect([]), collect([]));
+        $base = $this->minimalInputs([
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ]);
+
+        $withoutHelper = $calc->calculate(array_merge($base, [
+            'include_helper' => false,
+        ]));
+
+        $withHelper = $calc->calculate(array_merge($base, [
+            'include_helper' => true,
+        ]));
+
+        $this->assertSame(0.0, (float) $withoutHelper['labour']['helper_hours']);
+        $this->assertSame(0.0, (float) $withoutHelper['labour']['helper_cost']);
+
+        $ownerHours = (float) $withHelper['labour']['owner_hours'];
+        $this->assertGreaterThan(0, $ownerHours);
+        $this->assertEqualsWithDelta($ownerHours, (float) $withHelper['labour']['helper_hours'], 0.01);
+        $this->assertEqualsWithDelta(round($ownerHours * 40, 2), (float) $withHelper['labour']['helper_cost'], 0.01);
+    }
 }

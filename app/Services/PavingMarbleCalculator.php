@@ -58,6 +58,7 @@ class PavingMarbleCalculator
         float $hstRate,
         float $ownerRate,
         float $helperRate,
+        bool $includeHelper = false,
     ): ?array {
         $resolved = self::resolveInputs($inputs);
         if ($resolved === null) {
@@ -181,7 +182,7 @@ class PavingMarbleCalculator
         $matPre = round($matPre, 2);
         $matHst = round($matHst, 2);
 
-        $helperEnabled = $helperRate > 0;
+        $helperEnabled = $includeHelper && $helperRate > 0;
         $labourDefs = self::labourHours($area, $depthIn, $includeGeo, $helperEnabled);
         $labourRows = [];
         $ownerHrsSum = 0.0;

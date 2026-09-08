@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PavingMaterialRate;
 use App\Models\PavingPricingTier;
 use App\Models\PavingStoneType;
+use App\Support\QuotationHelperLabor;
 use Illuminate\Support\Collection;
 
 /**
@@ -79,6 +80,7 @@ class PavingQuotationCalculator
         $ownerRate = array_key_exists('owner_hourly_rate', $inputs)
             ? max(0.0, (float) $inputs['owner_hourly_rate'])
             : $labourDefaults['owner_hourly_rate'];
+        $includeHelper = QuotationHelperLabor::enabled($inputs);
         $miniDays = max(0.0, (float) ($inputs['mini_skid_days'] ?? 0));
         $plateDays = max(0.0, (float) ($inputs['plate_compactor_days'] ?? 0));
         $profitMargin = max(0.0, (float) ($inputs['profit_margin'] ?? 0.05));
@@ -272,7 +274,7 @@ class PavingQuotationCalculator
             $poly,
             $geo,
             $oldRemoval,
-            $helperRate > 0
+            $includeHelper
         );
 
         $labourRows = [];
@@ -315,6 +317,7 @@ class PavingQuotationCalculator
             $hst,
             $ownerRate,
             $helperRate,
+            $includeHelper,
         );
 
         if ($marbleSection !== null) {
@@ -669,6 +672,7 @@ class PavingQuotationCalculator
             'stone_price_per_sq_ft' => $stone && $stone->price_per_sq_ft ? (float) $stone->price_per_sq_ft : null,
             'helper_hourly_rate' => $labour['helper_hourly_rate'],
             'owner_hourly_rate' => $labour['owner_hourly_rate'],
+            'include_helper' => false,
             'mini_skid_days' => 1,
             'plate_compactor_days' => 1,
             'profit_margin' => 0.05,

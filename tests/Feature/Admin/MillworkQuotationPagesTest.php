@@ -37,7 +37,10 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Feet')
             ->assertSee('Cut plan')
             ->assertSee('Live breakdown')
-            ->assertSee('Create automatically from quotation');
+            ->assertSee('Create automatically from quotation')
+            ->assertSee('data-mw-show="cabinet cabinet_door bench-drawers"', false)
+            ->assertSee('data-mw-hw="cabinet-family"', false)
+            ->assertSee('id="mw-hinge"', false);
 
         $this->get(route('admin.quotations.millwork.price-configuration'))
             ->assertOk()

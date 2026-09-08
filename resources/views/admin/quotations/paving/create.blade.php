@@ -362,19 +362,21 @@
                 <span class="pq-field-box-title">Labour rates</span>
                 <div class="pq-labour-rates-row">
                   <div class="admin-form-group">
-                    <label for="pq-helper">Helper hourly rate ($/hr)</label>
-                    <input type="text" id="pq-helper" name="helper_hourly_rate" class="admin-input pq-calc-in cp-money-input"
-                           data-cp-money-entry="direct" inputmode="decimal" autocomplete="off" placeholder="0.00"
-                           value="{{ old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? 0), 2, '.', '')) }}">
-                  </div>
-                  <div class="admin-form-group">
                     <label for="pq-owner">Owner hourly rate ($/hr)</label>
                     <input type="text" id="pq-owner" name="owner_hourly_rate" class="admin-input pq-calc-in cp-money-input"
                            data-cp-money-entry="direct" inputmode="decimal" autocomplete="off" placeholder="0.00"
                            value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
                   </div>
+                  <div class="admin-form-group">
+                    @include('admin.quotations._include_helper', [
+                      'checked' => (bool) old('include_helper', $inputs['include_helper'] ?? false),
+                      'previewClass' => 'pq-calc-in',
+                      'rateId' => 'pq-helper',
+                      'rateValue' => old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? 0), 2, '.', '')),
+                    ])
+                  </div>
                 </div>
-                <p class="pq-hint">Set helper to 0 to disable helper hours on labour tasks. Defaults come from <a href="{{ route('admin.quotations.paving.price-configuration', ['db' => 'rates']) }}">Price configuration → Fixed costs &amp; equipment → Labour</a>.</p>
+                <p class="pq-hint">Check Include a helper to bill labor hours at the helper rate as well. Defaults come from <a href="{{ route('admin.quotations.paving.price-configuration', ['db' => 'rates']) }}">Price configuration → Fixed costs &amp; equipment → Labour</a>.</p>
               </div>
 
               <div class="pq-field-box">

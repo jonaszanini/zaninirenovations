@@ -25,7 +25,7 @@ class TrimmingQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.trimming.create'))
             ->assertOk()
-            ->assertSee('Doors & windows', false)
+            ->assertSee('Doors &amp; windows', false)
             ->assertSee('Floor to wall')
             ->assertSee('Ceiling to wall')
             ->assertSee('Wall treatments')

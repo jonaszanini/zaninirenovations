@@ -140,7 +140,9 @@
 .mw-piece[data-mw-type="kallax"] [data-mw-show~="kallax"],
 .mw-piece[data-mw-type="cabinet"] [data-mw-show~="cabinet"],
 .mw-piece[data-mw-type="cabinet_door"] [data-mw-show~="cabinet_door"],
-.mw-piece[data-mw-type="bench"] [data-mw-show~="bench"] {
+.mw-piece[data-mw-type="bench"] [data-mw-show~="bench"],
+.mw-piece[data-mw-type="bench"][data-mw-below="divisions"] [data-mw-show~="bench-divisions"],
+.mw-piece[data-mw-type="bench"][data-mw-below="drawers"] [data-mw-show~="bench-drawers"] {
   display: block;
 }
 .mw-piece[data-mw-type="shelf"] .admin-form-grid-2[data-mw-show~="shelf"],

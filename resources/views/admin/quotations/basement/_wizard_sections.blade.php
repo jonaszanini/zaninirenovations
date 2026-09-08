@@ -249,10 +249,12 @@
                value="{{ number_format((float) $brVal('owner_hourly_rate', $settings->owner_hourly_rate), 2, '.', '') }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-helper-rate">@include('admin.partials.info_tip', ['text' => $brInfo['helper_hourly_rate']]) Helper hourly rate (CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
-               class="admin-input cp-money-input br-preview" id="br-helper-rate" name="helper_hourly_rate"
-               value="{{ number_format((float) $brVal('helper_hourly_rate', $settings->helper_hourly_rate), 2, '.', '') }}">
+        @include('admin.quotations._include_helper', [
+          'checked' => $brOn('include_helper'),
+          'previewClass' => 'br-preview',
+          'rateId' => 'br-helper-rate',
+          'rateValue' => number_format((float) $brVal('helper_hourly_rate', $settings->helper_hourly_rate), 2, '.', ''),
+        ])
       </div>
     </div>
     <div class="admin-form-group br-notes-field">
@@ -280,7 +282,7 @@
     ])
     <div id="br-demo-fields" @unless($brOn('include_demolition')) hidden @endunless>
       <p class="br-demo-scope-label">What to tear out</p>
-      <div class="br-toggle-qty-grid br-qty-grid--inset">
+      <div class="br-demo-types br-qty-grid--inset">
         <div class="br-toggle-qty">
           @include('admin.partials.checkbox', [
             'name' => 'demo_include_flooring',
@@ -375,12 +377,12 @@
             </div>
           </div>
         </div>
-        <div class="admin-form-group">
-          <label for="br-bins">@include('admin.partials.info_tip', ['text' => $brInfo['demo_bin_qty']]) Debris bins</label>
-          <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bins" name="demo_bin_qty"
-                 value="{{ $brVal('demo_bin_qty', 1) }}"
-                 title="Dumpster / bin count. Price comes from the basement materials database.">
-        </div>
+      </div>
+      <div class="admin-form-group br-demo-bins">
+        <label for="br-bins">@include('admin.partials.info_tip', ['text' => $brInfo['demo_bin_qty']]) Debris bins</label>
+        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bins" name="demo_bin_qty"
+               value="{{ $brVal('demo_bin_qty', 1) }}"
+               title="Dumpster / bin count. Price comes from the basement materials database.">
       </div>
     </div>
   </div>

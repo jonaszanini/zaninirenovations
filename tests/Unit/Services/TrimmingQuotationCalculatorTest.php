@@ -125,6 +125,37 @@ class TrimmingQuotationCalculatorTest extends TestCase
         );
     }
 
+    public function test_include_helper_toggles_helper_labor_cost(): void
+    {
+        $base = [
+            'enabled_families' => ['floor_wall'],
+            'floor_lf' => 60,
+            'include_baseboard' => true,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ];
+
+        $withoutHelper = (new TrimmingQuotationCalculator)->calculate(array_merge($base, [
+            'include_helper' => false,
+        ]), $this->settings());
+
+        $withHelper = (new TrimmingQuotationCalculator)->calculate(array_merge($base, [
+            'include_helper' => true,
+        ]), $this->settings());
+
+        $hours = (float) $withoutHelper['summary']['total_hours'];
+        $this->assertGreaterThan(0, $hours);
+        $this->assertEqualsWithDelta($hours, (float) $withHelper['summary']['total_hours'], 0.01);
+
+        $expectedWithout = round($hours * 80, 2);
+        $expectedWith = round($hours * (80 + 40), 2);
+
+        $this->assertEqualsWithDelta($expectedWithout, (float) $withoutHelper['summary']['labor_pre_hst'], 0.01);
+        $this->assertEqualsWithDelta($expectedWith, (float) $withHelper['summary']['labor_pre_hst'], 0.01);
+        $this->assertFalse($withoutHelper['summary']['include_helper']);
+        $this->assertTrue($withHelper['summary']['include_helper']);
+    }
+
     private function settings(): TrimmingSettings
     {
         return new TrimmingSettings([

@@ -6794,6 +6794,19 @@ body.cp-modal-open {
 #br-demo-fields[hidden] {
   display: none !important;
 }
+.br-demo-types {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px 16px;
+  align-items: start;
+}
+.br-demo-types .br-toggle-qty {
+  min-width: 0;
+}
+.br-demo-bins {
+  margin-top: 10px;
+  max-width: 16rem;
+}
 .br-electrical-fields__toggles {
   margin-top: 8px;
 }
@@ -7487,6 +7500,9 @@ body.cp-modal-open {
   .br-toggle-qty-grid {
     grid-template-columns: 1fr 1fr;
   }
+  .br-demo-types {
+    grid-template-columns: 1fr 1fr;
+  }
   .br-scope-presets__grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -7614,6 +7630,9 @@ body.cp-modal-open {
   }
   .br-toggle-qty-grid {
     grid-template-columns: 1fr 1fr 1fr;
+  }
+  .br-demo-types {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .br-provide-grid {
     grid-template-columns: 1fr 1fr 1fr;

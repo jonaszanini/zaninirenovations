@@ -103,6 +103,42 @@ class MillworkQuotationCalculatorTest extends TestCase
         $this->assertEquals(4, $out['hardware']['hinges']);
     }
 
+    public function test_bench_without_drawers_ignores_pull_qty(): void
+    {
+        $builder = new MillworkPartBuilder();
+        $out = $builder->explode([
+            'type' => 'bench',
+            'qty' => 1,
+            'length' => 48,
+            'depth' => 16,
+            'height' => 18,
+            'unit' => 'in',
+            'below' => 'divisions',
+            'division_count' => 2,
+            'pull_qty' => 6,
+        ], 0.75, 0.018);
+
+        $this->assertSame(0.0, (float) $out['hardware']['pulls']);
+    }
+
+    public function test_bench_with_drawers_uses_pull_qty(): void
+    {
+        $builder = new MillworkPartBuilder();
+        $out = $builder->explode([
+            'type' => 'bench',
+            'qty' => 1,
+            'length' => 48,
+            'depth' => 16,
+            'height' => 18,
+            'unit' => 'in',
+            'below' => 'drawers',
+            'drawer_count' => 2,
+            'pull_qty' => 2,
+        ], 0.75, 0.018);
+
+        $this->assertSame(2.0, (float) $out['hardware']['pulls']);
+    }
+
     public function test_paint_packaging_uses_quarts_or_half_gallons(): void
     {
         $calc = (new MillworkQuotationCalculator)->calculate([
@@ -139,6 +175,81 @@ class MillworkQuotationCalculatorTest extends TestCase
         }));
         $this->assertNotEmpty($fast);
         $this->assertGreaterThan(0, $fast[0]['qty']);
+    }
+
+    public function test_floating_shelf_with_empty_hidden_width_is_valid(): void
+    {
+        $inputs = [
+            'pieces' => [[
+                'type' => 'floating_shelf',
+                'sets' => [[
+                    'qty' => 3,
+                    'length' => 96,
+                    'width' => '',
+                    'depth' => 12,
+                    'height' => '',
+                    'thickness' => 3,
+                    'unit' => 'in',
+                ]],
+            ]],
+        ];
+
+        $hints = (new MillworkQuotationCalculator)->validationHints($inputs, false);
+        $this->assertSame([], $hints);
+
+        $out = (new MillworkPartBuilder)->explode($inputs['pieces'][0], 0.75, 0.018);
+        $this->assertSame(3, $out['unit_count']);
+        $this->assertNotEmpty($out['parts']);
+    }
+
+    public function test_include_helper_toggles_helper_labor_cost(): void
+    {
+        $base = [
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => true,
+                'finish' => 'none',
+                'fastener' => 'screws',
+                'sets' => [
+                    ['qty' => 2, 'length' => 4, 'depth' => 1, 'unit' => 'ft'],
+                ],
+            ]],
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'include_install' => false,
+        ];
+
+        $withoutHelper = (new MillworkQuotationCalculator)->calculate(array_merge($base, [
+            'include_helper' => false,
+        ]), $this->settings());
+
+        $withHelper = (new MillworkQuotationCalculator)->calculate(array_merge($base, [
+            'include_helper' => true,
+        ]), $this->settings());
+
+        $hours = (float) $withoutHelper['summary']['total_hours'];
+        $this->assertGreaterThan(0, $hours);
+        $this->assertEqualsWithDelta($hours, (float) $withHelper['summary']['total_hours'], 0.01);
+
+        $expectedWithout = round($hours * 80, 2);
+        $expectedWith = round($hours * (80 + 40), 2);
+
+        $this->assertEqualsWithDelta($expectedWithout, (float) $withoutHelper['summary']['labor_pre_hst'], 0.01);
+        $this->assertEqualsWithDelta($expectedWith, (float) $withHelper['summary']['labor_pre_hst'], 0.01);
+        $this->assertFalse($withoutHelper['summary']['include_helper']);
+        $this->assertTrue($withHelper['summary']['include_helper']);
+    }
+
+    public function test_publish_validation_still_requires_a_sized_piece(): void
+    {
+        $hints = (new MillworkQuotationCalculator)->validationHints([
+            'pieces' => [[
+                'type' => 'floating_shelf',
+                'sets' => [['qty' => 3, 'length' => '', 'width' => '', 'depth' => '', 'unit' => 'in']],
+            ]],
+        ], false);
+
+        $this->assertNotEmpty($hints);
     }
 
     private function settings(): MillworkSettings

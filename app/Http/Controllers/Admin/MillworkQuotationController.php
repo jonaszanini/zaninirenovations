@@ -417,6 +417,7 @@ class MillworkQuotationController extends Controller
         $out['owner_hourly_rate'] = round(max(0, (float) $request->input('owner_hourly_rate', $defaults['owner_hourly_rate'])), 4);
         $out['helper_hourly_rate'] = round(max(0, (float) $request->input('helper_hourly_rate', $defaults['helper_hourly_rate'])), 4);
         $out['include_install'] = $request->boolean('include_install');
+        $out['include_helper'] = $request->boolean('include_helper');
         $out['client_provides_all'] = $request->boolean('client_provides_all');
         foreach ([
             'sheet_id', 'back_sheet_id', 'edge_banding_id', 'paint_id', 'stain_id',

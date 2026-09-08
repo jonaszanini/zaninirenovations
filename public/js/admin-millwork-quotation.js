@@ -280,6 +280,25 @@
       var checked = piece.querySelector('[data-mw-type-input]:checked');
       var type = checked ? checked.value : 'shelf';
       piece.setAttribute('data-mw-type', type);
+      var below = piece.querySelector('select[name$="[below]"]');
+      piece.setAttribute('data-mw-below', (below && below.value === 'drawers') ? 'drawers' : 'divisions');
+      syncHardwareCatalog();
+    }
+
+    function pieceNeedsCabinetHardware(piece) {
+      var type = piece.getAttribute('data-mw-type') || 'shelf';
+      if (type === 'cabinet' || type === 'cabinet_door') return true;
+      return type === 'bench' && piece.getAttribute('data-mw-below') === 'drawers';
+    }
+
+    function syncHardwareCatalog() {
+      var show = false;
+      form.querySelectorAll('#mw-piece-list [data-mw-piece]').forEach(function (piece) {
+        if (pieceNeedsCabinetHardware(piece)) show = true;
+      });
+      form.querySelectorAll('[data-mw-hw="cabinet-family"]').forEach(function (el) {
+        el.hidden = !show;
+      });
     }
 
     function reindexPieces() {
@@ -302,6 +321,13 @@
           schedulePreview();
         });
       });
+      var below = piece.querySelector('select[name$="[below]"]');
+      if (below) {
+        below.addEventListener('change', function () {
+          syncPieceType(piece);
+          schedulePreview();
+        });
+      }
       syncPieceType(piece);
       var remove = piece.querySelector('[data-mw-remove-piece]');
       if (remove) {
@@ -310,6 +336,7 @@
           if (list && list.querySelectorAll('[data-mw-piece]').length <= 1) return;
           piece.remove();
           reindexPieces();
+          syncHardwareCatalog();
           schedulePreview();
         });
       }
