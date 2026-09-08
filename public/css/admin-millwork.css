@@ -29,6 +29,22 @@
   gap: 6px;
 }
 
+.mw-cut-plan-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 20px 0 8px;
+}
+.mw-cut-plan-head .br-review-heading {
+  margin: 0;
+}
+.mw-cut-plan-head .admin-btn {
+  flex-shrink: 0;
+  align-self: flex-end;
+}
+
 .mw-cut-plan {
   display: grid;
   gap: 16px;
@@ -67,8 +83,8 @@
 .mw-cut-legend {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: 10px 0 0;
+  gap: 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
   color: var(--admin-text);
@@ -76,22 +92,16 @@
 }
 .mw-cut-legend li {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-height: 28px;
-  line-height: 1.35;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.2;
+  padding: 1px 0;
 }
 .mw-cut-legend__n {
   flex: 0 0 auto;
-  min-width: 1.4em;
+  min-width: 1.2em;
   font-weight: 700;
   color: var(--admin-primary);
-}
-.mw-cut-steps {
-  margin: 10px 0 0;
-  padding-left: 1.2em;
-  color: var(--admin-text);
-  font-size: 14px;
 }
 .mw-cut-bg { fill: var(--admin-bg); }
 .mw-cut-stock {
@@ -181,7 +191,8 @@
   .mw-piece__head {
     flex-wrap: wrap;
   }
-  .mw-piece__head .admin-btn {
+  .mw-piece__head .admin-btn,
+  .mw-cut-plan-head .admin-btn {
     min-height: 44px;
   }
 }

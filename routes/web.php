@@ -738,6 +738,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('quotations.millwork.edit');
     Route::get('quotations/millwork/{millwork_quotation}/purchase-list', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'purchaseList'])
         ->name('quotations.millwork.purchase-list');
+    Route::get('quotations/millwork/{millwork_quotation}/cut-list', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'cutList'])
+        ->name('quotations.millwork.cut-list');
     Route::post('quotations/millwork/{millwork_quotation}/calculate', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'preview'])
         ->name('quotations.millwork.calculate-existing');
     Route::put('quotations/millwork/{millwork_quotation}', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'update'])

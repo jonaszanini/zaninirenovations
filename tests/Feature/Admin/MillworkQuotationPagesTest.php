@@ -36,6 +36,8 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Inches')
             ->assertSee('Feet')
             ->assertSee('Cut plan')
+            ->assertSee('Print cut list')
+            ->assertDontSee('mw-cut-steps', false)
             ->assertSee('Live breakdown')
             ->assertSee('Create automatically from quotation')
             ->assertSee('data-mw-show="cabinet cabinet_door bench-drawers"', false)
@@ -144,6 +146,13 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             'helper_hourly_rate' => 40,
         ])->assertOk()
             ->assertJsonPath('scope.piece_count', 1);
+
+        $this->get(route('admin.quotations.millwork.cut-list', $quote))
+            ->assertOk()
+            ->assertSee('Cut list')
+            ->assertSee($quote->quote_number)
+            ->assertDontSee('Rip at')
+            ->assertDontSee('mw-cut-steps', false);
 
         $this->post(route('admin.quotations.millwork.calculate-existing', $quote), [
             '_method' => 'PUT',

@@ -5,13 +5,12 @@ namespace App\Services\CutOptimizer;
 class SvgVisualizer
 {
     /**
-     * @return array{svg: string, cuts: list<array<string, mixed>>, stats: array<string, mixed>, legend: list<array<string, mixed>>}
+     * @return array{svg: string, stats: array<string, mixed>, legend: list<array<string, mixed>>}
      */
     public function describe(GuillotineSheet $sheet): array
     {
         return [
             'svg' => $this->renderSheet($sheet),
-            'cuts' => $this->humanCuts($sheet),
             'legend' => $this->legend($sheet),
             'stats' => [
                 'id' => $sheet->id,

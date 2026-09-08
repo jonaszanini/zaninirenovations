@@ -184,6 +184,19 @@ class MillworkQuotationController extends Controller
         ]);
     }
 
+    public function cutList(MillworkQuotation $millwork_quotation)
+    {
+        $calc = is_array($millwork_quotation->calculation) ? $millwork_quotation->calculation : [];
+        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
+        $layouts = is_array($cut['layouts'] ?? null) ? $cut['layouts'] : [];
+
+        return view('admin.quotations.millwork.cut_list', [
+            'quotation' => $millwork_quotation,
+            'cut' => $cut,
+            'layouts' => $layouts,
+        ]);
+    }
+
     public function linkToProject(Request $request, MillworkQuotation $millwork_quotation)
     {
         if ($resp = $this->guardQuotationAlreadyLinked($millwork_quotation, 'millwork')) {

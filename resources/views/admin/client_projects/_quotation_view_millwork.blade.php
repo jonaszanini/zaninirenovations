@@ -37,25 +37,13 @@
 @if ($layouts !== [])
   <div class="cp-vd-section">
     <div class="cp-vd-section__title">Cut plan</div>
+    <p class="admin-form-help" style="margin:0 0 8px;">
+      <a href="{{ route('admin.quotations.millwork.cut-list', $sourceModel) }}" target="_blank" rel="noopener noreferrer">Print cut list</a>
+      — each sheet on its own page.
+    </p>
     <div class="mw-cut-plan mw-cut-plan--drawer">
       @foreach ($layouts as $layout)
-        <div class="mw-cut-sheet">
-          <div class="mw-cut-sheet__stats">
-            <strong>{{ $layout['stats']['label'] ?? 'Sheet' }}</strong>
-            <span>Used {{ $layout['stats']['used_pct'] ?? 0 }}% · waste {{ $layout['stats']['waste_pct'] ?? 0 }}%</span>
-          </div>
-          <div class="mw-cut-svg-wrap">{!! $layout['svg'] ?? '' !!}</div>
-          @if (! empty($layout['legend']))
-            <ul class="mw-cut-legend">
-              @foreach ($layout['legend'] as $row)
-                <li>
-                  <span class="mw-cut-legend__n">{{ $row['n'] ?? '' }}</span>
-                  <span>{{ $row['label'] ?? 'Part' }} · {{ $row['size'] ?? '' }}@if (! empty($row['rotated'])) · rotated @endif</span>
-                </li>
-              @endforeach
-            </ul>
-          @endif
-        </div>
+        @include('admin.quotations.millwork._cut_sheet', ['layout' => $layout])
       @endforeach
     </div>
   </div>

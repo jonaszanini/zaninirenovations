@@ -69,7 +69,7 @@
       return false;
     }
 
-    if (/purchase-list|layout-diagrams/.test(dest.pathname)) {
+    if (/purchase-list|layout-diagrams|cut-list/.test(dest.pathname)) {
       return false;
     }
 

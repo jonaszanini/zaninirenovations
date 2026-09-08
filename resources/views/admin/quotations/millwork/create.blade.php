@@ -70,6 +70,11 @@
           <i class="fa fa-cog"></i> Price configuration
         </a>
         @if ($isEdit)
+          <a href="{{ route('admin.quotations.millwork.cut-list', $quotation) }}"
+             target="_blank" rel="noopener noreferrer"
+             class="admin-btn admin-btn--ghost admin-btn--sm">
+            <i class="fa fa-print"></i> Print cut list
+          </a>
           <a href="{{ route('admin.quotations.millwork.purchase-list', $quotation) }}"
              target="_blank" rel="noopener noreferrer"
              class="admin-btn admin-btn--ghost admin-btn--sm"
@@ -141,7 +146,12 @@
               'id' => 'mw-client-all',
             ])
 
-            <h4 class="br-review-heading">Cut plan</h4>
+            <div class="mw-cut-plan-head">
+              <h4 class="br-review-heading">Cut plan</h4>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-print-cut-list" @disabled($cutLayouts === [])>
+                <i class="fa fa-print"></i> Print cut list
+              </button>
+            </div>
             <p class="admin-form-help" id="mw-cut-meta">
               {{ (int) ($initialPreview['cut_plan']['sheet_count'] ?? 0) }} sheet(s)
               @if (! empty($initialPreview['cut_plan']['yield_pct']))
@@ -150,30 +160,7 @@
             </p>
             <div id="mw-cut-plan" class="mw-cut-plan">
               @forelse ($cutLayouts as $layout)
-                <div class="mw-cut-sheet">
-                  <div class="mw-cut-sheet__stats">
-                    <strong>{{ $layout['stats']['label'] ?? 'Sheet' }}</strong>
-                    <span>Used {{ $layout['stats']['used_pct'] ?? 0 }}% · waste {{ $layout['stats']['waste_pct'] ?? 0 }}%</span>
-                  </div>
-                  <div class="mw-cut-svg-wrap">{!! $layout['svg'] ?? '' !!}</div>
-                  @if (! empty($layout['legend']))
-                    <ul class="mw-cut-legend">
-                      @foreach ($layout['legend'] as $row)
-                        <li>
-                          <span class="mw-cut-legend__n">{{ $row['n'] ?? '' }}</span>
-                          <span>{{ $row['label'] ?? 'Part' }} · {{ $row['size'] ?? '' }}@if (! empty($row['rotated'])) · rotated @endif</span>
-                        </li>
-                      @endforeach
-                    </ul>
-                  @endif
-                  @if (! empty($layout['cuts']))
-                    <ol class="mw-cut-steps">
-                      @foreach ($layout['cuts'] as $step)
-                        <li>{{ $step['instruction'] ?? '' }}</li>
-                      @endforeach
-                    </ol>
-                  @endif
-                </div>
+                @include('admin.quotations.millwork._cut_sheet', ['layout' => $layout])
               @empty
                 <p class="admin-form-help">Enter piece dimensions to generate a guillotine cut plan.</p>
               @endforelse
@@ -300,6 +287,8 @@
       initialPreview: @json($initialPreview ?? null),
       isEdit: @json($isEdit),
       sectionKeys: @json(array_keys($sectionList)),
+      quoteNumber: @json($isEdit && $quotation ? ($quotation->quote_number ?? '') : ''),
+      printCssUrl: @json(asset('css/millwork-cut-list-print.css').'?v='.(@filemtime(public_path('css/millwork-cut-list-print.css')) ?: time())),
     };
   </script>
   <script src="{{ asset('js/admin-millwork-quotation.js') }}?v={{ @filemtime(public_path('js/admin-millwork-quotation.js')) ?: time() }}"></script>

@@ -209,11 +209,13 @@
     function renderCutPlan(plan) {
       var root = document.getElementById('mw-cut-plan');
       var meta = document.getElementById('mw-cut-meta');
+      var printBtn = document.getElementById('mw-print-cut-list');
       var layouts = plan.layouts || [];
       if (meta) {
         meta.textContent = (plan.sheet_count || 0) + ' sheet(s)'
           + (plan.yield_pct ? ' · ' + plan.yield_pct + '% yield' : '');
       }
+      if (printBtn) printBtn.disabled = !layouts.length;
       if (!root) return;
       if (!layouts.length) {
         root.innerHTML = '<p class="admin-form-help">Enter piece dimensions to generate a guillotine cut plan.</p>';
@@ -221,9 +223,6 @@
       }
       root.innerHTML = layouts.map(function (layout) {
         var stats = layout.stats || {};
-        var cuts = (layout.cuts || []).map(function (c) {
-          return '<li>' + escapeHtml(c.instruction || '') + '</li>';
-        }).join('');
         var legend = (layout.legend || []).map(function (row) {
           return '<li><span class="mw-cut-legend__n">' + escapeHtml(row.n || '') + '</span>'
             + '<span>' + escapeHtml(row.label || 'Part') + ' · ' + escapeHtml(row.size || '')
@@ -234,9 +233,61 @@
           + '<span>Used ' + escapeHtml(stats.used_pct || 0) + '% · waste ' + escapeHtml(stats.waste_pct || 0) + '%</span></div>'
           + '<div class="mw-cut-svg-wrap">' + (layout.svg || '') + '</div>'
           + (legend ? '<ul class="mw-cut-legend">' + legend + '</ul>' : '')
-          + (cuts ? '<ol class="mw-cut-steps">' + cuts + '</ol>' : '')
           + '</div>';
       }).join('');
+    }
+
+    function printCutList() {
+      var plan = (lastPreviewData && lastPreviewData.cut_plan) || {};
+      var layouts = plan.layouts || [];
+      if (!layouts.length) return;
+      var clientEl = document.getElementById('mw-client-name');
+      var client = clientEl ? String(clientEl.value || '').trim() : '';
+      var quote = String(cfg.quoteNumber || '').trim();
+      var titleBits = [];
+      if (quote) titleBits.push(quote);
+      if (client) titleBits.push(client);
+      var meta = (plan.sheet_count || layouts.length) + ' sheet(s)'
+        + (plan.yield_pct ? ' · ' + plan.yield_pct + '% yield' : '');
+      var sheetsHtml = layouts.map(function (layout) {
+        var stats = layout.stats || {};
+        var legend = (layout.legend || []).map(function (row) {
+          return '<li><span class="mw-cut-legend__n">' + escapeHtml(row.n || '') + '</span>'
+            + '<span>' + escapeHtml(row.label || 'Part') + ' · ' + escapeHtml(row.size || '')
+            + (row.rotated ? ' · rotated' : '') + '</span></li>';
+        }).join('');
+        return '<div class="mw-cut-sheet">'
+          + '<div class="mw-cut-sheet__stats"><strong>' + escapeHtml(stats.label || 'Sheet') + '</strong>'
+          + '<span>Used ' + escapeHtml(stats.used_pct || 0) + '% · waste ' + escapeHtml(stats.waste_pct || 0) + '%</span></div>'
+          + '<div class="mw-cut-svg-wrap">' + (layout.svg || '') + '</div>'
+          + (legend ? '<ul class="mw-cut-legend">' + legend + '</ul>' : '')
+          + '</div>';
+      }).join('');
+      var html = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+        + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        + '<title>Cut list' + (quote ? ' — ' + escapeHtml(quote) : '') + '</title>'
+        + (cfg.printCssUrl ? '<link rel="stylesheet" href="' + escapeHtml(cfg.printCssUrl) + '">' : '')
+        + '</head><body>'
+        + '<div class="toolbar no-print"><button type="button" onclick="window.print()">Print cut list</button></div>'
+        + '<h1>Cut list</h1>'
+        + '<p class="meta">' + (titleBits.length ? '<strong>' + escapeHtml(titleBits.join(' · ')) + '</strong><br>' : '')
+        + escapeHtml(meta) + ' · Each sheet prints on its own page.</p>'
+        + '<div class="mw-cut-plan">' + sheetsHtml + '</div>'
+        + '</body></html>';
+      var w = window.open('', 'mw_cut_list_print', 'noopener,width=820,height=900');
+      if (!w) {
+        if (window.AdminDialog && window.AdminDialog.alert) {
+          window.AdminDialog.alert('Pop-up blocked. Allow pop-ups for this site to print the cut list.');
+        }
+        return;
+      }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      window.setTimeout(function () {
+        try { w.print(); } catch (err) {}
+      }, 400);
     }
 
     function rebuildLaborTable(rows) {
@@ -471,6 +522,11 @@
       lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
       if (lastPreviewData) renderPreview(lastPreviewData);
     });
+
+    var printBtn = document.getElementById('mw-print-cut-list');
+    if (printBtn) {
+      printBtn.addEventListener('click', function () { printCutList(); });
+    }
 
     if (cfg.initialPreview) renderPreview(cfg.initialPreview);
     schedulePreview();
