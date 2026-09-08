@@ -312,6 +312,57 @@ class MillworkQuotationCalculatorTest extends TestCase
         $this->assertNotEmpty($hints);
     }
 
+    public function test_edge_banding_shopping_list_calculates_rolls_from_coverage_lf(): void
+    {
+        $settings = $this->settings();
+        $cat = $settings->catalog;
+        $cat[MillworkSettings::SLOT_EDGE_BANDING] = [[
+            'id' => 'eb_test',
+            'name' => '50ft Birch Veneer',
+            'unit' => 'roll',
+            'unit_price' => 16.98,
+            'thickness_in' => 0.018,
+            'coverage_lf' => 50.0,
+        ]];
+        $settings->catalog = $cat;
+
+        // 2 shelves of 8 ft = 16 LF. With 8% waste = 17.28 LF. Fits in 1 roll (50 LF).
+        $calc1 = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => true,
+                'sets' => [['qty' => 2, 'length' => 8, 'depth' => 1, 'unit' => 'ft']],
+            ]],
+            'edge_banding_id' => 'eb_test',
+            'include_install' => false,
+        ], $settings);
+
+        $edgeRow1 = array_values(array_filter($calc1['materials'], fn ($r) => ($r['key'] ?? '') === 'edge'))[0] ?? null;
+        $this->assertNotNull($edgeRow1);
+        $this->assertSame('50ft Birch Veneer', $edgeRow1['label']);
+        $this->assertSame(1.0, (float) $edgeRow1['qty']);
+        $this->assertSame('roll', $edgeRow1['unit']);
+        $this->assertEquals(16.98, (float) $edgeRow1['unit_price']);
+        $this->assertEquals(16.98, (float) $edgeRow1['amount']);
+
+        // 10 shelves of 8 ft = 80 LF. With 8% waste = 86.4 LF. Requires 2 rolls of 50 LF.
+        $calc2 = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => true,
+                'sets' => [['qty' => 10, 'length' => 8, 'depth' => 1, 'unit' => 'ft']],
+            ]],
+            'edge_banding_id' => 'eb_test',
+            'include_install' => false,
+        ], $settings);
+
+        $edgeRow2 = array_values(array_filter($calc2['materials'], fn ($r) => ($r['key'] ?? '') === 'edge'))[0] ?? null;
+        $this->assertNotNull($edgeRow2);
+        $this->assertSame(2.0, (float) $edgeRow2['qty']);
+        $this->assertSame('roll', $edgeRow2['unit']);
+        $this->assertEquals(33.96, (float) $edgeRow2['amount']);
+    }
+
     private function sizeKey(float $a, float $b): string
     {
         $lo = round(min($a, $b), 2);

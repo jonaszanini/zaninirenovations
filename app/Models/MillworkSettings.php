@@ -293,8 +293,9 @@ class MillworkSettings extends Model
                 ]),
             ],
             self::SLOT_EDGE_BANDING => [
-                $item('eb_pvc', 'Iron-on edge banding (linear ft)', 'lf', 0.85, [
+                $item('eb_pvc', 'Iron-on edge banding (50 ft roll)', 'roll', 12.48, [
                     'thickness_in' => 0.018,
+                    'coverage_lf' => 50.0,
                 ]),
             ],
             self::SLOT_SCREWS => [
@@ -423,6 +424,18 @@ class MillworkSettings extends Model
         }
         if ($slot === self::SLOT_EDGE_BANDING) {
             $item['thickness_in'] = round(max(0.001, (float) ($row['thickness_in'] ?? 0.018)), 4);
+            $cov = isset($row['coverage_lf']) && is_numeric($row['coverage_lf']) ? (float) $row['coverage_lf'] : null;
+            if ($cov === null || $cov <= 0) {
+                if (preg_match('/(\d+(?:\.\d+)?)\s*(?:feet|foot|ft|lf)\b/i', $item['name'], $m)) {
+                    $cov = (float) $m[1];
+                } elseif ((float) $item['unit_price'] >= 5.0) {
+                    $cov = 50.0;
+                } else {
+                    $cov = 50.0;
+                }
+            }
+            $item['coverage_lf'] = round(max(0.1, $cov), 2);
+            $item['unit'] = ! empty($row['unit']) && $row['unit'] !== 'lf' ? trim((string) $row['unit']) : 'roll';
         }
         if (in_array($slot, [self::SLOT_SCREWS, self::SLOT_NAILS], true)) {
             $item['qty_per_pack'] = max(1, (int) ($row['qty_per_pack'] ?? 1));

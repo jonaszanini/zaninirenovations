@@ -259,6 +259,9 @@ class MillworkQuotationCalculator
                 'finish_label' => $this->finishSummary($inputs),
                 'labels' => $labels,
             ],
+            'sheet' => $sheet,
+            'back_sheet' => $backSheet,
+            'edge_banding' => $ebItem,
             'cut_plan' => $cutPlan,
             'labor' => $labor,
             'materials' => $materials,
@@ -284,6 +287,7 @@ class MillworkQuotationCalculator
                 'paint_sf' => round($paintSf, 2),
                 'stain_sf' => round($stainSf, 2),
                 'edge_band_lf' => round($edgeLf, 2),
+                'edge_band_coverage_lf' => (float) ($ebItem['coverage_lf'] ?? 0),
                 'fastener_count' => $fasteners,
             ],
         ];
@@ -573,7 +577,18 @@ class MillworkQuotationCalculator
             $rows[] = $this->matRow('sheet_'.$n, (string) ($stock['name'] ?? 'Sheet'), $qty, 'sheet', $price, $providesAll, $stock['catalog_material_id'] ?? null, $overrides);
         }
         if ($edgeLf > 0 && $ebItem) {
-            $rows[] = $this->matRow('edge', (string) $ebItem['name'], ceil($edgeLf * 1.08), 'lf', (float) $ebItem['unit_price'], $providesAll, $ebItem['catalog_material_id'] ?? null, $overrides);
+            $coverageLf = (float) ($ebItem['coverage_lf'] ?? 0);
+            if ($coverageLf > 0) {
+                $qty = (int) max(1, ceil(($edgeLf * 1.08) / $coverageLf));
+                $unit = (string) ($ebItem['unit'] ?? 'roll');
+                if ($unit === 'lf') {
+                    $unit = 'roll';
+                }
+            } else {
+                $qty = (int) ceil($edgeLf * 1.08);
+                $unit = (string) ($ebItem['unit'] ?? 'lf');
+            }
+            $rows[] = $this->matRow('edge', (string) $ebItem['name'], $qty, $unit, (float) $ebItem['unit_price'], $providesAll, $ebItem['catalog_material_id'] ?? null, $overrides);
         }
         $this->appendPackaging($rows, $catalog[MillworkSettings::SLOT_PAINTS] ?? [], $paintSf, 'paint', $providesAll, $overrides, (string) ($inputs['paint_id'] ?? ''));
         $this->appendPackaging($rows, $catalog[MillworkSettings::SLOT_STAINS] ?? [], $stainSf, 'stain', $providesAll, $overrides, (string) ($inputs['stain_id'] ?? ''));

@@ -108,7 +108,8 @@
                   <th colspan="2"></th>
                 @elseif ($slot === MillworkSettings::SLOT_EDGE_BANDING)
                   <th class="mw-col-thickness">Thickness (in)</th>
-                  <th colspan="2"></th>
+                  <th class="mw-col-coverage-lf">Coverage (LF)</th>
+                  <th></th>
                 @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
                   <th class="mw-col-pack">Qty / pack</th>
                   <th colspan="2"></th>

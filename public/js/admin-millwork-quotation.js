@@ -215,6 +215,14 @@
       if (sheets) {
         html += '<div class="pq-row pq-row--group"><span>Sheets</span><span>' + sheets + '</span></div>';
       }
+      var edgeLf = Number(summary.edge_band_lf || 0);
+      if (edgeLf > 0) {
+        html += '<div class="pq-row pq-row--group"><span>Edge banding</span><span>' + edgeLf.toFixed(1) + ' LF</span></div>';
+      }
+      var ebMeta = document.getElementById('mw-eb-meta');
+      if (ebMeta) {
+        ebMeta.textContent = edgeLf > 0 ? ('Total edge banding: ' + edgeLf.toFixed(1) + ' LF required') : '';
+      }
       var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
       html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
       body.innerHTML = html;
@@ -286,20 +294,53 @@
         + escapeHtml(meta) + ' · Each sheet prints on its own page.</p>'
         + '<div class="mw-cut-plan">' + sheetsHtml + '</div>'
         + '</body></html>';
-      var w = window.open('', 'mw_cut_list_print', 'noopener,width=820,height=900');
-      if (!w) {
-        if (window.AdminDialog && window.AdminDialog.alert) {
-          window.AdminDialog.alert('Pop-up blocked. Allow pop-ups for this site to print the cut list.');
-        }
+      printHtmlDocument(html);
+    }
+
+    function printHtmlDocument(html) {
+      var existing = document.getElementById('mw-cut-print-frame');
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      var iframe = document.createElement('iframe');
+      iframe.id = 'mw-cut-print-frame';
+      iframe.setAttribute('title', 'Cut list print');
+      iframe.setAttribute('aria-hidden', 'true');
+      iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+      document.body.appendChild(iframe);
+      var win = iframe.contentWindow;
+      var doc = win && win.document;
+      if (!doc) return;
+      doc.open();
+      doc.write(html);
+      doc.close();
+
+      var printed = false;
+      var finish = function () {
+        if (printed) return;
+        printed = true;
+        try {
+          win.focus();
+          win.print();
+        } catch (err) { /* ignore */ }
+        window.setTimeout(function () {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 1500);
+      };
+
+      var links = doc.querySelectorAll('link[rel="stylesheet"]');
+      if (!links.length) {
+        window.setTimeout(finish, 50);
         return;
       }
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      w.focus();
-      window.setTimeout(function () {
-        try { w.print(); } catch (err) {}
-      }, 400);
+      var pending = links.length;
+      var onSheet = function () {
+        pending -= 1;
+        if (pending <= 0) finish();
+      };
+      for (var i = 0; i < links.length; i++) {
+        links[i].addEventListener('load', onSheet);
+        links[i].addEventListener('error', onSheet);
+      }
+      window.setTimeout(finish, 1200);
     }
 
     function rebuildLaborTable(rows) {
@@ -580,10 +621,20 @@
     var opt = (e.detail && e.detail.option) || null;
     var nameEl = row.querySelector('[data-mw-cat-name]');
     var priceEl = row.querySelector('[data-mw-cat-price]');
+    var covEl = row.querySelector('[data-mw-cat-coverage]');
     if (!opt) return;
     if (nameEl && !nameEl.value) nameEl.value = opt.name || '';
     if (priceEl) priceEl.value = opt.price || '';
     if (window.cpMoneyMask && priceEl) window.cpMoneyMask.wire(priceEl);
+    if (covEl) {
+      var text = (opt.name || '') + ' ' + (opt.store_name || '') + ' ' + (opt.description || '');
+      var match = text.match(/(\d+(?:\.\d+)?)\s*(?:feet|foot|ft|lf)\b/i);
+      if (match && match[1]) {
+        covEl.value = match[1];
+      } else if (!covEl.value || Number(covEl.value) <= 0) {
+        covEl.value = '50';
+      }
+    }
     row.classList.add('is-linked');
     row.classList.remove('is-manual');
   });

@@ -44,7 +44,8 @@
   background-position: right 0.45rem center;
   font-size: 13.5px;
 }
-.mw-col-thickness .admin-input {
+.mw-col-thickness .admin-input,
+.mw-col-coverage-lf .admin-input {
   padding-left: 0.5rem;
   padding-right: 0.35rem;
   text-align: center;
@@ -284,7 +285,9 @@
   }
 
   .mw-catalog-table th.mw-col-coverage,
-  .mw-catalog-table td.mw-col-coverage {
+  .mw-catalog-table td.mw-col-coverage,
+  .mw-catalog-table th.mw-col-coverage-lf,
+  .mw-catalog-table td.mw-col-coverage-lf {
     width: 8.5rem;
     min-width: 8rem;
   }

@@ -705,7 +705,8 @@
   padding: 0 0.9rem;
   border: 1px solid var(--admin-border, #d8dee4);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-input-bg);
+  color: var(--admin-text);
 }
 
 .mat-form-url-row__active-control .admin-checkbox--block {

@@ -58,6 +58,8 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Paint')
             ->assertSee('Stain')
             ->assertSee('Edge banding')
+            ->assertSee('Coverage (LF)')
+            ->assertSee('mw-col-coverage-lf')
             ->assertSee('Blade kerf')
             ->assertSee('>Rates</button>', false)
             ->assertSee('>Catalog</button>', false)

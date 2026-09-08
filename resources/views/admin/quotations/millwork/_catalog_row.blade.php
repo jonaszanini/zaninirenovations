@@ -75,8 +75,12 @@
     <td class="mw-col-thickness" data-label="Thickness">
       <input type="number" step="0.001" min="0" class="admin-input" name="{{ $prefix }}[thickness_in]" value="{{ $row['thickness_in'] ?? 0.018 }}">
     </td>
-    <td colspan="2">
-      <input type="hidden" name="{{ $prefix }}[unit]" value="lf">
+    <td class="mw-col-coverage-lf" data-label="Coverage (LF)">
+      <input type="number" step="0.1" min="0.1" class="admin-input" data-mw-cat-coverage name="{{ $prefix }}[coverage_lf]"
+             value="{{ isset($row['coverage_lf']) && is_numeric($row['coverage_lf']) ? (float) $row['coverage_lf'] : 50 }}" placeholder="LF">
+    </td>
+    <td>
+      <input type="hidden" name="{{ $prefix }}[unit]" value="{{ $row['unit'] ?? 'roll' }}">
     </td>
   @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
     <td class="mw-col-pack" data-label="Per pack">

@@ -79,9 +79,24 @@
         <label for="mw-eb">Edge banding</label>
         <select class="admin-input mw-preview" id="mw-eb" name="edge_banding_id">
           @foreach ($opt(MillworkSettings::SLOT_EDGE_BANDING) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('edge_banding_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
+            @php
+              $ebCov = (float) ($row['coverage_lf'] ?? 0);
+              $hasCovInName = preg_match('/\b\d+(?:\.\d+)?\s*(?:feet|foot|ft|lf)\b/i', $row['name'] ?? '');
+              $covSuffix = ($ebCov > 0 && ! $hasCovInName) ? ' ('.rtrim(rtrim(number_format($ebCov, 1, '.', ''), '0'), '.').' LF roll)' : '';
+            @endphp
+            <option value="{{ $row['id'] }}" @selected($mwVal('edge_banding_id') === ($row['id'] ?? ''))>
+              {{ $row['name'] }}{{ $covSuffix }}
+            </option>
           @endforeach
         </select>
+        <p class="admin-form-help" id="mw-eb-meta">
+          @php
+            $initialEdgeLf = (float) ($initialPreview['summary']['edge_band_lf'] ?? 0);
+          @endphp
+          @if ($initialEdgeLf > 0)
+            Total edge banding: {{ rtrim(rtrim(number_format($initialEdgeLf, 1, '.', ''), '0'), '.') }} LF required
+          @endif
+        </p>
       </div>
       <div class="admin-form-group">
         <label for="mw-paint">Paint (quart / half gallon)</label>
