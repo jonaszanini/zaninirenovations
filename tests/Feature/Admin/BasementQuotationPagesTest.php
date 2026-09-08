@@ -46,7 +46,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Import layout')
             ->assertSee('Search saved Room Area rooms', false)
             ->assertSee('Project description', false)
-            ->assertSee('admin-form-help">(optional — appears on client PDF)', false);
+            ->assertSee('admin-form-help">(optional — appears on client PDF)', false)
+            ->assertSee('Commute expense');
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
@@ -260,6 +261,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'ceiling_height_ft' => 8,
             'room_count' => 3,
             'payment_installments' => 3,
+            'include_commute' => 0,
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
@@ -271,6 +273,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertGreaterThan(0, (float) $quote->final_quote_total);
         $this->assertStringContainsString('850', $quote->summaryDescription());
         $response->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $this->assertFalse((bool) $quote->include_commute);
+        $this->assertSame(0.0, (float) $quote->commute_amount);
     }
 
     public function test_save_stays_on_quotation_and_shows_back_to_project(): void
@@ -292,6 +296,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'ceiling_height_ft' => 8,
             'room_count' => 3,
             'payment_installments' => 3,
+            'include_commute' => 0,
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,

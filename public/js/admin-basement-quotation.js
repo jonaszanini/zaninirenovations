@@ -13,6 +13,7 @@
   var token = tokenEl ? tokenEl.getAttribute('content') : '';
   var debounceTimer = null;
   var lastDebrisAmount = 0;
+  var lastCommuteAmount = 0;
   var lastAdditionalMaterialsPreTax = 0;
   var lastAdditionalMaterialsHst = 0;
   var lastAdditionalTaxIn = 0;
@@ -818,7 +819,7 @@
     var summary = data.summary || {};
     rebuildLaborTable(data.labor || []);
     rebuildMatTable(data.materials || []);
-    var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
+    var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
     updateToolbarGrand(grand);
     if (!summary.grand_total || summary.grand_total <= 0) {
       if (empty) empty.hidden = false;
@@ -840,6 +841,9 @@
     html += '<div class="pq-row pq-row--sub"><span>Total materials</span><span>' + fmt(matPre + matHst) + '</span></div>';
     html += tradeBreakdownHtml('Electrical', summary.trades && summary.trades.electrical);
     html += tradeBreakdownHtml('Plumbing', summary.trades && summary.trades.plumbing);
+    if (lastCommuteAmount > 0) {
+      html += '<div class="pq-row pq-row--group"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
+    }
     if (lastDebrisAmount > 0) {
       html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
     }
@@ -1039,6 +1043,11 @@
   document.addEventListener('debris-removal:change', function (e) {
     var d = e.detail || {};
     lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;
+    if (lastPreviewData) renderPreview(lastPreviewData);
+  });
+  document.addEventListener('commute-expense:change', function (e) {
+    var d = e.detail || {};
+    lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
     if (lastPreviewData) renderPreview(lastPreviewData);
   });
   document.addEventListener('additional-costs:change', function (e) {

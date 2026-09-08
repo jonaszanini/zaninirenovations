@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationAdditionalCosts;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
@@ -15,6 +16,7 @@ use App\Models\ClientProjectQuotation;
 use App\Services\AdditionalCostsService;
 use App\Services\BasementQuotationCalculator;
 use App\Services\ClientProjectStatusService;
+use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\MaterialCatalogPickerOptions;
@@ -27,6 +29,7 @@ use Illuminate\Validation\ValidationException;
 class BasementQuotationController extends Controller
 {
     use HandlesQuotationAdditionalCosts;
+    use HandlesQuotationCommuteExpense;
     use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
@@ -350,9 +353,9 @@ class BasementQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), AdditionalCostsService::validationRulesFor('electrical_lines', 'electrical line'), AdditionalCostsService::validationRulesFor('plumbing_lines', 'plumbing line')), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), AdditionalCostsService::validationRulesFor('electrical_lines', 'electrical line'), AdditionalCostsService::validationRulesFor('plumbing_lines', 'plumbing line')), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ], QuotationPaymentSchedule::validationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), AdditionalCostsService::validationMessagesFor('electrical_lines', 'electrical line'), AdditionalCostsService::validationMessagesFor('plumbing_lines', 'plumbing line')));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), AdditionalCostsService::validationMessagesFor('electrical_lines', 'electrical line'), AdditionalCostsService::validationMessagesFor('plumbing_lines', 'plumbing line')));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft);
         if (! $draft) {
@@ -377,8 +380,10 @@ class BasementQuotationController extends Controller
             'final_quote_total' => round($final, 2),
         ], $this->paymentScheduleFromRequest($request));
 
+        $commute = $this->commutePersistenceFromRequest($request, $existing, 'basement_quotations');
+        $merged = $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
         $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'basement_quotations');
-        $merged = $this->mergeDebrisRemovalIntoPersistence($base, $debris, 'final_quote_total');
+        $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
         $additional = $this->additionalCostsPersistenceFromRequest($request, $existing, 'basement_quotations');
 
         return $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
@@ -642,6 +647,7 @@ class BasementQuotationController extends Controller
             $items[] = $line;
         }
 
+        $this->appendCommuteProjectLine($items, $quote);
         $this->appendDebrisRemovalProjectLine($items, $quote);
         $this->appendAdditionalCostsProjectLines($items, $quote);
 
@@ -653,6 +659,9 @@ class BasementQuotationController extends Controller
             'final_quote_total',
             'work_description',
             'version',
+            'include_commute',
+            'commute_amount',
+            'commute_estimated_trips',
         ]);
 
         $row = ClientProjectQuotation::firstOrNew([
