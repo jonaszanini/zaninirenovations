@@ -17,8 +17,11 @@
  *     (including backspace).
  *   - On form submit the visible value is replaced with a plain numeric string
  *     (e.g. `12345.67`) so server-side numeric validation keeps working.
+ *     This also runs for native `HTMLFormElement.submit()` (used by basement /
+ *     millwork wizards), which skips DOM `submit` event listeners.
  *   - Calling `cpMoneyMask.wire(input)` again on the same element re-formats
  *     the current value (e.g. mark-paid modal preset).
+ *   - Server-side also accepts grouped amounts via `App\Support\CadMoney`.
  *
  *   - Optional `data-cp-money-entry="direct"` on a `.cp-money-input`:
  *     normal decimal typing (130 or 130.00) with thousand separators applied
@@ -103,11 +106,26 @@
   }
 
   function onFormSubmitStripCommas(e) {
-    var form = e.target;
+    var form = e && e.target ? e.target : e;
+    stripMoneyCommasOnForm(form);
+  }
+
+  function stripMoneyCommasOnForm(form) {
     if (!form || !form.querySelectorAll) return;
     form.querySelectorAll('.cp-money-input').forEach(function (input) {
       if (input.value) input.value = input.value.replace(/,/g, '');
     });
+  }
+
+  // Native HTMLFormElement.submit() skips 'submit' listeners (basement / millwork
+  // wizards use it after checkValidity). Still strip commas so Laravel numeric rules pass.
+  if (!HTMLFormElement.prototype._cpMoneySubmitPatched) {
+    HTMLFormElement.prototype._cpMoneySubmitPatched = true;
+    var nativeFormSubmit = HTMLFormElement.prototype.submit;
+    HTMLFormElement.prototype.submit = function () {
+      stripMoneyCommasOnForm(this);
+      return nativeFormSubmit.call(this);
+    };
   }
 
   /** Same semantics as line-item calculator: digits form minor units; dollars = minor / 10^places. */
@@ -304,7 +322,9 @@
       return isFinite(n) ? n : 0;
     },
     /** Direct discount field: digits only → minor/100; includes "." → parseFloat. */
-    parseHybridCadMoney: parseHybridCadMoney
+    parseHybridCadMoney: parseHybridCadMoney,
+    /** Strip thousands separators on `.cp-money-input` before a programmatic submit. */
+    stripFormCommas: stripMoneyCommasOnForm
   };
 
   // --- Time-entry form: start/end → hours -----------------------------

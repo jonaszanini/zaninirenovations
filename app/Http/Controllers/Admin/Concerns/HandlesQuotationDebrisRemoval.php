@@ -9,6 +9,12 @@ use Illuminate\Support\Facades\Schema;
 
 trait HandlesQuotationDebrisRemoval
 {
+    /** Accept masked CAD amounts from `.cp-money-input` before validate(). */
+    protected function prepareDebrisRemovalMoneyOnRequest(Request $request): void
+    {
+        DebrisRemovalExpenseService::normalizeAmountOnRequest($request);
+    }
+
     /**
      * @return array{include_debris_removal: bool, debris_removal_amount: float}|array{}
      */

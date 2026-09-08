@@ -341,6 +341,9 @@ class PavingQuotationController extends Controller
             ? ['nullable', 'string', 'max:160']
             : ['required', 'string', 'max:160'];
 
+        $this->prepareAdditionalCostMoneyOnRequest($request);
+        $this->prepareDebrisRemovalMoneyOnRequest($request);
+
         $request->validate(array_merge([
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:5000'],

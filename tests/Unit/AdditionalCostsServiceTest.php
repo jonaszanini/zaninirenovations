@@ -70,4 +70,14 @@ class AdditionalCostsServiceTest extends TestCase
         $this->assertTrue($lines[0]['hst_included']);
         $this->assertFalse($lines[0]['apply_hst']);
     }
+
+    public function test_normalize_rows_accepts_thousands_separators(): void
+    {
+        $rows = AdditionalCostsService::normalizeRows([
+            ['description' => 'Rough-in', 'amount' => '3,850.00', 'hst_included' => '1'],
+        ]);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(3850.0, $rows[0]['amount']);
+    }
 }

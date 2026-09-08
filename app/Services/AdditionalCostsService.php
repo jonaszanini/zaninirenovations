@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\CadMoney;
 use Illuminate\Http\Request;
 
 /**
@@ -16,6 +17,33 @@ class AdditionalCostsService
     public const HST_RATE = 0.13;
 
     public const LINE_PREFIX = 'Additional cost';
+
+    /**
+     * Strip thousands separators from amount rows before Laravel `numeric` rules.
+     * Call before validate() for each amount-line field on the request.
+     */
+    public static function normalizeAmountFieldsOnRequest(Request $request, string ...$fields): void
+    {
+        if ($fields === []) {
+            $fields = ['additional_costs'];
+        }
+
+        foreach ($fields as $field) {
+            $rows = $request->input($field);
+            if (! is_array($rows)) {
+                continue;
+            }
+
+            foreach ($rows as $i => $row) {
+                if (! is_array($row) || ! array_key_exists('amount', $row)) {
+                    continue;
+                }
+                $rows[$i]['amount'] = CadMoney::stripGrouping($row['amount']);
+            }
+
+            $request->merge([$field => $rows]);
+        }
+    }
 
     /** @return array<string, mixed> */
     public static function validationRules(): array
@@ -86,8 +114,8 @@ class AdditionalCostsService
             }
 
             $description = trim((string) ($row['description'] ?? ''));
-            $amountRaw = $row['amount'] ?? null;
-            $amount = is_numeric($amountRaw) ? round((float) $amountRaw, 2) : 0.0;
+            $parsed = CadMoney::parse($row['amount'] ?? null);
+            $amount = $parsed !== null ? round($parsed, 2) : 0.0;
             if ($amount < 0) {
                 $amount = 0.0;
             }

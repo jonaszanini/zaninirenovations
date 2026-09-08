@@ -59,6 +59,9 @@ class TileQuotationController extends Controller
 
     public function store(Request $request, TileQuotationCalculator $calculator)
     {
+        $this->prepareAdditionalCostMoneyOnRequest($request);
+        $this->prepareDebrisRemovalMoneyOnRequest($request);
+
         $data = $request->validate(array_merge([
             'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'client_name' => ['nullable', 'string', 'max:160'],
@@ -192,6 +195,9 @@ class TileQuotationController extends Controller
 
     public function update(Request $request, TileQuotation $quotation, TileQuotationCalculator $calculator)
     {
+        $this->prepareAdditionalCostMoneyOnRequest($request);
+        $this->prepareDebrisRemovalMoneyOnRequest($request);
+
         $data = $request->validate(array_merge([
             'client_name' => ['nullable', 'string', 'max:160'],
             'work_description' => ['nullable', 'string'],

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\CadMoney;
 use Illuminate\Http\Request;
 
 /**
@@ -18,6 +19,18 @@ class DebrisRemovalExpenseService
     public static function isLineDescription(string $description): bool
     {
         return str_starts_with($description, 'Debris removal');
+    }
+
+    /** Strip thousands separators before Laravel `numeric` validation. */
+    public static function normalizeAmountOnRequest(Request $request): void
+    {
+        if (! $request->exists('debris_removal_amount')) {
+            return;
+        }
+
+        $request->merge([
+            'debris_removal_amount' => CadMoney::stripGrouping($request->input('debris_removal_amount')),
+        ]);
     }
 
     /** @return array<string, mixed> */
@@ -56,8 +69,8 @@ class DebrisRemovalExpenseService
             $include = false;
         }
 
-        $amountRaw = $request->input('debris_removal_amount', 0);
-        $amount = is_numeric($amountRaw) ? round((float) $amountRaw, 2) : 0.0;
+        $parsed = CadMoney::parse($request->input('debris_removal_amount', 0));
+        $amount = $parsed !== null ? round($parsed, 2) : 0.0;
         if ($amount < 0) {
             $amount = 0.0;
         }

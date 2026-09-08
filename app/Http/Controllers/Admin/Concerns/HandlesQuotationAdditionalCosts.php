@@ -10,6 +10,15 @@ use Illuminate\Support\Facades\Schema;
 trait HandlesQuotationAdditionalCosts
 {
     /**
+     * Accept masked CAD amounts ("3,850.00") from `.cp-money-input` fields.
+     * Call before validate() whenever amount-line rules are used.
+     */
+    protected function prepareAdditionalCostMoneyOnRequest(Request $request, string ...$extraFields): void
+    {
+        AdditionalCostsService::normalizeAmountFieldsOnRequest($request, 'additional_costs', ...$extraFields);
+    }
+
+    /**
      * @return list<array{description: string, amount: float, hst_included: bool}>|array{}
      */
     protected function additionalCostsPersistenceFromRequest(

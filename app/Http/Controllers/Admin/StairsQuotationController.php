@@ -285,6 +285,9 @@ class StairsQuotationController extends Controller
             ? ['nullable', 'string', 'max:160']
             : ['required', 'string', 'max:160'];
 
+        $this->prepareAdditionalCostMoneyOnRequest($request);
+        $this->prepareDebrisRemovalMoneyOnRequest($request);
+
         $request->validate(array_merge([
             'client_name' => $clientRules,
             'save_intent' => ['nullable', 'in:draft,publish'],

@@ -482,6 +482,9 @@ class LowDeckQuotationController extends Controller
 
     protected function validateLowDeckInputs(Request $request): array
     {
+        $this->prepareAdditionalCostMoneyOnRequest($request);
+        $this->prepareDebrisRemovalMoneyOnRequest($request);
+
         $settings = LowDeckFormulaSetting::current();
         $maxArea = (float) $settings->max_area_sq_ft;
 

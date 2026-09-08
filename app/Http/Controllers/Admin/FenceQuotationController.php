@@ -594,6 +594,9 @@ class FenceQuotationController extends Controller
     /** Shared validation rules for store() and update(). */
     protected function validateFenceInputs(Request $request): array
     {
+        $this->prepareAdditionalCostMoneyOnRequest($request);
+        $this->prepareDebrisRemovalMoneyOnRequest($request);
+
         $rules = array_merge([
             'client_name' => ['required', 'string', 'max:160'],
             'work_description' => ['nullable', 'string', 'max:5000'],
