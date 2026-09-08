@@ -340,6 +340,17 @@
       width: 110pt;
       white-space: nowrap;
     }
+    .items th.hst, .items td.hst {
+      text-align: center;
+      width: 58pt;
+      white-space: nowrap;
+      font-size: 9.5pt;
+      color: #4b5563;
+    }
+    .items tfoot td.hst {
+      color: #4b5563;
+      font-weight: 400;
+    }
     .items tbody tr:nth-child(even) td {
       background: #f9fafb;
     }
@@ -619,6 +630,7 @@
     <thead>
       <tr>
         <th>Description</th>
+        <th class="hst">HST</th>
         <th class="amount">Amount</th>
       </tr>
     </thead>
@@ -626,7 +638,7 @@
       @foreach ($items as $row)
         @if (!empty($row['is_heading']))
           <tr class="items-heading">
-            <td colspan="2">{{ $row['description'] }}</td>
+            <td colspan="3">{{ $row['description'] }}</td>
           </tr>
         @else
         <tr class="{{ ! empty($row['is_standalone']) ? 'items-standalone' : '' }}">
@@ -640,9 +652,10 @@
           <td>
             {!! nl2br($desc) !!}
             @if (!empty($row['hst_included']) && empty($row['apply_hst']))
-              <span class="items-hst-note">HST included</span>
+              <span class="items-hst-note">HST included in amount</span>
             @endif
           </td>
+          <td class="hst">{{ \App\Models\ClientProjectQuotation::lineHstColumnLabel($row) }}</td>
           <td class="amount">{{ $fmt($row['amount']) }}</td>
         </tr>
         @endif
@@ -650,15 +663,15 @@
     </tbody>
     <tfoot>
       <tr>
-        <td class="totals-label">Subtotal</td>
+        <td class="totals-label" colspan="2">Subtotal (before HST)</td>
         <td class="amount">{{ $fmt($subtotal) }}</td>
       </tr>
       <tr>
-        <td class="totals-label">HST (13%)</td>
+        <td class="totals-label" colspan="2">HST (13% on lines marked 13%)</td>
         <td class="amount">{{ $fmt($hst) }}</td>
       </tr>
       <tr class="grand">
-        <td class="totals-label">Total with HST</td>
+        <td class="totals-label" colspan="2">Total with HST</td>
         <td class="amount">{{ $fmt($grand) }}</td>
       </tr>
     </tfoot>

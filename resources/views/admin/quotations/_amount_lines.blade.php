@@ -83,6 +83,7 @@
   $summaryMode = $summaryMode ?? 'materials';
   $isAdditionalCard = $isAdditionalCard ?? false;
   $wrapClass = $wrapClass ?? 'q-trade-lines';
+  $defaultHstIncluded = filter_var($defaultHstIncluded ?? true, FILTER_VALIDATE_BOOLEAN);
 
   $sourceRows = old($field);
   if (! is_array($sourceRows)) {
@@ -96,7 +97,7 @@
       }
       $desc = trim((string) ($row['description'] ?? ''));
       $amt = $row['amount'] ?? '';
-      $hst = $row['hst_included'] ?? '1';
+      $hst = array_key_exists('hst_included', $row) ? ($row['hst_included'] ?? '0') : ($defaultHstIncluded ? '1' : '0');
       $hstIncluded = $hst === true || $hst === 1 || $hst === '1';
       if ($desc === '' && ($amt === '' || $amt === null || (is_numeric($amt) && (float) $amt <= 0))) {
           continue;
@@ -109,7 +110,7 @@
   }
 
   if ($normalizedRows === []) {
-      $normalizedRows[] = ['description' => '', 'amount' => '', 'hst_included' => true];
+      $normalizedRows[] = ['description' => '', 'amount' => '', 'hst_included' => $defaultHstIncluded];
   }
 @endphp
 
@@ -121,7 +122,8 @@
      data-ac-placeholder="{{ $placeholder }}"
      data-ac-input-class="{{ $inputClass }}"
      data-ac-event="{{ $eventName }}"
-     data-ac-summary-mode="{{ $summaryMode }}">
+     data-ac-summary-mode="{{ $summaryMode }}"
+     data-ac-default-hst-included="{{ $defaultHstIncluded ? '1' : '0' }}">
   @if($title !== '' || $intro !== '')
     <div class="q-additional-costs-card__head">
       @if($title !== '')

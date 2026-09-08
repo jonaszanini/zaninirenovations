@@ -109,6 +109,10 @@
     return max + 1;
   }
 
+  function defaultHstIncluded(card) {
+    return attr(card, 'data-ac-default-hst-included', '1') !== '0';
+  }
+
   function syncHstLabel(row) {
     var toggle = row.querySelector('[data-ac-hst-toggle]');
     var text = row.querySelector('[data-ac-hst-text]');
@@ -140,7 +144,7 @@
         var list = card.querySelector('[data-ac-rows]');
         row.remove();
         if (list && !list.querySelector('[data-ac-row]')) {
-          addRow(card, { description: '', amount: '', hst_included: true });
+          addRow(card, { description: '', amount: '', hst_included: defaultHstIncluded(card) });
         }
         notify(card);
       });
@@ -226,7 +230,7 @@
     var addBtn = card.querySelector('[data-ac-add]');
     if (addBtn) {
       addBtn.addEventListener('click', function () {
-        addRow(card, { description: '', amount: '', hst_included: true, focus: true });
+        addRow(card, { description: '', amount: '', hst_included: defaultHstIncluded(card), focus: true });
         notify(card);
       });
     }

@@ -232,7 +232,9 @@ class AdditionalCostsService
     }
 
     /**
-     * Visible PDF / project lines (tax-inclusive amounts).
+     * Visible PDF / project lines as before-tax amounts with HST applied on the quotation.
+     * When the typed amount already includes HST, it is converted to pre-tax first so the
+     * client table stays consistent (amounts before tax; HST totalled below).
      * When $emptyDescription is a trade heading (e.g. "Electrical work"), it is
      * prefixed onto the typed description so the client PDF is clear.
      *
@@ -244,10 +246,8 @@ class AdditionalCostsService
         $lines = [];
         $prefix = trim($emptyDescription);
         foreach (self::normalizeRows($rows, $emptyDescription) as $row) {
-            $taxIn = $row['hst_included']
-                ? (float) $row['amount']
-                : round((float) $row['amount'] * (1 + self::HST_RATE), 2);
-            if ($taxIn <= 0) {
+            $preTax = self::rowPreTax((float) $row['amount'], (bool) $row['hst_included']);
+            if ($preTax <= 0) {
                 continue;
             }
 
@@ -260,9 +260,9 @@ class AdditionalCostsService
 
             $lines[] = [
                 'description' => $description,
-                'amount' => $taxIn,
-                'apply_hst' => false,
-                'hst_included' => true,
+                'amount' => $preTax,
+                'apply_hst' => true,
+                'hst_included' => false,
             ];
         }
 

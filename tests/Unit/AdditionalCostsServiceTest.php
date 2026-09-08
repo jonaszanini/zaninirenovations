@@ -66,9 +66,20 @@ class AdditionalCostsServiceTest extends TestCase
 
         $this->assertCount(1, $lines);
         $this->assertSame('Electrical work — Licensed electrician', $lines[0]['description']);
-        $this->assertSame(113.0, $lines[0]['amount']);
-        $this->assertTrue($lines[0]['hst_included']);
-        $this->assertFalse($lines[0]['apply_hst']);
+        $this->assertSame(100.0, $lines[0]['amount']);
+        $this->assertFalse($lines[0]['hst_included']);
+        $this->assertTrue($lines[0]['apply_hst']);
+    }
+
+    public function test_visible_project_lines_convert_tax_included_to_pre_tax(): void
+    {
+        $lines = AdditionalCostsService::visibleProjectLineItems([
+            ['description' => 'Rough-in', 'amount' => 113.0, 'hst_included' => true],
+        ], 'Plumbing work');
+
+        $this->assertSame(100.0, $lines[0]['amount']);
+        $this->assertTrue($lines[0]['apply_hst']);
+        $this->assertFalse($lines[0]['hst_included']);
     }
 
     public function test_visible_project_lines_do_not_double_prefix(): void

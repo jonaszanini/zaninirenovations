@@ -59,5 +59,6 @@
     'inputClass' => 'br-preview',
     'eventName' => 'trade-lines:change',
     'summaryMode' => 'tax-in',
+    'defaultHstIncluded' => false,
   ])
 </div>
