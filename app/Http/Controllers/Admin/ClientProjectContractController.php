@@ -10,13 +10,18 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectContract;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Services\ClientSmsService;
 use App\Services\GeminiService;
+use App\Services\MoceanSmsService;
+use App\Support\SignedPublicLink;
 use App\Support\SimpleMarkdownHtml;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 /**
  * Manages the rich-text Contract attached to a ClientProject.
@@ -27,6 +32,7 @@ use Illuminate\Support\Facades\Storage;
  *   - downloadPdf()  generates a fresh PDF on the fly and returns it inline
  *   - send()         generates a fresh PDF, persists it under storage/app/contracts/,
  *                    emails it to the client, and updates sent_at + version
+ *   - sendContractSms() texts a signed link to view the PDF (no email / version bump)
  */
 class ClientProjectContractController extends Controller
 {
@@ -248,6 +254,101 @@ class ClientProjectContractController extends Controller
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('contract')
             ->with('success', "Contract emailed to {$client_project->clientEmailRecipientsLabel()} (v{$contract->version}).");
+    }
+
+    /**
+     * Public, signed URL (no login) so clients can open contract PDFs from SMS.
+     */
+    public function guestDownloadContractPdf(ClientProject $client_project)
+    {
+        $contract = $client_project->contract;
+
+        if (! $contract || ! $contract->hasContent()) {
+            abort(404, 'Contract not available.');
+        }
+
+        $pdf = $this->renderPdf($client_project, $contract);
+
+        return $pdf->stream($this->pdfFilename($client_project, $contract));
+    }
+
+    /**
+     * SMS the client a signed link to open/view the contract PDF (no attachment).
+     * Does not email or bump contract version — purely a link delivery channel.
+     */
+    public function sendContractSms(
+        ClientProject $client_project,
+        ClientSmsService $clientSms,
+        MoceanSmsService $moceanSms,
+    ) {
+        $contract = $client_project->contract;
+
+        $blocked = $this->contractSmsBlockers($client_project, $contract, $moceanSms);
+        if ($blocked !== []) {
+            return back()->with('error', implode(' ', $blocked));
+        }
+
+        $smsTo = ClientProject::phoneDigitsForSms($client_project->client_phone);
+        if ($smsTo === null) {
+            return back()->with('error', 'Cannot send SMS — client phone number is missing or not valid for texting.');
+        }
+
+        $signedUrl = URL::temporarySignedRoute(
+            'public.client-project.contract-pdf',
+            SignedPublicLink::expiresAt(),
+            ['client_project' => $client_project],
+        );
+
+        $projectLabel = trim((string) $client_project->name) !== ''
+            ? trim((string) $client_project->name)
+            : 'your project';
+        $smsBody = "Zanini Renovations — Contract for {$projectLabel}. View PDF: {$signedUrl}";
+
+        $summary = "Contract v{$contract->version} SMS link — \"".Str::limit($smsBody, 120).'"';
+        $result = $clientSms->sendToClient(
+            $client_project,
+            $smsTo,
+            $smsBody,
+            ClientCommunicationLog::REASON_CONTRACT_SMS_LINK,
+            $summary,
+        );
+
+        if (! $result['ok']) {
+            return back()->with('error', 'SMS could not be sent: '.$result['detail']);
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('contract')
+            ->with('success', 'SMS sent to the client with a contract link.');
+    }
+
+    /**
+     * Blockers for sending the contract PDF link by SMS (content + Mocean + phone).
+     * Does not require client email — SMS can be used when email is missing.
+     *
+     * @return list<string>
+     */
+    protected function contractSmsBlockers(
+        ClientProject $project,
+        ?ClientProjectContract $contract,
+        MoceanSmsService $mocean,
+    ): array {
+        $out = [];
+
+        if (! $contract || ! $contract->hasContent()) {
+            $out[] = 'Write the contract body before sending an SMS link.';
+        }
+
+        if (! $mocean->isConfigured()) {
+            $out[] = 'SMS is not configured — set MOCEAN_API_TOKEN on the server.';
+        }
+
+        if (ClientProject::phoneDigitsForSms($project->client_phone) === null) {
+            $out[] = 'Add a mobile phone number the client uses for texting (save on Edit project).';
+        }
+
+        return $out;
     }
 
     /**

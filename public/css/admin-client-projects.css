@@ -6260,8 +6260,8 @@ body.cp-modal-open {
   margin-left: 6px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
@@ -6313,9 +6313,10 @@ body.cp-modal-open {
   align-items: center;
   gap: 8px;
   font-size: 1.05rem;
+  color: var(--admin-heading);
 }
 .cp-utilities-section__head h3 .fa {
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-utilities-section__count {
   display: inline-flex;
@@ -6325,8 +6326,9 @@ body.cp-modal-open {
   height: 1.4rem;
   padding: 0 6px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+  border: 1px solid var(--admin-border);
   font-size: 12px;
   font-weight: 700;
 }
@@ -6341,17 +6343,18 @@ body.cp-modal-open {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--admin-surface-hover);
 }
 .cp-utilities-item__name {
   margin: 0 0 4px;
   font-size: 15px;
+  color: var(--admin-heading);
 }
 .cp-utilities-item__meta {
   margin: 0;
-  color: #6b7280;
+  color: var(--admin-muted);
   font-size: 13px;
 }
 .cp-utilities-item__rooms {
@@ -6365,14 +6368,15 @@ body.cp-modal-open {
   justify-content: space-between;
   gap: 12px;
   padding: 3px 0;
-  border-top: 1px solid #eceff3;
+  border-top: 1px solid var(--admin-border);
+  color: var(--admin-text);
 }
 .cp-utilities-item__rooms li:first-child {
   border-top: none;
   padding-top: 0;
 }
 .cp-utilities-item__room-area {
-  color: #374151;
+  color: var(--admin-heading);
   font-weight: 600;
   white-space: nowrap;
 }

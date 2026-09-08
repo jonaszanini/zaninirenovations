@@ -694,18 +694,39 @@
   </div>
 
   {{-- TABS ---------------------------------------------------------------- --}}
+  @php
+    $quotationTabCount = $project->quotations->count();
+    $contractTabCount = ($project->contract && $project->contract->hasContent()) ? 1 : 0;
+    $invoiceTabCount = $project->invoices->count();
+    $utilitiesTabCount = (int) ($linkedUtilities['total_count'] ?? 0);
+  @endphp
   <div class="cp-tabs" role="tablist">
     <button type="button" class="cp-tab is-active" data-tab="overview" role="tab">Overview</button>
     <button type="button" class="cp-tab" data-tab="schedule" role="tab">Calendar</button>
     <button type="button" class="cp-tab" data-tab="time" role="tab">Time Tracking</button>
-    <button type="button" class="cp-tab" data-tab="quotation" role="tab">Quotation</button>
-    <button type="button" class="cp-tab" data-tab="contract" role="tab">Contract</button>
-    <button type="button" class="cp-tab" data-tab="invoice" role="tab">Invoice</button>
+    <button type="button" class="cp-tab" data-tab="quotation" role="tab">
+      Quotation
+      @if ($quotationTabCount > 0)
+        <span class="cp-tab-count">{{ $quotationTabCount }}</span>
+      @endif
+    </button>
+    <button type="button" class="cp-tab" data-tab="contract" role="tab">
+      Contract
+      @if ($contractTabCount > 0)
+        <span class="cp-tab-count">{{ $contractTabCount }}</span>
+      @endif
+    </button>
+    <button type="button" class="cp-tab" data-tab="invoice" role="tab">
+      Invoice
+      @if ($invoiceTabCount > 0)
+        <span class="cp-tab-count">{{ $invoiceTabCount }}</span>
+      @endif
+    </button>
     <button type="button" class="cp-tab" data-tab="financials" role="tab">Financials</button>
     <button type="button" class="cp-tab" data-tab="utilities" role="tab">
       Utilities
-      @if (($linkedUtilities['total_count'] ?? 0) > 0)
-        <span class="cp-tab-count">{{ $linkedUtilities['total_count'] }}</span>
+      @if ($utilitiesTabCount > 0)
+        <span class="cp-tab-count">{{ $utilitiesTabCount }}</span>
       @endif
     </button>
     <button type="button" class="cp-tab" data-tab="history" role="tab">History</button>

@@ -21,6 +21,7 @@ final class RouteSmokeHelper
         'public.client-project.invoice-pdf',
         'public.client-project.receipt-pdf',
         'public.client-project.quotation-pdf',
+        'public.client-project.contract-pdf',
         'public.helper-payment.acknowledge',
         'cron.run',
     ];

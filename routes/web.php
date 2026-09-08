@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\MaterialController;
+use App\Http\Controllers\Admin\ClientProjectContractController;
 use App\Http\Controllers\Admin\ClientProjectInvoiceController;
 use App\Http\Controllers\Admin\ClientProjectQuotationController;
 use App\Http\Controllers\Admin\Auth\LoginController;
@@ -66,6 +67,9 @@ Route::get('/client/receipt/{client_project}/{invoice}', [ClientProjectInvoiceCo
 Route::get('/client/quotation/{client_project}/{quotation}', [ClientProjectQuotationController::class, 'guestDownloadQuotationPdf'])
     ->middleware('signed')
     ->name('public.client-project.quotation-pdf');
+Route::get('/client/contract/{client_project}', [ClientProjectContractController::class, 'guestDownloadContractPdf'])
+    ->middleware('signed')
+    ->name('public.client-project.contract-pdf');
 Route::get('/helper/payment/{helper_payment}/acknowledge', [\App\Http\Controllers\Admin\ClientProjectHelperController::class, 'acknowledgeHelperPayment'])
     ->middleware('signed')
     ->name('public.helper-payment.acknowledge');
@@ -340,6 +344,9 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.contract.pdf');
     Route::post('client-projects/{client_project}/contract/send', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'send'])
         ->name('client-projects.contract.send');
+    Route::post('client-projects/{client_project}/contract/sms', [\App\Http\Controllers\Admin\ClientProjectContractController::class, 'sendContractSms'])
+        ->middleware('throttle:12,1')
+        ->name('client-projects.contract.sms');
 
     // Quotation / Estimate (structured, PDF generation, email-to-client).
     Route::get('client-projects/{client_project}/quotations/{quotation}/edit', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'edit'])

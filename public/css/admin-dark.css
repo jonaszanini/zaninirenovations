@@ -698,6 +698,50 @@ html.admin-dark .cp-badge--manual {
   color: #cbd5e1;
 }
 
+/* Linked utilities on project page */
+html.admin-dark .cp-tab-count {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .cp-tab.is-active .cp-tab-count {
+  background: var(--admin-primary);
+  color: #0f172a;
+}
+
+html.admin-dark .cp-utilities-section__head h3 .fa {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .cp-utilities-section__count {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+html.admin-dark .cp-utilities-item {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-utilities-item__name {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-utilities-item__meta {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-utilities-item__rooms li {
+  border-top-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-utilities-item__room-area {
+  color: var(--admin-heading);
+}
+
 html.admin-dark .sq-work-card__header,
 html.admin-dark .sq-panel-head {
   background: var(--admin-surface-hover);

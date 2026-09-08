@@ -77,7 +77,9 @@
             @foreach ($section['items'] as $item)
               <article class="cp-utilities-item">
                 <div class="cp-utilities-item__main">
-                  <h4 class="cp-utilities-item__name">{{ $item['name'] }}</h4>
+                  @if (!empty($item['name']))
+                    <h4 class="cp-utilities-item__name">{{ $item['name'] }}</h4>
+                  @endif
                   @if ($key === 'room_area')
                     <p class="cp-utilities-item__meta">
                       {{ $item['room_count'] }} {{ \Illuminate\Support\Str::plural('room', $item['room_count']) }}

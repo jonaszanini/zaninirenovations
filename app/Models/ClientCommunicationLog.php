@@ -38,6 +38,8 @@ class ClientCommunicationLog extends Model
     /** SMS with signed link to open/download quotation PDF — no attachment. */
     public const REASON_QUOTATION_SMS_LINK = 'quotation_sms_link';
     public const REASON_CONTRACT_SENT = 'contract_sent';
+    /** SMS with signed link to open/download contract PDF — no attachment. */
+    public const REASON_CONTRACT_SMS_LINK = 'contract_sms_link';
     public const REASON_INVOICE_SENT = 'invoice_sent';
     public const REASON_INVOICE_REMINDER = 'invoice_reminder';
     /** SMS with signed link to open/download invoice PDF — no attachment. */
@@ -66,6 +68,7 @@ class ClientCommunicationLog extends Model
         self::REASON_QUOTATION_SENT => 'Quotation',
         self::REASON_QUOTATION_SMS_LINK => 'Quotation (SMS link)',
         self::REASON_CONTRACT_SENT => 'Contract',
+        self::REASON_CONTRACT_SMS_LINK => 'Contract (SMS link)',
         self::REASON_INVOICE_SENT => 'Invoice',
         self::REASON_INVOICE_REMINDER => 'Invoice reminder',
         self::REASON_INVOICE_SMS_LINK => 'Invoice (SMS link)',
@@ -166,7 +169,8 @@ class ClientCommunicationLog extends Model
             self::REASON_QUOTATION_SENT,
             self::REASON_QUOTATION_SMS_LINK,
             self::REASON_QUOTE_RECEIVED_AUTO => '#3b82f6',          // blue
-            self::REASON_CONTRACT_SENT => '#8b5cf6',                 // violet
+            self::REASON_CONTRACT_SENT,
+            self::REASON_CONTRACT_SMS_LINK => '#8b5cf6',             // violet
             self::REASON_INVOICE_SENT,
             self::REASON_INVOICE_REMINDER => '#f59e0b',              // amber
             self::REASON_INVOICE_SMS_LINK,

@@ -1,22 +1,42 @@
 {{--
   Contract tab partial. Shows either:
     - an empty state with a big "Create Contract" button (if no contract yet),
-    - or the rendered contract preview with edit/download/send actions.
+    - or the rendered contract preview with edit/download/send/SMS actions.
 
   Variables expected:
     $project    – the ClientProject
     $contract   – the ClientProjectContract or null
 
-  Validation: the "Send" button is disabled (and a warning displayed) until
-  client_name, client_phone, client_email and client_address are all set.
+  Validation: "Send" requires full client contact info (incl. email).
+  "SMS" only needs content + SMS-capable phone + Mocean configured.
 --}}
 
 @php
+  use App\Services\MoceanSmsService;
+
   $contract = $project->contract;
   $hasContent = $contract && $contract->hasContent();
   $missing = $project->missingContactFieldsForContract();
   $canSend = empty($missing) && $hasContent;
   $contractSendConfirm = 'This will generate a new PDF, email it to '.$project->clientEmailRecipientsLabel().', and save the PDF on the server. Continue?';
+
+  $moceanReady = app(MoceanSmsService::class)->isConfigured();
+  $canDeliverBySms = \App\Models\ClientProject::phoneDigitsForSms($project->client_phone) !== null;
+  $smsBlockers = [];
+  if (! $hasContent) {
+      $smsBlockers[] = 'Write the contract body first.';
+  }
+  if (! $moceanReady) {
+      $smsBlockers[] = 'SMS gateway is not configured on the server (MOCEAN_API_TOKEN).';
+  }
+  if (! $canDeliverBySms) {
+      $smsBlockers[] = "Add the client's mobile phone number.";
+  }
+  $canSms = empty($smsBlockers);
+  $smsTitle = $canSms
+      ? 'Text the client a secure link to open this contract PDF in the browser.'
+      : implode(' ', $smsBlockers);
+  $smsConfirm = 'Send an SMS to '.$project->clientSmsRecipientsLabel().' with a secure link to view or download this contract PDF?';
 @endphp
 
 @if (!$contract || !$hasContent)
@@ -26,8 +46,8 @@
     <p class="admin-form-help">
       Create the contract for this project. You'll be able to paste from Word
       or Google Docs and fully format the body — headings, lists, tables,
-      bold, etc. Once it's ready you can download a PDF or email it directly
-      to the client.
+      bold, etc. Once it's ready you can download a PDF, email it, or text a
+      link to the client.
     </p>
     <div class="cp-contract-empty-action">
       <a href="{{ route('admin.client-projects.contract.edit', $project) }}"
@@ -81,26 +101,67 @@
             </button>
           </form>
         @else
+          @php
+            $sendDisabledTitle = empty($missing)
+                ? 'Write the contract body first.'
+                : (in_array('Client email', $missing, true) && count($missing) === 1
+                    ? "Add the client's email address to email this contract. Use SMS if you only have a phone."
+                    : 'Missing client info: '.implode(', ', $missing));
+          @endphp
           <button type="button"
                   class="admin-btn admin-btn--primary admin-btn--sm"
                   disabled
-                  title="{{ empty($missing) ? 'Write the contract body first.' : 'Missing client info: '.implode(', ', $missing) }}">
+                  title="{{ $sendDisabledTitle }}">
             <i class="fa fa-paper-plane"></i> Send to Client
+          </button>
+        @endif
+
+        @if ($canSms)
+          <form action="{{ route('admin.client-projects.contract.sms', $project) }}"
+                method="post"
+                class="cp-inline-form"
+                onsubmit="return confirm({{ json_encode($smsConfirm) }});">
+            @csrf
+            <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" title="{{ $smsTitle }}">
+              <i class="fa fa-comment"></i> SMS
+            </button>
+          </form>
+        @else
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" disabled title="{{ $smsTitle }}">
+            <i class="fa fa-comment"></i> SMS
           </button>
         @endif
       </div>
     </div>
 
-    @if (!empty($missing))
+    @if (! $canSend || ! $canSms)
       <div class="cp-contract-warning">
         <i class="fa fa-exclamation-triangle"></i>
         <div>
-          <strong>Cannot email this contract yet.</strong>
-          The following client info is missing:
-          <strong>{{ implode(', ', $missing) }}</strong>.
-          <a href="{{ route('admin.client-projects.edit', $project) }}">
-            Edit project details to add it.
-          </a>
+          @php
+            $disabledChannels = [];
+            if (! $canSend) { $disabledChannels[] = 'Email'; }
+            if (! $canSms) { $disabledChannels[] = 'SMS'; }
+          @endphp
+          <strong>{{ implode(' and ', $disabledChannels) }} disabled.</strong>
+          @if (! $canSend && ! empty($missing))
+            Missing for email:
+            <strong>{{ implode(', ', $missing) }}</strong>.
+            @if ($canSms)
+              You can still text a PDF link via SMS.
+            @endif
+          @elseif (! $canSend)
+            Write the contract body before emailing.
+          @endif
+          @if (! $canSms)
+            {{ $smsTitle }}
+          @endif
+          @if (! empty($missing) || ! $canDeliverBySms)
+            <a href="{{ route('admin.client-projects.edit', $project) }}">
+              Edit project details
+            </a>
+            to add missing contact info.
+          @endif
         </div>
       </div>
     @endif
