@@ -2656,15 +2656,7 @@ body.admin-nav-open {
   }
 }
 
-/* Portfolio create/edit — use full content width (default edit layout is 720px) */
-.cp-edit-project-layout.cp-portfolio-project-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(140px, max-content);
-  max-width: none;
-}
-
-.cp-edit-project-layout.cp-portfolio-project-layout .cp-edit-project-form-card.admin-card--narrow {
-  max-width: none;
-}
+/* Portfolio create/edit shares .cp-edit-project-layout (already full width) */
 
 /* Portfolio edit — upload sources + Google Photos panel */
 .admin-portfolio-upload-section {

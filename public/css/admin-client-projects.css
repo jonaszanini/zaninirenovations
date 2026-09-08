@@ -6024,16 +6024,23 @@ body.cp-modal-open {
   text-align: right;
   white-space: nowrap;
 }
-/* Edit project — form + Save/Cancel column beside the narrow card */
+/* Edit/create project — form fills content width; Save/Cancel sticky aside */
 .cp-edit-project-layout {
   display: grid;
-  grid-template-columns: minmax(0, 720px) minmax(140px, max-content);
+  grid-template-columns: minmax(0, 1fr) minmax(140px, max-content);
   gap: 1.25rem;
   align-items: start;
   margin-bottom: 1.25rem;
+  max-width: none;
 }
 .cp-edit-project-form-card {
   min-width: 0;
+}
+.cp-edit-project-form-card.admin-card--narrow {
+  max-width: none;
+}
+.cp-edit-project-photos-card.admin-card--narrow {
+  max-width: none;
 }
 .cp-edit-project-actions-aside {
   position: sticky;
