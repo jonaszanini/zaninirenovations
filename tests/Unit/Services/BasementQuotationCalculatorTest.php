@@ -796,7 +796,7 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $keys = collect($calc['labor'])->pluck('key')->all();
         $matKeys = collect($calc['materials'])->pluck('key')->all();
-        $this->assertSame('Bathroom only', $calc['scope']['finish_label']);
+        $this->assertSame('New bathroom', $calc['scope']['finish_label']);
         $this->assertContains('bath_vanity', $keys);
         $this->assertNotContains('plumb_bath', $keys);
         $this->assertNotContains('framing_walls', $keys);

@@ -236,7 +236,7 @@ class BasementQuotationController extends Controller
     public function sendIntake(Request $request, BasementQuotation $basement_quotation)
     {
         if (! $basement_quotation->supportsClientIntake()) {
-            return back()->with('error', 'Client intake is only available for Full basement and Bathroom only quotations.');
+            return back()->with('error', 'Client intake is only available for Full basement and New bathroom quotations.');
         }
 
         $email = $basement_quotation->intakeClientEmail();
@@ -260,7 +260,7 @@ class BasementQuotationController extends Controller
     public function reopenIntake(BasementQuotation $basement_quotation)
     {
         if (! $basement_quotation->supportsClientIntake()) {
-            return back()->with('error', 'Client intake is only available for Full basement and Bathroom only quotations.');
+            return back()->with('error', 'Client intake is only available for Full basement and New bathroom quotations.');
         }
 
         $basement_quotation->client_intake_submitted_at = null;

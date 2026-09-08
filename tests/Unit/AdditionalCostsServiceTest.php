@@ -58,17 +58,26 @@ class AdditionalCostsServiceTest extends TestCase
         $this->assertFalse($lines[0]['apply_hst']);
     }
 
-    public function test_visible_project_lines_use_the_typed_description(): void
+    public function test_visible_project_lines_prefix_the_trade_heading(): void
     {
         $lines = AdditionalCostsService::visibleProjectLineItems([
             ['description' => 'Licensed electrician', 'amount' => 100, 'hst_included' => false],
         ], 'Electrical work');
 
         $this->assertCount(1, $lines);
-        $this->assertSame('Licensed electrician', $lines[0]['description']);
+        $this->assertSame('Electrical work — Licensed electrician', $lines[0]['description']);
         $this->assertSame(113.0, $lines[0]['amount']);
         $this->assertTrue($lines[0]['hst_included']);
         $this->assertFalse($lines[0]['apply_hst']);
+    }
+
+    public function test_visible_project_lines_do_not_double_prefix(): void
+    {
+        $lines = AdditionalCostsService::visibleProjectLineItems([
+            ['description' => 'Electrical work — Already prefixed', 'amount' => 50, 'hst_included' => true],
+        ], 'Electrical work');
+
+        $this->assertSame('Electrical work — Already prefixed', $lines[0]['description']);
     }
 
     public function test_normalize_rows_accepts_thousands_separators(): void

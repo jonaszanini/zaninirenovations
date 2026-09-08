@@ -31,7 +31,7 @@ class BasementQuotationCalculator
 
     public const SCOPE_PRESETS = [
         'full' => 'Full basement',
-        'bathroom' => 'Bathroom only',
+        'bathroom' => 'New bathroom',
         'wall' => 'New wall',
         'custom' => 'Custom',
     ];
@@ -481,7 +481,7 @@ class BasementQuotationCalculator
         $bath = ! empty($inputs['include_bathroom']) && self::sectionEnabled($inputs, 'bathroom');
 
         return match ($preset) {
-            'bathroom' => 'Bathroom only',
+            'bathroom' => 'New bathroom',
             'wall' => 'New wall',
             'custom' => 'Custom',
             default => $bath ? 'Full finish with bathroom' : 'Full finish',

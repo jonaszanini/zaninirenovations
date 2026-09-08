@@ -300,6 +300,69 @@ class ClientProjectQuotation extends Model
     }
 
     /**
+     * Short client-facing job label for the Prepared for block on quotation PDFs.
+     * Uses the calculator scope (e.g. basement "New wall"), never the parent project name.
+     */
+    public function jobLabelForPdf(): string
+    {
+        $source = $this->calculatorModelForLabourHstSetAside();
+        if ($source instanceof BasementQuotation) {
+            return $source->jobLabelForPdf();
+        }
+
+        if ($source instanceof StandardQuotation) {
+            $summary = trim($source->summaryDescription());
+            if ($summary !== '') {
+                return $summary;
+            }
+        }
+
+        if ($source !== null && method_exists($source, 'displayTitle')) {
+            $fromDisplay = self::stripDisplayTitleQuoteNumber((string) $source->displayTitle());
+            if ($fromDisplay !== '') {
+                return $fromDisplay;
+            }
+        }
+
+        $typeJob = match ($this->source_type) {
+            self::SOURCE_FENCE => 'Fence',
+            self::SOURCE_PAVING => 'Paving',
+            self::SOURCE_LOW_DECK => 'Low deck',
+            default => null,
+        };
+        if ($typeJob !== null) {
+            return $typeJob;
+        }
+
+        $fromTitle = self::stripDisplayTitleQuoteNumber($this->resolvedTitle());
+        if ($fromTitle !== '' && strcasecmp($fromTitle, $this->typeLabel()) !== 0) {
+            return $fromTitle;
+        }
+
+        $stored = trim((string) ($this->title ?? ''));
+        if ($stored !== '') {
+            return self::stripDisplayTitleQuoteNumber($stored);
+        }
+
+        return $this->typeLabel();
+    }
+
+    /**
+     * Remove trailing " — QUO-2026-0001" / " — BR-2026-0280" style suffixes from titles.
+     */
+    public static function stripDisplayTitleQuoteNumber(string $title): string
+    {
+        $trimmed = trim($title);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $stripped = preg_replace('/\s*[—–-]\s*[A-Z]{1,4}-\d{4}-\d+\s*$/u', '', $trimmed);
+
+        return trim((string) $stripped);
+    }
+
+    /**
      * Free-form scope text for the quotation PDF "Description of the work" block.
      */
     public function workDescriptionForPdf(): string

@@ -232,7 +232,9 @@ class AdditionalCostsService
     }
 
     /**
-     * Visible PDF / project lines (tax-inclusive amounts), using the typed description.
+     * Visible PDF / project lines (tax-inclusive amounts).
+     * When $emptyDescription is a trade heading (e.g. "Electrical work"), it is
+     * prefixed onto the typed description so the client PDF is clear.
      *
      * @param  list<array{description?: string, amount?: float|int|string, hst_included?: bool|int|string}>  $rows
      * @return list<array{description: string, amount: float, apply_hst: bool, hst_included: bool}>
@@ -240,6 +242,7 @@ class AdditionalCostsService
     public static function visibleProjectLineItems(array $rows, string $emptyDescription = 'Additional cost'): array
     {
         $lines = [];
+        $prefix = trim($emptyDescription);
         foreach (self::normalizeRows($rows, $emptyDescription) as $row) {
             $taxIn = $row['hst_included']
                 ? (float) $row['amount']
@@ -248,8 +251,15 @@ class AdditionalCostsService
                 continue;
             }
 
+            $label = trim((string) $row['description']);
+            if ($prefix !== '' && $label !== '' && $label !== $prefix && ! str_starts_with($label, $prefix)) {
+                $description = $prefix.' — '.$label;
+            } else {
+                $description = $label !== '' ? $label : $prefix;
+            }
+
             $lines[] = [
-                'description' => (string) $row['description'],
+                'description' => $description,
                 'amount' => $taxIn,
                 'apply_hst' => false,
                 'hst_included' => true,

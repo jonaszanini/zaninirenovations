@@ -31,7 +31,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Project Overview')
             ->assertSee('What are you quoting?')
             ->assertSee('Full basement')
-            ->assertSee('Bathroom only')
+            ->assertSee('New bathroom')
             ->assertSee('New wall')
             ->assertSee('Trades to include')
             ->assertSee('Total basement area')
@@ -157,7 +157,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $html = $this->get(route('admin.quotations.basement.edit', $quote))
             ->assertOk()
-            ->assertSee('Bathroom only')
+            ->assertSee('New bathroom')
             ->getContent();
 
         $this->assertMatchesRegularExpression(

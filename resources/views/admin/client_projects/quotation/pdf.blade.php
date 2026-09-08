@@ -309,11 +309,18 @@
       line-height: 1.45;
     }
 
-    /* Items table */
+    /* Items table — keep Description/Amount + totals on one page when they fit;
+       DomPDF still splits only if the table is taller than a full page. */
     .items {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12pt;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .items tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
     .items th, .items td {
       border: 1pt solid #d8dee4;
@@ -521,9 +528,12 @@
           <p class="line">Address: {{ $project->client_address ?: 'TBD' }}</p>
           <p class="line">Phone: {{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: 'TBD' }}</p>
           <p class="line">Email: {{ $project->client_email ?: 'TBD' }}</p>
-          <p class="line" style="margin-top:4pt;font-style:italic;color:#4b5563;">
-            Project: {{ $project->name }}
-          </p>
+          @php $pdfJobLabel = trim($quotation->jobLabelForPdf()); @endphp
+          @if ($pdfJobLabel !== '')
+            <p class="line" style="margin-top:4pt;font-style:italic;color:#4b5563;">
+              Job: {{ $pdfJobLabel }}
+            </p>
+          @endif
         </div>
       </td>
     </tr>

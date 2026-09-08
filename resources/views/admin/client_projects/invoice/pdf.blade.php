@@ -186,11 +186,18 @@
       margin: 6pt 0 12pt;
     }
 
-    /* Items table */
+    /* Items table — keep Description/Amount + totals on one page when they fit;
+       DomPDF still splits only if the table is taller than a full page. */
     .items {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12pt;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .items tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
     .items th, .items td {
       border: 1pt solid #d8dee4;

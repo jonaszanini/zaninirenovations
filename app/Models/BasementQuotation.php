@@ -155,6 +155,23 @@ class BasementQuotation extends Model
         return 'Basement Renovation — '.$this->quote_number;
     }
 
+    /**
+     * Short client-facing job label for quotation PDFs (scope selected in the wizard).
+     */
+    public function jobLabelForPdf(): string
+    {
+        $inputs = $this->inputs;
+        if (is_string($inputs)) {
+            $decoded = json_decode($inputs, true);
+            $inputs = is_array($decoded) ? $decoded : [];
+        }
+        if (! is_array($inputs)) {
+            $inputs = [];
+        }
+
+        return BasementQuotationCalculator::finishLabel($inputs);
+    }
+
     public function labourPreTaxAmountForProjectQuotation(): float
     {
         $calc = is_array($this->calculation) ? $this->calculation : [];
@@ -180,8 +197,7 @@ class BasementQuotation extends Model
     {
         $area = $this->areaSqft();
         $inputs = is_array($this->inputs) ? $this->inputs : [];
-        $bath = ! empty($inputs['include_bathroom']);
-        $finish = $bath ? 'Full finish with bathroom' : 'Full finish';
+        $finish = BasementQuotationCalculator::finishLabel($inputs);
 
         if ($area > 0) {
             return sprintf('Basement Renovation – %s sq ft, %s', number_format($area, 0), $finish);
