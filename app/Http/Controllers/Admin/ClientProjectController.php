@@ -504,7 +504,11 @@ class ClientProjectController extends Controller
 
     public function update(Request $request, ClientProject $client_project, ClientProjectStatusService $service, ClientProjectContactService $contactService)
     {
-        $this->hydrateClientContactFromDirectory($request);
+        // On update, only backfill blank client_name from the directory.
+        // Optional contact fields (email, secondary email, phone, address) must
+        // stay clearable — ConvertEmptyStringsToNull turns "" into null, and the
+        // create-path hydrator would otherwise re-fill them from the linked client.
+        $this->hydrateClientContactFromDirectory($request, false);
         $this->normalisePhoneOnRequest($request);
         $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
@@ -1094,8 +1098,12 @@ class ClientProjectController extends Controller
      * When a directory client is selected but contact fields were left blank
      * (e.g. the search-select fill JS did not run), copy them from the client
      * record before validation so create/update can proceed.
+     *
+     * @param  bool  $optionalContactFields  When false (project update), only
+     *                                       backfill blank client_name. Optional
+     *                                       fields must remain clearable.
      */
-    private function hydrateClientContactFromDirectory(Request $request): void
+    private function hydrateClientContactFromDirectory(Request $request, bool $optionalContactFields = true): void
     {
         $clientId = $this->postedDirectoryClientId($request);
         if ($clientId <= 0) {
@@ -1111,6 +1119,15 @@ class ClientProjectController extends Controller
         if (! filled(trim((string) $request->input('client_name', '')))) {
             $merge['client_name'] = $client->name;
         }
+
+        if (! $optionalContactFields) {
+            if ($merge !== []) {
+                $request->merge($merge);
+            }
+
+            return;
+        }
+
         if (! filled(trim((string) $request->input('client_email', ''))) && filled($client->email)) {
             $merge['client_email'] = $client->email;
         }

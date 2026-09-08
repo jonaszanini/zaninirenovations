@@ -132,4 +132,158 @@ class ClientProjectDirectoryHydrationTest extends IntegrationTestCase
         $response->assertSessionHasErrors(['client_name']);
         $this->assertSame(0, ClientProject::query()->count());
     }
+
+    public function test_update_can_clear_secondary_email_even_when_directory_client_still_has_one(): void
+    {
+        $this->actingAsAdmin();
+
+        $client = Client::create([
+            'name' => 'Mandy Wrigglesworth',
+            'email' => 'mandywrigglesworth@gmail.com',
+            'email_secondary' => 'skadadd@hotmail.com',
+            'phone' => '6134536943',
+        ]);
+
+        $project = ClientProject::create([
+            'name' => 'Closet removal',
+            'client_id' => $client->id,
+            'client_name' => 'Mandy Wrigglesworth',
+            'client_email' => 'mandywrigglesworth@gmail.com',
+            'client_email_secondary' => 'skadadd@hotmail.com',
+            'client_phone' => '6134536943',
+            'status' => ClientProject::STATUS_QUOTE_PENDING,
+            'billing_type' => ClientProject::BILLING_FIXED,
+        ]);
+
+        $response = $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Closet removal',
+            'contacted_via' => ClientProject::CONTACTED_VIA_WEBSITE_FORM,
+            'client_id' => $client->id,
+            'client_name' => 'Mandy Wrigglesworth',
+            'client_email' => 'mandywrigglesworth@gmail.com',
+            'client_email_secondary' => '',
+            'client_phone' => '6134536943',
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'sync_client_directory' => '0',
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+        $response->assertRedirect(route('admin.client-projects.show', $project));
+
+        $project->refresh();
+        $this->assertNull($project->getAttributes()['client_email_secondary'] ?? null);
+
+        // Sync was off — directory keeps its value until sync is enabled.
+        $client->refresh();
+        $this->assertSame('skadadd@hotmail.com', $client->email_secondary);
+    }
+
+    public function test_update_with_sync_clears_secondary_email_on_central_client_record(): void
+    {
+        $this->actingAsAdmin();
+
+        $client = Client::create([
+            'name' => 'Mandy Wrigglesworth',
+            'email' => 'mandywrigglesworth@gmail.com',
+            'email_secondary' => 'skadadd@hotmail.com',
+            'phone' => '6134536943',
+        ]);
+
+        $project = ClientProject::create([
+            'name' => 'Closet removal',
+            'client_id' => $client->id,
+            'client_name' => 'Mandy Wrigglesworth',
+            'client_email' => 'mandywrigglesworth@gmail.com',
+            'client_email_secondary' => 'skadadd@hotmail.com',
+            'client_phone' => '6134536943',
+            'status' => ClientProject::STATUS_QUOTE_PENDING,
+            'billing_type' => ClientProject::BILLING_FIXED,
+        ]);
+
+        $response = $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Closet removal',
+            'contacted_via' => ClientProject::CONTACTED_VIA_WEBSITE_FORM,
+            'client_id' => $client->id,
+            'client_name' => 'Mandy Wrigglesworth',
+            'client_email' => 'mandywrigglesworth@gmail.com',
+            'client_email_secondary' => '',
+            'client_phone' => '6134536943',
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'sync_client_directory' => '1',
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+        $response->assertRedirect(route('admin.client-projects.show', $project));
+
+        $project->refresh();
+        $client->refresh();
+        $this->assertNull($project->getAttributes()['client_email_secondary'] ?? null);
+        $this->assertNull($client->email_secondary);
+    }
+
+    public function test_update_with_sync_writes_secondary_email_to_central_client_record(): void
+    {
+        $this->actingAsAdmin();
+
+        $client = Client::create([
+            'name' => 'Mandy Wrigglesworth',
+            'email' => 'mandywrigglesworth@gmail.com',
+            'phone' => '6134536943',
+        ]);
+
+        $project = ClientProject::create([
+            'name' => 'Closet removal',
+            'client_id' => $client->id,
+            'client_name' => 'Mandy Wrigglesworth',
+            'client_email' => 'mandywrigglesworth@gmail.com',
+            'client_phone' => '6134536943',
+            'status' => ClientProject::STATUS_QUOTE_PENDING,
+            'billing_type' => ClientProject::BILLING_FIXED,
+        ]);
+
+        $response = $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Closet removal',
+            'contacted_via' => ClientProject::CONTACTED_VIA_WEBSITE_FORM,
+            'client_id' => $client->id,
+            'client_name' => 'Mandy Wrigglesworth',
+            'client_email' => 'mandywrigglesworth@gmail.com',
+            'client_email_secondary' => 'spouse@example.com',
+            'client_phone' => '6134536943',
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'sync_client_directory' => '1',
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+        $response->assertRedirect(route('admin.client-projects.show', $project));
+
+        $project->refresh();
+        $client->refresh();
+        $this->assertSame('spouse@example.com', $project->client_email_secondary);
+        $this->assertSame('spouse@example.com', $client->email_secondary);
+    }
+
+    public function test_client_directory_update_can_clear_secondary_email(): void
+    {
+        $this->actingAsAdmin();
+
+        $client = Client::create([
+            'name' => 'Mandy Wrigglesworth',
+            'email' => 'mandywrigglesworth@gmail.com',
+            'email_secondary' => 'skadadd@hotmail.com',
+            'phone' => '6134536943',
+        ]);
+
+        $response = $this->put(route('admin.clients.update', $client), [
+            'name' => 'Mandy Wrigglesworth',
+            'email' => 'mandywrigglesworth@gmail.com',
+            'email_secondary' => '',
+            'phone' => '6134536943',
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+        $response->assertRedirect(route('admin.clients.edit', $client));
+
+        $client->refresh();
+        $this->assertNull($client->email_secondary);
+    }
 }
