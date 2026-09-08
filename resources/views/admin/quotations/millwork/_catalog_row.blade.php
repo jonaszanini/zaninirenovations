@@ -7,7 +7,7 @@
   $prefix = 'catalog['.$slot.']['.$ri.']';
 @endphp
 <tr class="br-config-row{{ $catalogId > 0 ? ' is-linked' : ' is-manual' }}" data-mw-catalog-row data-mw-slot="{{ $slot }}">
-  <td data-label="Materials DB">
+  <td class="mw-col-mat" data-label="Materials DB">
     <input type="hidden" name="{{ $prefix }}[id]" value="{{ $row['id'] ?? '' }}">
     @include('admin.partials.search_select', [
       'id' => 'mw-cat-'.$slot.'-'.$ri,
@@ -25,26 +25,26 @@
       'listParent' => 'body',
     ])
   </td>
-  <td data-label="Name">
+  <td class="mw-col-name" data-label="Name">
     <input type="text" class="admin-input" data-mw-cat-name name="{{ $prefix }}[name]" maxlength="160"
            value="{{ $row['name'] ?? '' }}" placeholder="Display name">
   </td>
-  <td data-label="Price">
+  <td class="mw-col-price" data-label="Price">
     <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-mw-cat-price
            class="admin-input cp-money-input" name="{{ $prefix }}[unit_price]"
            value="{{ isset($row['unit_price']) ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
   </td>
   @if ($slot === MillworkSettings::SLOT_WOOD_SHEETS)
-    <td data-label="Thickness">
+    <td class="mw-col-thickness" data-label="Thickness">
       <input type="number" step="0.001" min="0" class="admin-input" name="{{ $prefix }}[thickness_in]" value="{{ $row['thickness_in'] ?? 0.75 }}">
     </td>
-    <td data-label="W×L">
+    <td class="mw-col-dims" data-label="W×L">
       <div class="mw-inline-dims">
         <input type="number" step="0.1" min="1" class="admin-input" name="{{ $prefix }}[width_in]" value="{{ $row['width_in'] ?? 48 }}" aria-label="Sheet width inches">
         <input type="number" step="0.1" min="1" class="admin-input" name="{{ $prefix }}[length_in]" value="{{ $row['length_in'] ?? 96 }}" aria-label="Sheet length inches">
       </div>
     </td>
-    <td data-label="Kind">
+    <td class="mw-col-kind" data-label="Kind">
       <select class="admin-input" name="{{ $prefix }}[material_kind]">
         <option value="plywood" @selected(($row['material_kind'] ?? 'plywood') === 'plywood')>Plywood</option>
         <option value="mdf" @selected(($row['material_kind'] ?? '') === 'mdf')>MDF</option>
@@ -55,15 +55,15 @@
       </select>
     </td>
   @elseif ($slot === MillworkSettings::SLOT_PAINTS || $slot === MillworkSettings::SLOT_STAINS)
-    <td data-label="Size">
+    <td class="mw-col-size" data-label="Size">
       <input type="text" class="admin-input" name="{{ $prefix }}[size]" value="{{ $row['size'] ?? '' }}" placeholder="{{ $slot === 'paints' ? 'quart / half_gallon' : '237ml / 946ml' }}">
     </td>
-    <td data-label="Coverage">
+    <td class="mw-col-coverage" data-label="Coverage">
       <input type="number" step="0.1" min="0" class="admin-input" name="{{ $prefix }}[coverage_sf]" value="{{ $row['coverage_sf'] ?? '' }}" placeholder="sq ft">
     </td>
     <td></td>
   @elseif ($slot === MillworkSettings::SLOT_HINGES)
-    <td data-label="Style">
+    <td class="mw-col-style" data-label="Style">
       <select class="admin-input" name="{{ $prefix }}[hinge_style]">
         <option value="overlay" @selected(($row['hinge_style'] ?? 'overlay') === 'overlay')>Overlay</option>
         <option value="inset" @selected(($row['hinge_style'] ?? '') === 'inset')>Inset</option>
@@ -72,14 +72,14 @@
     </td>
     <td colspan="2"></td>
   @elseif ($slot === MillworkSettings::SLOT_EDGE_BANDING)
-    <td data-label="Thickness">
+    <td class="mw-col-thickness" data-label="Thickness">
       <input type="number" step="0.001" min="0" class="admin-input" name="{{ $prefix }}[thickness_in]" value="{{ $row['thickness_in'] ?? 0.018 }}">
     </td>
     <td colspan="2">
       <input type="hidden" name="{{ $prefix }}[unit]" value="lf">
     </td>
   @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
-    <td data-label="Per pack">
+    <td class="mw-col-pack" data-label="Per pack">
       <input type="number" min="1" class="admin-input" name="{{ $prefix }}[qty_per_pack]" value="{{ $row['qty_per_pack'] ?? 100 }}">
     </td>
     <td colspan="2"></td>
@@ -88,7 +88,7 @@
       <input type="hidden" name="{{ $prefix }}[unit]" value="{{ $row['unit'] ?? 'each' }}">
     </td>
   @endif
-  <td>
+  <td class="mw-col-actions">
     <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-remove-catalog aria-label="Remove catalog item">
       <i class="fa fa-trash"></i>
     </button>

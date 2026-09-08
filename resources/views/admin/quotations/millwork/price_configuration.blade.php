@@ -89,33 +89,33 @@
       @foreach (MillworkSettings::catalogSlots() as $slot => $label)
         <h4 class="br-review-heading">{{ $label }}</h4>
         <div class="admin-table-scroll">
-          <table class="admin-table br-config-table">
+          <table class="admin-table br-config-table mw-catalog-table">
             <thead>
               <tr>
-                <th>Materials DB</th>
-                <th>Display name</th>
-                <th>Unit price (CAD$)</th>
+                <th class="mw-col-mat">Materials DB</th>
+                <th class="mw-col-name">Display name</th>
+                <th class="mw-col-price">Unit price (CAD$)</th>
                 @if ($slot === MillworkSettings::SLOT_WOOD_SHEETS)
-                  <th>Thickness (in)</th>
-                  <th>W × L (in)</th>
-                  <th>Kind / grade</th>
+                  <th class="mw-col-thickness">Thickness (in)</th>
+                  <th class="mw-col-dims">W × L (in)</th>
+                  <th class="mw-col-kind">Kind / grade</th>
                 @elseif ($slot === MillworkSettings::SLOT_PAINTS || $slot === MillworkSettings::SLOT_STAINS)
-                  <th>Size</th>
-                  <th>Coverage (sq ft)</th>
+                  <th class="mw-col-size">Size</th>
+                  <th class="mw-col-coverage">Coverage (sq ft)</th>
                   <th></th>
                 @elseif ($slot === MillworkSettings::SLOT_HINGES)
-                  <th>Style</th>
+                  <th class="mw-col-style">Style</th>
                   <th colspan="2"></th>
                 @elseif ($slot === MillworkSettings::SLOT_EDGE_BANDING)
-                  <th>Thickness (in)</th>
+                  <th class="mw-col-thickness">Thickness (in)</th>
                   <th colspan="2"></th>
                 @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
-                  <th>Qty / pack</th>
+                  <th class="mw-col-pack">Qty / pack</th>
                   <th colspan="2"></th>
                 @else
                   <th colspan="3"></th>
                 @endif
-                <th></th>
+                <th class="mw-col-actions"></th>
               </tr>
             </thead>
             <tbody data-mw-catalog-body="{{ $slot }}">

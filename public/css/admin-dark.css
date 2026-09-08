@@ -1098,3 +1098,8 @@ html.admin-dark .mw-cut-kerf {
   stroke: #e2e8f0;
 }
 
+html.admin-dark .mw-catalog-table select.admin-input,
+html.admin-dark .mw-col-kind select.admin-input {
+  background-position: right 0.45rem center;
+}
+
