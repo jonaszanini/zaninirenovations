@@ -270,20 +270,23 @@
       var titleBits = [];
       if (quote) titleBits.push(quote);
       if (client) titleBits.push(client);
-      var meta = cutPlanMetaText(plan) + ' · Each sheet prints on its own page.';
-      var sheetsHtml = layouts.map(function (layout) {
+      var drawingsHtml = layouts.map(function (layout, i) {
+        return '<section class="mw-cut-print-drawing" aria-label="Sheet ' + (i + 1) + ' drawing">'
+          + '<div class="mw-cut-svg-wrap">' + (layout.svg || '') + '</div>'
+          + '</section>';
+      }).join('');
+      var detailsHtml = layouts.map(function (layout, i) {
         var stats = layout.stats || {};
         var legend = (layout.legend || []).map(function (row) {
           return '<li><span class="mw-cut-legend__n">' + escapeHtml(row.n || '') + '</span>'
             + '<span>' + escapeHtml(row.label || 'Part') + ' · ' + escapeHtml(row.size || '')
             + (row.rotated ? ' · rotated' : '') + '</span></li>';
         }).join('');
-        return '<div class="mw-cut-sheet">'
-          + '<div class="mw-cut-sheet__stats"><strong>' + escapeHtml(stats.label || 'Sheet') + '</strong>'
-          + '<span>Used ' + escapeHtml(stats.used_pct || 0) + '% · waste ' + escapeHtml(stats.waste_pct || 0) + '%</span></div>'
-          + '<div class="mw-cut-svg-wrap">' + (layout.svg || '') + '</div>'
+        return '<article class="mw-cut-print-sheet-details">'
+          + '<h2>Sheet ' + (i + 1) + ': ' + escapeHtml(stats.label || 'Sheet')
+          + ' Used ' + escapeHtml(stats.used_pct || 0) + '% · waste ' + escapeHtml(stats.waste_pct || 0) + '%</h2>'
           + (legend ? '<ul class="mw-cut-legend">' + legend + '</ul>' : '')
-          + '</div>';
+          + '</article>';
       }).join('');
       var html = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
         + '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -291,10 +294,11 @@
         + (cfg.printCssUrl ? '<link rel="stylesheet" href="' + escapeHtml(cfg.printCssUrl) + '">' : '')
         + '</head><body>'
         + '<div class="toolbar no-print"><button type="button" onclick="window.print()">Print cut list</button></div>'
-        + '<h1>Cut list</h1>'
+        + '<div class="mw-cut-print-drawings">' + drawingsHtml + '</div>'
+        + '<section class="mw-cut-print-details"><h1>Details</h1>'
         + '<p class="meta">' + (titleBits.length ? '<strong>' + escapeHtml(titleBits.join(' · ')) + '</strong><br>' : '')
-        + escapeHtml(meta) + ' · Each sheet prints on its own page.</p>'
-        + '<div class="mw-cut-plan">' + sheetsHtml + '</div>'
+        + escapeHtml(cutPlanMetaText(plan)) + '</p>'
+        + detailsHtml + '</section>'
         + '</body></html>';
       printHtmlDocument(html);
     }

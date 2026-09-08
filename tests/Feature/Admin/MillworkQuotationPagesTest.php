@@ -161,7 +161,8 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.millwork.cut-list', $quote))
             ->assertOk()
-            ->assertSee('Cut list')
+            ->assertSee('Details')
+            ->assertSee('Sheet 1:')
             ->assertSee($quote->quote_number)
             ->assertDontSee('Rip at')
             ->assertDontSee('mw-cut-steps', false);

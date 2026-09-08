@@ -5,12 +5,18 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #111827;
   margin: 0;
-  padding: 20px;
+  padding: 16px 20px 28px;
   font-size: 14px;
   line-height: 1.35;
   background: #fff;
 }
 h1 { font-size: 22px; margin: 0 0 4px; color: #024768; }
+h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: #111827;
+}
 .meta { color: #4b5563; margin: 0 0 16px; font-size: 13px; }
 .toolbar { margin-bottom: 16px; }
 .toolbar button {
@@ -26,46 +32,41 @@ h1 { font-size: 22px; margin: 0 0 4px; color: #024768; }
 }
 .empty { color: #6b7280; }
 
-.mw-cut-plan {
-  display: block;
+.mw-cut-print-drawing {
+  margin: 0 0 24px;
 }
-.mw-cut-sheet {
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 12px;
-  background: #fff;
-  margin: 0 0 20px;
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-.mw-cut-sheet__stats {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-.mw-cut-svg-wrap {
+.mw-cut-print-drawing .mw-cut-svg-wrap {
   display: flex;
   justify-content: center;
-  max-width: 5.5in;
-  margin: 0 auto;
-  padding: 8px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  align-items: center;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  border: 0;
+  border-radius: 0;
 }
-.mw-cut-svg {
+.mw-cut-print-drawing .mw-cut-svg {
   width: 100%;
   height: auto;
+  max-height: 90vh;
   display: block;
 }
+
+.mw-cut-print-details {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.mw-cut-print-sheet-details {
+  margin: 0 0 18px;
+}
+
 .mw-cut-legend {
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
   font-size: 13px;
@@ -126,18 +127,36 @@ h1 { font-size: 22px; margin: 0 0 4px; color: #024768; }
 }
 
 @media print {
-  @page { size: letter portrait; margin: 0.45in; }
+  @page { size: letter portrait; margin: 0.35in; }
   body { padding: 0; }
   .no-print { display: none !important; }
-  .mw-cut-sheet {
-    border-color: #d1d5db;
+  .mw-cut-print-drawing {
+    width: 7.8in;
+    height: 10.3in;
     margin: 0;
+    padding: 0;
+    overflow: hidden;
     page-break-after: always;
     break-after: page;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .mw-cut-sheet:last-child {
-    page-break-after: auto;
-    break-after: auto;
+  .mw-cut-print-drawing .mw-cut-svg-wrap {
+    width: 100%;
+    height: 100%;
+  }
+  .mw-cut-print-drawing .mw-cut-svg {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+  }
+  .mw-cut-print-details {
+    margin: 0;
+    padding: 0;
+    page-break-before: auto;
   }
   .mw-cut-svg-wrap,
   .mw-cut-part-fill,
