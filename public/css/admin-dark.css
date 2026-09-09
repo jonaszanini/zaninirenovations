@@ -629,6 +629,24 @@ html.admin-dark .q-commute-metric__value {
   color: var(--admin-heading);
 }
 
+html.admin-dark .sq-grand-row span:last-child,
+html.admin-dark .sq-grand-row--sub span:last-child,
+html.admin-dark .sq-grand-row--commute span:last-child {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .sq-grand-row--sub span:first-child,
+html.admin-dark .sq-grand-row--commute span:first-child {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .sq-grand-row--section-total span:first-child,
+html.admin-dark .sq-grand-row--section-total span:last-child,
+html.admin-dark .sq-grand-row--final,
+html.admin-dark .sq-grand-row--final span:last-child {
+  color: var(--admin-primary);
+}
+
 html.admin-dark .cp-projects-scope-label,
 html.admin-dark .cp-hint,
 html.admin-dark .cp-final-dates,

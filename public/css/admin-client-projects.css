@@ -5517,12 +5517,12 @@ body.cp-modal-open {
 }
 .sq-grand-row--sub span:first-child {
   padding-left: 8px;
-  color: #6b7280;
+  color: var(--admin-muted, #6b7280);
   font-size: 12px;
 }
 .sq-grand-row--sub span:last-child {
   font-weight: 500;
-  color: #374151;
+  color: var(--admin-text, #374151);
 }
 .sq-grand-row--section-total {
   margin-top: 4px;
