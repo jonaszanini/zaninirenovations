@@ -205,7 +205,7 @@
             <div class="sq-intro-option-block" id="sq-pdf-detail-block">
               <h5 class="sq-intro-option-title">
                 Client PDF line items
-                @include('admin.partials.info_tip', ['text' => 'Controls how material and labour appear on the client PDF. With several jobs, Combined and Detailed list each job; Summary is one line for the whole quotation.'])
+                @include('admin.partials.info_tip', ['text' => 'Controls how material and labour appear on the client PDF.'])
               </h5>
               <div class="sq-intro-choice-row sq-intro-choice-row--pdf-detail" id="sq-pdf-detail-choices">
                 <div class="sq-intro-choice-with-tip">
@@ -222,7 +222,7 @@
                       @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
                     <span>Summary</span>
                   </label>
-                  @include('admin.partials.info_tip', ['text' => 'One line for the whole quotation (subtotal, HST, and total).'])
+                  @include('admin.partials.info_tip', ['text' => 'Two lines for the whole quotation: Material and Labour.'])
                 </div>
                 <div class="sq-intro-choice-with-tip">
                   <label class="cp-checkbox-row">
@@ -230,7 +230,7 @@
                       @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
                     <span>Detailed</span>
                   </label>
-                  @include('admin.partials.info_tip', ['text' => 'Separate Material and Labour lines (not each SKU).'])
+                  @include('admin.partials.info_tip', ['text' => 'Separate Material and Labour lines per job (not each SKU).'])
                 </div>
               </div>
               @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror

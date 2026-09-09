@@ -297,6 +297,17 @@ class StandardQuotation extends Model
     }
 
     /**
+     * Summary PDF: Material and Labour as two lines for the whole quotation
+     * (jobs are aggregated — no per-job headings).
+     *
+     * @return list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>
+     */
+    public function summaryPdfLineItems(): array
+    {
+        return $this->aggregatedPdfLineItems();
+    }
+
+    /**
      * Same structure as detailed, but Material + Labour collapse into one
      * "Labour and material" (or Includes wording) line per job / quote.
      *
@@ -318,6 +329,16 @@ class StandardQuotation extends Model
             return $this->multiJobPdfLineItems();
         }
 
+        return $this->aggregatedPdfLineItems();
+    }
+
+    /**
+     * Whole-quote Material + Labour lines (all jobs rolled together).
+     *
+     * @return list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>
+     */
+    protected function aggregatedPdfLineItems(): array
+    {
         $computed = $this->computedTotals();
         $lines = [];
 

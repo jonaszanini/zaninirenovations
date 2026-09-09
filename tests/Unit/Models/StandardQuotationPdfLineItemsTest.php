@@ -363,6 +363,64 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertNotContains('Labour', $descriptions);
     }
 
+    public function test_summary_pdf_shows_material_and_labour_lines(): void
+    {
+        $quote = new StandardQuotation([
+            'includes_material' => true,
+            'includes_labour' => true,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+            'works' => [
+                [
+                    'title' => 'Kitchen',
+                    'materials' => [
+                        [
+                            'short_name' => 'Counter',
+                            'unit_price' => 100,
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                        ],
+                    ],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 50,
+                    'labour_fixed_hst_included' => false,
+                    'labour_hourly_rate' => 0,
+                    'labour_mode' => 'hours',
+                    'labour_quantity' => 0,
+                ],
+                [
+                    'title' => 'Bathroom',
+                    'materials' => [
+                        [
+                            'short_name' => 'Vanity',
+                            'unit_price' => 80,
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                        ],
+                    ],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 40,
+                    'labour_fixed_hst_included' => false,
+                    'labour_hourly_rate' => 0,
+                    'labour_mode' => 'hours',
+                    'labour_quantity' => 0,
+                ],
+            ],
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $lines = $quote->summaryPdfLineItems();
+        $descriptions = array_column($lines, 'description');
+
+        $this->assertSame(['Material', 'Labour'], $descriptions);
+        $this->assertEqualsWithDelta(180.0, $lines[0]['amount'], 0.01);
+        $this->assertEqualsWithDelta(90.0, $lines[1]['amount'], 0.01);
+        $this->assertNotContains('Kitchen', $descriptions);
+        $this->assertNotContains('Bathroom', $descriptions);
+        $this->assertNotContains('Labour and material', $descriptions);
+    }
+
     public function test_multi_job_pdf_lists_debris_after_jobs_not_inside_job_one(): void
     {
         $quote = new StandardQuotation([
