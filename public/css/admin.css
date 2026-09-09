@@ -3330,7 +3330,7 @@ a.ic-model-card:hover {
   flex-shrink: 0;
   border-radius: 8px;
   border: 1px solid var(--admin-border);
-  background: #fff;
+  background: var(--admin-elevated, #fff);
   color: var(--admin-muted);
   font-size: 0.95rem;
   line-height: 1;
@@ -3456,7 +3456,8 @@ body.admin-ai-text-history-open {
   border: 1px solid var(--admin-border);
   border-radius: 10px;
   padding: 0.7rem 0.8rem;
-  background: #fafbfc;
+  background: var(--admin-surface-hover, #fafbfc);
+  color: var(--admin-text);
 }
 
 .admin-ai-text-history-item.is-active {
@@ -3475,6 +3476,7 @@ body.admin-ai-text-history-open {
 
 .admin-ai-text-history-item__label {
   font-size: 0.88rem;
+  color: var(--admin-heading);
 }
 
 .admin-ai-text-history-item__when {

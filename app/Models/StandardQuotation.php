@@ -17,9 +17,21 @@ class StandardQuotation extends Model
 {
     public const HST_RATE = 0.13;
 
+    public const PDF_DETAIL_COMBINED = 'combined';
+
     public const PDF_DETAIL_SUMMARY = 'summary';
 
     public const PDF_DETAIL_DETAILED = 'detailed';
+
+    /** @return list<string> */
+    public static function pdfDetailModes(): array
+    {
+        return [
+            self::PDF_DETAIL_COMBINED,
+            self::PDF_DETAIL_SUMMARY,
+            self::PDF_DETAIL_DETAILED,
+        ];
+    }
 
     public const LINE_KIND_MATERIAL = 'material';
 
@@ -132,9 +144,19 @@ class StandardQuotation extends Model
         return sprintf('SQ-%d-%04d', $year, $next);
     }
 
+    public function usesCombinedPdf(): bool
+    {
+        return ($this->pdf_detail_mode ?? self::PDF_DETAIL_SUMMARY) === self::PDF_DETAIL_COMBINED;
+    }
+
     public function usesDetailedPdf(): bool
     {
         return ($this->pdf_detail_mode ?? self::PDF_DETAIL_SUMMARY) === self::PDF_DETAIL_DETAILED;
+    }
+
+    public function usesSummaryPdf(): bool
+    {
+        return ! $this->usesCombinedPdf() && ! $this->usesDetailedPdf();
     }
 
     /**
@@ -271,6 +293,27 @@ class StandardQuotation extends Model
      */
     public function detailedPdfLineItems(): array
     {
+        return $this->buildStructuredPdfLineItems();
+    }
+
+    /**
+     * Same structure as detailed, but Material + Labour collapse into one
+     * "Labour and material" (or Includes wording) line per job / quote.
+     *
+     * @return list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>
+     */
+    public function combinedPdfLineItems(): array
+    {
+        return $this->collapseMaterialAndLabourLines(
+            $this->buildStructuredPdfLineItems()
+        );
+    }
+
+    /**
+     * @return list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>
+     */
+    protected function buildStructuredPdfLineItems(): array
+    {
         if ($this->hasMultipleWorks()) {
             return $this->multiJobPdfLineItems();
         }
@@ -344,6 +387,109 @@ class StandardQuotation extends Model
             ];
         }
 
+        $this->appendCommuteAndDebrisPdfLines($lines);
+
+        return $lines;
+    }
+
+    /**
+     * Merge taxable Material + Labour into one Includes-wording line.
+     * Keeps HST-exempt material, electrical, commute, and debris separate.
+     *
+     * @param  list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>  $lines
+     * @return list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>
+     */
+    protected function collapseMaterialAndLabourLines(array $lines): array
+    {
+        $label = $this->pdfSummaryLineDescription();
+        $out = [];
+        $i = 0;
+        $n = count($lines);
+
+        while ($i < $n) {
+            $row = $lines[$i];
+            if (! empty($row['is_heading'])) {
+                $out[] = $row;
+                $i++;
+                continue;
+            }
+
+            $desc = (string) ($row['description'] ?? '');
+            if ($this->isPdfCommuteOrDebrisLine($desc)) {
+                $out[] = $row;
+                $i++;
+                continue;
+            }
+
+            $taxableCombined = 0.0;
+            $exemptMaterial = 0.0;
+            $passthrough = [];
+            $j = $i;
+
+            while ($j < $n) {
+                $cur = $lines[$j];
+                if (! empty($cur['is_heading'])) {
+                    break;
+                }
+                $curDesc = (string) ($cur['description'] ?? '');
+                if ($this->isPdfCommuteOrDebrisLine($curDesc)) {
+                    break;
+                }
+                if ($curDesc === 'Material' && ! empty($cur['apply_hst'])) {
+                    $taxableCombined += (float) ($cur['amount'] ?? 0);
+                } elseif (str_starts_with($curDesc, 'Material')) {
+                    $exemptMaterial += (float) ($cur['amount'] ?? 0);
+                } elseif ($curDesc === 'Labour') {
+                    $taxableCombined += (float) ($cur['amount'] ?? 0);
+                } else {
+                    $passthrough[] = $cur;
+                }
+                $j++;
+            }
+
+            $taxableCombined = round($taxableCombined, 2);
+            $exemptMaterial = round($exemptMaterial, 2);
+
+            if ($taxableCombined > 0) {
+                $out[] = [
+                    'description' => $label,
+                    'amount' => $taxableCombined,
+                    'apply_hst' => true,
+                ];
+            }
+            if ($exemptMaterial > 0) {
+                $out[] = [
+                    'description' => $taxableCombined > 0 ? 'Material — HST exempt' : $label,
+                    'amount' => $exemptMaterial,
+                    'apply_hst' => false,
+                ];
+            }
+            foreach ($passthrough as $extra) {
+                $out[] = $extra;
+            }
+
+            if ($j === $i) {
+                $out[] = $row;
+                $i++;
+            } else {
+                $i = $j;
+            }
+        }
+
+        return $out;
+    }
+
+    protected function isPdfCommuteOrDebrisLine(string $description): bool
+    {
+        return str_starts_with($description, 'Commute expense')
+            || \App\Services\DebrisRemovalExpenseService::isLineDescription($description);
+    }
+
+    /**
+     * @param  list<array{description: string, amount: float, apply_hst: bool, is_heading?: bool}>  $lines
+     */
+    protected function appendCommuteAndDebrisPdfLines(array &$lines): void
+    {
         if ($this->include_commute && (float) $this->commute_amount > 0) {
             $commuteLine = \App\Services\CommuteExpenseService::projectLineItem(
                 (float) $this->commute_amount,
@@ -362,8 +508,6 @@ class StandardQuotation extends Model
                 $lines[] = $debrisLine;
             }
         }
-
-        return $lines;
     }
 
     /**
@@ -481,24 +625,7 @@ class StandardQuotation extends Model
             }
         }
 
-        if ($this->include_commute && (float) $this->commute_amount > 0) {
-            $commuteLine = \App\Services\CommuteExpenseService::projectLineItem(
-                (float) $this->commute_amount,
-                (int) ($this->commute_estimated_trips ?? 1)
-            );
-            if ($commuteLine !== null) {
-                $lines[] = $commuteLine;
-            }
-        }
-
-        if ($this->include_debris_removal && (float) $this->debris_removal_amount > 0) {
-            $debrisLine = \App\Services\DebrisRemovalExpenseService::projectLineItem(
-                (float) $this->debris_removal_amount
-            );
-            if ($debrisLine !== null) {
-                $lines[] = $debrisLine;
-            }
-        }
+        $this->appendCommuteAndDebrisPdfLines($lines);
 
         return $lines;
     }

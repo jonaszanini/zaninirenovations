@@ -316,6 +316,33 @@ html.admin-dark .admin-ai-text-history-modal {
   border-color: var(--admin-border);
 }
 
+html.admin-dark .admin-ai-text-history-modal__title,
+html.admin-dark .admin-ai-text-history-item__label {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .admin-ai-text-history-modal__lede,
+html.admin-dark .admin-ai-text-history-empty,
+html.admin-dark .admin-ai-text-history-item__when,
+html.admin-dark .admin-ai-text-history-modal__close {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .admin-ai-text-history-item {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .admin-ai-text-history-item.is-active {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .admin-ai-text-history-item__preview {
+  color: var(--admin-text);
+}
+
 html.admin-dark .admin-ai-text-history-btn__count {
   border-color: var(--admin-surface);
   background: #024768;
@@ -1045,6 +1072,27 @@ html.admin-dark .br-layout .pq-summary-card {
   background: var(--admin-surface);
   border-color: var(--admin-border);
   color: var(--admin-text);
+}
+
+html.admin-dark .sq-field-box,
+html.admin-dark .sq-grand-section {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .sq-field-box-title,
+html.admin-dark .sq-grand-section__title {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .sq-intro-option-title {
+  color: var(--admin-primary);
+  border-bottom-color: var(--admin-border);
+}
+
+html.admin-dark .sq-work-subtotal {
+  color: var(--admin-primary);
 }
 
 html.admin-dark .fq-link-project-card .admin-form-help,

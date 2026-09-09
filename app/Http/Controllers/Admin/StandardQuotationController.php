@@ -428,10 +428,7 @@ class StandardQuotationController extends Controller
                 ClientProjectQuotation::TYPE_QUOTATION,
                 ClientProjectQuotation::TYPE_ESTIMATE,
             ])],
-            'pdf_detail_mode' => ['required', Rule::in([
-                StandardQuotation::PDF_DETAIL_SUMMARY,
-                StandardQuotation::PDF_DETAIL_DETAILED,
-            ])],
+            'pdf_detail_mode' => ['required', Rule::in(StandardQuotation::pdfDetailModes())],
             'work_description' => ['nullable', 'string', 'max:5000'],
             'works' => ['required', 'array', 'min:1'],
             'works.*.title' => ['nullable', 'string', 'max:160'],

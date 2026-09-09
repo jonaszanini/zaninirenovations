@@ -265,6 +265,104 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertFalse((bool) preg_grep('/hours|days|\/hr|flat fee/i', $descriptions));
     }
 
+    public function test_combined_pdf_merges_material_and_labour_into_one_line(): void
+    {
+        $quote = new StandardQuotation([
+            'includes_material' => true,
+            'includes_labour' => true,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+            'materials' => [
+                [
+                    'short_name' => 'Plywood',
+                    'unit_price' => 100,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+            ],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 200,
+            'labour_fixed_hst_included' => false,
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $lines = $quote->combinedPdfLineItems();
+        $descriptions = array_column($lines, 'description');
+
+        $this->assertSame(['Labour and material'], $descriptions);
+        $this->assertEqualsWithDelta(300.0, $lines[0]['amount'], 0.01);
+        $this->assertTrue($lines[0]['apply_hst']);
+        $this->assertNotContains('Material', $descriptions);
+        $this->assertNotContains('Labour', $descriptions);
+    }
+
+    public function test_combined_multi_job_pdf_one_line_per_job(): void
+    {
+        $quote = new StandardQuotation([
+            'includes_material' => true,
+            'includes_labour' => true,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+            'works' => [
+                [
+                    'title' => 'Kitchen',
+                    'materials' => [
+                        [
+                            'short_name' => 'Counter',
+                            'unit_price' => 100,
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                        ],
+                    ],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 50,
+                    'labour_fixed_hst_included' => false,
+                    'labour_hourly_rate' => 0,
+                    'labour_mode' => 'hours',
+                    'labour_quantity' => 0,
+                ],
+                [
+                    'title' => 'Bathroom',
+                    'materials' => [
+                        [
+                            'short_name' => 'Vanity',
+                            'unit_price' => 80,
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                        ],
+                    ],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 40,
+                    'labour_fixed_hst_included' => false,
+                    'labour_hourly_rate' => 0,
+                    'labour_mode' => 'hours',
+                    'labour_quantity' => 0,
+                ],
+            ],
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $lines = $quote->combinedPdfLineItems();
+        $descriptions = array_column($lines, 'description');
+
+        $this->assertSame([
+            'Kitchen',
+            'Labour and material',
+            'Bathroom',
+            'Labour and material',
+        ], $descriptions);
+        $this->assertTrue(! empty($lines[0]['is_heading']));
+        $this->assertEqualsWithDelta(150.0, $lines[1]['amount'], 0.01);
+        $this->assertEqualsWithDelta(120.0, $lines[3]['amount'], 0.01);
+        $this->assertNotContains('Material', $descriptions);
+        $this->assertNotContains('Labour', $descriptions);
+    }
+
     public function test_multi_job_pdf_lists_debris_after_jobs_not_inside_job_one(): void
     {
         $quote = new StandardQuotation([

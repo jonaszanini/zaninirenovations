@@ -505,9 +505,15 @@ class ClientProjectQuotation extends Model
         if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
             $sq = StandardQuotation::query()->find($this->source_id);
             if ($sq) {
-                if ($sq->hasMultipleWorks() || $sq->usesDetailedPdf()) {
+                if ($sq->usesDetailedPdf()
+                    || ($sq->usesSummaryPdf() && $sq->hasMultipleWorks())) {
+                    // Multi-job + stored "summary" historically rendered as
+                    // detailed (the mode radios were hidden with 2+ jobs).
                     $detailed = $sq->detailedPdfLineItems();
                     $items = $detailed !== [] ? $detailed : $this->cleanItems();
+                } elseif ($sq->usesCombinedPdf()) {
+                    $combined = $sq->combinedPdfLineItems();
+                    $items = $combined !== [] ? $combined : $this->cleanItems();
                 } else {
                     $items = $this->applyStandardSummaryLineWording($this->cleanItems(), $sq);
                 }

@@ -582,8 +582,6 @@
         title.placeholder = n >= 2 ? 'e.g. Replace vanity' : 'Job name (optional)';
       }
     });
-    var choices = document.getElementById('sq-pdf-detail-choices');
-    if (choices) choices.hidden = n >= 2;
   }
 
   function addMaterialRow(card) {
