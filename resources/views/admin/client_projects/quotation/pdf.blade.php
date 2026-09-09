@@ -324,9 +324,10 @@
     }
     .items th, .items td {
       border: 1pt solid #d8dee4;
-      padding: 8pt 10pt;
-      vertical-align: top;
+      padding: 4pt 9pt;
+      vertical-align: middle;
       font-size: 10.5pt;
+      line-height: 1.25;
     }
     .items thead th {
       background: #024768;
@@ -378,7 +379,7 @@
       border: 0 none transparent;
       border-top: 1pt solid #d8dee4;
       font-size: 11pt;
-      padding: 6pt 10pt;
+      padding: 4pt 9pt;
     }
     .items tfoot td.totals-label {
       text-align: right;
@@ -394,7 +395,7 @@
       font-size: 13pt;
       font-weight: 700;
       color: #024768;
-      padding-top: 10pt;
+      padding-top: 7pt;
     }
 
     /* Closing block */
