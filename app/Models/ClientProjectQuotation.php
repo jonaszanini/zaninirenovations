@@ -440,6 +440,27 @@ class ClientProjectQuotation extends Model
         return trim((string) ($this->work_description ?? ''));
     }
 
+    /** True when the PDF description has visible text (ignores empty TinyMCE markup). */
+    public function hasWorkDescriptionForPdf(): bool
+    {
+        $raw = $this->workDescriptionForPdf();
+        if ($raw === '') {
+            return false;
+        }
+
+        $plain = trim(html_entity_decode(strip_tags($raw), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+        return $plain !== '';
+    }
+
+    /** True when the stored description already contains HTML tags (e.g. TinyMCE). */
+    public function workDescriptionForPdfIsHtml(): bool
+    {
+        $raw = $this->workDescriptionForPdf();
+
+        return $raw !== '' && $raw !== strip_tags($raw);
+    }
+
     /** Document number prefix matching the current type. */
     public function numberPrefix(): string
     {

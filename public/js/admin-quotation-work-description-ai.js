@@ -537,6 +537,64 @@
     });
   }
 
+  function tinymceEditor(textareaId) {
+    if (typeof tinymce === 'undefined' || !textareaId) return null;
+    return tinymce.get(textareaId) || null;
+  }
+
+  function looksLikeHtml(text) {
+    return /<\/?[a-z][\s\S]*>/i.test(String(text || ''));
+  }
+
+  function escapeHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function plainTextToHtml(text) {
+    var trimmed = String(text || '').replace(/\r\n/g, '\n').trim();
+    if (!trimmed) return '';
+    if (looksLikeHtml(trimmed)) return trimmed;
+    return trimmed
+      .split(/\n{2,}/)
+      .map(function (block) {
+        return '<p>' + escapeHtml(block).replace(/\n/g, '<br>') + '</p>';
+      })
+      .join('');
+  }
+
+  function getFieldText(textarea) {
+    var ed = tinymceEditor(textarea.id);
+    if (ed) {
+      return String(ed.getContent({ format: 'text' }) || '').trim();
+    }
+    return String(textarea.value || '').trim();
+  }
+
+  function getFieldHtml(textarea) {
+    var ed = tinymceEditor(textarea.id);
+    if (ed) {
+      return String(ed.getContent() || '').trim();
+    }
+    return String(textarea.value || '').trim();
+  }
+
+  function setFieldContent(textarea, text) {
+    var ed = tinymceEditor(textarea.id);
+    var html = plainTextToHtml(text);
+    if (ed) {
+      ed.setContent(html);
+      ed.save();
+      ed.focus();
+      return;
+    }
+    textarea.value = looksLikeHtml(text) ? text : String(text || '');
+    textarea.focus();
+  }
+
   function init(root) {
     if (!root || root.getAttribute('data-quotation-work-desc-ai-init') === '1') return;
     root.setAttribute('data-quotation-work-desc-ai-init', '1');
@@ -562,10 +620,10 @@
         storageKey: historyKey,
         mountEl: historyMount,
         title: 'Work description versions',
-        getText: function () { return textarea.value; },
-        setText: function (text) { textarea.value = text; },
+        getText: function () { return getFieldHtml(textarea); },
+        setText: function (text) { setFieldContent(textarea, text); },
       });
-      if (textarea.value.trim() === '') {
+      if (getFieldText(textarea) === '') {
         history.clear();
       }
     }
@@ -627,11 +685,10 @@
         }
 
         if (history) {
-          history.addVersion(description);
+          history.addVersion(plainTextToHtml(description));
         }
 
-        textarea.value = description;
-        textarea.focus();
+        setFieldContent(textarea, description);
         setStatus('Description updated. Use the history icon to restore earlier versions.', false);
       } catch (err) {
         setStatus(err.message || 'Could not generate description.', true);
@@ -641,13 +698,15 @@
     }
 
     btn.addEventListener('click', function () {
-      var notes = textarea.value.trim();
+      var notes = getFieldText(textarea);
       var context = collectQuotationContext(contextFormId, quotationType);
       var hasContext = contextHasData(context);
 
       if (!notes && !hasContext) {
         setStatus('Enter a brief description or fill in quotation details first, then click Improve description with AI.', true);
-        textarea.focus();
+        var ed = tinymceEditor(textarea.id);
+        if (ed) ed.focus();
+        else textarea.focus();
         return;
       }
 

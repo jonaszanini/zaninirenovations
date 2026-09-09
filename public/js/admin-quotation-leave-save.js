@@ -127,6 +127,9 @@
       notifyCannotAutosave();
       return;
     }
+    if (typeof tinymce !== 'undefined' && typeof tinymce.triggerSave === 'function') {
+      tinymce.triggerSave();
+    }
     preserveDraft(form);
     hiddenInput(form, 'after_save_url', dest.pathname + dest.search + dest.hash);
     hiddenInput(form, 'after_save_attach_return', attachReturn ? '1' : '0');

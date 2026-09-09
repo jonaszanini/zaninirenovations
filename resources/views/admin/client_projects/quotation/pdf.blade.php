@@ -222,6 +222,47 @@
       color: #1f2937;
       line-height: 1.45;
     }
+    .quote-work-description-body--rich p {
+      margin: 0 0 6pt;
+    }
+    .quote-work-description-body--rich p:last-child {
+      margin-bottom: 0;
+    }
+    .quote-work-description-body--rich ul,
+    .quote-work-description-body--rich ol {
+      margin: 0 0 6pt 16pt;
+      padding: 0;
+    }
+    .quote-work-description-body--rich li {
+      margin: 0 0 2pt;
+    }
+    .quote-work-description-body--rich h1,
+    .quote-work-description-body--rich h2,
+    .quote-work-description-body--rich h3,
+    .quote-work-description-body--rich h4 {
+      margin: 0 0 4pt;
+      color: #024768;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .quote-work-description-body--rich h1 { font-size: 13pt; }
+    .quote-work-description-body--rich h2 { font-size: 12pt; }
+    .quote-work-description-body--rich h3 { font-size: 11pt; }
+    .quote-work-description-body--rich h4 { font-size: 10.5pt; }
+    .quote-work-description-body--rich strong { font-weight: 700; }
+    .quote-work-description-body--rich em { font-style: italic; }
+    .quote-work-description-body--rich u { text-decoration: underline; }
+    .quote-work-description-body--rich table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 6pt;
+    }
+    .quote-work-description-body--rich table th,
+    .quote-work-description-body--rich table td {
+      border: 1pt solid #d8dee4;
+      padding: 3pt 5pt;
+      vertical-align: top;
+    }
 
     .quote-material-selection {
       margin: 0 0 14pt;
@@ -569,12 +610,17 @@
        the client sees the scope before the priced lines. --}}
   @php
     $quoteWorkDesc = $quotation->workDescriptionForPdf();
+    $quoteWorkDescIsHtml = $quotation->workDescriptionForPdfIsHtml();
     $flooringMaterial = $quotation->flooringMaterialSelectionForPdf();
   @endphp
-  @if ($quoteWorkDesc !== '')
+  @if ($quotation->hasWorkDescriptionForPdf())
     <div class="quote-work-description">
       <p class="quote-work-description-title">Description of the work</p>
-      <p class="quote-work-description-body">{!! nl2br(e($quoteWorkDesc)) !!}</p>
+      @if ($quoteWorkDescIsHtml)
+        <div class="quote-work-description-body quote-work-description-body--rich">{!! $quoteWorkDesc !!}</div>
+      @else
+        <p class="quote-work-description-body">{!! nl2br(e($quoteWorkDesc)) !!}</p>
+      @endif
     </div>
   @endif
 

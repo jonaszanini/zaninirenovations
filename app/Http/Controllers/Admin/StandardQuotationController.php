@@ -429,7 +429,7 @@ class StandardQuotationController extends Controller
                 ClientProjectQuotation::TYPE_ESTIMATE,
             ])],
             'pdf_detail_mode' => ['required', Rule::in(StandardQuotation::pdfDetailModes())],
-            'work_description' => ['nullable', 'string', 'max:5000'],
+            'work_description' => ['nullable', 'string', 'max:20000'],
             'works' => ['required', 'array', 'min:1'],
             'works.*.title' => ['nullable', 'string', 'max:160'],
             'works.*.materials' => ['nullable', 'array'],
@@ -616,6 +616,10 @@ class StandardQuotationController extends Controller
         $singleJob = count($worksForStorage) === 1 && is_array($firstWork);
 
         $workDescription = trim((string) ($data['work_description'] ?? ''));
+        $workDescriptionPlain = trim(html_entity_decode(strip_tags($workDescription), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($workDescriptionPlain === '') {
+            $workDescription = '';
+        }
         $paymentSchedule = $this->paymentScheduleFromRequest($request);
 
         $persistence = [

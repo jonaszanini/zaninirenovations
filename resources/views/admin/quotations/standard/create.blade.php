@@ -207,7 +207,7 @@
                 Client PDF line items
                 @include('admin.partials.info_tip', ['text' => 'Controls how material and labour appear on the client PDF. With several jobs, Combined and Detailed list each job; Summary is one line for the whole quotation.'])
               </h5>
-              <div class="sq-intro-choice-col" id="sq-pdf-detail-choices">
+              <div class="sq-intro-choice-row sq-intro-choice-row--pdf-detail" id="sq-pdf-detail-choices">
                 <div class="sq-intro-choice-with-tip">
                   <label class="cp-checkbox-row">
                     <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_COMBINED }}"
@@ -268,15 +268,15 @@
           <h4 class="sq-field-box-title">Description of the work</h4>
           <div class="admin-form-group sq-intro-work-desc">
             <label for="sq-work-description" class="visually-hidden">Description of the work</label>
-            <textarea id="sq-work-description" name="work_description" rows="5" maxlength="5000"
+            <textarea id="sq-work-description" name="work_description" rows="8"
                       class="admin-input @error('work_description') is-invalid @enderror"
-                      placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? $quotation->work_description : '') }}</textarea>
+                      placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? $quotation->work_description : '') }}</textarea>
             @include('admin.partials.quotation_work_description_ai', [
                 'workDescriptionTextareaId' => 'sq-work-description',
                 'aiContextFormId' => 'sq-standard-form',
                 'aiQuotationType' => 'standard',
             ])
-            <p class="admin-form-help sq-intro-option-help">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
+            <p class="admin-form-help sq-intro-option-help">Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</p>
             @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </section>
@@ -509,6 +509,50 @@
   </template>
 @endsection
 
+@push('head')
+  <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.3/tinymce.min.js"
+          referrerpolicy="origin"></script>
+@endpush
+
 @push('scripts')
 <script src="{{ asset('js/admin-standard-quotation.js') }}?v={{ @filemtime(public_path('js/admin-standard-quotation.js')) ?: time() }}"></script>
+<script>
+  (function () {
+    if (typeof tinymce === 'undefined') return;
+    tinymce.init({
+      selector: '#sq-work-description',
+      skin: document.documentElement.classList.contains('admin-dark') ? 'oxide-dark' : 'oxide',
+      content_css: document.documentElement.classList.contains('admin-dark') ? 'dark' : 'default',
+      menubar: false,
+      plugins: 'advlist autolink lists link table code preview searchreplace visualblocks wordcount paste',
+      toolbar:
+        'undo redo | blocks | bold italic underline | ' +
+        'alignleft aligncenter alignright | bullist numlist outdent indent | ' +
+        'link table | removeformat code',
+      height: 320,
+      branding: false,
+      promotion: false,
+      paste_as_text: false,
+      content_style:
+        'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #1f2937; line-height: 1.55; padding: 12px; } ' +
+        'h1, h2, h3, h4 { color: #024768; margin: 0.6em 0 0.35em; } ' +
+        'p { margin: 0 0 0.65em; } ' +
+        'ul, ol { margin: 0 0 0.65em 1.25em; }',
+      setup: function (editor) {
+        editor.on('change keyup undo redo', function () {
+          editor.save();
+        });
+      },
+    });
+
+    var form = document.getElementById('sq-standard-form');
+    if (form) {
+      form.addEventListener('submit', function () {
+        if (typeof tinymce !== 'undefined') {
+          tinymce.triggerSave();
+        }
+      });
+    }
+  })();
+</script>
 @endpush

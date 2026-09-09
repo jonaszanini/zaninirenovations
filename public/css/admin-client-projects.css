@@ -5647,6 +5647,13 @@ body.cp-modal-open {
 .sq-intro-choice-row .cp-checkbox-row {
   min-height: 44px;
 }
+.sq-intro-choice-row--pdf-detail {
+  flex-wrap: nowrap;
+  gap: 4px 12px;
+}
+.sq-intro-choice-row--pdf-detail .sq-intro-choice-with-tip {
+  flex: 0 0 auto;
+}
 .sq-intro-choice-with-tip {
   display: inline-flex;
   align-items: center;
@@ -5667,19 +5674,29 @@ body.cp-modal-open {
 @media (min-width: 768px) {
   .sq-intro-pdf-options {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
     gap: 10px 16px;
     align-items: start;
   }
 }
 @media (min-width: 900px) {
   .sq-intro-pdf-options {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 10px 20px;
+  }
+}
+@media (max-width: 700px) {
+  .sq-intro-choice-row--pdf-detail {
+    flex-wrap: wrap;
   }
 }
 .sq-intro-work-desc textarea {
   min-height: 120px;
   resize: vertical;
+}
+.sq-intro-work-desc .tox-tinymce {
+  border-radius: 8px;
+  border-color: var(--admin-border, #d8dee4);
 }
 @media (max-width: 700px) {
   .sq-intro-grid--2 {
