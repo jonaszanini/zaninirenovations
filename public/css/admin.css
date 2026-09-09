@@ -587,6 +587,14 @@ body.admin-body {
   min-height: var(--admin-control-height);
 }
 
+.admin-btn--icon {
+  width: var(--admin-control-height);
+  min-width: var(--admin-control-height);
+  padding-left: 0;
+  padding-right: 0;
+  gap: 0;
+}
+
 .admin-btn--lg {
   padding: 0.7rem 1.5rem;
   font-size: 1rem;

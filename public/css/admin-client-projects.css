@@ -5586,6 +5586,14 @@ body.cp-modal-open {
   min-width: 0;
   justify-content: center;
 }
+.sq-toolbar .pq-sidebar-actions .admin-btn--icon {
+  min-width: var(--admin-control-height);
+  flex: 0 0 auto;
+}
+.sq-toolbar .cp-inline-form {
+  display: inline-flex;
+  margin: 0;
+}
 .sq-intro-card { margin-bottom: 20px; }
 .sq-intro-sections {
   display: flex;

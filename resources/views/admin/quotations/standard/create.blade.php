@@ -88,6 +88,40 @@
 @section('content')
   @php
     $toolbarGrand = $isEdit ? (float) ($quotation->grand_total ?? 0) : 0.0;
+    $linkedCpq = $linkedCpq ?? null;
+    $sendProject = $isEdit ? ($quotation->project ?? null) : null;
+    $hasPdfContent = $linkedCpq && $linkedCpq->hasContent();
+    $canDeliverByEmail = $sendProject && filled(trim((string) $sendProject->client_email));
+    $canDeliverBySms = $sendProject && \App\Models\ClientProject::phoneDigitsForSms($sendProject->client_phone) !== null;
+    $moceanReady = app(\App\Services\MoceanSmsService::class)->isConfigured();
+    $canSendEmail = (bool) ($sendProject && $linkedCpq && $hasPdfContent && $canDeliverByEmail);
+    $canSendSms = (bool) ($sendProject && $linkedCpq && $hasPdfContent && $canDeliverBySms && $moceanReady);
+    $sendEmailConfirm = $canSendEmail
+        ? 'This will generate a new PDF and email it to '.$sendProject->clientEmailRecipientsLabel().'. Continue?'
+        : '';
+    $sendSmsConfirm = $canSendSms
+        ? 'Send an SMS to '.$sendProject->clientSmsRecipientsLabel().' with a secure link to view or download this quotation PDF?'
+        : '';
+    $sendEmailDisabledTitle = ! $isEdit
+        ? 'Save the quotation first.'
+        : (! $sendProject || ! $linkedCpq
+            ? 'Link this quotation to a project and save before sending.'
+            : (! $hasPdfContent
+                ? 'Save with at least one line item before sending.'
+                : (! $canDeliverByEmail
+                    ? "Add the client's email address to email this quotation."
+                    : 'Cannot send email yet.')));
+    $sendSmsDisabledTitle = ! $isEdit
+        ? 'Save the quotation first.'
+        : (! $sendProject || ! $linkedCpq
+            ? 'Link this quotation to a project and save before sending.'
+            : (! $hasPdfContent
+                ? 'Save with at least one line item before sending.'
+                : (! $moceanReady
+                    ? 'SMS gateway is not configured on the server (MOCEAN_API_TOKEN).'
+                    : (! $canDeliverBySms
+                        ? "Add the client's mobile phone number."
+                        : 'Cannot send SMS yet.'))));
   @endphp
   <div class="br-toolbar sq-toolbar" aria-label="Quotation actions">
     <div class="admin-toolbar-group">
@@ -103,17 +137,65 @@
       @if ($isEdit)
         <a href="{{ route('admin.quotations.standard.purchase-list', $quotation) }}"
            target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm"
+           class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
            data-purchase-list-choice
-           data-purchase-list-title="Print material list">
-          <i class="fa fa-print"></i> Print material list
+           data-purchase-list-title="Print material list"
+           title="Print material list"
+           aria-label="Print material list">
+          <i class="fa fa-print" aria-hidden="true"></i>
         </a>
-        @include('admin.partials.quotation_view_pdf')
+        @include('admin.partials.quotation_view_pdf', ['iconOnly' => true])
+
+        @if ($canSendEmail)
+          <form action="{{ route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq]) }}"
+                method="post" class="cp-inline-form"
+                onsubmit='return confirm(@json($sendEmailConfirm));'>
+            @csrf
+            <button type="submit"
+                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
+                    title="Email quotation to client"
+                    aria-label="Email quotation to client">
+              <i class="fa fa-envelope" aria-hidden="true"></i>
+            </button>
+          </form>
+        @else
+          <button type="button"
+                  class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
+                  disabled
+                  title="{{ $sendEmailDisabledTitle }}"
+                  aria-label="Email quotation to client">
+            <i class="fa fa-envelope" aria-hidden="true"></i>
+          </button>
+        @endif
+
+        @if ($canSendSms)
+          <form action="{{ route('admin.client-projects.quotation.sms', [$sendProject, $linkedCpq]) }}"
+                method="post" class="cp-inline-form"
+                onsubmit='return confirm(@json($sendSmsConfirm));'>
+            @csrf
+            <button type="submit"
+                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
+                    title="SMS quotation link to client"
+                    aria-label="SMS quotation link to client">
+              <i class="fa fa-comment" aria-hidden="true"></i>
+            </button>
+          </form>
+        @else
+          <button type="button"
+                  class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
+                  disabled
+                  title="{{ $sendSmsDisabledTitle }}"
+                  aria-label="SMS quotation link to client">
+            <i class="fa fa-comment" aria-hidden="true"></i>
+          </button>
+        @endif
       @endif
       <button type="submit"
               form="sq-standard-form"
-              class="admin-btn admin-btn--primary admin-btn--sm">
-        <i class="fa fa-save"></i> Save
+              class="admin-btn admin-btn--primary admin-btn--sm admin-btn--icon"
+              title="Save"
+              aria-label="Save">
+        <i class="fa fa-save" aria-hidden="true"></i>
       </button>
       <div class="br-toolbar-grand" id="sq-toolbar-grand" title="Live grand total (incl. HST)">
         <span class="br-toolbar-grand__label">Grand total</span>
