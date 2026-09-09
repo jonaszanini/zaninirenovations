@@ -6624,7 +6624,7 @@ body.cp-modal-open {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   padding: 12px 14px;
   background: var(--admin-surface, #fff);
@@ -6634,6 +6634,23 @@ body.cp-modal-open {
   top: 72px;
   z-index: 20;
   box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.06));
+}
+.br-toolbar .admin-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.br-toolbar-actions {
+  margin-left: auto;
+}
+.br-toolbar .cp-inline-form {
+  display: inline-flex;
+  margin: 0;
+}
+.br-toolbar .admin-btn--icon {
+  min-width: var(--admin-control-height);
+  flex: 0 0 auto;
 }
 .br-layout .pq-summary-card {
   border: 1px solid var(--admin-border, #e2e8f0);
@@ -7810,16 +7827,19 @@ body.cp-modal-open {
     flex-direction: column;
     align-items: stretch;
   }
-  .br-layout .pq-sidebar-actions .admin-btn,
+  .br-layout .pq-sidebar-actions .admin-btn:not(.admin-btn--icon),
   .br-step-nav .admin-btn {
     flex: 1 1 auto;
   }
-  .br-toolbar-grand {
+  .br-toolbar-actions {
+    margin-left: 0;
     width: 100%;
-    align-items: flex-start;
+    justify-content: flex-end;
+  }
+  .br-toolbar-grand {
+    margin-left: auto;
+    align-items: flex-end;
     padding-left: 2px;
-    border-top: 1px solid var(--admin-border, #d8dee4);
-    padding-top: 10px;
   }
 }
 

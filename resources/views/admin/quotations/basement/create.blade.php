@@ -103,11 +103,28 @@
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="br-save-intent" value="publish">
 
+    @php
+      $toolbarGrand = (float) (($initialPreview['summary']['grand_total'] ?? 0));
+      $linkedCpq = $linkedCpq ?? null;
+      $sendProject = $isEdit ? ($quotation->project ?? null) : null;
+      $hasPdfContent = $linkedCpq && $linkedCpq->hasContent();
+      $canDeliverByEmail = $sendProject && filled(trim((string) $sendProject->client_email));
+      $canSendEmail = (bool) ($sendProject && $linkedCpq && $hasPdfContent && $canDeliverByEmail);
+      $sendEmailConfirm = $canSendEmail
+          ? 'This will generate a new PDF and email it to '.$sendProject->clientEmailRecipientsLabel().'. Continue?'
+          : '';
+      $sendEmailDisabledTitle = ! $isEdit
+          ? 'Save the quotation first.'
+          : (! $sendProject || ! $linkedCpq
+              ? 'Link this quotation to a project and save before sending.'
+              : (! $hasPdfContent
+                  ? 'Save the quotation before sending.'
+                  : (! $canDeliverByEmail
+                      ? "Add the client's email address to email this quotation."
+                      : 'Cannot send email yet.')));
+    @endphp
     <div class="br-toolbar" aria-label="Quotation actions">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="br-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
+      <div class="admin-toolbar-group">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-btn-draft">Save as draft</button>
         <a href="{{ route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-cog"></i> Price configuration
@@ -117,19 +134,48 @@
           <i class="fa fa-arrow-left"></i> Back to list
         </a>
         <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        @include('admin.partials.quotation_view_pdf')
-        @php
-          $toolbarGrand = (float) (($initialPreview['summary']['grand_total'] ?? 0));
-        @endphp
-        <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
-          <span class="br-toolbar-grand__label">Grand total</span>
-          <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-        </div>
       </div>
       <div class="br-step-nav" id="br-step-nav">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
         <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
         <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
+      </div>
+      <div class="pq-sidebar-actions br-toolbar-actions">
+        @if ($isEdit)
+          @include('admin.partials.quotation_view_pdf', ['iconOnly' => true])
+          @if ($canSendEmail)
+            <form action="{{ route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq]) }}"
+                  method="post" class="cp-inline-form"
+                  onsubmit='return confirm(@json($sendEmailConfirm));'>
+              @csrf
+              <button type="submit"
+                      class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
+                      title="Email quotation to client"
+                      aria-label="Email quotation to client">
+                <i class="fa fa-envelope" aria-hidden="true"></i>
+              </button>
+            </form>
+          @else
+            <button type="button"
+                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
+                    disabled
+                    title="{{ $sendEmailDisabledTitle }}"
+                    aria-label="Email quotation to client">
+              <i class="fa fa-envelope" aria-hidden="true"></i>
+            </button>
+          @endif
+        @endif
+        <button type="submit"
+                class="admin-btn admin-btn--primary admin-btn--sm admin-btn--icon"
+                id="br-btn-publish"
+                title="Save quotation"
+                aria-label="Save quotation">
+          <i class="fa fa-save" aria-hidden="true"></i>
+        </button>
+        <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
+          <span class="br-toolbar-grand__label">Grand total</span>
+          <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
+        </div>
       </div>
     </div>
 
