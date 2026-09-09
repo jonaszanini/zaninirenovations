@@ -103,6 +103,7 @@
   var gLabHst = document.getElementById('sq-g-labour-hst');
   var gLabTot = document.getElementById('sq-g-labour-total');
   var gGrand = document.getElementById('sq-g-grand');
+  var toolbarGrandAmount = document.getElementById('sq-toolbar-grand-amount');
   var gCommuteRow = document.getElementById('sq-g-commute-row');
   var gCommute = document.getElementById('sq-g-commute');
   var gDebrisRow = document.getElementById('sq-g-debris-row');
@@ -359,6 +360,7 @@
     if (gDebrisRow) gDebrisRow.classList.toggle('is-hidden', !(lastDebrisAmount > 0));
     setText(gDebris, money(lastDebrisAmount));
     setText(gGrand, money(withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount));
+    setText(toolbarGrandAmount, money(withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount));
 
     if (gJobsWrap && gJobs) {
       var multi = jobs.length >= 2;

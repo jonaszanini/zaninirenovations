@@ -5564,24 +5564,27 @@ body.cp-modal-open {
   margin-bottom: 24px;
 }
 
-/* Fixed Save — always reachable while editing long standard quotes */
-.sq-fixed-save {
-  position: fixed;
-  z-index: 95;
-  right: max(1.25rem, env(safe-area-inset-right, 0px));
-  bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
-  min-width: 44px;
-  min-height: var(--admin-control-height, 44px);
-  padding-left: 1.1rem;
-  padding-right: 1.1rem;
-  gap: 0.45rem;
-  box-shadow: 0 8px 28px rgba(2, 71, 104, 0.35);
+.sq-toolbar {
+  margin-bottom: 16px;
 }
-@media (max-width: 700px) {
-  .sq-fixed-save {
-    right: max(0.85rem, env(safe-area-inset-right, 0px));
-    bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
-  }
+.sq-toolbar .admin-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.sq-toolbar .pq-sidebar-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 0 auto;
+}
+.sq-toolbar .pq-sidebar-actions .admin-btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  justify-content: center;
 }
 .sq-intro-card { margin-bottom: 20px; }
 .sq-intro-sections {

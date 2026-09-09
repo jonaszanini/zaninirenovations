@@ -86,7 +86,10 @@
 @endsection
 
 @section('content')
-  <div class="admin-toolbar fq-list-toolbar">
+  @php
+    $toolbarGrand = $isEdit ? (float) ($quotation->grand_total ?? 0) : 0.0;
+  @endphp
+  <div class="br-toolbar sq-toolbar" aria-label="Quotation actions">
     <div class="admin-toolbar-group">
       <a href="{{ route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> All standard quotations
@@ -96,7 +99,7 @@
       </a>
       @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
     </div>
-    <div class="admin-toolbar-group">
+    <div class="pq-sidebar-actions">
       @if ($isEdit)
         <a href="{{ route('admin.quotations.standard.purchase-list', $quotation) }}"
            target="_blank" rel="noopener noreferrer"
@@ -112,6 +115,10 @@
               class="admin-btn admin-btn--primary admin-btn--sm">
         <i class="fa fa-save"></i> Save
       </button>
+      <div class="br-toolbar-grand" id="sq-toolbar-grand" title="Live grand total (incl. HST)">
+        <span class="br-toolbar-grand__label">Grand total</span>
+        <strong class="br-toolbar-grand__amount" id="sq-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
+      </div>
     </div>
   </div>
 
@@ -422,15 +429,6 @@
       </button>
     </div>
   </form>
-
-  <button type="submit"
-          form="sq-standard-form"
-          class="admin-btn admin-btn--primary sq-fixed-save"
-          title="Save quotation"
-          aria-label="Save quotation">
-    <i class="fa fa-save" aria-hidden="true"></i>
-    <span>Save</span>
-  </button>
 
   @if ($isEdit && !$quotation->project)
     @php $linkable = $linkableProjects ?? collect(); @endphp
