@@ -198,9 +198,11 @@
   <script>
     (function () {
       // Init TinyMCE on the contract textarea.
+      var isDark = document.documentElement.classList.contains('admin-dark');
       tinymce.init({
         selector: '#cp-contract-editor',
-        skin: document.documentElement.classList.contains('admin-dark') ? 'oxide-dark' : 'oxide',
+        skin: isDark ? 'oxide-dark' : 'oxide',
+        content_css: isDark ? 'dark' : 'default',
         menubar: 'edit insert view format table tools',
         plugins: 'advlist autolink lists link image table code preview searchreplace fullscreen visualblocks wordcount paste help',
         toolbar:
@@ -214,9 +216,11 @@
         promotion: false,
         paste_data_images: true,
         paste_as_text: false,
-        content_style:
-          'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #1f2937; line-height: 1.55; padding: 16px; } ' +
-          'h1, h2, h3, h4 { color: #024768; }',
+        content_style: isDark
+          ? 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #e2e8f0; background: #0f172a; line-height: 1.55; padding: 16px; } ' +
+            'h1, h2, h3, h4 { color: #7dd3fc; } a { color: #38bdf8; }'
+          : 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #1f2937; line-height: 1.55; padding: 16px; } ' +
+            'h1, h2, h3, h4 { color: #024768; }',
         // Sync TinyMCE content back to the textarea on every change so
         // standard form submission picks up the latest HTML.
         setup: function (editor) {

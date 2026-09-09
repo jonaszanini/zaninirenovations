@@ -519,10 +519,11 @@
 <script>
   (function () {
     if (typeof tinymce === 'undefined') return;
+    var isDark = document.documentElement.classList.contains('admin-dark');
     tinymce.init({
       selector: '#sq-work-description',
-      skin: document.documentElement.classList.contains('admin-dark') ? 'oxide-dark' : 'oxide',
-      content_css: document.documentElement.classList.contains('admin-dark') ? 'dark' : 'default',
+      skin: isDark ? 'oxide-dark' : 'oxide',
+      content_css: isDark ? 'dark' : 'default',
       menubar: false,
       plugins: 'advlist autolink lists link table code preview searchreplace visualblocks wordcount paste',
       toolbar:
@@ -533,11 +534,16 @@
       branding: false,
       promotion: false,
       paste_as_text: false,
-      content_style:
-        'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #1f2937; line-height: 1.55; padding: 12px; } ' +
-        'h1, h2, h3, h4 { color: #024768; margin: 0.6em 0 0.35em; } ' +
-        'p { margin: 0 0 0.65em; } ' +
-        'ul, ol { margin: 0 0 0.65em 1.25em; }',
+      content_style: isDark
+        ? 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #e2e8f0; background: #0f172a; line-height: 1.55; padding: 12px; } ' +
+          'h1, h2, h3, h4 { color: #7dd3fc; margin: 0.6em 0 0.35em; } ' +
+          'a { color: #38bdf8; } ' +
+          'p { margin: 0 0 0.65em; } ' +
+          'ul, ol { margin: 0 0 0.65em 1.25em; }'
+        : 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #1f2937; line-height: 1.55; padding: 12px; } ' +
+          'h1, h2, h3, h4 { color: #024768; margin: 0.6em 0 0.35em; } ' +
+          'p { margin: 0 0 0.65em; } ' +
+          'ul, ol { margin: 0 0 0.65em 1.25em; }',
       setup: function (editor) {
         editor.on('change keyup undo redo', function () {
           editor.save();
