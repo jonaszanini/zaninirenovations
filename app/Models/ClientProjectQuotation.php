@@ -437,6 +437,13 @@ class ClientProjectQuotation extends Model
             }
         }
 
+        if ($this->source_type === self::SOURCE_TILE && $this->source_id) {
+            $tq = TileQuotation::query()->find($this->source_id);
+            if ($tq) {
+                return $tq->scopeDescriptionForPdf();
+            }
+        }
+
         return trim((string) ($this->work_description ?? ''));
     }
 
@@ -456,9 +463,7 @@ class ClientProjectQuotation extends Model
     /** True when the stored description already contains HTML tags (e.g. TinyMCE). */
     public function workDescriptionForPdfIsHtml(): bool
     {
-        $raw = $this->workDescriptionForPdf();
-
-        return $raw !== '' && $raw !== strip_tags($raw);
+        return \App\Support\QuotationWorkDescriptionHtml::isHtml($this->workDescriptionForPdf());
     }
 
     /** Document number prefix matching the current type. */

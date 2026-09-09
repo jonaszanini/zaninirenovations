@@ -149,13 +149,10 @@ class MillworkQuotation extends Model
             $lines[] = 'Finish: '.$finish;
         }
 
-        $work = trim((string) ($this->work_description ?? ''));
-        if ($work !== '') {
-            $lines[] = '';
-            $lines[] = $work;
-        }
-
-        return implode("\n", $lines);
+        return \App\Support\QuotationWorkDescriptionHtml::combineAutoScopeWithWork(
+            $lines,
+            $this->work_description
+        );
     }
 
     public static function generateNumber(): string

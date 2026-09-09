@@ -616,10 +616,7 @@ class StandardQuotationController extends Controller
         $singleJob = count($worksForStorage) === 1 && is_array($firstWork);
 
         $workDescription = trim((string) ($data['work_description'] ?? ''));
-        $workDescriptionPlain = trim(html_entity_decode(strip_tags($workDescription), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        if ($workDescriptionPlain === '') {
-            $workDescription = '';
-        }
+        $workDescription = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($workDescription) ?? '';
         $paymentSchedule = $this->paymentScheduleFromRequest($request);
 
         $persistence = [

@@ -3227,6 +3227,19 @@ a:hover .cp-expense-receipt-pdf {
   padding: 0 14px 12px;
   border-top: 1px solid var(--admin-border);
 }
+.cp-quotation-work-description-body--rich p {
+  margin: 0 0 0.65em;
+}
+.cp-quotation-work-description-body--rich ul,
+.cp-quotation-work-description-body--rich ol {
+  margin: 0 0 0.65em 1.25em;
+  padding-left: 1.1em;
+}
+.cp-quotation-work-description-body--rich p:last-child,
+.cp-quotation-work-description-body--rich ul:last-child,
+.cp-quotation-work-description-body--rich ol:last-child {
+  margin-bottom: 0;
+}
 .cp-quotation-work-description:not([open]) .cp-quotation-work-description-body {
   display: none;
 }
@@ -5701,11 +5714,13 @@ body.cp-modal-open {
     flex-wrap: wrap;
   }
 }
-.sq-intro-work-desc textarea {
+.sq-intro-work-desc textarea,
+.quotation-work-desc textarea {
   min-height: 120px;
   resize: vertical;
 }
-.sq-intro-work-desc .tox-tinymce {
+.sq-intro-work-desc .tox-tinymce,
+.quotation-work-desc .tox-tinymce {
   border-radius: 8px;
   border-color: var(--admin-border, #d8dee4);
 }
@@ -6644,6 +6659,9 @@ body.cp-modal-open {
 .br-toolbar-actions {
   margin-left: auto;
 }
+.br-toolbar .pq-sidebar-actions.br-toolbar-actions {
+  margin-left: auto;
+}
 .br-toolbar .cp-inline-form {
   display: inline-flex;
   margin: 0;
@@ -6651,6 +6669,10 @@ body.cp-modal-open {
 .br-toolbar .admin-btn--icon {
   min-width: var(--admin-control-height);
   flex: 0 0 auto;
+}
+.br-toolbar-disabled-tip {
+  display: inline-flex;
+  cursor: help;
 }
 .br-layout .pq-summary-card {
   border: 1px solid var(--admin-border, #e2e8f0);
@@ -7831,7 +7853,8 @@ body.cp-modal-open {
   .br-step-nav .admin-btn {
     flex: 1 1 auto;
   }
-  .br-toolbar-actions {
+  .br-toolbar-actions,
+  .br-toolbar .pq-sidebar-actions.br-toolbar-actions {
     margin-left: 0;
     width: 100%;
     justify-content: flex-end;

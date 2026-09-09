@@ -101,13 +101,10 @@ class TileQuotation extends Model
         $sqft = round((float) ($calc['total_area'] ?? 0), 0);
         $lines[] = 'Total area: '.number_format($sqft, 0).' sq ft';
 
-        $work = trim((string) ($this->work_description ?? ''));
-        if ($work !== '') {
-            $lines[] = '';
-            $lines[] = $work;
-        }
-
-        return implode("\n", $lines);
+        return \App\Support\QuotationWorkDescriptionHtml::combineAutoScopeWithWork(
+            $lines,
+            $this->work_description
+        );
     }
 
     public static function generateNumber(): string

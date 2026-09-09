@@ -62,9 +62,17 @@
 
       {{-- Work description (shown for all types) --}}
       @if (filled(trim((string) $quotation->work_description)))
+        @php
+          $drawerWorkDesc = (string) $quotation->work_description;
+          $drawerWorkDescIsHtml = \App\Support\QuotationWorkDescriptionHtml::isHtml($drawerWorkDesc);
+        @endphp
         <div class="cp-vd-section">
           <div class="cp-vd-section__title">Description of work</div>
-          <div class="cp-vd-field-value cp-vd-field-value--multiline">{!! nl2br(e($quotation->work_description)) !!}</div>
+          @if ($drawerWorkDescIsHtml)
+            <div class="cp-vd-field-value cp-vd-field-value--multiline cp-vd-field-value--rich">{!! $drawerWorkDesc !!}</div>
+          @else
+            <div class="cp-vd-field-value cp-vd-field-value--multiline">{!! nl2br(e($drawerWorkDesc)) !!}</div>
+          @endif
         </div>
       @endif
 

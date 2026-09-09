@@ -490,7 +490,7 @@ class LowDeckQuotationController extends Controller
 
         $rules = array_merge([
             'client_name' => ['required', 'string', 'max:160'],
-            'work_description' => ['nullable', 'string', 'max:5000'],
+            'work_description' => ['nullable', 'string', 'max:20000'],
             'width_ft' => ['required', 'numeric', 'min:1', 'max:500'],
             'length_ft' => ['required', 'numeric', 'min:1', 'max:500'],
             'labour_rate_per_sqft' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
@@ -558,7 +558,7 @@ class LowDeckQuotationController extends Controller
     ): array {
         $base = array_merge([
             'client_name' => $data['client_name'],
-            'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
+            'work_description' => \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null),
             'width_ft' => $calc['inputs']['width_ft'],
             'length_ft' => $calc['inputs']['length_ft'],
             'joist_spacing_in' => (int) round((float) ($calc['geometry']['joist_spacing_in'] ?? 0)),

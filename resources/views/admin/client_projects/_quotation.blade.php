@@ -117,7 +117,7 @@
       if ($summDesc === $title) {
           $wd = trim((string) ($quotation->work_description ?? ''));
           if ($wd !== '') {
-              $summDesc = \Illuminate\Support\Str::limit($wd, 160);
+              $summDesc = \Illuminate\Support\Str::limit(trim(strip_tags($wd)), 160);
           }
       }
       if (! $hasContent) {

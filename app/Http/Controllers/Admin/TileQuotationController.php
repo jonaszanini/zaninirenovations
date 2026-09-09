@@ -65,7 +65,7 @@ class TileQuotationController extends Controller
         $data = $request->validate(array_merge([
             'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'client_name' => ['nullable', 'string', 'max:160'],
-            'work_description' => ['nullable', 'string'],
+            'work_description' => ['nullable', 'string', 'max:20000'],
             'total_area_sqft' => ['nullable', 'numeric', 'min:0'],
             'length_ft' => ['nullable', 'numeric', 'min:0', 'required_without:total_area_sqft'],
             'width_ft' => ['nullable', 'numeric', 'min:0', 'required_without:total_area_sqft'],
@@ -114,7 +114,7 @@ class TileQuotationController extends Controller
         $quotation->quote_number = TileQuotation::generateNumber();
         $quotation->client_name = $data['client_name'] ?? null;
         $quotation->is_draft = $request->input('is_draft') === '1';
-        $quotation->work_description = $data['work_description'] ?? null;
+        $quotation->work_description = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null);
         $schedule = $this->paymentScheduleFromRequest($request);
         $quotation->payment_installments = $schedule['payment_installments'];
         $quotation->payment_percentages = $schedule['payment_percentages'];
@@ -200,7 +200,7 @@ class TileQuotationController extends Controller
 
         $data = $request->validate(array_merge([
             'client_name' => ['nullable', 'string', 'max:160'],
-            'work_description' => ['nullable', 'string'],
+            'work_description' => ['nullable', 'string', 'max:20000'],
             'total_area_sqft' => ['nullable', 'numeric', 'min:0'],
             'length_ft' => ['nullable', 'numeric', 'min:0', 'required_without:total_area_sqft'],
             'width_ft' => ['nullable', 'numeric', 'min:0', 'required_without:total_area_sqft'],
@@ -247,7 +247,7 @@ class TileQuotationController extends Controller
             $quotation->client_name = $data['client_name'] ?? null;
         }
         $quotation->is_draft = $request->input('is_draft') === '1';
-        $quotation->work_description = $data['work_description'] ?? null;
+        $quotation->work_description = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null);
         $schedule = $this->paymentScheduleFromRequest($request);
         $quotation->payment_installments = $schedule['payment_installments'];
         $quotation->payment_percentages = $schedule['payment_percentages'];

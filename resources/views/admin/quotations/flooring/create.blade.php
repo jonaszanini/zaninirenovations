@@ -129,14 +129,16 @@
           <input type="text" class="admin-input" id="fl-client-name" name="client_name" maxlength="160"
                  value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
         </div>
-        <div class="admin-form-group">
+        <div class="admin-form-group quotation-work-desc">
           <label for="fl-work-description">Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
-          <textarea class="admin-input" id="fl-work-description" name="work_description" rows="5" maxlength="5000">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+          <textarea class="admin-input" id="fl-work-description" name="work_description" rows="8"
+                    placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
               'workDescriptionTextareaId' => 'fl-work-description',
               'aiContextFormId' => 'fl-main-form',
               'aiQuotationType' => 'flooring',
           ])
+          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
@@ -561,3 +563,8 @@
     })();
   </script>
 @endsection
+
+@include('admin.partials.quotation_work_description_tinymce', [
+  'textareaId' => 'fl-work-description',
+  'formId' => 'fl-main-form',
+])

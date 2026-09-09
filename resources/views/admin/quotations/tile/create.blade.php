@@ -119,14 +119,16 @@
           </div>
         @endif
 
-        <div class="admin-form-group">
-          <label class="admin-form-label">Work Description (Appears on PDF)</label>
-          <textarea id="tl-work-description" name="work_description" class="admin-input" rows="3">{{ $work_description }}</textarea>
+        <div class="admin-form-group quotation-work-desc">
+          <label class="admin-form-label" for="tl-work-description">Work Description (Appears on PDF)</label>
+          <textarea id="tl-work-description" name="work_description" class="admin-input" rows="8"
+                    placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ $work_description }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
               'workDescriptionTextareaId' => 'tl-work-description',
               'aiContextFormId' => 'tl-form',
               'aiQuotationType' => 'tile',
           ])
+          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
@@ -554,3 +556,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+
+@include('admin.partials.quotation_work_description_tinymce', [
+  'textareaId' => 'tl-work-description',
+  'formId' => 'tl-form',
+])

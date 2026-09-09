@@ -156,13 +156,14 @@
               </button>
             </form>
           @else
-            <button type="button"
-                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                    disabled
-                    title="{{ $sendEmailDisabledTitle }}"
-                    aria-label="Email quotation to client">
-              <i class="fa fa-envelope" aria-hidden="true"></i>
-            </button>
+            <span class="br-toolbar-disabled-tip" title="{{ $sendEmailDisabledTitle }}">
+              <button type="button"
+                      class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
+                      disabled
+                      aria-label="Email quotation to client. {{ $sendEmailDisabledTitle }}">
+                <i class="fa fa-envelope" aria-hidden="true"></i>
+              </button>
+            </span>
           @endif
         @endif
         <button type="submit"
@@ -206,14 +207,16 @@
             <input type="text" class="admin-input" id="br-client-name" name="client_name" maxlength="160"
                    value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
           </div>
-          <div class="admin-form-group">
+          <div class="admin-form-group quotation-work-desc">
             <label for="br-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary that appears on the client PDF. Improve with AI after you fill the wizard.']) Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
-            <textarea class="admin-input" id="br-work-description" name="work_description" rows="4" maxlength="5000">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+            <textarea class="admin-input" id="br-work-description" name="work_description" rows="8"
+                      placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
             @include('admin.partials.quotation_work_description_ai', [
                 'workDescriptionTextareaId' => 'br-work-description',
                 'aiContextFormId' => 'br-main-form',
                 'aiQuotationType' => 'basement',
             ])
+            <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
           </div>
         </div>
 
@@ -405,6 +408,11 @@
     ])
   @endif
 @endsection
+
+@include('admin.partials.quotation_work_description_tinymce', [
+  'textareaId' => 'br-work-description',
+  'formId' => 'br-main-form',
+])
 
 @push('scripts')
   <script>

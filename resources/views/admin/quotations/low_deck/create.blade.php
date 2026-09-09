@@ -245,18 +245,18 @@
                  maxlength="160" required>
         </div>
 
-        <div class="admin-form-group">
+        <div class="admin-form-group quotation-work-desc">
           <label for="ld-work-description">Description of the work</label>
-          <textarea id="ld-work-description" name="work_description" rows="5" maxlength="5000"
+          <textarea id="ld-work-description" name="work_description" rows="8"
                     @class(['admin-input', 'is-invalid' => $errors->has('work_description')])
-                    placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+                    placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
               'workDescriptionTextareaId' => 'ld-work-description',
               'aiContextFormId' => 'ld-form',
               'aiQuotationType' => 'low_deck',
               'trailingActionPartial' => 'admin.quotations.low_deck._work_description_trailing_actions',
           ])
-          <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
+          <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -1167,11 +1167,31 @@
         window.alert('Enter deck width and length first so the calculator can fill in dimensions.');
         return;
       }
-      var current = (workDescriptionInput.value || '').trim();
+      var current = '';
+      if (typeof tinymce !== 'undefined') {
+        var ed = tinymce.get('ld-work-description');
+        if (ed) {
+          current = String(ed.getContent({ format: 'text' }) || '').trim();
+        }
+      }
+      if (current === '') {
+        current = (workDescriptionInput.value || '').trim();
+      }
       if (current !== '' && !window.confirm('Replace the current description with a new one from the template?')) {
         return;
       }
-      workDescriptionInput.value = lastCalc.suggested_work_description;
+      var next = lastCalc.suggested_work_description;
+      if (typeof tinymce !== 'undefined') {
+        var editor = tinymce.get('ld-work-description');
+        if (editor) {
+          editor.setContent(String(next || '').replace(/\r\n/g, '\n').split(/\n{2,}/).map(function (block) {
+            return '<p>' + String(block).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p>';
+          }).join(''));
+          editor.save();
+          return;
+        }
+      }
+      workDescriptionInput.value = next;
       workDescriptionInput.dispatchEvent(new Event('input', { bubbles: true }));
     });
   }
@@ -1238,3 +1258,8 @@
 })();
 </script>
 @endpush
+
+@include('admin.partials.quotation_work_description_tinymce', [
+  'textareaId' => 'ld-work-description',
+  'formId' => 'ld-form',
+])

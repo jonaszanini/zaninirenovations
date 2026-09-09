@@ -599,7 +599,7 @@ class FenceQuotationController extends Controller
 
         $rules = array_merge([
             'client_name' => ['required', 'string', 'max:160'],
-            'work_description' => ['nullable', 'string', 'max:5000'],
+            'work_description' => ['nullable', 'string', 'max:20000'],
             'sides' => ['required', 'array', 'min:1', 'max:4'],
             'sides.*.length_ft' => ['required', 'numeric', 'min:0.5', 'max:5000'],
             'sides.*.already_have_post_left' => ['nullable', 'boolean'],
@@ -646,7 +646,7 @@ class FenceQuotationController extends Controller
     ): array {
         $base = array_merge([
             'client_name' => $data['client_name'],
-            'work_description' => trim((string) ($data['work_description'] ?? '')) ?: null,
+            'work_description' => \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null),
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
             'post_size' => $calc['inputs']['post_size'],
             'board_style' => $calc['inputs']['board_style'],

@@ -112,14 +112,16 @@
             ])
           </div>
         </div>
-        <div class="admin-form-group">
+        <div class="admin-form-group quotation-work-desc">
           <label for="tm-work-description">Work description</label>
-          <textarea class="admin-input" id="tm-work-description" name="work_description" rows="3" maxlength="5000">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+          <textarea class="admin-input" id="tm-work-description" name="work_description" rows="8"
+                    placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
               'workDescriptionTextareaId' => 'tm-work-description',
               'aiContextFormId' => 'tm-main-form',
               'aiQuotationType' => 'trimming',
           ])
+          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
@@ -417,6 +419,11 @@
     ])
   @endif
 @endsection
+
+@include('admin.partials.quotation_work_description_tinymce', [
+  'textareaId' => 'tm-work-description',
+  'formId' => 'tm-main-form',
+])
 
 @push('scripts')
   <script>

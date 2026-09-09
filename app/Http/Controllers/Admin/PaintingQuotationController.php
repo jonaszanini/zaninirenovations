@@ -287,7 +287,7 @@ class PaintingQuotationController extends Controller
 
         $request->validate(array_merge([
             'client_name' => $clientRules,
-            'work_description' => ['nullable', 'string', 'max:5000'],
+            'work_description' => ['nullable', 'string', 'max:20000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
@@ -310,11 +310,13 @@ class PaintingQuotationController extends Controller
         $calc = (new PaintingQuotationCalculator)->calculate($inputsForCalc);
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
 
-        $workDescription = trim((string) $request->input('work_description'));
+        $workDescription = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage(
+            $request->input('work_description')
+        );
 
         $base = array_merge([
             'client_name' => trim((string) $request->input('client_name')) ?: null,
-            'work_description' => $workDescription === '' ? null : $workDescription,
+            'work_description' => $workDescription,
             'is_draft' => $draft,
             'inputs' => $rawInputs,
             'calculation' => $calc,

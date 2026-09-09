@@ -341,17 +341,17 @@
                      maxlength="160" @if(!old('client_name', $isEdit ? ($quotation->client_name ?? '') : '') && (!$isEdit || !($quotation->is_draft ?? false))) required @endif>
               <p class="pq-hint">Required for a published quotation; optional for drafts.</p>
             </div>
-            <div class="admin-form-group">
+            <div class="admin-form-group quotation-work-desc">
               <label for="pq-work-description">Description of the work</label>
-              <textarea id="pq-work-description" name="work_description" rows="5" maxlength="5000"
+              <textarea id="pq-work-description" name="work_description" rows="8"
                         class="admin-input @error('work_description') is-invalid @enderror"
-                        placeholder="Briefly describe the service to be performed (visible to the client on the quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+                        placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
               @include('admin.partials.quotation_work_description_ai', [
                   'workDescriptionTextareaId' => 'pq-work-description',
                   'aiContextFormId' => 'pq-main-form',
                   'aiQuotationType' => 'paving',
               ])
-              <p class="pq-hint">Shown on the client PDF beneath the priced line item. Plain text — line breaks are preserved.</p>
+              <p class="pq-hint">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</p>
               @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="pq-form-sections">
@@ -1186,3 +1186,8 @@
     })();
   </script>
 @endsection
+
+@include('admin.partials.quotation_work_description_tinymce', [
+  'textareaId' => 'pq-work-description',
+  'formId' => 'pq-main-form',
+])

@@ -116,14 +116,16 @@
             <input type="text" class="admin-input" id="mw-client-name" name="client_name" maxlength="160"
                    value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
           </div>
-          <div class="admin-form-group">
+          <div class="admin-form-group quotation-work-desc">
             <label for="mw-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary on the client PDF. Improve with AI after you fill the wizard.']) Description</label>
-            <textarea class="admin-input" id="mw-work-description" name="work_description" rows="3" maxlength="5000">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+            <textarea class="admin-input" id="mw-work-description" name="work_description" rows="8"
+                      placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
             @include('admin.partials.quotation_work_description_ai', [
                 'workDescriptionTextareaId' => 'mw-work-description',
                 'aiContextFormId' => 'mw-main-form',
                 'aiQuotationType' => 'millwork',
             ])
+            <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
           </div>
         </div>
 
@@ -281,6 +283,11 @@
     ])
   @endif
 @endsection
+
+@include('admin.partials.quotation_work_description_tinymce', [
+  'textareaId' => 'mw-work-description',
+  'formId' => 'mw-main-form',
+])
 
 @push('scripts')
   <script>
