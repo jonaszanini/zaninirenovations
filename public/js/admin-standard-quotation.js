@@ -4,6 +4,52 @@
   var form = document.getElementById('sq-standard-form');
   if (!form) return;
 
+  var SCROLL_KEY = 'admin-sq-standard-scroll';
+  var SCROLL_MAX_AGE_MS = 90 * 1000;
+
+  function saveScrollPosition() {
+    try {
+      var y = window.scrollY || (document.scrollingElement && document.scrollingElement.scrollTop) || 0;
+      sessionStorage.setItem(SCROLL_KEY, JSON.stringify({
+        y: Math.max(0, Math.round(y)),
+        t: Date.now()
+      }));
+    } catch (err) {}
+  }
+
+  function restoreScrollPosition() {
+    var raw;
+    try {
+      raw = sessionStorage.getItem(SCROLL_KEY);
+      if (raw == null) return;
+      sessionStorage.removeItem(SCROLL_KEY);
+    } catch (err) {
+      return;
+    }
+    var data;
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      return;
+    }
+    var y = data && typeof data.y === 'number' ? data.y : parseInt(raw, 10);
+    var savedAt = data && typeof data.t === 'number' ? data.t : 0;
+    if (!isFinite(y) || y <= 0) return;
+    if (savedAt && (Date.now() - savedAt) > SCROLL_MAX_AGE_MS) return;
+    var apply = function () {
+      window.scrollTo(0, y);
+    };
+    apply();
+    requestAnimationFrame(function () {
+      apply();
+      setTimeout(apply, 50);
+      setTimeout(apply, 200);
+    });
+  }
+
+  form.addEventListener('submit', saveScrollPosition);
+  restoreScrollPosition();
+
   var HST = 0.13;
   var HPD = 8;
   var ELECTRICAL_DESC = form.getAttribute('data-electrical-desc') || 'Electrical work (Including material)';

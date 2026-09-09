@@ -415,6 +415,15 @@
     </div>
   </form>
 
+  <button type="submit"
+          form="sq-standard-form"
+          class="admin-btn admin-btn--primary sq-fixed-save"
+          title="Save quotation"
+          aria-label="Save quotation">
+    <i class="fa fa-save" aria-hidden="true"></i>
+    <span>Save</span>
+  </button>
+
   @if ($isEdit && !$quotation->project)
     @php $linkable = $linkableProjects ?? collect(); @endphp
     @include('admin.quotations._link_to_project_card', [
