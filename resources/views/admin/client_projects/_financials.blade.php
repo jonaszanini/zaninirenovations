@@ -15,6 +15,21 @@
       : ($quotSub ?? $totalAmount);
   $canSavePaymentPlan = $paidInstallmentCount> 0 || $hasQuot;
 
+  $allQuotations = $project->relationLoaded('quotations')
+      ? $project->quotations
+      : $project->quotations()->orderBy('id')->get();
+  $quotationCount = $allQuotations->count();
+  $pendingContentQuotations = $allQuotations
+      ->filter(function ($q) {
+          return $q->status !== \App\Models\ClientProjectQuotation::STATUS_ACCEPTED
+              && $q->hasContent();
+      })
+      ->values();
+  $acceptedEmptyCount = $allQuotations
+      ->filter(fn ($q) => $q->isAccepted() && ! $q->hasContent())
+      ->count();
+  $needsAcceptedQuotation = ! $isHourly && ! $hasQuot && $paidInstallmentCount === 0;
+
   // The stored `total_amount` and each installment's `amount` are
   // pre-tax (profit / HST set-aside calculations depend on that).
   //
@@ -32,6 +47,8 @@
   if (! $isHourly && $hasQuot) {
       $recalcAnalysis = app(\App\Services\RecalculateRemainingInstallmentsService::class)->analyze($project);
   }
+
+  $quotationTabUrl = route('admin.client-projects.show', $project).'#quotation';
 @endphp
 
 @if ($isHourly)
@@ -84,6 +101,52 @@
   {{-- PAYMENT PLAN FORM ----------------------------------------------------- --}}
   <div class="admin-card">
     <h3>Payment plan</h3>
+
+    @if ($needsAcceptedQuotation)
+      <div class="cp-contract-warning cp-recalc-banner" role="status">
+        <i class="fa fa-info-circle" aria-hidden="true"></i>
+        <div class="cp-recalc-banner__body">
+          <p class="cp-recalc-banner__title">Accepted quotation required</p>
+          @if ($pendingContentQuotations->isNotEmpty())
+            <p>
+              This project has
+              {{ $pendingContentQuotations->count() === 1 ? 'a quotation' : $pendingContentQuotations->count().' quotations' }}
+              with line items, but
+              {{ $pendingContentQuotations->count() === 1 ? 'it is' : 'none are' }}
+              marked <strong>Accepted</strong> yet
+              (current status:
+              @foreach ($pendingContentQuotations as $pendingQ)
+                <strong>{{ $pendingQ->statusLabel() }}</strong>@if (! $loop->last), @endif
+              @endforeach).
+              Set at least one to <strong>Accepted</strong> on the
+              <a href="{{ $quotationTabUrl }}" data-cp-jump-tab="quotation">Quotation</a>
+              tab — then you can save a payment plan and create installment invoices.
+            </p>
+          @elseif ($acceptedEmptyCount > 0)
+            <p>
+              An accepted quotation is on file, but it has no priced line items yet.
+              Add line items (or open the calculator) on the
+              <a href="{{ $quotationTabUrl }}" data-cp-jump-tab="quotation">Quotation</a>
+              tab, then return here to save the payment plan.
+            </p>
+          @elseif ($quotationCount > 0)
+            <p>
+              Quotations on this project do not have priced line items yet.
+              Finish a quotation on the
+              <a href="{{ $quotationTabUrl }}" data-cp-jump-tab="quotation">Quotation</a>
+              tab, mark it <strong>Accepted</strong>, then save the payment plan here.
+            </p>
+          @else
+            <p>
+              Add a quotation with line items on the
+              <a href="{{ $quotationTabUrl }}" data-cp-jump-tab="quotation">Quotation</a>
+              tab and set its workflow status to <strong>Accepted</strong>.
+              The payment plan total and installment invoices use accepted quotations only.
+            </p>
+          @endif
+        </div>
+      </div>
+    @endif
 
     @if ($recalcAnalysis && ($recalcAnalysis['has_discrepancy'] || ($recalcAnalysis['blocked'] && ! empty($recalcAnalysis['finance_committed']))))
       <div class="cp-contract-warning cp-recalc-banner" role="status">
@@ -141,13 +204,26 @@
 
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
-          <label>Total with HST (from quotation)</label>
+          <label>Total with HST (from accepted quotation)</label>
           @if ($hasQuot)
             <p class="cp-financials-locked-total" id="cp-total-with-hst-display">{{ \App\Models\ClientProject::formatMoney($quotGrand) }}</p>
-            <p class="admin-form-help">Pre-tax subtotal (used for installment %): {{ \App\Models\ClientProject::formatMoney($quotSub) }}. Manage quotations on the <a href="{{ route('admin.client-projects.show', $project) }}#quotation">Quotation tab</a>.</p>
+            <p class="admin-form-help">Pre-tax subtotal (used for installment %): {{ \App\Models\ClientProject::formatMoney($quotSub) }}. Manage quotations on the <a href="{{ $quotationTabUrl }}" data-cp-jump-tab="quotation">Quotation tab</a>.</p>
           @else
             <p class="cp-financials-locked-total">—</p>
-            <p class="admin-form-help">Add a quotation with line items first. @if ($paidInstallmentCount> 0) Payment totals stay fixed while installments are paid. @endif</p>
+            <p class="admin-form-help">
+              @if ($pendingContentQuotations->isNotEmpty())
+                Mark a quotation as <strong>Accepted</strong> on the
+                <a href="{{ $quotationTabUrl }}" data-cp-jump-tab="quotation">Quotation</a>
+                tab to unlock this total.
+              @elseif ($acceptedEmptyCount > 0)
+                The accepted quotation still needs priced line items.
+              @else
+                Need at least one <strong>Accepted</strong> quotation with line items.
+              @endif
+              @if ($paidInstallmentCount> 0)
+                Payment totals stay fixed while installments are paid.
+              @endif
+            </p>
           @endif
         </div>
         <div class="admin-form-group">
@@ -202,7 +278,24 @@
         <p class="admin-form-error">{{ $message }}</p>
       @enderror
 
-      <button type="submit" class="admin-btn admin-btn--primary" @disabled(!$canSavePaymentPlan)>Save payment plan</button>
+      @php
+        $savePlanDisabledTitle = $canSavePaymentPlan
+            ? null
+            : ($pendingContentQuotations->isNotEmpty()
+                ? 'Mark at least one quotation as Accepted on the Quotation tab first.'
+                : 'Need at least one Accepted quotation with line items before saving the payment plan.');
+      @endphp
+      <button type="submit"
+              class="admin-btn admin-btn--primary"
+              @disabled(!$canSavePaymentPlan)
+              @if ($savePlanDisabledTitle) title="{{ $savePlanDisabledTitle }}" @endif>
+        Save payment plan
+      </button>
+      @if (! $canSavePaymentPlan)
+        <p class="admin-form-help" style="margin-top:8px;">
+          Save stays disabled until an <strong>Accepted</strong> quotation with line items is on file.
+        </p>
+      @endif
     </form>
   </div>
 

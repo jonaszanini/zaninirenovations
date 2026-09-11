@@ -258,10 +258,32 @@
     </div>
 
     @if ($installments->isEmpty())
+      @php
+        $invoiceHasAcceptedQuot = $project->quotationSubtotalForFinancials() !== null;
+        $invoicePendingQuotes = ($project->relationLoaded('quotations')
+            ? $project->quotations
+            : $project->quotations()->orderBy('id')->get()
+          )->filter(fn ($q) => $q->status !== \App\Models\ClientProjectQuotation::STATUS_ACCEPTED && $q->hasContent());
+      @endphp
       <p class="admin-form-help cp-form-group-spaced">
         <i class="fa fa-info-circle"></i>
-        No payment plan has been saved yet. Add the total amount and installments on the
-        <a href="#financials" data-cp-jump-tab="financials">Financials</a> tab first, then come back here to invoice each installment.
+        @if (! $invoiceHasAcceptedQuot && $invoicePendingQuotes->isNotEmpty())
+          No payment plan yet. On the
+          <a href="#quotation" data-cp-jump-tab="quotation">Quotation</a>
+          tab, set at least one quotation to <strong>Accepted</strong>, then save the installment schedule on
+          <a href="#financials" data-cp-jump-tab="financials">Financials</a>
+          — afterward you can create an invoice per installment here.
+        @elseif (! $invoiceHasAcceptedQuot)
+          No payment plan yet. Add a quotation with line items, mark it <strong>Accepted</strong> on the
+          <a href="#quotation" data-cp-jump-tab="quotation">Quotation</a>
+          tab, then save the plan on
+          <a href="#financials" data-cp-jump-tab="financials">Financials</a>
+          before creating installment invoices.
+        @else
+          No payment plan has been saved yet. Choose the installment schedule on the
+          <a href="#financials" data-cp-jump-tab="financials">Financials</a>
+          tab first, then come back here to invoice each installment.
+        @endif
       </p>
     @else
 

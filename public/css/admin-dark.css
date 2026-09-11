@@ -846,6 +846,16 @@ html.admin-dark .cp-quotation-work-description-body {
   border-color: var(--admin-border);
 }
 
+html.admin-dark .cp-contract-warning {
+  background: color-mix(in srgb, #f59e0b 16%, var(--admin-surface));
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--admin-border));
+  color: #fde68a;
+}
+
+html.admin-dark .cp-contract-warning a {
+  color: #fef3c7;
+}
+
 html.admin-dark .cp-quotation-doc-title,
 html.admin-dark .cp-quotation-doc-display-title,
 html.admin-dark .cp-quotation-pdf-photos__title,

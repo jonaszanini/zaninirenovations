@@ -63,7 +63,7 @@ class ClientProjectFinanceController extends Controller
             $total = $client_project->quotationSubtotalForFinancials();
             if ($total === null || $total < 0.01) {
                 return back()
-                    ->with('error', 'Accept at least one quotation with line items first (or add items to an accepted quotation). The payment plan uses the combined pre-tax subtotal of accepted quotations; invoices allocate HST in proportion to those lines.');
+                    ->with('error', 'Mark at least one quotation as Accepted (with line items) on the Quotation tab before saving the payment plan.');
             }
             $total = round((float) $total, 2);
         } else {
