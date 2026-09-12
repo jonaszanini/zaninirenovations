@@ -129,7 +129,7 @@
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Custom Kitchen Remodel
+                    Kitchen Remodel
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
