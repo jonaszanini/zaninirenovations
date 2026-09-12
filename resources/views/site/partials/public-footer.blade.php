@@ -125,7 +125,7 @@
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Basement Renovation
+                    Basement Reno
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
