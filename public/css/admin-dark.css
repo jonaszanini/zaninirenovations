@@ -1279,6 +1279,25 @@ html.admin-dark .br-layout .fl-breakdown-section {
   color: var(--admin-muted);
 }
 
+html.admin-dark .config-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .config-card h3 {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .config-card table.admin-table th,
+html.admin-dark .config-card table.admin-table td {
+  border-bottom-color: var(--admin-border);
+}
+
+html.admin-dark .config-card table.admin-table th {
+  color: var(--admin-muted);
+}
+
 html.admin-dark .mw-cut-part-fill {
   fill: rgba(56, 189, 248, 0.34);
   stroke: #7dd3fc;

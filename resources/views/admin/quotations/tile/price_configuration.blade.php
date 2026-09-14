@@ -4,13 +4,44 @@
 
 @push('head')
   <style>
-    .config-card { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 24px; }
-    .config-card h3 { margin: 0 0 16px; color: #024768; }
-    .table-container { overflow-x: auto; margin-bottom: 16px; }
-    table.admin-table { width: 100%; border-collapse: collapse; min-width: 600px; }
-    table.admin-table th, table.admin-table td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: middle; }
-    table.admin-table th { font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; }
-    table.admin-table .admin-input { min-width: 80px; }
+    .config-card {
+      background: var(--admin-surface);
+      border-radius: 8px;
+      border: 1px solid var(--admin-border);
+      padding: 20px;
+      margin-bottom: 24px;
+      color: var(--admin-text);
+    }
+    .config-card h3 {
+      margin: 0 0 16px;
+      color: var(--admin-heading);
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .config-card table.admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+    }
+    .config-card table.admin-table th,
+    .config-card table.admin-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--admin-border);
+      text-align: left;
+      vertical-align: middle;
+    }
+    .config-card table.admin-table th {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: var(--admin-muted);
+      font-weight: 600;
+    }
+    .config-card table.admin-table .admin-input {
+      min-width: 80px;
+    }
   </style>
 @endpush
 
