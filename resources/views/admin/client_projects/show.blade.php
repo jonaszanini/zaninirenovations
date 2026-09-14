@@ -470,8 +470,8 @@
         </div>
         <div class="cp-status-controls">
           <select id="cp-status-select" name="status" class="admin-input cp-status-select">
-            @foreach ($statusLabels as $key => $label)
-              <option value="{{ $key }}" @selected($project->status === $key)>{{ $label }}</option>
+            @foreach ($statusLabels as $key => $statusLabel)
+              <option value="{{ $key }}" @selected($project->status === $key)>{{ $statusLabel }}</option>
             @endforeach
           </select>
           <input type="text"
@@ -766,7 +766,10 @@
       <h3>Details</h3>
       <dl class="cp-dl">
         <dt>Project name</dt><dd>{{ $project->name }}</dd>
-        <dt>Client</dt><dd>@include('admin.partials.client_directory_link', ['project' => $project])</dd>
+        <dt>Client</dt><dd>@include('admin.partials.client_directory_link', [
+          'project' => $project,
+          'label' => $project->client_name,
+        ])</dd>
         <dt>Email</dt><dd>@include('admin.partials.client_directory_link', [
           'project' => $project,
           'label' => $project->client_email,

@@ -51,8 +51,8 @@
       <label for="cp-filter-status">Status</label>
       <select class="admin-input" id="cp-filter-status" name="status">
         <option value="">All statuses</option>
-        @foreach ($statusLabels as $key => $label)
-          <option value="{{ $key }}" @selected($filters['status'] === $key)>{{ $label }}</option>
+        @foreach ($statusLabels as $key => $statusLabel)
+          <option value="{{ $key }}" @selected($filters['status'] === $key)>{{ $statusLabel }}</option>
         @endforeach
       </select>
     </div>

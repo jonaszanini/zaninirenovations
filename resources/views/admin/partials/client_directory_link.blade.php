@@ -11,6 +11,9 @@
     title          string|null — link title (default: Open client record)
     fallbackMailto bool — if no client id and label looks like an email, mailto:
     empty          string — when label is blank (default —)
+
+  Never use `$label` as a @foreach value variable in parent views before this
+  include — Blade leaks loop vars into partials (e.g. last status "Rejected").
 --}}
 @php
   $project = $project ?? null;

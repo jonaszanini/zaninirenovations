@@ -24,11 +24,11 @@
       <span class="cp-legend-swatch" style="background: {{ $personalEventColor }};"></span>
       Personal
     </span>
-    @foreach ($statusLabels as $key => $label)
+    @foreach ($statusLabels as $key => $statusLabel)
       @if (! in_array($key, \App\Models\ClientProject::terminalStatuses(), true))
         <span class="cp-legend-item">
           <span class="cp-legend-swatch" style="background: {{ $statusColors[$key] }};"></span>
-          {{ $label }}
+          {{ $statusLabel }}
         </span>
       @endif
     @endforeach
