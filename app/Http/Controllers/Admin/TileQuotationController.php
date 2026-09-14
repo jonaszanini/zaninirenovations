@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationAdditionalCosts;
+use App\Http\Controllers\Admin\Concerns\HandlesQuotationCommuteExpense;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationDebrisRemoval;
 use App\Http\Controllers\Admin\Concerns\HandlesQuotationPaymentSchedule;
 use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
@@ -14,6 +15,7 @@ use App\Models\TileMortarType;
 use App\Models\TileProduct;
 use App\Models\TileQuotation;
 use App\Services\AdditionalCostsService;
+use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TileQuotationCalculator;
@@ -23,6 +25,7 @@ use Illuminate\Http\Request;
 class TileQuotationController extends Controller
 {
     use HandlesQuotationAdditionalCosts;
+    use HandlesQuotationCommuteExpense;
     use HandlesQuotationDebrisRemoval;
     use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
@@ -83,8 +86,9 @@ class TileQuotationController extends Controller
             'include_disposal_fee' => ['nullable', 'boolean'],
 
             'is_draft' => ['nullable', 'string'],
-        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
+            CommuteExpenseService::commuteValidationMessages(),
             DebrisRemovalExpenseService::validationMessages(),
             AdditionalCostsService::validationMessages()
         ));
@@ -137,15 +141,24 @@ class TileQuotationController extends Controller
             'include_disposal_fee' => filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
         ];
         $quotation->calculation = $calculation;
-        $debris = $this->debrisRemovalPersistenceFromRequest($request, null, 'tile_quotations');
-        $merged = $this->mergeDebrisRemovalIntoPersistence(
+        $commute = $this->commutePersistenceFromRequest($request, null, 'tile_quotations');
+        $merged = $this->mergeCommuteIntoPersistence(
             ['final_quote_total' => round((float) $calculation['grand_total'], 2)],
-            $debris,
+            $commute,
             'final_quote_total'
         );
+        $debris = $this->debrisRemovalPersistenceFromRequest($request, null, 'tile_quotations');
+        $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
         $additional = $this->additionalCostsPersistenceFromRequest($request, null, 'tile_quotations');
         $merged = $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
         $quotation->final_quote_total = $merged['final_quote_total'];
+        if ($commute !== []) {
+            $quotation->include_commute = $merged['include_commute'];
+            $quotation->commute_trip_percent = $merged['commute_trip_percent'];
+            $quotation->commute_estimated_trips = $merged['commute_estimated_trips'];
+            $quotation->commute_round_trip_cost = $merged['commute_round_trip_cost'];
+            $quotation->commute_amount = $merged['commute_amount'];
+        }
         if ($debris !== []) {
             $quotation->include_debris_removal = $merged['include_debris_removal'];
             $quotation->debris_removal_amount = $merged['debris_removal_amount'];
@@ -178,7 +191,7 @@ class TileQuotationController extends Controller
 
         $quotation->load('project.photos');
         $returnToProject = $request->query('return') === 'project';
-        $linkProject = null;
+        $linkProject = $quotation->project;
 
         $linkableProjects = ClientProject::query()
             ->whereNotIn('status', ClientProject::statusesClosedToNewQuotations())
@@ -217,8 +230,9 @@ class TileQuotationController extends Controller
             'custom_demolition_rate' => ['nullable', 'numeric', 'min:0'],
             'include_disposal_fee' => ['nullable', 'boolean'],
             'is_draft' => ['nullable', 'string'],
-        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
+            CommuteExpenseService::commuteValidationMessages(),
             DebrisRemovalExpenseService::validationMessages(),
             AdditionalCostsService::validationMessages()
         ));
@@ -270,15 +284,24 @@ class TileQuotationController extends Controller
             'include_disposal_fee' => filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
         ];
         $quotation->calculation = $calculation;
-        $debris = $this->debrisRemovalPersistenceFromRequest($request, $quotation, 'tile_quotations');
-        $merged = $this->mergeDebrisRemovalIntoPersistence(
+        $commute = $this->commutePersistenceFromRequest($request, $quotation, 'tile_quotations');
+        $merged = $this->mergeCommuteIntoPersistence(
             ['final_quote_total' => round((float) $calculation['grand_total'], 2)],
-            $debris,
+            $commute,
             'final_quote_total'
         );
+        $debris = $this->debrisRemovalPersistenceFromRequest($request, $quotation, 'tile_quotations');
+        $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
         $additional = $this->additionalCostsPersistenceFromRequest($request, $quotation, 'tile_quotations');
         $merged = $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
         $quotation->final_quote_total = $merged['final_quote_total'];
+        if ($commute !== []) {
+            $quotation->include_commute = $merged['include_commute'];
+            $quotation->commute_trip_percent = $merged['commute_trip_percent'];
+            $quotation->commute_estimated_trips = $merged['commute_estimated_trips'];
+            $quotation->commute_round_trip_cost = $merged['commute_round_trip_cost'];
+            $quotation->commute_amount = $merged['commute_amount'];
+        }
         if ($debris !== []) {
             $quotation->include_debris_removal = $merged['include_debris_removal'];
             $quotation->debris_removal_amount = $merged['debris_removal_amount'];
@@ -480,6 +503,7 @@ class TileQuotationController extends Controller
             ];
         }
 
+        $this->appendCommuteProjectLine($items, $quotation);
         $this->appendDebrisRemovalProjectLine($items, $quotation);
         $this->appendAdditionalCostsProjectLines($items, $quotation);
 
@@ -491,6 +515,9 @@ class TileQuotationController extends Controller
             'final_quote_total',
             'work_description',
             'version',
+            'include_commute',
+            'commute_amount',
+            'commute_estimated_trips',
         ]);
 
         $row = ClientProjectQuotation::query()->firstOrNew([

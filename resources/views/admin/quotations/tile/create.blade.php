@@ -346,6 +346,7 @@
 
       @include('admin.quotations._payment_schedule', ['quotation' => $quotation ?? null])
 
+      @include('admin.quotations._commute_expense', ['quotation' => $quotation ?? null, 'linkProject' => $linkProject ?? null])
       @include('admin.quotations._debris_removal', ['quotation' => $quotation ?? null])
       @include('admin.quotations._additional_costs', ['quotation' => $quotation ?? null])
     </div>
@@ -408,10 +409,41 @@ document.addEventListener('DOMContentLoaded', function () {
     var liveTimer = null;
 
     var liveTimer = null;
+    var lastCommuteAmount = 0;
     var lastDebrisAmount = 0;
     var lastAdditionalMaterialsPreTax = 0;
     var lastAdditionalTaxIn = 0;
     var lastGrandTotal = 0;
+
+    function liveExtrasTotal() {
+        return lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
+    }
+
+    function applyCommuteToLivePreview() {
+        if (!liveBody || liveBody.hidden) {
+            return;
+        }
+        var existing = liveBody.querySelector('[data-tl-commute-row]');
+        if (existing) {
+            existing.remove();
+        }
+        if (lastCommuteAmount > 0) {
+            var commuteRow = document.createElement('div');
+            commuteRow.setAttribute('data-tl-commute-row', '1');
+            commuteRow.className = 'tl-live-breakdown__row';
+            commuteRow.innerHTML = '<span>Commute expense (incl. HST):</span><strong>$' + lastCommuteAmount.toFixed(2) + '</strong>';
+            var grandRow = liveBody.querySelector('[data-tl-grand-row]');
+            if (grandRow && grandRow.parentNode) {
+                grandRow.parentNode.insertBefore(commuteRow, grandRow);
+            } else {
+                liveBody.appendChild(commuteRow);
+            }
+        }
+        var grandValue = liveBody.querySelector('[data-tl-grand-value]');
+        if (grandValue) {
+            grandValue.textContent = '$' + (lastGrandTotal + liveExtrasTotal()).toFixed(2);
+        }
+    }
 
     function applyDebrisToLivePreview() {
         if (!liveBody || liveBody.hidden) {
@@ -435,7 +467,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         var grandValue = liveBody.querySelector('[data-tl-grand-value]');
         if (grandValue) {
-            grandValue.textContent = '$' + (lastGrandTotal + lastDebrisAmount + lastAdditionalTaxIn).toFixed(2);
+            grandValue.textContent = '$' + (lastGrandTotal + liveExtrasTotal()).toFixed(2);
         }
     }
 
@@ -465,7 +497,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         var grandValue = liveBody.querySelector('[data-tl-grand-value]');
         if (grandValue) {
-            grandValue.textContent = '$' + (lastGrandTotal + lastDebrisAmount + lastAdditionalTaxIn).toFixed(2);
+            grandValue.textContent = '$' + (lastGrandTotal + liveExtrasTotal()).toFixed(2);
         }
     }
 
@@ -525,8 +557,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 liveBody.hidden = false;
                 lastGrandTotal = Number((data.calculation && data.calculation.grand_total) || 0);
                 markLiveGrandTotalRow();
-                applyDebrisToLivePreview();
+                // Insert before grand in reverse so final order is commute → debris → additional → grand.
                 applyAdditionalCostsToLivePreview();
+                applyDebrisToLivePreview();
+                applyCommuteToLivePreview();
             } else {
                 liveEmpty.hidden = false;
                 liveBody.hidden = true;
@@ -598,6 +632,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // Run on load if filled
     doLiveUpdate();
 
+    document.addEventListener('commute-expense:change', function (e) {
+        var d = e.detail || {};
+        lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
+        applyCommuteToLivePreview();
+    });
     document.addEventListener('debris-removal:change', function (e) {
         var d = e.detail || {};
         lastDebrisAmount = d.included ? Number(d.amount || 0) : 0;

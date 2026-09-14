@@ -20,6 +20,8 @@
   $mortarTotal = (float) ($calc['mortar_total_price'] ?? 0);
   $groutTotal  = (float) ($calc['grout_total_price'] ?? 0);
   $labourTotal = (float) ($calc['labor_total'] ?? $sourceModel->labourPreTaxAmountForProjectQuotation());
+  $commuteAmount = (float) ($sourceModel->commute_amount ?? 0);
+  $includeCommute = (bool) ($sourceModel->include_commute ?? false);
   $finalTotal  = (float) $sourceModel->final_quote_total;
 @endphp
 
@@ -135,6 +137,12 @@
         <div class="cp-vd-field">
           <span class="cp-vd-field__label">Labour (pre-tax)</span>
           <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($labourTotal) }}</span>
+        </div>
+      @endif
+      @if ($includeCommute && $commuteAmount > 0)
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Commute (incl. HST)</span>
+          <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($commuteAmount) }}</span>
         </div>
       @endif
       <div class="cp-vd-field cp-vd-field--highlight">
