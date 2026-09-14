@@ -533,6 +533,81 @@
       }
       .cp-vd-materials-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 
+      .cp-vd-mat-cell {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-width: 0;
+      }
+      .cp-vd-mat-thumb {
+        flex: 0 0 auto;
+        width: 44px;
+        height: 44px;
+        border-radius: 6px;
+        border: 1px solid var(--admin-border);
+        background: var(--admin-elevated, var(--admin-surface));
+        overflow: hidden;
+      }
+      .cp-vd-mat-thumb__img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 3px;
+        box-sizing: border-box;
+      }
+      .cp-vd-mat-meta {
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .cp-vd-mat-name-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .cp-vd-mat-name {
+        font-weight: 600;
+        color: var(--admin-heading);
+        min-width: 0;
+        word-break: break-word;
+      }
+      .cp-vd-mat-link {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 6px;
+        color: var(--admin-primary, #024768);
+        text-decoration: none;
+        border: 1px solid var(--admin-border);
+        background: var(--admin-surface-hover);
+      }
+      .cp-vd-mat-link:hover,
+      .cp-vd-mat-link:focus-visible {
+        color: #fff;
+        background: var(--admin-primary, #024768);
+        border-color: var(--admin-primary, #024768);
+        outline: none;
+      }
+      .cp-vd-mat-desc {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+        color: var(--admin-muted);
+        word-break: break-word;
+      }
+      .cp-vd-mat-note {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+        color: #b45309;
+      }
+
       /* Totals table */
       .cp-vd-totals-table {
         width: 100%;

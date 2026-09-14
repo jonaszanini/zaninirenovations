@@ -75,6 +75,21 @@
   </div>
 @endif
 @if (!empty($materials))
+  @php
+    $catalogIds = [];
+    foreach ($materials as $matRow) {
+      if (! is_array($matRow)) {
+          continue;
+      }
+      $cid = (int) ($matRow['catalog_material_id'] ?? 0);
+      if ($cid > 0) {
+          $catalogIds[$cid] = $cid;
+      }
+    }
+    $catalogById = $catalogIds === []
+        ? collect()
+        : \App\Models\Material::query()->whereIn('id', array_values($catalogIds))->get()->keyBy('id');
+  @endphp
   <div class="cp-vd-section">
     <div class="cp-vd-section__title">Materials ({{ count($materials) }})</div>
     <table class="cp-vd-materials-table">
@@ -96,19 +111,53 @@
             $delivery = round(max(0.0, (float) ($mat['delivery_cad'] ?? 0)), 2);
             $lineTotal= (float) ($mat['line_subtotal'] ?? (($qty * $unit) + $delivery));
             $taxed    = (bool) ($mat['apply_hst'] ?? true);
+            $isElectrical = \App\Models\StandardQuotation::isElectricalMaterialRow($mat);
+            $matUrl = trim((string) ($mat['url'] ?? ''));
+            $matImage = trim((string) ($mat['image_url'] ?? ''));
+            $catalogId = (int) ($mat['catalog_material_id'] ?? 0);
+            $catalog = ($catalogId > 0) ? $catalogById->get($catalogId) : null;
+            if (! $isElectrical && $catalog) {
+                if ($matUrl === '') {
+                    $matUrl = trim((string) ($catalog->storeProductUrl() ?? ''));
+                }
+                if ($matImage === '') {
+                    $matImage = trim((string) ($catalog->previewImageUrl() ?? ''));
+                }
+            }
           @endphp
           <tr>
             <td>
-              {{ $matName }}
-              @if ($matDesc && $matDesc !== $matName)
-                <span style="color:#9ca3af;font-size:12px;display:block;">{{ $matDesc }}</span>
-              @endif
-              @if ($delivery > 0)
-                <span style="color:#9ca3af;font-size:12px;display:block;">Includes {{ \App\Models\ClientProject::formatMoney($delivery) }} delivery</span>
-              @endif
-              @if (!$taxed)
-                <span style="color:#b45309;font-size:11px;">No HST</span>
-              @endif
+              <div class="cp-vd-mat-cell">
+                @if (! $isElectrical && $matImage !== '')
+                  <span class="cp-vd-mat-thumb">
+                    <img src="{{ $matImage }}" alt="" class="cp-vd-mat-thumb__img" loading="lazy" referrerpolicy="no-referrer">
+                  </span>
+                @endif
+                <div class="cp-vd-mat-meta">
+                  <div class="cp-vd-mat-name-row">
+                    <span class="cp-vd-mat-name">{{ $matName }}</span>
+                    @if (! $isElectrical && $matUrl !== '')
+                      <a href="{{ $matUrl }}"
+                         class="cp-vd-mat-link"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         title="Open product page"
+                         aria-label="Open product page for {{ $matName }}">
+                        <i class="fa fa-external-link" aria-hidden="true"></i>
+                      </a>
+                    @endif
+                  </div>
+                  @if ($matDesc && $matDesc !== $matName)
+                    <span class="cp-vd-mat-desc">{{ $matDesc }}</span>
+                  @endif
+                  @if ($delivery > 0)
+                    <span class="cp-vd-mat-desc">Includes {{ \App\Models\ClientProject::formatMoney($delivery) }} delivery</span>
+                  @endif
+                  @if (!$taxed)
+                    <span class="cp-vd-mat-note">No HST</span>
+                  @endif
+                </div>
+              </div>
             </td>
             <td class="num">{{ rtrim(rtrim(number_format($qty,2),'0'),'.') }}</td>
             <td class="num">${{ number_format($unit,2) }}</td>
