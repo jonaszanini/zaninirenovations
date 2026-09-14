@@ -449,23 +449,33 @@ class TileQuotationController extends Controller
             return;
         }
 
+        $labourAmt = $quotation->labourPreTaxAmountForProjectQuotation();
+        if (! empty($quotation->include_debris_removal)) {
+            $debrisGross = (float) ($quotation->debris_removal_amount ?? 0);
+            if ($debrisGross > 0) {
+                $labourAmt = round(
+                    $labourAmt + ClientProjectQuotation::preTaxFromHstIncluded($debrisGross),
+                    2
+                );
+            }
+        }
+
         $items = [[
             'description' => 'Tile installation (labor)',
-            'amount' => $quotation->labourPreTaxAmountForProjectQuotation(),
+            'amount' => $labourAmt,
             'apply_hst' => true,
         ]];
 
         $materialAmt = $quotation->materialsPreTaxAmountForProjectQuotation();
         if ($materialAmt > 0) {
             $items[] = [
-                'description' => 'Client-selected tile & materials',
+                'description' => 'Materials',
                 'amount' => $materialAmt,
                 'apply_hst' => true,
             ];
         }
 
         $this->appendCommuteProjectLine($items, $quotation);
-        $this->appendDebrisRemovalProjectLine($items, $quotation);
         $this->appendAdditionalCostsProjectLines($items, $quotation);
 
         $snapshot = $quotation->only([

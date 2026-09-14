@@ -522,7 +522,8 @@ class ClientProjectQuotation extends Model
      * evenly across each job's Labour line (remainder cents on the last job)
      * so HST stays in the footer. Additional costs are rolled into the
      * materials line. Debris removal is listed as its own HST-included line
-     * after the job rows (the amount entered on the form).
+     * after the job rows (the amount entered on the form), except tile
+     * quotations fold debris into the labour line for the client PDF.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -622,12 +623,18 @@ class ClientProjectQuotation extends Model
     /**
      * Client PDFs: show debris as its own line using the entered (HST-inclusive)
      * amount so it matches the calculator. Do not charge HST again in the footer.
+     * Tile quotations instead fold debris into labour (pre-tax) and label materials
+     * as "Materials".
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
      */
     protected function normalizeDebrisRemovalForClientFacing(array $items): array
     {
+        if ($this->source_type === self::SOURCE_TILE) {
+            return $this->normalizeTileDebrisAndMaterialsForClientFacing($items);
+        }
+
         foreach ($items as &$row) {
             $desc = (string) ($row['description'] ?? '');
             if (! DebrisRemovalExpenseService::isLineDescription($desc)) {
@@ -642,6 +649,35 @@ class ClientProjectQuotation extends Model
         unset($row);
 
         return $items;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    protected function normalizeTileDebrisAndMaterialsForClientFacing(array $items): array
+    {
+        $debrisGross = 0.0;
+        $filtered = [];
+
+        foreach ($items as $row) {
+            $desc = (string) ($row['description'] ?? '');
+            if (DebrisRemovalExpenseService::isLineDescription($desc)) {
+                $debrisGross += (float) ($row['amount'] ?? 0);
+
+                continue;
+            }
+            if ($desc === 'Client-selected tile & materials') {
+                $row['description'] = 'Materials';
+            }
+            $filtered[] = $row;
+        }
+
+        if ($debrisGross > 0) {
+            $filtered = $this->mergeCommuteIntoLabourLines($filtered, $debrisGross);
+        }
+
+        return array_values($filtered);
     }
 
     /**
@@ -761,7 +797,11 @@ class ClientProjectQuotation extends Model
             return false;
         }
 
-        return $desc === 'Labour' || str_ends_with($desc, ' — Labour');
+        return $desc === 'Labour'
+            || $desc === 'Labor'
+            || str_ends_with($desc, ' — Labour')
+            || str_ends_with($desc, ' — Labor')
+            || (bool) preg_match('/\blabou?r\b/i', $desc);
     }
 
     /**
@@ -948,11 +988,11 @@ class ClientProjectQuotation extends Model
             }
 
             $score = 0;
-            if (str_ends_with($desc, ' — Labour')) {
+            if (str_ends_with($desc, ' — Labour') || str_ends_with($desc, ' — Labor')) {
                 $score = 100;
             } elseif (stripos($desc, 'HST applicable') !== false) {
                 $score = 90;
-            } elseif (preg_match('/\bLabour\b/i', $desc)) {
+            } elseif (preg_match('/\blabou?r\b/i', $desc) && stripos($desc, 'material') === false) {
                 $score = 80;
             } elseif (stripos($desc, 'Labour and material') !== false || stripos($desc, 'Material and labour') !== false) {
                 $score = 70;

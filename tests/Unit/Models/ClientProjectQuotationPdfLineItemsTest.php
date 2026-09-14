@@ -164,4 +164,40 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
         $this->assertEqualsWithDelta(300.00 + $shares[2], $labourLines[2]['amount'], 0.01);
         $this->assertEqualsWithDelta($preTaxCommute, $shares[0] + $shares[1] + $shares[2], 0.01);
     }
+
+    public function test_tile_pdf_folds_debris_into_labour_and_renames_materials(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_TILE,
+            'items' => [
+                [
+                    'description' => 'Tile installation (labor)',
+                    'amount' => 450.94,
+                    'apply_hst' => true,
+                ],
+                [
+                    'description' => 'Client-selected tile & materials',
+                    'amount' => 78.70,
+                    'apply_hst' => true,
+                ],
+                [
+                    'description' => DebrisRemovalExpenseService::LINE_DESCRIPTION,
+                    'amount' => 45.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $lines = $quote->pdfLineItems();
+        $descriptions = array_column($lines, 'description');
+
+        $this->assertSame(['Tile installation (labor)', 'Materials'], $descriptions);
+        $this->assertFalse((bool) preg_grep('/Debris/i', $descriptions));
+
+        $preTaxDebris = ClientProjectQuotation::preTaxFromHstIncluded(45.00);
+        $this->assertEqualsWithDelta(450.94 + $preTaxDebris, $lines[0]['amount'], 0.01);
+        $this->assertEqualsWithDelta(78.70, $lines[1]['amount'], 0.01);
+        $this->assertSame('Materials', $lines[1]['description']);
+    }
 }

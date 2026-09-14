@@ -108,9 +108,20 @@ class TileQuotation extends Model
         $inputs = is_array($this->inputs) ? $this->inputs : [];
         $calc = is_array($this->calculation) ? $this->calculation : [];
 
+        // Use the entered Total Area (sqft) — not waste-inflated calc total.
+        $sqft = (float) ($inputs['total_area_sqft'] ?? 0);
+        if ($sqft <= 0) {
+            $sqft = (float) ($calc['net_area'] ?? 0);
+        }
+        if ($sqft <= 0) {
+            $sqft = (float) ($inputs['length_ft'] ?? 0) * (float) ($inputs['width_ft'] ?? 0);
+        }
+
         $lines = [];
-        $sqft = round((float) ($calc['total_area'] ?? 0), 0);
-        $lines[] = 'Total area: '.number_format($sqft, 0).' sq ft';
+        if ($sqft > 0) {
+            $formatted = rtrim(rtrim(number_format($sqft, 2, '.', ''), '0'), '.');
+            $lines[] = 'Total area: '.$formatted.' sq ft';
+        }
 
         return \App\Support\QuotationWorkDescriptionHtml::combineAutoScopeWithWork(
             $lines,
