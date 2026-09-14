@@ -27,6 +27,13 @@
   </div>
   @endif
 
+  @if(!empty($calculation['edge_pieces']) && $calculation['edge_pieces'] > 0)
+  <div class="tl-live-breakdown__row">
+    <span>Tile Edge ({{ $calculation['edge_pieces'] }} × {{ (int) ($calculation['edge_piece_length_ft'] ?? 8) }}&nbsp;ft{{ !empty($calculation['edge_name']) ? ' — '.$calculation['edge_name'] : '' }}):</span>
+    <strong>${{ number_format($calculation['edge_total_price'], 2) }}</strong>
+  </div>
+  @endif
+
   @if(!empty($calculation['include_demolition']) && $calculation['include_demolition'])
   <div class="tl-live-breakdown__row">
     <span>Demolition &amp; Prep:</span>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\TileEdge;
 use App\Models\TileMortarType;
 use App\Models\TileGroutType;
 use App\Models\TileProduct;
@@ -21,12 +22,14 @@ class TileDatabaseController extends Controller
         $mortarTypes = TileMortarType::query()->orderBy('sort_order')->orderBy('id')->get();
         $groutTypes = TileGroutType::query()->orderBy('sort_order')->orderBy('id')->get();
         $products = TileProduct::query()->orderBy('sort_order')->orderBy('id')->get();
+        $edges = TileEdge::query()->orderBy('sort_order')->orderBy('id')->get();
         $qpid = $request->filled('project') ? (int) $request->query('project') : null;
 
         return view('admin.quotations.tile.price_configuration', compact(
             'mortarTypes',
             'groutTypes',
             'products',
+            'edges',
             'qpid'
         ));
     }
@@ -89,11 +92,31 @@ class TileDatabaseController extends Controller
             'new_products.*.cost_per_sqft' => ['nullable', 'numeric', 'min:0'],
             'delete_product_ids' => ['nullable', 'array'],
             'delete_product_ids.*' => ['integer', 'exists:tile_products,id'],
+
+            'edges' => ['nullable', 'array'],
+            'edges.*.id' => ['nullable', 'integer', 'exists:tile_edges,id'],
+            'edges.*.name' => ['required', 'string', 'max:255'],
+            'edges.*.url' => ['nullable', 'url', 'max:2048'],
+            'edges.*.thickness' => ['nullable', 'string', 'max:32'],
+            'edges.*.color' => ['nullable', 'string', 'max:120'],
+            'edges.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'edges.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'edges.*.is_active' => ['nullable', 'boolean'],
+            'new_edges' => ['nullable', 'array'],
+            'new_edges.*.name' => ['nullable', 'string', 'max:255'],
+            'new_edges.*.url' => ['nullable', 'url', 'max:2048'],
+            'new_edges.*.thickness' => ['nullable', 'string', 'max:32'],
+            'new_edges.*.color' => ['nullable', 'string', 'max:120'],
+            'new_edges.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'delete_edge_ids' => ['nullable', 'array'],
+            'delete_edge_ids.*' => ['integer', 'exists:tile_edges,id'],
         ], [
             'products.*.url.url' => 'Each tile supplier URL must be a valid link (include https://).',
             'new_products.*.url.url' => 'Each new tile supplier URL must be a valid link (include https://), or leave it blank.',
             'new_products.*.image.image' => 'New tile images must be a JPG, PNG, GIF, or WebP under 5 MB.',
             'products.*.image.image' => 'Tile images must be a JPG, PNG, GIF, or WebP under 5 MB.',
+            'edges.*.url.url' => 'Each tile edge URL must be a valid link (include https://).',
+            'new_edges.*.url.url' => 'Each new tile edge URL must be a valid link (include https://), or leave it blank.',
         ]);
 
         // 1. Process Mortars
@@ -242,6 +265,45 @@ class TileDatabaseController extends Controller
             }
         }
 
+        // 5. Process Tile Edges
+        foreach ($data['edges'] ?? [] as $index => $row) {
+            if (! is_array($row) || empty($row['id'])) {
+                continue;
+            }
+            $edge = TileEdge::query()->find($row['id']);
+            if ($edge) {
+                $edge->update([
+                    'name' => trim((string) $row['name']),
+                    'url' => ! empty($row['url']) ? trim((string) $row['url']) : null,
+                    'thickness' => filled($row['thickness'] ?? null) ? trim((string) $row['thickness']) : null,
+                    'color' => filled($row['color'] ?? null) ? trim((string) $row['color']) : null,
+                    'unit_price' => round((float) $row['unit_price'], 4),
+                    'sort_order' => max(0, (int) ($row['sort_order'] ?? $edge->sort_order)),
+                    'is_active' => $request->boolean("edges.{$index}.is_active"),
+                ]);
+            }
+        }
+        $maxSortEdge = (int) TileEdge::query()->max('sort_order');
+        foreach ($data['new_edges'] ?? [] as $row) {
+            if (! is_array($row) || empty(trim((string) ($row['name'] ?? '')))) {
+                continue;
+            }
+            TileEdge::query()->create([
+                'name' => trim((string) $row['name']),
+                'url' => ! empty($row['url']) ? trim((string) $row['url']) : null,
+                'thickness' => filled($row['thickness'] ?? null) ? trim((string) $row['thickness']) : null,
+                'color' => filled($row['color'] ?? null) ? trim((string) $row['color']) : null,
+                'unit_price' => round((float) ($row['unit_price'] ?? 0), 4),
+                'sort_order' => ++$maxSortEdge,
+                'is_active' => true,
+            ]);
+        }
+        foreach ($data['delete_edge_ids'] ?? [] as $id) {
+            if ($id > 0) {
+                TileEdge::query()->whereKey($id)->delete();
+            }
+        }
+
         foreach (TileProduct::query()->whereNotNull('image_path')->get(['id', 'image_path']) as $product) {
             if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
                 app(ProjectPhotoWebpStorage::class)->syncPublicMirror($product->image_path);
@@ -296,6 +358,20 @@ class TileDatabaseController extends Controller
             }
             $request->merge([$group => $rows]);
         }
+
+        foreach (['edges', 'new_edges'] as $group) {
+            $rows = $request->input($group);
+            if (! is_array($rows)) {
+                continue;
+            }
+            foreach ($rows as $i => $row) {
+                if (! is_array($row) || ! array_key_exists('unit_price', $row)) {
+                    continue;
+                }
+                $rows[$i]['unit_price'] = CadMoney::stripGrouping($row['unit_price']);
+            }
+            $request->merge([$group => $rows]);
+        }
     }
 
     /**
@@ -303,7 +379,7 @@ class TileDatabaseController extends Controller
      */
     protected function normalizeProductUrls(Request $request): void
     {
-        foreach (['products', 'new_products'] as $group) {
+        foreach (['products', 'new_products', 'edges', 'new_edges'] as $group) {
             $rows = $request->input($group);
             if (! is_array($rows)) {
                 continue;

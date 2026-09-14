@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\Concerns\ResolvesQuotationProjectLink;
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
+use App\Models\TileEdge;
 use App\Models\TileGroutType;
 use App\Models\TileMortarType;
 use App\Models\TileProduct;
@@ -54,8 +55,9 @@ class TileQuotationController extends Controller
         $mortarTypes = TileMortarType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
         $groutTypes = TileGroutType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
         $products = TileProduct::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
+        $edges = TileEdge::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
 
-        return view('admin.quotations.tile.create', compact('linkProject', 'mortarTypes', 'groutTypes', 'products') + [
+        return view('admin.quotations.tile.create', compact('linkProject', 'mortarTypes', 'groutTypes', 'products', 'edges') + [
             'linkedCpq' => null,
         ]);
     }
@@ -84,6 +86,9 @@ class TileQuotationController extends Controller
             'demolition_complexity' => ['nullable', 'string', 'in:standard,heavy,custom'],
             'custom_demolition_rate' => ['nullable', 'numeric', 'min:0'],
             'include_disposal_fee' => ['nullable', 'boolean'],
+            'include_edge' => ['nullable', 'boolean'],
+            'tile_edge_id' => ['nullable', 'integer', 'exists:tile_edges,id'],
+            'edge_lf' => ['nullable', 'numeric', 'min:0'],
 
             'is_draft' => ['nullable', 'string'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
@@ -94,24 +99,9 @@ class TileQuotationController extends Controller
         ));
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $includeEdge = filter_var($data['include_edge'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        $calculation = $calculator->compute(
-            (float) ($data['length_ft'] ?? 0),
-            (float) ($data['width_ft'] ?? 0),
-            (float) $data['waste_margin_percent'],
-            empty($data['tile_product_id']) ? null : (int) $data['tile_product_id'],
-            $includeTile,
-            $data['trowel_size'],
-            empty($data['mortar_type_id']) ? null : (int) $data['mortar_type_id'],
-            (float) $data['joint_width_decimal'],
-            empty($data['grout_type_id']) ? null : (int) $data['grout_type_id'],
-            (float) $data['labor_rate'],
-            (float) ($data['total_area_sqft'] ?? 0),
-            filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            $data['demolition_complexity'] ?? 'standard',
-            (float) ($data['custom_demolition_rate'] ?? 0),
-            filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN)
-        );
+        $calculation = $this->computeFromData($calculator, $data, $includeTile, $includeEdge);
 
         $quotation = new TileQuotation();
         $quotation->client_project_id = empty($data['client_project_id']) ? null : (int) $data['client_project_id'];
@@ -123,23 +113,7 @@ class TileQuotationController extends Controller
         $quotation->payment_installments = $schedule['payment_installments'];
         $quotation->payment_percentages = $schedule['payment_percentages'];
         
-        $quotation->inputs = [
-            'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),
-            'length_ft' => (float) ($data['length_ft'] ?? 0),
-            'width_ft' => (float) ($data['width_ft'] ?? 0),
-            'waste_margin_percent' => (float) $data['waste_margin_percent'],
-            'tile_product_id' => $data['tile_product_id'] ?? null,
-            'include_tile_material' => $includeTile,
-            'trowel_size' => $data['trowel_size'],
-            'mortar_type_id' => $data['mortar_type_id'] ?? null,
-            'joint_width_decimal' => (float) $data['joint_width_decimal'],
-            'grout_type_id' => $data['grout_type_id'] ?? null,
-            'labor_rate' => (float) $data['labor_rate'],
-            'include_demolition' => filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'demolition_complexity' => $data['demolition_complexity'] ?? 'standard',
-            'custom_demolition_rate' => (float) ($data['custom_demolition_rate'] ?? 0),
-            'include_disposal_fee' => filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
-        ];
+        $quotation->inputs = $this->inputsFromData($data, $includeTile, $includeEdge);
         $quotation->calculation = $calculation;
         $commute = $this->commutePersistenceFromRequest($request, null, 'tile_quotations');
         $merged = $this->mergeCommuteIntoPersistence(
@@ -188,6 +162,17 @@ class TileQuotationController extends Controller
         $mortarTypes = TileMortarType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
         $groutTypes = TileGroutType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
         $products = TileProduct::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
+        $selectedEdgeId = (int) (($quotation->inputs['tile_edge_id'] ?? 0));
+        $edges = TileEdge::query()
+            ->where(function ($q) use ($selectedEdgeId) {
+                $q->where('is_active', true);
+                if ($selectedEdgeId > 0) {
+                    $q->orWhere('id', $selectedEdgeId);
+                }
+            })
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
 
         $quotation->load('project.photos');
         $returnToProject = $request->query('return') === 'project';
@@ -198,7 +183,7 @@ class TileQuotationController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('admin.quotations.tile.create', compact('quotation', 'mortarTypes', 'groutTypes', 'products', 'returnToProject', 'linkProject', 'linkableProjects') + [
+        return view('admin.quotations.tile.create', compact('quotation', 'mortarTypes', 'groutTypes', 'products', 'edges', 'returnToProject', 'linkProject', 'linkableProjects') + [
             'linkedCpq' => ClientProjectQuotation::findForSource(
                 ClientProjectQuotation::SOURCE_TILE,
                 (int) $quotation->id
@@ -229,6 +214,9 @@ class TileQuotationController extends Controller
             'demolition_complexity' => ['nullable', 'string', 'in:standard,heavy,custom'],
             'custom_demolition_rate' => ['nullable', 'numeric', 'min:0'],
             'include_disposal_fee' => ['nullable', 'boolean'],
+            'include_edge' => ['nullable', 'boolean'],
+            'tile_edge_id' => ['nullable', 'integer', 'exists:tile_edges,id'],
+            'edge_lf' => ['nullable', 'numeric', 'min:0'],
             'is_draft' => ['nullable', 'string'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
@@ -238,24 +226,9 @@ class TileQuotationController extends Controller
         ));
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $includeEdge = filter_var($data['include_edge'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        $calculation = $calculator->compute(
-            (float) ($data['length_ft'] ?? 0),
-            (float) ($data['width_ft'] ?? 0),
-            (float) $data['waste_margin_percent'],
-            empty($data['tile_product_id']) ? null : (int) $data['tile_product_id'],
-            $includeTile,
-            $data['trowel_size'],
-            empty($data['mortar_type_id']) ? null : (int) $data['mortar_type_id'],
-            (float) $data['joint_width_decimal'],
-            empty($data['grout_type_id']) ? null : (int) $data['grout_type_id'],
-            (float) $data['labor_rate'],
-            (float) ($data['total_area_sqft'] ?? 0),
-            filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            $data['demolition_complexity'] ?? 'standard',
-            (float) ($data['custom_demolition_rate'] ?? 0),
-            filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN)
-        );
+        $calculation = $this->computeFromData($calculator, $data, $includeTile, $includeEdge);
 
         if (! $quotation->isLinked()) {
             $quotation->client_name = $data['client_name'] ?? null;
@@ -266,23 +239,7 @@ class TileQuotationController extends Controller
         $quotation->payment_installments = $schedule['payment_installments'];
         $quotation->payment_percentages = $schedule['payment_percentages'];
         
-        $quotation->inputs = [
-            'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),
-            'length_ft' => (float) ($data['length_ft'] ?? 0),
-            'width_ft' => (float) ($data['width_ft'] ?? 0),
-            'waste_margin_percent' => (float) $data['waste_margin_percent'],
-            'tile_product_id' => $data['tile_product_id'] ?? null,
-            'include_tile_material' => $includeTile,
-            'trowel_size' => $data['trowel_size'],
-            'mortar_type_id' => $data['mortar_type_id'] ?? null,
-            'joint_width_decimal' => (float) $data['joint_width_decimal'],
-            'grout_type_id' => $data['grout_type_id'] ?? null,
-            'labor_rate' => (float) $data['labor_rate'],
-            'include_demolition' => filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'demolition_complexity' => $data['demolition_complexity'] ?? 'standard',
-            'custom_demolition_rate' => (float) ($data['custom_demolition_rate'] ?? 0),
-            'include_disposal_fee' => filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
-        ];
+        $quotation->inputs = $this->inputsFromData($data, $includeTile, $includeEdge);
         $quotation->calculation = $calculation;
         $commute = $this->commutePersistenceFromRequest($request, $quotation, 'tile_quotations');
         $merged = $this->mergeCommuteIntoPersistence(
@@ -450,6 +407,7 @@ class TileQuotationController extends Controller
             }
             
             $includeTile = filter_var($request->input('include_tile_material', false), FILTER_VALIDATE_BOOLEAN);
+            $includeEdge = filter_var($request->input('include_edge', false), FILTER_VALIDATE_BOOLEAN);
 
             $calculation = $calculator->compute(
                 $lengthFt,
@@ -466,7 +424,10 @@ class TileQuotationController extends Controller
                 filter_var($request->input('include_demolition', false), FILTER_VALIDATE_BOOLEAN),
                 $request->input('demolition_complexity', 'standard'),
                 (float) $request->input('custom_demolition_rate', 0),
-                filter_var($request->input('include_disposal_fee', false), FILTER_VALIDATE_BOOLEAN)
+                filter_var($request->input('include_disposal_fee', false), FILTER_VALIDATE_BOOLEAN),
+                $includeEdge,
+                empty($request->input('tile_edge_id')) ? null : (int) $request->input('tile_edge_id'),
+                (float) $request->input('edge_lf', 0)
             );
 
             $html = view('admin.quotations.tile._live_breakdown', compact('calculation'))->render();
@@ -550,5 +511,65 @@ class TileQuotationController extends Controller
         if ($quotation->project) {
             $quotation->project->syncFixedContractTotalsFromQuotation();
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function computeFromData(
+        TileQuotationCalculator $calculator,
+        array $data,
+        bool $includeTile,
+        bool $includeEdge
+    ): array {
+        return $calculator->compute(
+            (float) ($data['length_ft'] ?? 0),
+            (float) ($data['width_ft'] ?? 0),
+            (float) $data['waste_margin_percent'],
+            empty($data['tile_product_id']) ? null : (int) $data['tile_product_id'],
+            $includeTile,
+            $data['trowel_size'],
+            empty($data['mortar_type_id']) ? null : (int) $data['mortar_type_id'],
+            (float) $data['joint_width_decimal'],
+            empty($data['grout_type_id']) ? null : (int) $data['grout_type_id'],
+            (float) $data['labor_rate'],
+            (float) ($data['total_area_sqft'] ?? 0),
+            filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            $data['demolition_complexity'] ?? 'standard',
+            (float) ($data['custom_demolition_rate'] ?? 0),
+            filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            $includeEdge,
+            empty($data['tile_edge_id']) ? null : (int) $data['tile_edge_id'],
+            (float) ($data['edge_lf'] ?? 0)
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function inputsFromData(array $data, bool $includeTile, bool $includeEdge): array
+    {
+        return [
+            'total_area_sqft' => (float) ($data['total_area_sqft'] ?? 0),
+            'length_ft' => (float) ($data['length_ft'] ?? 0),
+            'width_ft' => (float) ($data['width_ft'] ?? 0),
+            'waste_margin_percent' => (float) $data['waste_margin_percent'],
+            'tile_product_id' => $data['tile_product_id'] ?? null,
+            'include_tile_material' => $includeTile,
+            'trowel_size' => $data['trowel_size'],
+            'mortar_type_id' => $data['mortar_type_id'] ?? null,
+            'joint_width_decimal' => (float) $data['joint_width_decimal'],
+            'grout_type_id' => $data['grout_type_id'] ?? null,
+            'labor_rate' => (float) $data['labor_rate'],
+            'include_demolition' => filter_var($data['include_demolition'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'demolition_complexity' => $data['demolition_complexity'] ?? 'standard',
+            'custom_demolition_rate' => (float) ($data['custom_demolition_rate'] ?? 0),
+            'include_disposal_fee' => filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'include_edge' => $includeEdge,
+            'tile_edge_id' => empty($data['tile_edge_id']) ? null : (int) $data['tile_edge_id'],
+            'edge_lf' => (float) ($data['edge_lf'] ?? 0),
+        ];
     }
 }

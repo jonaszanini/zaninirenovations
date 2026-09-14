@@ -19,6 +19,12 @@
   $tileTotal   = (float) ($calc['tile_total_price'] ?? 0);
   $mortarTotal = (float) ($calc['mortar_total_price'] ?? 0);
   $groutTotal  = (float) ($calc['grout_total_price'] ?? 0);
+  $edgeName    = trim((string) ($calc['edge_name'] ?? ''));
+  $edgeLf      = (float) ($calc['edge_lf'] ?? $inp['edge_lf'] ?? 0);
+  $edgePieces  = (int) ($calc['edge_pieces'] ?? 0);
+  $edgeTotal   = (float) ($calc['edge_total_price'] ?? 0);
+  $edgeThickness = trim((string) ($calc['edge_thickness'] ?? ''));
+  $edgeColor   = trim((string) ($calc['edge_color'] ?? ''));
   $labourTotal = (float) ($calc['labor_total'] ?? $sourceModel->labourPreTaxAmountForProjectQuotation());
   $commuteAmount = (float) ($sourceModel->commute_amount ?? 0);
   $includeCommute = (bool) ($sourceModel->include_commute ?? false);
@@ -122,6 +128,50 @@
         <div class="cp-vd-field">
           <span class="cp-vd-field__label">Grout cost</span>
           <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($groutTotal) }}</span>
+        </div>
+      @endif
+    </div>
+  </div>
+@endif
+
+@if ($edgePieces > 0 || $edgeTotal > 0 || $edgeName !== '')
+  <div class="cp-vd-section">
+    <div class="cp-vd-section__title">Tile edge</div>
+    <div class="cp-vd-grid">
+      @if ($edgeName !== '')
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Product</span>
+          <span class="cp-vd-field__value">{{ $edgeName }}</span>
+        </div>
+      @endif
+      @if ($edgeThickness !== '')
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Thickness</span>
+          <span class="cp-vd-field__value">{{ $edgeThickness }}</span>
+        </div>
+      @endif
+      @if ($edgeColor !== '')
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Color</span>
+          <span class="cp-vd-field__value">{{ $edgeColor }}</span>
+        </div>
+      @endif
+      @if ($edgeLf > 0)
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Linear feet</span>
+          <span class="cp-vd-field__value">{{ rtrim(rtrim(number_format($edgeLf, 2), '0'), '.') }} LF</span>
+        </div>
+      @endif
+      @if ($edgePieces > 0)
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Pieces (8&nbsp;ft)</span>
+          <span class="cp-vd-field__value">{{ $edgePieces }}</span>
+        </div>
+      @endif
+      @if ($edgeTotal > 0)
+        <div class="cp-vd-field">
+          <span class="cp-vd-field__label">Edge cost (pre-tax)</span>
+          <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($edgeTotal) }}</span>
         </div>
       @endif
     </div>

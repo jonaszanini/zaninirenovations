@@ -177,4 +177,31 @@ class TileDatabaseConfigTest extends TestCase
         $this->assertNotNull($product);
         $this->assertEqualsWithDelta(1234.5678, (float) $product->cost_per_sqft, 0.0001);
     }
+
+    public function test_new_tile_edge_is_persisted(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->from(route('admin.quotations.tile.price-configuration'))
+            ->put(route('admin.quotations.tile.price-configuration.update'), [
+                'new_edges' => [
+                    0 => [
+                        'name' => 'Schluter DILEX',
+                        'url' => 'homedepot.ca/edge',
+                        'thickness' => '5/16',
+                        'color' => 'White',
+                        'unit_price' => '18.5000',
+                    ],
+                ],
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('tile_edges', [
+            'name' => 'Schluter DILEX',
+            'thickness' => '5/16',
+            'color' => 'White',
+            'url' => 'https://homedepot.ca/edge',
+        ]);
+    }
 }

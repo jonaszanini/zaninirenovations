@@ -87,8 +87,9 @@ class TileQuotation extends Model
         $mortar = (float) ($calc['mortar_total_price'] ?? 0);
         $grout = (float) ($calc['grout_total_price'] ?? 0);
         $tile = (float) ($calc['tile_total_price'] ?? 0);
-        
-        return max(0, round($mortar + $grout + $tile, 2));
+        $edge = (float) ($calc['edge_total_price'] ?? 0);
+
+        return max(0, round($mortar + $grout + $tile + $edge, 2));
     }
 
     public function includesMaterialCharge(): bool

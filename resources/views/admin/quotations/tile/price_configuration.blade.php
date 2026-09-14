@@ -228,6 +228,56 @@
       <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="addProductRow()">+ Add Tile Product</button>
     </div>
 
+    <div class="config-card">
+      <h3>Tile Edge</h3>
+      <p class="admin-form-help" style="margin-top:-8px; margin-bottom:16px;">
+        Sold in standard 8&nbsp;ft pieces. Quotation rounds linear feet up to whole pieces (e.g. 9&nbsp;LF → 2 pcs).
+      </p>
+      <div class="table-container">
+        <table class="admin-table" id="edge-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>URL</th>
+              <th>Thickness</th>
+              <th>Color</th>
+              <th>Unit price ($ / 8&nbsp;ft pc)</th>
+              <th style="width:60px;">Sort</th>
+              <th style="width:70px;">Active</th>
+              <th style="width:50px; text-align:center;">Del</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($edges as $index => $e)
+              <tr>
+                <td>
+                  <input type="hidden" name="edges[{{ $index }}][id]" value="{{ $e->id }}">
+                  <input type="text" name="edges[{{ $index }}][name]" class="admin-input" value="{{ $e->name }}" required>
+                </td>
+                <td><input type="text" name="edges[{{ $index }}][url]" class="admin-input" value="{{ $e->url }}" placeholder="https://..." inputmode="url" autocomplete="url"></td>
+                <td><input type="text" name="edges[{{ $index }}][thickness]" class="admin-input" value="{{ $e->thickness }}" placeholder="5/16"></td>
+                <td><input type="text" name="edges[{{ $index }}][color]" class="admin-input" value="{{ $e->color }}" placeholder="White"></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                           name="edges[{{ $index }}][unit_price]" class="admin-input cp-money-input"
+                           value="{{ number_format((float) $e->unit_price, 4, '.', '') }}" required></td>
+                <td><input type="number" name="edges[{{ $index }}][sort_order]" class="admin-input" value="{{ $e->sort_order }}"></td>
+                <td style="text-align:center;">
+                  <input type="checkbox" name="edges[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $e->is_active ? 'checked' : '' }}>
+                </td>
+                <td style="text-align:center;">
+                  <label class="admin-checkbox admin-text-danger" style="margin:0; display:inline-flex;">
+                    <input type="checkbox" name="delete_edge_ids[]" value="{{ $e->id }}" class="admin-checkbox__input">
+                    <span class="admin-checkbox__mark"></span>
+                  </label>
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="addEdgeRow()">+ Add Tile Edge</button>
+    </div>
+
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <a href="{{ $qpid ? route('admin.quotations.tile.create', ['project' => $qpid]) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost">Back</a>
       <button type="submit" class="admin-btn admin-btn--primary"><i class="fa fa-save"></i> Save Configuration</button>
@@ -296,6 +346,29 @@
         window.cpMoneyMask.wire(tr.querySelectorAll('.cp-money-input'));
       }
       pIdx++;
+      var nameInput = tr.querySelector('input[name*="[name]"]');
+      if (nameInput) nameInput.focus();
+    }
+
+    let eIdx = 0;
+    function addEdgeRow() {
+      let tbody = document.querySelector('#edge-table tbody');
+      let tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" name="new_edges[${eIdx}][name]" class="admin-input" placeholder="Name"></td>
+        <td><input type="text" name="new_edges[${eIdx}][url]" class="admin-input" placeholder="https://..." inputmode="url" autocomplete="url"></td>
+        <td><input type="text" name="new_edges[${eIdx}][thickness]" class="admin-input" placeholder="5/16"></td>
+        <td><input type="text" name="new_edges[${eIdx}][color]" class="admin-input" placeholder="White"></td>
+        <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                   name="new_edges[${eIdx}][unit_price]" class="admin-input cp-money-input" value="0"></td>
+        <td></td><td></td>
+        <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
+      `;
+      tbody.appendChild(tr);
+      if (window.cpMoneyMask) {
+        window.cpMoneyMask.wire(tr.querySelectorAll('.cp-money-input'));
+      }
+      eIdx++;
       var nameInput = tr.querySelector('input[name*="[name]"]');
       if (nameInput) nameInput.focus();
     }

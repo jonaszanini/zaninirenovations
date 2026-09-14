@@ -31,6 +31,9 @@
   $demolition_complexity = old('demolition_complexity', $inputs['demolition_complexity'] ?? 'standard');
   $custom_demolition_rate = old('custom_demolition_rate', $inputs['custom_demolition_rate'] ?? '');
   $include_disposal_fee = old('include_disposal_fee', $inputs['include_disposal_fee'] ?? false);
+  $include_edge = old('include_edge', $inputs['include_edge'] ?? false);
+  $tile_edge_id = old('tile_edge_id', $inputs['tile_edge_id'] ?? '');
+  $edge_lf = old('edge_lf', $inputs['edge_lf'] ?? '');
 @endphp
 
 @section('heading', $title)
@@ -344,6 +347,38 @@
         </div>
       </div>
 
+      <div class="fl-step-card">
+        <h4>6. Tile Edge</h4>
+        <div class="admin-form-group">
+          <label class="admin-checkbox">
+            <input type="hidden" name="include_edge" value="0">
+            <input type="checkbox" name="include_edge" id="tl-include-edge" value="1" class="admin-checkbox__input tl-live-trigger" {{ $include_edge ? 'checked' : '' }}>
+            <span class="admin-checkbox__mark"></span>
+            <span class="admin-checkbox__text">Edge required</span>
+          </label>
+        </div>
+        <div id="tl-edge-details" style="display:{{ $include_edge ? 'block' : 'none' }};">
+          <div class="admin-form-grid-2">
+            <div class="admin-form-group">
+              <label class="admin-form-label" for="tl-tile-edge-id">Edge product</label>
+              <select name="tile_edge_id" id="tl-tile-edge-id" class="admin-input tl-live-trigger">
+                <option value="">-- Select edge --</option>
+                @foreach ($edges as $edge)
+                  <option value="{{ $edge->id }}" {{ (string) $tile_edge_id === (string) $edge->id ? 'selected' : '' }}>
+                    {{ $edge->optionLabel() }}
+                  </option>
+                @endforeach
+              </select>
+              <p class="admin-form-help">Sold in 8&nbsp;ft pieces; LF is rounded up to whole pieces.</p>
+            </div>
+            <div class="admin-form-group">
+              <label class="admin-form-label" for="tl-edge-lf">Linear feet (LF)</label>
+              <input type="number" min="0" step="0.01" name="edge_lf" id="tl-edge-lf" class="admin-input tl-live-trigger" value="{{ $edge_lf }}" placeholder="e.g. 12">
+            </div>
+          </div>
+        </div>
+      </div>
+
       @include('admin.quotations._payment_schedule', ['quotation' => $quotation ?? null])
 
       @include('admin.quotations._commute_expense', ['quotation' => $quotation ?? null, 'linkProject' => $linkProject ?? null])
@@ -626,6 +661,14 @@ document.addEventListener('DOMContentLoaded', function () {
     if (demoComplexity && customDemoGroup) {
         demoComplexity.addEventListener('change', function() {
             customDemoGroup.style.display = this.value === 'custom' ? 'block' : 'none';
+        });
+    }
+
+    var includeEdge = document.getElementById('tl-include-edge');
+    var edgeDetails = document.getElementById('tl-edge-details');
+    if (includeEdge && edgeDetails) {
+        includeEdge.addEventListener('change', function() {
+            edgeDetails.style.display = this.checked ? 'block' : 'none';
         });
     }
 

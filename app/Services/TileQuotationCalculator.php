@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\TileEdge;
 use App\Models\TileMortarType;
 use App\Models\TileGroutType;
 use App\Models\TileProduct;
@@ -10,18 +11,8 @@ class TileQuotationCalculator
 {
     /**
      * Compute the tile quotation math based on inputs.
-     * 
-     * @param float $lengthFt
-     * @param float $widthFt
-     * @param float $wasteMarginPercent
-     * @param int|null $tileProductId
-     * @param bool $includeTileMaterial
-     * @param string $trowelSize ("1/4x1/4", "1/4x3/8", "1/2x1/2")
-     * @param int|null $mortarTypeId
-     * @param float $jointWidthDecimal
-     * @param int|null $groutTypeId
-     * @param float $laborRate
-     * @return array
+     *
+     * @return array<string, mixed>
      */
     public function compute(
         float $lengthFt,
@@ -38,7 +29,10 @@ class TileQuotationCalculator
         bool $includeDemolition = false,
         string $demolitionComplexity = 'standard',
         float $customDemolitionRate = 0.0,
-        bool $includeDisposalFee = false
+        bool $includeDisposalFee = false,
+        bool $includeEdge = false,
+        ?int $tileEdgeId = null,
+        float $edgeLf = 0.0
     ): array {
         // 1. Total Area
         $netArea = $totalAreaSqft > 0 ? $totalAreaSqft : ($lengthFt * $widthFt);
@@ -48,6 +42,7 @@ class TileQuotationCalculator
         $mortar = $mortarTypeId ? TileMortarType::query()->find($mortarTypeId) : null;
         $grout = $groutTypeId ? TileGroutType::query()->find($groutTypeId) : null;
         $tile = $tileProductId ? TileProduct::query()->find($tileProductId) : null;
+        $edge = ($includeEdge && $tileEdgeId) ? TileEdge::query()->find($tileEdgeId) : null;
 
         // 2. Mortar Calculation
         $mortarBags = 0;
@@ -63,11 +58,11 @@ class TileQuotationCalculator
             } elseif ($trowelSize === '1/2x1/2') {
                 $baseCoverage = 40;
             }
-            
+
             if ($baseCoverage > 0) {
                 $bagWeight = (float) $mortar->bag_weight_lbs > 0 ? (float) $mortar->bag_weight_lbs : 50.0;
                 $mortarCoverage = ($bagWeight / 50.0) * $baseCoverage;
-                
+
                 $mortarBags = (int) ceil($totalArea / $mortarCoverage);
                 $mortarTotalPrice = $mortarBags * (float) $mortar->cost_price;
             }
@@ -85,7 +80,7 @@ class TileQuotationCalculator
             $t = (float) $tile->thickness_inches;
             $j = $jointWidthDecimal;
             $d = (float) $grout->density_factor;
-            
+
             if ($l > 0 && $w > 0) {
                 $groutPoundsPerSqft = (($l + $w) * $t * $j * $d) / ($l * $w);
                 $groutTotalPounds = $groutPoundsPerSqft * $totalArea;
@@ -101,10 +96,28 @@ class TileQuotationCalculator
             $tileTotalPrice = $totalArea * (float) $tile->cost_per_sqft;
         }
 
-        // 5. Labor
+        // 5. Tile Edge — sold in 8 ft pieces; round LF up to whole pieces
+        $edgePieces = 0;
+        $edgeTotalPrice = 0.0;
+        $edgeUnitPrice = 0.0;
+        $edgeName = null;
+        $edgeThickness = null;
+        $edgeColor = null;
+        $normalizedEdgeLf = max(0, $edgeLf);
+
+        if ($includeEdge && $edge && $normalizedEdgeLf > 0) {
+            $edgePieces = (int) ceil($normalizedEdgeLf / TileEdge::PIECE_LENGTH_FT);
+            $edgeUnitPrice = (float) $edge->unit_price;
+            $edgeTotalPrice = $edgePieces * $edgeUnitPrice;
+            $edgeName = $edge->name;
+            $edgeThickness = $edge->thickness;
+            $edgeColor = $edge->color;
+        }
+
+        // 6. Labor
         $laborTotal = $totalArea * $laborRate;
 
-        // 6. Demolition & Prep Work
+        // 7. Demolition & Prep Work
         $demolitionTotal = 0.0;
         $demolitionRate = 0.0;
         $disposalFee = 0.0;
@@ -117,7 +130,7 @@ class TileQuotationCalculator
             } else {
                 $demolitionRate = $customDemolitionRate;
             }
-            
+
             $demolitionTotal = $netArea * $demolitionRate;
 
             if ($includeDisposalFee) {
@@ -127,7 +140,7 @@ class TileQuotationCalculator
         }
 
         // Subtotals
-        $materialsTotal = $mortarTotalPrice + $groutTotalPrice + $tileTotalPrice;
+        $materialsTotal = $mortarTotalPrice + $groutTotalPrice + $tileTotalPrice + $edgeTotalPrice;
         $subtotal = $materialsTotal + $laborTotal + $demolitionTotal;
 
         // HST
@@ -138,23 +151,33 @@ class TileQuotationCalculator
         return [
             'net_area' => round($netArea, 2),
             'total_area' => round($totalArea, 2),
-            
+
             'mortar_bags' => $mortarBags,
             'mortar_total_price' => round($mortarTotalPrice, 2),
-            
+
             'grout_total_pounds' => round($groutTotalPounds, 2),
             'grout_bags' => $groutBags,
             'grout_total_price' => round($groutTotalPrice, 2),
-            
+
             'tile_total_price' => round($tileTotalPrice, 2),
-            
+
+            'include_edge' => $includeEdge && $edgePieces > 0,
+            'edge_lf' => round($normalizedEdgeLf, 2),
+            'edge_piece_length_ft' => TileEdge::PIECE_LENGTH_FT,
+            'edge_pieces' => $edgePieces,
+            'edge_unit_price' => round($edgeUnitPrice, 4),
+            'edge_total_price' => round($edgeTotalPrice, 2),
+            'edge_name' => $edgeName,
+            'edge_thickness' => $edgeThickness,
+            'edge_color' => $edgeColor,
+
             'labor_total' => round($laborTotal, 2),
-            
+
             'include_demolition' => $includeDemolition,
             'demolition_rate' => round($demolitionRate, 2),
             'disposal_fee' => round($disposalFee, 2),
             'demolition_total' => round($demolitionTotal, 2),
-            
+
             'materials_subtotal' => round($materialsTotal, 2),
             'subtotal' => round($subtotal, 2),
             'hst' => round($hst, 2),
