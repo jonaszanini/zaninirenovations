@@ -184,7 +184,8 @@
           <div class="admin-form-group">
             <label for="client_name">Client name <span class="cp-required">*</span></label>
             <input type="text" class="admin-input" id="client_name" name="client_name" maxlength="160"
-                   value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : '') }}">
+                   value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}"
+                   @if(!old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) && (!$isEdit || !($quotation->is_draft ?? false))) required @endif>
           </div>
           <div class="admin-form-group">
             <label for="total_property_sqf">Total property size (sq ft)</label>

@@ -52,6 +52,7 @@
     <a href="{{ route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
       <i class="fa fa-arrow-left"></i> Back to list
     </a>
+    <a href="{{ route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
     <div class="fq-form-toolbar-right">
       <a href="{{ route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-cog"></i> Price configuration

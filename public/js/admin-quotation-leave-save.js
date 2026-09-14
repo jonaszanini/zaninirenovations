@@ -109,23 +109,151 @@
     return parseFloat(String(el.value || '').replace(/,/g, '')) || 0;
   }
 
+  function fieldValue(form, name) {
+    var el = form.querySelector('[name="' + name + '"]');
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function anyNumberAtLeast(form, selector, min) {
+    var nodes = form.querySelectorAll(selector);
+    for (var i = 0; i < nodes.length; i++) {
+      if ((parseFloat(String(nodes[i].value || '').replace(/,/g, '')) || 0) >= min) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function markFormEdited(form) {
+    if (form) {
+      form.setAttribute('data-quotation-user-edited', '1');
+    }
+  }
+
   function canAutosave(form) {
     if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
       return false;
     }
-    var client = form.querySelector('[name="client_name"]');
-    if (client && client.hasAttribute('required') && !String(client.value || '').trim()) {
+
+    // Untouched new quotes (including ones prefilled from a project) should not
+    // POST — confirm leave instead of creating a quote the admin never filled in.
+    if (form.getAttribute('data-quotation-user-edited') !== '1') {
       return false;
     }
-    // Tile quotes can save without a client name, but need an area (or length × width).
+
+    var client = form.querySelector('[name="client_name"]');
+    var clientFilled = !!(client && String(client.value || '').trim());
+
+    // Tile: client name is optional; measurements are required to persist.
     if (form.querySelector('[name="total_area_sqft"]')) {
       var area = fieldNumber(form, 'total_area_sqft');
       var length = fieldNumber(form, 'length_ft');
       var width = fieldNumber(form, 'width_ft');
-      if (area <= 0 && (length <= 0 || width <= 0)) {
+      return area > 0 || (length > 0 && width > 0);
+    }
+
+    if (client && !clientFilled) {
+      return false;
+    }
+
+    // Flooring
+    if (form.querySelector('[name="flooring_type_id"]')) {
+      if (!fieldValue(form, 'flooring_type_id') || fieldNumber(form, 'square_footage') <= 0) {
         return false;
       }
     }
+
+    // Painting
+    if (form.querySelector('[name="total_property_sqf"]')) {
+      if (fieldNumber(form, 'total_property_sqf') <= 0 || !fieldValue(form, 'paint_line_id')) {
+        return false;
+      }
+    }
+
+    // Stairs
+    if (form.querySelector('[name="total_steps"]')) {
+      if (fieldNumber(form, 'total_steps') < 1) {
+        return false;
+      }
+      if (!form.querySelector('[name="material_type_id"]:checked')) {
+        return false;
+      }
+      if (!anyNumberAtLeast(form, '[name^="segments["][name$="[qty]"]', 1)) {
+        return false;
+      }
+    }
+
+    // Fence
+    if (form.querySelector('[name^="sides["][name$="[length_ft]"]')) {
+      if (!anyNumberAtLeast(form, '[name^="sides["][name$="[length_ft]"]', 0.5)) {
+        return false;
+      }
+    }
+
+    // Low deck + shed
+    if (form.querySelector('#ld-width, #sh-length')) {
+      if (fieldNumber(form, 'width_ft') <= 0 || fieldNumber(form, 'length_ft') <= 0) {
+        return false;
+      }
+    }
+
+    // Paving
+    if (form.querySelector('[name^="stone_entries["]')) {
+      var stoneOk = anyNumberAtLeast(form, '[name^="stone_entries["][name$="[qty]"]', 1)
+        || anyNumberAtLeast(form, '[name^="stone_entries["][name$="[area_sq_ft]"]', 0.01)
+        || (
+          anyNumberAtLeast(form, '[name^="stone_entries["][name$="[length_ft]"]', 0.01)
+          && anyNumberAtLeast(form, '[name^="stone_entries["][name$="[width_ft]"]', 0.01)
+        );
+      if (!stoneOk) {
+        return false;
+      }
+    }
+
+    // Basement
+    if (form.querySelector('[name="area_sqft"], [name="partition_lf"]')) {
+      var preset = form.querySelector('[name="scope_preset"]:checked');
+      var isWall = !!(preset && preset.value === 'wall');
+      if (isWall) {
+        if (fieldNumber(form, 'partition_lf') <= 0) {
+          return false;
+        }
+      } else if (
+        fieldNumber(form, 'area_sqft') <= 0
+        && !(fieldNumber(form, 'area_length_ft') > 0 && fieldNumber(form, 'area_width_ft') > 0)
+      ) {
+        return false;
+      }
+    }
+
+    // Millwork
+    if (form.querySelector('[name^="pieces["]')) {
+      var hasPieceDims = anyNumberAtLeast(form, '[name^="pieces["][name$="[width]"]', 0.01)
+        || anyNumberAtLeast(form, '[name^="pieces["][name$="[length]"]', 0.01)
+        || anyNumberAtLeast(form, '[name^="pieces["][name$="[height]"]', 0.01)
+        || anyNumberAtLeast(form, '[name^="pieces["][name$="[depth]"]', 0.01)
+        || anyNumberAtLeast(form, '[name^="pieces["][name*="[sets]"][name$="[length]"]', 0.01)
+        || anyNumberAtLeast(form, '[name^="pieces["][name*="[sets]"][name$="[width]"]', 0.01);
+      if (!hasPieceDims) {
+        return false;
+      }
+    }
+
+    // Trimming
+    if (form.querySelector('[name="enabled_families[]"]')) {
+      if (!form.querySelector('[name="enabled_families[]"]:checked')) {
+        return false;
+      }
+      if (
+        fieldNumber(form, 'door_qty') <= 0
+        && fieldNumber(form, 'window_qty') <= 0
+        && !anyNumberAtLeast(form, '.tm-family-body input[type="number"]', 0.01)
+      ) {
+        return false;
+      }
+    }
+
+    // Standard quotation: HTML required client + title is enough to persist.
     return true;
   }
 
@@ -207,5 +335,22 @@
       dest,
       anchor.hasAttribute('data-quotation-leave-return') || isPriceConfigPath(dest.pathname)
     );
+  });
+
+  function markEditedFromEvent(e) {
+    if (!e.isTrusted) {
+      return;
+    }
+    var form = editorForm();
+    if (!form || !e.target || !form.contains(e.target)) {
+      return;
+    }
+    markFormEdited(form);
+  }
+
+  document.addEventListener('input', markEditedFromEvent, true);
+  document.addEventListener('change', markEditedFromEvent, true);
+  document.addEventListener('admin-search-select:change', function () {
+    markFormEdited(editorForm());
   });
 })();

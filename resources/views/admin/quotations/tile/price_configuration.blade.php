@@ -191,7 +191,7 @@
                   <input type="hidden" name="products[{{ $index }}][id]" value="{{ $p->id }}">
                   <input type="text" name="products[{{ $index }}][name]" class="admin-input" value="{{ $p->name }}" required>
                 </td>
-                <td><input type="url" name="products[{{ $index }}][url]" class="admin-input" value="{{ $p->url }}" placeholder="https://..."></td>
+                <td><input type="text" name="products[{{ $index }}][url]" class="admin-input" value="{{ $p->url }}" placeholder="https://..." inputmode="url" autocomplete="url"></td>
                 <td>
                   @if ($imageUrl = $p->publicImageUrl())
                     <div style="margin-bottom:4px;">
@@ -279,15 +279,16 @@
       let tbody = document.querySelector('#product-table tbody');
       let tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" name="new_products[${pIdx}][name]" class="admin-input" placeholder="Name"></td>
-        <td><input type="url" name="new_products[${pIdx}][url]" class="admin-input" placeholder="https://..."></td>
+        <td><input type="text" name="new_products[${pIdx}][name]" class="admin-input" placeholder="Name" required></td>
+        <td><input type="text" name="new_products[${pIdx}][url]" class="admin-input" placeholder="https://..." inputmode="url" autocomplete="url"></td>
         <td><input type="file" name="new_products[${pIdx}][image]" class="admin-input" accept="image/*" style="font-size:12px;"></td>
-        <td><input type="number" step="0.0001" name="new_products[${pIdx}][length_inches]" class="admin-input" value="12"></td>
-        <td><input type="number" step="0.0001" name="new_products[${pIdx}][width_inches]" class="admin-input" value="12"></td>
-        <td><input type="number" step="0.0001" name="new_products[${pIdx}][thickness_inches]" class="admin-input" value="0.25"></td>
+        <td><input type="number" step="0.0001" name="new_products[${pIdx}][length_inches]" class="admin-input" value="12" required></td>
+        <td><input type="number" step="0.0001" name="new_products[${pIdx}][width_inches]" class="admin-input" value="12" required></td>
+        <td><input type="number" step="0.0001" name="new_products[${pIdx}][thickness_inches]" class="admin-input" value="0.25" required></td>
         <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-                   name="new_products[${pIdx}][cost_per_sqft]" class="admin-input cp-money-input" value="0"></td>
-        <td></td><td></td>
+                   name="new_products[${pIdx}][cost_per_sqft]" class="admin-input cp-money-input" value="0" required></td>
+        <td></td>
+        <td style="text-align:center;"><span class="admin-form-help" title="New tiles are active by default">Active</span></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
       `;
       tbody.appendChild(tr);
@@ -295,6 +296,8 @@
         window.cpMoneyMask.wire(tr.querySelectorAll('.cp-money-input'));
       }
       pIdx++;
+      var nameInput = tr.querySelector('input[name*="[name]"]');
+      if (nameInput) nameInput.focus();
     }
   </script>
 @endsection
