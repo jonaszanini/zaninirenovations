@@ -1060,12 +1060,12 @@ html.cp-cancel-modal-open {
 }
 .cp-notes-box {
   white-space: pre-wrap;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: var(--admin-surface-hover);
+  border: 1px solid var(--admin-border);
   border-radius: 6px;
   padding: 12px 14px;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--admin-text);
 }
 @media (max-width: 700px) {
   .cp-dl {
