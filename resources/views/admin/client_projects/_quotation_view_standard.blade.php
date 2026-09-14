@@ -133,19 +133,19 @@
                     <img src="{{ $matImage }}" alt="" class="cp-vd-mat-thumb__img" loading="lazy" referrerpolicy="no-referrer">
                   </span>
                 @endif
+                @if (! $isElectrical && $matUrl !== '')
+                  <a href="{{ $matUrl }}"
+                     class="cp-vd-mat-link"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     title="Open product page"
+                     aria-label="Open product page for {{ $matName }}">
+                    <i class="fa fa-external-link" aria-hidden="true"></i>
+                  </a>
+                @endif
                 <div class="cp-vd-mat-meta">
                   <div class="cp-vd-mat-name-row">
                     <span class="cp-vd-mat-name">{{ $matName }}</span>
-                    @if (! $isElectrical && $matUrl !== '')
-                      <a href="{{ $matUrl }}"
-                         class="cp-vd-mat-link"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         title="Open product page"
-                         aria-label="Open product page for {{ $matName }}">
-                        <i class="fa fa-external-link" aria-hidden="true"></i>
-                      </a>
-                    @endif
                   </div>
                   @if ($matDesc && $matDesc !== $matName)
                     <span class="cp-vd-mat-desc">{{ $matDesc }}</span>

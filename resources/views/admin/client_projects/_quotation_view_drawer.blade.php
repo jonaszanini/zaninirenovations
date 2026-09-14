@@ -536,7 +536,7 @@
       .cp-vd-mat-cell {
         display: flex;
         align-items: flex-start;
-        gap: 10px;
+        gap: 8px;
         min-width: 0;
       }
       .cp-vd-mat-thumb {
@@ -581,18 +581,22 @@
         height: 44px;
         min-width: 44px;
         min-height: 44px;
-        border-radius: 6px;
+        margin: -6px 0;
         color: var(--admin-primary, #024768);
         text-decoration: none;
-        border: 1px solid var(--admin-border);
-        background: var(--admin-surface-hover);
+        border: 0;
+        background: transparent;
+        border-radius: 6px;
+        line-height: 1;
       }
       .cp-vd-mat-link:hover,
       .cp-vd-mat-link:focus-visible {
-        color: #fff;
-        background: var(--admin-primary, #024768);
-        border-color: var(--admin-primary, #024768);
+        color: var(--admin-primary, #024768);
+        opacity: 0.85;
         outline: none;
+      }
+      .cp-vd-mat-link:focus-visible {
+        box-shadow: 0 0 0 2px var(--admin-primary-ring, rgba(2, 71, 104, 0.32));
       }
       .cp-vd-mat-desc {
         display: block;

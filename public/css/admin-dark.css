@@ -679,7 +679,7 @@ html.admin-dark .cp-hint,
 html.admin-dark .cp-final-dates,
 html.admin-dark .cp-quotation-accordion__desc,
 html.admin-dark .cp-status-form-label,
-html.admin-dark .cp-reopen-form-label,
+html.admin-dark .cp-reopen-form-help,
 html.admin-dark .cp-reopen-note-label,
 html.admin-dark .cp-mark-paid-method-label,
 html.admin-dark .cp-mark-paid-method-option,
@@ -706,6 +706,22 @@ html.admin-dark .cp-project-context-notes__label {
 }
 
 html.admin-dark .cp-project-context-notes__body {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-final-note {
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+html.admin-dark .cp-final-note--cancelled {
+  background: rgba(192, 132, 252, 0.16);
+  color: #e9d5ff;
+  border-color: rgba(192, 132, 252, 0.35);
+}
+
+html.admin-dark .cp-reopen-form-label {
   color: var(--admin-heading);
 }
 

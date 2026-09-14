@@ -734,12 +734,14 @@ a.cp-header-detail__value:hover {
   padding: 10px 14px;
   background: #fef2f2;
   color: #991b1b;
+  border: 1px solid #fecaca;
   border-radius: 6px;
   font-size: 14px;
 }
 .cp-final-note--cancelled {
   background: #faf5ff;
   color: #6b21a8;
+  border-color: #e9d5ff;
 }
 .cp-final-note-reason {
   display: block;
@@ -760,9 +762,10 @@ a.cp-header-detail__value:hover {
 
 .cp-reopen-form {
   padding: 14px 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--admin-surface-hover);
+  color: var(--admin-text);
 }
 
 .cp-reopen-form-head {
@@ -773,14 +776,14 @@ a.cp-header-detail__value:hover {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--admin-heading);
   margin: 0 0 4px;
 }
 
 .cp-reopen-form-help {
   display: block;
   font-size: 12px;
-  color: #64748b;
+  color: var(--admin-muted);
 }
 
 .cp-reopen-controls {
@@ -808,7 +811,7 @@ a.cp-header-detail__value:hover {
   display: block;
   font-size: 12px;
   font-weight: 500;
-  color: #475569;
+  color: var(--admin-muted);
   margin-bottom: 4px;
 }
 
