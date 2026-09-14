@@ -40,22 +40,98 @@
     .pq-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.95fr); gap: 20px; align-items: start; }
     @media (max-width: 1100px) { .pq-layout { grid-template-columns: 1fr; } }
     .pq-sticky { position: sticky; top: 88px; }
-    .pq-summary-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; background: #fafbfc; }
-    .fl-step-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 16px; background: #fff; }
-    .fl-step-card h4 { margin: 0 0 12px; color: #024768; }
+    .pq-summary-card {
+      border: 1px solid var(--admin-border);
+      border-radius: 10px;
+      padding: 16px;
+      background: var(--admin-surface);
+      color: var(--admin-text);
+    }
+    .pq-summary-card h4 { margin: 0 0 10px; color: var(--admin-heading); }
+    .fl-step-card {
+      border: 1px solid var(--admin-border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      background: var(--admin-surface);
+      color: var(--admin-text);
+    }
+    .fl-step-card h4 { margin: 0 0 12px; color: var(--admin-primary); }
+    .fl-step-card__hint { margin-bottom: 12px; font-size: 14px; color: var(--admin-muted); }
+    .fl-step-card__nested {
+      background: var(--admin-surface-hover);
+      padding: 16px;
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .pq-link-project {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: var(--admin-surface-hover);
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--admin-border);
+      color: var(--admin-text);
+    }
+    .pq-link-project__icon { color: var(--admin-muted); }
+    .pq-link-project__label { font-size: 13px; font-weight: 500; color: var(--admin-muted); }
     .pq-sidebar-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .pq-sidebar-actions .admin-btn { flex: 1 1 auto; min-width: 0; width: auto; justify-content: center; }
-    
-    /* Toolbar */
     .fq-form-toolbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px 20px; flex-wrap: wrap; margin-bottom: 18px; }
     .fq-form-toolbar-right { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; flex: 1 1 auto; min-width: 0; }
     @media (max-width: 720px) {
       .fq-form-toolbar { flex-direction: column; align-items: stretch; }
-      .fq-form-toolbar> a:first-child { width: fit-content; }
+      .fq-form-toolbar > a:first-child { width: fit-content; }
       .fq-form-toolbar-right { justify-content: flex-start; }
     }
-    .fq-linked-banner { display: flex; gap: 8px; align-items: center; background: #e8f4ea; color: #0f5132; border: 1px solid #bfddc6; border-radius: 8px; padding: 10px 14px; margin-bottom: 0; }
-    .fq-linked-banner a { color: #0f5132; font-weight: 600; }
+    .fq-linked-banner {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: var(--admin-success-soft);
+      color: var(--admin-success);
+      border: 1px solid rgba(46, 125, 74, 0.35);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 0;
+    }
+    .fq-linked-banner a { color: inherit; font-weight: 600; }
+    .tl-live-breakdown {
+      background: var(--admin-surface-hover);
+      color: var(--admin-text);
+      border-radius: 6px;
+      padding: 16px;
+      border: 1px solid var(--admin-border);
+    }
+    .tl-live-breakdown__title {
+      margin: 0 0 16px;
+      font-size: 16px;
+      border-bottom: 1px solid var(--admin-border);
+      padding-bottom: 8px;
+      color: var(--admin-heading);
+    }
+    .tl-live-breakdown__row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      color: var(--admin-text);
+    }
+    .tl-live-breakdown__row strong { color: var(--admin-heading); }
+    .tl-live-breakdown__row--rule {
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--admin-border);
+    }
+    .tl-live-breakdown__row--grand {
+      margin-bottom: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--admin-heading);
+    }
+    .tl-live-breakdown__muted { color: var(--admin-muted); }
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 @endpush
@@ -88,9 +164,9 @@
           <input type="hidden" name="client_project_id" value="{{ $quotation->client_project_id }}">
         @else
           <!-- Dropdown for unlinked quotes -->
-          <div style="display: flex; gap: 8px; align-items: center; background: #f8fafc; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <i class="fa fa-link" style="color: #64748b;"></i>
-            <span style="font-size: 13px; font-weight: 500; color: #475569;">Link project:</span>
+          <div class="pq-link-project">
+            <i class="fa fa-link pq-link-project__icon" aria-hidden="true"></i>
+            <span class="pq-link-project__label">Link project:</span>
             <select name="client_project_id" class="admin-input admin-input--sm" style="min-width: 180px;">
               <option value="">-- None (Standalone quote) --</option>
               @foreach (\App\Models\ClientProject::query()->orderByDesc('created_at')->get() as $p)
@@ -134,7 +210,7 @@
 
       <div class="fl-step-card">
         <h4>2. Measurements</h4>
-        <div style="margin-bottom:12px; font-size:14px; color:#475569;">
+        <div class="fl-step-card__hint">
           Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
@@ -174,7 +250,7 @@
           </label>
         </div>
         
-        <div id="tl-demolition-details" style="{{ $include_demolition ? '' : 'display:none;' }} background:#f8fafc; padding:16px; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:16px;">
+        <div id="tl-demolition-details" class="fl-step-card__nested" @if (! $include_demolition) style="display:none;" @endif>
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
               <label class="admin-form-label">Removal Complexity</label>
@@ -215,11 +291,14 @@
           </select>
           <div id="tile-preview" style="margin-top:12px;"></div>
         </div>
-        <label class="admin-form-check">
+        <div class="admin-form-group">
+          <label class="admin-checkbox">
             <input type="hidden" name="include_tile_material" value="0">
-            <input type="checkbox" name="include_tile_material" value="1" class="tl-live-trigger" {{ $include_tile_material ? 'checked' : '' }}>
-            <span>Include Tile Material Cost in Quote Total</span>
-        </label>
+            <input type="checkbox" name="include_tile_material" value="1" class="admin-checkbox__input tl-live-trigger" {{ $include_tile_material ? 'checked' : '' }}>
+            <span class="admin-checkbox__mark"></span>
+            <span class="admin-checkbox__text">Include Tile Material Cost in Quote Total</span>
+          </label>
+        </div>
       </div>
 
       <div class="fl-step-card">
@@ -291,7 +370,7 @@
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       
       <div class="pq-summary-card">
-        <h4 style="margin:0 0 10px;">Live breakdown</h4>
+        <h4>Live breakdown</h4>
         <div id="tl-live-root">
           <p class="admin-form-help" id="tl-live-empty">Enter measurements to see totals.</p>
           <div id="tl-live-body" hidden></div>
@@ -345,8 +424,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (lastDebrisAmount > 0) {
             var debrisRow = document.createElement('div');
             debrisRow.setAttribute('data-tl-debris-row', '1');
-            debrisRow.style.cssText = 'display:flex; justify-content:space-between; margin-bottom:8px;';
-            debrisRow.innerHTML = '<span>Debris removal (incl. HST):</span><strong style="color:#0f172a;">$' + lastDebrisAmount.toFixed(2) + '</strong>';
+            debrisRow.className = 'tl-live-breakdown__row';
+            debrisRow.innerHTML = '<span>Debris removal (incl. HST):</span><strong>$' + lastDebrisAmount.toFixed(2) + '</strong>';
             var grandRow = liveBody.querySelector('[data-tl-grand-row]');
             if (grandRow && grandRow.parentNode) {
                 grandRow.parentNode.insertBefore(debrisRow, grandRow);
@@ -371,12 +450,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (lastAdditionalTaxIn > 0) {
             var additionalRow = document.createElement('div');
             additionalRow.setAttribute('data-tl-additional-row', '1');
-            additionalRow.style.cssText = 'display:flex; justify-content:space-between; margin-bottom:8px;';
+            additionalRow.className = 'tl-live-breakdown__row';
             additionalRow.innerHTML = '<span>Additional costs → materials'
                 + (lastAdditionalMaterialsPreTax > 0
-                    ? ' <small style="color:#64748b;">(pre-tax $' + lastAdditionalMaterialsPreTax.toFixed(2) + ')</small>'
+                    ? ' <small class="tl-live-breakdown__muted">(pre-tax $' + lastAdditionalMaterialsPreTax.toFixed(2) + ')</small>'
                     : '')
-                + ':</span><strong style="color:#0f172a;">$' + lastAdditionalTaxIn.toFixed(2) + '</strong>';
+                + ':</span><strong>$' + lastAdditionalTaxIn.toFixed(2) + '</strong>';
             var grandRow = liveBody.querySelector('[data-tl-grand-row]');
             if (grandRow && grandRow.parentNode) {
                 grandRow.parentNode.insertBefore(additionalRow, grandRow);
@@ -391,13 +470,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function markLiveGrandTotalRow() {
-        var grandRows = liveBody.querySelectorAll('div[style*="font-size:18px"]');
-        if (!grandRows.length) {
-            return;
+        var grandRow = liveBody.querySelector('[data-tl-grand-row]')
+            || liveBody.querySelector('.tl-live-breakdown__row--grand');
+        if (!grandRow) {
+            var legacy = liveBody.querySelectorAll('div[style*="font-size:18px"]');
+            if (!legacy.length) {
+                return;
+            }
+            grandRow = legacy[legacy.length - 1];
+            grandRow.setAttribute('data-tl-grand-row', '1');
         }
-        var grandRow = grandRows[grandRows.length - 1];
-        grandRow.setAttribute('data-tl-grand-row', '1');
-        var valueSpan = grandRow.querySelector('span:last-child');
+        var valueSpan = grandRow.querySelector('[data-tl-grand-value]')
+            || grandRow.querySelector('span:last-child');
         if (valueSpan) {
             valueSpan.setAttribute('data-tl-grand-value', '1');
         }

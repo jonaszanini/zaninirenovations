@@ -101,30 +101,58 @@
     return !(method && String(method.value).toUpperCase() === 'PUT');
   }
 
-  function canAutosave(form) {
-    var client = form.querySelector('[name="client_name"]');
-    if (client && !String(client.value || '').trim()) {
-      return false;
+  function fieldNumber(form, name) {
+    var el = form.querySelector('[name="' + name + '"]');
+    if (!el) {
+      return 0;
     }
+    return parseFloat(String(el.value || '').replace(/,/g, '')) || 0;
+  }
+
+  function canAutosave(form) {
     if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
       return false;
+    }
+    var client = form.querySelector('[name="client_name"]');
+    if (client && client.hasAttribute('required') && !String(client.value || '').trim()) {
+      return false;
+    }
+    // Tile quotes can save without a client name, but need an area (or length × width).
+    if (form.querySelector('[name="total_area_sqft"]')) {
+      var area = fieldNumber(form, 'total_area_sqft');
+      var length = fieldNumber(form, 'length_ft');
+      var width = fieldNumber(form, 'width_ft');
+      if (area <= 0 && (length <= 0 || width <= 0)) {
+        return false;
+      }
     }
     return true;
   }
 
-  function notifyCannotAutosave() {
-    var message = 'This quotation does not have enough information to save yet. Fill in the required fields, then try again.';
-    var options = { title: 'Cannot save yet' };
-    if (window.AdminDialog && typeof window.AdminDialog.alert === 'function') {
-      window.AdminDialog.alert(message, options);
-      return;
+  function confirmLeaveUnsaved() {
+    var message = 'This quotation is missing required information and has not been saved. Still want to exit?';
+    var options = {
+      title: 'Quotation not saved yet',
+      confirmLabel: 'Yes, exit',
+      cancelLabel: 'No, stay',
+    };
+    if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
+      return window.AdminDialog.confirm(message, options);
     }
-    window.alert(message);
+    return Promise.resolve(window.confirm(message));
+  }
+
+  function leaveWithoutSaving(dest) {
+    window.location.assign(dest.href);
   }
 
   function submitLeave(form, dest, attachReturn) {
     if (isNewQuotation(form) && !canAutosave(form)) {
-      notifyCannotAutosave();
+      confirmLeaveUnsaved().then(function (ok) {
+        if (ok) {
+          leaveWithoutSaving(dest);
+        }
+      });
       return;
     }
     if (typeof tinymce !== 'undefined' && typeof tinymce.triggerSave === 'function') {

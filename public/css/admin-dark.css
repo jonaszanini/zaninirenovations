@@ -1076,8 +1076,7 @@ html.admin-dark .q-commute-card,
 html.admin-dark .q-debris-card,
 html.admin-dark .q-payment-schedule-card,
 html.admin-dark .q-additional-costs-card,
-html.admin-dark .fq-link-project-card,
-html.admin-dark .br-layout .pq-summary-card {
+html.admin-dark .fq-link-project-card {
   background: var(--admin-surface);
   border-color: var(--admin-border);
   color: var(--admin-text);
@@ -1203,12 +1202,62 @@ html.admin-dark .util-ra-rooms-item__actions .admin-btn--danger:hover {
   color: #fecaca;
 }
 
+html.admin-dark .fl-step-card,
+html.admin-dark .pq-summary-card,
 html.admin-dark .br-layout .pq-summary-card,
 html.admin-dark .tm-layout .pq-summary-card {
   background: var(--admin-surface);
   border-color: var(--admin-border);
   color: var(--admin-text);
 }
+
+html.admin-dark .fl-step-card h4,
+html.admin-dark .pq-summary-card h4,
+html.admin-dark .br-layout .pq-summary-card h4,
+html.admin-dark .br-layout .fl-step-card h4 {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .fl-step-card__hint,
+html.admin-dark .tl-live-breakdown__muted {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .fl-step-card__nested,
+html.admin-dark .tl-live-breakdown,
+html.admin-dark .pq-link-project {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .pq-link-project__icon,
+html.admin-dark .pq-link-project__label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .fq-linked-banner {
+  background: var(--admin-success-soft);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+html.admin-dark .fq-linked-banner a {
+  color: #86efac;
+}
+
+html.admin-dark .tl-live-breakdown__title,
+html.admin-dark .tl-live-breakdown__row,
+html.admin-dark .tl-live-breakdown__row strong,
+html.admin-dark .tl-live-breakdown__row--grand {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .tl-live-breakdown__row--rule,
+html.admin-dark .tl-live-breakdown__title {
+  border-bottom-color: var(--admin-border);
+}
+
 html.admin-dark .br-layout .pq-row,
 html.admin-dark .tm-layout .pq-row {
   color: var(--admin-text);
@@ -1225,10 +1274,6 @@ html.admin-dark .br-toolbar-grand {
 }
 html.admin-dark .br-toolbar-grand {
   border-top-color: var(--admin-border);
-}
-html.admin-dark .br-layout .pq-summary-card h4,
-html.admin-dark .br-layout .fl-step-card h4 {
-  color: var(--admin-heading);
 }
 html.admin-dark .br-layout .fl-breakdown-section {
   color: var(--admin-muted);

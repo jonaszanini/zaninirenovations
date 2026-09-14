@@ -39,6 +39,7 @@
     paste_as_text: false,
     content_style: isDark
       ? 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #e2e8f0; background: #0f172a; line-height: 1.55; padding: 12px; } ' +
+        'body[data-mce-placeholder]:not(.mce-visualblocks)::before { color: #94a3b8; opacity: 1; } ' +
         'h1, h2, h3, h4 { color: #7dd3fc; margin: 0.6em 0 0.35em; } ' +
         'a { color: #38bdf8; } ' +
         'p { margin: 0 0 0.65em; } ' +
