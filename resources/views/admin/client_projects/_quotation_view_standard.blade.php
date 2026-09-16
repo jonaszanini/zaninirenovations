@@ -129,19 +129,20 @@
             <td>
               <div class="cp-vd-mat-cell">
                 @if (! $isElectrical && $matImage !== '')
-                  <span class="cp-vd-mat-thumb">
-                    <img src="{{ $matImage }}" alt="" class="cp-vd-mat-thumb__img" loading="lazy" referrerpolicy="no-referrer">
-                  </span>
-                @endif
-                @if (! $isElectrical && $matUrl !== '')
-                  <a href="{{ $matUrl }}"
-                     class="cp-vd-mat-link"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     title="Open product page"
-                     aria-label="Open product page for {{ $matName }}">
-                    <i class="fa fa-external-link" aria-hidden="true"></i>
-                  </a>
+                  @if ($matUrl !== '')
+                    <a href="{{ $matUrl }}"
+                       class="cp-vd-mat-thumb cp-vd-mat-thumb--link"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       title="Open product page"
+                       aria-label="Open product page for {{ $matName }}">
+                      <img src="{{ $matImage }}" alt="" class="cp-vd-mat-thumb__img" loading="lazy" referrerpolicy="no-referrer">
+                    </a>
+                  @else
+                    <span class="cp-vd-mat-thumb">
+                      <img src="{{ $matImage }}" alt="" class="cp-vd-mat-thumb__img" loading="lazy" referrerpolicy="no-referrer">
+                    </span>
+                  @endif
                 @endif
                 <div class="cp-vd-mat-meta">
                   <div class="cp-vd-mat-name-row">
