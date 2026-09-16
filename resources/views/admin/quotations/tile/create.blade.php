@@ -450,6 +450,20 @@ document.addEventListener('DOMContentLoaded', function () {
     var lastAdditionalTaxIn = 0;
     var lastGrandTotal = 0;
 
+    function parseMoney(raw) {
+        var n = parseFloat(String(raw == null ? '' : raw).replace(/,/g, ''));
+        return isFinite(n) && n > 0 ? n : 0;
+    }
+
+    function readDebrisAmount() {
+        var yes = form.querySelector('[data-cp-debris-include-yes]');
+        if (!yes || !yes.checked) {
+            return 0;
+        }
+        var input = form.querySelector('[data-cp-debris-amount]');
+        return parseMoney(input && input.value);
+    }
+
     function liveExtrasTotal() {
         return lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
     }
@@ -591,6 +605,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 liveBody.innerHTML = data.html;
                 liveBody.hidden = false;
                 lastGrandTotal = Number((data.calculation && data.calculation.grand_total) || 0);
+                lastDebrisAmount = readDebrisAmount();
                 markLiveGrandTotalRow();
                 // Insert before grand in reverse so final order is commute → debris → additional → grand.
                 applyAdditionalCostsToLivePreview();
@@ -672,9 +687,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Run on load if filled
-    doLiveUpdate();
-
     document.addEventListener('commute-expense:change', function (e) {
         var d = e.detail || {};
         lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
@@ -691,6 +703,15 @@ document.addEventListener('DOMContentLoaded', function () {
         lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
         applyAdditionalCostsToLivePreview();
     });
+
+    // Debris boot event can fire before this listener exists. Read the saved choice now.
+    lastDebrisAmount = readDebrisAmount();
+    if (window.CommuteExpense && typeof window.CommuteExpense.getAmount === 'function') {
+        lastCommuteAmount = Number(window.CommuteExpense.getAmount() || 0);
+    }
+
+    // Run on load if filled
+    doLiveUpdate();
 
     // Tile Product Preview Logic
     var tileProductSelect = document.getElementById('tile_product_id');
