@@ -211,19 +211,35 @@
     };
   }
 
+  function selectLabel(form, name) {
+    var text = formValue(form, name);
+    if (!text || text.indexOf('--') === 0) return '';
+    return text;
+  }
+
   function collectTileContext(form) {
     var includeMaterial = form.elements['include_tile_material'] && form.elements['include_tile_material'].checked;
+    var includeEdge = form.elements['include_edge'] && form.elements['include_edge'].checked;
     return {
       client_name: formValue(form, 'client_name'),
+      total_area_sqft: formValue(form, 'total_area_sqft'),
       length_ft: formValue(form, 'length_ft'),
       width_ft: formValue(form, 'width_ft'),
       waste_margin_percent: formValue(form, 'waste_margin_percent'),
       tile_product_id: formSelectValue(form, 'tile_product_id'),
+      tile_product_name: selectLabel(form, 'tile_product_id'),
       include_tile_material: includeMaterial,
       mortar_type_id: formSelectValue(form, 'mortar_type_id'),
-      trowel_size: formSelectValue(form, 'trowel_size'),
+      mortar_type_name: selectLabel(form, 'mortar_type_id'),
+      trowel_size: selectLabel(form, 'trowel_size'),
       grout_type_id: formSelectValue(form, 'grout_type_id'),
-      joint_width_decimal: formSelectValue(form, 'joint_width_decimal'),
+      grout_type_name: selectLabel(form, 'grout_type_id'),
+      joint_width: selectLabel(form, 'joint_width_decimal'),
+      include_edge: !!includeEdge,
+      tile_edge_id: formSelectValue(form, 'tile_edge_id'),
+      tile_edge_name: includeEdge ? selectLabel(form, 'tile_edge_id') : '',
+      edge_lf: includeEdge ? formValue(form, 'edge_lf') : '',
+      include_demolition: form.elements['include_demolition'] && form.elements['include_demolition'].checked,
       labor_rate: formValue(form, 'labor_rate'),
       breakdown_summary: panelText('tl-live-root')
     };

@@ -3,6 +3,10 @@
 namespace App\Services;
 
 use App\Models\ClientProject;
+use App\Models\TileEdge;
+use App\Models\TileGroutType;
+use App\Models\TileMortarType;
+use App\Models\TileProduct;
 
 class QuotationWorkDescriptionContextBuilder
 {
@@ -963,21 +967,36 @@ class QuotationWorkDescriptionContextBuilder
         if ($len && $wid) {
             $this->appendLine($lines, 'Area dimensions', $len.' ft × '.$wid.' ft');
         }
+        $sqft = $c['total_area_sqft'] ?? null;
+        if ($sqft !== null && $sqft !== '' && (float) $sqft > 0) {
+            $this->appendLine($lines, 'Total area', $sqft.' sq ft');
+        }
 
         if (! empty($c['include_tile_material'])) {
-            $this->appendLine($lines, 'Tile product / material', $c['tile_product_id'] ?? 'Contractor supplied');
+            $tileName = $this->tileCatalogName($c['tile_product_name'] ?? null, $c['tile_product_id'] ?? null, TileProduct::class);
+            $this->appendLine($lines, 'Tile product', $tileName ?? 'Contractor supplied');
         } else {
             $lines[] = 'Tile material: Client provided';
         }
 
-        if (! empty($c['mortar_type_id'])) {
-            $this->appendLine($lines, 'Mortar type', $c['mortar_type_id']);
-        }
+        $mortarName = $this->tileCatalogName($c['mortar_type_name'] ?? null, $c['mortar_type_id'] ?? null, TileMortarType::class);
+        $this->appendLine($lines, 'Mortar', $mortarName);
         if (! empty($c['trowel_size'])) {
             $this->appendLine($lines, 'Trowel size', $c['trowel_size']);
         }
-        if (! empty($c['grout_type_id'])) {
-            $this->appendLine($lines, 'Grout type', $c['grout_type_id']);
+        $groutName = $this->tileCatalogName($c['grout_type_name'] ?? null, $c['grout_type_id'] ?? null, TileGroutType::class);
+        $this->appendLine($lines, 'Grout', $groutName);
+        if (! empty($c['joint_width'])) {
+            $this->appendLine($lines, 'Joint width', $c['joint_width']);
+        }
+        if (! empty($c['include_edge'])) {
+            $edgeName = $this->tileCatalogName($c['tile_edge_name'] ?? null, $c['tile_edge_id'] ?? null, TileEdge::class);
+            $edgeLf = $c['edge_lf'] ?? null;
+            $edgeLine = $edgeName ?? 'yes';
+            if ($edgeLf !== null && $edgeLf !== '' && (float) $edgeLf > 0) {
+                $edgeLine .= ' ('.$edgeLf.' LF)';
+            }
+            $this->appendLine($lines, 'Tile edge', $edgeLine);
         }
         if (! empty($c['include_demolition'])) {
             $lines[] = 'Demolition: yes';
@@ -989,6 +1008,29 @@ class QuotationWorkDescriptionContextBuilder
         $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Use the catalog product name. Resolve a numeric id when possible so the
+     * AI does not invent labels like "Mortar Type 1".
+     */
+    private function tileCatalogName(mixed $label, mixed $id, string $modelClass): ?string
+    {
+        $text = trim((string) ($label ?? ''));
+        $rawId = $id !== null && $id !== '' ? $id : (ctype_digit($text) ? $text : null);
+        if (is_numeric($rawId) && (int) $rawId > 0) {
+            $row = $modelClass::query()->find((int) $rawId);
+            $name = $row ? trim((string) ($row->name ?? '')) : '';
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        if ($text === '' || str_starts_with($text, '--') || ctype_digit($text)) {
+            return null;
+        }
+
+        return $text;
     }
 
     /**

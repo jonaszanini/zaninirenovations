@@ -2,11 +2,15 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\TileGroutType;
+use App\Models\TileMortarType;
 use App\Services\QuotationWorkDescriptionContextBuilder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class QuotationWorkDescriptionContextBuilderTest extends TestCase
 {
+    use RefreshDatabase;
     public function test_shed_context_uses_sq_ft_labels_and_skips_empty_size(): void
     {
         $text = (new QuotationWorkDescriptionContextBuilder)->build('shed', [
@@ -257,6 +261,37 @@ class QuotationWorkDescriptionContextBuilderTest extends TestCase
         $this->assertStringContainsString('H: 34.5in', $text);
         $this->assertStringContainsString('D: 24in', $text);
         $this->assertStringContainsString('Installation included: yes', $text);
+    }
+
+    public function test_tile_context_uses_mortar_and_grout_names_not_ids(): void
+    {
+        $mortar = TileMortarType::query()->create([
+            'name' => 'MAPEI ULTRAFLEX',
+            'bag_weight_lbs' => 50,
+            'cost_price' => 40,
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+        $grout = TileGroutType::query()->create([
+            'name' => 'Polyblend Plus',
+            'bag_weight_lbs' => 10,
+            'density_factor' => 1.6,
+            'cost_price' => 20,
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $text = (new QuotationWorkDescriptionContextBuilder)->build('tile', [
+            'mortar_type_id' => $mortar->id,
+            'grout_type_id' => $grout->id,
+            'trowel_size' => '1/4" x 1/4" x 1/4"',
+        ]);
+
+        $this->assertStringContainsString('Mortar: MAPEI ULTRAFLEX', $text);
+        $this->assertStringContainsString('Grout: Polyblend Plus', $text);
+        $this->assertStringNotContainsString('Mortar type: '.$mortar->id, $text);
+        $this->assertStringNotContainsString('Grout type: '.$grout->id, $text);
+        $this->assertStringNotContainsString('Type 1', $text);
     }
 
     public function test_from_quote_instruction_file_has_context_placeholder(): void
