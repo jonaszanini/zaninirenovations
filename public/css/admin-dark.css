@@ -427,6 +427,16 @@ html.admin-dark .cp-modal-close:hover {
   color: var(--admin-heading);
 }
 
+html.admin-dark .cp-mark-paid-method-option:has(input[type="radio"]:checked) {
+  color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .cp-mark-paid-project-status strong {
+  color: var(--admin-heading);
+}
+
 html.admin-dark .cp-notes-popover {
   background: #0b1220;
   color: var(--admin-heading);
@@ -681,9 +691,6 @@ html.admin-dark .cp-quotation-accordion__desc,
 html.admin-dark .cp-status-form-label,
 html.admin-dark .cp-reopen-form-help,
 html.admin-dark .cp-reopen-note-label,
-html.admin-dark .cp-mark-paid-method-label,
-html.admin-dark .cp-mark-paid-method-option,
-html.admin-dark .cp-mark-paid-project-status-legend,
 html.admin-dark .cp-installments-remaining,
 html.admin-dark .cp-time-entry__note,
 html.admin-dark .cp-time-saved-heading,

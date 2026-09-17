@@ -2749,7 +2749,7 @@ a:hover .cp-expense-receipt-pdf {
   display: block;
   font-weight: 600;
   font-size: 13px;
-  color: #334155;
+  color: var(--admin-heading);
   margin: 0 0 6px;
 }
 .cp-mark-paid-method-options {
@@ -2762,26 +2762,28 @@ a:hover .cp-expense-receipt-pdf {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: var(--admin-control-height, 44px);
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--admin-input-bg);
   cursor: pointer;
   font-weight: 500;
-  color: #374151;
+  color: var(--admin-text);
   transition: border-color .12s ease, background .12s ease, color .12s ease;
 }
 .cp-mark-paid-method-option:hover {
-  border-color: #94a3b8;
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface-hover);
 }
 .cp-mark-paid-method-option input[type="radio"] {
   margin: 0;
-  accent-color: #024768;
+  accent-color: var(--admin-primary);
 }
 .cp-mark-paid-method-option:has(input[type="radio"]:checked) {
-  border-color: #024768;
-  background: #eef5fa;
-  color: #024768;
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
 }
 
 .cp-mark-paid-receipt-options {
@@ -2793,9 +2795,10 @@ a:hover .cp-expense-receipt-pdf {
 .cp-mark-paid-project-status {
   margin-top: 16px;
   padding: 14px 14px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-border);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--admin-surface-hover);
+  color: var(--admin-text);
 }
 .cp-mark-paid-project-status:disabled {
   display: none;
@@ -2807,7 +2810,7 @@ a:hover .cp-expense-receipt-pdf {
   margin: 0 0 4px;
   font-size: 14px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--admin-heading);
 }
 
 /* Inline "include HST" toggle inside the invoice editor totals breakdown.
