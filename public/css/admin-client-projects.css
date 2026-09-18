@@ -1269,7 +1269,7 @@ html.cp-cancel-modal-open {
 }
 
 .cp-installments-table .cp-row-paid {
-  background: #f0fdf4;
+  background: var(--admin-success-soft, #f0fdf4);
 }
 /* "(incl. 13% HST)" annotation next to the Amount column header /
    installment row label. Kept lighter-weight and a touch smaller than
@@ -1280,7 +1280,7 @@ html.cp-cancel-modal-open {
   margin-left: 4px;
   font-weight: 400;
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--admin-muted, #6b7280);
   text-transform: none;
   letter-spacing: 0;
 }
@@ -1298,8 +1298,13 @@ html.cp-cancel-modal-open {
   margin: 0;
 }
 .cp-totals-row {
-  background: #f8fafc;
+  background: var(--admin-surface-hover, #f8fafc);
+  color: var(--admin-text);
   font-variant-numeric: tabular-nums;
+}
+.cp-totals-row td,
+.cp-totals-row strong {
+  color: inherit;
 }
 
 /* =================================================================

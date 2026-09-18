@@ -752,6 +752,20 @@ html.admin-dark .cp-installments-remaining.is-error {
   color: #fca5a5;
 }
 
+html.admin-dark .cp-totals-row {
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-totals-row td,
+html.admin-dark .cp-totals-row strong {
+  color: inherit;
+}
+
+html.admin-dark .cp-installments-table .cp-row-paid {
+  background: var(--admin-success-soft);
+}
+
 html.admin-dark .cp-badge--sent {
   background: rgba(56, 189, 248, 0.16);
   color: #7dd3fc;
