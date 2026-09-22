@@ -144,17 +144,14 @@
         @if ($isEdit)
           @include('admin.partials.quotation_view_pdf', ['iconOnly' => true])
           @if ($canSendEmail)
-            <form action="{{ route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq]) }}"
-                  method="post" class="cp-inline-form"
-                  onsubmit='return confirm(@json($sendEmailConfirm));'>
-              @csrf
-              <button type="submit"
-                      class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                      title="Email quotation to client"
-                      aria-label="Email quotation to client">
-                <i class="fa fa-envelope" aria-hidden="true"></i>
-              </button>
-            </form>
+            <button type="submit"
+                    form="br-email-quote-form"
+                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
+                    title="Email quotation to client"
+                    aria-label="Email quotation to client"
+                    onclick='return confirm(@json($sendEmailConfirm));'>
+              <i class="fa fa-envelope" aria-hidden="true"></i>
+            </button>
           @else
             <span class="br-toolbar-disabled-tip" title="{{ $sendEmailDisabledTitle }}">
               <button type="button"
@@ -391,6 +388,16 @@
       </div>
     </aside>
   </form>
+
+  @if ($isEdit && $canSendEmail)
+    <form id="br-email-quote-form"
+          action="{{ route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq]) }}"
+          method="post"
+          class="cp-inline-form"
+          hidden>
+      @csrf
+    </form>
+  @endif
 
   @if ($isEdit && ! $quotation->isLinked())
     @include('admin.quotations._link_to_project_card', [
