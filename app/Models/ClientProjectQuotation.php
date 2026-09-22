@@ -521,9 +521,9 @@ class ClientProjectQuotation extends Model
      * Commute fuel is never shown as its own row: the pre-tax amount is split
      * evenly across each job's Labour line (remainder cents on the last job)
      * so HST stays in the footer. Additional costs are rolled into the
-     * materials line. Debris removal is listed as its own HST-included line
-     * after the job rows (the amount entered on the form), except tile
-     * quotations fold debris into the labour line for the client PDF.
+     * materials line. Debris removal is never its own row: the entered
+     * HST-inclusive amount is converted to pre-tax and added to each job's
+     * Labour line (or the combined Labour and material line).
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -621,41 +621,13 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Client PDFs: show debris as its own line using the entered (HST-inclusive)
-     * amount so it matches the calculator. Do not charge HST again in the footer.
-     * Tile quotations instead fold debris into labour (pre-tax) and label materials
-     * as "Materials".
+     * Client PDFs: fold debris into labour (pre-tax) so HST stays in the footer.
+     * Tile quotations also label materials as "Materials".
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
      */
     protected function normalizeDebrisRemovalForClientFacing(array $items): array
-    {
-        if ($this->source_type === self::SOURCE_TILE) {
-            return $this->normalizeTileDebrisAndMaterialsForClientFacing($items);
-        }
-
-        foreach ($items as &$row) {
-            $desc = (string) ($row['description'] ?? '');
-            if (! DebrisRemovalExpenseService::isLineDescription($desc)) {
-                continue;
-            }
-
-            $row['description'] = DebrisRemovalExpenseService::LINE_DESCRIPTION;
-            $row['is_standalone'] = true;
-            $row['apply_hst'] = false;
-            $row['hst_included'] = true;
-        }
-        unset($row);
-
-        return $items;
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $items
-     * @return list<array<string, mixed>>
-     */
-    protected function normalizeTileDebrisAndMaterialsForClientFacing(array $items): array
     {
         $debrisGross = 0.0;
         $filtered = [];
@@ -667,14 +639,22 @@ class ClientProjectQuotation extends Model
 
                 continue;
             }
-            if ($desc === 'Client-selected tile & materials') {
+            if ($this->source_type === self::SOURCE_TILE && $desc === 'Client-selected tile & materials') {
                 $row['description'] = 'Materials';
             }
             $filtered[] = $row;
         }
 
-        if ($debrisGross > 0) {
+        if ($debrisGross > 0 && $this->commuteLabourLineIndexes($filtered) !== []) {
             $filtered = $this->mergeCommuteIntoLabourLines($filtered, $debrisGross);
+        } elseif ($debrisGross > 0) {
+            $filtered[] = [
+                'description' => DebrisRemovalExpenseService::LINE_DESCRIPTION,
+                'amount' => round($debrisGross, 2),
+                'apply_hst' => false,
+                'hst_included' => true,
+                'is_standalone' => true,
+            ];
         }
 
         return array_values($filtered);

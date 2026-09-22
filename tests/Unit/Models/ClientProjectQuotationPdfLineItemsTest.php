@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class ClientProjectQuotationPdfLineItemsTest extends TestCase
 {
-    public function test_pdf_lists_debris_as_its_own_pre_tax_line_not_folded_into_labour(): void
+    public function test_pdf_folds_debris_into_labour_line(): void
     {
         $quote = new ClientProjectQuotation([
             'source_type' => ClientProjectQuotation::SOURCE_FENCE,
@@ -41,30 +41,45 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
         $lines = $quote->pdfLineItems();
         $descriptions = array_column($lines, 'description');
         $byDesc = collect($lines)->keyBy('description');
+        $preTaxDebris = ClientProjectQuotation::preTaxFromHstIncluded(300.00);
 
-        $this->assertContains(DebrisRemovalExpenseService::LINE_DESCRIPTION, $descriptions);
+        $this->assertNotContains(DebrisRemovalExpenseService::LINE_DESCRIPTION, $descriptions);
+        $this->assertFalse((bool) preg_grep('/Debris/i', $descriptions));
         $this->assertEqualsWithDelta(44.00, $byDesc['Material']['amount'], 0.01);
-        $this->assertEqualsWithDelta(437.50, $byDesc['Labour']['amount'], 0.01);
-
-        $debris = $byDesc[DebrisRemovalExpenseService::LINE_DESCRIPTION];
-        $this->assertEqualsWithDelta(300.00, $debris['amount'], 0.01);
-        $this->assertFalse($debris['apply_hst']);
-        $this->assertTrue($debris['hst_included']);
-        $this->assertTrue($debris['is_standalone']);
-        $this->assertSame(
-            DebrisRemovalExpenseService::LINE_DESCRIPTION,
-            end($descriptions)
-        );
-
-        $taxableHst = ClientProjectQuotation::lineHstAmount($byDesc['Material'])
-            + ClientProjectQuotation::lineHstAmount($byDesc['Labour']);
-        $this->assertEqualsWithDelta(44.00 + 437.50 + 300.00, $quote->pdfSubtotal(), 0.01);
-        $this->assertEqualsWithDelta($taxableHst, $quote->pdfHst(), 0.01);
+        $this->assertEqualsWithDelta(437.50 + $preTaxDebris, $byDesc['Labour']['amount'], 0.01);
+        $this->assertEqualsWithDelta(44.00 + 437.50 + $preTaxDebris, $quote->pdfSubtotal(), 0.01);
         $this->assertEqualsWithDelta(
             $quote->pdfSubtotal() + $quote->pdfHst(),
             $quote->pdfGrandTotal(),
             0.01
         );
+    }
+
+    public function test_pdf_folds_debris_into_labour_and_material_line(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'items' => [
+                [
+                    'description' => 'Labour and material',
+                    'amount' => 1932.93,
+                    'apply_hst' => true,
+                ],
+                [
+                    'description' => DebrisRemovalExpenseService::LINE_DESCRIPTION,
+                    'amount' => 50.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $lines = $quote->pdfLineItems();
+        $preTaxDebris = ClientProjectQuotation::preTaxFromHstIncluded(50.00);
+
+        $this->assertSame(['Labour and material'], array_column($lines, 'description'));
+        $this->assertEqualsWithDelta(1932.93 + $preTaxDebris, $lines[0]['amount'], 0.01);
+        $this->assertEqualsWithDelta(2234.21, $quote->pdfGrandTotal(), 0.01);
     }
 
     public function test_pdf_still_folds_commute_into_labour(): void
