@@ -684,6 +684,12 @@ html.admin-dark .sq-grand-row--final span:last-child {
   color: var(--admin-primary);
 }
 
+html.admin-dark .sq-grand-row--labour-hst-excluded .sq-labour-hst-toggle .admin-checkbox__text,
+html.admin-dark .sq-grand-row--labour-hst-excluded #sq-g-labour-hst,
+html.admin-dark .sq-job-labour-hst-row.is-hst-excluded span {
+  color: var(--admin-muted);
+}
+
 html.admin-dark .cp-projects-scope-label,
 html.admin-dark .cp-hint,
 html.admin-dark .cp-final-dates,

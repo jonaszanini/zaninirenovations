@@ -5559,6 +5559,19 @@ body.cp-modal-open {
   color: var(--admin-primary, #024768);
   font-weight: 700;
 }
+.sq-grand-row--labour-hst {
+  align-items: center;
+}
+.sq-labour-hst-toggle {
+  min-height: 44px;
+  padding-left: 8px;
+}
+.sq-grand-row--labour-hst-excluded .sq-labour-hst-toggle .admin-checkbox__text,
+.sq-grand-row--labour-hst-excluded #sq-g-labour-hst,
+.sq-job-labour-hst-row.is-hst-excluded span {
+  text-decoration: line-through;
+  color: var(--admin-muted, #6b7280);
+}
 .sq-grand-row--commute {
   padding: 10px 14px;
   background: var(--admin-surface, #fff);

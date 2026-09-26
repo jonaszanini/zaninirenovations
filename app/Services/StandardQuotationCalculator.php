@@ -288,7 +288,8 @@ class StandardQuotationCalculator
     public function computeWorks(
         array $works,
         bool $contingencyEnabled = true,
-        float $contingencyPercent = 10.0
+        float $contingencyPercent = 10.0,
+        bool $includeLabourHst = true
     ): array {
         if ($works === []) {
             $works = [[
@@ -347,7 +348,7 @@ class StandardQuotationCalculator
 
         $labourHours = round($labourHours, 2);
         $labourTotal = round($labourTotal, 2);
-        $labourHst = round($labourHst, 2);
+        $labourHst = $includeLabourHst ? round($labourHst, 2) : 0.0;
 
         $combined = $this->compute(
             $allMaterials,
@@ -364,12 +365,13 @@ class StandardQuotationCalculator
         $preHstTaxable = round(
             (float) $combined['materials_subtotal_taxable']
             + (float) $combined['contingency_amount_taxable']
-            + $labourTotal,
+            + ($includeLabourHst ? $labourTotal : 0.0),
             2
         );
         $preHstExempt = round(
             (float) $combined['materials_subtotal_exempt']
-            + (float) $combined['contingency_amount_exempt'],
+            + (float) $combined['contingency_amount_exempt']
+            + ($includeLabourHst ? 0.0 : $labourTotal),
             2
         );
         $totalHst = round((float) $combined['materials_hst'] + $labourHst, 2);

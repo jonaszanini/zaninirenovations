@@ -101,7 +101,14 @@
   var gMatTot = document.getElementById('sq-g-mat-total');
   var gLab = document.getElementById('sq-g-labour');
   var gLabHst = document.getElementById('sq-g-labour-hst');
+  var gLabHstRow = document.getElementById('sq-g-labour-hst-row');
   var gLabTot = document.getElementById('sq-g-labour-total');
+  var gLabTotLabel = document.getElementById('sq-g-labour-total-label');
+  var includeLabourHstInput = document.getElementById('sq-include-labour-hst');
+
+  function labourHstEnabled() {
+    return !includeLabourHstInput || includeLabourHstInput.checked;
+  }
   var gGrand = document.getElementById('sq-g-grand');
   var toolbarGrandAmount = document.getElementById('sq-toolbar-grand-amount');
   var gCommuteRow = document.getElementById('sq-g-commute-row');
@@ -269,6 +276,11 @@
       labWithHst = Math.round((lab + labHst) * 100) / 100;
     }
 
+    if (!labourHstEnabled()) {
+      labHst = 0;
+      labWithHst = lab;
+    }
+
     setText(card.querySelector('.sq-job-mat-subtotal'), money(subSum));
     setText(card.querySelector('.sq-job-mat-with-hst'), money(withSum));
     setText(card.querySelector('.sq-job-labour-total'), money(lab));
@@ -355,6 +367,15 @@
     setText(gLab, money(lab));
     setText(gLabHst, money(labHst));
     setText(gLabTot, money(labWithHst));
+    var hstOn = labourHstEnabled();
+    if (gLabHstRow) gLabHstRow.classList.toggle('sq-grand-row--labour-hst-excluded', !hstOn);
+    if (gLabTotLabel) gLabTotLabel.textContent = hstOn ? 'Total labour with HST' : 'Total labour';
+    document.querySelectorAll('.sq-job-labour-hst-row').forEach(function (row) {
+      row.classList.toggle('is-hst-excluded', !hstOn);
+    });
+    document.querySelectorAll('.sq-job-labour-with-hst-label').forEach(function (el) {
+      el.textContent = hstOn ? 'Total labour with HST' : 'Total labour';
+    });
     if (gCommuteRow) gCommuteRow.classList.toggle('is-hidden', !(lastCommuteAmount > 0));
     setText(gCommute, money(lastCommuteAmount));
     if (gDebrisRow) gDebrisRow.classList.toggle('is-hidden', !(lastDebrisAmount > 0));
@@ -788,7 +809,8 @@
       e.target.classList.contains('sq-labour-mode') ||
       e.target.id === 'sq-contingency-enabled' ||
       e.target.classList.contains('sq-labour-use-fixed-cb') ||
-      e.target.classList.contains('sq-labour-fixed-hst-inc-cb')
+      e.target.classList.contains('sq-labour-fixed-hst-inc-cb') ||
+      e.target.id === 'sq-include-labour-hst'
     ) {
       if (e.target.classList.contains('sq-labour-use-fixed-cb')) {
         var card = e.target.closest('.sq-work-card');

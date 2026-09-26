@@ -65,6 +65,7 @@ class StandardQuotation extends Model
         'materials_with_hst',
         'labour_total',
         'labour_hst',
+        'include_labour_hst',
         'grand_total',
         'contingency_enabled',
         'contingency_percent',
@@ -97,6 +98,7 @@ class StandardQuotation extends Model
         'materials_with_hst' => 'decimal:2',
         'labour_total' => 'decimal:2',
         'labour_hst' => 'decimal:2',
+        'include_labour_hst' => 'boolean',
         'grand_total' => 'decimal:2',
         'contingency_enabled' => 'boolean',
         'contingency_percent' => 'decimal:2',
@@ -250,7 +252,14 @@ class StandardQuotation extends Model
             $this->resolvedWorks(),
             (bool) $this->contingency_enabled,
             (float) ($this->contingency_percent ?? 0),
+            $this->chargesLabourHst(),
         );
+    }
+
+    /** Labour HST is on unless the quote explicitly turns it off (cash). */
+    public function chargesLabourHst(): bool
+    {
+        return $this->include_labour_hst !== false;
     }
 
     /** Pre-HST labour only (excludes materials, commute, and debris). */
@@ -404,7 +413,7 @@ class StandardQuotation extends Model
             $lines[] = [
                 'description' => 'Labour',
                 'amount' => round((float) $computed['labour_total'], 2),
-                'apply_hst' => true,
+                'apply_hst' => $this->chargesLabourHst(),
             ];
         }
 
@@ -444,6 +453,7 @@ class StandardQuotation extends Model
 
             $taxableCombined = 0.0;
             $exemptMaterial = 0.0;
+            $mergedTaxableLabour = false;
             $passthrough = [];
             $j = $i;
 
@@ -461,7 +471,12 @@ class StandardQuotation extends Model
                 } elseif (str_starts_with($curDesc, 'Material')) {
                     $exemptMaterial += (float) ($cur['amount'] ?? 0);
                 } elseif ($curDesc === 'Labour') {
-                    $taxableCombined += (float) ($cur['amount'] ?? 0);
+                    if (! empty($cur['apply_hst'])) {
+                        $taxableCombined += (float) ($cur['amount'] ?? 0);
+                        $mergedTaxableLabour = true;
+                    } else {
+                        $passthrough[] = $cur;
+                    }
                 } else {
                     $passthrough[] = $cur;
                 }
@@ -472,8 +487,12 @@ class StandardQuotation extends Model
             $exemptMaterial = round($exemptMaterial, 2);
 
             if ($taxableCombined > 0) {
+                $lineLabel = $label;
+                if (! $mergedTaxableLabour && ($label === 'Labour and material' || $label === 'Labour')) {
+                    $lineLabel = 'Material';
+                }
                 $out[] = [
-                    'description' => $label,
+                    'description' => $lineLabel,
                     'amount' => $taxableCombined,
                     'apply_hst' => true,
                 ];
@@ -641,7 +660,7 @@ class StandardQuotation extends Model
                 $lines[] = [
                     'description' => 'Labour',
                     'amount' => round((float) $job['labour_total'], 2),
-                    'apply_hst' => true,
+                    'apply_hst' => $this->chargesLabourHst(),
                 ];
             }
         }

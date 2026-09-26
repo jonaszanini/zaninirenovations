@@ -156,4 +156,38 @@ class StandardQuotationCalculatorTest extends TestCase
             0.01
         );
     }
+
+    public function test_compute_works_can_omit_labour_hst(): void
+    {
+        $works = [[
+            'title' => 'Install',
+            'materials' => [[
+                'short_name' => 'Board',
+                'unit_price' => 100,
+                'quantity' => 1,
+                'apply_hst' => true,
+            ]],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 200,
+            'labour_fixed_hst_included' => false,
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+        ]];
+
+        $calc = new StandardQuotationCalculator();
+        $withHst = $calc->computeWorks($works, false, 0, true);
+        $cash = $calc->computeWorks($works, false, 0, false);
+
+        $this->assertEqualsWithDelta(26.0, $withHst['labour_hst'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $cash['labour_hst'], 0.01);
+        $this->assertEqualsWithDelta(200.0, $cash['labour_total'], 0.01);
+        $this->assertEqualsWithDelta(
+            $withHst['grand_total'] - 26.0,
+            $cash['grand_total'],
+            0.01
+        );
+        $this->assertEqualsWithDelta(200.0, $cash['pre_hst_exempt'], 0.01);
+        $this->assertEqualsWithDelta(100.0, $cash['pre_hst_taxable'], 0.01);
+    }
 }

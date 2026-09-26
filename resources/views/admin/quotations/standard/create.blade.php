@@ -54,9 +54,17 @@
       $contingencyPercent = $isEdit
           ? rtrim(rtrim(number_format((float) $quotation->contingency_percent, 2, '.', ''), '0'), '.')
           : '10';
-      if ($contingencyPercent === '') {
-          $contingencyPercent = '10';
-      }
+  if ($contingencyPercent === '') {
+      $contingencyPercent = '10';
+  }
+
+  if (old('include_labour_hst') !== null) {
+      $includeLabourHst = filter_var(old('include_labour_hst'), FILTER_VALIDATE_BOOLEAN);
+  } elseif ($isEdit) {
+      $includeLabourHst = (bool) ($quotation->include_labour_hst ?? true);
+  } else {
+      $includeLabourHst = true;
+  }
   }
 
   $linkProject = $linkProject ?? null;
@@ -478,12 +486,23 @@
               <span>Subtotal (before HST)</span>
               <span id="sq-g-labour">CA$0.00</span>
             </div>
-            <div class="sq-grand-row sq-grand-row--sub">
-              <span>HST (13%)</span>
+            <div class="sq-grand-row sq-grand-row--sub sq-grand-row--labour-hst{{ $includeLabourHst ? '' : ' sq-grand-row--labour-hst-excluded' }}" id="sq-g-labour-hst-row">
+              <label class="admin-checkbox sq-labour-hst-toggle" for="sq-include-labour-hst">
+                <input type="hidden" name="include_labour_hst" value="0">
+                <input type="checkbox"
+                       name="include_labour_hst"
+                       value="1"
+                       id="sq-include-labour-hst"
+                       class="admin-checkbox__input"
+                       title="Uncheck to leave HST off labour."
+                       @checked($includeLabourHst)>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">HST (13%)</span>
+              </label>
               <span id="sq-g-labour-hst">CA$0.00</span>
             </div>
             <div class="sq-grand-row sq-grand-row--section-total">
-              <span>Total labour with HST</span>
+              <span id="sq-g-labour-total-label">{{ $includeLabourHst ? 'Total labour with HST' : 'Total labour' }}</span>
               <span id="sq-g-labour-total">CA$0.00</span>
             </div>
           </div>

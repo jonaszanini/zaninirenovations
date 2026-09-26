@@ -85,7 +85,7 @@
 
       <div class="sq-panel sq-panel--nested">
         <h3 style="margin:0 0 8px;">Labour</h3>
-        <p class="admin-form-help">Labour is <strong>HST-taxable</strong> at 13%. Use a <strong>flat labour fee</strong> for a fixed dollar amount, or estimate by <strong>rate × hours/days</strong> (<span title="1 day = 8 hours">8 h = 1 day</span>).</p>
+        <p class="admin-form-help">Labour includes HST (13%) unless you uncheck it in Totals. Use a <strong>flat labour fee</strong> for a fixed dollar amount, or estimate by <strong>rate × hours/days</strong> (<span title="1 day = 8 hours">8 h = 1 day</span>).</p>
 
         <div class="admin-form-group sq-labour-fixed-block">
           <input type="hidden" name="works[{{ $workIndex }}][labour_use_fixed]" value="0">
@@ -146,12 +146,12 @@
             <span>Total labour (before HST)</span>
             <span class="sq-job-labour-total">CA$0.00</span>
           </div>
-          <div class="cp-quotation-totals-row">
+          <div class="cp-quotation-totals-row sq-job-labour-hst-row">
             <span>HST on labour (13%)</span>
             <span class="sq-job-labour-hst">CA$0.00</span>
           </div>
           <div class="cp-quotation-totals-row">
-            <span>Total labour with HST</span>
+            <span class="sq-job-labour-with-hst-label">Total labour with HST</span>
             <span class="sq-job-labour-with-hst">CA$0.00</span>
           </div>
         </div>

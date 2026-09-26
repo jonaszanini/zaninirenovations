@@ -453,6 +453,7 @@ class StandardQuotationController extends Controller
             'works.*.labour_quantity' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'includes_material' => ['nullable'],
             'includes_labour' => ['nullable'],
+            'include_labour_hst' => ['nullable', 'boolean'],
             'contingency_enabled' => ['nullable'],
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules()), array_merge([
@@ -538,11 +539,15 @@ class StandardQuotationController extends Controller
         if ($contingencyPercent === null || $contingencyPercent === '') {
             $contingencyPercent = 10.0;
         }
+        $includeLabourHst = $request->has('include_labour_hst')
+            ? $request->boolean('include_labour_hst')
+            : true;
 
         $computed = $calculator->computeWorks(
             $worksForCompute,
             $contingencyEnabled,
-            (float) $contingencyPercent
+            (float) $contingencyPercent,
+            $includeLabourHst
         );
 
         $materialMapper = static function (array $m): array {
@@ -654,6 +659,7 @@ class StandardQuotationController extends Controller
                 'materials_with_hst' => $computed['materials_with_hst'],
                 'labour_total' => $computed['labour_total'],
                 'labour_hst' => $computed['labour_hst'],
+                'include_labour_hst' => $includeLabourHst,
                 'grand_total' => $computed['grand_total'],
                 'contingency_enabled' => $computed['contingency_enabled'],
                 'contingency_percent' => $computed['contingency_percent'],
@@ -812,8 +818,9 @@ class StandardQuotationController extends Controller
     {
         [$taxableSub, $exemptSub] = $this->materialsTaxableExemptSplit($sq);
         $contingencyTaxable = $this->contingencyTaxableShare($sq, $taxableSub, $exemptSub);
+        $labourTaxable = $sq->chargesLabourHst() ? (float) $sq->labour_total : 0.0;
 
-        return round($taxableSub + $contingencyTaxable + (float) $sq->labour_total, 2);
+        return round($taxableSub + $contingencyTaxable + $labourTaxable, 2);
     }
 
     /**
@@ -826,8 +833,9 @@ class StandardQuotationController extends Controller
         [$taxableSub, $exemptSub] = $this->materialsTaxableExemptSplit($sq);
         $contingencyExempt = (float) $sq->contingency_amount
             - $this->contingencyTaxableShare($sq, $taxableSub, $exemptSub);
+        $labourExempt = $sq->chargesLabourHst() ? 0.0 : (float) $sq->labour_total;
 
-        return round($exemptSub + max(0.0, $contingencyExempt), 2);
+        return round($exemptSub + max(0.0, $contingencyExempt) + $labourExempt, 2);
     }
 
     /**

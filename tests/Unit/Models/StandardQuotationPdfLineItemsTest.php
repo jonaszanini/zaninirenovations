@@ -484,4 +484,40 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertTrue($debris['hst_included']);
         $this->assertFalse($debris['apply_hst']);
     }
+
+    public function test_cash_labour_is_exempt_and_stays_off_the_taxable_combined_line(): void
+    {
+        $quote = new StandardQuotation([
+            'includes_material' => true,
+            'includes_labour' => true,
+            'include_labour_hst' => false,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+            'materials' => [
+                [
+                    'short_name' => 'Plywood',
+                    'unit_price' => 100,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+            ],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 200,
+            'labour_fixed_hst_included' => false,
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $lines = $quote->combinedPdfLineItems();
+        $byDesc = collect($lines)->keyBy('description');
+
+        $this->assertEqualsWithDelta(100.0, $byDesc['Material']['amount'], 0.01);
+        $this->assertTrue($byDesc['Material']['apply_hst']);
+        $this->assertEqualsWithDelta(200.0, $byDesc['Labour']['amount'], 0.01);
+        $this->assertFalse($byDesc['Labour']['apply_hst']);
+        $this->assertEqualsWithDelta(0.0, $quote->computedTotals()['labour_hst'], 0.01);
+    }
 }
