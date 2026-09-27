@@ -19,8 +19,12 @@ class SharedWorkCatalogTest extends TestCase
         $this->assertArrayHasKey('door_install', $defs);
         $this->assertSame('lf', $defs['shoe_install']['unit']);
         $this->assertSame(SharedWork::KIND_FLAT, $defs['shoe_install']['labor_kind']);
-        $this->assertEqualsWithDelta(30.0, $defs['shoe_install']['rate'], 0.01);
-        $this->assertEqualsWithDelta(3.50, $defs['shoe_install']['flat_rate'], 0.01);
+        $this->assertEqualsWithDelta(21.7949, $defs['shoe_install']['rate'], 0.01);
+        $this->assertEqualsWithDelta(3.90, $defs['shoe_install']['flat_rate'], 0.01);
+        $this->assertArrayHasKey('pocket_door', $defs);
+        $this->assertArrayHasKey('stain_trim', $defs);
+        $this->assertArrayHasKey('wainscot_shaker', $defs);
+        $this->assertEqualsWithDelta(19.90, $defs['box_moulding']['flat_rate'], 0.01);
         $this->assertSame(SharedWork::KIND_FLAT, $defs['baseboard']['labor_kind']);
         $this->assertSame(SharedWork::KIND_FLAT, $defs['casing_lf']['labor_kind']);
         $this->assertGreaterThan(0, $defs['casing_lf']['flat_rate']);

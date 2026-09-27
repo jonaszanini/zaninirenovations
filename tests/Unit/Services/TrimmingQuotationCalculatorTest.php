@@ -137,6 +137,33 @@ class TrimmingQuotationCalculatorTest extends TestCase
         $this->assertGreaterThanOrEqual(3, (float) $sheets['qty']);
     }
 
+    public function test_ottawa_services_add_labor_and_materials(): void
+    {
+        $calc = (new TrimmingQuotationCalculator)->calculate([
+            'enabled_families' => ['doors_windows', 'wall_treatments'],
+            'door_qty' => 0,
+            'window_qty' => 0,
+            'include_casing' => false,
+            'include_stool_apron' => false,
+            'pocket_door_qty' => 1,
+            'french_door_qty' => 1,
+            'include_wainscoting' => true,
+            'wainscot_style' => 'shaker',
+            'wainscot_wall_lf' => 20,
+            'wainscot_height_in' => 36,
+            'include_stain' => true,
+            'stain_lf' => 40,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+
+        $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'trim_pocket'));
+        $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'trim_french'));
+        $this->assertNotNull(collect($calc['labor'])->firstWhere('key', 'trim_stain'));
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'pocket_door'));
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'french_door'));
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'shaker_panel'));
+    }
+
     public function test_publish_hint_when_no_quantities(): void
     {
         $hints = (new TrimmingQuotationCalculator)->validationHints([

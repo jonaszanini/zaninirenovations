@@ -163,7 +163,9 @@
               'include_rosettes' => 'Rosettes',
               'include_stool_apron' => 'Stool & apron',
               'include_jamb_extensions' => 'Jamb extensions',
-              'include_interior_doors' => 'Install doors',
+              'include_picture_frame_windows' => 'Picture-frame windows',
+              'include_interior_doors' => 'Pre-hung doors',
+              'include_slab_swap' => 'Slab swap',
             ] as $flag => $label)
               <label class="admin-checkbox">
                 <input type="hidden" name="{{ $flag }}" value="0">
@@ -212,6 +214,49 @@
               <label for="tm-jamb">Jamb qty override</label>
               <input type="number" min="0" step="1" class="admin-input tm-preview" id="tm-jamb" name="jamb_qty" placeholder="Auto 1/opening" value="{{ $tmVal('jamb_qty') }}">
             </div>
+            <div class="admin-form-group" data-tm-show-when="include_picture_frame_windows">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-pf-win',
+                'name' => 'picture_frame_window_qty',
+                'label' => 'Picture-frame window qty',
+                'value' => $tmVal('picture_frame_window_qty'),
+                'info' => 'Blank uses the window openings count.',
+                'workKey' => 'window_picture_frame',
+                'gearLabel' => 'Edit picture-frame window rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('window_picture_frame'),
+                'inputClass' => 'tm-preview',
+                'placeholder' => 'Auto 1/window',
+                'step' => '1',
+              ])
+            </div>
+            <div class="admin-form-group">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-pocket',
+                'name' => 'pocket_door_qty',
+                'label' => 'Pocket doors',
+                'value' => $tmVal('pocket_door_qty', 0),
+                'info' => 'Retrofit pocket openings. New-construction pockets are cheaper; this uses the retrofit rate.',
+                'workKey' => 'pocket_door',
+                'gearLabel' => 'Edit pocket door rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('pocket_door'),
+                'inputClass' => 'tm-preview',
+                'step' => '1',
+              ])
+            </div>
+            <div class="admin-form-group">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-french',
+                'name' => 'french_door_qty',
+                'label' => 'French / double door pairs',
+                'value' => $tmVal('french_door_qty', 0),
+                'info' => 'Each unit is one pair (two leaves).',
+                'workKey' => 'french_door',
+                'gearLabel' => 'Edit French door rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('french_door'),
+                'inputClass' => 'tm-preview',
+                'step' => '1',
+              ])
+            </div>
           </div>
         </div>
       </div>
@@ -235,6 +280,7 @@
             @foreach ([
               'include_baseboard' => 'Baseboards',
               'include_base_cap' => 'Base cap',
+              'include_built_up_baseboard' => 'Built-up / hardwood base',
               'include_shoe' => 'Shoe moulding',
               'include_quarter_round' => 'Quarter round',
             ] as $flag => $label)
@@ -264,6 +310,20 @@
             <div class="admin-form-group" data-tm-show-when="include_base_cap">
               <label for="tm-cap-lf">Base cap override (lf)</label>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-cap-lf" name="base_cap_lf" placeholder="Same as linear feet" value="{{ $tmVal('base_cap_lf') }}">
+            </div>
+            <div class="admin-form-group" data-tm-show-when="include_built_up_baseboard">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-bu-bb-lf',
+                'name' => 'built_up_baseboard_lf',
+                'label' => 'Built-up baseboard override (lf)',
+                'value' => $tmVal('built_up_baseboard_lf'),
+                'info' => '6–9 inch multi-piece or hardwood base. Leave blank to use the floor-to-wall linear feet.',
+                'workKey' => 'built_up_baseboard',
+                'gearLabel' => 'Edit built-up baseboard rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('built_up_baseboard'),
+                'inputClass' => 'tm-preview',
+                'placeholder' => 'Same as linear feet',
+              ])
             </div>
             <div class="admin-form-group" data-tm-show-when="include_shoe">
               @include('admin.quotations._shared_qty_field', [
@@ -309,6 +369,12 @@
               <span class="admin-checkbox__mark"></span>
               <span class="admin-checkbox__text">Cove moulding</span>
             </label>
+            <label class="admin-checkbox">
+              <input type="hidden" name="include_built_up_crown" value="0">
+              <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_built_up_crown" value="1" @checked($tmOn('include_built_up_crown'))>
+              <span class="admin-checkbox__mark"></span>
+              <span class="admin-checkbox__text">Built-up / complex crown</span>
+            </label>
           </div>
           <div class="pq-form-grid">
             <div class="admin-form-group">
@@ -318,6 +384,19 @@
             <div class="admin-form-group">
               <label for="tm-cove-lf">Cove (lf)</label>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-cove-lf" name="cove_lf" value="{{ $tmVal('cove_lf', 0) }}">
+            </div>
+            <div class="admin-form-group" data-tm-show-when="include_built_up_crown">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-bu-crown-lf',
+                'name' => 'built_up_crown_lf',
+                'label' => 'Built-up crown (lf)',
+                'value' => $tmVal('built_up_crown_lf', 0),
+                'info' => 'Multi-member or vaulted crown. Priced higher than a single-piece profile.',
+                'workKey' => 'built_up_crown',
+                'gearLabel' => 'Edit built-up crown rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('built_up_crown'),
+                'inputClass' => 'tm-preview',
+              ])
             </div>
           </div>
         </div>
@@ -404,6 +483,12 @@
             <span class="admin-checkbox__text">@include('admin.partials.info_tip', ['text' => $tips['paint']]) Caulk &amp; paint</span>
           </label>
           <label class="admin-checkbox">
+            <input type="hidden" name="include_stain" value="0">
+            <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_stain" value="1" @checked($tmOn('include_stain'))>
+            <span class="admin-checkbox__mark"></span>
+            <span class="admin-checkbox__text">Stain &amp; clear coat</span>
+          </label>
+          <label class="admin-checkbox">
             <input type="hidden" name="client_provides_all" value="0">
             <input type="checkbox" class="admin-checkbox__input tm-preview" id="tm-client-all" name="client_provides_all" value="1" @checked($tmOn('client_provides_all'))>
             <span class="admin-checkbox__mark"></span>
@@ -422,6 +507,20 @@
           <div class="admin-form-group" data-tm-show-when="include_caulk_paint">
             <label for="tm-paint-coats">Paint coats</label>
             <input type="number" min="1" max="4" step="1" class="admin-input tm-preview" id="tm-paint-coats" name="paint_coats" value="{{ $tmVal('paint_coats', 2) }}">
+          </div>
+          <div class="admin-form-group" data-tm-show-when="include_stain">
+            @include('admin.quotations._shared_qty_field', [
+              'id' => 'tm-stain-lf',
+              'name' => 'stain_lf',
+              'label' => 'Stain & clear coat (lf)',
+              'value' => $tmVal('stain_lf'),
+              'info' => 'Blank uses the installed trim length.',
+              'workKey' => 'stain_trim',
+              'gearLabel' => 'Edit stain rates',
+              'rate' => \App\Services\SharedWorkCatalog::rateLine('stain_trim'),
+              'inputClass' => 'tm-preview',
+              'placeholder' => 'Auto from selected profiles',
+            ])
           </div>
         </div>
       </div>

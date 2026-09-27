@@ -126,7 +126,7 @@ class SharedWorkCatalog
                 'unit' => 'lf',
                 'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $trimProd['shoe_lf_per_hr'],
-                'flat_rate' => 3.50,
+                'flat_rate' => 3.90,
                 'material' => $trimMat['shoe'],
                 'material_keys' => [
                     'trimming' => ['shoe'],
@@ -147,7 +147,7 @@ class SharedWorkCatalog
                 'unit' => 'lf',
                 'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $trimProd['caulk_paint_lf_per_hr'],
-                'flat_rate' => 2.25,
+                'flat_rate' => 3.25,
                 'consumers' => ['trimming', 'flooring', 'basement'],
                 'productivity_keys' => [
                     'trimming' => ['caulk_paint_lf_per_hr'],
@@ -162,7 +162,7 @@ class SharedWorkCatalog
                 'unit' => 'lf',
                 'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['baseboard_lf_per_hr'],
-                'flat_rate' => 6.35,
+                'flat_rate' => 4.75,
                 'material' => $basementMat['baseboard'],
                 'material_keys' => [
                     'basement' => ['baseboard'],
@@ -180,7 +180,7 @@ class SharedWorkCatalog
                 'unit' => 'lf',
                 'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $trimProd['caulk_paint_lf_per_hr'],
-                'flat_rate' => 2.25,
+                'flat_rate' => 3.25,
                 'consumers' => ['flooring'],
             ],
             'casing_lf' => [
@@ -189,7 +189,7 @@ class SharedWorkCatalog
                 'unit' => 'lf',
                 'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $trimProd['casing_lf_per_hr'],
-                'flat_rate' => self::defaultLinearRateFromProductivity((float) $trimProd['casing_lf_per_hr']),
+                'flat_rate' => 6.10,
                 'material' => $trimMat['casing'],
                 'material_keys' => [
                     'trimming' => ['casing'],
@@ -231,10 +231,10 @@ class SharedWorkCatalog
             ],
             'door_install' => [
                 'group_key' => 'doors',
-                'label' => 'Hang interior door',
+                'label' => 'Hang pre-hung interior door',
                 'unit' => 'each',
                 'labor_kind' => SharedWork::KIND_HOURS_EACH,
-                'rate' => (float) $basementProd['door_install_hours_each'],
+                'rate' => self::hoursFromLaborAmount(235.00),
                 'material' => $basementMat['interior_door'],
                 'material_keys' => [
                     'basement' => ['interior_door'],
@@ -244,6 +244,324 @@ class SharedWorkCatalog
                 'productivity_keys' => [
                     'basement' => ['door_install_hours_each'],
                     'trimming' => ['door_install_hours_each'],
+                ],
+            ],
+            'door_slab_swap' => [
+                'group_key' => 'doors',
+                'label' => 'Interior door slab swap',
+                'unit' => 'each',
+                'labor_kind' => SharedWork::KIND_HOURS_EACH,
+                'rate' => self::hoursFromLaborAmount(205.00),
+                'material' => $trimMat['door_slab'] ?? $basementMat['interior_door'],
+                'material_keys' => [
+                    'trimming' => ['door_slab'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['door_slab_hours_each'],
+                ],
+            ],
+            'pocket_door' => [
+                'group_key' => 'doors',
+                'label' => 'Pocket door (retrofit)',
+                'unit' => 'each',
+                'labor_kind' => SharedWork::KIND_HOURS_EACH,
+                'rate' => self::hoursFromLaborAmount(2110.00),
+                'material' => $trimMat['pocket_door'] ?? [],
+                'material_keys' => [
+                    'trimming' => ['pocket_door'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['pocket_door_hours_each'],
+                ],
+            ],
+            'french_door' => [
+                'group_key' => 'doors',
+                'label' => 'French / double door pair',
+                'unit' => 'each',
+                'labor_kind' => SharedWork::KIND_HOURS_EACH,
+                'rate' => self::hoursFromLaborAmount(665.00),
+                'material' => $trimMat['french_door'] ?? [],
+                'material_keys' => [
+                    'trimming' => ['french_door'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['french_door_hours_each'],
+                ],
+            ],
+            'stool_apron' => [
+                'group_key' => 'trim',
+                'label' => 'Window stool & apron',
+                'unit' => 'each',
+                'labor_kind' => SharedWork::KIND_HOURS_EACH,
+                'rate' => self::hoursFromLaborAmount(214.00),
+                'material' => $trimMat['stool_apron'],
+                'material_keys' => [
+                    'trimming' => ['stool_apron'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['stool_apron_hours_each'],
+                ],
+            ],
+            'jamb_extension' => [
+                'group_key' => 'trim',
+                'label' => 'Custom jamb extension',
+                'unit' => 'each',
+                'labor_kind' => SharedWork::KIND_HOURS_EACH,
+                'rate' => self::hoursFromLaborAmount(136.00),
+                'material' => $trimMat['jamb_extension'],
+                'material_keys' => [
+                    'trimming' => ['jamb_extension'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['jamb_hours_each'],
+                ],
+            ],
+            'window_picture_frame' => [
+                'group_key' => 'trim',
+                'label' => 'Picture-frame window casing',
+                'unit' => 'each',
+                'labor_kind' => SharedWork::KIND_HOURS_EACH,
+                'rate' => self::hoursFromLaborAmount(170.00),
+                'material' => $trimMat['window_picture_frame'] ?? [],
+                'material_keys' => [
+                    'trimming' => ['window_picture_frame'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['window_picture_frame_hours_each'],
+                ],
+            ],
+            'quarter_round' => [
+                'group_key' => 'trim',
+                'label' => 'Install quarter round',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['quarter_round_lf_per_hr'],
+                'flat_rate' => 3.90,
+                'material' => $trimMat['quarter_round'],
+                'material_keys' => [
+                    'trimming' => ['quarter_round'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['quarter_round_lf_per_hr'],
+                ],
+            ],
+            'base_cap' => [
+                'group_key' => 'trim',
+                'label' => 'Install base cap',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['base_cap_lf_per_hr'],
+                'flat_rate' => 5.10,
+                'material' => $trimMat['base_cap'],
+                'material_keys' => [
+                    'trimming' => ['base_cap'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['base_cap_lf_per_hr'],
+                ],
+            ],
+            'built_up_baseboard' => [
+                'group_key' => 'trim',
+                'label' => 'Install built-up / hardwood baseboard',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => 0,
+                'flat_rate' => 7.25,
+                'material' => $trimMat['built_up_baseboard'] ?? [],
+                'material_keys' => [
+                    'trimming' => ['built_up_baseboard'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['built_up_baseboard_lf_per_hr'],
+                ],
+            ],
+            'crown' => [
+                'group_key' => 'trim',
+                'label' => 'Install crown moulding',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['crown_lf_per_hr'],
+                'flat_rate' => 6.60,
+                'material' => $trimMat['crown'],
+                'material_keys' => [
+                    'trimming' => ['crown'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['crown_lf_per_hr'],
+                ],
+            ],
+            'cove' => [
+                'group_key' => 'trim',
+                'label' => 'Install cove moulding',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['cove_lf_per_hr'],
+                'flat_rate' => 6.60,
+                'material' => $trimMat['cove'],
+                'material_keys' => [
+                    'trimming' => ['cove'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['cove_lf_per_hr'],
+                ],
+            ],
+            'built_up_crown' => [
+                'group_key' => 'trim',
+                'label' => 'Install built-up / complex crown',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => 0,
+                'flat_rate' => 12.90,
+                'material' => $trimMat['built_up_crown'] ?? [],
+                'material_keys' => [
+                    'trimming' => ['built_up_crown'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['built_up_crown_lf_per_hr'],
+                ],
+            ],
+            'chair_rail' => [
+                'group_key' => 'trim',
+                'label' => 'Install chair rail',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['chair_rail_lf_per_hr'],
+                'flat_rate' => 5.10,
+                'material' => $trimMat['chair_rail'],
+                'material_keys' => [
+                    'trimming' => ['chair_rail'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['chair_rail_lf_per_hr'],
+                ],
+            ],
+            'picture_rail' => [
+                'group_key' => 'trim',
+                'label' => 'Install picture rail',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['picture_rail_lf_per_hr'],
+                'flat_rate' => 5.10,
+                'material' => $trimMat['picture_rail'],
+                'material_keys' => [
+                    'trimming' => ['picture_rail'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['picture_rail_lf_per_hr'],
+                ],
+            ],
+            'box_moulding' => [
+                'group_key' => 'trim',
+                'label' => 'Install picture-frame / box moulding',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['box_moulding_lf_per_hr'],
+                'flat_rate' => 19.90,
+                'material' => $trimMat['box_moulding'],
+                'material_keys' => [
+                    'trimming' => ['box_moulding'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['box_moulding_lf_per_hr'],
+                ],
+            ],
+            'remove_trim' => [
+                'group_key' => 'demolition',
+                'label' => 'Remove existing trim',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['remove_lf_per_hr'],
+                'flat_rate' => 1.23,
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['remove_lf_per_hr'],
+                ],
+            ],
+            'stain_trim' => [
+                'group_key' => 'painting',
+                'label' => 'Stain & clear coat trim',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => 0,
+                'flat_rate' => 4.95,
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['stain_lf_per_hr'],
+                ],
+            ],
+            'wainscot_beadboard' => [
+                'group_key' => 'trim',
+                'label' => 'Beadboard wainscoting',
+                'unit' => 'sf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['wainscot_beadboard_sf_per_hr'],
+                'flat_rate' => 10.20,
+                'material' => $trimMat['beadboard_sheet'],
+                'material_keys' => [
+                    'trimming' => ['beadboard_sheet'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['wainscot_beadboard_sf_per_hr'],
+                ],
+            ],
+            'wainscot_bnb' => [
+                'group_key' => 'trim',
+                'label' => 'Board & batten wainscoting',
+                'unit' => 'sf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['wainscot_bnb_sf_per_hr'],
+                'flat_rate' => 10.20,
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['wainscot_bnb_sf_per_hr'],
+                ],
+            ],
+            'wainscot_raised' => [
+                'group_key' => 'trim',
+                'label' => 'Raised-panel wainscoting',
+                'unit' => 'sf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => (float) $trimProd['wainscot_raised_sf_per_hr'],
+                'flat_rate' => 25.50,
+                'material' => $trimMat['raised_panel'],
+                'material_keys' => [
+                    'trimming' => ['raised_panel'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['wainscot_raised_sf_per_hr'],
+                ],
+            ],
+            'wainscot_shaker' => [
+                'group_key' => 'trim',
+                'label' => 'Shaker-style wall paneling',
+                'unit' => 'sf',
+                'labor_kind' => SharedWork::KIND_FLAT,
+                'rate' => 0,
+                'flat_rate' => 15.60,
+                'material' => $trimMat['shaker_panel'] ?? [],
+                'material_keys' => [
+                    'trimming' => ['shaker_panel'],
+                ],
+                'consumers' => ['trimming'],
+                'productivity_keys' => [
+                    'trimming' => ['wainscot_shaker_sf_per_hr'],
                 ],
             ],
             'paint_walls' => [
@@ -284,7 +602,7 @@ class SharedWorkCatalog
                 'unit' => 'lf',
                 'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['paint_trim_lf_per_hr'],
-                'flat_rate' => self::defaultLinearRateFromProductivity((float) $basementProd['paint_trim_lf_per_hr']),
+                'flat_rate' => 3.25,
                 'consumers' => ['basement'],
                 'productivity_keys' => [
                     'basement' => ['paint_trim_lf_per_hr'],
@@ -433,7 +751,7 @@ class SharedWorkCatalog
     public static function productivityRateForWork(SharedWork $work, array $def, ?float $ownerHourly = null): float
     {
         $unit = $work->unit ?: (string) ($def['unit'] ?? '');
-        if ($unit === 'lf') {
+        if ($unit === 'lf' || $unit === 'sf') {
             $flat = $work->flat_rate !== null
                 ? (float) $work->flat_rate
                 : (float) ($def['flat_rate'] ?? 0);
@@ -455,6 +773,15 @@ class SharedWorkCatalog
         }
 
         return round($ownerHourly / $lfPerHour, 4);
+    }
+
+    public static function hoursFromLaborAmount(float $laborCad, float $ownerHourly = 85.0): float
+    {
+        if ($ownerHourly <= 0) {
+            return 0.0;
+        }
+
+        return round($laborCad / $ownerHourly, 4);
     }
 
     public static function ownerHourlyRate(): float

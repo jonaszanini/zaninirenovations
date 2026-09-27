@@ -21,6 +21,7 @@ class TrimmingQuotationCalculator
         'beadboard' => 'Beadboard',
         'raised_panel' => 'Raised panels',
         'board_and_batten' => 'Board and batten',
+        'shaker' => 'Shaker panels',
     ];
 
     /**
@@ -39,6 +40,11 @@ class TrimmingQuotationCalculator
             'include_stool_apron' => true,
             'include_jamb_extensions' => false,
             'include_interior_doors' => false,
+            'include_slab_swap' => false,
+            'include_picture_frame_windows' => false,
+            'pocket_door_qty' => 0,
+            'french_door_qty' => 0,
+            'picture_frame_window_qty' => null,
             'casing_lf' => null,
             'window_casing_lf' => null,
             'architrave_lf' => null,
@@ -49,16 +55,20 @@ class TrimmingQuotationCalculator
             'floor_lf' => 0,
             'include_baseboard' => true,
             'include_base_cap' => false,
+            'include_built_up_baseboard' => false,
             'include_shoe' => false,
             'include_quarter_round' => false,
             'baseboard_lf' => null,
             'base_cap_lf' => null,
+            'built_up_baseboard_lf' => null,
             'shoe_lf' => null,
             'quarter_round_lf' => null,
             'include_crown' => true,
             'include_cove' => false,
+            'include_built_up_crown' => false,
             'crown_lf' => 0,
             'cove_lf' => 0,
+            'built_up_crown_lf' => 0,
             'include_chair_rail' => false,
             'include_picture_rail' => false,
             'include_box_moulding' => false,
@@ -72,7 +82,9 @@ class TrimmingQuotationCalculator
             'include_remove_existing' => false,
             'remove_lf' => null,
             'include_caulk_paint' => false,
+            'include_stain' => false,
             'paint_lf' => null,
+            'stain_lf' => null,
             'paint_coats' => 2,
             'client_provides_all' => false,
             'client_provides_sections' => [],
@@ -313,9 +325,40 @@ class TrimmingQuotationCalculator
             }
 
             if (! empty($inputs['include_interior_doors']) && $doors > 0) {
-                $addLabor('trim_doors', 'doors_windows', 'Interior doors', $doors.' door(s)', $doors * (float) $prod['door_install_hours_each']);
+                $addLabor('trim_doors', 'doors_windows', 'Pre-hung interior doors', $doors.' door(s)', $doors * (float) $prod['door_install_hours_each']);
                 $addMat('interior_door', 'doors_windows', $doors, 'interior_door');
                 $addMat('door_hardware', 'doors_windows', $doors, 'door_hardware');
+            }
+
+            if (! empty($inputs['include_slab_swap']) && $doors > 0) {
+                $addLabor('trim_slab', 'doors_windows', 'Door slab swap', $doors.' door(s)', $doors * (float) ($prod['door_slab_hours_each'] ?? 2.41));
+                $addMat('door_slab', 'doors_windows', $doors, 'door_slab');
+            }
+
+            $pictureWindows = ! empty($inputs['include_picture_frame_windows'])
+                ? (int) $this->qtyOr($inputs['picture_frame_window_qty'] ?? null, $windows)
+                : 0;
+            if ($pictureWindows > 0) {
+                $addLabor(
+                    'trim_picture_frame_window',
+                    'doors_windows',
+                    'Picture-frame window casing',
+                    $pictureWindows.' window(s)',
+                    $pictureWindows * (float) ($prod['window_picture_frame_hours_each'] ?? 2)
+                );
+                $addMat('window_picture_frame', 'doors_windows', $pictureWindows, 'window_picture_frame');
+            }
+
+            $pocketQty = max(0, (int) ($inputs['pocket_door_qty'] ?? 0));
+            if ($pocketQty > 0) {
+                $addLabor('trim_pocket', 'doors_windows', 'Pocket doors (retrofit)', $pocketQty.' opening(s)', $pocketQty * (float) ($prod['pocket_door_hours_each'] ?? 24.82));
+                $addMat('pocket_door', 'doors_windows', $pocketQty, 'pocket_door');
+            }
+
+            $frenchQty = max(0, (int) ($inputs['french_door_qty'] ?? 0));
+            if ($frenchQty > 0) {
+                $addLabor('trim_french', 'doors_windows', 'French / double doors', $frenchQty.' pair(s)', $frenchQty * (float) ($prod['french_door_hours_each'] ?? 7.82));
+                $addMat('french_door', 'doors_windows', $frenchQty, 'french_door');
             }
         }
 
@@ -324,6 +367,7 @@ class TrimmingQuotationCalculator
             $profiles = [
                 ['flag' => 'include_baseboard', 'override' => 'baseboard_lf', 'key' => 'baseboard', 'label' => 'Baseboards', 'prod' => 'baseboard_lf_per_hr', 'mat' => 'baseboard'],
                 ['flag' => 'include_base_cap', 'override' => 'base_cap_lf', 'key' => 'base_cap', 'label' => 'Base cap', 'prod' => 'base_cap_lf_per_hr', 'mat' => 'base_cap'],
+                ['flag' => 'include_built_up_baseboard', 'override' => 'built_up_baseboard_lf', 'key' => 'built_up_baseboard', 'label' => 'Built-up / hardwood baseboard', 'prod' => 'built_up_baseboard_lf_per_hr', 'mat' => 'built_up_baseboard'],
                 ['flag' => 'include_shoe', 'override' => 'shoe_lf', 'key' => 'shoe', 'label' => 'Shoe moulding', 'prod' => 'shoe_lf_per_hr', 'mat' => 'shoe'],
                 ['flag' => 'include_quarter_round', 'override' => 'quarter_round_lf', 'key' => 'quarter_round', 'label' => 'Quarter round', 'prod' => 'quarter_round_lf_per_hr', 'mat' => 'quarter_round'],
             ];
@@ -355,6 +399,14 @@ class TrimmingQuotationCalculator
                 if ($lf > 0) {
                     $addLabor('trim_cove', 'ceiling', 'Cove moulding', number_format($lf, 0).' lf', $perHr($lf, (float) $prod['cove_lf_per_hr']));
                     $addMat('cove', 'ceiling', $stick($lf), 'cove');
+                    $installLf += $lf;
+                }
+            }
+            if (! empty($inputs['include_built_up_crown'])) {
+                $lf = max(0, (float) $inputs['built_up_crown_lf']);
+                if ($lf > 0) {
+                    $addLabor('trim_built_up_crown', 'ceiling', 'Built-up / complex crown', number_format($lf, 0).' lf', $perHr($lf, (float) ($prod['built_up_crown_lf_per_hr'] ?? 6.59)));
+                    $addMat('built_up_crown', 'ceiling', $stick($lf), 'built_up_crown');
                     $installLf += $lf;
                 }
             }
@@ -390,12 +442,15 @@ class TrimmingQuotationCalculator
                 $prodKey = match ($style) {
                     'raised_panel' => 'wainscot_raised_sf_per_hr',
                     'board_and_batten' => 'wainscot_bnb_sf_per_hr',
+                    'shaker' => 'wainscot_shaker_sf_per_hr',
                     default => 'wainscot_beadboard_sf_per_hr',
                 };
                 if ($wainscotSf > 0) {
-                    $addLabor('trim_wainscot', 'wall_treatments', $styleLabel.' wainscoting', number_format($wainscotSf, 0).' sq ft', $perHr($wainscotSf, (float) $prod[$prodKey]));
+                    $addLabor('trim_wainscot', 'wall_treatments', $styleLabel.' wainscoting', number_format($wainscotSf, 0).' sq ft', $perHr($wainscotSf, (float) ($prod[$prodKey] ?? $prod['wainscot_beadboard_sf_per_hr'])));
                     if ($style === 'raised_panel') {
                         $addMat('raised_panel', 'wall_treatments', round($wainscotSf * $waste, 2), 'raised_panel');
+                    } elseif ($style === 'shaker') {
+                        $addMat('shaker_panel', 'wall_treatments', round($wainscotSf * $waste, 2), 'shaker_panel');
                     } else {
                         $addMat('beadboard_sheet', 'wall_treatments', $this->packages($wainscotSf * $waste, TrimmingSettings::PANEL_SF), 'beadboard_sheet');
                     }
@@ -430,6 +485,13 @@ class TrimmingQuotationCalculator
                 foreach ($this->packQuarts($quarts) as $catalogKey => $qty) {
                     $addMat('paint_'.$catalogKey, 'prep_finish', (float) $qty, $catalogKey);
                 }
+            }
+        }
+
+        if (! empty($inputs['include_stain'])) {
+            $stainLf = $this->qtyOr($inputs['stain_lf'] ?? null, $scopeLf);
+            if ($stainLf > 0) {
+                $addLabor('trim_stain', 'prep_finish', 'Stain & clear coat', number_format($stainLf, 0).' lf', $perHr($stainLf, (float) ($prod['stain_lf_per_hr'] ?? 17.17)));
             }
         }
 

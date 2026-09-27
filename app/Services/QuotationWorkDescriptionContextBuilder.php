@@ -359,7 +359,21 @@ class QuotationWorkDescriptionContextBuilder
                 $lines[] = 'Jamb extensions: included';
             }
             if (! empty($c['include_interior_doors'])) {
-                $lines[] = 'Hang interior doors: included';
+                $lines[] = 'Hang pre-hung interior doors: included';
+            }
+            if (! empty($c['include_slab_swap'])) {
+                $lines[] = 'Door slab swap: included';
+            }
+            if (! empty($c['include_picture_frame_windows'])) {
+                $lines[] = 'Picture-frame window casing: included';
+            }
+            $pocketQty = (int) ($c['pocket_door_qty'] ?? 0);
+            if ($pocketQty > 0) {
+                $lines[] = 'Pocket doors (retrofit): '.$pocketQty;
+            }
+            $frenchQty = (int) ($c['french_door_qty'] ?? 0);
+            if ($frenchQty > 0) {
+                $lines[] = 'French / double door pairs: '.$frenchQty;
             }
         }
 
@@ -384,6 +398,10 @@ class QuotationWorkDescriptionContextBuilder
                 $qrLf = (float) ($c['quarter_round_lf'] ?? $floorLf);
                 $lines[] = 'Quarter round: included'.($qrLf > 0 ? ' ('.$qrLf.' lf)' : '');
             }
+            if (! empty($c['include_built_up_baseboard'])) {
+                $buLf = (float) ($c['built_up_baseboard_lf'] ?? $floorLf);
+                $lines[] = 'Built-up / hardwood baseboard: included'.($buLf > 0 ? ' ('.$buLf.' lf)' : '');
+            }
         }
 
         if (in_array('ceiling', $enabled, true)) {
@@ -394,6 +412,10 @@ class QuotationWorkDescriptionContextBuilder
             if (! empty($c['include_cove'])) {
                 $coveLf = (float) ($c['cove_lf'] ?? 0);
                 $lines[] = 'Cove moulding: included'.($coveLf > 0 ? ' ('.$coveLf.' lf)' : '');
+            }
+            if (! empty($c['include_built_up_crown'])) {
+                $buCrown = (float) ($c['built_up_crown_lf'] ?? 0);
+                $lines[] = 'Built-up / complex crown: included'.($buCrown > 0 ? ' ('.$buCrown.' lf)' : '');
             }
         }
 
@@ -415,6 +437,16 @@ class QuotationWorkDescriptionContextBuilder
                 $style = $c['wainscot_style'] ?? 'beadboard';
                 $lines[] = 'Wainscoting ('.$style.'): included'.($wainscotLf > 0 ? ' ('.$wainscotLf.' lf)' : '');
             }
+        }
+
+        if (! empty($c['include_remove_existing'])) {
+            $lines[] = 'Remove existing trim: included';
+        }
+        if (! empty($c['include_caulk_paint'])) {
+            $lines[] = 'Caulk & paint: included';
+        }
+        if (! empty($c['include_stain'])) {
+            $lines[] = 'Stain & clear coat: included';
         }
 
         $this->appendBlock($lines, 'Live breakdown from form', $c['breakdown_summary'] ?? null);

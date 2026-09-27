@@ -33,8 +33,8 @@ class FlooringSettings extends Model
             'id' => 1,
             'remove_carpet_dispose_rate' => 1.50,
             'rescrew_subfloor_rate' => 350.00,
-            'install_shoe_moulding_rate' => 3.50,
-            'caulk_paint_shoe_moulding_rate' => 2.25,
+            'install_shoe_moulding_rate' => 3.90,
+            'caulk_paint_shoe_moulding_rate' => 3.25,
             'closet_door_reinstall_rate' => 75.00,
         ]);
     }

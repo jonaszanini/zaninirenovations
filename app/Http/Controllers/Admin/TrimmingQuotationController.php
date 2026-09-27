@@ -354,7 +354,7 @@ class TrimmingQuotationController extends Controller
     {
         $defaults = TrimmingQuotationCalculator::defaultInputs();
         $floats = [
-            'floor_lf', 'crown_lf', 'cove_lf',
+            'floor_lf', 'crown_lf', 'cove_lf', 'built_up_crown_lf',
             'chair_rail_lf', 'picture_rail_lf', 'box_moulding_lf',
             'wainscot_wall_lf', 'wainscot_height_in',
             'owner_hourly_rate', 'helper_hourly_rate',
@@ -362,17 +362,18 @@ class TrimmingQuotationController extends Controller
         $optionalQty = [
             'casing_lf', 'window_casing_lf', 'architrave_lf',
             'plinth_qty', 'rosette_qty', 'stool_apron_qty', 'jamb_qty',
-            'baseboard_lf', 'base_cap_lf', 'shoe_lf', 'quarter_round_lf',
-            'remove_lf', 'paint_lf',
+            'baseboard_lf', 'base_cap_lf', 'built_up_baseboard_lf', 'shoe_lf', 'quarter_round_lf',
+            'remove_lf', 'paint_lf', 'stain_lf', 'picture_frame_window_qty',
         ];
-        $ints = ['door_qty', 'window_qty', 'paint_coats'];
+        $ints = ['door_qty', 'window_qty', 'paint_coats', 'pocket_door_qty', 'french_door_qty'];
         $bools = [
             'include_casing', 'include_architrave', 'include_plinth', 'include_rosettes',
             'include_stool_apron', 'include_jamb_extensions', 'include_interior_doors',
-            'include_baseboard', 'include_base_cap', 'include_shoe', 'include_quarter_round',
-            'include_crown', 'include_cove',
+            'include_slab_swap', 'include_picture_frame_windows',
+            'include_baseboard', 'include_base_cap', 'include_built_up_baseboard', 'include_shoe', 'include_quarter_round',
+            'include_crown', 'include_cove', 'include_built_up_crown',
             'include_chair_rail', 'include_picture_rail', 'include_box_moulding', 'include_wainscoting',
-            'include_remove_existing', 'include_caulk_paint', 'client_provides_all', 'include_helper',
+            'include_remove_existing', 'include_caulk_paint', 'include_stain', 'client_provides_all', 'include_helper',
         ];
 
         $out = $defaults;
