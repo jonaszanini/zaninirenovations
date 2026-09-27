@@ -146,7 +146,7 @@ class TrimmingSettings extends Model
             }
         }
 
-        return \App\Services\SharedWorkCatalog::overlayProductivity('trimming', $defaults);
+        return \App\Services\SharedWorkCatalog::overlayProductivity('trimming', $defaults, (float) $this->owner_hourly_rate);
     }
 
     /**

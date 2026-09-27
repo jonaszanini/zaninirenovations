@@ -18,8 +18,12 @@ class SharedWorkCatalogTest extends TestCase
         $this->assertArrayHasKey('baseboard', $defs);
         $this->assertArrayHasKey('door_install', $defs);
         $this->assertSame('lf', $defs['shoe_install']['unit']);
+        $this->assertSame(SharedWork::KIND_FLAT, $defs['shoe_install']['labor_kind']);
         $this->assertEqualsWithDelta(30.0, $defs['shoe_install']['rate'], 0.01);
         $this->assertEqualsWithDelta(3.50, $defs['shoe_install']['flat_rate'], 0.01);
+        $this->assertSame(SharedWork::KIND_FLAT, $defs['baseboard']['labor_kind']);
+        $this->assertSame(SharedWork::KIND_FLAT, $defs['casing_lf']['labor_kind']);
+        $this->assertGreaterThan(0, $defs['casing_lf']['flat_rate']);
         $this->assertContains('flooring', $defs['shoe_install']['consumers']);
         $this->assertContains('trimming', $defs['shoe_install']['consumers']);
         $this->assertContains('flooring', $defs['baseboard']['consumers']);
@@ -45,25 +49,31 @@ class SharedWorkCatalogTest extends TestCase
         }
 
         $work = SharedWork::query()->where('key', 'baseboard')->firstOrFail();
-        $original = (float) $work->rate;
-        $work->rate = 25;
+        $originalRate = (float) $work->rate;
+        $originalFlat = $work->flat_rate;
+        $work->flat_rate = 5.00;
         $work->save();
         SharedWorkCatalog::forgetCache();
 
         $overlay = SharedWorkCatalog::overlayProductivity('trimming', [
             'baseboard_lf_per_hr' => 20,
             'shoe_lf_per_hr' => 30,
-        ]);
-        $this->assertEqualsWithDelta(25.0, $overlay['baseboard_lf_per_hr'], 0.01);
+        ], 100.0);
+        $this->assertEqualsWithDelta(20.0, $overlay['baseboard_lf_per_hr'], 0.01);
 
         $shoe = SharedWork::query()->where('key', 'shoe_install')->firstOrFail();
+        $originalShoeFlat = $shoe->flat_rate;
         $shoe->flat_rate = 4.25;
         $shoe->save();
         SharedWorkCatalog::forgetCache();
         $this->assertEqualsWithDelta(4.25, SharedWorkCatalog::flatRate('shoe_install', 3.50), 0.01);
+        $this->assertSame('$4.25 / lf', SharedWorkCatalog::rateLine('shoe_install'));
 
-        $work->rate = $original;
+        $work->rate = $originalRate;
+        $work->flat_rate = $originalFlat;
         $work->save();
+        $shoe->flat_rate = $originalShoeFlat;
+        $shoe->save();
         SharedWorkCatalog::forgetCache();
     }
 

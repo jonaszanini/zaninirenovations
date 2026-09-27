@@ -61,10 +61,13 @@ class TrimmingQuotationCalculatorTest extends TestCase
         if (! $work) {
             $this->markTestSkipped('shoe_install is not seeded.');
         }
-        $work->rate = 40;
+        $originalRate = (float) $work->rate;
+        $originalFlat = $work->flat_rate;
+        $work->flat_rate = 2.125;
         $work->save();
         \App\Services\SharedWorkCatalog::forgetCache();
 
+        $settings = $this->settings();
         $calc = (new TrimmingQuotationCalculator)->calculate([
             'enabled_families' => ['floor_wall'],
             'floor_lf' => 40,
@@ -72,12 +75,15 @@ class TrimmingQuotationCalculatorTest extends TestCase
             'include_baseboard' => false,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
-        ], $this->settings());
+        ], $settings);
 
         $labor = collect($calc['labor'])->firstWhere('key', 'trim_shoe');
         $this->assertNotNull($labor);
         $this->assertEqualsWithDelta(1.0, (float) $labor['hours'], 0.01);
 
+        $work->rate = $originalRate;
+        $work->flat_rate = $originalFlat;
+        $work->save();
         \App\Services\SharedWorkCatalog::forgetCache();
     }
 

@@ -333,7 +333,7 @@ class MillworkSettings extends Model
             }
         }
 
-        return \App\Services\SharedWorkCatalog::overlayProductivity('millwork', $defaults);
+        return \App\Services\SharedWorkCatalog::overlayProductivity('millwork', $defaults, (float) $this->owner_hourly_rate);
     }
 
     /**

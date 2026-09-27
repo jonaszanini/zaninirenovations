@@ -1274,6 +1274,44 @@ html.admin-dark .pq-link-project {
   color: var(--admin-text);
 }
 
+html.admin-dark .fl-material-tax-note {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+html.admin-dark .fl-material-tax-note strong {
+  color: #fcd34d;
+}
+
+html.admin-dark .fl-field-warning {
+  color: #fbbf24;
+}
+
+html.admin-dark .fl-material-summary {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .fl-material-summary__title,
+html.admin-dark .fl-breakdown-section {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .fl-material-summary__row {
+  color: var(--admin-text);
+}
+
+html.admin-dark .fl-material-summary__row--total,
+html.admin-dark .pq-row--hl {
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .fl-addon-row {
+  border-bottom-color: var(--admin-border);
+}
+
 html.admin-dark .pq-link-project__icon,
 html.admin-dark .pq-link-project__label {
   color: var(--admin-muted);

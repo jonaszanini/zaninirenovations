@@ -199,7 +199,7 @@ class ShedSettings extends Model
             }
         }
 
-        return \App\Services\SharedWorkCatalog::overlayProductivity('shed', $defaults);
+        return \App\Services\SharedWorkCatalog::overlayProductivity('shed', $defaults, (float) $this->owner_hourly_rate);
     }
 
     /**

@@ -41,4 +41,9 @@ class SharedWork extends Model
     {
         return $this->belongsTo(Material::class, 'catalog_material_id');
     }
+
+    public function isLinearFoot(): bool
+    {
+        return $this->unit === 'lf';
+    }
 }

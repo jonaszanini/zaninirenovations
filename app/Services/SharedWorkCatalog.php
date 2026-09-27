@@ -124,7 +124,7 @@ class SharedWorkCatalog
                 'group_key' => 'trim',
                 'label' => 'Install shoe moulding',
                 'unit' => 'lf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $trimProd['shoe_lf_per_hr'],
                 'flat_rate' => 3.50,
                 'material' => $trimMat['shoe'],
@@ -145,7 +145,7 @@ class SharedWorkCatalog
                 'group_key' => 'trim',
                 'label' => 'Caulk & paint shoe moulding',
                 'unit' => 'lf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $trimProd['caulk_paint_lf_per_hr'],
                 'flat_rate' => 2.25,
                 'consumers' => ['trimming', 'flooring', 'basement'],
@@ -160,7 +160,7 @@ class SharedWorkCatalog
                 'group_key' => 'trim',
                 'label' => 'Install baseboard',
                 'unit' => 'lf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['baseboard_lf_per_hr'],
                 'flat_rate' => 6.35,
                 'material' => $basementMat['baseboard'],
@@ -178,7 +178,7 @@ class SharedWorkCatalog
                 'group_key' => 'trim',
                 'label' => 'Caulk & paint baseboard',
                 'unit' => 'lf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $trimProd['caulk_paint_lf_per_hr'],
                 'flat_rate' => 2.25,
                 'consumers' => ['flooring'],
@@ -187,8 +187,9 @@ class SharedWorkCatalog
                 'group_key' => 'trim',
                 'label' => 'Install casing (linear feet)',
                 'unit' => 'lf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $trimProd['casing_lf_per_hr'],
+                'flat_rate' => self::defaultLinearRateFromProductivity((float) $trimProd['casing_lf_per_hr']),
                 'material' => $trimMat['casing'],
                 'material_keys' => [
                     'trimming' => ['casing'],
@@ -281,8 +282,9 @@ class SharedWorkCatalog
                 'group_key' => 'painting',
                 'label' => 'Paint / caulk trim',
                 'unit' => 'lf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['paint_trim_lf_per_hr'],
+                'flat_rate' => self::defaultLinearRateFromProductivity((float) $basementProd['paint_trim_lf_per_hr']),
                 'consumers' => ['basement'],
                 'productivity_keys' => [
                     'basement' => ['paint_trim_lf_per_hr'],
@@ -404,11 +406,12 @@ class SharedWorkCatalog
 
     /**
      * Overlay shared labor rates onto a calculator productivity array.
+     * Linear-foot works store a sell $/lf; productivity is derived so hours × owner = lf × $/lf.
      *
      * @param  array<string, float|int|string>  $productivity
      * @return array<string, float|int|string>
      */
-    public static function overlayProductivity(string $consumer, array $productivity): array
+    public static function overlayProductivity(string $consumer, array $productivity, ?float $ownerHourly = null): array
     {
         foreach (self::definitions() as $key => $def) {
             $work = self::work($key);
@@ -417,11 +420,64 @@ class SharedWorkCatalog
             }
             $prodKeys = $def['productivity_keys'][$consumer] ?? [];
             foreach ($prodKeys as $prodKey) {
-                $productivity[$prodKey] = (float) $work->rate;
+                $productivity[$prodKey] = self::productivityRateForWork($work, $def, $ownerHourly);
             }
         }
 
         return $productivity;
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     */
+    public static function productivityRateForWork(SharedWork $work, array $def, ?float $ownerHourly = null): float
+    {
+        $unit = $work->unit ?: (string) ($def['unit'] ?? '');
+        if ($unit === 'lf') {
+            $flat = $work->flat_rate !== null
+                ? (float) $work->flat_rate
+                : (float) ($def['flat_rate'] ?? 0);
+            if ($flat > 0) {
+                $owner = $ownerHourly ?? self::ownerHourlyRate();
+                if ($owner > 0) {
+                    return $owner / $flat;
+                }
+            }
+        }
+
+        return (float) $work->rate;
+    }
+
+    public static function defaultLinearRateFromProductivity(float $lfPerHour, float $ownerHourly = 85.0): float
+    {
+        if ($lfPerHour <= 0) {
+            return 0.0;
+        }
+
+        return round($ownerHourly / $lfPerHour, 4);
+    }
+
+    public static function ownerHourlyRate(): float
+    {
+        try {
+            return (float) SharedCrewRate::current()->owner_hourly_rate;
+        } catch (\Throwable $e) {
+            return 85.0;
+        }
+    }
+
+    public static function linearFootDisplayRate(SharedWork $work): float
+    {
+        if ($work->flat_rate !== null && (float) $work->flat_rate > 0) {
+            return (float) $work->flat_rate;
+        }
+        $rate = (float) $work->rate;
+        $owner = self::ownerHourlyRate();
+        if ($rate > 0 && $owner > 0) {
+            return round($owner / $rate, 4);
+        }
+
+        return 0.0;
     }
 
     /**
@@ -493,6 +549,12 @@ class SharedWorkCatalog
      */
     public static function effectiveSellRate(SharedWork $work): ?float
     {
+        if ($work->isLinearFoot() || $work->labor_kind === SharedWork::KIND_FLAT) {
+            if ($work->flat_rate !== null && (float) $work->flat_rate > 0) {
+                return (float) $work->flat_rate;
+            }
+        }
+
         $crew = SharedCrewRate::current();
         $owner = (float) $crew->owner_hourly_rate;
         $rate = (float) $work->rate;
@@ -527,6 +589,9 @@ class SharedWorkCatalog
         $flat = $work && $work->flat_rate !== null
             ? (float) $work->flat_rate
             : (float) ($def['flat_rate'] ?? 0);
+        if ($flat <= 0 && $work && $unit === 'lf') {
+            $flat = self::linearFootDisplayRate($work);
+        }
         if ($flat > 0) {
             return '$'.number_format($flat, 2).' / '.$unit;
         }

@@ -68,8 +68,16 @@
             @php
               $catalogId = (int) old('works.'.$work->id.'.catalog_material_id', $work->catalog_material_id ?? 0);
               $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;
-              $effective = \App\Services\SharedWorkCatalog::effectiveSellRate($work);
+              $isLf = $work->isLinearFoot();
+              $effective = $isLf ? null : \App\Services\SharedWorkCatalog::effectiveSellRate($work);
               $consumers = is_array($work->consumers) ? $work->consumers : [];
+              $lfPrice = old('works.'.$work->id.'.flat_rate');
+              if ($lfPrice === null) {
+                  $derivedLf = \App\Services\SharedWorkCatalog::linearFootDisplayRate($work);
+                  $lfPrice = $derivedLf > 0
+                      ? number_format($derivedLf, 4, '.', '')
+                      : '';
+              }
             @endphp
             <article class="sp-work" id="work-{{ $work->key }}">
               <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
@@ -82,22 +90,32 @@
                 </div>
               </header>
               <div class="sp-work__grid">
-                <div class="admin-form-group">
-                  <label for="sp-rate-{{ $work->id }}">{{ $kindLabels[$work->labor_kind] ?? 'Rate' }}</label>
-                  <input type="number" step="0.01" min="0" class="admin-input" id="sp-rate-{{ $work->id }}"
-                         name="works[{{ $work->id }}][rate]"
-                         value="{{ old('works.'.$work->id.'.rate', $work->rate) }}">
-                </div>
-                <div class="admin-form-group">
-                  <label for="sp-flat-{{ $work->id }}">Sell rate (CAD$ / {{ $work->unit }})</label>
-                  <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-                         class="admin-input cp-money-input" id="sp-flat-{{ $work->id }}"
-                         name="works[{{ $work->id }}][flat_rate]"
-                         value="{{ old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}">
-                  @if ($effective !== null)
-                    <p class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($effective) }} / {{ $work->unit }} effective at current crew rate</p>
-                  @endif
-                </div>
+                @if ($isLf)
+                  <div class="admin-form-group">
+                    <label for="sp-flat-{{ $work->id }}">Rate per linear foot (CAD$)</label>
+                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                           class="admin-input cp-money-input" id="sp-flat-{{ $work->id }}"
+                           name="works[{{ $work->id }}][flat_rate]"
+                           value="{{ $lfPrice }}">
+                  </div>
+                @else
+                  <div class="admin-form-group">
+                    <label for="sp-rate-{{ $work->id }}">{{ $kindLabels[$work->labor_kind] ?? 'Rate' }}</label>
+                    <input type="number" step="0.01" min="0" class="admin-input" id="sp-rate-{{ $work->id }}"
+                           name="works[{{ $work->id }}][rate]"
+                           value="{{ old('works.'.$work->id.'.rate', $work->rate) }}">
+                  </div>
+                  <div class="admin-form-group">
+                    <label for="sp-flat-{{ $work->id }}">Sell rate (CAD$ / {{ $work->unit }})</label>
+                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                           class="admin-input cp-money-input" id="sp-flat-{{ $work->id }}"
+                           name="works[{{ $work->id }}][flat_rate]"
+                           value="{{ old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}">
+                    @if ($effective !== null)
+                      <p class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($effective) }} / {{ $work->unit }} effective at current crew rate</p>
+                    @endif
+                  </div>
+                @endif
                 <div class="admin-form-group">
                   <label>Catalog material</label>
                   @include('admin.partials.search_select', [

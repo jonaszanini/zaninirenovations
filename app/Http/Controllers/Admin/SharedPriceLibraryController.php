@@ -30,7 +30,7 @@ class SharedPriceLibraryController extends Controller
             'hours_per_day' => ['required', 'numeric', 'min:0.5', 'max:16'],
             'works' => ['nullable', 'array'],
             'works.*.id' => ['required', 'integer', 'exists:shared_works,id'],
-            'works.*.rate' => ['required', 'numeric', 'min:0'],
+            'works.*.rate' => ['nullable', 'numeric', 'min:0'],
             'works.*.flat_rate' => ['nullable', 'numeric', 'min:0'],
             'works.*.catalog_material_id' => ['nullable', 'integer', 'exists:materials,id'],
             'works.*.material_name' => ['nullable', 'string', 'max:160'],
@@ -60,10 +60,25 @@ class SharedPriceLibraryController extends Controller
                 continue;
             }
             $catalogId = (int) ($row['catalog_material_id'] ?? 0);
-            $work->rate = round((float) $row['rate'], 4);
-            $work->flat_rate = isset($row['flat_rate']) && $row['flat_rate'] !== '' && $row['flat_rate'] !== null
+            $owner = (float) $crew->owner_hourly_rate;
+            $flat = isset($row['flat_rate']) && $row['flat_rate'] !== '' && $row['flat_rate'] !== null
                 ? round((float) $row['flat_rate'], 4)
-                : $work->flat_rate;
+                : null;
+
+            if ($work->isLinearFoot()) {
+                $work->labor_kind = SharedWork::KIND_FLAT;
+                $work->flat_rate = $flat;
+                if ($flat !== null && $flat > 0 && $owner > 0) {
+                    $work->rate = round($owner / $flat, 4);
+                } elseif (isset($row['rate']) && is_numeric($row['rate'])) {
+                    $work->rate = round((float) $row['rate'], 4);
+                }
+            } else {
+                if (isset($row['rate']) && is_numeric($row['rate'])) {
+                    $work->rate = round((float) $row['rate'], 4);
+                }
+                $work->flat_rate = $flat !== null ? $flat : $work->flat_rate;
+            }
             $work->catalog_material_id = $catalogId > 0 ? $catalogId : null;
             $name = trim((string) ($row['material_name'] ?? ''));
             if ($name !== '') {

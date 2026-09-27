@@ -246,7 +246,7 @@ class BasementSettings extends Model
             }
         }
 
-        return \App\Services\SharedWorkCatalog::overlayProductivity('basement', $defaults);
+        return \App\Services\SharedWorkCatalog::overlayProductivity('basement', $defaults, (float) $this->owner_hourly_rate);
     }
 
     /**
