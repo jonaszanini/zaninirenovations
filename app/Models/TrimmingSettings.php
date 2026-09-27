@@ -146,7 +146,7 @@ class TrimmingSettings extends Model
             }
         }
 
-        return $defaults;
+        return \App\Services\SharedWorkCatalog::overlayProductivity('trimming', $defaults);
     }
 
     /**
@@ -179,7 +179,7 @@ class TrimmingSettings extends Model
             $defaults[$key] = $row;
         }
 
-        return $defaults;
+        return \App\Services\SharedWorkCatalog::overlayMaterials('trimming', $defaults);
     }
 
     public function resolvedWasteFactor(): float

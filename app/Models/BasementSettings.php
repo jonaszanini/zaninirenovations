@@ -109,6 +109,7 @@ class BasementSettings extends Model
             'transition_hours_each' => 0.35,
             'door_install_hours_each' => 2,
             'baseboard_lf_per_hr' => 20,
+            'shoe_lf_per_hr' => 30,
             'casing_opening_hours' => 1,
             'window_trim_hours_each' => 1,
             'paint_wall_sf_per_hr' => 80,
@@ -174,6 +175,7 @@ class BasementSettings extends Model
             'transition' => $row('Floor transition strip (each)', 'each', 18.00),
             'interior_door' => $row('Prehung interior door (each)', 'each', 280.00),
             'baseboard' => $row('8 ft baseboard (each)', 'each', round(2.10 * self::BASEBOARD_FEET_PER_STICK, 4)),
+            'shoe' => $row('8 ft shoe moulding (each)', 'each', round(0.95 * self::BASEBOARD_FEET_PER_STICK, 4)),
             'casing' => $row('Door casing set (per opening)', 'opening', 32.00),
             'window_trim' => $row('Window trim kit (per window)', 'each', 45.00),
             'paint_5gal' => $row('Interior paint, 5 gal / 18.9 L pail (each)', 'pail', 240.00),
@@ -244,7 +246,7 @@ class BasementSettings extends Model
             }
         }
 
-        return $defaults;
+        return \App\Services\SharedWorkCatalog::overlayProductivity('basement', $defaults);
     }
 
     /**
@@ -276,6 +278,8 @@ class BasementSettings extends Model
 
             $defaults[$key] = $row;
         }
+
+        $defaults = \App\Services\SharedWorkCatalog::overlayMaterials('basement', $defaults);
 
         return self::applyDerivedMaterialPrices($defaults);
     }

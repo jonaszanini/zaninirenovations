@@ -10,9 +10,16 @@
 @php
   $inputName = $inputName ?? 'productivity';
   $idPrefix = $idPrefix ?? 'prod';
+  $excludeKeys = $excludeKeys ?? [];
   $groupList = [];
   foreach ($productivityGroups as $title => $rows) {
-      $groupList[] = ['title' => $title, 'rows' => $rows];
+      $filtered = array_filter($rows, function ($label, $key) use ($excludeKeys) {
+          return ! in_array($key, $excludeKeys, true);
+      }, ARRAY_FILTER_USE_BOTH);
+      if ($filtered === []) {
+          continue;
+      }
+      $groupList[] = ['title' => $title, 'rows' => $filtered];
   }
   $claimed = [];
   $blocks = [];

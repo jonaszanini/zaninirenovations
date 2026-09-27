@@ -56,6 +56,8 @@
     </div>
   </div>
 
+  @include('admin.quotations._shared_price_banner', ['consumer' => 'tile'])
+
   @if (session('success'))
     <div class="admin-banner admin-banner--success" style="margin-bottom:16px;">
       <i class="fa fa-check-circle"></i> {{ session('success') }}

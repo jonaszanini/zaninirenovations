@@ -53,10 +53,12 @@
               aria-controls="br-config-materials">Materials</button>
     </div>
 
+    @include('admin.quotations._shared_price_banner', ['consumer' => 'basement'])
+
     <section class="cp-tab-panel{{ $startTab === 'rates' ? ' is-active' : '' }}"
              data-panel="rates" id="br-config-rates" role="tabpanel" aria-labelledby="br-tab-rates">
-      <h3 class="br-config-heading">Labor rates</h3>
-      <p class="admin-form-help br-config-help">Defaults for new basement quotations. Each quote can still override owner and helper rates.</p>
+      <h3 class="br-config-heading">This quote only — labor rates</h3>
+      <p class="admin-form-help br-config-help">Shared crew and overlapping trades are edited in Shared prices. Each basement quote can still override owner and helper rates on the form.</p>
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
@@ -82,7 +84,9 @@
       <h3 class="br-config-heading">Labor productivity</h3>
       <p class="admin-form-help br-config-help">Hours per unit of work. Higher numbers mean faster production (more units per hour) except where the label says “hours each”.</p>
 
-      @include('admin.partials.quotation_productivity_groups')
+      @include('admin.partials.quotation_productivity_groups', [
+        'excludeKeys' => \App\Services\SharedWorkCatalog::sharedProductivityKeys('basement'),
+      ])
     </section>
 
     <section class="cp-tab-panel{{ $startTab === 'materials' ? ' is-active' : '' }}"
@@ -117,6 +121,9 @@
           </thead>
           <tbody>
             @foreach ($materials as $key => $row)
+              @if (in_array($key, \App\Services\SharedWorkCatalog::sharedMaterialKeys('basement'), true))
+                @continue
+              @endif
               @php
                 $catalogId = (int) old('materials.'.$key.'.catalog_material_id', $row['catalog_material_id'] ?? 0);
                 $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;

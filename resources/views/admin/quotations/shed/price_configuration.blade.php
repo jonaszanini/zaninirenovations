@@ -53,9 +53,11 @@
               aria-controls="sh-config-materials">Materials</button>
     </div>
 
+    @include('admin.quotations._shared_price_banner', ['consumer' => 'shed'])
+
     <section class="cp-tab-panel{{ $startTab === 'rates' ? ' is-active' : '' }}"
              data-panel="rates" id="sh-config-rates" role="tabpanel" aria-labelledby="sh-tab-rates">
-      <h3 class="br-config-heading">Labor rates</h3>
+      <h3 class="br-config-heading">This quote only — labor rates</h3>
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
@@ -78,7 +80,9 @@
 
       <hr class="br-config-divider">
       <h3 class="br-config-heading">Labor productivity</h3>
-      @include('admin.partials.quotation_productivity_groups')
+      @include('admin.partials.quotation_productivity_groups', [
+        'excludeKeys' => \App\Services\SharedWorkCatalog::sharedProductivityKeys('shed'),
+      ])
     </section>
 
     <section class="cp-tab-panel{{ $startTab === 'materials' ? ' is-active' : '' }}"
@@ -107,6 +111,9 @@
           </thead>
           <tbody>
             @foreach ($materials as $key => $row)
+              @if (in_array($key, \App\Services\SharedWorkCatalog::sharedMaterialKeys('shed'), true))
+                @continue
+              @endif
               @php
                 $catalogId = (int) old('materials.'.$key.'.catalog_material_id', $row['catalog_material_id'] ?? 0);
                 $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;

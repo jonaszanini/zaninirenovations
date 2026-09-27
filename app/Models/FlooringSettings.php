@@ -38,4 +38,19 @@ class FlooringSettings extends Model
             'closet_door_reinstall_rate' => 75.00,
         ]);
     }
+
+    public function removeCarpetRate(): float
+    {
+        return \App\Services\SharedWorkCatalog::flatRate('remove_floor', (float) $this->remove_carpet_dispose_rate);
+    }
+
+    public function shoeInstallRate(): float
+    {
+        return \App\Services\SharedWorkCatalog::flatRate('shoe_install', (float) $this->install_shoe_moulding_rate);
+    }
+
+    public function shoeCaulkPaintRate(): float
+    {
+        return \App\Services\SharedWorkCatalog::flatRate('shoe_caulk_paint', (float) $this->caulk_paint_shoe_moulding_rate);
+    }
 }

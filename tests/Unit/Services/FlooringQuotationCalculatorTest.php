@@ -54,4 +54,50 @@ class FlooringQuotationCalculatorTest extends TestCase
         $this->assertSame(1960.55, $result['summary']['grand_total']);
         $this->assertSame(585.0, $result['material_selection']['total_pre_tax']);
     }
+
+    public function test_shoe_moulding_uses_library_flat_rate_when_present(): void
+    {
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('shared_works')) {
+                $this->markTestSkipped('Shared price library is not migrated.');
+            }
+        } catch (\Throwable $e) {
+            $this->markTestSkipped('Database unavailable for shared price library.');
+        }
+
+        $work = \App\Models\SharedWork::query()->where('key', 'shoe_install')->first();
+        if (! $work) {
+            $this->markTestSkipped('shoe_install is not seeded.');
+        }
+        $work->flat_rate = 5.00;
+        $work->save();
+        \App\Services\SharedWorkCatalog::forgetCache();
+
+        $settings = new FlooringSettings([
+            'remove_carpet_dispose_rate' => 1.50,
+            'rescrew_subfloor_rate' => 350.00,
+            'install_shoe_moulding_rate' => 3.50,
+            'caulk_paint_shoe_moulding_rate' => 2.25,
+            'closet_door_reinstall_rate' => 75.00,
+        ]);
+        $type = new FlooringType([
+            'name' => 'LVP Click System',
+            'installation_price_per_sqft' => 4.25,
+        ]);
+        $type->id = 1;
+
+        $result = (new FlooringQuotationCalculator)->calculate([
+            'flooring_type_id' => 1,
+            'square_footage' => 100,
+            'install_shoe_moulding' => true,
+            'shoe_moulding_linear_ft' => 40,
+            'include_material_details' => false,
+        ], $settings, collect([$type]));
+
+        $shoe = collect($result['breakdown'])->firstWhere('key', 'shoe_moulding');
+        $this->assertNotNull($shoe);
+        $this->assertEqualsWithDelta(200.0, (float) $shoe['amount'], 0.01);
+
+        \App\Services\SharedWorkCatalog::forgetCache();
+    }
 }

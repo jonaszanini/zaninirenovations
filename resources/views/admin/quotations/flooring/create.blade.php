@@ -159,16 +159,19 @@
             <input type="number" step="0.01" min="0" class="admin-input" id="fl-sqft" name="square_footage"
                    value="{{ old('square_footage', $inputs['square_footage'] ?? 0) }}" required>
           </div>
-          <div class="admin-form-group">
-            <label for="fl-shoe-linear-ft">Shoe moulding linear feet</label>
-            <input type="number" step="0.01" min="0" class="admin-input fl-preview-trigger" id="fl-shoe-linear-ft" name="shoe_moulding_linear_ft"
-                   value="{{ $shoeLinearFt }}">
-            <p class="admin-form-help">Used for install and/or caulk &amp; paint shoe moulding add-ons.</p>
-            <p class="fl-field-warning" id="fl-shoe-linear-ft-warning" hidden>
-              <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
-              Enter linear feet when a shoe moulding add-on is selected.
-            </p>
-          </div>
+          @include('admin.quotations._shared_qty_field', [
+            'id' => 'fl-shoe-linear-ft',
+            'name' => 'shoe_moulding_linear_ft',
+            'label' => 'Shoe moulding linear feet',
+            'value' => $shoeLinearFt,
+            'info' => 'Used for install and/or caulk & paint shoe moulding add-ons.',
+            'workKey' => 'shoe_install',
+            'gearLabel' => 'Edit shoe moulding rates',
+            'rate' => \App\Models\ClientProject::formatMoney($settings->shoeInstallRate()).' / lf install · '.\App\Models\ClientProject::formatMoney($settings->shoeCaulkPaintRate()).' / lf caulk & paint',
+            'inputClass' => 'fl-preview-trigger',
+            'warningId' => 'fl-shoe-linear-ft-warning',
+            'warning' => 'Enter linear feet when a shoe moulding add-on is selected.',
+          ])
         </div>
       </div>
 
@@ -183,7 +186,7 @@
             <span class="admin-checkbox__mark"></span>
             <span class="admin-checkbox__text">Remove carpet &amp; dispose off site</span>
           </label>
-          <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->remove_carpet_dispose_rate) }}/sq ft</span>
+          <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->removeCarpetRate()) }}/sq ft</span>
         </div>
 
         <div class="fl-addon-row">
@@ -203,7 +206,7 @@
             <span class="admin-checkbox__mark"></span>
             <span class="admin-checkbox__text">Install primed white shoe moulding</span>
           </label>
-          <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->install_shoe_moulding_rate) }}/lin ft</span>
+          <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->shoeInstallRate()) }}/lin ft</span>
         </div>
 
         <div class="fl-addon-row">
@@ -213,7 +216,7 @@
             <span class="admin-checkbox__mark"></span>
             <span class="admin-checkbox__text">Caulking and painting shoe moulding</span>
           </label>
-          <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->caulk_paint_shoe_moulding_rate) }}/lin ft</span>
+          <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->shoeCaulkPaintRate()) }}/lin ft</span>
         </div>
 
         <div class="fl-addon-row">

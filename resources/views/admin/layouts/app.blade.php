@@ -62,6 +62,7 @@
         $isPhotos = request()->routeIs('admin.portfolio.*') || request()->routeIs('admin.categories.*');
         $projectsOpen = $isAllProjects || $isCalendar || $isPhotos;
 
+        $isSharedPrices = request()->routeIs('admin.quotations.shared-prices.*');
         $isQuotation = request()->routeIs('admin.quotations.*');
         $isMaterials = request()->routeIs('admin.materials.*');
         $isVehicles = request()->routeIs('admin.vehicles.*');
@@ -172,9 +173,15 @@
             </summary>
             <ul class="admin-subnav">
               <li>
-                <a href="{{ route('admin.quotations.index') }}" class="{{ $isQuotation ? 'is-active' : '' }}">
+                <a href="{{ route('admin.quotations.index') }}" class="{{ $isQuotation && ! $isSharedPrices ? 'is-active' : '' }}">
                   <i class="fa fa-file-text-o"></i>
                   Quotation
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.quotations.shared-prices.edit') }}" class="{{ $isSharedPrices ? 'is-active' : '' }}">
+                  <i class="fa fa-tags"></i>
+                  Shared prices
                 </a>
               </li>
             </ul>

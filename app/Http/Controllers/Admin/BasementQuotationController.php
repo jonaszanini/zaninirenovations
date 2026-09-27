@@ -407,7 +407,7 @@ class BasementQuotationController extends Controller
             'demo_flooring_sf', 'demo_drywall_sf', 'demo_studs_lf', 'demo_baseboard_lf',
             'insulation_wall_sf', 'insulation_ceiling_sf', 'underslab_sf',
             'drywall_wall_sf', 'drywall_ceiling_sf', 'ceiling_sf',
-            'flooring_sf', 'baseboard_lf',
+            'flooring_sf', 'baseboard_lf', 'shoe_lf',
             'paint_wall_sf', 'paint_ceiling_sf', 'paint_trim_lf',
             'area_length_ft', 'area_width_ft',
             'perimeter_lf',
@@ -427,7 +427,7 @@ class BasementQuotationController extends Controller
             'insulate_ceiling', 'underslab', 'subfloor_prep', 'underlayment',
             'include_bathroom', 'include_vanity', 'include_pedestal_sink', 'include_toilet', 'include_shower',
             'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
-            'include_cleaning', 'include_touchups',
+            'include_cleaning', 'include_touchups', 'include_shoe',
             'client_provides_all', 'include_helper',
         ];
         $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label'];

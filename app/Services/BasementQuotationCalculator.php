@@ -558,6 +558,8 @@ class BasementQuotationCalculator
             'transition_qty' => 0,
             'door_qty' => 0,
             'baseboard_lf' => null,
+            'include_shoe' => false,
+            'shoe_lf' => null,
             'casing_openings' => 0,
             'window_trim_qty' => 0,
             'paint_wall_sf' => null,
@@ -945,6 +947,11 @@ class BasementQuotationCalculator
             $addLabor('trim_windows', 'doors_trim', 'Window trim', $windows.' window(s)', $windows * (float) $prod['window_trim_hours_each']);
             $addMat('interior_door', 'doors_trim', $doors, 'interior_door');
             $addMat('baseboard', 'doors_trim', $this->packages($this->withMaterialWaste($baseLf, $inputs), BasementSettings::BASEBOARD_FEET_PER_STICK), 'baseboard');
+            if (! empty($inputs['include_shoe'])) {
+                $shoeLf = $this->qtyOr($inputs['shoe_lf'] ?? null, $baseLf);
+                $addLabor('trim_shoe', 'doors_trim', 'Shoe moulding', number_format($shoeLf, 0).' lf', $perHr($shoeLf, (float) ($prod['shoe_lf_per_hr'] ?? 30)));
+                $addMat('shoe', 'doors_trim', $this->packages($this->withMaterialWaste($shoeLf, $inputs), BasementSettings::BASEBOARD_FEET_PER_STICK), 'shoe');
+            }
             $addMat('casing', 'doors_trim', $casing, 'casing');
             $addMat('window_trim', 'doors_trim', $windows, 'window_trim');
             $addMat('door_hardware', 'doors_trim', $doors, 'door_hardware');

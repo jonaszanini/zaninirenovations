@@ -38,34 +38,21 @@
     @endif
     @include('admin.partials.quotation_return_quote_hidden')
 
-    <h3 style="margin:0 0 12px;">Standard add-on rates</h3>
+    @include('admin.quotations._shared_price_banner', ['consumer' => 'flooring'])
+
+    <h3 style="margin:0 0 12px;">This quote only — add-on rates</h3>
     <p class="admin-form-help" style="margin:0 0 16px;">
-      Default rates for optional line items in the flooring quotation form.
+      Carpet removal and shoe moulding live in Shared prices. Closet doors and re-screw stay here.
     </p>
+    <input type="hidden" name="remove_carpet_dispose_rate" value="{{ number_format($settings->removeCarpetRate(), 4, '.', '') }}">
+    <input type="hidden" name="install_shoe_moulding_rate" value="{{ number_format($settings->shoeInstallRate(), 4, '.', '') }}">
+    <input type="hidden" name="caulk_paint_shoe_moulding_rate" value="{{ number_format($settings->shoeCaulkPaintRate(), 4, '.', '') }}">
 
     <div class="admin-form-grid-4">
-      <div class="admin-form-group">
-        <label for="remove_carpet_dispose_rate">Remove carpet &amp; dispose (per sq ft, CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-               class="admin-input cp-money-input" id="remove_carpet_dispose_rate" name="remove_carpet_dispose_rate"
-               value="{{ old('remove_carpet_dispose_rate', number_format((float) $settings->remove_carpet_dispose_rate, 4, '.', '')) }}" required>
-      </div>
       <div class="admin-form-group">
         <label for="rescrew_subfloor_rate">Re-screw subfloor to joists (flat fee per project, CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" id="rescrew_subfloor_rate" name="rescrew_subfloor_rate"
                placeholder="0.00" value="{{ old('rescrew_subfloor_rate', number_format((float) $settings->rescrew_subfloor_rate, 2, '.', '')) }}" required>
-      </div>
-      <div class="admin-form-group">
-        <label for="install_shoe_moulding_rate">Install shoe moulding (per linear ft, CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-               class="admin-input cp-money-input" id="install_shoe_moulding_rate" name="install_shoe_moulding_rate"
-               value="{{ old('install_shoe_moulding_rate', number_format((float) $settings->install_shoe_moulding_rate, 4, '.', '')) }}" required>
-      </div>
-      <div class="admin-form-group">
-        <label for="caulk_paint_shoe_moulding_rate">Caulk &amp; paint shoe moulding (per linear ft, CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
-               class="admin-input cp-money-input" id="caulk_paint_shoe_moulding_rate" name="caulk_paint_shoe_moulding_rate"
-               value="{{ old('caulk_paint_shoe_moulding_rate', number_format((float) $settings->caulk_paint_shoe_moulding_rate, 4, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
         <label for="closet_door_reinstall_rate">Closet door remove &amp; reinstall (per door, CAD$)</label>

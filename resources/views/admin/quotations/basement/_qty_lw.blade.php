@@ -43,6 +43,12 @@
           @endif
           {{ $label }}
         </label>
+        @if (! empty($workKey))
+          <a href="{{ $gearUrl ?? \App\Services\SharedWorkCatalog::sharedPricesUrl($workKey) }}"
+             class="sq-qty__gear" aria-label="{{ $gearLabel ?? 'Edit rates' }}" title="{{ $gearLabel ?? 'Edit rates' }}">
+            <i class="fa fa-cog" aria-hidden="true"></i>
+          </a>
+        @endif
         <div class="br-lw-segment" role="radiogroup" aria-label="{{ $label }} entry">
           <label class="br-lw-segment__item">
             <input type="radio" class="br-preview" name="{{ $modeName }}" value="sqft"
@@ -88,5 +94,8 @@
   <p class="admin-form-help br-lw__computed" data-br-lw-computed @if($mode !== 'dimensions') hidden @endif>{{ $computed }}</p>
   @if (! empty($help))
     <p class="admin-form-help br-lw__help">{{ $help }}</p>
+  @endif
+  @if (filled($rate ?? null))
+    <p class="sq-qty__rate">{{ $rate }}</p>
   @endif
 </div>

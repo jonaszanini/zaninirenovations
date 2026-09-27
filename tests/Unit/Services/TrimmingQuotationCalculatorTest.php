@@ -47,6 +47,40 @@ class TrimmingQuotationCalculatorTest extends TestCase
         $this->assertSame(11.0, (float) $base['qty']);
     }
 
+    public function test_shoe_uses_shared_library_productivity_when_present(): void
+    {
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('shared_works')) {
+                $this->markTestSkipped('Shared price library is not migrated.');
+            }
+        } catch (\Throwable $e) {
+            $this->markTestSkipped('Database unavailable for shared price library.');
+        }
+
+        $work = \App\Models\SharedWork::query()->where('key', 'shoe_install')->first();
+        if (! $work) {
+            $this->markTestSkipped('shoe_install is not seeded.');
+        }
+        $work->rate = 40;
+        $work->save();
+        \App\Services\SharedWorkCatalog::forgetCache();
+
+        $calc = (new TrimmingQuotationCalculator)->calculate([
+            'enabled_families' => ['floor_wall'],
+            'floor_lf' => 40,
+            'include_shoe' => true,
+            'include_baseboard' => false,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ], $this->settings());
+
+        $labor = collect($calc['labor'])->firstWhere('key', 'trim_shoe');
+        $this->assertNotNull($labor);
+        $this->assertEqualsWithDelta(1.0, (float) $labor['hours'], 0.01);
+
+        \App\Services\SharedWorkCatalog::forgetCache();
+    }
+
     public function test_door_casing_auto_lf_and_rosettes(): void
     {
         $calc = (new TrimmingQuotationCalculator)->calculate([

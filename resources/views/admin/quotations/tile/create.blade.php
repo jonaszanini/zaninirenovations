@@ -23,7 +23,7 @@
   $mortar_type_id = old('mortar_type_id', $inputs['mortar_type_id'] ?? '');
   $joint_width_decimal = old('joint_width_decimal', $inputs['joint_width_decimal'] ?? 0.125); // 1/8" default
   $grout_type_id = old('grout_type_id', $inputs['grout_type_id'] ?? '');
-  $labor_rate = old('labor_rate', $inputs['labor_rate'] ?? 12);
+  $labor_rate = old('labor_rate', $inputs['labor_rate'] ?? \App\Services\SharedWorkCatalog::flatRate('tile_install', 12));
   $work_description = old('work_description', $isEdit ? $quotation->work_description : '');
   $client_name = old('client_name', $isEdit ? $quotation->client_name : '');
   

@@ -137,8 +137,18 @@
         <div class="tm-family-body" data-tm-family-body="doors_windows" @unless($familyOn('doors_windows')) hidden @endunless>
           <div class="pq-form-grid">
             <div class="admin-form-group">
-              <label for="tm-doors">@include('admin.partials.info_tip', ['text' => $tips['doors']]) Door openings</label>
-              <input type="number" min="0" step="1" class="admin-input tm-preview" id="tm-doors" name="door_qty" value="{{ $tmVal('door_qty', 0) }}">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-doors',
+                'name' => 'door_qty',
+                'label' => 'Door openings',
+                'value' => $tmVal('door_qty', 0),
+                'info' => $tips['doors'],
+                'workKey' => 'door_install',
+                'gearLabel' => 'Edit interior door rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('door_install'),
+                'inputClass' => 'tm-preview',
+                'step' => '1',
+              ])
             </div>
             <div class="admin-form-group">
               <label for="tm-windows">@include('admin.partials.info_tip', ['text' => $tips['windows']]) Window openings</label>
@@ -165,8 +175,18 @@
           </div>
           <div class="pq-form-grid tm-override-grid">
             <div class="admin-form-group" data-tm-show-when="include_casing">
-              <label for="tm-casing-lf">Casing override (door lf)</label>
-              <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-casing-lf" name="casing_lf" placeholder="Auto 17 lf/door" value="{{ $tmVal('casing_lf') }}">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-casing-lf',
+                'name' => 'casing_lf',
+                'label' => 'Casing override (door lf)',
+                'value' => $tmVal('casing_lf'),
+                'info' => 'Blank uses 17 lf per door opening.',
+                'workKey' => 'casing_lf',
+                'gearLabel' => 'Edit casing rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('casing_lf'),
+                'inputClass' => 'tm-preview',
+                'placeholder' => 'Auto 17 lf/door',
+              ])
             </div>
             <div class="admin-form-group" data-tm-show-when="include_casing">
               <label for="tm-win-casing-lf">Casing override (window lf)</label>
@@ -228,16 +248,36 @@
           </div>
           <div class="pq-form-grid tm-override-grid">
             <div class="admin-form-group" data-tm-show-when="include_baseboard">
-              <label for="tm-bb-lf">Baseboard override (lf)</label>
-              <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-bb-lf" name="baseboard_lf" placeholder="Same as linear feet" value="{{ $tmVal('baseboard_lf') }}">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-bb-lf',
+                'name' => 'baseboard_lf',
+                'label' => 'Baseboard override (lf)',
+                'value' => $tmVal('baseboard_lf'),
+                'info' => 'Leave blank to use the floor-to-wall linear feet.',
+                'workKey' => 'baseboard',
+                'gearLabel' => 'Edit baseboard rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('baseboard'),
+                'inputClass' => 'tm-preview',
+                'placeholder' => 'Same as linear feet',
+              ])
             </div>
             <div class="admin-form-group" data-tm-show-when="include_base_cap">
               <label for="tm-cap-lf">Base cap override (lf)</label>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-cap-lf" name="base_cap_lf" placeholder="Same as linear feet" value="{{ $tmVal('base_cap_lf') }}">
             </div>
             <div class="admin-form-group" data-tm-show-when="include_shoe">
-              <label for="tm-shoe-lf">Shoe override (lf)</label>
-              <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-shoe-lf" name="shoe_lf" placeholder="Same as linear feet" value="{{ $tmVal('shoe_lf') }}">
+              @include('admin.quotations._shared_qty_field', [
+                'id' => 'tm-shoe-lf',
+                'name' => 'shoe_lf',
+                'label' => 'Shoe override (lf)',
+                'value' => $tmVal('shoe_lf'),
+                'info' => 'Leave blank to use the floor-to-wall linear feet.',
+                'workKey' => 'shoe_install',
+                'gearLabel' => 'Edit shoe moulding rates',
+                'rate' => \App\Services\SharedWorkCatalog::rateLine('shoe_install'),
+                'inputClass' => 'tm-preview',
+                'placeholder' => 'Same as linear feet',
+              ])
             </div>
             <div class="admin-form-group" data-tm-show-when="include_quarter_round">
               <label for="tm-qr-lf">Quarter round override (lf)</label>

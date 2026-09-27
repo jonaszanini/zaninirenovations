@@ -20,6 +20,38 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertSame(0.0, $calc['summary']['grand_total']);
     }
 
+    public function test_shoe_moulding_uses_shared_productivity_and_material(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 40,
+            'include_shoe' => true,
+            'shoe_lf' => 40,
+            'door_qty' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $labor = collect($calc['labor'])->firstWhere('key', 'trim_shoe');
+        $this->assertNotNull($labor);
+        $this->assertEqualsWithDelta(round(40 / 30, 2), (float) $labor['hours'], 0.01);
+
+        $mat = collect($calc['materials'])->firstWhere('key', 'shoe');
+        $this->assertNotNull($mat);
+        $this->assertGreaterThan(0, (float) $mat['qty']);
+    }
+
     public function test_full_finish_produces_labor_materials_and_eta(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate([

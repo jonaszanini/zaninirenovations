@@ -341,7 +341,7 @@
         </div>
       </div>
       <p class="pq-hint" style="margin-top:10px;">
-        Labor: net sq ft × ${{ number_format((float) $settings->labor_per_sqf, 2) }}/sq ft ·
+        Labor: net sq ft × ${{ number_format(\App\Services\SharedWorkCatalog::flatRate('paint_walls', (float) $settings->labor_per_sqf), 2) }}/sq ft ·
         Paint: gallons × ${{ number_format((float) $settings->paint_per_gallon, 2) }} + ${{ number_format((float) $settings->material_addon_fee, 2) }} expendables ·
         HST 13%
       </p>

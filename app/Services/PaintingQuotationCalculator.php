@@ -165,7 +165,7 @@ class PaintingQuotationCalculator
         $excludedTotal = round(array_sum(array_column($excludedRows, 'sqf')), 2);
         $netArea = round(max(0, $totalProperty - $excludedTotal), 2);
 
-        $laborRate = max(0, (float) $settings->labor_per_sqf);
+        $laborRate = max(0, \App\Services\SharedWorkCatalog::flatRate('paint_walls', (float) $settings->labor_per_sqf));
         $paintPerGallon = max(0, (float) $settings->paint_per_gallon);
         $addonFee = max(0, (float) $settings->material_addon_fee);
         $sqfPerGallon = max(0.01, (float) $settings->sqf_per_gallon);

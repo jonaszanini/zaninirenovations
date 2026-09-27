@@ -130,6 +130,8 @@
       'underlayment' => 'Foam or cork under LVP, laminate, or carpet. Not used with tile or epoxy.',
       'door_qty' => 'Prehung or slab interior doors to hang, including bath and closet doors.',
       'baseboard_lf' => 'Baseboard length. Blank uses the room perimeter from the work area, or both sides of the new wall on the wall preset.',
+      'include_shoe' => 'Install shoe moulding using the same shared rate as Flooring and Trimming.',
+      'shoe_lf' => 'Shoe length. Blank uses the baseboard length.',
       'casing_openings' => 'Door openings to case (both sides). Blank uses the interior door count.',
       'window_trim_qty' => 'Window openings to wrap with stool, apron, and casing.',
       'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area (both sides of a new wall on the wall preset).',
@@ -319,6 +321,9 @@
               'widthValue' => $qtyDim('demo_flooring_sf')['width'],
               'placeholder' => 'Auto: basement area',
               'info' => $brInfo['demo_flooring_sf'],
+              'workKey' => 'remove_floor',
+              'gearLabel' => 'Edit floor removal rates',
+              'rate' => \App\Services\SharedWorkCatalog::rateLine('remove_floor'),
             ])
           </div>
         </div>
@@ -660,11 +665,23 @@
         'widthValue' => $qtyDim('flooring_sf')['width'],
         'placeholder' => 'Auto: basement area',
         'info' => $brInfo['flooring_sf'],
+        'workKey' => 'flooring_install',
+        'gearLabel' => 'Edit flooring install rates',
+        'rate' => \App\Services\SharedWorkCatalog::rateLine('flooring_install'),
       ])
       <div class="admin-form-group">
-        <label for="br-trans">@include('admin.partials.info_tip', ['text' => $brInfo['transition_qty']]) Transitions</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-trans" name="transition_qty"
-               value="{{ $brVal('transition_qty', 0) }}">
+        @include('admin.quotations._shared_qty_field', [
+          'id' => 'br-trans',
+          'name' => 'transition_qty',
+          'label' => 'Transitions',
+          'value' => $brVal('transition_qty', 0),
+          'info' => $brInfo['transition_qty'],
+          'workKey' => 'transition',
+          'gearLabel' => 'Edit transition rates',
+          'rate' => \App\Services\SharedWorkCatalog::rateLine('transition'),
+          'inputClass' => 'br-preview',
+          'step' => '1',
+        ])
       </div>
     </div>
     <div class="br-check-grid br-check-grid--inset">
@@ -681,24 +698,89 @@
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group">
-        <label for="br-doors">@include('admin.partials.info_tip', ['text' => $brInfo['door_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'door_qty', 'filledKeys' => $filledKeys]) Interior doors</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-doors" name="door_qty"
-               value="{{ $brVal('door_qty', 0) }}">
+        @include('admin.quotations._shared_qty_field', [
+          'id' => 'br-doors',
+          'name' => 'door_qty',
+          'label' => 'Interior doors',
+          'value' => $brVal('door_qty', 0),
+          'info' => $brInfo['door_qty'],
+          'workKey' => 'door_install',
+          'gearLabel' => 'Edit interior door rates',
+          'rate' => \App\Services\SharedWorkCatalog::rateLine('door_install'),
+          'inputClass' => 'br-preview',
+          'step' => '1',
+          'clientFilled' => $brFilled('door_qty'),
+        ])
       </div>
       <div class="admin-form-group">
-        <label for="br-base">@include('admin.partials.info_tip', ['text' => $brInfo['baseboard_lf']]) Baseboards (linear ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-base" name="baseboard_lf"
-               value="{{ $brQty('baseboard_lf') }}" placeholder="{{ $scopePreset === 'wall' ? 'Auto: wall length × 2' : 'Auto: room perimeter' }}">
+        @include('admin.quotations._shared_qty_field', [
+          'id' => 'br-base',
+          'name' => 'baseboard_lf',
+          'label' => 'Baseboards (linear ft)',
+          'value' => $brQty('baseboard_lf'),
+          'info' => $brInfo['baseboard_lf'],
+          'workKey' => 'baseboard',
+          'gearLabel' => 'Edit baseboard rates',
+          'rate' => \App\Services\SharedWorkCatalog::rateLine('baseboard'),
+          'inputClass' => 'br-preview',
+          'placeholder' => $scopePreset === 'wall' ? 'Auto: wall length × 2' : 'Auto: room perimeter',
+        ])
       </div>
       <div class="admin-form-group">
-        <label for="br-casing">@include('admin.partials.info_tip', ['text' => $brInfo['casing_openings']]) Casing / door trim (openings)</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-casing" name="casing_openings"
-               value="{{ $brVal('casing_openings', 0) }}" placeholder="Auto: door count">
+        @include('admin.quotations._shared_qty_field', [
+          'id' => 'br-casing',
+          'name' => 'casing_openings',
+          'label' => 'Casing / door trim (openings)',
+          'value' => $brVal('casing_openings', 0),
+          'info' => $brInfo['casing_openings'],
+          'workKey' => 'casing_opening',
+          'gearLabel' => 'Edit casing rates',
+          'rate' => \App\Services\SharedWorkCatalog::rateLine('casing_opening'),
+          'inputClass' => 'br-preview',
+          'step' => '1',
+          'placeholder' => 'Auto: door count',
+        ])
       </div>
       <div class="admin-form-group">
-        <label for="br-windows">@include('admin.partials.info_tip', ['text' => $brInfo['window_trim_qty']]) Window trim kits</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-windows" name="window_trim_qty"
-               value="{{ $brVal('window_trim_qty', 0) }}">
+        @include('admin.quotations._shared_qty_field', [
+          'id' => 'br-windows',
+          'name' => 'window_trim_qty',
+          'label' => 'Window trim kits',
+          'value' => $brVal('window_trim_qty', 0),
+          'info' => $brInfo['window_trim_qty'],
+          'workKey' => 'window_trim',
+          'gearLabel' => 'Edit window trim rates',
+          'rate' => \App\Services\SharedWorkCatalog::rateLine('window_trim'),
+          'inputClass' => 'br-preview',
+          'step' => '1',
+        ])
+      </div>
+    </div>
+    <div class="br-check-grid br-check-grid--inset">
+      @include('admin.partials.checkbox', [
+        'name' => 'include_shoe',
+        'hiddenFallback' => true,
+        'checked' => $brOn('include_shoe'),
+        'label' => 'Include shoe moulding',
+        'info' => $brInfo['include_shoe'],
+        'inputClass' => 'admin-checkbox__input br-preview',
+        'attrs' => ['data-br-reveal' => 'br-shoe-fields'],
+      ])
+    </div>
+    <div id="br-shoe-fields" class="br-qty-grid" @unless($brOn('include_shoe')) hidden @endunless>
+      <div class="admin-form-group">
+        @include('admin.quotations._shared_qty_field', [
+          'id' => 'br-shoe',
+          'name' => 'shoe_lf',
+          'label' => 'Shoe moulding (linear ft)',
+          'value' => $brQty('shoe_lf'),
+          'info' => $brInfo['shoe_lf'],
+          'workKey' => 'shoe_install',
+          'gearLabel' => 'Edit shoe moulding rates',
+          'rate' => \App\Services\SharedWorkCatalog::rateLine('shoe_install').' · '.\App\Services\SharedWorkCatalog::rateLine('shoe_caulk_paint'),
+          'inputClass' => 'br-preview',
+          'placeholder' => 'Auto: same as baseboard',
+        ])
       </div>
     </div>
   </div>
@@ -723,6 +805,9 @@
         'widthValue' => $qtyDim('paint_wall_sf')['width'],
         'placeholder' => $scopePreset === 'wall' ? 'Auto: both sides of the new wall' : 'Auto from drywall walls',
         'info' => $brInfo['paint_wall_sf'],
+        'workKey' => 'paint_walls',
+        'gearLabel' => 'Edit wall paint rates',
+        'rate' => \App\Services\SharedWorkCatalog::rateLine('paint_walls'),
       ])
       <div data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
       @include('admin.quotations.basement._qty_lw', [
@@ -741,9 +826,18 @@
       ])
       </div>
       <div class="admin-form-group">
-        <label for="br-p-trim">@include('admin.partials.info_tip', ['text' => $brInfo['paint_trim_lf']]) Trim (linear ft)</label>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-p-trim" name="paint_trim_lf"
-               value="{{ $brQty('paint_trim_lf') }}" placeholder="Auto from base + casing">
+        @include('admin.quotations._shared_qty_field', [
+          'id' => 'br-p-trim',
+          'name' => 'paint_trim_lf',
+          'label' => 'Trim (linear ft)',
+          'value' => $brQty('paint_trim_lf'),
+          'info' => $brInfo['paint_trim_lf'],
+          'workKey' => 'paint_trim',
+          'gearLabel' => 'Edit trim paint rates',
+          'rate' => \App\Services\SharedWorkCatalog::rateLine('paint_trim'),
+          'inputClass' => 'br-preview',
+          'placeholder' => 'Auto from base + casing',
+        ])
       </div>
       <div class="admin-form-group">
         <label for="br-colors">@include('admin.partials.info_tip', ['text' => $brInfo['paint_colors']]) @include('admin.quotations.basement._client_filled', ['key' => 'paint_colors', 'filledKeys' => $filledKeys]) Wall / ceiling colors</label>

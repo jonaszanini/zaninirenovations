@@ -119,7 +119,7 @@ class FlooringQuotationCalculator
         }
 
         if ($sqft > 0 && ! empty($inputs['remove_carpet'])) {
-            $rate = max(0, (float) $settings->remove_carpet_dispose_rate);
+            $rate = max(0, $settings->removeCarpetRate());
             $amount = round($sqft * $rate, 2);
             $laborBreakdown[] = [
                 'key' => 'remove_carpet',
@@ -145,7 +145,7 @@ class FlooringQuotationCalculator
 
         if (! empty($inputs['install_shoe_moulding'])) {
             $lf = $this->shoeMouldingLinearFeet($inputs);
-            $rate = max(0, (float) $settings->install_shoe_moulding_rate);
+            $rate = max(0, $settings->shoeInstallRate());
             $amount = round($lf * $rate, 2);
             $laborBreakdown[] = [
                 'key' => 'shoe_moulding',
@@ -159,7 +159,7 @@ class FlooringQuotationCalculator
 
         if (! empty($inputs['caulk_paint_shoe_moulding'])) {
             $lf = $this->shoeMouldingLinearFeet($inputs);
-            $rate = max(0, (float) $settings->caulk_paint_shoe_moulding_rate);
+            $rate = max(0, $settings->shoeCaulkPaintRate());
             $amount = round($lf * $rate, 2);
             $laborBreakdown[] = [
                 'key' => 'caulk_paint_shoe',

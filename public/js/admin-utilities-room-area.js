@@ -4926,7 +4926,7 @@
           breakdownHtml +
         '</div>' +
         '<div class="util-ra-rooms-item__actions">' +
-          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-room="' + room.id + '" title="Edit room"><i class="fa fa-pencil"></i><span class="util-ra-rooms-item__action-label">Edit</span></button>' +
+          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-room="' + room.id + '" title="Load room" aria-label="Load room"><i class="fa fa-folder-open"></i><span class="util-ra-rooms-item__action-label">Load</span></button>' +
           '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-copy-area="' + room.area_sqft + '" title="Copy sq ft"><i class="fa fa-copy"></i><span class="util-ra-rooms-item__action-label">Copy</span></button>' +
           '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-delete-room="' + room.id + '" title="Delete"><i class="fa fa-trash"></i><span class="util-ra-rooms-item__action-label">Delete</span></button>' +
         '</div>';

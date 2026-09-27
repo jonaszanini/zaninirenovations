@@ -616,6 +616,11 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::delete('quotations/painting/{painting_quotation}', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'destroy'])
         ->name('quotations.painting.destroy');
 
+    Route::get('quotations/shared-prices', [\App\Http\Controllers\Admin\SharedPriceLibraryController::class, 'edit'])
+        ->name('quotations.shared-prices.edit');
+    Route::put('quotations/shared-prices', [\App\Http\Controllers\Admin\SharedPriceLibraryController::class, 'update'])
+        ->name('quotations.shared-prices.update');
+
     // Flooring quotations (installation calculator + optional client material).
     Route::get('quotations/flooring', [\App\Http\Controllers\Admin\FlooringQuotationController::class, 'index'])
         ->name('quotations.flooring.index');

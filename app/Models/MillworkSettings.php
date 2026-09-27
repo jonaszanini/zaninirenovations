@@ -333,7 +333,7 @@ class MillworkSettings extends Model
             }
         }
 
-        return $defaults;
+        return \App\Services\SharedWorkCatalog::overlayProductivity('millwork', $defaults);
     }
 
     /**

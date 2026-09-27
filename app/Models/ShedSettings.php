@@ -199,7 +199,7 @@ class ShedSettings extends Model
             }
         }
 
-        return $defaults;
+        return \App\Services\SharedWorkCatalog::overlayProductivity('shed', $defaults);
     }
 
     /**
@@ -246,6 +246,8 @@ class ShedSettings extends Model
 
             $defaults[$key] = $row;
         }
+
+        $defaults = \App\Services\SharedWorkCatalog::overlayMaterials('shed', $defaults);
 
         return self::applyDerivedMaterialPrices($defaults);
     }

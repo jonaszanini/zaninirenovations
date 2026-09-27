@@ -146,6 +146,8 @@ Every authenticated admin page:
 
 ## 6. Admin components
 
+Shared work rates (shoe, baseboard, paint labor, and similar overlapping trades) are edited under **Quotations → Shared prices**, not on each calculator’s price page.
+
 ### Cards
 
 ```html
