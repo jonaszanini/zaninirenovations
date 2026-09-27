@@ -46,4 +46,14 @@ class SharedWork extends Model
     {
         return $this->unit === 'lf';
     }
+
+    public function isSquareFoot(): bool
+    {
+        return $this->unit === 'sf';
+    }
+
+    public function isPricedPerArea(): bool
+    {
+        return $this->isLinearFoot() || $this->isSquareFoot();
+    }
 }

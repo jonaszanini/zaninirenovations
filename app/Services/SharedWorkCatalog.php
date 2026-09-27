@@ -52,7 +52,7 @@ class SharedWorkCatalog
                 'group_key' => 'demolition',
                 'label' => 'Remove existing floor / carpet',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['demo_floor_sf_per_hr'],
                 'flat_rate' => 1.50,
                 'consumers' => ['basement', 'flooring'],
@@ -67,7 +67,7 @@ class SharedWorkCatalog
                 'group_key' => 'flooring',
                 'label' => 'Install flooring',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['flooring_sf_per_hr'],
                 'flat_rate' => 4.25,
                 'consumers' => ['basement', 'flooring'],
@@ -79,8 +79,9 @@ class SharedWorkCatalog
                 'group_key' => 'flooring',
                 'label' => 'Install underlayment',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['underlayment_sf_per_hr'],
+                'flat_rate' => self::defaultLinearRateFromProductivity((float) $basementProd['underlayment_sf_per_hr']),
                 'material' => $basementMat['underlayment'],
                 'material_keys' => [
                     'basement' => ['underlayment'],
@@ -94,8 +95,9 @@ class SharedWorkCatalog
                 'group_key' => 'flooring',
                 'label' => 'Install subfloor',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['subfloor_sf_per_hr'],
+                'flat_rate' => self::defaultLinearRateFromProductivity((float) $basementProd['subfloor_sf_per_hr']),
                 'material' => $basementMat['subfloor_panel'],
                 'material_keys' => [
                     'basement' => ['subfloor_panel'],
@@ -568,7 +570,7 @@ class SharedWorkCatalog
                 'group_key' => 'painting',
                 'label' => 'Paint walls',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['paint_wall_sf_per_hr'],
                 'flat_rate' => 2.51,
                 'material' => $basementMat['paint_1gal'],
@@ -588,8 +590,9 @@ class SharedWorkCatalog
                 'group_key' => 'painting',
                 'label' => 'Paint ceiling',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['paint_ceiling_sf_per_hr'],
+                'flat_rate' => self::defaultLinearRateFromProductivity((float) $basementProd['paint_ceiling_sf_per_hr']),
                 'material' => $basementMat['paint_1gal'],
                 'consumers' => ['basement'],
                 'productivity_keys' => [
@@ -612,8 +615,9 @@ class SharedWorkCatalog
                 'group_key' => 'drywall',
                 'label' => 'Hang drywall',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['drywall_hang_sf_per_hr'],
+                'flat_rate' => self::defaultLinearRateFromProductivity((float) $basementProd['drywall_hang_sf_per_hr']),
                 'material' => $basementMat['drywall_sheet'],
                 'material_keys' => [
                     'basement' => ['drywall_sheet'],
@@ -629,8 +633,9 @@ class SharedWorkCatalog
                 'group_key' => 'drywall',
                 'label' => 'Finish drywall (level 4 / default)',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['drywall_finish_l4_sf_per_hr'],
+                'flat_rate' => self::defaultLinearRateFromProductivity((float) $basementProd['drywall_finish_l4_sf_per_hr']),
                 'consumers' => ['basement', 'shed'],
                 'productivity_keys' => [
                     'basement' => ['drywall_finish_l4_sf_per_hr'],
@@ -641,8 +646,9 @@ class SharedWorkCatalog
                 'group_key' => 'insulation',
                 'label' => 'Install insulation',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['insulation_wall_sf_per_hr'],
+                'flat_rate' => self::defaultLinearRateFromProductivity((float) $basementProd['insulation_wall_sf_per_hr']),
                 'material' => $basementMat['insulation_batt'],
                 'material_keys' => [
                     'basement' => ['insulation_batt'],
@@ -658,7 +664,7 @@ class SharedWorkCatalog
                 'group_key' => 'tile',
                 'label' => 'Install tile',
                 'unit' => 'sf',
-                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'labor_kind' => SharedWork::KIND_FLAT,
                 'rate' => (float) $basementProd['tile_sf_per_hr'],
                 'flat_rate' => 12.0,
                 'material' => $basementMat['tile'],
@@ -724,7 +730,7 @@ class SharedWorkCatalog
 
     /**
      * Overlay shared labor rates onto a calculator productivity array.
-     * Linear-foot works store a sell $/lf; productivity is derived so hours × owner = lf × $/lf.
+     * Linear- and square-foot works store a sell $/unit; productivity is derived so hours × owner = qty × $/unit.
      *
      * @param  array<string, float|int|string>  $productivity
      * @return array<string, float|int|string>
@@ -793,7 +799,7 @@ class SharedWorkCatalog
         }
     }
 
-    public static function linearFootDisplayRate(SharedWork $work): float
+    public static function unitDisplayRate(SharedWork $work): float
     {
         if ($work->flat_rate !== null && (float) $work->flat_rate > 0) {
             return (float) $work->flat_rate;
@@ -805,6 +811,11 @@ class SharedWorkCatalog
         }
 
         return 0.0;
+    }
+
+    public static function linearFootDisplayRate(SharedWork $work): float
+    {
+        return self::unitDisplayRate($work);
     }
 
     /**
@@ -876,7 +887,7 @@ class SharedWorkCatalog
      */
     public static function effectiveSellRate(SharedWork $work): ?float
     {
-        if ($work->isLinearFoot() || $work->labor_kind === SharedWork::KIND_FLAT) {
+        if ($work->isPricedPerArea() || $work->labor_kind === SharedWork::KIND_FLAT) {
             if ($work->flat_rate !== null && (float) $work->flat_rate > 0) {
                 return (float) $work->flat_rate;
             }
@@ -916,8 +927,8 @@ class SharedWorkCatalog
         $flat = $work && $work->flat_rate !== null
             ? (float) $work->flat_rate
             : (float) ($def['flat_rate'] ?? 0);
-        if ($flat <= 0 && $work && $unit === 'lf') {
-            $flat = self::linearFootDisplayRate($work);
+        if ($flat <= 0 && $work && in_array($unit, ['lf', 'sf'], true)) {
+            $flat = self::unitDisplayRate($work);
         }
         if ($flat > 0) {
             return '$'.number_format($flat, 2).' / '.$unit;

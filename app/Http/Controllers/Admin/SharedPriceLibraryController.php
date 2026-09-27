@@ -65,7 +65,7 @@ class SharedPriceLibraryController extends Controller
                 ? round((float) $row['flat_rate'], 4)
                 : null;
 
-            if ($work->isLinearFoot()) {
+            if ($work->isPricedPerArea()) {
                 $work->labor_kind = SharedWork::KIND_FLAT;
                 $work->flat_rate = $flat;
                 if ($flat !== null && $flat > 0 && $owner > 0) {

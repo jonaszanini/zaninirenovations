@@ -68,14 +68,14 @@
             @php
               $catalogId = (int) old('works.'.$work->id.'.catalog_material_id', $work->catalog_material_id ?? 0);
               $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;
-              $isLf = $work->isLinearFoot();
-              $effective = $isLf ? null : \App\Services\SharedWorkCatalog::effectiveSellRate($work);
+              $isArea = $work->isPricedPerArea();
+              $effective = $isArea ? null : \App\Services\SharedWorkCatalog::effectiveSellRate($work);
               $consumers = is_array($work->consumers) ? $work->consumers : [];
-              $lfPrice = old('works.'.$work->id.'.flat_rate');
-              if ($lfPrice === null) {
-                  $derivedLf = \App\Services\SharedWorkCatalog::linearFootDisplayRate($work);
-                  $lfPrice = $derivedLf > 0
-                      ? number_format($derivedLf, 4, '.', '')
+              $areaPrice = old('works.'.$work->id.'.flat_rate');
+              if ($areaPrice === null) {
+                  $derivedArea = \App\Services\SharedWorkCatalog::unitDisplayRate($work);
+                  $areaPrice = $derivedArea > 0
+                      ? number_format($derivedArea, 4, '.', '')
                       : '';
               }
             @endphp
@@ -90,13 +90,13 @@
                 </div>
               </header>
               <div class="sp-work__grid">
-                @if ($isLf)
+                @if ($isArea)
                   <div class="admin-form-group">
-                    <label for="sp-flat-{{ $work->id }}">Rate per linear foot (CAD$)</label>
+                    <label for="sp-flat-{{ $work->id }}">{{ $work->isSquareFoot() ? 'Rate per square foot (CAD$)' : 'Rate per linear foot (CAD$)' }}</label>
                     <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
                            class="admin-input cp-money-input" id="sp-flat-{{ $work->id }}"
                            name="works[{{ $work->id }}][flat_rate]"
-                           value="{{ $lfPrice }}">
+                           value="{{ $areaPrice }}">
                   </div>
                 @else
                   <div class="admin-form-group">

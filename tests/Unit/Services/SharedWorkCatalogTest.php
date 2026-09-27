@@ -33,6 +33,13 @@ class SharedWorkCatalogTest extends TestCase
         $this->assertContains('flooring', $defs['baseboard']['consumers']);
         $this->assertArrayHasKey('baseboard_caulk_paint', $defs);
         $this->assertEqualsWithDelta(20.0, $defs['baseboard']['rate'], 0.01);
+        $this->assertSame(SharedWork::KIND_FLAT, $defs['flooring_install']['labor_kind']);
+        $this->assertSame('sf', $defs['flooring_install']['unit']);
+        $this->assertEqualsWithDelta(4.25, $defs['flooring_install']['flat_rate'], 0.01);
+        $this->assertSame(SharedWork::KIND_FLAT, $defs['underlayment']['labor_kind']);
+        $this->assertGreaterThan(0, $defs['underlayment']['flat_rate']);
+        $this->assertSame(SharedWork::KIND_FLAT, $defs['paint_walls']['labor_kind']);
+        $this->assertSame(SharedWork::KIND_FLAT, $defs['drywall_hang']['labor_kind']);
     }
 
     public function test_works_for_consumer_lists_flooring_keys(): void
