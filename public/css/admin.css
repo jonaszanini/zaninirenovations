@@ -3778,6 +3778,14 @@ body.admin-ai-text-history-open {
   gap: 0.5rem;
 }
 
+.sq-qty__control {
+  display: flex;
+  align-items: center;
+  flex: 1 1 10rem;
+  min-width: 0;
+  gap: 0;
+}
+
 .sq-qty__gear {
   flex-shrink: 0;
   width: 44px;
@@ -3785,21 +3793,33 @@ body.admin-ai-text-history-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--admin-border);
+  margin-left: 0.15rem;
+  border: 0;
   border-radius: 8px;
-  background: var(--admin-input-bg);
-  color: var(--admin-heading);
+  background: transparent;
+  color: var(--admin-muted);
   text-decoration: none;
+}
+
+.sq-qty__gear i {
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
 .sq-qty__gear:hover,
 .sq-qty__gear:focus-visible {
-  border-color: var(--admin-primary);
   color: var(--admin-primary);
+  background: transparent;
 }
 
-.sq-qty__row .admin-input {
-  flex: 1 1 8rem;
+.sq-qty__gear:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
+}
+
+.sq-qty__row .admin-input,
+.sq-qty__control .admin-input {
+  flex: 1 1 auto;
   min-width: 0;
 }
 

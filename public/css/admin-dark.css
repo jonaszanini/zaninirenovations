@@ -1412,3 +1412,14 @@ html.admin-dark .mw-col-kind select.admin-input {
   background-position: right 0.45rem center;
 }
 
+html.admin-dark .sq-qty__gear {
+  color: var(--admin-primary);
+  background: transparent;
+  border: 0;
+}
+
+html.admin-dark .sq-qty__gear:hover,
+html.admin-dark .sq-qty__gear:focus-visible {
+  color: var(--admin-primary-hover);
+}
+

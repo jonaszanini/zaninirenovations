@@ -7239,6 +7239,17 @@ body.cp-modal-open {
   gap: 0.75rem;
   align-items: start;
 }
+.br-lw__entry {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.15rem 0.25rem;
+}
+
+.br-lw__entry-fields {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .br-lw__sqft,
 .br-lw__companion,
 .br-lw__dim,

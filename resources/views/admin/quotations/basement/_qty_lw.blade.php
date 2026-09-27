@@ -43,12 +43,6 @@
           @endif
           {{ $label }}
         </label>
-        @if (! empty($workKey))
-          <a href="{{ $gearUrl ?? \App\Services\SharedWorkCatalog::sharedPricesUrl($workKey) }}"
-             class="sq-qty__gear" aria-label="{{ $gearLabel ?? 'Edit rates' }}" title="{{ $gearLabel ?? 'Edit rates' }}">
-            <i class="fa fa-cog" aria-hidden="true"></i>
-          </a>
-        @endif
         <div class="br-lw-segment" role="radiogroup" aria-label="{{ $label }} entry">
           <label class="br-lw-segment__item">
             <input type="radio" class="br-preview" name="{{ $modeName }}" value="sqft"
@@ -62,26 +56,36 @@
           </label>
         </div>
       </div>
-      <div class="br-lw__sqft" data-br-lw-sqft @if($mode === 'dimensions') hidden @endif>
-        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}" name="{{ $name }}"
-               data-br-lw-qty
-               value="{{ $value }}"
-               @if($placeholder !== '') placeholder="{{ $placeholder }}" @endif
-               @if(! empty($title)) title="{{ $title }}" @endif>
-      </div>
-      <div class="br-lw__dims" data-br-lw-dims @unless($mode === 'dimensions') hidden @endunless>
-        <div class="admin-form-group br-lw__dim">
-          <label for="{{ $id }}-length">Length (ft)</label>
-          <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}-length"
-                 name="{{ $lengthName }}" data-br-lw-length
-                 value="{{ $lengthValue }}" placeholder="e.g. 12">
+      <div class="br-lw__entry">
+        <div class="br-lw__entry-fields">
+          <div class="br-lw__sqft" data-br-lw-sqft @if($mode === 'dimensions') hidden @endif>
+            <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}" name="{{ $name }}"
+                   data-br-lw-qty
+                   value="{{ $value }}"
+                   @if($placeholder !== '') placeholder="{{ $placeholder }}" @endif
+                   @if(! empty($title)) title="{{ $title }}" @endif>
+          </div>
+          <div class="br-lw__dims" data-br-lw-dims @unless($mode === 'dimensions') hidden @endunless>
+            <div class="admin-form-group br-lw__dim">
+              <label for="{{ $id }}-length">Length (ft)</label>
+              <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}-length"
+                     name="{{ $lengthName }}" data-br-lw-length
+                     value="{{ $lengthValue }}" placeholder="e.g. 12">
+            </div>
+            <div class="admin-form-group br-lw__dim">
+              <label for="{{ $id }}-width">Width (ft)</label>
+              <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}-width"
+                     name="{{ $widthName }}" data-br-lw-width
+                     value="{{ $widthValue }}" placeholder="e.g. 10">
+            </div>
+          </div>
         </div>
-        <div class="admin-form-group br-lw__dim">
-          <label for="{{ $id }}-width">Width (ft)</label>
-          <input type="number" step="0.01" min="0" class="admin-input br-preview" id="{{ $id }}-width"
-                 name="{{ $widthName }}" data-br-lw-width
-                 value="{{ $widthValue }}" placeholder="e.g. 10">
-        </div>
+        @if (! empty($workKey))
+          <a href="{{ $gearUrl ?? \App\Services\SharedWorkCatalog::sharedPricesUrl($workKey) }}"
+             class="sq-qty__gear" aria-label="{{ $gearLabel ?? 'Edit rates' }}" title="{{ $gearLabel ?? 'Edit rates' }}">
+            <i class="fa fa-cog" aria-hidden="true"></i>
+          </a>
+        @endif
       </div>
     </div>
     @if (filled($companion))

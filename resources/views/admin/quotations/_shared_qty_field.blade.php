@@ -1,5 +1,5 @@
 {{--
-  Shared-work quantity field: info icon on the label, gear to Shared prices, live rate beside the input.
+  Shared-work quantity field: info icon on the label, trailing gear icon to Shared prices, live rate beside the input.
 
   @param string      $id
   @param string      $name
@@ -38,13 +38,15 @@
     {{ $label }}
   </label>
   <div class="sq-qty__row">
-    <a href="{{ $gearUrl }}" class="sq-qty__gear" aria-label="{{ $gearLabel }}" title="{{ $gearLabel }}">
-      <i class="fa fa-cog" aria-hidden="true"></i>
-    </a>
-    <input type="{{ $type }}" step="{{ $step }}" min="{{ $min }}" class="{{ $inputClass }}" id="{{ $id }}" name="{{ $name }}"
-           value="{{ $value }}"
-           @if (! empty($placeholder)) placeholder="{{ $placeholder }}" @endif
-           @if ($required) required @endif>
+    <div class="sq-qty__control">
+      <input type="{{ $type }}" step="{{ $step }}" min="{{ $min }}" class="{{ $inputClass }}" id="{{ $id }}" name="{{ $name }}"
+             value="{{ $value }}"
+             @if (! empty($placeholder)) placeholder="{{ $placeholder }}" @endif
+             @if ($required) required @endif>
+      <a href="{{ $gearUrl }}" class="sq-qty__gear" aria-label="{{ $gearLabel }}" title="{{ $gearLabel }}">
+        <i class="fa fa-cog" aria-hidden="true"></i>
+      </a>
+    </div>
     @if (filled($rate ?? null))
       <span class="sq-qty__rate">{{ $rate }}</span>
     @endif
