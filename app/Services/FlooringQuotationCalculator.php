@@ -25,6 +25,9 @@ class FlooringQuotationCalculator
             'install_shoe_moulding' => false,
             'shoe_moulding_linear_ft' => 0,
             'caulk_paint_shoe_moulding' => false,
+            'install_baseboard' => false,
+            'baseboard_linear_ft' => 0,
+            'caulk_paint_baseboard' => false,
             'closet_doors' => false,
             'closet_door_qty' => 0,
             'include_material_details' => false,
@@ -68,6 +71,13 @@ class FlooringQuotationCalculator
             && $this->shoeMouldingLinearFeet($inputs) <= 0
         ) {
             $hints[] = 'Enter shoe moulding linear feet in Core measurements when install or caulk & paint is selected.';
+        }
+
+        if (
+            (! empty($inputs['install_baseboard']) || ! empty($inputs['caulk_paint_baseboard']))
+            && $this->baseboardLinearFeet($inputs) <= 0
+        ) {
+            $hints[] = 'Enter baseboard linear feet in Core measurements when install or caulk & paint is selected.';
         }
 
         if (! empty($inputs['closet_doors']) && max(0, (int) ($inputs['closet_door_qty'] ?? 0)) <= 0) {
@@ -165,6 +175,34 @@ class FlooringQuotationCalculator
                 'key' => 'caulk_paint_shoe',
                 'section' => 'labor',
                 'label' => 'Caulking and painting shoe moulding',
+                'detail' => number_format($lf, 0).' lin ft × '.ClientProject::formatMoney($rate).'/lin ft',
+                'amount' => $amount,
+            ];
+            $laborTotal += $amount;
+        }
+
+        if (! empty($inputs['install_baseboard'])) {
+            $lf = $this->baseboardLinearFeet($inputs);
+            $rate = max(0, $settings->baseboardInstallRate());
+            $amount = round($lf * $rate, 2);
+            $laborBreakdown[] = [
+                'key' => 'baseboard',
+                'section' => 'labor',
+                'label' => 'Install baseboard',
+                'detail' => number_format($lf, 0).' lin ft × '.ClientProject::formatMoney($rate).'/lin ft',
+                'amount' => $amount,
+            ];
+            $laborTotal += $amount;
+        }
+
+        if (! empty($inputs['caulk_paint_baseboard'])) {
+            $lf = $this->baseboardLinearFeet($inputs);
+            $rate = max(0, $settings->baseboardCaulkPaintRate());
+            $amount = round($lf * $rate, 2);
+            $laborBreakdown[] = [
+                'key' => 'caulk_paint_baseboard',
+                'section' => 'labor',
+                'label' => 'Caulking and painting baseboard',
                 'detail' => number_format($lf, 0).' lin ft × '.ClientProject::formatMoney($rate).'/lin ft',
                 'amount' => $amount,
             ];
@@ -273,5 +311,13 @@ class FlooringQuotationCalculator
         }
 
         return $lf;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    private function baseboardLinearFeet(array $inputs): float
+    {
+        return round(max(0, (float) ($inputs['baseboard_linear_ft'] ?? 0)), 2);
     }
 }

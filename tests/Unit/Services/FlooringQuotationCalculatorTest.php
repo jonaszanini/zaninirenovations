@@ -33,6 +33,9 @@ class FlooringQuotationCalculatorTest extends TestCase
             'install_shoe_moulding' => false,
             'shoe_moulding_linear_ft' => 0,
             'caulk_paint_shoe_moulding' => false,
+            'install_baseboard' => false,
+            'baseboard_linear_ft' => 0,
+            'caulk_paint_baseboard' => false,
             'closet_doors' => false,
             'closet_door_qty' => 0,
             'include_material_details' => true,
@@ -99,5 +102,37 @@ class FlooringQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(200.0, (float) $shoe['amount'], 0.01);
 
         \App\Services\SharedWorkCatalog::forgetCache();
+    }
+
+    public function test_baseboard_add_ons_use_fallback_sell_rates(): void
+    {
+        $settings = new FlooringSettings([
+            'remove_carpet_dispose_rate' => 1.50,
+            'rescrew_subfloor_rate' => 350.00,
+            'install_shoe_moulding_rate' => 3.50,
+            'caulk_paint_shoe_moulding_rate' => 2.25,
+            'closet_door_reinstall_rate' => 75.00,
+        ]);
+        $type = new FlooringType([
+            'name' => 'LVP Click System',
+            'installation_price_per_sqft' => 4.25,
+        ]);
+        $type->id = 1;
+
+        $result = (new FlooringQuotationCalculator)->calculate([
+            'flooring_type_id' => 1,
+            'square_footage' => 100,
+            'install_baseboard' => true,
+            'caulk_paint_baseboard' => true,
+            'baseboard_linear_ft' => 40,
+            'include_material_details' => false,
+        ], $settings, collect([$type]));
+
+        $install = collect($result['breakdown'])->firstWhere('key', 'baseboard');
+        $caulk = collect($result['breakdown'])->firstWhere('key', 'caulk_paint_baseboard');
+        $this->assertNotNull($install);
+        $this->assertNotNull($caulk);
+        $this->assertEqualsWithDelta(40 * $settings->baseboardInstallRate(), (float) $install['amount'], 0.01);
+        $this->assertEqualsWithDelta(40 * $settings->baseboardCaulkPaintRate(), (float) $caulk['amount'], 0.01);
     }
 }

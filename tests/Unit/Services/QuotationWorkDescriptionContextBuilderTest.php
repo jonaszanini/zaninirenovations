@@ -221,6 +221,8 @@ class QuotationWorkDescriptionContextBuilderTest extends TestCase
             'rescrew_subfloor' => true,
             'install_shoe_moulding' => true,
             'shoe_moulding_linear_ft' => 80,
+            'install_baseboard' => true,
+            'baseboard_linear_ft' => 80,
             'closet_doors' => false,
         ];
 
@@ -229,6 +231,7 @@ class QuotationWorkDescriptionContextBuilderTest extends TestCase
         $this->assertStringContainsString('Square footage: 450 sq ft', $text);
         $this->assertStringContainsString('Subfloor re-screwing / preparation: yes', $text);
         $this->assertStringContainsString('Install shoe moulding: yes (80 lf)', $text);
+        $this->assertStringContainsString('Install baseboard: yes (80 lf)', $text);
         $this->assertStringNotContainsString('Carpet removal', $text);
         $this->assertStringNotContainsString('Closet doors', $text);
     }

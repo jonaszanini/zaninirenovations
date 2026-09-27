@@ -22,6 +22,8 @@ class SharedWorkCatalogTest extends TestCase
         $this->assertEqualsWithDelta(3.50, $defs['shoe_install']['flat_rate'], 0.01);
         $this->assertContains('flooring', $defs['shoe_install']['consumers']);
         $this->assertContains('trimming', $defs['shoe_install']['consumers']);
+        $this->assertContains('flooring', $defs['baseboard']['consumers']);
+        $this->assertArrayHasKey('baseboard_caulk_paint', $defs);
         $this->assertEqualsWithDelta(20.0, $defs['baseboard']['rate'], 0.01);
     }
 
@@ -32,6 +34,8 @@ class SharedWorkCatalogTest extends TestCase
         $this->assertContains('shoe_install', $keys);
         $this->assertContains('shoe_caulk_paint', $keys);
         $this->assertContains('remove_floor', $keys);
+        $this->assertContains('baseboard', $keys);
+        $this->assertContains('baseboard_caulk_paint', $keys);
     }
 
     public function test_overlay_and_flat_rate_use_library_when_available(): void

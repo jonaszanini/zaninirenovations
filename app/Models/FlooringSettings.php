@@ -53,4 +53,14 @@ class FlooringSettings extends Model
     {
         return \App\Services\SharedWorkCatalog::flatRate('shoe_caulk_paint', (float) $this->caulk_paint_shoe_moulding_rate);
     }
+
+    public function baseboardInstallRate(): float
+    {
+        return \App\Services\SharedWorkCatalog::sellRate('baseboard', 6.35);
+    }
+
+    public function baseboardCaulkPaintRate(): float
+    {
+        return \App\Services\SharedWorkCatalog::sellRate('baseboard_caulk_paint', 2.25);
+    }
 }

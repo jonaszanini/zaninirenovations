@@ -944,6 +944,13 @@ class QuotationWorkDescriptionContextBuilder
         if (! empty($c['caulk_paint_shoe_moulding'])) {
             $lines[] = 'Caulk and paint shoe moulding: yes';
         }
+        if (! empty($c['install_baseboard'])) {
+            $baseLf = (float) ($c['baseboard_linear_ft'] ?? 0);
+            $lines[] = 'Install baseboard: yes'.($baseLf > 0 ? ' ('.$baseLf.' lf)' : '');
+        }
+        if (! empty($c['caulk_paint_baseboard'])) {
+            $lines[] = 'Caulk and paint baseboard: yes';
+        }
         if (! empty($c['closet_doors'])) {
             $doors = (int) ($c['closet_door_qty'] ?? 0);
             $lines[] = 'Closet doors: yes'.($doors > 0 ? ' ('.$doors.' door(s))' : '');

@@ -28,6 +28,7 @@
           (float) ($inputs['caulk_paint_linear_ft'] ?? 0)
       );
   }
+  $baseboardLinearFt = old('baseboard_linear_ft', $inputs['baseboard_linear_ft'] ?? 0);
 @endphp
 
 @section('heading', $title)
@@ -172,6 +173,19 @@
             'warningId' => 'fl-shoe-linear-ft-warning',
             'warning' => 'Enter linear feet when a shoe moulding add-on is selected.',
           ])
+          @include('admin.quotations._shared_qty_field', [
+            'id' => 'fl-baseboard-linear-ft',
+            'name' => 'baseboard_linear_ft',
+            'label' => 'Baseboard linear feet',
+            'value' => $baseboardLinearFt,
+            'info' => 'Used for install and/or caulk & paint baseboard add-ons.',
+            'workKey' => 'baseboard',
+            'gearLabel' => 'Edit baseboard rates',
+            'rate' => \App\Models\ClientProject::formatMoney($settings->baseboardInstallRate()).' / lf install · '.\App\Models\ClientProject::formatMoney($settings->baseboardCaulkPaintRate()).' / lf caulk & paint',
+            'inputClass' => 'fl-preview-trigger',
+            'warningId' => 'fl-baseboard-linear-ft-warning',
+            'warning' => 'Enter linear feet when a baseboard add-on is selected.',
+          ])
         </div>
       </div>
 
@@ -217,6 +231,26 @@
             <span class="admin-checkbox__text">Caulking and painting shoe moulding</span>
           </label>
           <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->shoeCaulkPaintRate()) }}/lin ft</span>
+        </div>
+
+        <div class="fl-addon-row">
+          <label class="admin-checkbox">
+            <input type="hidden" name="install_baseboard" value="0">
+            <input type="checkbox" class="admin-checkbox__input fl-preview-trigger fl-baseboard-addon" name="install_baseboard" value="1" @checked(old('install_baseboard', $inputs['install_baseboard'] ?? false))>
+            <span class="admin-checkbox__mark"></span>
+            <span class="admin-checkbox__text">Install baseboard</span>
+          </label>
+          <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->baseboardInstallRate()) }}/lin ft</span>
+        </div>
+
+        <div class="fl-addon-row">
+          <label class="admin-checkbox">
+            <input type="hidden" name="caulk_paint_baseboard" value="0">
+            <input type="checkbox" class="admin-checkbox__input fl-preview-trigger fl-baseboard-addon" name="caulk_paint_baseboard" value="1" @checked(old('caulk_paint_baseboard', $inputs['caulk_paint_baseboard'] ?? false))>
+            <span class="admin-checkbox__mark"></span>
+            <span class="admin-checkbox__text">Caulking and painting baseboard</span>
+          </label>
+          <span class="admin-form-help">{{ \App\Models\ClientProject::formatMoney($settings->baseboardCaulkPaintRate()) }}/lin ft</span>
         </div>
 
         <div class="fl-addon-row">
@@ -424,6 +458,31 @@
         shoeLinearInput.addEventListener('change', syncShoeMouldingWarning);
       }
       syncShoeMouldingWarning();
+
+      function syncBaseboardWarning() {
+        var install = form.querySelector('input[name="install_baseboard"]');
+        var caulk = form.querySelector('input[name="caulk_paint_baseboard"]');
+        var input = document.getElementById('fl-baseboard-linear-ft');
+        var warn = document.getElementById('fl-baseboard-linear-ft-warning');
+        if (!install || !caulk || !input || !warn) return;
+        var lf = parseFloat(input.value || '0');
+        var needsValue = (install.checked || caulk.checked) && !(lf > 0);
+        warn.hidden = !needsValue;
+        input.classList.toggle('is-invalid', needsValue);
+      }
+
+      form.querySelectorAll('.fl-baseboard-addon').forEach(function (el) {
+        el.addEventListener('change', function () {
+          syncBaseboardWarning();
+          schedulePreview();
+        });
+      });
+      var baseboardLinearInput = document.getElementById('fl-baseboard-linear-ft');
+      if (baseboardLinearInput) {
+        baseboardLinearInput.addEventListener('input', syncBaseboardWarning);
+        baseboardLinearInput.addEventListener('change', syncBaseboardWarning);
+      }
+      syncBaseboardWarning();
 
       function schedulePreview() {
         clearTimeout(debounceTimer);

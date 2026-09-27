@@ -162,16 +162,26 @@ class SharedWorkCatalog
                 'unit' => 'lf',
                 'labor_kind' => SharedWork::KIND_PER_HOUR,
                 'rate' => (float) $basementProd['baseboard_lf_per_hr'],
+                'flat_rate' => 6.35,
                 'material' => $basementMat['baseboard'],
                 'material_keys' => [
                     'basement' => ['baseboard'],
                     'trimming' => ['baseboard'],
                 ],
-                'consumers' => ['basement', 'trimming'],
+                'consumers' => ['basement', 'trimming', 'flooring'],
                 'productivity_keys' => [
                     'basement' => ['baseboard_lf_per_hr'],
                     'trimming' => ['baseboard_lf_per_hr'],
                 ],
+            ],
+            'baseboard_caulk_paint' => [
+                'group_key' => 'trim',
+                'label' => 'Caulk & paint baseboard',
+                'unit' => 'lf',
+                'labor_kind' => SharedWork::KIND_PER_HOUR,
+                'rate' => (float) $trimProd['caulk_paint_lf_per_hr'],
+                'flat_rate' => 2.25,
+                'consumers' => ['flooring'],
             ],
             'casing_lf' => [
                 'group_key' => 'trim',
@@ -453,6 +463,26 @@ class SharedWorkCatalog
         $def = self::definition($key);
         if ($def && isset($def['flat_rate'])) {
             return (float) $def['flat_rate'];
+        }
+
+        return $fallback ?? 0.0;
+    }
+
+    /**
+     * Sell $/unit: library flat rate, else effective hours × crew + material, else fallback.
+     */
+    public static function sellRate(string $key, ?float $fallback = null): float
+    {
+        $flat = self::flatRate($key, null);
+        if ($flat > 0) {
+            return $flat;
+        }
+        $work = self::work($key);
+        if ($work) {
+            $effective = self::effectiveSellRate($work);
+            if ($effective !== null && $effective > 0) {
+                return $effective;
+            }
         }
 
         return $fallback ?? 0.0;
