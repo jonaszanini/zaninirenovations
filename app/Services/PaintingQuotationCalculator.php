@@ -6,6 +6,7 @@ use App\Models\ClientProject;
 use App\Models\PaintingPaintLine;
 use App\Models\PaintingQuotation;
 use App\Models\PaintingSettings;
+use App\Support\QuotationBuildingLabor;
 use Illuminate\Support\Collection;
 
 class PaintingQuotationCalculator
@@ -34,6 +35,8 @@ class PaintingQuotationCalculator
             'paint_line_id' => $defaultPaintLineId ? (int) $defaultPaintLineId : null,
             'coats' => self::DEFAULT_COATS,
             'surface_prep_description' => self::defaultSurfacePrepDescription(),
+            'include_building' => false,
+            'building_labor_percent' => QuotationBuildingLabor::DEFAULT_PERCENT,
         ];
     }
 
@@ -178,6 +181,8 @@ class PaintingQuotationCalculator
 
         $gallonsNeeded = $netArea > 0 ? (int) ceil($netArea / $sqfPerGallon) : 0;
         $laborAmount = round($netArea * $laborRate, 2);
+        $buildingRow = QuotationBuildingLabor::breakdownRow($laborAmount, $inputs);
+        $laborAmount = QuotationBuildingLabor::apply($laborAmount, $inputs)['total'];
         $paintMaterialAmount = round($gallonsNeeded * $paintPerGallon, 2);
         $materialsAmount = round($paintMaterialAmount + $addonFee, 2);
         $subtotalPreHst = round($laborAmount + $materialsAmount, 2);
@@ -190,8 +195,11 @@ class PaintingQuotationCalculator
                 'key' => 'labor',
                 'label' => 'Painting service (labor)',
                 'detail' => number_format($netArea, 0).' sq ft × '.ClientProject::formatMoney($laborRate).'/sq ft',
-                'amount' => $laborAmount,
+                'amount' => round($netArea * $laborRate, 2),
             ];
+            if ($buildingRow !== null) {
+                $breakdown[] = $buildingRow;
+            }
             $breakdown[] = [
                 'key' => 'materials',
                 'label' => 'Materials',

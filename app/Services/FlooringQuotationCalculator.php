@@ -6,6 +6,7 @@ use App\Models\ClientProject;
 use App\Models\FlooringQuotation;
 use App\Models\FlooringSettings;
 use App\Models\FlooringType;
+use App\Support\QuotationBuildingLabor;
 use Illuminate\Support\Collection;
 
 class FlooringQuotationCalculator
@@ -42,6 +43,8 @@ class FlooringQuotationCalculator
             'material_image_url_3' => '',
             'material_image_url_4' => '',
             'material_local_images' => [],
+            'include_building' => false,
+            'building_labor_percent' => QuotationBuildingLabor::DEFAULT_PERCENT,
         ];
     }
 
@@ -224,6 +227,11 @@ class FlooringQuotationCalculator
         }
 
         $laborTotal = round($laborTotal, 2);
+        $buildingRow = QuotationBuildingLabor::breakdownRow($laborTotal, $inputs);
+        if ($buildingRow !== null) {
+            $laborBreakdown[] = $buildingRow;
+        }
+        $laborTotal = QuotationBuildingLabor::apply($laborTotal, $inputs)['total'];
 
         $materialBreakdown = [];
         $materialsTotal = 0.0;

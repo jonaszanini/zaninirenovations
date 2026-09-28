@@ -19,6 +19,7 @@ use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -456,7 +457,7 @@ class StandardQuotationController extends Controller
             'include_labour_hst' => ['nullable', 'boolean'],
             'contingency_enabled' => ['nullable'],
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge([
             'client_name.required' => 'Client name is required.',
             'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',
@@ -464,7 +465,7 @@ class StandardQuotationController extends Controller
             'works.min' => 'Add at least one job.',
             'contingency_percent.numeric' => 'Contingency percent must be a number.',
             'contingency_percent.max' => 'Contingency percent cannot exceed 100.',
-        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
         $includesMaterial = $request->boolean('includes_material');
         $includesLabour = $request->boolean('includes_labour');
@@ -542,12 +543,15 @@ class StandardQuotationController extends Controller
         $includeLabourHst = $request->has('include_labour_hst')
             ? $request->boolean('include_labour_hst')
             : true;
+        $building = QuotationBuildingLabor::fromRequest($request);
 
         $computed = $calculator->computeWorks(
             $worksForCompute,
             $contingencyEnabled,
             (float) $contingencyPercent,
-            $includeLabourHst
+            $includeLabourHst,
+            $building['include_building'],
+            $building['building_labor_percent']
         );
 
         $materialMapper = static function (array $m): array {
@@ -665,6 +669,8 @@ class StandardQuotationController extends Controller
                 'contingency_percent' => $computed['contingency_percent'],
                 'contingency_amount' => $computed['contingency_amount'],
                 'contingency_hst' => $computed['contingency_hst'],
+                'include_building' => $building['include_building'],
+                'building_labor_percent' => $building['building_labor_percent'],
             ],
         ];
 

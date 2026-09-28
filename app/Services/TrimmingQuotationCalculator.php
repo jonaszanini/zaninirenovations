@@ -6,6 +6,7 @@ use App\Models\Material;
 use App\Models\TrimmingQuotation;
 use App\Models\TrimmingSettings;
 use App\Support\CatalogMaterialDelivery;
+use App\Support\QuotationBuildingLabor;
 use App\Support\QuotationHelperLabor;
 
 class TrimmingQuotationCalculator
@@ -91,6 +92,8 @@ class TrimmingQuotationCalculator
             'owner_hourly_rate' => 85,
             'helper_hourly_rate' => 45,
             'include_helper' => false,
+            'include_building' => false,
+            'building_labor_percent' => QuotationBuildingLabor::DEFAULT_PERCENT,
             'extra_materials' => [],
             'labor_override' => [],
             'materials_override' => [],
@@ -516,6 +519,8 @@ class TrimmingQuotationCalculator
         unset($row);
         $totalHours = round($totalHours, 2);
         $laborPre = round(QuotationHelperLabor::amount($totalHours, $ownerRate, $helperRate, $includeHelper), 2);
+        $buildingRow = QuotationBuildingLabor::breakdownRow($laborPre, $inputs);
+        $laborPre = QuotationBuildingLabor::apply($laborPre, $inputs)['total'];
 
         $matPre = 0.0;
         foreach ($materials as $row) {
@@ -541,6 +546,9 @@ class TrimmingQuotationCalculator
                 'detail' => $row['detail'].' · '.$row['hours'].' hr',
                 'amount' => $row['amount'],
             ];
+        }
+        if ($buildingRow !== null) {
+            $breakdown[] = $buildingRow;
         }
         foreach (array_merge($materials, $extraMaterials) as $row) {
             if ((float) $row['amount'] <= 0 && ! empty($row['client_provided'])) {
@@ -580,6 +588,9 @@ class TrimmingQuotationCalculator
                 'owner_hourly_rate' => $ownerRate,
                 'helper_hourly_rate' => $helperRate,
                 'include_helper' => $includeHelper,
+                'include_building' => QuotationBuildingLabor::enabled($inputs),
+                'building_labor_percent' => QuotationBuildingLabor::percent($inputs),
+                'building_labor_surcharge' => $buildingRow['amount'] ?? 0.0,
                 'labor_pre_hst' => $laborPre,
                 'labor_hst' => $laborHst,
                 'labor_after_hst' => round($laborPre + $laborHst, 2),

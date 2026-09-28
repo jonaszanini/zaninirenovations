@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\StandardQuotation;
 use App\Support\CatalogMaterialDelivery;
+use App\Support\QuotationBuildingLabor;
 
 /**
  * Computes totals for a Standard standalone quotation from material rows
@@ -289,7 +290,9 @@ class StandardQuotationCalculator
         array $works,
         bool $contingencyEnabled = true,
         float $contingencyPercent = 10.0,
-        bool $includeLabourHst = true
+        bool $includeLabourHst = true,
+        bool $includeBuilding = false,
+        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT
     ): array {
         if ($works === []) {
             $works = [[
@@ -350,6 +353,31 @@ class StandardQuotationCalculator
         $labourTotal = round($labourTotal, 2);
         $labourHst = $includeLabourHst ? round($labourHst, 2) : 0.0;
 
+        $buildingInputs = [
+            'include_building' => $includeBuilding,
+            'building_labor_percent' => $buildingLaborPercent,
+        ];
+        $buildingSurcharge = QuotationBuildingLabor::surchargeAmount($labourTotal, $buildingInputs);
+        if ($buildingSurcharge > 0) {
+            $baseLabour = $labourTotal;
+            $allocated = 0.0;
+            $lastIdx = array_key_last($jobResults);
+            foreach ($jobResults as $idx => &$jobRow) {
+                $jobLab = (float) ($jobRow['labour_total'] ?? 0);
+                $share = $idx === $lastIdx
+                    ? round($buildingSurcharge - $allocated, 2)
+                    : round($buildingSurcharge * ($jobLab / $baseLabour), 2);
+                $allocated += $share;
+                $jobRow['building_labor_surcharge'] = $share;
+                $jobRow['labour_total'] = round($jobLab + $share, 2);
+            }
+            unset($jobRow);
+            $labourTotal = round($labourTotal + $buildingSurcharge, 2);
+            if ($includeLabourHst) {
+                $labourHst = round($labourHst + round($buildingSurcharge * self::HST_RATE, 2), 2);
+            }
+        }
+
         $combined = $this->compute(
             $allMaterials,
             0.0,
@@ -394,6 +422,9 @@ class StandardQuotationCalculator
             'labour_hours' => $labourHours,
             'labour_total' => $labourTotal,
             'labour_hst' => $labourHst,
+            'include_building' => $includeBuilding,
+            'building_labor_percent' => QuotationBuildingLabor::percent($buildingInputs),
+            'building_labor_surcharge' => $buildingSurcharge,
             'pre_hst_taxable' => $preHstTaxable,
             'pre_hst_exempt' => $preHstExempt,
             'total_hst' => $totalHst,

@@ -19,7 +19,7 @@ trait HandlesQuotationAdditionalCosts
     }
 
     /**
-     * @return list<array{description: string, amount: float, hst_included: bool}>|array{}
+     * @return list<array{description: string, amount: float, hst_included: bool, category: string}>|array{}
      */
     protected function additionalCostsPersistenceFromRequest(
         Request $request,
@@ -36,7 +36,7 @@ trait HandlesQuotationAdditionalCosts
 
     /**
      * @param  array<string, mixed>  $persistence
-     * @param  list<array{description: string, amount: float, hst_included: bool}>|array{}  $rows
+     * @param  list<array{description: string, amount: float, hst_included: bool, category: string}>|array{}  $rows
      * @return array<string, mixed>
      */
     protected function mergeAdditionalCostsIntoPersistence(array $persistence, array $rows, string $totalKey): array

@@ -279,6 +279,7 @@
           </div>
         </div>
 
+        @include('admin.quotations._building', ['quotation' => $quotation, 'inputs' => $inputs ?? [], 'previewClass' => 'pt-recalc'])
         @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
         @include('admin.quotations._debris_removal', ['quotation' => $quotation])
         @include('admin.quotations._payment_schedule', ['quotation' => $quotation])

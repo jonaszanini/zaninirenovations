@@ -8,15 +8,21 @@ use Illuminate\Http\Request;
 /**
  * Free-form additional costs on selected quotation calculators.
  *
- * Each row: description + amount + whether the amount already includes HST.
- * Totals are rolled into the materials portion for admin live breakdowns and
- * folded into materials on the client PDF (never shown as their own lines).
+ * Each row: description + amount + HST flag + materials/labour category.
+ * Totals roll into that bucket on admin live breakdowns and fold into the
+ * matching labour or materials line on the client PDF.
  */
 class AdditionalCostsService
 {
     public const HST_RATE = 0.13;
 
     public const LINE_PREFIX = 'Additional cost';
+
+    public const LINE_PREFIX_LABOUR = 'Additional labour';
+
+    public const CATEGORY_MATERIALS = 'materials';
+
+    public const CATEGORY_LABOUR = 'labour';
 
     /**
      * Strip thousands separators from amount rows before Laravel `numeric` rules.
@@ -61,6 +67,7 @@ class AdditionalCostsService
             $field.'.*.description' => ['nullable', 'string', 'max:200'],
             $field.'.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             $field.'.*.hst_included' => ['nullable', 'in:0,1'],
+            $field.'.*.category' => ['nullable', 'in:materials,labour,labor'],
         ];
     }
 
@@ -84,7 +91,7 @@ class AdditionalCostsService
     }
 
     /**
-     * @return list<array{description: string, amount: float, hst_included: bool}>
+     * @return list<array{description: string, amount: float, hst_included: bool, category: string}>
      */
     public function persistenceFromRequest(Request $request): array
     {
@@ -96,9 +103,19 @@ class AdditionalCostsService
         return self::normalizeRows($raw);
     }
 
+    public static function normalizeCategory(mixed $raw): string
+    {
+        $value = strtolower(trim((string) $raw));
+        if (in_array($value, ['labour', 'labor'], true)) {
+            return self::CATEGORY_LABOUR;
+        }
+
+        return self::CATEGORY_MATERIALS;
+    }
+
     /**
      * @param  mixed  $rows
-     * @return list<array{description: string, amount: float, hst_included: bool}>
+     * @return list<array{description: string, amount: float, hst_included: bool, category: string}>
      */
     public static function normalizeRows($rows, string $emptyDescription = 'Additional cost'): array
     {
@@ -136,6 +153,7 @@ class AdditionalCostsService
                 'description' => $description !== '' ? $description : $fallback,
                 'amount' => $amount,
                 'hst_included' => $hstIncluded,
+                'category' => self::normalizeCategory($row['category'] ?? null),
             ];
         }
 
@@ -147,8 +165,28 @@ class AdditionalCostsService
      */
     public static function materialsPreTaxTotal(array $rows): float
     {
+        return self::preTaxTotalForCategory($rows, self::CATEGORY_MATERIALS);
+    }
+
+    /**
+     * @param  list<array{description?: string, amount?: float|int|string, hst_included?: bool|int|string, category?: string}>  $rows
+     */
+    public static function laborPreTaxTotal(array $rows): float
+    {
+        return self::preTaxTotalForCategory($rows, self::CATEGORY_LABOUR);
+    }
+
+    /**
+     * @param  list<array{description?: string, amount?: float|int|string, hst_included?: bool|int|string, category?: string}>  $rows
+     */
+    public static function preTaxTotalForCategory(array $rows, string $category): float
+    {
+        $want = self::normalizeCategory($category);
         $sum = 0.0;
         foreach (self::normalizeRows($rows) as $row) {
+            if (($row['category'] ?? self::CATEGORY_MATERIALS) !== $want) {
+                continue;
+            }
             $sum += self::rowPreTax((float) $row['amount'], (bool) $row['hst_included']);
         }
 
@@ -164,14 +202,38 @@ class AdditionalCostsService
     }
 
     /**
+     * @param  list<array{description?: string, amount?: float|int|string, hst_included?: bool|int|string, category?: string}>  $rows
+     */
+    public static function laborHstTotal(array $rows): float
+    {
+        return round(self::laborPreTaxTotal($rows) * self::HST_RATE, 2);
+    }
+
+    /**
      * Tax-inclusive total to add to grand / final quote totals.
      *
      * @param  list<array{description?: string, amount?: float|int|string, hst_included?: bool|int|string}>  $rows
      */
     public static function taxInclusiveTotal(array $rows): float
     {
+        return round(
+            self::taxInclusiveTotalForCategory($rows, self::CATEGORY_MATERIALS)
+            + self::taxInclusiveTotalForCategory($rows, self::CATEGORY_LABOUR),
+            2
+        );
+    }
+
+    /**
+     * @param  list<array{description?: string, amount?: float|int|string, hst_included?: bool|int|string, category?: string}>  $rows
+     */
+    public static function taxInclusiveTotalForCategory(array $rows, string $category): float
+    {
+        $want = self::normalizeCategory($category);
         $sum = 0.0;
         foreach (self::normalizeRows($rows) as $row) {
+            if (($row['category'] ?? self::CATEGORY_MATERIALS) !== $want) {
+                continue;
+            }
             $amount = (float) $row['amount'];
             if ($amount <= 0) {
                 continue;
@@ -198,7 +260,7 @@ class AdditionalCostsService
     }
 
     /**
-     * Hidden project lines (HST-inclusive amounts) for PDF folding into materials.
+     * Hidden project lines (HST-inclusive amounts) for PDF folding into materials or labour.
      *
      * @param  list<array{description?: string, amount?: float|int|string, hst_included?: bool|int|string}>  $rows
      * @return list<array{description: string, amount: float, apply_hst: bool, hst_included: bool}>
@@ -215,8 +277,11 @@ class AdditionalCostsService
             }
 
             $label = trim((string) $row['description']);
+            $prefix = ($row['category'] ?? self::CATEGORY_MATERIALS) === self::CATEGORY_LABOUR
+                ? self::LINE_PREFIX_LABOUR
+                : self::LINE_PREFIX;
             $lines[] = [
-                'description' => self::LINE_PREFIX.($label !== '' && $label !== 'Additional cost' ? ' — '.$label : ''),
+                'description' => $prefix.($label !== '' && $label !== 'Additional cost' && $label !== 'Additional labour' ? ' — '.$label : ''),
                 'amount' => $taxIn,
                 'apply_hst' => false,
                 'hst_included' => true,
@@ -228,7 +293,8 @@ class AdditionalCostsService
 
     public static function isAdditionalCostLineDescription(string $description): bool
     {
-        return str_starts_with($description, self::LINE_PREFIX);
+        return str_starts_with($description, self::LINE_PREFIX)
+            || str_starts_with($description, self::LINE_PREFIX_LABOUR);
     }
 
     /**

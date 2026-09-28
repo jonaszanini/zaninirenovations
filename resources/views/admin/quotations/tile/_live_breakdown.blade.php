@@ -41,6 +41,13 @@
   </div>
   @endif
 
+  @if(!empty($calculation['building_labor_surcharge']) && $calculation['building_labor_surcharge'] > 0)
+  <div class="tl-live-breakdown__row">
+    <span>Building access (+{{ rtrim(rtrim(number_format((float) ($calculation['building_labor_percent'] ?? 30), 2, '.', ''), '0'), '.') }}% labour):</span>
+    <strong>${{ number_format($calculation['building_labor_surcharge'], 2) }}</strong>
+  </div>
+  @endif
+
   <div class="tl-live-breakdown__row tl-live-breakdown__row--rule">
     <span>Labor:</span>
     <strong>${{ number_format($calculation['labor_total'], 2) }}</strong>

@@ -689,7 +689,14 @@ class PavingQuotationController extends Controller
         $debris = ($pavingQuotation->include_debris_removal ?? false)
             ? round((float) ($pavingQuotation->debris_removal_amount ?? 0), 2)
             : 0.0;
-        $exempt = round($final - $labour - $labourHst - $commute - $debris, 2);
+        $additionalRows = is_array($pavingQuotation->additional_costs ?? null)
+            ? $pavingQuotation->additional_costs
+            : [];
+        $laborAdditionalTaxIn = AdditionalCostsService::taxInclusiveTotalForCategory(
+            $additionalRows,
+            AdditionalCostsService::CATEGORY_LABOUR
+        );
+        $exempt = round($final - $labour - $labourHst - $commute - $debris - $laborAdditionalTaxIn, 2);
 
         if ($labour <= 0 || $labourHst <= 0) {
             return [[
@@ -710,7 +717,7 @@ class PavingQuotationController extends Controller
         }
         $items[] = [
             'description' => $lineDescription.' — Labour',
-            'amount' => round($labour + $commute + $debris, 2),
+            'amount' => round($labour + $commute + $debris + $laborAdditionalTaxIn, 2),
             'apply_hst' => true,
             'hst_taxable_amount' => $labour,
         ];

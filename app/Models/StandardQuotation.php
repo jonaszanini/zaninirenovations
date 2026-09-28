@@ -78,6 +78,8 @@ class StandardQuotation extends Model
         'commute_amount',
         'include_debris_removal',
         'debris_removal_amount',
+        'include_building',
+        'building_labor_percent',
         'version',
         'linked_at',
     ];
@@ -113,6 +115,8 @@ class StandardQuotation extends Model
         'commute_amount' => 'decimal:2',
         'include_debris_removal' => 'boolean',
         'debris_removal_amount' => 'decimal:2',
+        'include_building' => 'boolean',
+        'building_labor_percent' => 'decimal:2',
         'version' => 'integer',
         'linked_at' => 'datetime',
     ];
@@ -253,6 +257,8 @@ class StandardQuotation extends Model
             (bool) $this->contingency_enabled,
             (float) ($this->contingency_percent ?? 0),
             $this->chargesLabourHst(),
+            (bool) ($this->include_building ?? false),
+            (float) ($this->building_labor_percent ?? \App\Support\QuotationBuildingLabor::DEFAULT_PERCENT),
         );
     }
 

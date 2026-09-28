@@ -345,6 +345,7 @@
 
       @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
+      @include('admin.quotations._building', ['quotation' => $quotation, 'inputs' => $inputs ?? [], 'previewClass' => 'fl-preview-trigger'])
       @include('admin.quotations._debris_removal', ['quotation' => $quotation])
       @include('admin.quotations._additional_costs', ['quotation' => $quotation])
 
@@ -414,6 +415,8 @@
       var lastDebrisAmount = 0;
       var lastAdditionalMaterialsPreTax = 0;
       var lastAdditionalMaterialsHst = 0;
+      var lastAdditionalLaborPreTax = 0;
+      var lastAdditionalLaborHst = 0;
       var lastAdditionalTaxIn = 0;
       var lastPreviewData = null;
       var fmt = function (n) { return 'CA$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
@@ -536,12 +539,17 @@
           }
           html += '<div class="pq-row"><span>' + (row.label || '') + '<br><span class="admin-form-help">' + (row.detail || '') + '</span></span><span>' + fmt(row.amount) + '</span></div>';
         });
-        if (lastAdditionalMaterialsPreTax > 0) {
+        if (lastAdditionalLaborPreTax > 0 || lastAdditionalMaterialsPreTax > 0) {
           html += '<div class="fl-breakdown-section">Additional costs</div>';
-          html += '<div class="pq-row"><span>Additional costs (materials)<br><span class="admin-form-help">Admin only — hidden on client PDF</span></span><span>' + fmt(lastAdditionalMaterialsPreTax) + '</span></div>';
+          if (lastAdditionalLaborPreTax > 0) {
+            html += '<div class="pq-row"><span>Additional costs (labour)<br><span class="admin-form-help">Admin only — folded into labour on client PDF</span></span><span>' + fmt(lastAdditionalLaborPreTax) + '</span></div>';
+          }
+          if (lastAdditionalMaterialsPreTax > 0) {
+            html += '<div class="pq-row"><span>Additional costs (materials)<br><span class="admin-form-help">Admin only — folded into materials on client PDF</span></span><span>' + fmt(lastAdditionalMaterialsPreTax) + '</span></div>';
+          }
         }
-        html += '<div class="pq-row"><span>Subtotal (pre-HST)</span><span>' + fmt(Number(summary.subtotal_pre_hst || 0) + lastAdditionalMaterialsPreTax) + '</span></div>';
-        html += '<div class="pq-row"><span>HST (13%)</span><span>' + fmt(Number(summary.hst || 0) + lastAdditionalMaterialsHst) + '</span></div>';
+        html += '<div class="pq-row"><span>Subtotal (pre-HST)</span><span>' + fmt(Number(summary.subtotal_pre_hst || 0) + lastAdditionalLaborPreTax + lastAdditionalMaterialsPreTax) + '</span></div>';
+        html += '<div class="pq-row"><span>HST (13%)</span><span>' + fmt(Number(summary.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst) + '</span></div>';
         if (lastDebrisAmount > 0) {
           html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
         }
@@ -617,6 +625,8 @@
         var d = e.detail || {};
         lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
         lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
+        lastAdditionalLaborPreTax = Number(d.laborPreTax || 0);
+        lastAdditionalLaborHst = Number(d.laborHst || 0);
         lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
         if (lastPreviewData) {
           renderPreview(lastPreviewData);

@@ -43,6 +43,7 @@ class AdditionalCostsServiceTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame('Keep', $rows[0]['description']);
         $this->assertFalse($rows[0]['hst_included']);
+        $this->assertSame(AdditionalCostsService::CATEGORY_MATERIALS, $rows[0]['category']);
     }
 
     public function test_project_lines_are_tax_inclusive_and_prefixed(): void
@@ -89,6 +90,46 @@ class AdditionalCostsServiceTest extends TestCase
         ], 'Electrical work');
 
         $this->assertSame('Electrical work — Already prefixed', $lines[0]['description']);
+    }
+
+    public function test_labour_category_is_excluded_from_materials_totals(): void
+    {
+        $rows = [
+            ['description' => 'Dumpster', 'amount' => 100.0, 'hst_included' => false, 'category' => 'materials'],
+            ['description' => 'Extra hours', 'amount' => 200.0, 'hst_included' => false, 'category' => 'labor'],
+        ];
+
+        $this->assertSame(100.0, AdditionalCostsService::materialsPreTaxTotal($rows));
+        $this->assertSame(200.0, AdditionalCostsService::laborPreTaxTotal($rows));
+        $this->assertSame(13.0, AdditionalCostsService::materialsHstTotal($rows));
+        $this->assertSame(26.0, AdditionalCostsService::laborHstTotal($rows));
+        $this->assertSame(226.0, AdditionalCostsService::taxInclusiveTotalForCategory($rows, AdditionalCostsService::CATEGORY_LABOUR));
+        $this->assertSame(339.0, AdditionalCostsService::taxInclusiveTotal($rows));
+    }
+
+    public function test_project_lines_prefix_labour_separately(): void
+    {
+        $lines = AdditionalCostsService::projectLineItems([
+            ['description' => 'Dumpster', 'amount' => 100, 'hst_included' => false, 'category' => 'materials'],
+            ['description' => 'Extra hours', 'amount' => 100, 'hst_included' => false, 'category' => 'labour'],
+        ]);
+
+        $this->assertCount(2, $lines);
+        $this->assertSame('Additional cost — Dumpster', $lines[0]['description']);
+        $this->assertSame('Additional labour — Extra hours', $lines[1]['description']);
+        $this->assertSame(113.0, $lines[0]['amount']);
+        $this->assertSame(113.0, $lines[1]['amount']);
+    }
+
+    public function test_missing_category_defaults_to_materials(): void
+    {
+        $rows = AdditionalCostsService::normalizeRows([
+            ['description' => 'Permit', 'amount' => 50, 'hst_included' => '1'],
+        ]);
+
+        $this->assertSame(AdditionalCostsService::CATEGORY_MATERIALS, $rows[0]['category']);
+        $this->assertSame('materials', AdditionalCostsService::normalizeCategory(null));
+        $this->assertSame('labour', AdditionalCostsService::normalizeCategory('Labor'));
     }
 
     public function test_normalize_rows_accepts_thousands_separators(): void

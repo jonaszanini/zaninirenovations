@@ -14,9 +14,13 @@
       border: 1px dashed var(--admin-border);
       border-radius: 8px;
     }
+    .q-ac-row--with-category {
+      grid-template-columns: minmax(0, 1.4fr) minmax(110px, 0.5fr) minmax(120px, 0.55fr) minmax(148px, auto) auto;
+    }
     .q-ac-row .admin-form-group { margin-bottom: 0; min-width: 0; }
     .q-ac-row__desc label,
     .q-ac-row__amount label,
+    .q-ac-row__category label,
     .q-ac-row__hst-label {
       display: block;
       overflow: hidden;
@@ -58,10 +62,24 @@
       color: var(--admin-heading);
     }
     .q-additional-costs-card__intro { margin: 0 0 14px; }
-    @media (max-width: 768px) {
-      .q-ac-row {
+    @media (max-width: 900px) {
+      .q-ac-row,
+      .q-ac-row--with-category {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: end;
+      }
+      .q-ac-row__desc {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (max-width: 700px) {
+      .q-ac-row,
+      .q-ac-row--with-category {
         grid-template-columns: 1fr;
         align-items: stretch;
+      }
+      .q-ac-row__desc {
+        grid-column: auto;
       }
       .q-ac-row__actions {
         justify-content: flex-end;
@@ -84,6 +102,7 @@
   $isAdditionalCard = $isAdditionalCard ?? false;
   $wrapClass = $wrapClass ?? 'q-trade-lines';
   $defaultHstIncluded = filter_var($defaultHstIncluded ?? true, FILTER_VALIDATE_BOOLEAN);
+  $showCategory = ! empty($showCategory);
 
   $sourceRows = old($field);
   if (! is_array($sourceRows)) {
@@ -99,6 +118,7 @@
       $amt = $row['amount'] ?? '';
       $hst = array_key_exists('hst_included', $row) ? ($row['hst_included'] ?? '0') : ($defaultHstIncluded ? '1' : '0');
       $hstIncluded = $hst === true || $hst === 1 || $hst === '1';
+      $category = \App\Services\AdditionalCostsService::normalizeCategory($row['category'] ?? null);
       if ($desc === '' && ($amt === '' || $amt === null || (is_numeric($amt) && (float) $amt <= 0))) {
           continue;
       }
@@ -106,11 +126,17 @@
           'description' => $desc,
           'amount' => is_numeric($amt) ? number_format((float) $amt, 2, '.', '') : (string) $amt,
           'hst_included' => $hstIncluded,
+          'category' => $category,
       ];
   }
 
   if ($normalizedRows === []) {
-      $normalizedRows[] = ['description' => '', 'amount' => '', 'hst_included' => $defaultHstIncluded];
+      $normalizedRows[] = [
+          'description' => '',
+          'amount' => '',
+          'hst_included' => $defaultHstIncluded,
+          'category' => \App\Services\AdditionalCostsService::CATEGORY_MATERIALS,
+      ];
   }
 @endphp
 
@@ -123,7 +149,8 @@
      data-ac-input-class="{{ $inputClass }}"
      data-ac-event="{{ $eventName }}"
      data-ac-summary-mode="{{ $summaryMode }}"
-     data-ac-default-hst-included="{{ $defaultHstIncluded ? '1' : '0' }}">
+     data-ac-default-hst-included="{{ $defaultHstIncluded ? '1' : '0' }}"
+     data-ac-show-category="{{ $showCategory ? '1' : '0' }}">
   @if($title !== '' || $intro !== '')
     <div class="q-additional-costs-card__head">
       @if($title !== '')
@@ -137,7 +164,7 @@
 
   <div class="q-ac-rows" data-ac-rows>
     @foreach ($normalizedRows as $idx => $row)
-      <div class="q-ac-row" data-ac-row data-ac-index="{{ $idx }}">
+      <div class="q-ac-row{{ $showCategory ? ' q-ac-row--with-category' : '' }}" data-ac-row data-ac-index="{{ $idx }}">
         <div class="admin-form-group q-ac-row__desc">
           <label for="{{ $idPrefix }}-desc-{{ $idx }}">Description</label>
           <input type="text"
@@ -162,6 +189,19 @@
                  value="{{ $row['amount'] }}"
                  data-ac-amount>
         </div>
+        @if ($showCategory)
+          <div class="admin-form-group q-ac-row__category">
+            <label for="{{ $idPrefix }}-cat-{{ $idx }}">Type</label>
+            <select id="{{ $idPrefix }}-cat-{{ $idx }}"
+                    name="{{ $field }}[{{ $idx }}][category]"
+                    class="admin-input {{ $inputClass }}"
+                    data-ac-category
+                    aria-label="Materials or labour">
+              <option value="materials" @selected(($row['category'] ?? 'materials') === 'materials')>Materials</option>
+              <option value="labour" @selected(($row['category'] ?? 'materials') === 'labour')>Labour</option>
+            </select>
+          </div>
+        @endif
         <div class="admin-form-group q-ac-row__hst">
           <span class="q-ac-row__hst-label" id="{{ $idPrefix }}-hst-label-{{ $idx }}">Tax</span>
           <label class="cp-visit-toggle cp-visit-toggle--compact q-ac-hst-toggle"

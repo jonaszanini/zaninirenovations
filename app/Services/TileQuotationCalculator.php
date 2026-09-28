@@ -6,6 +6,7 @@ use App\Models\TileEdge;
 use App\Models\TileMortarType;
 use App\Models\TileGroutType;
 use App\Models\TileProduct;
+use App\Support\QuotationBuildingLabor;
 
 class TileQuotationCalculator
 {
@@ -32,7 +33,9 @@ class TileQuotationCalculator
         bool $includeDisposalFee = false,
         bool $includeEdge = false,
         ?int $tileEdgeId = null,
-        float $edgeLf = 0.0
+        float $edgeLf = 0.0,
+        bool $includeBuilding = false,
+        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT
     ): array {
         // 1. Total Area
         $netArea = $totalAreaSqft > 0 ? $totalAreaSqft : ($lengthFt * $widthFt);
@@ -116,6 +119,12 @@ class TileQuotationCalculator
 
         // 6. Labor
         $laborTotal = $totalArea * $laborRate;
+        $buildingInputs = [
+            'include_building' => $includeBuilding,
+            'building_labor_percent' => $buildingLaborPercent,
+        ];
+        $buildingSurcharge = QuotationBuildingLabor::surchargeAmount($laborTotal, $buildingInputs);
+        $laborTotal = round($laborTotal + $buildingSurcharge, 2);
 
         // 7. Demolition & Prep Work
         $demolitionTotal = 0.0;
@@ -172,6 +181,9 @@ class TileQuotationCalculator
             'edge_color' => $edgeColor,
 
             'labor_total' => round($laborTotal, 2),
+            'include_building' => $includeBuilding,
+            'building_labor_percent' => QuotationBuildingLabor::percent($buildingInputs),
+            'building_labor_surcharge' => round($buildingSurcharge, 2),
 
             'include_demolition' => $includeDemolition,
             'demolition_rate' => round($demolitionRate, 2),

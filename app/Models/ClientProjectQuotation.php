@@ -887,7 +887,8 @@ class ClientProjectQuotation extends Model
 
     protected static function isLabourHiddenInternalExpenseLineDescription(string $description): bool
     {
-        return str_starts_with($description, 'Commute expense');
+        return str_starts_with($description, 'Commute expense')
+            || str_starts_with($description, \App\Services\AdditionalCostsService::LINE_PREFIX_LABOUR);
     }
 
     protected static function isMaterialsHiddenInternalExpenseLineDescription(string $description): bool

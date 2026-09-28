@@ -381,6 +381,7 @@
 
       @include('admin.quotations._payment_schedule', ['quotation' => $quotation ?? null])
 
+      @include('admin.quotations._building', ['quotation' => $quotation ?? null, 'inputs' => $inputs ?? [], 'previewClass' => 'tl-live-trigger'])
       @include('admin.quotations._commute_expense', ['quotation' => $quotation ?? null, 'linkProject' => $linkProject ?? null])
       @include('admin.quotations._debris_removal', ['quotation' => $quotation ?? null])
       @include('admin.quotations._additional_costs', ['quotation' => $quotation ?? null])
@@ -447,6 +448,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var lastCommuteAmount = 0;
     var lastDebrisAmount = 0;
     var lastAdditionalMaterialsPreTax = 0;
+    var lastAdditionalMaterialsTaxIn = 0;
+    var lastAdditionalLaborPreTax = 0;
+    var lastAdditionalLaborTaxIn = 0;
     var lastAdditionalTaxIn = 0;
     var lastGrandTotal = 0;
 
@@ -524,26 +528,30 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!liveBody || liveBody.hidden) {
             return;
         }
-        var existing = liveBody.querySelector('[data-tl-additional-row]');
-        if (existing) {
-            existing.remove();
-        }
-        if (lastAdditionalTaxIn > 0) {
+        liveBody.querySelectorAll('[data-tl-additional-row]').forEach(function (el) {
+            el.remove();
+        });
+        var grandRow = liveBody.querySelector('[data-tl-grand-row]');
+        function insertAdditionalRow(label, taxIn, preTax) {
+            if (taxIn <= 0) {
+                return;
+            }
             var additionalRow = document.createElement('div');
             additionalRow.setAttribute('data-tl-additional-row', '1');
             additionalRow.className = 'tl-live-breakdown__row';
-            additionalRow.innerHTML = '<span>Additional costs → materials'
-                + (lastAdditionalMaterialsPreTax > 0
-                    ? ' <small class="tl-live-breakdown__muted">(pre-tax $' + lastAdditionalMaterialsPreTax.toFixed(2) + ')</small>'
+            additionalRow.innerHTML = '<span>' + label
+                + (preTax > 0
+                    ? ' <small class="tl-live-breakdown__muted">(pre-tax $' + preTax.toFixed(2) + ')</small>'
                     : '')
-                + ':</span><strong>$' + lastAdditionalTaxIn.toFixed(2) + '</strong>';
-            var grandRow = liveBody.querySelector('[data-tl-grand-row]');
+                + ':</span><strong>$' + taxIn.toFixed(2) + '</strong>';
             if (grandRow && grandRow.parentNode) {
                 grandRow.parentNode.insertBefore(additionalRow, grandRow);
             } else {
                 liveBody.appendChild(additionalRow);
             }
         }
+        insertAdditionalRow('Additional costs → labour', lastAdditionalLaborTaxIn, lastAdditionalLaborPreTax);
+        insertAdditionalRow('Additional costs → materials', lastAdditionalMaterialsTaxIn, lastAdditionalMaterialsPreTax);
         var grandValue = liveBody.querySelector('[data-tl-grand-value]');
         if (grandValue) {
             grandValue.textContent = '$' + (lastGrandTotal + liveExtrasTotal()).toFixed(2);
@@ -700,6 +708,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('additional-costs:change', function (e) {
         var d = e.detail || {};
         lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
+        lastAdditionalMaterialsTaxIn = Number(d.materialsTaxInclusive || 0);
+        lastAdditionalLaborPreTax = Number(d.laborPreTax || 0);
+        lastAdditionalLaborTaxIn = Number(d.laborTaxInclusive || 0);
         lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
         applyAdditionalCostsToLivePreview();
     });

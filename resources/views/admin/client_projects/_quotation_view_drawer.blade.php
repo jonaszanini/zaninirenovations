@@ -214,13 +214,17 @@
                 $desc = trim((string) ($row['description'] ?? ''));
                 $amt = (float) ($row['amount'] ?? 0);
                 $hstIncluded = (bool) ($row['hst_included'] ?? true);
+                $category = \App\Services\AdditionalCostsService::normalizeCategory($row['category'] ?? null);
+                $categoryLabel = $category === \App\Services\AdditionalCostsService::CATEGORY_LABOUR
+                  ? 'labour'
+                  : 'materials';
                 if ($amt <= 0) continue;
               @endphp
               <div class="cp-vd-field">
                 <span class="cp-vd-field__label">{{ $desc !== '' ? $desc : 'Additional cost' }}</span>
                 <span class="cp-vd-field__value">
                   {{ \App\Models\ClientProject::formatMoney($amt) }}
-                  <small style="opacity: 0.7; margin-left: 4px;">{{ $hstIncluded ? '(tax included)' : '(before tax)' }}</small>
+                  <small style="opacity: 0.7; margin-left: 4px;">{{ $hstIncluded ? '(tax included)' : '(before tax)' }} · {{ $categoryLabel }}</small>
                 </span>
               </div>
             @endforeach

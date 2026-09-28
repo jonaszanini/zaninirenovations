@@ -115,6 +115,11 @@
   var gCommute = document.getElementById('sq-g-commute');
   var gDebrisRow = document.getElementById('sq-g-debris-row');
   var gDebris = document.getElementById('sq-g-debris');
+  var gBuildingRow = document.getElementById('sq-g-building-row');
+  var gBuilding = document.getElementById('sq-g-building');
+  var gBuildingPct = document.getElementById('sq-g-building-pct');
+  var buildingInclude = document.getElementById('q-building-include');
+  var buildingPercent = document.getElementById('q-building-percent');
   var gJobsWrap = document.getElementById('sq-g-jobs-wrap');
   var gJobs = document.getElementById('sq-g-jobs');
   var lastCommuteAmount = 0;
@@ -337,6 +342,25 @@
     lab = Math.round(lab * 100) / 100;
     labHst = Math.round(labHst * 100) / 100;
     labWithHst = Math.round(labWithHst * 100) / 100;
+
+    var buildingOn = !!(buildingInclude && buildingInclude.checked);
+    var buildingPct = buildingPercent ? parseFloat(String(buildingPercent.value || '').replace(/,/g, '')) : 30;
+    if (!isFinite(buildingPct) || buildingPct < 0) buildingPct = 0;
+    var buildingSurcharge = 0;
+    if (buildingOn && lab > 0 && buildingPct > 0) {
+      buildingSurcharge = Math.round(lab * (buildingPct / 100) * 100) / 100;
+      lab = Math.round((lab + buildingSurcharge) * 100) / 100;
+      if (labourHstEnabled()) {
+        var buildingHst = Math.round(buildingSurcharge * HST * 100) / 100;
+        labHst = Math.round((labHst + buildingHst) * 100) / 100;
+        labWithHst = Math.round((lab + labHst) * 100) / 100;
+      } else {
+        labWithHst = lab;
+      }
+    }
+    if (gBuildingRow) gBuildingRow.hidden = !(buildingSurcharge > 0);
+    if (gBuildingPct) gBuildingPct.textContent = String(Math.round(buildingPct * 100) / 100);
+    setText(gBuilding, '+' + money(buildingSurcharge));
 
     var contOn = !!(contEnabled && contEnabled.checked);
     var contPct = contingencyPctValue();
@@ -789,7 +813,7 @@
     if (e.target && e.target.id === 'sq-contingency-percent') {
       sanitizeDecimalInput(e.target);
     }
-    if (e.target && e.target.closest('.sq-work-card, #sq-contingency-block')) {
+    if (e.target && e.target.closest('.sq-work-card, #sq-contingency-block, #q-building')) {
       recalcAll();
     }
   });
@@ -810,7 +834,8 @@
       e.target.id === 'sq-contingency-enabled' ||
       e.target.classList.contains('sq-labour-use-fixed-cb') ||
       e.target.classList.contains('sq-labour-fixed-hst-inc-cb') ||
-      e.target.id === 'sq-include-labour-hst'
+      e.target.id === 'sq-include-labour-hst' ||
+      e.target.id === 'q-building-include'
     ) {
       if (e.target.classList.contains('sq-labour-use-fixed-cb')) {
         var card = e.target.closest('.sq-work-card');

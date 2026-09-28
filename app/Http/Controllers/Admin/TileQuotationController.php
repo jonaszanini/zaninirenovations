@@ -21,6 +21,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TileQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 
 class TileQuotationController extends Controller
@@ -91,11 +92,12 @@ class TileQuotationController extends Controller
             'edge_lf' => ['nullable', 'numeric', 'min:0'],
 
             'is_draft' => ['nullable', 'string'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
             CommuteExpenseService::commuteValidationMessages(),
             DebrisRemovalExpenseService::validationMessages(),
-            AdditionalCostsService::validationMessages()
+            AdditionalCostsService::validationMessages(),
+            QuotationBuildingLabor::validationMessages()
         ));
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
@@ -218,11 +220,12 @@ class TileQuotationController extends Controller
             'tile_edge_id' => ['nullable', 'integer', 'exists:tile_edges,id'],
             'edge_lf' => ['nullable', 'numeric', 'min:0'],
             'is_draft' => ['nullable', 'string'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge(
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
             CommuteExpenseService::commuteValidationMessages(),
             DebrisRemovalExpenseService::validationMessages(),
-            AdditionalCostsService::validationMessages()
+            AdditionalCostsService::validationMessages(),
+            QuotationBuildingLabor::validationMessages()
         ));
 
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
@@ -427,7 +430,9 @@ class TileQuotationController extends Controller
                 filter_var($request->input('include_disposal_fee', false), FILTER_VALIDATE_BOOLEAN),
                 $includeEdge,
                 empty($request->input('tile_edge_id')) ? null : (int) $request->input('tile_edge_id'),
-                (float) $request->input('edge_lf', 0)
+                (float) $request->input('edge_lf', 0),
+                filter_var($request->input('include_building', false), FILTER_VALIDATE_BOOLEAN),
+                (float) ($request->input('building_labor_percent', QuotationBuildingLabor::DEFAULT_PERCENT) ?: QuotationBuildingLabor::DEFAULT_PERCENT)
             );
 
             $html = view('admin.quotations.tile._live_breakdown', compact('calculation'))->render();
@@ -551,7 +556,9 @@ class TileQuotationController extends Controller
             filter_var($data['include_disposal_fee'] ?? false, FILTER_VALIDATE_BOOLEAN),
             $includeEdge,
             empty($data['tile_edge_id']) ? null : (int) $data['tile_edge_id'],
-            (float) ($data['edge_lf'] ?? 0)
+            (float) ($data['edge_lf'] ?? 0),
+            filter_var($data['include_building'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            (float) ($data['building_labor_percent'] ?? QuotationBuildingLabor::DEFAULT_PERCENT)
         );
     }
 
@@ -580,6 +587,8 @@ class TileQuotationController extends Controller
             'include_edge' => $includeEdge,
             'tile_edge_id' => empty($data['tile_edge_id']) ? null : (int) $data['tile_edge_id'],
             'edge_lf' => (float) ($data['edge_lf'] ?? 0),
+            'include_building' => filter_var($data['include_building'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'building_labor_percent' => (float) ($data['building_labor_percent'] ?? QuotationBuildingLabor::DEFAULT_PERCENT),
         ];
     }
 }

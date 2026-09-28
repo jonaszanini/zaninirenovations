@@ -53,23 +53,49 @@
 
   function collect(card) {
     var materialsPreTax = 0;
+    var laborPreTax = 0;
+    var materialsTaxInclusive = 0;
+    var laborTaxInclusive = 0;
     var taxInclusiveTotal = 0;
     card.querySelectorAll('[data-ac-row]').forEach(function (row) {
       var amountInp = row.querySelector('[data-ac-amount]');
       var amount = parseAmount(amountInp && amountInp.value);
       var hstToggle = row.querySelector('[data-ac-hst-toggle]');
       var hstIncluded = !!(hstToggle && hstToggle.checked);
-      materialsPreTax += rowPreTax(amount, hstIncluded);
-      taxInclusiveTotal += rowTaxIn(amount, hstIncluded);
+      var pre = rowPreTax(amount, hstIncluded);
+      var taxIn = rowTaxIn(amount, hstIncluded);
+      var cat = rowCategory(row);
+      if (cat === 'labour') {
+        laborPreTax += pre;
+        laborTaxInclusive += taxIn;
+      } else {
+        materialsPreTax += pre;
+        materialsTaxInclusive += taxIn;
+      }
+      taxInclusiveTotal += taxIn;
     });
     materialsPreTax = Math.round(materialsPreTax * 100) / 100;
+    laborPreTax = Math.round(laborPreTax * 100) / 100;
+    materialsTaxInclusive = Math.round(materialsTaxInclusive * 100) / 100;
+    laborTaxInclusive = Math.round(laborTaxInclusive * 100) / 100;
     taxInclusiveTotal = Math.round(taxInclusiveTotal * 100) / 100;
     var materialsHst = Math.round(materialsPreTax * HST_RATE * 100) / 100;
+    var laborHst = Math.round(laborPreTax * HST_RATE * 100) / 100;
     return {
       materialsPreTax: materialsPreTax,
       materialsHst: materialsHst,
+      materialsTaxInclusive: materialsTaxInclusive,
+      laborPreTax: laborPreTax,
+      laborHst: laborHst,
+      laborTaxInclusive: laborTaxInclusive,
       taxInclusiveTotal: taxInclusiveTotal
     };
+  }
+
+  function rowCategory(row) {
+    var sel = row.querySelector('[data-ac-category]');
+    var v = sel && sel.value ? String(sel.value).toLowerCase() : 'materials';
+    return (v === 'labour' || v === 'labor') ? 'labour' : 'materials';
   }
 
   function notify(card) {
@@ -81,6 +107,22 @@
         sumEl.hidden = false;
         if (mode === 'tax-in') {
           sumEl.textContent = 'Adds ' + money(detail.taxInclusiveTotal) + ' tax-in to the quote';
+        } else if (mode === 'split') {
+          var parts = [];
+          if (detail.laborPreTax > 0) {
+            parts.push(money(detail.laborPreTax) + ' to labour');
+          }
+          if (detail.materialsPreTax > 0) {
+            parts.push(money(detail.materialsPreTax) + ' to materials');
+          }
+          if (parts.length) {
+            sumEl.textContent = 'Adds ' + parts.join(' and ')
+              + ' (+ ' + money(detail.laborHst + detail.materialsHst) + ' HST) · '
+              + money(detail.taxInclusiveTotal) + ' tax-in total';
+          } else {
+            sumEl.textContent = '';
+            sumEl.hidden = true;
+          }
         } else {
           sumEl.textContent = 'Adds ' + money(detail.materialsPreTax) + ' to materials (+ '
             + money(detail.materialsHst) + ' HST) · ' + money(detail.taxInclusiveTotal) + ' tax-in total';
@@ -138,13 +180,17 @@
     if (desc) {
       desc.addEventListener('change', function () { notify(card); });
     }
+    var category = row.querySelector('[data-ac-category]');
+    if (category) {
+      category.addEventListener('change', function () { notify(card); });
+    }
     var removeBtn = row.querySelector('[data-ac-remove]');
     if (removeBtn) {
       removeBtn.addEventListener('click', function () {
         var list = card.querySelector('[data-ac-rows]');
         row.remove();
         if (list && !list.querySelector('[data-ac-row]')) {
-          addRow(card, { description: '', amount: '', hst_included: defaultHstIncluded(card) });
+          addRow(card, { description: '', amount: '', hst_included: defaultHstIncluded(card), category: 'materials' });
         }
         notify(card);
       });
@@ -164,9 +210,11 @@
     var desc = data.description != null ? String(data.description) : '';
     var amount = data.amount != null && data.amount !== '' ? String(data.amount) : '';
     var hstIncluded = data.hst_included !== false && data.hst_included !== 0 && data.hst_included !== '0';
+    var category = (data.category === 'labour' || data.category === 'labor') ? 'labour' : 'materials';
+    var showCategory = attr(card, 'data-ac-show-category', '0') === '1';
     var ph = escapeAttr(attr(card, 'data-ac-placeholder', 'e.g. Dumpster rental, permits'));
-    return ''
-      + '<div class="q-ac-row" data-ac-row data-ac-index="' + idx + '">'
+    var html = ''
+      + '<div class="q-ac-row' + (showCategory ? ' q-ac-row--with-category' : '') + '" data-ac-row data-ac-index="' + idx + '">'
       +   '<div class="admin-form-group q-ac-row__desc">'
       +     '<label for="' + prefix + '-desc-' + idx + '">Description</label>'
       +     '<input type="text" id="' + prefix + '-desc-' + idx + '" name="' + field + '[' + idx + '][description]"'
@@ -178,7 +226,19 @@
       +     '<input type="text" id="' + prefix + '-amt-' + idx + '" name="' + field + '[' + idx + '][amount]"'
       +            ' class="admin-input cp-money-input' + extraCls + '" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"'
       +            ' placeholder="0.00" value="' + escapeAttr(amount) + '" data-ac-amount>'
-      +   '</div>'
+      +   '</div>';
+    if (showCategory) {
+      html += ''
+        + '<div class="admin-form-group q-ac-row__category">'
+        +   '<label for="' + prefix + '-cat-' + idx + '">Type</label>'
+        +   '<select id="' + prefix + '-cat-' + idx + '" name="' + field + '[' + idx + '][category]"'
+        +           ' class="admin-input' + extraCls + '" data-ac-category aria-label="Materials or labour">'
+        +     '<option value="materials"' + (category === 'materials' ? ' selected' : '') + '>Materials</option>'
+        +     '<option value="labour"' + (category === 'labour' ? ' selected' : '') + '>Labour</option>'
+        +   '</select>'
+        + '</div>';
+    }
+    html += ''
       +   '<div class="admin-form-group q-ac-row__hst">'
       +     '<span class="q-ac-row__hst-label" id="' + prefix + '-hst-label-' + idx + '">Tax</span>'
       +     '<label class="cp-visit-toggle cp-visit-toggle--compact q-ac-hst-toggle" for="' + prefix + '-hst-' + idx + '">'
@@ -198,6 +258,7 @@
       +     '</button>'
       +   '</div>'
       + '</div>';
+    return html;
   }
 
   function addRow(card, data) {
@@ -230,7 +291,7 @@
     var addBtn = card.querySelector('[data-ac-add]');
     if (addBtn) {
       addBtn.addEventListener('click', function () {
-        addRow(card, { description: '', amount: '', hst_included: defaultHstIncluded(card), focus: true });
+        addRow(card, { description: '', amount: '', hst_included: defaultHstIncluded(card), category: 'materials', focus: true });
         notify(card);
       });
     }
@@ -254,7 +315,7 @@
     },
     getTotals: function () {
       var card = document.querySelector('[data-cp-additional-costs]');
-      return card ? collect(card) : { materialsPreTax: 0, materialsHst: 0, taxInclusiveTotal: 0 };
+      return card ? collect(card) : { materialsPreTax: 0, materialsHst: 0, materialsTaxInclusive: 0, laborPreTax: 0, laborHst: 0, laborTaxInclusive: 0, taxInclusiveTotal: 0 };
     },
     formatMoney: money
   };

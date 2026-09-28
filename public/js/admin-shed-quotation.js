@@ -12,6 +12,8 @@
     var lastDebrisAmount = 0;
     var lastAdditionalMaterialsPreTax = 0;
     var lastAdditionalMaterialsHst = 0;
+    var lastAdditionalLaborPreTax = 0;
+    var lastAdditionalLaborHst = 0;
     var lastAdditionalTaxIn = 0;
     var lastCommuteAmount = 0;
     var lastPreviewData = null;
@@ -269,8 +271,8 @@
       }
       if (empty) empty.hidden = true;
       if (body) body.hidden = false;
-      var laborPre = Number(summary.labor_pre_hst || 0);
-      var laborHst = Number(summary.labor_hst != null ? summary.labor_hst : laborPre * 0.13);
+      var laborPre = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
+      var laborHst = Number(summary.labor_hst != null ? summary.labor_hst : Number(summary.labor_pre_hst || 0) * 0.13) + lastAdditionalLaborHst;
       var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
       var matHst = Number(summary.materials_hst || 0) + lastAdditionalMaterialsHst;
       var html = '';
@@ -418,6 +420,8 @@
       var d = e.detail || {};
       lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
       lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
+      lastAdditionalLaborPreTax = Number(d.laborPreTax || 0);
+      lastAdditionalLaborHst = Number(d.laborHst || 0);
       lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
       if (lastPreviewData) renderPreview(lastPreviewData);
     });

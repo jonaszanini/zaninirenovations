@@ -19,6 +19,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TrimmingQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -309,9 +310,9 @@ class TrimmingQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:20000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request);
         if (! $draft) {
@@ -412,7 +413,7 @@ class TrimmingQuotationController extends Controller
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
 
-        return $out;
+        return QuotationBuildingLabor::mergeIntoInputs($out, $request);
     }
 
     /**

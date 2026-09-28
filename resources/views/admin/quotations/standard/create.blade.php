@@ -446,6 +446,7 @@
     </div>
 
     {{-- Grand summary -------------------------------------------- --}}
+    @include('admin.quotations._building', ['quotation' => $quotation])
     @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
     @include('admin.quotations._debris_removal', ['quotation' => $quotation])
     @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
@@ -482,6 +483,10 @@
         <section class="sq-grand-section">
           <h4 class="sq-grand-section__title">Labour</h4>
           <div class="sq-grand-section__body">
+            <div class="sq-grand-row sq-grand-row--sub" id="sq-g-building-row" hidden>
+              <span>Building access (<span id="sq-g-building-pct">30</span>%)</span>
+              <span id="sq-g-building">+CA$0.00</span>
+            </div>
             <div class="sq-grand-row sq-grand-row--sub">
               <span>Subtotal (before HST)</span>
               <span id="sq-g-labour">CA$0.00</span>

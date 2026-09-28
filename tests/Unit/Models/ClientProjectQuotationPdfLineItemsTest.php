@@ -215,4 +215,44 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
         $this->assertEqualsWithDelta(78.70, $lines[1]['amount'], 0.01);
         $this->assertSame('Materials', $lines[1]['description']);
     }
+
+    public function test_pdf_folds_additional_costs_into_materials_or_labour_by_category(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_FLOORING,
+            'items' => [
+                [
+                    'description' => 'Flooring installation (labor)',
+                    'amount' => 400.00,
+                    'apply_hst' => true,
+                ],
+                [
+                    'description' => 'Client-selected flooring material',
+                    'amount' => 200.00,
+                    'apply_hst' => true,
+                ],
+                [
+                    'description' => 'Additional labour — Extra hours',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+                [
+                    'description' => 'Additional cost — Dumpster',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $lines = $quote->pdfLineItems();
+        $descriptions = array_column($lines, 'description');
+        $preTax = ClientProjectQuotation::preTaxFromHstIncluded(113.00);
+
+        $this->assertFalse((bool) preg_grep('/^Additional labour/', $descriptions));
+        $this->assertFalse((bool) preg_grep('/^Additional cost/', $descriptions));
+        $this->assertEqualsWithDelta(400.00 + $preTax, $lines[0]['amount'], 0.01);
+        $this->assertEqualsWithDelta(200.00 + $preTax, $lines[1]['amount'], 0.01);
+    }
 }

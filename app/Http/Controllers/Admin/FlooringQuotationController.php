@@ -17,6 +17,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\FlooringQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationBuildingLabor;
 use App\Support\SafeOutboundHttp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -307,9 +308,9 @@ class FlooringQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:20000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ], QuotationPaymentSchedule::validationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft);
         if (! $draft) {
@@ -427,7 +428,7 @@ class FlooringQuotationController extends Controller
             ]);
         }
 
-        return [
+        $out = [
             'flooring_type_id' => isset($data['flooring_type_id']) ? (int) $data['flooring_type_id'] : null,
             'square_footage' => round(max(0, (float) ($data['square_footage'] ?? 0)), 2),
             'remove_carpet' => $request->boolean('remove_carpet'),
@@ -452,6 +453,8 @@ class FlooringQuotationController extends Controller
             'material_image_url_3' => trim((string) ($data['material_image_url_3'] ?? '')),
             'material_image_url_4' => trim((string) ($data['material_image_url_4'] ?? '')),
         ];
+
+        return QuotationBuildingLabor::mergeIntoInputs($out, $request);
     }
 
     protected function autoLinkFlooringIfRequested(FlooringQuotation $fq, Request $request, array &$warnings): bool

@@ -18,6 +18,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\PaintingQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -289,9 +290,9 @@ class PaintingQuotationController extends Controller
             'client_name' => $clientRules,
             'work_description' => ['nullable', 'string', 'max:20000'],
             'save_intent' => ['nullable', 'in:draft,publish'],
-        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules()), array_merge([
+        ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge([
             'client_name.required' => 'Client name is required to save a published quotation.',
-        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft);
         if (! $draft) {
@@ -420,13 +421,13 @@ class PaintingQuotationController extends Controller
             $prep = PaintingQuotationCalculator::defaultSurfacePrepDescription();
         }
 
-        return [
+        return QuotationBuildingLabor::mergeIntoInputs([
             'total_property_sqf' => round(max(0, (float) ($data['total_property_sqf'] ?? 0)), 2),
             'excluded_areas' => $excluded,
             'paint_line_id' => isset($data['paint_line_id']) ? (int) $data['paint_line_id'] : null,
             'coats' => PaintingQuotationCalculator::DEFAULT_COATS,
             'surface_prep_description' => $prep,
-        ];
+        ], $request);
     }
 
     protected function autoLinkPaintingIfRequested(PaintingQuotation $pq, Request $request, array &$warnings): bool

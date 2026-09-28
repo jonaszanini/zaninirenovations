@@ -933,6 +933,8 @@
       var lastCommuteAmount = 0;
       var lastDebrisAmount = 0;
       var lastAdditionalTaxIn = 0;
+      var lastAdditionalMaterialsTaxIn = 0;
+      var lastAdditionalLaborPreTax = 0;
       var lastPreviewCalc = null;
       function schedule() {
         clearTimeout(t);
@@ -977,9 +979,9 @@
         var html = '';
 
         html += section('Costs', [
-          row('Materials <span class="admin-form-help">(incl. HST)</span>', fmt(Number(m.with_tax || 0) + lastAdditionalTaxIn)),
+          row('Materials <span class="admin-form-help">(incl. HST)</span>', fmt(Number(m.with_tax || 0) + lastAdditionalMaterialsTaxIn)),
           row('Equipment &amp; rentals <span class="admin-form-help">(incl. HST)</span>', fmt(f.with_tax)),
-          row('Labour <span class="admin-form-help">(before HST)</span>', fmt(l.total)),
+          row('Labour <span class="admin-form-help">(before HST)</span>', fmt(Number(l.total || 0) + lastAdditionalLaborPreTax)),
         ].join(''));
 
         var quoteRows = [
@@ -1181,6 +1183,8 @@
       document.addEventListener('additional-costs:change', function (e) {
         var d = e.detail || {};
         lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
+        lastAdditionalMaterialsTaxIn = Number(d.materialsTaxInclusive || 0);
+        lastAdditionalLaborPreTax = Number(d.laborPreTax || 0);
         if (lastPreviewCalc) render(lastPreviewCalc);
       });
     })();

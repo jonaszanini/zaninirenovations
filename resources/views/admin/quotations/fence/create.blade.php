@@ -701,6 +701,8 @@
   var lastDebrisAmount = 0;
   var lastAdditionalMaterialsPreTax = 0;
   var lastAdditionalMaterialsHst = 0;
+  var lastAdditionalLaborPreTax = 0;
+  var lastAdditionalLaborHst = 0;
   var lastAdditionalTaxIn = 0;
   var lastCalc = null;
 
@@ -1054,8 +1056,8 @@
     }).join('');
     materialsBody.innerHTML = rows || '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
 
-    tLabour.textContent = money(t.labour_subtotal);
-    tLabourHst.textContent = money(t.labour_hst);
+    tLabour.textContent = money(Number(t.labour_subtotal || 0) + lastAdditionalLaborPreTax);
+    tLabourHst.textContent = money(Number(t.labour_hst || 0) + lastAdditionalLaborHst);
     if (tLabourHstRow) {
       tLabourHstRow.classList.toggle(
         'fq-totals-row--labour-hst-excluded',
@@ -1132,6 +1134,8 @@
     var d = e.detail || {};
     lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
     lastAdditionalMaterialsHst = Number(d.materialsHst || 0);
+    lastAdditionalLaborPreTax = Number(d.laborPreTax || 0);
+    lastAdditionalLaborHst = Number(d.laborHst || 0);
     lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
     if (lastCalc) {
       renderCalc(lastCalc);
