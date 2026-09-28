@@ -1,18 +1,19 @@
 @php
   $typeLower = strtolower($quotation->typeLabel());
+  $clientEmailMessage = $quotation->clientEmailMessageHtml();
 @endphp
 
 @component('emails.client_projects.layout', ['title' => $quotation->typeLabel().' – '.$project->name])
   <p>Hi {{ $project->client_name }},</p>
 
-  <p>
-    It was a pleasure discussing your <strong>{{ $project->name }}</strong> with you recently.
-    Please find the detailed {{ $typeLower }} attached as a PDF for your review.
-  </p>
-
-  @php $clientEmailMessage = $quotation->clientEmailMessageHtml(); @endphp
   @if ($clientEmailMessage)
     <div style="margin:0 0 16px 0;">{!! $clientEmailMessage !!}</div>
+    <p>Please find the detailed {{ $typeLower }} attached as a PDF for your review.</p>
+  @else
+    <p>
+      It was a pleasure discussing your <strong>{{ $project->name }}</strong> with you recently.
+      Please find the detailed {{ $typeLower }} attached as a PDF for your review.
+    </p>
   @endif
 
   <p>

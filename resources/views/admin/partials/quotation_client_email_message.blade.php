@@ -34,7 +34,7 @@
   </summary>
   <div class="admin-accordion__panel">
     <p class="admin-form-help cp-client-email-card__help">
-      Optional. Added to the email that sends this quotation to the client, above the standard text. Not shown on the PDF.
+      Optional. When filled in, this opens the client email after the greeting. The usual “pleasure discussing” line is left out, and the PDF sentence follows your message. Not shown on the PDF.
     </p>
     <textarea class="admin-input cp-client-email-card__input"
               id="{{ $fieldId }}"
