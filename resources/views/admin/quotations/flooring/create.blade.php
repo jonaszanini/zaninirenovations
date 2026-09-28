@@ -51,6 +51,71 @@
     .pq-sidebar-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .pq-sidebar-actions .admin-btn { flex: 1 1 auto; min-width: 0; width: auto; justify-content: center; }
     .fl-breakdown-section { margin-top: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+    .fl-bd-group { display: flex; flex-direction: column; gap: 2px; }
+    .fl-bd-group__title {
+      margin: 4px 0 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--admin-muted, #64748b);
+    }
+    .fl-bd-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 5px 0;
+      font-size: 13px;
+    }
+    .fl-bd-item__text { display: flex; flex-direction: column; min-width: 0; }
+    .fl-bd-item__label { color: var(--admin-text, #1e293b); line-height: 1.35; }
+    .fl-bd-item__detail { font-size: 11.5px; color: var(--admin-muted, #64748b); line-height: 1.35; margin-top: 1px; }
+    .fl-bd-amount { white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+    .fl-bd-item .fl-bd-amount { color: var(--admin-text, #1e293b); }
+    .fl-bd-subtotal {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 6px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--admin-surface-hover, #f1f5f9);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--admin-heading, #024768);
+    }
+    .fl-bd-divider {
+      height: 1px;
+      margin: 16px 0 12px;
+      background: linear-gradient(90deg, transparent, var(--admin-border, #d8dee4) 15%, var(--admin-border, #d8dee4) 85%, transparent);
+    }
+    .fl-bd-totals {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--admin-border, #d8dee4);
+    }
+    .fl-bd-total-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 3px 0;
+      font-size: 13px;
+      color: var(--admin-text, #334155);
+    }
+    .fl-bd-grand {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--admin-border, #d8dee4);
+      font-size: 16px;
+      font-weight: 700;
+      color: #024768;
+    }
+    html.admin-dark .fl-bd-grand { color: var(--admin-heading); }
     .fl-material-summary {
       margin-top: 14px;
       padding: 12px 14px;
@@ -529,32 +594,61 @@
         }
         empty.hidden = true;
         body.hidden = false;
-        var html = '';
-        var lastSection = '';
-        breakdown.forEach(function (row) {
-          var sec = row.section === 'materials' ? 'Materials' : 'Labor';
-          if (sec !== lastSection) {
-            html += '<div class="fl-breakdown-section">' + sec + '</div>';
-            lastSection = sec;
-          }
-          html += '<div class="pq-row"><span>' + (row.label || '') + '<br><span class="admin-form-help">' + (row.detail || '') + '</span></span><span>' + fmt(row.amount) + '</span></div>';
-        });
-        if (lastAdditionalLaborPreTax > 0 || lastAdditionalMaterialsPreTax > 0) {
-          html += '<div class="fl-breakdown-section">Additional costs</div>';
-          if (lastAdditionalLaborPreTax > 0) {
-            html += '<div class="pq-row"><span>Additional costs (labour)<br><span class="admin-form-help">Admin only — folded into labour on client PDF</span></span><span>' + fmt(lastAdditionalLaborPreTax) + '</span></div>';
-          }
-          if (lastAdditionalMaterialsPreTax > 0) {
-            html += '<div class="pq-row"><span>Additional costs (materials)<br><span class="admin-form-help">Admin only — folded into materials on client PDF</span></span><span>' + fmt(lastAdditionalMaterialsPreTax) + '</span></div>';
-          }
+        function esc(s) {
+          return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+          });
         }
-        html += '<div class="pq-row"><span>Subtotal (pre-HST)</span><span>' + fmt(Number(summary.subtotal_pre_hst || 0) + lastAdditionalLaborPreTax + lastAdditionalMaterialsPreTax) + '</span></div>';
-        html += '<div class="pq-row"><span>HST (13%)</span><span>' + fmt(Number(summary.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst) + '</span></div>';
+        function itemRow(label, detail, amount) {
+          return '<div class="fl-bd-item">'
+            + '<div class="fl-bd-item__text"><span class="fl-bd-item__label">' + esc(label) + '</span>'
+            + (detail ? '<span class="fl-bd-item__detail">' + esc(detail) + '</span>' : '')
+            + '</div><span class="fl-bd-amount">' + fmt(amount) + '</span></div>';
+        }
+        function group(title, rows, subtotalLabel, subtotal) {
+          return '<section class="fl-bd-group">'
+            + '<h5 class="fl-bd-group__title">' + title + '</h5>'
+            + rows.join('')
+            + '<div class="fl-bd-subtotal"><span>' + subtotalLabel + '</span><span class="fl-bd-amount">' + fmt(subtotal) + '</span></div>'
+            + '</section>';
+        }
+
+        var laborRows = [];
+        var materialRows = [];
+        breakdown.forEach(function (row) {
+          var html = itemRow(row.label, row.detail, row.amount);
+          if (row.section === 'materials') materialRows.push(html); else laborRows.push(html);
+        });
+        if (lastAdditionalLaborPreTax > 0) {
+          laborRows.push(itemRow('Additional costs', 'Admin only — folded into labour on client PDF', lastAdditionalLaborPreTax));
+        }
+        if (lastAdditionalMaterialsPreTax > 0) {
+          materialRows.push(itemRow('Additional costs', 'Admin only — folded into materials on client PDF', lastAdditionalMaterialsPreTax));
+        }
+
+        var laborSub = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
+        var materialSub = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
+
+        var html = '';
+        if (laborRows.length) {
+          html += group('Labour', laborRows, 'Labour subtotal', laborSub);
+        }
+        if (laborRows.length && materialRows.length) {
+          html += '<div class="fl-bd-divider" role="presentation"></div>';
+        }
+        if (materialRows.length) {
+          html += group('Materials', materialRows, 'Materials subtotal', materialSub);
+        }
+
+        html += '<div class="fl-bd-totals">';
+        html += '<div class="fl-bd-total-row"><span>Subtotal (pre-HST)</span><span class="fl-bd-amount">' + fmt(Number(summary.subtotal_pre_hst || 0) + lastAdditionalLaborPreTax + lastAdditionalMaterialsPreTax) + '</span></div>';
+        html += '<div class="fl-bd-total-row"><span>HST (13%)</span><span class="fl-bd-amount">' + fmt(Number(summary.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst) + '</span></div>';
         if (lastDebrisAmount > 0) {
-          html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
+          html += '<div class="fl-bd-total-row"><span>Debris removal (incl. HST)</span><span class="fl-bd-amount">' + fmt(lastDebrisAmount) + '</span></div>';
         }
         var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
-        html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
+        html += '<div class="fl-bd-grand"><span>Grand total</span><span class="fl-bd-amount">' + fmt(grand) + '</span></div>';
+        html += '</div>';
         body.innerHTML = html;
       }
 
