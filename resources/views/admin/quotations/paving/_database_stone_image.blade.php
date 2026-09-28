@@ -26,7 +26,7 @@
     </div>
     <div class="pq-db-image-panel pq-db-image-panel--upload" hidden>
       <label class="pq-db-file-picker">
-        <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif"
+        <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.avif"
                class="pq-db-stone-image-file" aria-label="Upload stone image">
         <span class="pq-db-file-picker-btn">Choose file…</span>
         <span class="pq-db-file-picker-name">No file selected</span>

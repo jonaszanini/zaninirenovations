@@ -397,7 +397,7 @@
     <div class="admin-form-group cp-expense-receipt-field">
       <label for="cp-expense-receipt">Receipt (optional)</label>
       <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf">
-      <p class="admin-form-help">Image (JPEG, PNG, WebP) — stored as WebP at {{ (int) config('webp.quality', 75) }}% quality, max {{ (int) config('webp.max_edge_px', 1280) }}px, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB; or <strong>PDF</strong> — stored as-is. Filename <strong>Receipt-#</strong> matches the # column for the client. On a phone you can take a photo, pick from gallery, or choose a PDF.</p>
+      <p class="admin-form-help">Image (JPEG, PNG, WebP, AVIF) — stored as WebP at {{ (int) config('webp.quality', 75) }}% quality, max {{ (int) config('webp.max_edge_px', 1280) }}px, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB; or <strong>PDF</strong> — stored as-is. Filename <strong>Receipt-#</strong> matches the # column for the client. On a phone you can take a photo, pick from gallery, or choose a PDF.</p>
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -486,7 +486,7 @@
                     @if (! $expenseOnInvoice)
                       <p class="admin-form-help">Leave blank to keep the current receipt. Add or replace with an image (stored as WebP) or a PDF — filename <strong>Receipt-{{ $expense->expense_ref }}</strong> with the matching extension.</p>
                     @else
-                      <p class="admin-form-help">Image (JPEG, PNG, WebP) or PDF — stored as WebP or PDF named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</p>
+                      <p class="admin-form-help">Image (JPEG, PNG, WebP, AVIF) or PDF — stored as WebP or PDF named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</p>
                     @endif
                   </div>
                   @if ($errors->any() && $expenseEditOpen)

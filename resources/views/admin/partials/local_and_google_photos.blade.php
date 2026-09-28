@@ -27,7 +27,7 @@
       type="file"
       id="{{ $fileInputId }}"
       name="{{ $fileInputName }}"
-      accept=".webp,.jpg,.jpeg,.png,image/webp,image/jpeg,image/png"
+      accept=".webp,.jpg,.jpeg,.png,.avif,image/webp,image/jpeg,image/png,image/avif"
       multiple
       @if($showPreviewGrid) data-admin-local-preview-target="{{ $previewGridId }}" @endif>
     <p class="admin-form-help">{{ $fileHint }}</p>

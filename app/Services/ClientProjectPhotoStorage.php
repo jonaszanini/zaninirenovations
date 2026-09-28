@@ -189,7 +189,7 @@ class ClientProjectPhotoStorage
             return null;
         }
 
-        return 'Each file must be a JPEG, PNG, or WebP image, an MP4/WebM/MOV video, or a PDF.';
+        return 'Each file must be a JPEG, PNG, WebP, or AVIF image, an MP4/WebM/MOV video, or a PDF.';
     }
 
     public static function classifyUpload(UploadedFile $file): string
@@ -214,10 +214,12 @@ class ClientProjectPhotoStorage
             'image/jpeg',
             'image/png',
             'image/webp',
+            'image/avif',
             '.jpg',
             '.jpeg',
             '.png',
             '.webp',
+            '.avif',
             'video/mp4',
             'video/webm',
             'video/quicktime',

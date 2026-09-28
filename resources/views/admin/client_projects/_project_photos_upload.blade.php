@@ -11,7 +11,7 @@
   $canAdd = max(0, $maxFiles - $existingCount);
   $formId = $formId ?? null;
   $acceptList = implode(',', ClientProjectPhotoStorage::acceptAttributeList());
-  $photosHelp = 'Images — JPEG, PNG, or WebP ('.(ClientProjectPhotoStorage::MAX_IMAGE_KB / 1024).' MB max each). Converted to WebP at '.$webpQuality.'% quality, scaled to at most '.$maxEdge.'px, and compressed to about '.$webpMaxKb.' KB or less. Videos — MP4, WebM, or MOV ('.(ClientProjectPhotoStorage::MAX_VIDEO_KB / 1024).' MB max each). PDFs — '.(ClientProjectPhotoStorage::MAX_PDF_KB / 1024).' MB max each. ';
+  $photosHelp = 'Images — JPEG, PNG, WebP, or AVIF ('.(ClientProjectPhotoStorage::MAX_IMAGE_KB / 1024).' MB max each). Converted to WebP at '.$webpQuality.'% quality, scaled to at most '.$maxEdge.'px, and compressed to about '.$webpMaxKb.' KB or less. Videos — MP4, WebM, or MOV ('.(ClientProjectPhotoStorage::MAX_VIDEO_KB / 1024).' MB max each). PDFs — '.(ClientProjectPhotoStorage::MAX_PDF_KB / 1024).' MB max each. ';
   $photosHelp .= $existingCount > 0
     ? 'You can add up to '.$canAdd.' more ('.$existingCount.' / '.$maxFiles.' already saved).'
     : 'Up to '.$maxFiles.' files per project.';

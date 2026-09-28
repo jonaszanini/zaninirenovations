@@ -113,8 +113,8 @@ class TileDatabaseController extends Controller
         ], [
             'products.*.url.url' => 'Each tile supplier URL must be a valid link (include https://).',
             'new_products.*.url.url' => 'Each new tile supplier URL must be a valid link (include https://), or leave it blank.',
-            'new_products.*.image.image' => 'New tile images must be a JPG, PNG, GIF, or WebP under 5 MB.',
-            'products.*.image.image' => 'Tile images must be a JPG, PNG, GIF, or WebP under 5 MB.',
+            'new_products.*.image.image' => 'New tile images must be a JPG, PNG, GIF, WebP, or AVIF under 5 MB.',
+            'products.*.image.image' => 'Tile images must be a JPG, PNG, GIF, WebP, or AVIF under 5 MB.',
             'edges.*.url.url' => 'Each tile edge URL must be a valid link (include https://).',
             'new_edges.*.url.url' => 'Each new tile edge URL must be a valid link (include https://), or leave it blank.',
         ]);

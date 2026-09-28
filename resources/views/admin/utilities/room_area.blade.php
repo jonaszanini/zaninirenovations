@@ -124,7 +124,7 @@
                 <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-file-label">
                   <i class="fa fa-upload" aria-hidden="true"></i>
                   <span class="util-sr-only">Upload floor plan</span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp" data-ra-bg-file hidden>
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/avif,.avif" data-ra-bg-file hidden>
                 </label>
               </span>
               <span class="util-ra-tip" data-tooltip="Delete floor plan image">
