@@ -447,6 +447,47 @@ class ClientProjectQuotation extends Model
         return trim((string) ($this->work_description ?? ''));
     }
 
+    /**
+     * @return array<string, class-string<Model>>
+     */
+    public static function sourceModelClasses(): array
+    {
+        return [
+            self::SOURCE_STANDARD => StandardQuotation::class,
+            self::SOURCE_FENCE => FenceQuotation::class,
+            self::SOURCE_PAVING => PavingQuotation::class,
+            self::SOURCE_STAIRS => StairsQuotation::class,
+            self::SOURCE_PAINTING => PaintingQuotation::class,
+            self::SOURCE_FLOORING => FlooringQuotation::class,
+            self::SOURCE_TILE => TileQuotation::class,
+            self::SOURCE_LOW_DECK => LowDeckQuotation::class,
+            self::SOURCE_BASEMENT => BasementQuotation::class,
+            self::SOURCE_SHED => ShedQuotation::class,
+            self::SOURCE_TRIMMING => TrimmingQuotation::class,
+            self::SOURCE_MILLWORK => MillworkQuotation::class,
+        ];
+    }
+
+    public function sourceQuotationModel(): ?Model
+    {
+        $class = self::sourceModelClasses()[$this->source_type] ?? null;
+        if ($class === null || ! $this->source_id) {
+            return null;
+        }
+
+        return $class::query()->find($this->source_id);
+    }
+
+    /** Admin-written note for the client email (HTML), from the linked source quotation. */
+    public function clientEmailMessageHtml(): ?string
+    {
+        $source = $this->sourceQuotationModel();
+
+        return ($source && method_exists($source, 'clientEmailMessageHtml'))
+            ? $source->clientEmailMessageHtml()
+            : null;
+    }
+
     /** True when the PDF description has visible text (ignores empty TinyMCE markup). */
     public function hasWorkDescriptionForPdf(): bool
     {

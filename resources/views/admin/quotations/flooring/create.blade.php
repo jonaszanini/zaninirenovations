@@ -439,6 +439,7 @@
         @include('admin.partials.quotation_view_pdf')
       </div>
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+      @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'fl-main-form'])
       <div class="pq-summary-card">
         <h4 style="margin:0 0 10px;">Live breakdown</h4>
         <div id="fl-live-root">

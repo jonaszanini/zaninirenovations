@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class StandardQuotation extends Model
 {
+    use \App\Models\Concerns\HasClientEmailMessage;
+
     public const HST_RATE = 0.13;
 
     public const PDF_DETAIL_COMBINED = 'combined';

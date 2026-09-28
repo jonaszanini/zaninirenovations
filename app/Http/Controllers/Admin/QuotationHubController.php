@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
+use App\Services\QuotationClientEmailMessageAiService;
 use App\Services\QuotationWorkDescriptionAiService;
+use App\Support\QuotationClientEmailMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,6 +37,19 @@ class QuotationHubController extends Controller
             'hubProject' => $hubProject,
             'hubProjectError' => $hubProjectError,
         ]);
+    }
+
+    public function aiClientEmailMessage(Request $request, QuotationClientEmailMessageAiService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'message' => ['required', 'string', 'max:'.QuotationClientEmailMessage::MAX_LENGTH],
+        ]);
+
+        try {
+            return response()->json(['message' => $service->refine($data['message'])]);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 502);
+        }
     }
 
     public function aiWorkDescription(Request $request, QuotationWorkDescriptionAiService $service): JsonResponse

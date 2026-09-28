@@ -375,6 +375,7 @@
     {{-- ====================== RIGHT: BREAKDOWN ==================== --}}
     <aside class="admin-card ld-breakdown-card">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+      @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
 
       <h3 class="cp-heading-md">Live breakdown</h3>
       <p class="admin-form-help cp-breakdown-intro">

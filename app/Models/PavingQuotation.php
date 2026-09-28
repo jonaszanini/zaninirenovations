@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PavingQuotation extends Model
 {
+    use \App\Models\Concerns\HasClientEmailMessage;
+
     protected $fillable = [
         'client_project_id',
         'quote_number',

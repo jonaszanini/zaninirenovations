@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TileQuotation extends Model
 {
+    use \App\Models\Concerns\HasClientEmailMessage;
+
     public const HST_RATE = 0.13;
 
     protected $fillable = [

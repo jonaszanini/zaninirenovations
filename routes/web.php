@@ -429,6 +429,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('quotations.index');
     Route::post('quotations/work-description/ai', [\App\Http\Controllers\Admin\QuotationHubController::class, 'aiWorkDescription'])
         ->name('quotations.work-description.ai');
+    Route::post('quotations/client-email-message/ai', [\App\Http\Controllers\Admin\QuotationHubController::class, 'aiClientEmailMessage'])
+        ->name('quotations.client-email-message.ai');
 
     // Fence configuration (materials catalogue + formula parameters).
     Route::get('quotations/fence/config', [\App\Http\Controllers\Admin\FenceConfigController::class, 'index'])

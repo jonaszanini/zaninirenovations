@@ -22,6 +22,8 @@ class AiInstruction extends Model
 
     public const KEY_MATERIAL_SHORT_NAME = 'material_short_name';
 
+    public const KEY_QUOTATION_CLIENT_EMAIL_MESSAGE = 'quotation_client_email_message';
+
     protected $fillable = [
         'key',
         'name',

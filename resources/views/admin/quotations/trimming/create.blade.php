@@ -534,6 +534,7 @@
 
     <aside class="pq-sticky">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+      @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'tm-main-form'])
       <div class="pq-summary-card">
         <h4 class="cp-form-help-spaced">Live breakdown</h4>
         <div id="tm-live-root">

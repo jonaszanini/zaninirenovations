@@ -10,6 +10,11 @@
     Please find the detailed {{ $typeLower }} attached as a PDF for your review.
   </p>
 
+  @php $clientEmailMessage = $quotation->clientEmailMessageHtml(); @endphp
+  @if ($clientEmailMessage)
+    <div style="margin:0 0 16px 0;">{!! $clientEmailMessage !!}</div>
+  @endif
+
   <p>
     This proposal outlines the scope of the work. All planned work is designed to
     meet or exceed the standards set by the Ontario Building Code (O.Reg. 332/12)

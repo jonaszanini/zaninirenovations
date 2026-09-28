@@ -508,6 +508,7 @@
           <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
         </div>
         @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+        @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'pq-main-form'])
         <div class="pq-summary-card">
           <h4 class="cp-form-help-spaced">Live summary</h4>
           <div id="pq-live-root">
