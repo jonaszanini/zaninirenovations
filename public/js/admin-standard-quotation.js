@@ -406,6 +406,8 @@
     setText(gDebris, money(lastDebrisAmount));
     setText(gGrand, money(withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount));
     setText(toolbarGrandAmount, money(withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount));
+    window.__quoteGrandTotal = withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount;
+    document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: window.__quoteGrandTotal } }));
 
     if (gJobsWrap && gJobs) {
       var multi = jobs.length >= 2;

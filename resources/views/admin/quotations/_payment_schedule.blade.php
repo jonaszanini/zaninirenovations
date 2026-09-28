@@ -28,7 +28,8 @@
   ];
 @endphp
 
-<div class="admin-card q-payment-schedule-card" id="q-payment-schedule">
+<div class="admin-card q-payment-schedule-card" id="q-payment-schedule"
+     data-initial-total="{{ $isEdit && is_numeric($quotation->grand_total ?? null) ? (float) $quotation->grand_total : '' }}">
   <h3 class="q-payment-schedule-card__title"><i class="fa fa-calendar-check-o" aria-hidden="true"></i> Payment schedule <span class="cp-required">*</span></h3>
 
   <div class="q-payment-schedule-options" role="radiogroup" aria-label="Payment installments">
@@ -81,6 +82,7 @@
                        data-index="{{ $idx }}">
                 <span class="q-pct-suffix">%</span>
               </div>
+              <div class="q-pct-amount" data-pct-amount aria-live="polite"></div>
             </div>
           @endforeach
         </div>
@@ -221,6 +223,15 @@
     color: var(--admin-muted, #64748b);
     pointer-events: none;
   }
+  .q-pct-amount {
+    margin-top: 4px;
+    min-height: 1.1em;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--admin-muted, #64748b);
+    font-variant-numeric: tabular-nums;
+  }
+  .q-pct-amount:empty { display: none; }
 </style>
 
 @once
@@ -257,13 +268,49 @@
             return rounded.toString();
           }
 
+          var initialTotal = parseFloat(card.getAttribute('data-initial-total'));
+          var grandTotal = typeof window.__quoteGrandTotal === 'number'
+            ? window.__quoteGrandTotal
+            : (isNaN(initialTotal) ? null : initialTotal);
+          var amountSyncers = [];
+
+          function formatMoney(v) {
+            return 'CA$' + v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+
+          document.addEventListener('quote:grand-total', function (e) {
+            var t = e.detail ? Number(e.detail.total) : NaN;
+            grandTotal = isFinite(t) ? t : null;
+            amountSyncers.forEach(function (fn) { fn(); });
+          });
+
           // Auto-updating percentages logic
           card.querySelectorAll('.q-payment-schedule-panel').forEach(function (panel) {
             var plan = parseInt(panel.getAttribute('data-plan-panel'), 10);
             var inputs = Array.from(panel.querySelectorAll('.q-pct-input'));
             var summaryEl = card.querySelector('[data-plan-summary="' + plan + '"]');
 
+            function syncAmounts() {
+              var cents = grandTotal && grandTotal > 0 ? Math.round(grandTotal * 100) : 0;
+              var allocated = 0;
+              var pctSum = inputs.reduce(function (sum, inp) { return sum + (parseFloat(inp.value) || 0); }, 0);
+              var balances = Math.abs(pctSum - 100) < 0.005;
+              inputs.forEach(function (inp, idx) {
+                var el = inp.closest('.q-pct-group').querySelector('[data-pct-amount]');
+                if (!el) return;
+                if (!cents) { el.textContent = ''; return; }
+                var pct = parseFloat(inp.value) || 0;
+                var share = balances && idx === inputs.length - 1
+                  ? Math.max(0, cents - allocated)
+                  : Math.round(cents * pct / 100);
+                allocated += share;
+                el.textContent = formatMoney(share / 100);
+              });
+            }
+            amountSyncers.push(syncAmounts);
+
             function syncSummary() {
+              syncAmounts();
               if (!summaryEl) return;
               var parts = inputs.map(function (inp) {
                 var v = parseFloat(inp.value) || 0;

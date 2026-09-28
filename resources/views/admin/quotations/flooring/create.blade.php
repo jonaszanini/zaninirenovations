@@ -588,6 +588,11 @@
         var summary = data.summary || {};
         var breakdown = data.breakdown || [];
         renderMaterialSummary(data.material_selection || null);
+        var liveGrand = Number(summary.grand_total || 0) > 0
+          ? Number(summary.grand_total) + lastDebrisAmount + lastAdditionalTaxIn
+          : 0;
+        window.__quoteGrandTotal = liveGrand;
+        document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: liveGrand } }));
         if (!summary.grand_total || summary.grand_total <= 0) {
           empty.hidden = false;
           body.hidden = true;

@@ -101,6 +101,9 @@
       var body = document.getElementById('tm-live-body');
       var summary = (data && data.summary) || {};
       var grandBase = Number(summary.grand_total || 0);
+      var liveGrand = grandBase + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
+      window.__quoteGrandTotal = liveGrand;
+      document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: liveGrand } }));
       if (grandBase <= 0 && lastCommuteAmount <= 0 && lastDebrisAmount <= 0 && lastAdditionalTaxIn <= 0) {
         if (empty) empty.hidden = false;
         if (body) body.hidden = true;

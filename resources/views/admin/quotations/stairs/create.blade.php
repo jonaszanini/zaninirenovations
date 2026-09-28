@@ -608,6 +608,8 @@
         lastPreviewCalc = c;
         var s = c.summary;
         var grandTotal = Number(s.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
+        window.__quoteGrandTotal = grandTotal;
+        document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: grandTotal } }));
         var html = '';
         (c.breakdown || []).forEach(function (row) {
           html += '<div class="pq-row"><span>' + row.label + '<br><small style="color:#64748b;font-weight:400">' + (row.detail || '') + '</small></span><strong>' + fmt(row.amount) + '</strong></div>';

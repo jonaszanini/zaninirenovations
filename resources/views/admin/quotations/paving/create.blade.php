@@ -972,6 +972,8 @@
         var l = c.labour;
         var quoteBeforeCommute = Number(s.final_quote_total || 0);
         var clientTotal = quoteBeforeCommute + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
+        window.__quoteGrandTotal = clientTotal;
+        document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: clientTotal } }));
         var calculatedTotal = Number(s.built_up_grand_total || 0);
         var hasManual = s.manual_price_override != null && Number(s.manual_price_override)> 0;
         var subtotal = Number(s.total_with_tax_mats_fixed_plus_labour || 0);

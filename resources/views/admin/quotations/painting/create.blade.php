@@ -569,6 +569,8 @@
         lastBreakdownData = data;
         var scope = data.scope || {};
         var grand = Number(data.summary.grand_total || 0) + lastCommuteAmount + lastDebrisAmount;
+        window.__quoteGrandTotal = grand;
+        document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: grand } }));
         var html = '';
         (data.breakdown || []).forEach(function (row) {
           html += '<div class="pq-row"><span>' + escHtml(row.label || '')

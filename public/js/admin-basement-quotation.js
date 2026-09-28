@@ -823,6 +823,8 @@
     rebuildMatTable(data.materials || []);
     var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
     updateToolbarGrand(grand);
+    window.__quoteGrandTotal = grand;
+    document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: grand } }));
     if (!summary.grand_total || summary.grand_total <= 0) {
       if (empty) empty.hidden = false;
       if (body) body.hidden = true;

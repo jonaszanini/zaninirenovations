@@ -264,6 +264,11 @@
       rebuildMatTable((data.materials || []).concat(data.extra_materials || []).filter(function (r) {
         return !String(r.key || '').startsWith('extra_');
       }));
+      var liveGrand = Number(summary.grand_total || 0) > 0
+        ? Number(summary.grand_total) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount
+        : 0;
+      window.__quoteGrandTotal = liveGrand;
+      document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: liveGrand } }));
       if (!summary.grand_total || summary.grand_total <= 0) {
         if (empty) empty.hidden = false;
         if (body) body.hidden = true;

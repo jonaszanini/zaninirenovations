@@ -473,6 +473,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
     }
 
+    function emitGrandTotal() {
+        window.__quoteGrandTotal = lastGrandTotal > 0 ? lastGrandTotal + liveExtrasTotal() : 0;
+        document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: window.__quoteGrandTotal } }));
+    }
+
     function applyCommuteToLivePreview() {
         if (!liveBody || liveBody.hidden) {
             return;
@@ -497,6 +502,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (grandValue) {
             grandValue.textContent = '$' + (lastGrandTotal + liveExtrasTotal()).toFixed(2);
         }
+        emitGrandTotal();
     }
 
     function applyDebrisToLivePreview() {
@@ -523,6 +529,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (grandValue) {
             grandValue.textContent = '$' + (lastGrandTotal + liveExtrasTotal()).toFixed(2);
         }
+        emitGrandTotal();
     }
 
     function applyAdditionalCostsToLivePreview() {
@@ -557,6 +564,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (grandValue) {
             grandValue.textContent = '$' + (lastGrandTotal + liveExtrasTotal()).toFixed(2);
         }
+        emitGrandTotal();
     }
 
     function markLiveGrandTotalRow() {
@@ -623,6 +631,8 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 liveEmpty.hidden = false;
                 liveBody.hidden = true;
+                lastGrandTotal = 0;
+                emitGrandTotal();
             }
         })
         .catch(err => console.error('Live calc error:', err));

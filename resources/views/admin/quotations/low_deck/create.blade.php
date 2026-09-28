@@ -663,6 +663,8 @@
     tTotal.textContent = 'CA$0.00';
     tLabourHst.textContent = 'CA$0.00';
     tGrand.textContent = 'CA$0.00';
+    window.__quoteGrandTotal = 0;
+    document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: 0 } }));
     tLabourRate.textContent = '';
     clearDiagrams();
     if (generateWorkDescriptionBtn) generateWorkDescriptionBtn.disabled = true;
@@ -753,6 +755,8 @@
     tHst.textContent = money(Number(t.hst || 0) + lastAdditionalMaterialsHst);
     tTotal.textContent = money(Number(t.total || 0) + lastAdditionalTaxIn);
     tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn);
+    window.__quoteGrandTotal = Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
+    document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: window.__quoteGrandTotal } }));
     if (t.labour_rate_per_sqft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_sqft) + '/sq ft)';
     }
