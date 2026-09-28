@@ -174,17 +174,6 @@ class FlooringQuotation extends Model
         }
         $lines[] = 'Total area: '.number_format($sqft, 0).' sq ft';
 
-        foreach ($calc['breakdown'] ?? [] as $row) {
-            if (! is_array($row) || ($row['section'] ?? '') !== 'labor' || ($row['key'] ?? '') === 'building') {
-                continue;
-            }
-            $label = trim((string) ($row['label'] ?? ''));
-            $amount = (float) ($row['amount'] ?? 0);
-            if ($label !== '') {
-                $lines[] = '  • '.$label.' ('.\App\Models\ClientProject::formatMoney($amount).')';
-            }
-        }
-
         return \App\Support\QuotationWorkDescriptionHtml::combineAutoScopeWithWork(
             $lines,
             $this->work_description
