@@ -6,7 +6,7 @@
     .q-ac-rows { display: flex; flex-direction: column; gap: 12px; }
     .q-ac-row {
       display: grid;
-      grid-template-columns: minmax(0, 1.6fr) minmax(120px, 0.55fr) minmax(148px, auto) auto;
+      grid-template-columns: minmax(0, 1.6fr) minmax(120px, 0.55fr) auto auto;
       gap: 12px;
       align-items: end;
       padding: 12px 14px;
@@ -15,7 +15,7 @@
       border-radius: 8px;
     }
     .q-ac-row--with-category {
-      grid-template-columns: minmax(0, 1.4fr) minmax(110px, 0.5fr) minmax(120px, 0.55fr) minmax(148px, auto) auto;
+      grid-template-columns: minmax(0, 1.4fr) minmax(110px, 0.5fr) minmax(120px, 0.55fr) auto auto;
     }
     .q-ac-row .admin-form-group { margin-bottom: 0; min-width: 0; }
     .q-ac-row__desc label,
@@ -35,7 +35,25 @@
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
-    .q-ac-hst-toggle { min-height: 44px; }
+    .q-ac-hst-toggle.cp-visit-toggle {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      min-height: 44px;
+      min-width: 64px;
+    }
+    .q-ac-hst-toggle .cp-visit-toggle__label {
+      margin: 0;
+      font-size: 0.68rem;
+      font-weight: 600;
+      line-height: 1.1;
+      white-space: nowrap;
+      color: var(--admin-muted);
+    }
+    .q-ac-hst-toggle input:checked ~ .cp-visit-toggle__label { color: var(--admin-text); }
+    .q-ac-row__hst { text-align: center; }
     .q-ac-row__actions {
       display: flex;
       align-items: flex-end;

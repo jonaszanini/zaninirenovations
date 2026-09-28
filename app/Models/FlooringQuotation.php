@@ -175,7 +175,7 @@ class FlooringQuotation extends Model
         $lines[] = 'Total area: '.number_format($sqft, 0).' sq ft';
 
         foreach ($calc['breakdown'] ?? [] as $row) {
-            if (! is_array($row) || ($row['section'] ?? '') !== 'labor') {
+            if (! is_array($row) || ($row['section'] ?? '') !== 'labor' || ($row['key'] ?? '') === 'building') {
                 continue;
             }
             $label = trim((string) ($row['label'] ?? ''));

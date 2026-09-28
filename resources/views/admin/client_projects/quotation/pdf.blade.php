@@ -264,8 +264,21 @@
       vertical-align: top;
     }
 
-    .quote-material-selection {
+    /* Table wrapper: DomPDF ignores page-break-inside on divs. */
+    .quote-material-selection-wrap {
+      width: 100%;
+      border-collapse: collapse;
       margin: 0 0 14pt;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .quote-material-selection-wrap tr,
+    .quote-material-selection-table,
+    .quote-material-selection-table tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .quote-material-selection {
       padding: 10pt 12pt;
       background: #fffbeb;
       border: 1pt solid #fcd34d;
@@ -625,7 +638,9 @@
   @endif
 
   @if ($flooringMaterial)
-    <div class="quote-material-selection">
+    <table class="quote-material-selection-wrap" role="presentation">
+    <tr>
+    <td class="quote-material-selection">
       <p class="quote-material-selection-title">Client material selection</p>
       <table class="quote-material-selection-table" role="presentation">
         @if ($flooringMaterial['name'] !== '')
@@ -671,7 +686,9 @@
           </tr>
         @endif
       </table>
-    </div>
+    </td>
+    </tr>
+    </table>
   @endif
 
   {{-- Items --}}
@@ -755,28 +772,6 @@
       </td>
     </tr>
   </table>
-
-  @if ($flooringMaterial && !empty($flooringMaterial['local_images']))
-    <div class="pdf-photos-section" style="page-break-inside: avoid;">
-      <p class="pdf-photos-title">Client material selection images</p>
-      <table class="pdf-photos-grid" style="table-layout: fixed; width: 100%;">
-        @foreach (array_chunk($flooringMaterial['local_images'], 2) as $row)
-          <tr>
-            @foreach ($row as $imgPath)
-              <td style="width: 50%;">
-                <div class="pdf-photo-frame">
-                  <img src="{{ $imgPath }}" alt="Material Image" style="max-width: 100%; height: auto;">
-                </div>
-              </td>
-            @endforeach
-            @if (count($row) === 1)
-              <td style="width: 50%;"></td>
-            @endif
-          </tr>
-        @endforeach
-      </table>
-    </div>
-  @endif
 
   @php
     $lowDeckDiagrams = null;
