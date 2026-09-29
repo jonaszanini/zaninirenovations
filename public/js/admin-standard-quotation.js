@@ -113,6 +113,8 @@
   var gCommute = document.getElementById('sq-g-commute');
   var gDebrisRow = document.getElementById('sq-g-debris-row');
   var gDebris = document.getElementById('sq-g-debris');
+  var gLabBeforeBuildingRow = document.getElementById('sq-g-labour-before-building-row');
+  var gLabBeforeBuilding = document.getElementById('sq-g-labour-before-building');
   var gBuildingRow = document.getElementById('sq-g-building-row');
   var gBuilding = document.getElementById('sq-g-building');
   var gBuildingPct = document.getElementById('sq-g-building-pct');
@@ -353,7 +355,10 @@
         labWithHst = lab;
       }
     }
-    if (gBuildingRow) gBuildingRow.hidden = !(buildingSurcharge > 0);
+    var showBuilding = buildingSurcharge > 0;
+    if (gLabBeforeBuildingRow) gLabBeforeBuildingRow.hidden = !showBuilding;
+    setText(gLabBeforeBuilding, money(labourBase));
+    if (gBuildingRow) gBuildingRow.hidden = !showBuilding;
     if (gBuildingPct) gBuildingPct.textContent = String(Math.round(buildingPct * 100) / 100);
     setText(gBuilding, '+' + money(buildingSurcharge));
     if (window.QuotationBuildingLaborUi) {
