@@ -391,6 +391,7 @@
           'work' => $work,
           'workCount' => $workCount,
           'isOpen' => $w === $workCount - 1,
+          'includeContingency' => $w === $workCount - 1,
         ])
       @endforeach
     </div>
@@ -402,28 +403,6 @@
     </div>
 
     <div class="admin-card sq-panel" id="sq-quote-materials-card">
-      <div class="sq-contingency-block" id="sq-contingency-block">
-        <div class="sq-contingency-row">
-          <input type="hidden" name="contingency_enabled" value="0">
-          <label class="admin-checkbox sq-checkbox-label sq-contingency-toggle">
-            <input type="checkbox" id="sq-contingency-enabled" name="contingency_enabled" value="1" class="admin-checkbox__input" @checked($contingencyEnabled)>
-            <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text">Contingency allowance</span>
-          </label>
-          <div class="sq-contingency-pct-field">
-            <input type="text" inputmode="decimal" autocomplete="off" id="sq-contingency-percent"
-                   name="contingency_percent" class="admin-input sq-contingency-percent"
-                   maxlength="6" placeholder="10" value="{{ $contingencyPercent }}"
-                   @disabled(!$contingencyEnabled)>
-            <span class="sq-contingency-pct-suffix">%</span>
-          </div>
-          <p class="admin-form-help sq-contingency-help">
-            Buffer applied on top of <em>all jobs' materials (before HST)</em>. HST follows the materials' effective rate.
-          </p>
-        </div>
-        @error('contingency_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
-
       <div class="cp-quotation-totals sq-materials-totals">
         <div class="cp-quotation-totals-row">
           <span>Total materials (before HST)</span>
@@ -448,8 +427,7 @@
 
     {{-- Grand summary -------------------------------------------- --}}
     @include('admin.quotations._building', ['quotation' => $quotation])
-    @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
-    @include('admin.quotations._debris_removal', ['quotation' => $quotation])
+    @include('admin.quotations._commute_debris_row')
     @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
     <div class="admin-card sq-grand-card">

@@ -4885,15 +4885,28 @@ body.cp-modal-open {
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
-/* Full-width "+ Add material" after material cards, before contingency —
-   same vertical position new rows are appended in the DOM. */
-.sq-add-material-wrap {
+/* End of Materials: contingency sits above Add material, on the left.
+   Job totals stay on the right. */
+.sq-materials-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
   margin-top: 10px;
 }
-.sq-add-material-wide {
-  width: 100%;
-  justify-content: center;
-  box-sizing: border-box;
+.sq-materials-footer-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.sq-add-material-wrap {
+  margin-top: 0;
+}
+.sq-materials-end .sq-materials-totals {
+  margin-top: 0;
 }
 .sq-materials-table .sq-col-short-name { width: 140px; }
 .sq-materials-table .sq-col-money { width: 100px; white-space: nowrap; }
@@ -4917,25 +4930,20 @@ body.cp-modal-open {
   justify-content: flex-start;
 }
 
-/* Contingency allowance: sits between the material rows (and Add button)
-   and the materials-totals box. Compact one-line layout on desktop, wraps
-   gracefully on narrow viewports. */
-.sq-contingency-block {
-  margin-top: 14px;
-  padding: 12px 14px;
-  background: var(--admin-primary-soft, #f0f9ff);
-  border: 1px solid var(--admin-primary-ring, #bae6fd);
-  border-radius: 8px;
-}
-.sq-contingency-row {
+/* Contingency allowance: one compact row (checkbox + percent), no banner. */
+.sq-contingency-controls {
   display: flex;
   align-items: center;
-  gap: 14px;
   flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
 }
 .sq-contingency-toggle {
-  font-weight: 700;
-  color: var(--admin-primary, #0c4a6e);
+  min-height: 44px;
+  color: var(--admin-text);
+}
+.sq-contingency-toggle .admin-checkbox__text {
+  flex: 0 1 auto;
 }
 .sq-contingency-pct-field {
   position: relative;
@@ -4943,8 +4951,8 @@ body.cp-modal-open {
   align-items: center;
 }
 .sq-contingency-pct-field .sq-contingency-percent {
-  width: 88px;
-  padding-right: 28px;
+  width: 4.75rem;
+  padding-right: 1.6rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -4957,15 +4965,12 @@ body.cp-modal-open {
   position: absolute;
   right: 10px;
   pointer-events: none;
-  color: #64748b;
+  color: var(--admin-muted, #64748b);
   font-weight: 600;
   font-size: 13px;
 }
-.sq-contingency-help {
-  margin: 0;
-  flex: 1 1 240px;
-  min-width: 220px;
-  color: var(--admin-muted, #334155);
+.sq-contingency-inline .admin-form-error {
+  margin: 2px 0 0;
 }
 .sq-mat-contingency-row,
 .sq-grand-row--contingency {
@@ -6631,6 +6636,21 @@ body.cp-modal-open {
   }
 }
 
+/* Quotation editors — commute + debris share one row on wide screens */
+.q-expense-pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: stretch;
+}
+
+.q-expense-pair > .q-commute-card,
+.q-expense-pair > .q-debris-card {
+  margin-bottom: 0;
+  padding: 14px 16px;
+}
+
 /* Quotation editors — commute expense (shown when “Yes — charge commute fuel” is selected) */
 .q-commute-card {
   margin-bottom: 16px;
@@ -6639,6 +6659,12 @@ body.cp-modal-open {
 .q-commute-card__title {
   margin: 0 0 8px;
   font-size: 1.05rem;
+}
+
+.q-commute-choice__option {
+  flex: 0 0 auto;
+  min-width: 72px;
+  justify-content: center;
 }
 
 .q-commute-card__intro {
@@ -6651,9 +6677,9 @@ body.cp-modal-open {
 
 .q-commute-card__metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-  margin: 4px 0 16px;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 10px;
 }
 
 .q-commute-metric {
@@ -6665,11 +6691,11 @@ body.cp-modal-open {
 
 .q-commute-metric__label {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6b7280;
-  margin-bottom: 4px;
+  color: var(--admin-muted);
+  margin-bottom: 2px;
 }
 
 .q-commute-metric__value {
@@ -6684,8 +6710,12 @@ body.cp-modal-open {
 
 .q-commute-card__fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.q-commute-card__fields .admin-form-group {
+  margin-bottom: 0;
 }
 
 .q-commute-field__inline {
@@ -6700,11 +6730,33 @@ body.cp-modal-open {
 
 .q-commute-field__suffix {
   font-weight: 600;
-  color: #4b5563;
+  color: var(--admin-muted);
 }
 
 .q-commute-card__status {
   margin: 12px 0 0;
+}
+
+@media (min-width: 701px) {
+  .q-commute-card__fields {
+    grid-template-columns: minmax(0, 140px) minmax(0, 160px);
+    justify-content: start;
+    gap: 10px 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .q-expense-pair {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .q-expense-pair .q-commute-card__fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .q-expense-pair .q-commute-field--pct .admin-input {
+    max-width: none;
+  }
 }
 
 @media (max-width: 700px) {
@@ -6713,12 +6765,9 @@ body.cp-modal-open {
   }
 
   .q-commute-choice__option {
+    flex: 0 0 auto;
     width: 100%;
     min-height: 44px;
-  }
-
-  .q-commute-card__fields {
-    grid-template-columns: 1fr;
   }
 }
 

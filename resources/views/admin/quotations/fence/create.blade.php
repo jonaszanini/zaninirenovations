@@ -460,8 +460,7 @@
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
-        @include('admin.quotations._commute_expense', ['quotation' => $quotation, 'linkProject' => $linkProject])
-        @include('admin.quotations._debris_removal', ['quotation' => $quotation])
+        @include('admin.quotations._commute_debris_row')
         @include('admin.quotations._additional_costs', ['quotation' => $quotation])
         @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 

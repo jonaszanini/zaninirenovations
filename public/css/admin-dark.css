@@ -709,7 +709,6 @@ html.admin-dark .cp-updated,
 html.admin-dark .sq-mat-field > label,
 html.admin-dark .sq-mat-catalog-label,
 html.admin-dark .sq-mat-hst-toggles-label,
-html.admin-dark .sq-contingency-help,
 html.admin-dark .q-commute-field__suffix {
   color: var(--admin-muted);
 }

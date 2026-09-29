@@ -26,19 +26,19 @@
 @endphp
 
 <div class="admin-card q-debris-card" id="q-debris-removal" data-cp-debris-removal>
-  <h3 class="q-debris-card__title"><i class="fa fa-trash" aria-hidden="true"></i> Debris removal <span class="cp-required">*</span></h3>
+  <h3 class="q-debris-card__title"><i class="fa fa-trash" aria-hidden="true"></i> Charge Debris removal? <span class="cp-required">*</span></h3>
 
   <fieldset class="q-commute-choice" role="radiogroup" aria-label="Include debris removal">
     <legend class="util-sr-only">Include debris removal in this quotation?</legend>
     <label class="q-commute-choice__option{{ $includeDebrisChoice === true ? ' is-selected' : '' }}">
       <input type="radio" name="include_debris_removal" value="1" class="q-commute-choice__input" data-cp-debris-include-yes
              @checked($includeDebrisChoice === true) required>
-      <span class="q-commute-choice__text"><strong>Yes</strong> — charge debris removal</span>
+      <span class="q-commute-choice__text">Yes</span>
     </label>
     <label class="q-commute-choice__option{{ $includeDebrisChoice === false ? ' is-selected' : '' }}">
       <input type="radio" name="include_debris_removal" value="0" class="q-commute-choice__input" data-cp-debris-include-no
              @checked($includeDebrisChoice === false) required>
-      <span class="q-commute-choice__text"><strong>No</strong> — do not charge</span>
+      <span class="q-commute-choice__text">No</span>
     </label>
   </fieldset>
   @error('include_debris_removal')
@@ -78,14 +78,17 @@
   }
   .q-debris-card__intro { margin: 0 0 14px; }
   .q-debris-card__body {
-    margin-top: 4px;
-    padding: 12px 14px;
+    margin-top: 0;
+    padding: 10px 12px;
     background: var(--admin-surface-hover, #f8fafc);
     border: 1px dashed var(--admin-border, #cbd5e1);
     border-radius: 8px;
   }
   .q-debris-amount-group { margin-bottom: 0; }
   .q-debris-amount-group .cp-money-input {
-    max-width: 240px;
+    max-width: 200px;
+  }
+  .q-expense-pair .q-debris-amount-group .cp-money-input {
+    max-width: none;
   }
 </style>

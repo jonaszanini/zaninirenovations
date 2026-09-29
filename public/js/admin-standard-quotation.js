@@ -621,6 +621,17 @@
     updateWorkChrome();
   }
 
+  function placeContingency() {
+    var block = document.getElementById('sq-contingency-block');
+    var cards = workCards();
+    if (!block || !cards.length) return;
+    var slot = cards[cards.length - 1].querySelector('.sq-materials-footer-start');
+    if (!slot || block.parentElement === slot) return;
+    var addWrap = slot.querySelector('.sq-add-material-wrap');
+    if (addWrap) slot.insertBefore(block, addWrap);
+    else slot.appendChild(block);
+  }
+
   function updateWorkChrome() {
     var cards = workCards();
     var n = cards.length;
@@ -634,6 +645,7 @@
         title.placeholder = n >= 2 ? 'e.g. Replace vanity' : 'Job name (optional)';
       }
     });
+    placeContingency();
   }
 
   function addMaterialRow(card) {
@@ -765,6 +777,13 @@
       if (workCards().length <= 1) return;
       var cardDel = rmWork.closest('.sq-work-card');
       if (!cardDel) return;
+      var contBlock = document.getElementById('sq-contingency-block');
+      if (contBlock && cardDel.contains(contBlock)) {
+        var host = workCards().filter(function (c) { return c !== cardDel; }).pop();
+        var slot = host && host.querySelector('.sq-materials-footer-start');
+        var addWrap = slot && slot.querySelector('.sq-add-material-wrap');
+        if (slot && addWrap) slot.insertBefore(contBlock, addWrap);
+      }
       cardDel.querySelectorAll('.sq-material-row').forEach(destroyCatalogPicker);
       cardDel.remove();
       reindexAll();

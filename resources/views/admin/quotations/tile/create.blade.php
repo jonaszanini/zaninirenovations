@@ -382,8 +382,7 @@
       @include('admin.quotations._payment_schedule', ['quotation' => $quotation ?? null])
 
       @include('admin.quotations._building', ['quotation' => $quotation ?? null, 'inputs' => $inputs ?? [], 'previewClass' => 'tl-live-trigger'])
-      @include('admin.quotations._commute_expense', ['quotation' => $quotation ?? null, 'linkProject' => $linkProject ?? null])
-      @include('admin.quotations._debris_removal', ['quotation' => $quotation ?? null])
+      @include('admin.quotations._commute_debris_row')
       @include('admin.quotations._additional_costs', ['quotation' => $quotation ?? null])
     </div>
 

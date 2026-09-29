@@ -36,6 +36,9 @@
   }
   $jobNumber = is_numeric($workIndex) ? ((int) $workIndex + 1) : 1;
   $idBase = 'sq-w'.$workIndex;
+  $includeContingency = (bool) ($includeContingency ?? false);
+  $contingencyEnabled = (bool) ($contingencyEnabled ?? true);
+  $contingencyPercent = ($contingencyPercent ?? '') !== '' ? $contingencyPercent : '10';
 @endphp
 <article class="admin-card sq-work-card{{ $isOpen ? ' is-open' : '' }}" data-work-index="{{ $workIndex }}">
   <header class="sq-work-card__header">
@@ -76,20 +79,45 @@
           @endforeach
         </div>
 
-        <div class="sq-add-material-wrap">
-          <button type="button" class="admin-btn admin-btn--ghost sq-add-material-wide sq-add-material">
-            <i class="fa fa-plus"></i> Add material
-          </button>
-        </div>
-
-        <div class="cp-quotation-totals sq-materials-totals">
-          <div class="cp-quotation-totals-row">
-            <span>Total materials (before HST)</span>
-            <span class="sq-job-mat-subtotal">CA$0.00</span>
+        <div class="sq-materials-end">
+          <div class="sq-materials-footer-start">
+            @if ($includeContingency)
+              <div class="sq-contingency-inline" id="sq-contingency-block">
+                <div class="sq-contingency-controls">
+                  <input type="hidden" name="contingency_enabled" value="0">
+                  <label class="admin-checkbox sq-checkbox-label sq-contingency-toggle">
+                    <input type="checkbox" id="sq-contingency-enabled" name="contingency_enabled" value="1" class="admin-checkbox__input" @checked($contingencyEnabled)>
+                    <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                    <span class="admin-checkbox__text">Contingency allowance</span>
+                  </label>
+                  <div class="sq-contingency-pct-field">
+                    <input type="text" inputmode="decimal" autocomplete="off" id="sq-contingency-percent"
+                           name="contingency_percent" class="admin-input sq-contingency-percent"
+                           maxlength="6" placeholder="10" value="{{ $contingencyPercent }}"
+                           aria-label="Contingency allowance percent"
+                           @disabled(!$contingencyEnabled)>
+                    <span class="sq-contingency-pct-suffix">%</span>
+                  </div>
+                </div>
+                @error('contingency_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
+              </div>
+            @endif
+            <div class="sq-add-material-wrap">
+              <button type="button" class="admin-btn admin-btn--ghost sq-add-material">
+                <i class="fa fa-plus"></i> Add material
+              </button>
+            </div>
           </div>
-          <div class="cp-quotation-totals-row">
-            <span>Total materials with HST</span>
-            <span class="sq-job-mat-with-hst">CA$0.00</span>
+
+          <div class="cp-quotation-totals sq-materials-totals">
+            <div class="cp-quotation-totals-row">
+              <span>Total materials (before HST)</span>
+              <span class="sq-job-mat-subtotal">CA$0.00</span>
+            </div>
+            <div class="cp-quotation-totals-row">
+              <span>Total materials with HST</span>
+              <span class="sq-job-mat-with-hst">CA$0.00</span>
+            </div>
           </div>
         </div>
       </div>

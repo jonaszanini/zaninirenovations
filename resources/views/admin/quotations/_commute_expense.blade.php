@@ -47,7 +47,7 @@
      data-travel-url-template="{{ url('admin/client-projects/__ID__/travel-estimate') }}"
      data-initial-project-id="{{ $travelProjectId ?: '' }}"
      data-saved-round-trip="{{ $savedRoundTrip ?? '' }}">
-  <h3 class="q-commute-card__title"><i class="fa fa-road" aria-hidden="true"></i> Commute expense <span class="cp-required">*</span></h3>
+  <h3 class="q-commute-card__title"><i class="fa fa-road" aria-hidden="true"></i> Charge Commute expense? <span class="cp-required">*</span></h3>
 
 
   <fieldset class="q-commute-choice" role="radiogroup" aria-label="Include commute fuel">
@@ -55,12 +55,12 @@
     <label class="q-commute-choice__option{{ $includeCommuteChoice === true ? ' is-selected' : '' }}">
       <input type="radio" name="include_commute" value="1" class="q-commute-choice__input" data-cp-commute-include-yes
              @checked($includeCommuteChoice === true) required>
-      <span class="q-commute-choice__text"><strong>Yes</strong> — charge commute fuel</span>
+      <span class="q-commute-choice__text">Yes</span>
     </label>
     <label class="q-commute-choice__option{{ $includeCommuteChoice === false ? ' is-selected' : '' }}">
       <input type="radio" name="include_commute" value="0" class="q-commute-choice__input" data-cp-commute-include-no
              @checked($includeCommuteChoice === false) required>
-      <span class="q-commute-choice__text"><strong>No</strong> — do not charge</span>
+      <span class="q-commute-choice__text">No</span>
     </label>
   </fieldset>
   @error('include_commute')
@@ -82,7 +82,7 @@
 
     <div class="q-commute-card__fields">
       <div class="admin-form-group q-commute-field q-commute-field--pct">
-        <label for="q-commute-percent">Charge % of round trip</label>
+        <label for="q-commute-percent">% of round trip</label>
         <div class="q-commute-field__inline">
           <input type="text" inputmode="decimal" id="q-commute-percent" name="commute_trip_percent"
                  class="admin-input" maxlength="6" autocomplete="off"
@@ -106,8 +106,8 @@
   .q-commute-choice {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin: 0 0 12px;
+    gap: 8px;
+    margin: 0 0 10px;
     padding: 0;
     border: 0;
   }
@@ -115,8 +115,9 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    min-height: 44px;
     margin: 0;
-    padding: 10px 14px;
+    padding: 8px 10px;
     border: 1px solid var(--admin-border, #cbd5e1);
     border-radius: 10px;
     background: var(--admin-surface, #fff);
