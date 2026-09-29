@@ -150,16 +150,15 @@
   function syncFixedLabourUI(card) {
     var useFixedCb = card.querySelector('.sq-labour-use-fixed-cb');
     var rateFields = card.querySelector('.sq-labour-rate-fields');
+    var fixedFields = card.querySelector('.sq-labour-fixed-fields');
     var rateInput = card.querySelector('.sq-labour-rate');
     var qtyInput = card.querySelector('.sq-labour-qty');
     var modeRadios = card.querySelectorAll('.sq-labour-mode');
     var fixedAmtInput = card.querySelector('.sq-labour-fixed-amount');
     var fixedHstInc = card.querySelector('.sq-labour-fixed-hst-inc-cb');
     var on = useFixedCb && useFixedCb.checked;
-    if (rateFields) {
-      rateFields.style.opacity = on ? '0.55' : '';
-      rateFields.style.pointerEvents = on ? 'none' : '';
-    }
+    if (rateFields) rateFields.hidden = !!on;
+    if (fixedFields) fixedFields.hidden = !on;
     if (rateInput) {
       rateInput.disabled = !!on;
       if (on) {

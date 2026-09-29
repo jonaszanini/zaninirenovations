@@ -23,6 +23,17 @@
       $labourFixedAmount = '';
   }
   $labourFixedHstInc = filter_var(old('works.'.$workIndex.'.labour_fixed_hst_included', $work['labour_fixed_hst_included'] ?? false), FILTER_VALIDATE_BOOLEAN);
+  $labourQtyLabel = $labourMode === 'days' ? 'Estimated days' : 'Estimated hours';
+  $labourEquiv = '';
+  if (! $labourUseFixed && $labourQty !== '' && is_numeric($labourQty) && (float) $labourQty > 0) {
+      if ($labourMode === 'days') {
+          $hours = round((float) $labourQty * 8, 2);
+          $labourEquiv = '≈ '.rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.').' hours';
+      } else {
+          $days = round((float) $labourQty / 8, 3);
+          $labourEquiv = '≈ '.rtrim(rtrim(number_format($days, 3, '.', ''), '0'), '.').' days (8 h/day)';
+      }
+  }
   $jobNumber = is_numeric($workIndex) ? ((int) $workIndex + 1) : 1;
   $idBase = 'sq-w'.$workIndex;
 @endphp
@@ -83,36 +94,40 @@
         </div>
       </div>
 
-      <div class="sq-panel sq-panel--nested">
-        <h3 style="margin:0 0 8px;">Labour</h3>
-        <p class="admin-form-help">Labour includes HST (13%) unless you uncheck it in Totals. Use a <strong>flat labour fee</strong> for a fixed dollar amount, or estimate by <strong>rate × hours/days</strong> (<span title="1 day = 8 hours">8 h = 1 day</span>).</p>
-
-        <div class="admin-form-group sq-labour-fixed-block">
+      <div class="sq-panel sq-panel--nested sq-labour-panel">
+        <div class="sq-labour-head">
+          <h3 class="sq-labour-title">
+            Labour
+            @include('admin.partials.info_tip', ['text' => 'Labour includes HST (13%) unless you turn it off in Totals. A flat fee is one dollar amount. Otherwise use hourly rate × hours or days (8 h = 1 day).'])
+          </h3>
           <input type="hidden" name="works[{{ $workIndex }}][labour_use_fixed]" value="0">
-          <label class="admin-checkbox sq-checkbox-label cp-geometry-hint">
+          <label class="admin-checkbox sq-checkbox-label sq-labour-fixed-toggle">
             <input type="checkbox" name="works[{{ $workIndex }}][labour_use_fixed]" value="1" class="admin-checkbox__input sq-labour-use-fixed-cb" @checked($labourUseFixed)>
             <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text"><strong>Flat labour fee</strong> (skip rate &amp; hours)</span>
+            <span class="admin-checkbox__text">Flat labour fee</span>
           </label>
-          <div class="sq-labour-fixed-fields">
+        </div>
+
+        <div class="sq-labour-fixed-fields" @unless($labourUseFixed) hidden @endunless>
+          <div class="admin-form-group">
             <label for="{{ $idBase }}-labour-fixed-amount">Amount (CAD)</label>
             <input type="text" inputmode="decimal" autocomplete="off" id="{{ $idBase }}-labour-fixed-amount" name="works[{{ $workIndex }}][labour_fixed_amount]"
                    class="admin-input cp-money-input sq-labour-fixed-amount" placeholder="0.00" value="{{ $labourFixedAmount }}">
-            <div class="cp-form-group-spaced">
-              <input type="hidden" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="0">
-              <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label" style="display:inline-flex;">
-                <input type="checkbox" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="1" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
-                <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">HST included</span>
-              </label>
-            </div>
-            <p class="admin-form-help" style="margin-top:8px;">When <strong>HST included</strong> is checked, the amount is the total with tax; before-tax labour is calculated the same way as materials with <strong>HST-incl. price</strong>.</p>
+            @error('works.'.$workIndex.'.labour_fixed_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
-          @error('works.'.$workIndex.'.labour_fixed_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
+          <div class="sq-labour-hst-field">
+            <input type="hidden" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="0">
+            <label class="admin-checkbox sq-checkbox-label">
+              <input type="checkbox" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="1" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">HST included</span>
+            </label>
+            @include('admin.partials.info_tip', ['text' => 'When checked, the amount is the total with tax. Before-tax labour is calculated the same way as a material with an HST-included price.'])
+          </div>
         </div>
 
-        <div class="sq-labour-rate-fields">
-          <div class="admin-form-group">
+        <div class="sq-labour-rate-fields" @if($labourUseFixed) hidden @endif>
+          <div class="admin-form-group sq-labour-rate-group">
             <label for="{{ $idBase }}-labour-rate">Hourly rate (CAD) @unless($labourUseFixed)<span class="cp-required">*</span>@endunless</label>
             <input type="text" inputmode="decimal" id="{{ $idBase }}-labour-rate" name="works[{{ $workIndex }}][labour_hourly_rate]" class="admin-input cp-money-input sq-labour-rate"
                    @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}">
@@ -120,24 +135,24 @@
           </div>
 
           <fieldset class="sq-labour-mode-fieldset">
-            <legend class="admin-form-label">Estimate by</legend>
+            <legend>Estimate by</legend>
             <label class="cp-checkbox-row">
               <input type="radio" name="works[{{ $workIndex }}][labour_mode]" value="hours" class="sq-labour-mode" @checked($labourMode === 'hours')>
               <span>Hours</span>
             </label>
             <label class="cp-checkbox-row">
               <input type="radio" name="works[{{ $workIndex }}][labour_mode]" value="days" class="sq-labour-mode" @checked($labourMode === 'days')>
-              <span>Days</span> <span class="admin-form-help">(× 8 h)</span>
+              <span>Days <span class="admin-form-help">× 8 h</span></span>
             </label>
           </fieldset>
 
-          <div class="admin-form-group">
-            <label for="{{ $idBase }}-labour-qty" class="sq-labour-qty-label">Estimated hours</label>
+          <div class="admin-form-group sq-labour-qty-group">
+            <label for="{{ $idBase }}-labour-qty" class="sq-labour-qty-label">{{ $labourQtyLabel }}</label>
             <input type="number" id="{{ $idBase }}-labour-qty" name="works[{{ $workIndex }}][labour_quantity]" class="admin-input sq-labour-qty" min="0" step="0.01"
                    value="{{ $labourQty }}" placeholder="0">
             @error('works.'.$workIndex.'.labour_quantity') <p class="admin-form-error">{{ $message }}</p> @enderror
             @error('works.'.$workIndex.'.labour_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
-            <p class="admin-form-help sq-labour-equiv" style="margin-top:6px;"></p>
+            <p class="admin-form-help sq-labour-equiv">{{ $labourEquiv }}</p>
           </div>
         </div>
 

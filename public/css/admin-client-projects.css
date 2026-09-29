@@ -5476,12 +5476,117 @@ body.cp-modal-open {
   text-transform: uppercase;
   color: #94a3b8;
 }
+.sq-labour-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 10px;
+}
+.sq-labour-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--admin-heading);
+}
+.sq-labour-fixed-toggle {
+  min-height: 44px;
+}
+.sq-labour-fixed-fields {
+  align-items: end;
+}
+.sq-labour-rate-fields {
+  align-items: start;
+}
+.sq-labour-fixed-fields[hidden],
+.sq-labour-rate-fields[hidden] {
+  display: none !important;
+}
+.sq-labour-fixed-fields {
+  display: grid;
+  grid-template-columns: minmax(8rem, 10rem);
+  justify-content: start;
+  gap: 8px 12px;
+}
+.sq-labour-fixed-fields .admin-form-group,
+.sq-labour-rate-fields .admin-form-group {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.sq-labour-hst-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.sq-labour-rate-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "rate qty"
+    "mode mode";
+  gap: 8px 12px;
+}
+.sq-labour-rate-group { grid-area: rate; }
+.sq-labour-qty-group { grid-area: qty; }
+.sq-labour-equiv {
+  margin: 4px 0 0;
+}
+.sq-labour-equiv:empty { display: none; }
 .sq-labour-mode-fieldset {
+  grid-area: mode;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
   border: 0;
   padding: 0;
-  margin: 0 0 16px;
+  margin: 0;
+  min-width: 0;
 }
-.sq-labour-mode-fieldset legend { margin-bottom: 6px; }
+.sq-labour-mode-fieldset legend {
+  flex: 1 0 100%;
+  padding: 0;
+  margin: 0 0 2px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+.sq-labour-mode-fieldset .cp-checkbox-row {
+  min-height: 44px;
+  margin: 0;
+}
+@media (min-width: 700px) {
+  .sq-labour-fixed-fields {
+    grid-template-columns: 10rem auto;
+    align-items: end;
+  }
+  .sq-labour-rate-fields {
+    grid-template-columns: 9rem 13.5rem 9rem;
+    grid-template-areas: "rate mode qty";
+    justify-content: start;
+  }
+  .sq-labour-totals {
+    width: auto;
+    max-width: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 2px 24px;
+    margin-top: 12px;
+    margin-left: 0;
+  }
+  .sq-labour-totals .cp-quotation-totals-row {
+    width: auto;
+    gap: 10px;
+  }
+}
 .sq-labour-total-box {
   margin-top: 18px;
   padding: 12px 14px;
