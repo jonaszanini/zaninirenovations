@@ -29,8 +29,6 @@
               <a href="{{ route('warranty') }}"@if ($isWarranty) class="text-primary-color"@endif>Warranty</a>
               <span class="separator-line"></span>
               <a href="{{ $home }}#contact" class="nav_menu">Contact</a>
-              <span class="separator-line"></span>
-              <a href="{{ url('/admin/login') }}">Admin</a>
             </div>
 
           </div>

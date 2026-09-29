@@ -1,6 +1,7 @@
 @extends('site.layouts.public')
 
-@section('meta_description', 'Licensed Carpenter Ottawa & Carleton Place — finish carpentry, rough carpentry, custom millwork, decks, basements. WSIB clearance, Part 9 housing, O.Reg. 332/12 compliant. CAD quotes for Kanata, Barrhaven, Orléans.')
+@section('page_title', config('seo.home_title'))
+@section('meta_description', 'Decks, fences, basement finishing, trim & built-ins across Carleton Place, Kanata, Stittsville & Ottawa. WSIB-cleared, $3M insured. Free estimates.')
 @section('canonical', url('/'))
 
 @push('jsonld')
@@ -25,7 +26,19 @@
 @push('styles')
 <style>
   .home-geo-intro { padding-top: 28px; padding-bottom: 8px; }
+  .home-geo-intro__title {
+    max-width: 40rem;
+    margin: 0 auto 12px;
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-weight: 700;
+    color: #024768;
+    text-align: center;
+  }
   .home-geo-intro__lead { max-width: 52rem; margin: 0 auto; font-size: 1.05rem; line-height: 1.65; color: #334155; text-align: center; }
+  @media (min-width: 768px) {
+    .home-geo-intro__title { font-size: 1.85rem; }
+  }
   .home-faq-section__intro { max-width: 40rem; margin: 12px auto 0; color: #64748b; font-size: 15px; }
   .home-blog-featured-row { margin-bottom: 8px; }
   .home-blog-featured { margin-bottom: 0; }
@@ -102,8 +115,8 @@
       <div id="slider_1" class="owl-carousel" data-nav="true" data-dots="true" data-autoplay="false" data-autoplaytimeout="10000" data-bg_effect="true">
 
         <div class="slider_item_container" data-bg_img="images/home_1_slider_1.webp" data-bg_color="#111111" data-bg_opacity="0.5">
-          <div class="slide-bg" aria-hidden="true">
-            <img src="{{ url('images/home_1_slider_1.webp') }}" alt="" fetchpriority="high" decoding="async" width="1920" height="1080">
+          <div class="slide-bg">
+            <img src="{{ url('images/home_1_slider_1.webp') }}" alt="Deck and outdoor living project by Zanini Renovations" fetchpriority="high" decoding="async" width="1280" height="539">
           </div>
           <div class="item">
             <div class="slider-content">
@@ -111,12 +124,12 @@
                 <div class="row">
                   <div class="slider-bg" data-animation-in="fadeInUp" data-animation-out="zoomInDown">
                     <div class="col-sm-12">
-                      <h3>Decks & Outdoor Living</h3>
-                      <h2 class="margin-bottom-12">
+                      <p class="slider-kicker">Decks & Outdoor Living</p>
+                      <p class="slider-title margin-bottom-12">
                         QUALITY DECKS
                         <br>
                         MAKE HOMES BEAUTIFUL
-                      </h2>
+                      </p>
                       <a href="#contact-location" class="btn btn-theme nav_menu">Get Free Estimate</a>
                       <a href="#services" class="btn btn-theme btn-theme-white nav_menu">Learn More</a>
                     </div>
@@ -140,12 +153,12 @@
                 <div class="row">
                   <div class="slider-bg" data-animation-in="fadeInLeft" data-animation-out="zoomInDown">
                     <div class="col-sm-12 wow fadeInLeft" data-wow-duration="1s">
-                      <h2 class="margin-bottom-12" data-animation-in="zoomIn" data-animation-out="animate-out fadeOutDown">
+                      <p class="slider-title margin-bottom-12" data-animation-in="zoomIn" data-animation-out="animate-out fadeOutDown">
                         PERFECT TRIMMING
                         <br>
                         BRINGS ELEGANCE HOME
-                      </h2>
-                      <h3 class="margin-bottom-24" data-animation-in="zoomIn" data-animation-out="animate-out rollOut">Elevate Your Interior With Perfect Trimming Details</h3>
+                      </p>
+                      <p class="slider-kicker margin-bottom-24" data-animation-in="zoomIn" data-animation-out="animate-out rollOut">Elevate Your Interior With Perfect Trimming Details</p>
 
                       <a href="#services" class="btn btn-theme nav_menu" data-animation-in="zoomInRight" data-animation-out="animate-out fadeOutRight">Learn More</a>
                       <a href="#contact-location" class="btn btn-theme btn-theme-white nav_menu" data-animation-in="zoomInLeft" data-animation-out="animate-out fadeOutRight">Get Free Estimate</a>
@@ -172,14 +185,14 @@
                 <div class="row">
                   <div class="slider-bg" data-animation-in="fadeInDown" data-animation-out="zoomInDown">
                     <div class="col-sm-12 wow fadeInLeft" data-wow-duration="1s">
-                      <h2 class="margin-bottom-12">
+                      <p class="slider-title margin-bottom-12">
                         STUNNING BASEMENTS
                         <br>
                         CREATE LIVING SPACE
-                      </h2>
-                      <h3 class="margin-bottom-24">
+                      </p>
+                      <p class="slider-kicker margin-bottom-24">
                         Transform Your Basement With Expert Finishing Craftsmanship
-                      </h3>
+                      </p>
                       <a href="#contact-location" class="btn btn-theme btn-theme-white nav_menu">Get Free Estimate</a>
                       <a href="#services" class="btn btn-theme nav_menu">Learn More</a>
 
@@ -202,8 +215,9 @@
     </div>
     <!-- end .slider-wrap.  -->
 
-    <section class="section-content-block home-geo-intro" aria-label="Zanini Renovations overview">
+    <section class="section-content-block home-geo-intro" aria-labelledby="home-geo-heading">
       <div class="container">
+        <h1 id="home-geo-heading" class="home-geo-intro__title">Carpenter &amp; Renovation Contractor in Carleton Place &amp; Ottawa</h1>
         <p class="home-geo-intro__lead">{{ config('seo.home_summary') }}</p>
       </div>
     </section>
@@ -233,7 +247,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/fence.webp" alt="Wood privacy fence built by Zanini Renovations" loading="lazy" decoding="async">
+                <img src="images/services/fence.webp" alt="Wood privacy fence built by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-bars"></span>
               </figure>
 
@@ -248,7 +262,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/deck.webp" alt="Residential deck built by Zanini Renovations" loading="lazy" decoding="async">
+                <img src="images/services/deck.webp" alt="Residential deck built by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-tree"></span>
               </figure>
 
@@ -263,7 +277,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/basement-renovation.webp" alt="Basement framing and finishing by Zanini Renovations" loading="lazy" decoding="async">
+                <img src="images/services/basement-renovation.webp" alt="Basement framing and finishing by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-home"></span>
               </figure>
 
@@ -278,7 +292,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/trim.webp" alt="Interior trim and moulding installation" loading="lazy" decoding="async">
+                <img src="images/services/trim.webp" alt="Interior trim and moulding installation" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-wrench"></span>
               </figure>
 
@@ -293,7 +307,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/shelves.webp" alt="Custom built-in shelving" loading="lazy" decoding="async">
+                <img src="images/services/shelves.webp" alt="Custom built-in shelving" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-cubes"></span>
               </figure>
 
@@ -308,7 +322,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/flooring.webp" alt="Hardwood flooring installation" loading="lazy" decoding="async">
+                <img src="images/services/flooring.webp" alt="Hardwood flooring installation" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-th-large"></span>
               </figure>
 
@@ -323,7 +337,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/tiles.webp" alt="Tile installation" loading="lazy" decoding="async">
+                <img src="images/services/tiles.webp" alt="Tile installation" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-th"></span>
               </figure>
 
@@ -338,7 +352,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/accent-walls.webp" alt="Accent wall and wainscoting carpentry" loading="lazy" decoding="async">
+                <img src="images/services/accent-walls.webp" alt="Accent wall and wainscoting carpentry" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-paint-brush"></span>
               </figure>
 
@@ -352,7 +366,7 @@
 
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/stairs.webp" alt="Wood staircase carpentry" loading="lazy" decoding="async">
+                <img src="images/services/stairs.webp" alt="Wood staircase carpentry" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-sort-amount-asc"></span>
               </figure>
 
@@ -500,11 +514,9 @@
               <div class="col-md-12 col-sm-12 text-left">
                 <h4 class="heading-alt-style text-uppercase text-dark-color">About us</h4>
                 <span class="heading-separator heading-separator-horizontal"></span>
-                <h2 class="subheading-alt-style">
+                <p class="subheading-alt-style">
                   Hi, I am Jonas Zanini. After 20 years in IT with global leaders like IBM and Infosys, I moved from Brazil to Ontario in 2019 and discovered a true passion for construction. At Zanini Renovations, I apply that same software developer precision to every carpentry and renovation project I build. My goal is to deliver high quality craftsmanship that makes you and your family fall in love with your home all over again.
-
-          
-                </h2>
+                </p>
                 <a href="#about" class="btn btn-theme margin-top-24 nav_menu">More about us</a>
               </div>
               <!-- end .col-sm-12  -->
@@ -523,7 +535,7 @@
 
                     <figure class="team-member">
                       <a href="#" title="Jonas Zanini">
-                        <img src="images/about-us/jonas.webp" alt="Jonas Zanini, owner and contractor" loading="lazy" decoding="async">
+                        <img src="images/about-us/jonas.webp" alt="Jonas Zanini, owner and contractor" loading="lazy" decoding="async" width="800" height="860">
                       </a>
                     </figure>
                     <!-- end. team-member  -->
@@ -556,7 +568,7 @@
 
                     <figure class="team-member">
                       <a href="#" title="Mayara Zanini">
-                        <img src="images/about-us/mayara.webp" alt="Mayara Zanini, office and marketing" loading="lazy" decoding="async">
+                        <img src="images/about-us/mayara.webp" alt="Mayara Zanini, office and marketing" loading="lazy" decoding="async" width="800" height="860">
                       </a>
                     </figure>
                     <!-- end. team-member  -->
@@ -678,7 +690,7 @@
 
           <div class="col-lg-6 hidden-md hidden-xs hidden-sm no-padding">
             <figure>
-              <img src="images/reviews.webp" alt="Client reviews of Zanini Renovations" class="db" loading="lazy" decoding="async">
+              <img src="images/reviews.webp" alt="Client reviews of Zanini Renovations" class="db" loading="lazy" decoding="async" width="2048" height="2048">
             </figure>
           </div>
 
@@ -693,11 +705,19 @@
             <div class="testimonials-google-cta">
               <a
                 class="btn btn-theme btn-square"
-                href="https://www.google.com/maps/place/Zanini+Renovations/@45.0145689,-76.3839057,8z/data=!4m8!3m7!1s0x270af127fae3b7c1:0x6a89028fc92f8eda!8m2!3d45.120446!4d-76.0081985!9m1!1b1!16s%2Fg%2F11mm5zjskr?hl=en&amp;entry=ttu&amp;g_ep=EgoyMDI2MDMyOS4wIKXMDSoASAFQAw%3D%3D"
+                href="{{ config('seo.google_business_url') }}"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 See all reviews on Google
+              </a>
+              <a
+                class="btn btn-theme btn-square"
+                href="{{ config('seo.google_review_url') }}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Leave a Google review
               </a>
             </div>
           </div>
@@ -797,7 +817,7 @@
             <ul class="contact-info">
               <li>
                 <span class="icon-container"><i class="fa fa-map-marker"></i></span>
-                <address><a href="https://maps.app.goo.gl/WsKrQcEq2KdPKoN19" target="_blank" rel="noopener noreferrer">Google Maps</a></address>
+                <address><a href="{{ config('seo.google_business_url') }}" target="_blank" rel="noopener noreferrer">Google Maps</a></address>
               </li>
             </ul>
           </div>
@@ -844,7 +864,7 @@
               Based in Carleton Place, we proudly serve Perth, Smiths Falls, Lanark County, the Ottawa region, and Gatineau.
             </p>
 
-            <img src="{{ url('images/truck.webp') }}" alt="Zanini Renovations service truck" class="home-service-area-image wow fadeInUp" loading="lazy" decoding="async">
+            <img src="{{ url('images/truck.webp') }}" alt="Zanini Renovations service truck" class="home-service-area-image wow fadeInUp" loading="lazy" decoding="async" width="1280" height="714">
 
           </div>
 

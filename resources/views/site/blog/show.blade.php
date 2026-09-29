@@ -21,7 +21,7 @@
     <div class="container">
       <div class="row">
         <div class="col-sm-12 text-center">
-          <h3>{{ $post->title }}</h3>
+          <h1>{{ $post->title }}</h1>
           <p class="page-breadcrumb">
             <a href="{{ url('/') }}">Home</a> /
             <a href="{{ route('blog.index') }}">Blog</a> /
@@ -43,7 +43,7 @@
               </div>
             @endif
             <div class="single-post-inner-title">
-              <h2>{{ $post->title }}</h2>
+              <p class="single-post-inner-title__heading">{{ $post->title }}</p>
               <p class="single-post-meta">
                 <i class="fa fa-user"></i> {{ $post->author_name }}
                 &nbsp;<i class="fa fa-calendar"></i> {{ $post->displayDate() }}

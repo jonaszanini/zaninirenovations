@@ -81,9 +81,24 @@ class SeoGeoTest extends TestCase
 
         $this->assertIsArray($business['knowsAbout']);
         $this->assertContains('Deck construction', $business['knowsAbout']);
+        $this->assertNotContains('Red Seal carpentry', $business['knowsAbout']);
+        $this->assertArrayNotHasKey('aggregateRating', $business);
+        $this->assertArrayNotHasKey('review', $business);
+        $this->assertEqualsWithDelta(45.120446, $business['geo']['latitude'], 0.000001);
+        $this->assertEqualsWithDelta(-76.0081985, $business['geo']['longitude'], 0.000001);
+        $this->assertContains(
+            'https://maps.google.com/?cid=7676669856408637146',
+            $business['sameAs']
+        );
+        $webpage = collect($graph['@graph'])->first(
+            fn ($node) => ($node['@type'] ?? '') === 'WebPage'
+        );
+        $this->assertSame((string) config('seo.home_title'), $webpage['name']);
         $this->assertStringContainsString('$3 million', $business['description']);
         $encoded = SeoStructuredData::toJsonLd($graph);
         $this->assertStringNotContainsString('$2M', $encoded);
+        $this->assertStringNotContainsString('aggregateRating', $encoded);
+        $this->assertStringNotContainsString('Red Seal', $encoded);
     }
 
     public function test_blog_posting_json_ld_describes_the_article(): void

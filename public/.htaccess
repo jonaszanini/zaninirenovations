@@ -29,6 +29,10 @@
 
     RewriteEngine On
 
+    # One host: www.zaninirenovations.ca → https://zaninirenovations.ca
+    RewriteCond %{HTTP_HOST} ^www\.zaninirenovations\.ca$ [NC]
+    RewriteRule ^ https://zaninirenovations.ca%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

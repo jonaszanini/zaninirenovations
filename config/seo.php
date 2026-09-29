@@ -19,11 +19,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Structured data — geo (Carleton Place)
+    | Structured data — geo (business pin in Beckwith)
     |--------------------------------------------------------------------------
     */
-    'latitude' => 45.1387107,
-    'longitude' => -76.1525359,
+    'latitude' => 45.120446,
+    'longitude' => -76.0081985,
 
     /*
     |--------------------------------------------------------------------------
@@ -96,7 +96,6 @@ return [
         'Ontario Building Code O.Reg. 332/12',
         'Part 9 housing and small buildings',
         'WSIB clearance certificate',
-        'Red Seal carpentry',
     ],
 
     'liability_insurance' => '$3 million',
@@ -108,7 +107,11 @@ return [
     */
     'home_summary' => 'Zanini Renovations is a licensed carpenter and home renovation contractor based in Carleton Place, serving Ottawa and surrounding Ontario communities. We provide finish carpentry, rough carpentry, custom millwork, decks, basement framing, trim, fencing, flooring, drywall, and staircase work—with $3 million general liability insurance, WSIB clearance, and O.Reg. 332/12 compliant practices.',
 
-    'google_business_url' => env('SEO_GOOGLE_BUSINESS_URL', 'https://www.google.com/maps/place/Zanini+Renovations/@45.120446,-76.0081985,17z'),
+    'home_title' => 'Carpenter & Renovation Contractor – Carleton Place & Ottawa | Zanini Renovations',
+
+    'google_business_url' => env('SEO_GOOGLE_BUSINESS_URL') ?: 'https://maps.google.com/?cid=7676669856408637146',
+
+    'google_review_url' => 'https://search.google.com/local/writereview?placeid=ChIJwbfj-ifxCicR2o4vyY8CiWo',
 
     /*
     |--------------------------------------------------------------------------

@@ -8,6 +8,7 @@ use App\Support\ProductionDatabaseGuard;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -31,6 +32,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        if ($this->app->environment('production')) {
+            $root = rtrim((string) config('app.url'), '/');
+            if ($root !== '') {
+                URL::forceRootUrl($root);
+                $scheme = parse_url($root, PHP_URL_SCHEME);
+                if (is_string($scheme) && $scheme !== '') {
+                    URL::forceScheme($scheme);
+                }
+            }
+        }
+
         Event::listen(CommandStarting::class, function (CommandStarting $event): void {
             // Abort destructive DB commands (migrate:fresh, db:wipe, ...) before
             // they can touch the live production database.

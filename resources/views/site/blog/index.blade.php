@@ -1,6 +1,6 @@
 @extends('site.layouts.public')
 
-@section('page_title', 'Blog — Zanini Renovations')
+@section('page_title', 'Renovation & Carpentry Tips for Ottawa Homeowners | Zanini Blog')
 @section('meta_description', 'Renovation tips, project insights, and news from Zanini Renovations in Carleton Place and the Ottawa region.')
 @section('canonical', route('blog.index'))
 
@@ -17,7 +17,7 @@
     <div class="container">
       <div class="row">
         <div class="col-sm-12 text-center">
-          <h3>Blog</h3>
+          <h1>Blog</h1>
           <p class="page-breadcrumb">
             <a href="{{ url('/') }}">Home</a> / Blog
           </p>

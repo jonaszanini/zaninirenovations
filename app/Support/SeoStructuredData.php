@@ -77,8 +77,8 @@ class SeoStructuredData
             ],
             'geo' => [
                 '@type' => 'GeoCoordinates',
-                'latitude' => (float) config('seo.latitude', 45.1387107),
-                'longitude' => (float) config('seo.longitude', -76.1525359),
+                'latitude' => (float) config('seo.latitude', 45.120446),
+                'longitude' => (float) config('seo.longitude', -76.0081985),
             ],
             'areaServed' => $areas,
             'openingHoursSpecification' => [
@@ -89,37 +89,9 @@ class SeoStructuredData
                     'closes' => '18:00',
                 ],
             ],
-            'aggregateRating' => [
-                '@type' => 'AggregateRating',
-                'ratingValue' => '5',
-                'bestRating' => '5',
-                'worstRating' => '1',
-                'ratingCount' => '3',
-                'reviewCount' => '3',
-            ],
             'founder' => ['@id' => $url.'/#person-jonas'],
             'employee' => [
                 ['@id' => $url.'/#person-mayara'],
-            ],
-            'review' => [
-                [
-                    '@type' => 'Review',
-                    'author' => ['@type' => 'Person', 'name' => 'Alana Hamilton'],
-                    'reviewBody' => 'Professional, friendly drywall, flooring and trim in our basement; great communication and fair pricing.',
-                    'reviewRating' => ['@type' => 'Rating', 'ratingValue' => '5', 'bestRating' => '5'],
-                ],
-                [
-                    '@type' => 'Review',
-                    'author' => ['@type' => 'Person', 'name' => 'Kawana Bazzo'],
-                    'reviewBody' => 'Attentive, organized, and clean throughout the project; happy with results and would work together again.',
-                    'reviewRating' => ['@type' => 'Rating', 'ratingValue' => '5', 'bestRating' => '5'],
-                ],
-                [
-                    '@type' => 'Review',
-                    'author' => ['@type' => 'Person', 'name' => 'Mike Dobson'],
-                    'reviewBody' => 'Professional fence and interior work; prompt, thorough, and completed on a quick timeframe.',
-                    'reviewRating' => ['@type' => 'Rating', 'ratingValue' => '5', 'bestRating' => '5'],
-                ],
             ],
         ];
 
@@ -173,7 +145,7 @@ class SeoStructuredData
                 '@type' => 'WebPage',
                 '@id' => $url.'/#webpage',
                 'url' => $url.'/',
-                'name' => 'Licensed Carpenter Ottawa | Renovation & Carpentry | Zanini Renovations',
+                'name' => (string) config('seo.home_title', 'Zanini Renovations'),
                 'description' => $homeSummary,
                 'isPartOf' => ['@id' => $url.'/#website'],
                 'about' => ['@id' => $url.'/#business'],

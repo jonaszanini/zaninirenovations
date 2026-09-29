@@ -1,5 +1,6 @@
 @extends('site.layouts.public')
 
+@section('page_title', 'Privacy Policy | Zanini Renovations')
 @section('meta_description', 'Read the Zanini Renovations Privacy Policy for how we collect, use, disclose, and protect personal information under PIPEDA.')
 @section('canonical', url('/privacy-policy'))
 

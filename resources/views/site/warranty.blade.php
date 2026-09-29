@@ -1,5 +1,6 @@
 @extends('site.layouts.public')
 
+@section('page_title', 'Workmanship Warranty & Insurance | Zanini Renovations')
 @section('meta_description', 'Zanini Renovations warranty: O.Reg. 332/12 compliant workmanship, WSIB clearance, $3 million general liability insurance, Part 9 housing. Carleton Place and Ottawa.')
 @section('canonical', url('/warranty'))
 
