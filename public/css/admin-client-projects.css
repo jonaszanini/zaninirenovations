@@ -4885,8 +4885,17 @@ body.cp-modal-open {
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
-/* End of Materials: contingency sits above Add material, on the left.
-   Job totals stay on the right. */
+/* Add material is a full-width row under the material lines.
+   Contingency and job totals sit on the next row. */
+.sq-add-material-wrap {
+  margin-top: 10px;
+}
+.sq-add-material {
+  width: 100%;
+  justify-content: center;
+  min-height: 44px;
+  box-sizing: border-box;
+}
 .sq-materials-end {
   display: flex;
   flex-wrap: wrap;
@@ -4901,9 +4910,6 @@ body.cp-modal-open {
   align-items: flex-start;
   gap: 6px;
   min-width: 0;
-}
-.sq-add-material-wrap {
-  margin-top: 0;
 }
 .sq-materials-end .sq-materials-totals {
   margin-top: 0;
@@ -4920,15 +4926,6 @@ body.cp-modal-open {
 }
 .sq-materials-totals { margin-top: 14px; }
 .sq-labour-totals { margin-top: 14px; }
-
-/* In-panel "Save only" button at the bottom-left of the Materials
-   section. Same submit as the bottom-of-form button — just here for
-   convenience when the user only edits materials. */
-.sq-panel-save {
-  margin-top: 18px;
-  display: flex;
-  justify-content: flex-start;
-}
 
 /* Contingency allowance: one compact row (checkbox + percent), no banner. */
 .sq-contingency-controls {
@@ -4972,7 +4969,6 @@ body.cp-modal-open {
 .sq-contingency-inline .admin-form-error {
   margin: 2px 0 0;
 }
-.sq-mat-contingency-row,
 .sq-grand-row--contingency {
   color: var(--admin-primary, #0c4a6e);
 }

@@ -79,6 +79,12 @@
           @endforeach
         </div>
 
+        <div class="sq-add-material-wrap">
+          <button type="button" class="admin-btn admin-btn--ghost sq-add-material">
+            <i class="fa fa-plus"></i> Add material
+          </button>
+        </div>
+
         <div class="sq-materials-end">
           <div class="sq-materials-footer-start">
             @if ($includeContingency)
@@ -102,11 +108,6 @@
                 @error('contingency_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
               </div>
             @endif
-            <div class="sq-add-material-wrap">
-              <button type="button" class="admin-btn admin-btn--ghost sq-add-material">
-                <i class="fa fa-plus"></i> Add material
-              </button>
-            </div>
           </div>
 
           <div class="cp-quotation-totals sq-materials-totals">

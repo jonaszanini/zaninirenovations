@@ -402,29 +402,6 @@
       </button>
     </div>
 
-    <div class="admin-card sq-panel" id="sq-quote-materials-card">
-      <div class="cp-quotation-totals sq-materials-totals">
-        <div class="cp-quotation-totals-row">
-          <span>Total materials (before HST)</span>
-          <span id="sq-mat-subtotal">CA$0.00</span>
-        </div>
-        <div class="cp-quotation-totals-row sq-mat-contingency-row" id="sq-mat-contingency-row" style="{{ $contingencyEnabled ? '' : 'display:none;' }}">
-          <span>Contingency (<span id="sq-mat-contingency-pct">{{ $contingencyPercent }}</span>%)</span>
-          <span id="sq-mat-contingency">+CA$0.00</span>
-        </div>
-        <div class="cp-quotation-totals-row">
-          <span>Total materials with HST</span>
-          <span id="sq-mat-with-hst">CA$0.00</span>
-        </div>
-      </div>
-
-      <div class="sq-panel-save">
-        <button type="submit" class="admin-btn admin-btn--primary">
-          <i class="fa fa-save"></i> Save
-        </button>
-      </div>
-    </div>
-
     {{-- Grand summary -------------------------------------------- --}}
     @include('admin.quotations._building', ['quotation' => $quotation])
     @include('admin.quotations._commute_debris_row')

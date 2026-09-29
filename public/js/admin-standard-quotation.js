@@ -94,8 +94,6 @@
     return worksRoot ? Array.prototype.slice.call(worksRoot.querySelectorAll('.sq-work-card')) : [];
   }
 
-  var elMatSub = document.getElementById('sq-mat-subtotal');
-  var elMatHst = document.getElementById('sq-mat-with-hst');
   var gMatSub = document.getElementById('sq-g-mat-sub');
   var gMatHst = document.getElementById('sq-g-mat-hst');
   var gMatTot = document.getElementById('sq-g-mat-total');
@@ -127,9 +125,6 @@
 
   var contEnabled = document.getElementById('sq-contingency-enabled');
   var contPercent = document.getElementById('sq-contingency-percent');
-  var matContRow = document.getElementById('sq-mat-contingency-row');
-  var matContPct = document.getElementById('sq-mat-contingency-pct');
-  var matContVal = document.getElementById('sq-mat-contingency');
   var gContRow = document.getElementById('sq-g-contingency-row');
   var gContPct = document.getElementById('sq-g-contingency-pct');
   var gContVal = document.getElementById('sq-g-contingency');
@@ -380,14 +375,9 @@
 
     if (contPercent) contPercent.disabled = !contOn;
     var pctLabel = (Math.round(contPct * 100) / 100).toString();
-    setText(matContPct, pctLabel);
     setText(gContPct, pctLabel);
-    if (matContRow) matContRow.style.display = contOn ? '' : 'none';
     if (gContRow) gContRow.style.display = contOn ? '' : 'none';
-    setText(matContVal, '+' + money(contAmt));
     setText(gContVal, '+' + money(contAmt));
-    setText(elMatSub, money(subSum));
-    setText(elMatHst, money(withSumWithCont));
     setText(gMatSub, money(subSum));
     setText(gMatHst, money(hstWithCont));
     setText(gMatTot, money(withSumWithCont));
@@ -627,9 +617,7 @@
     if (!block || !cards.length) return;
     var slot = cards[cards.length - 1].querySelector('.sq-materials-footer-start');
     if (!slot || block.parentElement === slot) return;
-    var addWrap = slot.querySelector('.sq-add-material-wrap');
-    if (addWrap) slot.insertBefore(block, addWrap);
-    else slot.appendChild(block);
+    slot.appendChild(block);
   }
 
   function updateWorkChrome() {
@@ -781,8 +769,7 @@
       if (contBlock && cardDel.contains(contBlock)) {
         var host = workCards().filter(function (c) { return c !== cardDel; }).pop();
         var slot = host && host.querySelector('.sq-materials-footer-start');
-        var addWrap = slot && slot.querySelector('.sq-add-material-wrap');
-        if (slot && addWrap) slot.insertBefore(contBlock, addWrap);
+        if (slot) slot.appendChild(contBlock);
       }
       cardDel.querySelectorAll('.sq-material-row').forEach(destroyCatalogPicker);
       cardDel.remove();
