@@ -70,6 +70,11 @@
              aria-label="Additional labour percent for buildings">
       <span class="q-building-percent-suffix">%</span>
     </div>
+    <div class="q-building-added" id="q-building-added" aria-live="polite">
+      <span class="q-building-added__label">Added to this quotation</span>
+      <strong class="q-building-added__amount" id="q-building-added-amount">CA$0.00</strong>
+      <p class="admin-form-help q-building-added__detail" id="q-building-added-detail">30% of labour</p>
+    </div>
     <p class="admin-form-help">Default 30%. Applies to labour only — not materials.</p>
     @error('building_labor_percent')
       <p class="admin-form-error">{{ $message }}</p>
@@ -98,4 +103,29 @@
     font-weight: 600;
     color: var(--admin-muted);
   }
+  .q-building-added {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: var(--admin-surface-hover);
+  }
+  .q-building-added__label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--admin-muted);
+  }
+  .q-building-added__amount {
+    display: block;
+    margin-top: 2px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--admin-heading);
+    font-variant-numeric: tabular-nums;
+  }
+  .q-building-added__detail { margin: 4px 0 0; }
 </style>
+<script src="{{ asset('js/admin-quotation-building.js') }}?v={{ @filemtime(public_path('js/admin-quotation-building.js')) ?: time() }}"></script>

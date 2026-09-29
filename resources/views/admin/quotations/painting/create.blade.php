@@ -567,6 +567,7 @@
         var root = document.getElementById('pt-breakdown-root');
         if (!root || !data || !data.summary) return;
         lastBreakdownData = data;
+        if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.sync(data);
         var scope = data.scope || {};
         var grand = Number(data.summary.grand_total || 0) + lastCommuteAmount + lastDebrisAmount;
         window.__quoteGrandTotal = grand;
@@ -607,6 +608,7 @@
         var state = collectReadiness();
         renderReadiness(state);
         if (!state.ready) {
+          if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.setLabourBase(0);
           clearBreakdown('Complete the checklist above to see labor, materials, and totals.');
           return;
         }

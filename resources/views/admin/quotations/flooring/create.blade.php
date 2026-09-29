@@ -583,6 +583,7 @@
 
       function renderPreview(data) {
         lastPreviewData = data;
+        if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.sync(data);
         var empty = document.getElementById('fl-live-empty');
         var body = document.getElementById('fl-live-body');
         var summary = data.summary || {};

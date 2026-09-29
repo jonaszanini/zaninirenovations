@@ -97,6 +97,7 @@
 
     function renderPreview(data) {
       lastPreviewData = data;
+      if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.sync(data);
       var empty = document.getElementById('tm-live-empty');
       var body = document.getElementById('tm-live-body');
       var summary = (data && data.summary) || {};

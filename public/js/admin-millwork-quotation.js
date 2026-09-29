@@ -183,6 +183,7 @@
 
     function renderPreview(data) {
       lastPreviewData = data;
+      if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.sync(data);
       var empty = document.getElementById('mw-live-empty');
       var body = document.getElementById('mw-live-body');
       var summary = data.summary || {};

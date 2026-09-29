@@ -341,6 +341,7 @@
     lab = Math.round(lab * 100) / 100;
     labHst = Math.round(labHst * 100) / 100;
     labWithHst = Math.round(labWithHst * 100) / 100;
+    var labourBase = lab;
 
     var buildingOn = !!(buildingInclude && buildingInclude.checked);
     var buildingPct = buildingPercent ? parseFloat(String(buildingPercent.value || '').replace(/,/g, '')) : 30;
@@ -360,6 +361,9 @@
     if (gBuildingRow) gBuildingRow.hidden = !(buildingSurcharge > 0);
     if (gBuildingPct) gBuildingPct.textContent = String(Math.round(buildingPct * 100) / 100);
     setText(gBuilding, '+' + money(buildingSurcharge));
+    if (window.QuotationBuildingLaborUi) {
+      window.QuotationBuildingLaborUi.setLabourBase(labourBase);
+    }
 
     var contOn = !!(contEnabled && contEnabled.checked);
     var contPct = contingencyPctValue();

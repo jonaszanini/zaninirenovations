@@ -618,6 +618,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(res => res.json())
         .then(data => {
             if (data.valid) {
+                if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.sync(data);
                 liveEmpty.hidden = true;
                 liveBody.innerHTML = data.html;
                 liveBody.hidden = false;
@@ -629,6 +630,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 applyDebrisToLivePreview();
                 applyCommuteToLivePreview();
             } else {
+                if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.setLabourBase(0);
                 liveEmpty.hidden = false;
                 liveBody.hidden = true;
                 lastGrandTotal = 0;
