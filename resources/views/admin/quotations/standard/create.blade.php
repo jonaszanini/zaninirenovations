@@ -54,6 +54,7 @@
       $contingencyPercent = $isEdit
           ? rtrim(rtrim(number_format((float) $quotation->contingency_percent, 2, '.', ''), '0'), '.')
           : '10';
+  }
   if ($contingencyPercent === '') {
       $contingencyPercent = '10';
   }
@@ -64,7 +65,6 @@
       $includeLabourHst = (bool) ($quotation->include_labour_hst ?? true);
   } else {
       $includeLabourHst = true;
-  }
   }
 
   $linkProject = $linkProject ?? null;
