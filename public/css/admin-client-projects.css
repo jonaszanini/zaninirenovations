@@ -2762,21 +2762,25 @@ a:hover .cp-expense-receipt-pdf {
   gap: 8px;
   flex-wrap: wrap;
 }
-.cp-mark-paid-method-option {
+.admin-form-group .cp-mark-paid-method-option {
   flex: 1 1 calc(33.333% - 8px);
   min-width: 7.5rem;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
+  margin: 0;
   min-height: var(--admin-control-height, 44px);
-  padding: 8px 8px;
+  padding: 8px 10px;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   background: var(--admin-input-bg);
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 13px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-align: center;
   color: var(--admin-text);
   transition: border-color .12s ease, background .12s ease, color .12s ease;
 }
@@ -2786,7 +2790,14 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-mark-paid-method-option input[type="radio"] {
   margin: 0;
+  flex: 0 0 auto;
   accent-color: var(--admin-primary);
+}
+.cp-mark-paid-method-option span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 .cp-mark-paid-method-option:has(input[type="radio"]:checked) {
   border-color: var(--admin-primary);
