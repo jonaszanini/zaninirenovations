@@ -35,11 +35,13 @@ class ClientProjectInvoice extends Model
 
     /** Payment methods captured when the invoice is marked paid. */
     public const PAYMENT_METHOD_CASH = 'cash';
+    public const PAYMENT_METHOD_CHECK = 'check';
     public const PAYMENT_METHOD_ETRANSFER = 'etransfer';
 
     /** Display labels for the receipt PDF + admin UI. */
     public const PAYMENT_METHOD_LABELS = [
         self::PAYMENT_METHOD_CASH => 'Cash',
+        self::PAYMENT_METHOD_CHECK => 'Check',
         self::PAYMENT_METHOD_ETRANSFER => 'e-Transfer',
     ];
 

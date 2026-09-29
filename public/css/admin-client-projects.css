@@ -2746,7 +2746,7 @@ a:hover .cp-expense-receipt-pdf {
   color: #024768;
 }
 
-/* Mark-as-paid modal: payment method radio group (e-Transfer / Cash). */
+/* Mark-as-paid modal: payment method radio group (e-Transfer / Cash / Check). */
 .cp-mark-paid-method {
   margin-top: 12px;
 }
@@ -2763,17 +2763,20 @@ a:hover .cp-expense-receipt-pdf {
   flex-wrap: wrap;
 }
 .cp-mark-paid-method-option {
-  flex: 1 1 140px;
+  flex: 1 1 calc(33.333% - 8px);
+  min-width: 7.5rem;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   min-height: var(--admin-control-height, 44px);
-  padding: 10px 12px;
+  padding: 8px 8px;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   background: var(--admin-input-bg);
   cursor: pointer;
   font-weight: 500;
+  font-size: 13px;
   color: var(--admin-text);
   transition: border-color .12s ease, background .12s ease, color .12s ease;
 }

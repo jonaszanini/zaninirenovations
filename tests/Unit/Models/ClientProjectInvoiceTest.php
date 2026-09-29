@@ -64,6 +64,7 @@ class ClientProjectInvoiceTest extends TestCase
     {
         return [
             'cash' => [ClientProjectInvoice::PAYMENT_METHOD_CASH, 'Cash'],
+            'check' => [ClientProjectInvoice::PAYMENT_METHOD_CHECK, 'Check'],
             'etransfer' => [ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER, 'e-Transfer'],
             'missing' => [null, null],
         ];

@@ -544,6 +544,10 @@
                 <input type="radio" name="payment_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CASH }}">
                 <span><i class="fa fa-money"></i> Cash</span>
               </label>
+              <label class="cp-mark-paid-method-option">
+                <input type="radio" name="payment_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CHECK }}">
+                <span><i class="fa fa-file-text-o"></i> Check</span>
+              </label>
             </div>
           </div>
 

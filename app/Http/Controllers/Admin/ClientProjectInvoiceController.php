@@ -643,10 +643,7 @@ class ClientProjectInvoiceController extends Controller
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'also_email_receipt' => ['nullable', 'boolean'],
             'also_sms_receipt' => ['nullable', 'boolean'],
-            'payment_method' => ['required', Rule::in([
-                ClientProjectInvoice::PAYMENT_METHOD_CASH,
-                ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER,
-            ])],
+            'payment_method' => ['required', Rule::in(array_keys(ClientProjectInvoice::PAYMENT_METHOD_LABELS))],
             'project_status' => [
                 'nullable',
                 'string',
