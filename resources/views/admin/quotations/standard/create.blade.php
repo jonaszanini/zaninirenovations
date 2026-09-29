@@ -163,7 +163,7 @@
                     class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
                     title="Email quotation to client"
                     aria-label="Email quotation to client">
-              <i class="fa fa-envelope" aria-hidden="true"></i>
+              <i class="fa fa-paper-plane" aria-hidden="true"></i>
             </button>
           </form>
         @else
@@ -172,7 +172,7 @@
                   disabled
                   title="{{ $sendEmailDisabledTitle }}"
                   aria-label="Email quotation to client">
-            <i class="fa fa-envelope" aria-hidden="true"></i>
+            <i class="fa fa-paper-plane" aria-hidden="true"></i>
           </button>
         @endif
 
