@@ -4460,8 +4460,8 @@ body.cp-modal-open {
   align-items: center;
   text-align: center;
   aspect-ratio: 1 / 1;
-  background: #ffffff;
-  border: 1px solid #e0e4ea;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
   border-radius: 10px;
   padding: 16px;
   text-decoration: none;
@@ -4469,17 +4469,18 @@ body.cp-modal-open {
   transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
 }
 .fq-hub-card:hover {
-  border-color: #024768;
-  box-shadow: 0 4px 14px rgba(2, 71, 104, 0.1);
+  border-color: var(--admin-primary);
+  box-shadow: 0 4px 14px var(--admin-primary-ring);
   transform: translateY(-1px);
 }
 .fq-hub-card-image-wrap {
   width: 132px;
   height: 132px;
-  border: 1px solid #b9d9ee;
+  border: 1px solid color-mix(in srgb, var(--admin-primary) 28%, var(--admin-border));
   border-radius: 10px;
   overflow: hidden;
-  background: #f4f9fd;
+  background: color-mix(in srgb, var(--admin-primary) 10%, var(--admin-surface));
+  color: var(--admin-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4490,28 +4491,23 @@ body.cp-modal-open {
   display: block;
   object-fit: contain;
 }
-.fq-hub-card-image-wrap--svg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef4f8 100%);
-}
 .fq-hub-card-svg {
-  width: 88px;
-  height: 88px;
+  width: 68%;
+  height: 68%;
+  display: block;
 }
 .fq-hub-card-body { flex: 1; min-width: 0; }
 .fq-hub-card-body h4 {
   margin: 0;
   font-size: 17px;
-  color: #024768;
+  color: var(--admin-primary);
 }
 /* Hub cards with no destination yet (calculator TBD) */
 .fq-hub-card--placeholder {
   cursor: default;
 }
 .fq-hub-card--placeholder:hover {
-  border-color: #e0e4ea;
+  border-color: var(--admin-border);
   box-shadow: none;
   transform: none;
 }
