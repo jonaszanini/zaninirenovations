@@ -106,8 +106,26 @@
     percentEl.addEventListener('input', render);
     percentEl.addEventListener('change', render);
   }
+  var expandEl = document.getElementById('q-building-expandable');
+
+  function syncExpand() {
+    if (!expandEl || !includeEl) return;
+    var open = !!includeEl.checked;
+    expandEl.classList.toggle('is-open', open);
+    expandEl.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if (open) {
+      expandEl.removeAttribute('inert');
+    } else {
+      expandEl.setAttribute('inert', '');
+    }
+  }
+
   if (includeEl) {
-    includeEl.addEventListener('change', render);
+    includeEl.addEventListener('change', function () {
+      syncExpand();
+      render();
+    });
+    syncExpand();
   }
   document.addEventListener('change', function (e) {
     if (e.target && e.target.id === 'sq-include-labour-hst') render();

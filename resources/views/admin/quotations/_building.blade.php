@@ -1,6 +1,7 @@
 {{--
-  Building labour surcharge. Checkbox stays collapsed; checking it reveals
-  the percent field (default 30%). Same reveal pattern as Include a helper.
+  Building labour surcharge. Same toggle + expandable pattern as "Visit required"
+  (client_projects/_visit_required_toggle): switching it on reveals the percent
+  field (default 30%).
 
   @param object|null  $quotation
   @param array|null   $inputs
@@ -40,76 +41,69 @@
 @endphp
 
 <div class="admin-card q-building-card" id="q-building">
-  <div class="q-building-head">
-    <div class="q-building-head__copy">
-      <h3 class="q-building-card__title"><i class="fa fa-building" aria-hidden="true"></i> Building</h3>
-      <p class="admin-form-help q-building-card__intro">For condominiums and multi-unit residential or commercial buildings.</p>
-    </div>
-    @include('admin.partials.checkbox', [
-      'name' => 'include_building',
-      'id' => 'q-building-include',
-      'hiddenFallback' => true,
-      'checked' => $checked,
-      'label' => 'Add extra labour for this building',
-      'info' => 'Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF — folded into labour.',
-      'inputClass' => trim('admin-checkbox__input '.$previewClass),
-      'attrs' => ['data-reveal' => 'q-building-percent-wrap'],
-    ])
-  </div>
+  <input type="hidden" name="include_building" value="0">
+  <label class="cp-visit-toggle" for="q-building-include">
+    <input type="checkbox"
+           name="include_building"
+           value="1"
+           id="q-building-include"
+           class="{{ $previewClass }}"
+           aria-controls="q-building-expandable"
+           @checked($checked)>
+    <span class="cp-visit-toggle__control" aria-hidden="true"></span>
+    <span class="cp-visit-toggle__label">Building extra labour</span>
+  </label>
 
-  <div class="q-building-percent-wrap" id="q-building-percent-wrap" @unless($checked) hidden @endunless>
-    <div class="admin-form-group q-building-field">
-      <label for="q-building-percent">Additional labour</label>
-      <div class="q-building-percent-row">
-        <input type="number"
-               id="q-building-percent"
-               name="building_labor_percent"
-               class="admin-input {{ $previewClass }}"
-               min="0"
-               max="{{ \App\Support\QuotationBuildingLabor::MAX_PERCENT }}"
-               step="0.5"
-               inputmode="decimal"
-               autocomplete="off"
-               value="{{ $percentDisplay }}"
-               aria-label="Additional labour percent for buildings">
-        <span class="q-building-percent-suffix">%</span>
+  <div id="q-building-expandable"
+       class="cp-visit-expandable @if ($checked) is-open @endif"
+       aria-hidden="{{ $checked ? 'false' : 'true' }}"
+       @unless($checked) inert @endunless>
+    <div class="cp-visit-expandable__inner">
+      <p class="admin-form-help cp-visit-expandable__help">
+        For condominiums and multi-unit residential or commercial buildings. Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF — folded into labour.
+      </p>
+      <div class="q-building-percent-wrap" id="q-building-percent-wrap">
+        <div class="admin-form-group q-building-field">
+          <label for="q-building-percent">Additional labour</label>
+          <div class="q-building-percent-row">
+            <input type="number"
+                   id="q-building-percent"
+                   name="building_labor_percent"
+                   class="admin-input {{ $previewClass }}"
+                   min="0"
+                   max="{{ \App\Support\QuotationBuildingLabor::MAX_PERCENT }}"
+                   step="0.5"
+                   inputmode="decimal"
+                   autocomplete="off"
+                   value="{{ $percentDisplay }}"
+                   aria-label="Additional labour percent for buildings">
+            <span class="q-building-percent-suffix">%</span>
+          </div>
+          <p class="admin-form-help q-building-note">Default 30%. Applies to labour only — not materials.</p>
+          @error('building_labor_percent')
+            <p class="admin-form-error">{{ $message }}</p>
+          @enderror
+        </div>
+        <div class="q-building-added" id="q-building-added" aria-live="polite">
+          <span class="q-building-added__label">Added to this quotation</span>
+          <strong class="q-building-added__amount" id="q-building-added-amount">CA$0.00</strong>
+          <p class="admin-form-help q-building-added__detail" id="q-building-added-detail">30% of labour</p>
+        </div>
       </div>
-      <p class="admin-form-help q-building-note">Default 30%. Applies to labour only — not materials.</p>
-      @error('building_labor_percent')
-        <p class="admin-form-error">{{ $message }}</p>
-      @enderror
-    </div>
-    <div class="q-building-added" id="q-building-added" aria-live="polite">
-      <span class="q-building-added__label">Added to this quotation</span>
-      <strong class="q-building-added__amount" id="q-building-added-amount">CA$0.00</strong>
-      <p class="admin-form-help q-building-added__detail" id="q-building-added-detail">30% of labour</p>
     </div>
   </div>
 </div>
 
 <style>
   .q-building-card { margin-bottom: 16px; }
-  .q-building-head {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .q-building-card__title {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--admin-heading);
-  }
-  .q-building-card__intro { margin: 2px 0 0; }
+  .q-building-card .cp-visit-toggle { min-height: 44px; }
   .q-building-percent-wrap {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-    margin-top: 12px;
+    padding-top: 12px;
   }
-  .q-building-percent-wrap[hidden] { display: none !important; }
   .q-building-field { margin: 0; }
   .q-building-field > label { margin-bottom: 0.25rem; }
   .q-building-percent-row {
@@ -152,15 +146,6 @@
   }
   .q-building-added__detail { margin: 2px 0 0; }
   @media (min-width: 701px) {
-    .q-building-head {
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px 24px;
-    }
-    .q-building-head__copy { min-width: 0; flex: 1 1 240px; }
-    .q-building-head .admin-checkbox { flex: 0 1 auto; min-height: 44px; }
     .q-building-percent-wrap {
       flex-direction: row;
       flex-wrap: wrap;
