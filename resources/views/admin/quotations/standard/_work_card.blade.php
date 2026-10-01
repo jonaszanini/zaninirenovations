@@ -70,7 +70,7 @@
         <p class="admin-form-help sq-materials-intro">
           Each row: <strong>Type manually</strong>, <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>),
           or <strong>Electrical work</strong> (its own line on the client PDF).
-          Unit price is before tax unless you check <strong>Price includes HST</strong>.
+          Unit price is before tax unless you check <strong>Price incl. HST</strong>.
         </p>
 
         <div class="sq-materials-list">

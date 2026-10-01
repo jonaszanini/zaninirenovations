@@ -107,10 +107,18 @@
     percentEl.addEventListener('change', render);
   }
   var expandEl = document.getElementById('q-building-expandable');
+  var settleTimer = null;
 
-  function syncExpand() {
+  function syncExpand(animate) {
     if (!expandEl || !includeEl) return;
     var open = !!includeEl.checked;
+    clearTimeout(settleTimer);
+    expandEl.classList.remove('is-settled');
+    if (open) {
+      settleTimer = setTimeout(function () {
+        expandEl.classList.add('is-settled');
+      }, animate ? 380 : 0);
+    }
     expandEl.classList.toggle('is-open', open);
     expandEl.setAttribute('aria-hidden', open ? 'false' : 'true');
     if (open) {
@@ -122,10 +130,10 @@
 
   if (includeEl) {
     includeEl.addEventListener('change', function () {
-      syncExpand();
+      syncExpand(true);
       render();
     });
-    syncExpand();
+    syncExpand(false);
   }
   document.addEventListener('change', function (e) {
     if (e.target && e.target.id === 'sq-include-labour-hst') render();

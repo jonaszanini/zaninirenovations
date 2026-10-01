@@ -5221,7 +5221,7 @@ body.cp-modal-open {
 }
 .sq-mat-row--computed {
   /* Subtotal | HST (13%) | Total w/ HST | HST checkbox */
-  grid-template-columns: minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(90px, 0.7fr);
+  grid-template-columns: minmax(110px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) max-content;
 }
 .sq-mat-field {
   display: flex;
@@ -5271,8 +5271,9 @@ body.cp-modal-open {
 }
 .sq-mat-hst-toggles {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
 }
 .sq-mat-hst-toggles .sq-mat-apply-label {
   min-height: 32px;

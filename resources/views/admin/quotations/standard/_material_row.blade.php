@@ -155,17 +155,17 @@
         <div class="sq-mat-field sq-mat-field--apply">
           <span class="sq-mat-hst-toggles-label">Tax on this line</span>
           <div class="sq-mat-hst-toggles">
-            <input type="hidden" name="{{ $namePrefix }}[hst_includes_unit]" value="0">
-            <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
-              <input type="checkbox" name="{{ $namePrefix }}[hst_includes_unit]" value="1" class="admin-checkbox__input sq-mat-hst-inclusive-cb" @checked($hstInc)>
-              <span class="admin-checkbox__mark" aria-hidden="true"></span>
-              <span class="admin-checkbox__text">Price includes HST</span>
-            </label>
             <input type="hidden" name="{{ $namePrefix }}[apply_hst]" value="0">
             <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
               <input type="checkbox" name="{{ $namePrefix }}[apply_hst]" value="1" class="admin-checkbox__input sq-mat-hst-cb" @checked($apply)>
               <span class="admin-checkbox__mark" aria-hidden="true"></span>
               <span class="admin-checkbox__text">Add 13% HST</span>
+            </label>
+            <input type="hidden" name="{{ $namePrefix }}[hst_includes_unit]" value="0">
+            <label class="admin-checkbox sq-checkbox-label sq-mat-apply-label">
+              <input type="checkbox" name="{{ $namePrefix }}[hst_includes_unit]" value="1" class="admin-checkbox__input sq-mat-hst-inclusive-cb" @checked($hstInc)>
+              <span class="admin-checkbox__mark" aria-hidden="true"></span>
+              <span class="admin-checkbox__text">Price incl. HST</span>
             </label>
           </div>
         </div>

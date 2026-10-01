@@ -51,6 +51,7 @@
            aria-controls="q-building-expandable"
            @checked($checked)>
     <span class="cp-visit-toggle__control" aria-hidden="true"></span>
+    @include('admin.partials.info_tip', ['text' => 'For condominiums and multi-unit residential or commercial buildings. Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF — folded into labour.'])
     <span class="cp-visit-toggle__label">Building extra labour</span>
   </label>
 
@@ -59,12 +60,9 @@
        aria-hidden="{{ $checked ? 'false' : 'true' }}"
        @unless($checked) inert @endunless>
     <div class="cp-visit-expandable__inner">
-      <p class="admin-form-help cp-visit-expandable__help">
-        For condominiums and multi-unit residential or commercial buildings. Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF — folded into labour.
-      </p>
       <div class="q-building-percent-wrap" id="q-building-percent-wrap">
         <div class="admin-form-group q-building-field">
-          <label for="q-building-percent">Additional labour</label>
+          <label for="q-building-percent">@include('admin.partials.info_tip', ['text' => 'Default 30%. Applies to labour only — not materials.']) Additional labour</label>
           <div class="q-building-percent-row">
             <input type="number"
                    id="q-building-percent"
@@ -79,7 +77,6 @@
                    aria-label="Additional labour percent for buildings">
             <span class="q-building-percent-suffix">%</span>
           </div>
-          <p class="admin-form-help q-building-note">Default 30%. Applies to labour only — not materials.</p>
           @error('building_labor_percent')
             <p class="admin-form-error">{{ $message }}</p>
           @enderror
@@ -97,6 +94,8 @@
 <style>
   .q-building-card { margin-bottom: 16px; }
   .q-building-card .cp-visit-toggle { min-height: 44px; }
+  .q-building-card .cp-visit-toggle .admin-info-tip { margin: -10px -14px -10px -8px; }
+  .q-building-card .cp-visit-expandable.is-open.is-settled .cp-visit-expandable__inner { overflow: visible; }
   .q-building-percent-wrap {
     display: flex;
     flex-direction: column;
@@ -121,7 +120,6 @@
     font-weight: 600;
     color: var(--admin-muted);
   }
-  .q-building-note { margin: 4px 0 0; }
   .q-building-added {
     padding: 8px 12px;
     border: 1px solid var(--admin-border);
