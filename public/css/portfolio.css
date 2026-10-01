@@ -9,6 +9,40 @@
   grid-column: 1 / -1;
 }
 
+.portfolio-page-gallery__open {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.portfolio-page-gallery__open:focus-visible {
+  outline: 2px solid #024768;
+  outline-offset: 2px;
+}
+
+.page-header--project {
+  background-attachment: scroll;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.page-header--project:before {
+  background: rgba(2, 28, 42, 0.55);
+}
+
+.page-header--project h1,
+.page-header--project .page-breadcrumb,
+.page-header--project .page-breadcrumb a,
+.page-header--project .page-breadcrumb a:hover {
+  color: #fff;
+}
+
 .portfolio-page-gallery img {
   display: block;
   width: 100%;

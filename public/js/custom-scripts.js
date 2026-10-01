@@ -1527,9 +1527,9 @@ jQuery(function ($) {
             return s.charAt(0) === '/' && s.charAt(1) !== '/';
         }
 
-        function buildFromUrls(list, title) {
+        function buildFromUrls(list, title, startIndex) {
             urls = list.slice();
-            index = 0;
+            index = startIndex;
             $track.empty();
             $dots.empty();
             $title.text(title || '');
@@ -1604,7 +1604,11 @@ jQuery(function ($) {
                 return;
             }
             var projTitle = $a.attr('data-project-title');
-            buildFromUrls(filtered, projTitle || '');
+            var start = parseInt($a.attr('data-gallery-start'), 10);
+            if (isNaN(start) || start < 0 || start >= filtered.length) {
+                start = 0;
+            }
+            buildFromUrls(filtered, projTitle || '', start);
             $modal.modal('show');
         });
 
