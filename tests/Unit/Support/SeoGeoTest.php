@@ -3,6 +3,7 @@
 namespace Tests\Unit\Support;
 
 use App\Models\BlogPost;
+use App\Models\Project;
 use App\Support\LlmsTxtGenerator;
 use App\Support\PublicSitemap;
 use App\Support\RobotsTxtGenerator;
@@ -25,7 +26,7 @@ class SeoGeoTest extends TestCase
 
     public function test_llms_txt_states_labour_facts_without_admin_paths(): void
     {
-        $txt = LlmsTxtGenerator::generate(collect());
+        $txt = LlmsTxtGenerator::generate(collect(), collect());
 
         $this->assertStringContainsString('# Zanini Renovations', $txt);
         $this->assertStringContainsString('$3 million', $txt);
@@ -43,7 +44,7 @@ class SeoGeoTest extends TestCase
             'excerpt' => 'Footings must sit below the frost line.',
         ]);
 
-        $txt = LlmsTxtGenerator::generate(collect([$post]));
+        $txt = LlmsTxtGenerator::generate(collect([$post]), collect());
 
         $this->assertStringContainsString('## Blog', $txt);
         $this->assertStringContainsString('/blog/deck-footings-ottawa', $txt);
@@ -53,7 +54,7 @@ class SeoGeoTest extends TestCase
     public function test_sitemap_static_lastmod_matches_view_file_mtime(): void
     {
         $path = resource_path('views/site/warranty.blade.php');
-        $urls = PublicSitemap::urls(collect());
+        $urls = PublicSitemap::urls(collect(), collect());
         $warranty = collect($urls)->first(fn ($row) => str_contains($row['loc'], '/warranty'));
 
         $this->assertNotNull($warranty);
@@ -65,7 +66,7 @@ class SeoGeoTest extends TestCase
         $post = new BlogPost(['slug' => 'fence-heights', 'title' => 'Fence heights']);
         $post->updated_at = Carbon::parse('2024-06-01 12:00:00', config('app.timezone'));
 
-        $urls = PublicSitemap::urls(collect([$post]));
+        $urls = PublicSitemap::urls(collect([$post]), collect());
         $article = collect($urls)->first(fn ($row) => str_contains($row['loc'], '/blog/fence-heights'));
 
         $this->assertNotNull($article);
@@ -122,5 +123,61 @@ class SeoGeoTest extends TestCase
         $this->assertSame('Jonas Zanini', $article['author']['name']);
         $this->assertStringContainsString('#person-jonas', $article['author']['@id']);
         $this->assertSame($post->published_at->toAtomString(), $article['datePublished']);
+    }
+
+    public function test_sitemap_includes_a_portfolio_project_url(): void
+    {
+        $project = new Project([
+            'title' => 'Deck for Gazebo',
+            'slug' => 'deck-for-gazebo',
+        ]);
+        $project->updated_at = Carbon::parse('2026-06-09 15:00:00', config('app.timezone'));
+
+        $urls = PublicSitemap::urls(collect(), collect([$project]));
+        $page = collect($urls)->first(fn ($row) => str_ends_with($row['loc'], '/portfolio/deck-for-gazebo'));
+        $index = collect($urls)->first(fn ($row) => str_ends_with($row['loc'], '/portfolio'));
+
+        $this->assertNotNull($page);
+        $this->assertSame($project->updated_at->toAtomString(), $page['lastmod']);
+        $this->assertNotNull($index);
+    }
+
+    public function test_llms_txt_lists_supplied_portfolio_projects(): void
+    {
+        $project = new Project([
+            'title' => 'Lattice fence',
+            'slug' => 'lattice-fence',
+            'description' => 'Cedar lattice along the side yard.',
+        ]);
+
+        $txt = LlmsTxtGenerator::generate(collect(), collect([$project]));
+
+        $this->assertStringContainsString('## Portfolio', $txt);
+        $this->assertStringContainsString('/portfolio/lattice-fence', $txt);
+        $this->assertStringContainsString('Lattice fence', $txt);
+        $this->assertStringContainsString('/portfolio):', $txt);
+    }
+
+    public function test_portfolio_project_json_ld_describes_the_gallery(): void
+    {
+        $project = new Project([
+            'title' => 'Fireplace renovation',
+            'slug' => 'fireplace-renovation',
+            'description' => 'New mantel and tile surround.',
+            'meta_title' => 'Fireplace renovation in Ottawa',
+        ]);
+        $project->completed_on = Carbon::parse('2026-06-05');
+        $project->setRelation('photos', collect());
+        $project->setRelation('categories', collect());
+
+        $data = SeoStructuredData::portfolioProject($project);
+        $gallery = collect($data['@graph'])->first(fn ($node) => ($node['@type'] ?? '') === 'ImageGallery');
+        $crumb = collect($data['@graph'])->first(fn ($node) => ($node['@type'] ?? '') === 'BreadcrumbList');
+
+        $this->assertNotNull($gallery);
+        $this->assertSame('Fireplace renovation', $gallery['name']);
+        $this->assertSame('2026-06-05', $gallery['datePublished']);
+        $this->assertNotNull($crumb);
+        $this->assertSame('Fireplace renovation in Ottawa', $project->seoTitle());
     }
 }

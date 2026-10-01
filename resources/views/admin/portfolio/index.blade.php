@@ -7,7 +7,7 @@
     @php
       $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
     @endphp
-    <p class="admin-toolbar-lede">Manage portfolio photos shown on the public home page (WebP, JPEG, or PNG — stored as WebP at {{ $portfolioWebp['quality'] }}% quality, max edge {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each; up to 15 per project).</p>
+    <p class="admin-toolbar-lede">Each project is a public page at /portfolio/… as soon as you save it. Photos are stored as WebP at {{ $portfolioWebp['quality'] }}% quality, max edge {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each; up to 15 per project.</p>
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
         <i class="fa fa-cog"></i> Categories
@@ -86,6 +86,9 @@
               @endif
             </p>
             <div class="portfolio-admin-card__actions">
+              @if ($project->slug)
+                <a href="{{ $project->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener">View page</a>
+              @endif
               <a href="{{ route('admin.portfolio.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
               <form action="{{ route('admin.portfolio.destroy', $project) }}" method="post" onsubmit="return confirm('Delete this project and all photos?');">
                 @csrf

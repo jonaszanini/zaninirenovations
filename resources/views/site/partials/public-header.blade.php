@@ -4,6 +4,7 @@
   $socialInstagramUrl = (string) config('social.instagram_url');
   $socialWhatsappUrl = (string) config('social.whatsapp_url');
   $isWarranty = request()->routeIs('warranty');
+  $isPortfolio = request()->routeIs('portfolio.*');
 @endphp
 
 <header class="main-header-2 clearfix" data-sticky_header="true">
@@ -101,7 +102,7 @@
               <a href="{{ $home }}#services" class="nav_menu" title="Services">Services</a>
             </li>
             <li>
-              <a href="{{ $home }}#projects" class="nav_menu" title="Latest projects">Projects</a>
+              <a href="{{ route('portfolio.index') }}" class="nav_menu @if ($isPortfolio) link-active @endif" title="Latest projects">Projects</a>
             </li>
             <li>
               <a href="{{ $home }}#about" class="nav_menu" title="About us">About</a>

@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\StairsDatabaseController;
 use App\Http\Controllers\Admin\StairsQuotationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\ContactFormController;
+use App\Http\Controllers\PortfolioController;
 use App\Models\BlogPost;
 use App\Models\Project;
 use Illuminate\Support\Facades\Route;
@@ -120,6 +121,11 @@ Route::post('/blog/{post:slug}/comments', [\App\Http\Controllers\BlogCommentCont
     ->middleware('throttle:6,1')
     ->name('blog.comments.store');
 Route::get('/blog/{post:slug}', [\App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
+
+Route::get('/portfolio', [PortfolioController::class, 'index'])->name('portfolio.index');
+Route::get('/portfolio/{slug}', [PortfolioController::class, 'show'])
+    ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
+    ->name('portfolio.show');
 
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');

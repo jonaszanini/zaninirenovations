@@ -345,6 +345,134 @@ class SeoStructuredData
         ];
     }
 
+    /**
+     * JSON-LD graph for the public portfolio index.
+     *
+     * @return array<string, mixed>
+     */
+    public static function portfolioIndex(): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Projects', 'url' => $base.'/portfolio'],
+                ]),
+                [
+                    '@type' => 'CollectionPage',
+                    '@id' => $base.'/portfolio#page',
+                    'name' => 'Carpentry and renovation projects',
+                    'url' => $base.'/portfolio',
+                    'description' => 'Photos and details of decks, fences, basements, flooring, and other completed projects by Zanini Renovations in Carleton Place and the Ottawa region.',
+                    'inLanguage' => 'en-CA',
+                    'about' => ['@id' => $base.'/#business'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * JSON-LD graph for one public portfolio project.
+     *
+     * @return array<string, mixed>
+     */
+    public static function portfolioProject(\App\Models\Project $project): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $url = $project->publicUrl();
+        $description = $project->seoDescription();
+        $images = [];
+
+        if ($project->relationLoaded('photos')) {
+            foreach ($project->photos as $photo) {
+                $photoUrl = self::absoluteUrl($photo->url());
+                $images[] = [
+                    '@type' => 'ImageObject',
+                    'contentUrl' => $photoUrl,
+                    'url' => $photoUrl,
+                    'caption' => (string) $project->title,
+                ];
+            }
+        }
+
+        $gallery = [
+            '@type' => 'ImageGallery',
+            '@id' => $url.'#gallery',
+            'name' => (string) $project->title,
+            'description' => $description,
+            'url' => $url,
+            'inLanguage' => 'en-CA',
+            'mainEntityOfPage' => $url,
+            'creator' => [
+                '@type' => 'HomeAndConstructionBusiness',
+                '@id' => $base.'/#business',
+                'name' => 'Zanini Renovations',
+            ],
+        ];
+
+        if ($project->completed_on) {
+            $gallery['datePublished'] = $project->completed_on->toDateString();
+        }
+        if ($project->updated_at) {
+            $gallery['dateModified'] = $project->updated_at->toAtomString();
+        }
+        if ($images !== []) {
+            $gallery['image'] = $images;
+        }
+
+        $keywords = [];
+        if ($project->relationLoaded('categories')) {
+            foreach ($project->categories as $category) {
+                $name = trim((string) $category->name);
+                if ($name !== '') {
+                    $keywords[] = $name;
+                }
+            }
+        }
+        if ($keywords !== []) {
+            $gallery['keywords'] = implode(', ', $keywords);
+        }
+
+        $page = [
+            '@type' => 'WebPage',
+            '@id' => $url.'#webpage',
+            'url' => $url,
+            'name' => $project->seoTitle(),
+            'description' => $description,
+            'inLanguage' => 'en-CA',
+            'about' => ['@id' => $base.'/#business'],
+            'mainEntity' => ['@id' => $url.'#gallery'],
+        ];
+        if ($images !== []) {
+            $page['primaryImageOfPage'] = $images[0];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Projects', 'url' => $base.'/portfolio'],
+                    ['name' => (string) $project->title, 'url' => $url],
+                ]),
+                $page,
+                $gallery,
+            ],
+        ];
+    }
+
+    public static function absoluteUrl(string $path): string
+    {
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return url($path);
+    }
+
     public static function breadcrumb(array $items): array
     {
         $elements = [];

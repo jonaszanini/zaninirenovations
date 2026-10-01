@@ -40,6 +40,7 @@ final class SmokeTestFixtures
             'invoice' => $this->invoice()->id,
             'quotation' => $this->projectQuotation()->id,
             'project' => $this->portfolioProject()->id,
+            'slug' => $this->slugForRoute($route),
             'category' => $this->categoryForRoute($route)->id,
             'post' => $this->postForRoute($route),
             'tag' => $this->blogTag()->id,
@@ -116,8 +117,18 @@ final class SmokeTestFixtures
 
         return $project ??= Project::query()->create([
             'title' => 'Smoke Portfolio Project',
+            'slug' => 'smoke-portfolio-project',
             'description' => 'Smoke test portfolio entry.',
         ]);
+    }
+
+    public function slugForRoute(Route $route): string
+    {
+        if ($route->getName() === 'portfolio.show') {
+            return $this->portfolioProject()->slug;
+        }
+
+        return $this->portfolioProject()->slug;
     }
 
     public function categoryForRoute(Route $route): ProjectCategory|BlogCategory

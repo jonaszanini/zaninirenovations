@@ -1,9 +1,6 @@
 @forelse ($projects as $project)
   @php
     $photos = $project->photos->sortBy('sort_order');
-    $galleryUrls = $photos->isNotEmpty()
-      ? $photos->map(fn ($p) => $p->url())->values()->all()
-      : ['/images/gallery_1.jpg'];
     $cover = $photos->first();
     $coverSrc = $cover ? $cover->url() : '/images/gallery_1.jpg';
   @endphp
@@ -15,10 +12,9 @@
     <div class="portfolio-container">
 
       <a
-        href="#"
-        class="portfolio-light-box xs-margin text-center js-project-gallery"
-        data-project-title="{{ e($project->title) }}"
-        data-gallery='@json($galleryUrls)'
+        href="{{ $project->publicUrl() }}"
+        class="portfolio-light-box xs-margin text-center"
+        title="{{ $project->title }}"
       >
 
         <figure class="portfolio-img">

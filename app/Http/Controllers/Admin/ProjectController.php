@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\ProjectPhoto;
+use App\Models\ProjectSlugRedirect;
 use App\Models\GooglePhotosToken;
 use App\Services\GooglePhotosService;
 use App\Services\PortfolioDescriptionAiService;
@@ -20,6 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProjectController extends Controller
@@ -240,7 +242,9 @@ class ProjectController extends Controller
 
     public function store(Request $request, PortfolioDraftPhotoService $draftPhotos)
     {
-        $validated = $request->validate([
+        $this->preparePortfolioSeoRequest($request);
+
+        $validated = $request->validate(array_merge([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'project_category_ids' => ['required', 'array', 'min:1'],
@@ -252,7 +256,7 @@ class ProjectController extends Controller
             'photos.*' => ['file', 'mimes:webp,jpeg,jpg,png', 'max:10240'],
             'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'google_picker_items.*' => ['string', 'max:4000', 'distinct'],
-        ]);
+        ], $this->portfolioSeoRules()));
 
         $draftPaths = $draftPhotos->validatePaths($validated['draft_photos'] ?? []);
         $fileCount = $request->hasFile('photos') ? count((array) $request->file('photos')) : 0;
@@ -271,7 +275,10 @@ class ProjectController extends Controller
 
             $project = Project::create([
                 'title' => $validated['title'],
+                'slug' => $validated['slug'] ?? Project::uniqueSlug($validated['title']),
                 'description' => $validated['description'],
+                'meta_title' => $validated['meta_title'] ?? null,
+                'meta_description' => $validated['meta_description'] ?? null,
                 'completed_on' => $validated['completed_on'],
             ]);
 
@@ -340,7 +347,9 @@ class ProjectController extends Controller
 
     public function update(Request $request, Project $project)
     {
-        $validated = $request->validate([
+        $this->preparePortfolioSeoRequest($request);
+
+        $validated = $request->validate(array_merge([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'project_category_ids' => ['required', 'array', 'min:1'],
@@ -357,13 +366,35 @@ class ProjectController extends Controller
                 'integer',
                 Rule::exists('project_photos', 'id')->where(fn ($q) => $q->where('project_id', $project->id)),
             ],
-        ]);
+        ], $this->portfolioSeoRules($project)));
 
-        $project->update([
-            'title' => $validated['title'],
-            'description' => $validated['description'],
-            'completed_on' => $validated['completed_on'],
-        ]);
+        $previousSlug = (string) $project->slug;
+        $slug = $validated['slug'] ?? ($previousSlug !== '' ? $previousSlug : Project::uniqueSlug($validated['title'], $project->id));
+
+        DB::transaction(function () use ($project, $validated, $previousSlug, $slug) {
+            if ($previousSlug !== $slug) {
+                ProjectSlugRedirect::query()
+                    ->where('project_id', $project->id)
+                    ->where('slug', $slug)
+                    ->delete();
+            }
+
+            $project->update([
+                'title' => $validated['title'],
+                'slug' => $slug,
+                'description' => $validated['description'],
+                'meta_title' => $validated['meta_title'] ?? null,
+                'meta_description' => $validated['meta_description'] ?? null,
+                'completed_on' => $validated['completed_on'],
+            ]);
+
+            if ($previousSlug !== '' && $previousSlug !== $slug) {
+                ProjectSlugRedirect::query()->create([
+                    'project_id' => $project->id,
+                    'slug' => $previousSlug,
+                ]);
+            }
+        });
 
         $project->categories()->sync($validated['project_category_ids']);
 
@@ -682,6 +713,51 @@ class ProjectController extends Controller
         return redirect()
             ->route('admin.portfolio.index')
             ->with('success', 'Project deleted.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function portfolioSeoRules(?Project $project = null): array
+    {
+        return [
+            'slug' => [
+                'nullable',
+                'string',
+                'max:180',
+                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                Rule::unique('projects', 'slug')->ignore($project?->id),
+                Rule::unique('project_slug_redirects', 'slug')->where(function ($query) use ($project) {
+                    if ($project) {
+                        $query->where('project_id', '!=', $project->id);
+                    }
+                }),
+            ],
+            'meta_title' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string', 'max:320'],
+        ];
+    }
+
+    private function preparePortfolioSeoRequest(Request $request): void
+    {
+        $slug = trim((string) $request->input('slug', ''));
+        $normalized = '';
+        if ($slug !== '') {
+            $normalized = rtrim(substr(Str::slug($slug), 0, 180), '-');
+        }
+
+        $request->merge([
+            'slug' => $normalized === '' ? null : $normalized,
+            'meta_title' => $this->blankToNull($request->input('meta_title')),
+            'meta_description' => $this->blankToNull($request->input('meta_description')),
+        ]);
+    }
+
+    private function blankToNull(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        return $text === '' ? null : $text;
     }
 
     /**

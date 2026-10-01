@@ -23,6 +23,7 @@
           <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
+      @include('admin.partials.portfolio_seo_fields')
       @php
         $selectedCategoryIds = old('project_category_ids', $project->categories->pluck('id')->map(fn ($id) => (string) $id)->all());
       @endphp
