@@ -4969,6 +4969,17 @@ body.cp-modal-open {
 .sq-contingency-inline .admin-form-error {
   margin: 2px 0 0;
 }
+.sq-contingency-added {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--admin-muted, #64748b);
+  font-variant-numeric: tabular-nums;
+}
+.sq-contingency-added[hidden] { display: none; }
+.sq-contingency-added strong {
+  color: var(--admin-heading, #0f172a);
+  font-weight: 700;
+}
 .sq-grand-row--contingency {
   color: var(--admin-primary, #0c4a6e);
 }

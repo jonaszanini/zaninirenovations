@@ -130,6 +130,9 @@
   var gContRow = document.getElementById('sq-g-contingency-row');
   var gContPct = document.getElementById('sq-g-contingency-pct');
   var gContVal = document.getElementById('sq-g-contingency');
+  var contAddedRow = document.getElementById('sq-contingency-added');
+  var contAddedAmount = document.getElementById('sq-contingency-added-amount');
+  var contAddedDetail = document.getElementById('sq-contingency-added-detail');
 
   function contingencyPctValue() {
     var raw = contPercent ? contPercent.value : '';
@@ -383,6 +386,14 @@
     setText(gContPct, pctLabel);
     if (gContRow) gContRow.style.display = contOn ? '' : 'none';
     setText(gContVal, '+' + money(contAmt));
+    if (contAddedRow) contAddedRow.hidden = !contOn;
+    setText(contAddedAmount, money(contAmt + contHst));
+    setText(
+      contAddedDetail,
+      '(' + pctLabel + '% of ' + money(subSum) + ' materials'
+        + (contHst > 0 ? ', ' + money(contAmt) + ' + ' + money(contHst) + ' HST' : ' before HST')
+        + ')'
+    );
     setText(gMatSub, money(subSum));
     setText(gMatHst, money(hstWithCont));
     setText(gMatTot, money(withSumWithCont));
