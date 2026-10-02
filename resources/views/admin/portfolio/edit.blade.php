@@ -65,7 +65,9 @@
           <div class="admin-form-group__label-row">
             <span class="admin-form-group-label">Photos</span>
             <button type="button" class="admin-btn admin-btn--danger admin-btn--sm" id="admin-photo-bulk-delete" disabled
-              data-url="{{ route('admin.portfolio.photos.bulk-destroy', $project) }}">
+              data-url="{{ route('admin.portfolio.photos.bulk-destroy', $project) }}"
+              title="Delete selected photos"
+              aria-label="Delete selected photos">
               <i class="fa fa-trash" aria-hidden="true"></i> Delete
             </button>
           </div>
