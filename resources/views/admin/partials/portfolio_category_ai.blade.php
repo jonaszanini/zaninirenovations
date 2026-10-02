@@ -1,7 +1,7 @@
 <div class="portfolio-category-ai" id="portfolio-category-ai">
   <div class="nb2-generate-row portfolio-category-ai__actions">
     <div class="admin-ai-action-group">
-      <button type="button" id="portfolio-category-ai-btn" class="admin-btn admin-btn--ghost admin-btn--sm">
+      <button type="button" id="portfolio-category-ai-btn" class="admin-btn admin-btn--primary">
         <i class="fa fa-magic" aria-hidden="true"></i>
         <span>Auto categorize with AI</span>
       </button>

@@ -2753,10 +2753,7 @@ body.admin-nav-open {
 
 .portfolio-category-ai .admin-btn {
   max-width: 100%;
-  height: auto;
   white-space: normal;
-  text-align: left;
-  justify-content: flex-start;
 }
 
 .portfolio-category-ai__help {

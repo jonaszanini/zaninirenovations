@@ -152,29 +152,25 @@
         </p>
         <div class="mat-ai-short-names__actions">
           <button type="button"
-                  class="admin-btn admin-btn--gemini admin-btn--sm"
+                  class="admin-btn admin-btn--primary"
                   id="mat-ai-short-names-missing-btn"
                   data-start-url="{{ route('admin.materials.config.ai-short-names.start') }}"
                   data-step-url="{{ route('admin.materials.config.ai-short-names.step') }}"
                   data-mode="missing"
                   @disabled($missingShortNameCount === 0)>
-            <span class="admin-btn__icon" aria-hidden="true">
-              @include('admin.partials.gemini_icon', ['gradientPrefix' => 'mat-sn-gemini'])
-            </span>
-            Generate missing short names
+            <i class="fa fa-magic" aria-hidden="true"></i>
+            <span>Generate missing short names</span>
           </button>
           <button type="button"
-                  class="admin-btn admin-btn--gemini admin-btn--sm"
+                  class="admin-btn admin-btn--primary"
                   id="mat-ai-short-names-all-btn"
                   data-start-url="{{ route('admin.materials.config.ai-short-names.start') }}"
                   data-step-url="{{ route('admin.materials.config.ai-short-names.step') }}"
                   data-mode="all"
                   data-confirm="Overwrite short names for all {{ number_format($totalMaterials) }} material{{ $totalMaterials === 1 ? '' : 's' }}?"
                   @disabled($totalMaterials === 0)>
-            <span class="admin-btn__icon" aria-hidden="true">
-              @include('admin.partials.gemini_icon', ['gradientPrefix' => 'mat-sn-gemini-all'])
-            </span>
-            Regenerate all short names
+            <i class="fa fa-magic" aria-hidden="true"></i>
+            <span>Regenerate all short names</span>
           </button>
         </div>
         <div id="mat-ai-short-names-progress" class="mat-bulk-progress" hidden aria-live="polite">

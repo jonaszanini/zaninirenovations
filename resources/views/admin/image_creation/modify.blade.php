@@ -39,7 +39,7 @@
         <span>Apply changes</span>
       </button>
       <div class="admin-ai-action-group">
-        <button type="button" id="aim-improve-btn" class="admin-btn admin-btn--ghost admin-btn--lg">
+        <button type="button" id="aim-improve-btn" class="admin-btn admin-btn--primary admin-btn--lg">
           <i class="fa fa-magic" aria-hidden="true"></i>
           <span>Improve prompt</span>
         </button>

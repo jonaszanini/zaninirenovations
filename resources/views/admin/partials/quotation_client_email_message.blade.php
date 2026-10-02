@@ -49,7 +49,7 @@
 
     <div class="cp-client-email-card__actions">
       <div class="admin-ai-action-group">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-client-email-ai>
+        <button type="button" class="admin-btn admin-btn--primary" data-client-email-ai>
           <i class="fa fa-magic" aria-hidden="true"></i>
           <span>Improve with AI</span>
         </button>

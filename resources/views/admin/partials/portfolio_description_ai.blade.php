@@ -1,7 +1,7 @@
 <div class="portfolio-description-ai" id="portfolio-description-ai">
   <div class="nb2-generate-row portfolio-description-ai__actions">
     <div class="admin-ai-action-group">
-      <button type="button" id="portfolio-desc-ai-btn" class="admin-btn admin-btn--ghost admin-btn--sm">
+      <button type="button" id="portfolio-desc-ai-btn" class="admin-btn admin-btn--primary">
         <i class="fa fa-magic" aria-hidden="true"></i>
         <span>Improve description with AI</span>
       </button>

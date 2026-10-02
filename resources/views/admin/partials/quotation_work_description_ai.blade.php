@@ -15,7 +15,7 @@
      @if ($aiQuotationType) data-quotation-type="{{ $aiQuotationType }}" @endif>
   <div class="nb2-generate-row quotation-work-description-ai__actions">
     <div class="admin-ai-action-group">
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm quotation-work-description-ai__btn">
+      <button type="button" class="admin-btn admin-btn--primary quotation-work-description-ai__btn">
         <i class="fa fa-magic" aria-hidden="true"></i>
         <span>Improve description with AI</span>
       </button>
@@ -24,7 +24,7 @@
         'instructionLabel' => 'Edit quotation work description prompt',
       ])
       @if ($showCreateFromQuote)
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm quotation-work-description-ai__from-quote">
+        <button type="button" class="admin-btn admin-btn--primary quotation-work-description-ai__from-quote">
           <i class="fa fa-list-alt" aria-hidden="true"></i>
           <span>Create automatically from quotation</span>
         </button>
