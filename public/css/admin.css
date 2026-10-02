@@ -2317,6 +2317,10 @@ details[open] > summary.admin-chevron-summary::after {
 }
 
 #admin-photo-edit-modal .admin-crop-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1.25rem;
   margin-top: 0.85rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--admin-border);
@@ -2326,20 +2330,42 @@ details[open] > summary.admin-chevron-summary::after {
   margin: 0;
 }
 
-#admin-photo-edit-modal .admin-photo-edit-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.85rem;
+#admin-photo-edit-modal .admin-ai-action-group {
+  flex-wrap: nowrap;
 }
 
-#admin-photo-edit-modal .admin-photo-edit-tools .nb2-status {
-  flex: 1 0 100%;
+#admin-photo-edit-modal .admin-ai-instruction-edit-link {
+  width: var(--admin-control-height);
+  height: var(--admin-control-height);
+}
+
+#admin-photo-edit-modal .admin-photo-edit-tools {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+#admin-photo-edit-modal .admin-photo-edit-actions-end {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+#admin-photo-edit-modal .admin-photo-edit-feedback {
+  margin-top: 0.45rem;
+}
+
+#admin-photo-edit-modal .admin-photo-edit-feedback .nb2-loading,
+#admin-photo-edit-modal .admin-photo-edit-feedback .nb2-status {
   margin: 0;
 }
 
-#admin-photo-edit-modal .admin-photo-edit-tools .nb2-status:empty {
+#admin-photo-edit-modal .admin-photo-edit-feedback .nb2-status:empty {
   display: none;
 }
 
@@ -2360,11 +2386,36 @@ details[open] > summary.admin-chevron-summary::after {
 
 #admin-photo-edit-modal .admin-modal-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  justify-content: flex-end;
-  margin-top: 0.65rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  justify-content: flex-start;
+  margin-top: 0.85rem;
   flex-shrink: 0;
+}
+
+#admin-photo-edit-modal .admin-modal-actions .admin-btn:not(.admin-btn--icon) {
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+}
+
+@media (max-width: 480px) {
+  #admin-photo-edit-modal .admin-modal-panel {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+
+  #admin-photo-edit-modal .admin-modal-actions,
+  #admin-photo-edit-modal .admin-photo-edit-tools,
+  #admin-photo-edit-modal .admin-photo-edit-actions-end,
+  #admin-photo-edit-modal .admin-ai-action-group {
+    gap: 0.25rem;
+  }
+
+  #admin-photo-edit-modal .admin-modal-actions .admin-btn:not(.admin-btn--icon) {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
 }
 
 html.admin-photo-edit-modal-open {
@@ -2887,11 +2938,40 @@ body.admin-nav-open {
   border-bottom: 1px solid var(--admin-border);
 }
 
-.admin-google-photos-panel__head .admin-form-group-label {
+.admin-google-photos-panel__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+}
+
+.admin-google-photos-panel__title .admin-form-group-label {
   margin: 0;
 }
 
+.admin-google-photos-panel__title .admin-google-photos-account {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.admin-google-photos-panel__name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-google-photos-panel__sep {
+  color: var(--admin-muted);
+  font-weight: 400;
+  line-height: 1;
+  user-select: none;
+}
+
 .admin-google-photos-panel__badge {
+  margin-left: auto;
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -2924,6 +3004,7 @@ body.admin-nav-open {
 }
 
 .admin-google-photos-panel .admin-google-photos-toolbar {
+  margin-top: 0;
   margin-bottom: 0.5rem;
 }
 
@@ -2938,7 +3019,7 @@ body.admin-nav-open {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem;
   margin: 0 0 0.5rem;
 }
@@ -2956,17 +3037,47 @@ body.admin-nav-open {
   margin: 0.35rem 0 0.75rem;
 }
 
+.admin-google-photos-toolbar [data-google-open-picker] {
+  order: 1;
+  flex: 0 0 auto;
+}
+
+.admin-google-photos-disconnect {
+  order: 2;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 .admin-google-photos-status {
+  order: 3;
+  flex: 1 1 100%;
+  min-width: 0;
   color: var(--admin-muted);
   font-size: 13px;
 }
 
+.admin-google-photos-status:empty {
+  display: none;
+}
+
 .admin-google-photos-hint {
+  order: 4;
   flex-basis: 100%;
   color: var(--admin-muted);
   font-size: 12px;
   line-height: 1.4;
   margin-top: 0.15rem;
+}
+
+@media (min-width: 701px) {
+  .admin-google-photos-status {
+    order: 2;
+    flex: 1 1 auto;
+  }
+
+  .admin-google-photos-disconnect {
+    order: 3;
+  }
 }
 
 .admin-google-photos-grid {

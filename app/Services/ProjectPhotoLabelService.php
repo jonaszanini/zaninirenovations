@@ -8,11 +8,15 @@ use Symfony\Component\Process\Process;
 use Throwable;
 
 /**
- * Burn a "Before" watermark into portfolio WebP photos (large centered text).
+ * Burn a "Before" or "During" watermark into portfolio WebP photos (large centered text).
  */
 class ProjectPhotoLabelService
 {
-    private const LABEL_TEXT = 'Before';
+    private const LABEL_BEFORE = 'Before';
+
+    private const LABEL_DURING = 'During';
+
+    private string $labelText = self::LABEL_BEFORE;
 
     /** 1 = solid white, 0 = invisible. */
     private const LABEL_OPACITY = 0.35;
@@ -22,6 +26,22 @@ class ProjectPhotoLabelService
 
     public function applyBeforeLabel(string $absolutePath): void
     {
+        $this->applyLabel($absolutePath, self::LABEL_BEFORE);
+    }
+
+    public function applyDuringLabel(string $absolutePath): void
+    {
+        $this->applyLabel($absolutePath, self::LABEL_DURING);
+    }
+
+    public function applyLabel(string $absolutePath, string $text): void
+    {
+        if (! in_array($text, [self::LABEL_BEFORE, self::LABEL_DURING], true)) {
+            throw new RuntimeException('Unknown photo label.');
+        }
+
+        $this->labelText = $text;
+
         if (! is_file($absolutePath)) {
             throw new RuntimeException('Image file not found.');
         }
@@ -87,7 +107,7 @@ class ProjectPhotoLabelService
 
         return [
             'fontSize' => $fontSize,
-            'text' => self::LABEL_TEXT,
+            'text' => $this->labelText,
         ];
     }
 

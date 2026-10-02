@@ -13,7 +13,15 @@
 
 <div class="admin-google-photos-panel">
   <div class="admin-google-photos-panel__head">
-    <span class="admin-form-group-label">Google Photos</span>
+    <div class="admin-google-photos-panel__title">
+      <span class="admin-form-group-label">Google Photos</span>
+      @if (auth()->user()->googlePhotosToken)
+        <span class="admin-google-photos-panel__name">
+          <span class="admin-google-photos-panel__sep" aria-hidden="true">|</span>
+          <span class="admin-google-photos-account">Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong></span>
+        </span>
+      @endif
+    </div>
     @if (auth()->user()->googlePhotosToken)
       <span class="admin-google-photos-panel__badge">Import from cloud</span>
     @endif
@@ -29,18 +37,14 @@
       data-file-input-id="{{ $fileInputId }}"
       data-status-mode="{{ $statusMode }}"
       data-form-sync="{{ $formSync ? 'true' : 'false' }}">
-      <div class="admin-google-photos-head">
-        <span class="admin-google-photos-account">Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong></span>
-        <button
-          type="button"
-          class="admin-btn admin-btn--ghost admin-btn--sm"
-          data-admin-google-disconnect
-          data-disconnect-url="{{ route('admin.google-photos.disconnect') }}">Disconnect</button>
-      </div>
-      <p class="admin-form-help admin-google-photos-panel__intro">Open Google Photos Picker, choose photos (you can open your album there and select all), then import the picked results here.</p>
       <div class="admin-google-photos-toolbar">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-google-open-picker>Open Google Photos Picker</button>
         <span class="admin-google-photos-status" data-google-status></span>
+        <button
+          type="button"
+          class="admin-btn admin-btn--ghost admin-btn--sm admin-google-photos-disconnect"
+          data-admin-google-disconnect
+          data-disconnect-url="{{ route('admin.google-photos.disconnect') }}">Disconnect</button>
         <span class="admin-google-photos-hint" data-google-hint hidden></span>
       </div>
       <div class="admin-google-photos-grid" data-google-grid></div>

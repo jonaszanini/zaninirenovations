@@ -627,12 +627,21 @@ class ProjectController extends Controller
         }
 
         $fullPath = $disk->path($photo->path);
-        $labelBefore = $request->boolean('label_before');
+        $label = $this->photoLabelChoice($request);
+        if ($label === false) {
+            $msg = 'Choose either a Before label or a During label.';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg], 422);
+            }
+
+            return back()->with('error', $msg);
+        }
 
         if ($request->hasFile('image')) {
             $request->validate([
                 'image' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:20480'],
                 'label_before' => ['sometimes', 'boolean'],
+                'label_during' => ['sometimes', 'boolean'],
             ]);
 
             try {
@@ -658,9 +667,7 @@ class ProjectController extends Controller
                     throw new \RuntimeException('Could not save the edited photo.');
                 }
 
-                if ($labelBefore) {
-                    app(ProjectPhotoLabelService::class)->applyBeforeLabel($fullPath);
-                }
+                $this->applyPhotoLabel($fullPath, $label);
 
                 app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
                 clearstatcache(true, $fullPath);
@@ -690,7 +697,7 @@ class ProjectController extends Controller
 
             return redirect()
                 ->route('admin.portfolio.edit', $project)
-                ->with('success', $labelBefore ? 'Photo updated with Before label.' : 'Photo updated.');
+                ->with('success', $this->photoLabelSuccess('Photo updated', $label));
         }
 
         $validated = $request->validate([
@@ -699,6 +706,7 @@ class ProjectController extends Controller
             'width' => ['required', 'numeric', 'min:1'],
             'height' => ['required', 'numeric', 'min:1'],
             'label_before' => ['sometimes', 'boolean'],
+            'label_during' => ['sometimes', 'boolean'],
         ]);
 
         $info = @getimagesize($fullPath);
@@ -745,14 +753,12 @@ class ProjectController extends Controller
 
         try {
             app(ProjectPhotoCropService::class)->cropWebp($fullPath, $ix, $iy, $cropW, $cropH);
-            if ($request->boolean('label_before')) {
-                app(ProjectPhotoLabelService::class)->applyBeforeLabel($fullPath);
-            }
+            $this->applyPhotoLabel($fullPath, $label);
             app(ProjectPhotoWebpStorage::class)->recompressWebpAtPath($fullPath);
             clearstatcache(true, $fullPath);
         } catch (\Throwable $e) {
             report($e);
-            $msg = $request->boolean('label_before')
+            $msg = $label !== null
                 ? 'Could not crop or label the photo: '.$e->getMessage()
                 : 'Could not crop the photo: '.$e->getMessage();
 
@@ -776,9 +782,7 @@ class ProjectController extends Controller
             ]);
         }
 
-        $success = $request->boolean('label_before')
-            ? 'Photo cropped with Before label.'
-            : 'Photo cropped.';
+        $success = $this->photoLabelSuccess('Photo cropped', $label);
 
         return redirect()
             ->route('admin.portfolio.edit', $project)
@@ -900,6 +904,47 @@ class ProjectController extends Controller
     /**
      * @param  array<int, mixed>  $photoIds
      */
+    /**
+     * @return 'Before'|'During'|null|false false when both labels are requested
+     */
+    private function photoLabelChoice(Request $request): string|false|null
+    {
+        $before = $request->boolean('label_before');
+        $during = $request->boolean('label_during');
+        if ($before && $during) {
+            return false;
+        }
+        if ($during) {
+            return 'During';
+        }
+        if ($before) {
+            return 'Before';
+        }
+
+        return null;
+    }
+
+    private function applyPhotoLabel(string $fullPath, string|false|null $label): void
+    {
+        if ($label === 'During') {
+            app(ProjectPhotoLabelService::class)->applyDuringLabel($fullPath);
+
+            return;
+        }
+        if ($label === 'Before') {
+            app(ProjectPhotoLabelService::class)->applyBeforeLabel($fullPath);
+        }
+    }
+
+    private function photoLabelSuccess(string $base, string|false|null $label): string
+    {
+        if ($label === 'Before' || $label === 'During') {
+            return $base.' with '.$label.' label.';
+        }
+
+        return $base.'.';
+    }
+
     private function deleteOwnedPhotos(Project $project, array $photoIds): void
     {
         $photos = ProjectPhoto::query()

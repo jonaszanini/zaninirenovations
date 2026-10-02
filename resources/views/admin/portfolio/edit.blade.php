@@ -72,7 +72,7 @@
               <i class="fa fa-trash" aria-hidden="true"></i> Delete
             </button>
           </div>
-          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before label (saved as WebP). Select photos with the checkbox, then use <strong>Delete</strong> or <strong>Apply AI improvements</strong> below.</p>
+          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before or During label (saved as WebP). Select photos with the checkbox, then use <strong>Delete</strong> or <strong>Apply AI improvements</strong> below.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
@@ -140,16 +140,21 @@
         @if (auth()->user()->googlePhotosToken)
           <div class="admin-google-photos-panel admin-google-photos-panel--compact">
             <div class="admin-google-photos-panel__head">
-              <span class="admin-form-group-label">Google Photos</span>
+              <div class="admin-google-photos-panel__title">
+                <span class="admin-form-group-label">Google Photos</span>
+                <span class="admin-google-photos-panel__name">
+                  <span class="admin-google-photos-panel__sep" aria-hidden="true">|</span>
+                  <span class="admin-google-photos-account">Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong></span>
+                </span>
+              </div>
             </div>
-            <p class="admin-form-help admin-google-photos-panel__intro">
-              Connected as <strong>{{ auth()->user()->googlePhotosToken->google_email }}</strong>.
+            <div class="admin-google-photos-head">
               <button
                 type="button"
                 class="admin-btn admin-btn--ghost admin-btn--sm"
                 data-admin-google-disconnect
                 data-disconnect-url="{{ route('admin.google-photos.disconnect') }}">Disconnect</button>
-            </p>
+            </div>
           </div>
         @endif
         @if ($project->photos->isNotEmpty())
@@ -181,7 +186,7 @@
       <div class="admin-modal-backdrop" data-edit-modal-dismiss tabindex="-1" aria-hidden="true"></div>
       <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-photo-edit-title">
         <h2 id="admin-photo-edit-title" class="admin-modal-title">Edit photo</h2>
-        <p class="admin-modal-hint">Straighten a tilted shot, rotate 90°, and crop the frame. Pick an aspect ratio below, or use <strong>Free</strong> to resize manually. The file on the server is replaced (WebP). Optionally add a <strong>Before</strong> label for before-and-after galleries.</p>
+        <p class="admin-modal-hint">Straighten a tilted shot, rotate 90°, and crop the frame. Pick an aspect ratio below, or use <strong>Free</strong> to resize manually. The file on the server is replaced (WebP). Optionally add a <strong>Before</strong> or <strong>During</strong> label.</p>
         <div class="admin-crop-stage">
           <div class="admin-crop-stage__frame">
             <img id="admin-photo-edit-img" src="" alt="">
@@ -246,28 +251,38 @@
           <label class="admin-checkbox admin-checkbox--sm" for="admin-photo-crop-label-before">
             <input type="checkbox" class="admin-checkbox__input" id="admin-photo-crop-label-before" value="1">
             <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text">Add <strong>Before</strong> label (large centered text)</span>
+            <span class="admin-checkbox__text">Add <strong>Before</strong> label</span>
+          </label>
+          <label class="admin-checkbox admin-checkbox--sm" for="admin-photo-crop-label-during">
+            <input type="checkbox" class="admin-checkbox__input" id="admin-photo-crop-label-during" value="1">
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text">Add <strong>During</strong> label</span>
           </label>
         </div>
-        <div class="admin-photo-edit-tools">
-          <div class="admin-ai-action-group">
-            @include('admin.partials.ai_instruction_edit_link', [
-              'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
-              'instructionLabel' => 'Edit portfolio photo prompt',
-            ])
-            <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-ai" disabled>
-              <i class="fa fa-magic" aria-hidden="true"></i>
-              <span>Apply AI improvements</span>
+        <div class="admin-modal-actions">
+          <div class="admin-photo-edit-tools">
+            <div class="admin-ai-action-group">
+              @include('admin.partials.ai_instruction_edit_link', [
+                'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
+                'instructionLabel' => 'Edit portfolio photo prompt',
+              ])
+              <button type="button" class="admin-btn admin-btn--primary admin-btn--icon" id="admin-photo-edit-ai" disabled aria-label="Apply AI improvements" title="Apply AI improvements">
+                <i class="fa fa-magic" aria-hidden="true"></i>
+              </button>
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--icon" id="admin-photo-edit-replace-toggle" disabled aria-expanded="false" aria-controls="admin-photo-edit-replace" aria-label="Replace" title="Replace">
+              <i class="fa fa-exchange" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="admin-btn admin-btn--danger admin-btn--icon" id="admin-photo-edit-delete" disabled aria-label="Delete" title="Delete">
+              <i class="fa fa-trash" aria-hidden="true"></i>
             </button>
           </div>
-          <button type="button" class="admin-btn admin-btn--ghost" id="admin-photo-edit-replace-toggle" disabled aria-expanded="false" aria-controls="admin-photo-edit-replace">
-            <i class="fa fa-exchange" aria-hidden="true"></i>
-            <span>Replace</span>
-          </button>
-          <button type="button" class="admin-btn admin-btn--danger" id="admin-photo-edit-delete" disabled>
-            <i class="fa fa-trash" aria-hidden="true"></i>
-            <span>Delete</span>
-          </button>
+          <div class="admin-photo-edit-actions-end">
+            <button type="button" class="admin-btn admin-btn--ghost" data-edit-modal-dismiss>Cancel</button>
+            <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-apply" disabled>Save</button>
+          </div>
+        </div>
+        <div class="admin-photo-edit-feedback">
           <div id="admin-photo-edit-ai-loading" class="nb2-loading" hidden aria-live="polite">
             <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
             <span>Working…</span>
@@ -290,10 +305,6 @@
           <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-replace-apply">
             Use this photo
           </button>
-        </div>
-        <div class="admin-modal-actions">
-          <button type="button" class="admin-btn admin-btn--ghost" data-edit-modal-dismiss>Cancel</button>
-          <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-apply" disabled>Save changes</button>
         </div>
       </div>
     </div>
@@ -496,6 +507,7 @@
         var img = document.getElementById('admin-photo-edit-img');
         var applyBtn = document.getElementById('admin-photo-edit-apply');
         var labelBeforeCheckbox = document.getElementById('admin-photo-crop-label-before');
+        var labelDuringCheckbox = document.getElementById('admin-photo-crop-label-during');
         var straightenSlider = document.getElementById('admin-photo-edit-straighten');
         var rotateValueEl = document.getElementById('admin-photo-edit-rotate-value');
         var rotateCcwBtn = document.getElementById('admin-photo-edit-rotate-ccw');
@@ -740,6 +752,9 @@
           setToolsStatus('');
           if (labelBeforeCheckbox) {
             labelBeforeCheckbox.checked = false;
+          }
+          if (labelDuringCheckbox) {
+            labelDuringCheckbox.checked = false;
           }
           document.documentElement.classList.remove('admin-photo-edit-modal-open');
         }
@@ -1107,6 +1122,15 @@
           });
         }
 
+        if (labelBeforeCheckbox && labelDuringCheckbox) {
+          labelBeforeCheckbox.addEventListener('change', function () {
+            if (labelBeforeCheckbox.checked) labelDuringCheckbox.checked = false;
+          });
+          labelDuringCheckbox.addEventListener('change', function () {
+            if (labelDuringCheckbox.checked) labelBeforeCheckbox.checked = false;
+          });
+        }
+
         aspectButtons.forEach(function (btn) {
           btn.addEventListener('click', function () {
             setAspectMode(btn.getAttribute('data-crop-ar') || 'free');
@@ -1139,6 +1163,9 @@
             fd.append('image', blob, 'edited.png');
             if (labelBeforeCheckbox && labelBeforeCheckbox.checked) {
               fd.append('label_before', '1');
+            }
+            if (labelDuringCheckbox && labelDuringCheckbox.checked) {
+              fd.append('label_during', '1');
             }
 
             fetch(activeUrl, {
