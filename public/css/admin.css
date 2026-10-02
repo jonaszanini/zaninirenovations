@@ -1940,9 +1940,9 @@ details[open] > summary.admin-chevron-summary::after {
   box-shadow: var(--admin-shadow-md);
 }
 
+.admin-photo-improve-label,
 .admin-photo-remove-label {
   font-size: 0.8rem;
-  color: var(--admin-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1951,6 +1951,22 @@ details[open] > summary.admin-chevron-summary::after {
   letter-spacing: normal;
   font-weight: 500;
   margin: 0;
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-photo-improve-label {
+  color: var(--admin-text);
+}
+
+.admin-photo-remove-label {
+  color: var(--admin-muted);
+}
+
+.admin-photo-sortable-item.is-ai-selected {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring, rgba(2, 71, 104, 0.22));
 }
 
 /* Global admin dialog (replaces native alert / confirm) */

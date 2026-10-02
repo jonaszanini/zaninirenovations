@@ -100,6 +100,31 @@ class PortfolioPhotoAiImprovementService
     }
 
     /**
+     * Improve a photo that is already stored on disk. The caller writes the WebP bytes back.
+     *
+     * @return array{filename: string, content_base64: string, size_bytes: int, label: string}
+     */
+    public function improveLocalFile(string $absolutePath, string $label): array
+    {
+        try {
+            if ($absolutePath === '' || ! is_file($absolutePath)) {
+                throw new RuntimeException('Could not read the saved photo.');
+            }
+
+            $bytes = file_get_contents($absolutePath);
+            if ($bytes === false || $bytes === '') {
+                throw new RuntimeException('Saved photo is empty.');
+            }
+
+            $mime = $this->normalizeMime(null, $absolutePath);
+
+            return $this->improveFromBytes($this->resolvePrompt(), $bytes, $mime, $label);
+        } catch (\Throwable $e) {
+            throw new RuntimeException($this->publicError($e));
+        }
+    }
+
+    /**
      * @return array{filename: string, content_base64: string, size_bytes: int, label: string}
      */
     private function improveUploadedFile(string $prompt, UploadedFile $source, string $label): array

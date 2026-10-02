@@ -444,6 +444,57 @@ class ClientProject extends Model
         return $name;
     }
 
+    /**
+     * Street number and name from a Google-formatted service address, for the
+     * project list. "1025 Grenon Ave, Ottawa, ON K2B 8S5" → "1025 Grenon Ave".
+     * City-only values with no leading street number return an empty string.
+     */
+    public static function streetLineFromAddress(?string $address): string
+    {
+        $address = trim(preg_replace('/\s+/u', ' ', (string) $address) ?? '');
+        if ($address === '') {
+            return '';
+        }
+
+        foreach (preg_split('/\s*,\s*/u', $address) ?: [] as $part) {
+            $part = trim($part);
+            if ($part !== '' && preg_match('/^\d/u', $part) === 1) {
+                return $part;
+            }
+        }
+
+        return '';
+    }
+
+    public function streetLineForProjectList(): string
+    {
+        return self::streetLineFromAddress($this->client_address);
+    }
+
+    /**
+     * Opens this project's service address in Google Maps (the Maps app on a phone).
+     */
+    public function googleMapsSearchUrl(): ?string
+    {
+        return self::googleMapsSearchUrlFor($this->client_address, $this->client_address_place_id);
+    }
+
+    public static function googleMapsSearchUrlFor(?string $address, ?string $placeId = null): ?string
+    {
+        $address = trim((string) $address);
+        if ($address === '') {
+            return null;
+        }
+
+        $url = 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($address);
+        $placeId = trim((string) $placeId);
+        if ($placeId !== '') {
+            $url .= '&query_place_id='.rawurlencode($placeId);
+        }
+
+        return $url;
+    }
+
     /** Returns a list of human labels for the missing client contact fields. */
     public function missingClientContactFields(): array
     {

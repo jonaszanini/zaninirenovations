@@ -150,6 +150,20 @@
                       'fallbackMailto' => true,
                     ])</div>
                   @endif
+                  @php
+                    $streetLine = $project->streetLineForProjectList();
+                    $mapsUrl = $streetLine !== '' ? $project->googleMapsSearchUrl() : null;
+                  @endphp
+                  @if ($mapsUrl)
+                    <a class="cp-table-street"
+                       href="{{ $mapsUrl }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       title="Open {{ $project->client_address }} in Google Maps">
+                      <i class="fa fa-map-marker" aria-hidden="true"></i>
+                      <span>{{ $streetLine }}</span>
+                    </a>
+                  @endif
                 </td>
                 <td>
                   <div class="cp-table-project-cell">

@@ -63,7 +63,7 @@
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group">
           <label>Photos — order &amp; remove</label>
-          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> on a photo to straighten, rotate, crop, or add a Before label (saved as WebP). Unchecked photos are saved in this order. Check “Remove” to delete from storage.</p>
+          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> on a photo to straighten, rotate, crop, or add a Before label (saved as WebP). Check <strong>Improve</strong>, then <strong>Apply AI improvements</strong> below, to enhance that saved photo in place. Check “Remove” to delete it from storage when you save.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
@@ -82,6 +82,11 @@
                     Edit
                   </button>
                 </div>
+                <label class="admin-photo-improve-label admin-checkbox admin-checkbox--sm">
+                  <input type="checkbox" class="admin-checkbox__input js-portfolio-ai-existing" value="{{ $photo->id }}">
+                  <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                  <span class="admin-checkbox__text">Improve</span>
+                </label>
                 <label class="admin-photo-remove-label admin-checkbox admin-checkbox--sm">
                   <input type="checkbox" class="admin-checkbox__input" name="delete_photos[]" value="{{ $photo->id }}">
                   <span class="admin-checkbox__mark" aria-hidden="true"></span>
@@ -122,6 +127,7 @@
           @include('admin.partials.portfolio_ai_improve', [
             'fileInputId' => 'photos',
             'maxTotal' => $canAdd,
+            'allowExisting' => $project->photos->isNotEmpty(),
           ])
         </div>
       @else
@@ -140,6 +146,13 @@
                 data-disconnect-url="{{ route('admin.google-photos.disconnect') }}">Disconnect</button>
             </p>
           </div>
+        @endif
+        @if ($project->photos->isNotEmpty())
+          @include('admin.partials.portfolio_ai_improve', [
+            'fileInputId' => 'photos',
+            'maxTotal' => $canAdd,
+            'allowExisting' => true,
+          ])
         @endif
       @endif
     </form>
@@ -238,7 +251,7 @@
 
 @push('scripts')
   <script>
-    @if ($canAdd> 0)
+    @if ($canAdd > 0 || $project->photos->isNotEmpty())
     window.portfolioAiImproveConfig = {
       fileInputId: 'photos',
       maxTotal: {{ (int) $canAdd }},

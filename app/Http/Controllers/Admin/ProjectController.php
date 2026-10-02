@@ -106,7 +106,13 @@ class ProjectController extends Controller
             'photos.*' => ['file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
             'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'google_picker_items.*' => ['string', 'max:4000'],
+            'existing_photo_id' => ['nullable', 'integer', 'exists:project_photos,id'],
         ]);
+
+        $existingPhotoId = (int) ($data['existing_photo_id'] ?? 0);
+        if ($existingPhotoId > 0) {
+            return $this->improveExistingPhoto($existingPhotoId, $improver);
+        }
 
         $uploads = array_values(array_filter(
             (array) $request->file('photos', []),
@@ -212,6 +218,54 @@ class ProjectController extends Controller
         }
 
         return response()->json(['photos' => $saved]);
+    }
+
+    private function improveExistingPhoto(int $photoId, PortfolioPhotoAiImprovementService $improver): JsonResponse
+    {
+        $photo = ProjectPhoto::query()->find($photoId);
+        if (! $photo) {
+            return response()->json(['error' => 'That saved photo could not be found.'], 422);
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($photo->path)) {
+            return response()->json(['error' => 'Photo file is missing on disk.'], 404);
+        }
+
+        $fullPath = $disk->path($photo->path);
+
+        try {
+            $file = $improver->improveLocalFile($fullPath, basename($photo->path));
+            $webp = base64_decode((string) ($file['content_base64'] ?? ''), true);
+            if ($webp === false || $webp === '') {
+                throw new \RuntimeException('AI improve returned an empty image.');
+            }
+            if (file_put_contents($fullPath, $webp) === false) {
+                throw new \RuntimeException('Could not save the improved photo.');
+            }
+
+            clearstatcache(true, $fullPath);
+            $photo->touch();
+            app(ProjectPhotoWebpStorage::class)->syncPublicMirror($photo->path);
+            $photo->refresh();
+
+            return response()->json([
+                'files' => [[
+                    'replaced' => true,
+                    'photo_id' => $photo->id,
+                    'url' => $photo->url(),
+                    'filename' => $file['filename'] ?? basename($photo->path),
+                    'label' => $file['label'] ?? basename($photo->path),
+                    'size_bytes' => strlen($webp),
+                ]],
+                'failures' => [],
+                'summary' => '1 saved photo replaced with the AI-improved version.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
+        }
     }
 
     public function removeDraftPhoto(Request $request, PortfolioDraftPhotoService $drafts): JsonResponse
