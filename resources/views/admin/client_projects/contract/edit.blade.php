@@ -151,6 +151,10 @@
                   style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;line-height:1.45;resize:vertical;">{{ $contractDraftingContext }}</textarea>
         <div class="cp-contract-gemini-wrap">
           <div class="admin-ai-action-group">
+          @include('admin.partials.ai_instruction_edit_link', [
+            'instructionKey' => \App\Models\AiInstruction::KEY_CONTRACT,
+            'instructionLabel' => 'Edit contract generation prompt',
+          ])
           <button type="button"
                   class="admin-btn admin-btn--primary"
                   id="cp-contract-gemini-draft"
@@ -158,10 +162,6 @@
             <i class="fa fa-magic" aria-hidden="true"></i>
             <span>Generate contract with Gemini</span>
           </button>
-          @include('admin.partials.ai_instruction_edit_link', [
-            'instructionKey' => \App\Models\AiInstruction::KEY_CONTRACT,
-            'instructionLabel' => 'Edit contract generation prompt',
-          ])
           <span class="admin-ai-text-history-mount" data-history-mount data-history-key="contract-{{ $project->id }}"></span>
           </div>
           <span id="cp-contract-gemini-status" class="cp-contract-gemini-status" aria-live="polite"></span>

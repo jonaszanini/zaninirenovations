@@ -105,7 +105,10 @@
     root.setAttribute('data-portfolio-ai-init', '1');
 
     var fileInput = document.getElementById(config.fileInputId || 'photos');
-    var googleRoot = document.querySelector('.admin-google-photos');
+    var googleRoot = null;
+    document.querySelectorAll('.admin-google-photos').forEach(function (el) {
+      if (!googleRoot && !el.closest('#admin-photo-edit-modal')) googleRoot = el;
+    });
     var applyBtn = document.getElementById('portfolio-ai-apply-btn');
     var loadingEl = document.getElementById('portfolio-ai-loading');
     var loadingTextEl = document.getElementById('portfolio-ai-loading-text');

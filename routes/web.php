@@ -183,6 +183,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('portfolio.photos.rotate');
     Route::post('portfolio/{project}/photos/{photo}/crop', [ProjectController::class, 'cropPhoto'])
         ->name('portfolio.photos.crop');
+    Route::post('portfolio/{project}/photos/{photo}/replace', [ProjectController::class, 'replacePhoto'])
+        ->name('portfolio.photos.replace');
     Route::resource('portfolio', ProjectController::class)
         ->parameters(['portfolio' => 'project'])
         ->except(['show']);

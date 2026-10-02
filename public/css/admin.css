@@ -2326,6 +2326,38 @@ details[open] > summary.admin-chevron-summary::after {
   margin: 0;
 }
 
+#admin-photo-edit-modal .admin-photo-edit-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+#admin-photo-edit-modal .admin-photo-edit-tools .nb2-status {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+#admin-photo-edit-modal .admin-photo-edit-tools .nb2-status:empty {
+  display: none;
+}
+
+#admin-photo-edit-modal .admin-photo-edit-replace {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#admin-photo-edit-modal .admin-photo-edit-replace[hidden] {
+  display: none;
+}
+
+#admin-photo-edit-modal .admin-photo-edit-replace .admin-form-group {
+  margin: 0;
+}
+
 #admin-photo-edit-modal .admin-modal-actions {
   display: flex;
   flex-wrap: wrap;

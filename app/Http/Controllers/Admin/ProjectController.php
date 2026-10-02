@@ -785,6 +785,105 @@ class ProjectController extends Controller
             ->with('success', $success);
     }
 
+    public function replacePhoto(Request $request, Project $project, ProjectPhoto $photo): JsonResponse
+    {
+        abort_unless((int) $photo->project_id === (int) $project->id, 404);
+
+        set_time_limit(max(120, (int) config('gemini.timeout_seconds', 120) + 60));
+
+        $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
+
+        $data = $request->validate([
+            'image' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
+            'google_picker_items' => ['nullable', 'array', 'max:1'],
+            'google_picker_items.*' => ['string', 'max:4000'],
+        ]);
+
+        $hasFile = $request->hasFile('image');
+        $googleItems = array_values(array_filter(
+            (array) ($data['google_picker_items'] ?? []),
+            fn ($item) => is_string($item) && $item !== '',
+        ));
+
+        if ($hasFile && $googleItems !== []) {
+            return response()->json(['error' => 'Choose either an upload or one Google Photo.'], 422);
+        }
+        if (! $hasFile && $googleItems === []) {
+            return response()->json(['error' => 'Upload a photo or pick one from Google Photos.'], 422);
+        }
+        if (count(GooglePickerItems::parse($googleItems)) > 1) {
+            return response()->json(['error' => 'Pick only one Google Photo.'], 422);
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($photo->path)) {
+            return response()->json(['error' => 'Photo file is missing on disk.'], 404);
+        }
+
+        $fullPath = $disk->path($photo->path);
+        $tmp = null;
+
+        try {
+            if ($hasFile) {
+                $upload = $request->file('image');
+                $realPath = $upload->getRealPath();
+                if ($realPath === false || ! is_file($realPath)) {
+                    throw new \RuntimeException('Could not read the uploaded photo.');
+                }
+                $bytes = file_get_contents($realPath);
+                $mime = strtolower((string) $upload->getMimeType());
+            } else {
+                if (! GooglePhotosToken::query()->where('user_id', $request->user()->id)->exists()) {
+                    throw new \RuntimeException('Google Photos is not connected.');
+                }
+                $item = GooglePickerItems::parse($googleItems)[0] ?? null;
+                if (! is_array($item) || empty($item['baseUrl'])) {
+                    throw new \RuntimeException('That Google Photo could not be read.');
+                }
+                [$tmp, $mime] = app(GooglePhotosService::class)->downloadPickedMedia(
+                    $request->user(),
+                    (string) $item['baseUrl'],
+                    isset($item['mimeType']) ? (string) $item['mimeType'] : null,
+                );
+                $bytes = is_file($tmp) ? file_get_contents($tmp) : false;
+            }
+
+            if ($bytes === false || $bytes === '') {
+                throw new \RuntimeException('Replacement photo is empty.');
+            }
+
+            $mime = strtolower(trim((string) $mime));
+            if ($mime === '' || ! str_starts_with($mime, 'image/')) {
+                $mime = 'image/jpeg';
+            }
+
+            $converter = app(ProjectPhotoWebpStorage::class);
+            $webp = $converter->convertBinaryToWebp($bytes, $mime, basename($photo->path));
+            if (file_put_contents($fullPath, $webp) === false) {
+                throw new \RuntimeException('Could not save the replacement photo.');
+            }
+            $converter->recompressWebpAtPath($fullPath);
+            clearstatcache(true, $fullPath);
+            $photo->touch();
+            $converter->syncPublicMirror($photo->path);
+            $photo->refresh();
+
+            return response()->json([
+                'ok' => true,
+                'photo_id' => $photo->id,
+                'url' => $photo->url(),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
+        } finally {
+            if (is_string($tmp) && is_file($tmp)) {
+                @unlink($tmp);
+            }
+        }
+    }
+
     public function destroy(Project $project)
     {
         foreach ($project->photos as $photo) {

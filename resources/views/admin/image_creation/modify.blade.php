@@ -39,14 +39,14 @@
         <span>Apply changes</span>
       </button>
       <div class="admin-ai-action-group">
-        <button type="button" id="aim-improve-btn" class="admin-btn admin-btn--primary admin-btn--lg">
-          <i class="fa fa-magic" aria-hidden="true"></i>
-          <span>Improve prompt</span>
-        </button>
         @include('admin.partials.ai_instruction_edit_link', [
           'instructionKey' => \App\Models\AiInstruction::KEY_IMAGE_MODIFY_PROMPT,
           'instructionLabel' => 'Edit image modify prompt improvement',
         ])
+        <button type="button" id="aim-improve-btn" class="admin-btn admin-btn--primary admin-btn--lg">
+          <i class="fa fa-magic" aria-hidden="true"></i>
+          <span>Improve prompt</span>
+        </button>
         <span class="admin-ai-text-history-mount" data-history-mount></span>
       </div>
       <div id="aim-loading" class="nb2-loading" hidden aria-live="polite">

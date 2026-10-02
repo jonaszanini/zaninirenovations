@@ -72,6 +72,10 @@
 
       <div class="blog-admin-ai-metadata-wrap">
         <div class="admin-ai-action-group">
+        @include('admin.partials.ai_instruction_edit_link', [
+          'instructionKey' => \App\Models\AiInstruction::KEY_BLOG_POST,
+          'instructionLabel' => 'Edit blog post metadata prompt',
+        ])
         <button type="button"
                 class="admin-btn admin-btn--primary"
                 id="bp-ai-metadata-btn"
@@ -80,10 +84,6 @@
           <i class="fa fa-magic" aria-hidden="true"></i>
           <span>Complete metadata with Gemini</span>
         </button>
-        @include('admin.partials.ai_instruction_edit_link', [
-          'instructionKey' => \App\Models\AiInstruction::KEY_BLOG_POST,
-          'instructionLabel' => 'Edit blog post metadata prompt',
-        ])
         <span class="admin-ai-text-history-mount" data-history-mount data-history-key="blog-post-{{ (int) ($post->id ?? 0) }}"></span>
         </div>
         <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>

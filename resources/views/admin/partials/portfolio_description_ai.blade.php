@@ -1,14 +1,14 @@
 <div class="portfolio-description-ai" id="portfolio-description-ai">
   <div class="nb2-generate-row portfolio-description-ai__actions">
     <div class="admin-ai-action-group">
-      <button type="button" id="portfolio-desc-ai-btn" class="admin-btn admin-btn--primary">
-        <i class="fa fa-magic" aria-hidden="true"></i>
-        <span>Improve description with AI</span>
-      </button>
       @include('admin.partials.ai_instruction_edit_link', [
         'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_DESCRIPTION,
         'instructionLabel' => 'Edit portfolio description prompt',
       ])
+      <button type="button" id="portfolio-desc-ai-btn" class="admin-btn admin-btn--primary">
+        <i class="fa fa-magic" aria-hidden="true"></i>
+        <span>Improve description with AI</span>
+      </button>
       <span class="admin-ai-text-history-mount" data-history-mount></span>
     </div>
     <div id="portfolio-desc-ai-loading" class="nb2-loading" hidden aria-live="polite">

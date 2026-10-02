@@ -1,14 +1,14 @@
 <div class="portfolio-category-ai" id="portfolio-category-ai">
   <div class="nb2-generate-row portfolio-category-ai__actions">
     <div class="admin-ai-action-group">
-      <button type="button" id="portfolio-category-ai-btn" class="admin-btn admin-btn--primary">
-        <i class="fa fa-magic" aria-hidden="true"></i>
-        <span>Auto categorize with AI</span>
-      </button>
       @include('admin.partials.ai_instruction_edit_link', [
         'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_CATEGORIES,
         'instructionLabel' => 'Edit portfolio category prompt',
       ])
+      <button type="button" id="portfolio-category-ai-btn" class="admin-btn admin-btn--primary">
+        <i class="fa fa-magic" aria-hidden="true"></i>
+        <span>Auto categorize with AI</span>
+      </button>
     </div>
     <div id="portfolio-category-ai-loading" class="nb2-loading" hidden aria-live="polite">
       <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>

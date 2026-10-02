@@ -17,7 +17,10 @@
   }
 
   function googlePayloads() {
-    var googleRoot = document.querySelector('.admin-google-photos');
+    var googleRoot = null;
+    document.querySelectorAll('.admin-google-photos').forEach(function (el) {
+      if (!googleRoot && !el.closest('#admin-photo-edit-modal')) googleRoot = el;
+    });
     if (!googleRoot || !googleRoot.googlePhotosPicker) return [];
     return googleRoot.googlePhotosPicker.getCheckedPayloads();
   }

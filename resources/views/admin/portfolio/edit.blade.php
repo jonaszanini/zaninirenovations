@@ -90,7 +90,9 @@
                 <div class="admin-photo-sortable-actions">
                   <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm admin-photo-edit-btn js-edit-photo"
                     title="Edit photo"
+                    data-photo-id="{{ $photo->id }}"
                     data-edit-url="{{ route('admin.portfolio.photos.crop', [$project, $photo]) }}"
+                    data-replace-url="{{ route('admin.portfolio.photos.replace', [$project, $photo]) }}"
                     data-image-url="{{ $photo->url() }}">
                     Edit
                   </button>
@@ -173,7 +175,9 @@
     @php
       $editPhotoWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
     @endphp
-    <div id="admin-photo-edit-modal" class="admin-modal" hidden>
+    <div id="admin-photo-edit-modal" class="admin-modal" hidden
+      data-delete-url="{{ route('admin.portfolio.photos.bulk-destroy', $project) }}"
+      data-ai-url="{{ route('admin.portfolio.ai-improve-photos') }}">
       <div class="admin-modal-backdrop" data-edit-modal-dismiss tabindex="-1" aria-hidden="true"></div>
       <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-photo-edit-title">
         <h2 id="admin-photo-edit-title" class="admin-modal-title">Edit photo</h2>
@@ -244,6 +248,48 @@
             <span class="admin-checkbox__mark" aria-hidden="true"></span>
             <span class="admin-checkbox__text">Add <strong>Before</strong> label (large centered text)</span>
           </label>
+        </div>
+        <div class="admin-photo-edit-tools">
+          <div class="admin-ai-action-group">
+            @include('admin.partials.ai_instruction_edit_link', [
+              'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
+              'instructionLabel' => 'Edit portfolio photo prompt',
+            ])
+            <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-ai" disabled>
+              <i class="fa fa-magic" aria-hidden="true"></i>
+              <span>Apply AI improvements</span>
+            </button>
+          </div>
+          <button type="button" class="admin-btn admin-btn--ghost" id="admin-photo-edit-replace-toggle" disabled aria-expanded="false" aria-controls="admin-photo-edit-replace">
+            <i class="fa fa-exchange" aria-hidden="true"></i>
+            <span>Replace</span>
+          </button>
+          <button type="button" class="admin-btn admin-btn--danger" id="admin-photo-edit-delete" disabled>
+            <i class="fa fa-trash" aria-hidden="true"></i>
+            <span>Delete</span>
+          </button>
+          <div id="admin-photo-edit-ai-loading" class="nb2-loading" hidden aria-live="polite">
+            <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+            <span>Working…</span>
+          </div>
+          <p id="admin-photo-edit-tools-status" class="nb2-status" role="status"></p>
+        </div>
+        <div id="admin-photo-edit-replace" class="admin-photo-edit-replace" hidden>
+          <p class="admin-form-help">Upload a new photo or pick one from Google Photos. It replaces this photo and keeps its place in the gallery.</p>
+          <div class="admin-form-group">
+            <label for="admin-photo-edit-replace-file">Upload</label>
+            <input class="admin-input" type="file" id="admin-photo-edit-replace-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
+          </div>
+          @include('admin.partials.google_photos_picker', [
+            'maxTotal' => 1,
+            'fileInputId' => 'admin-photo-edit-replace-file',
+            'statusMode' => 'total',
+            'formSync' => false,
+            'footText' => 'One photo. An upload and a Google Photo cannot be used together.',
+          ])
+          <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-replace-apply">
+            Use this photo
+          </button>
         </div>
         <div class="admin-modal-actions">
           <button type="button" class="admin-btn admin-btn--ghost" data-edit-modal-dismiss>Cancel</button>
@@ -329,7 +375,10 @@
             var slots = parseInt(ai.getAttribute('data-remaining-slots') || '0', 10);
             ai.setAttribute('data-remaining-slots', String(slots + freed));
           }
-          var picker = document.querySelector('.admin-google-photos');
+          var picker = null;
+          document.querySelectorAll('.admin-google-photos').forEach(function (el) {
+            if (!picker && !el.closest('#admin-photo-edit-modal')) picker = el;
+          });
           if (!picker) return;
           var pickerSlots = parseInt(picker.getAttribute('data-max-total') || '0', 10);
           picker.setAttribute('data-max-total', String(pickerSlots + freed));
@@ -463,6 +512,18 @@
         var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
         var cropper = null;
         var activeUrl = '';
+        var activePhotoId = '';
+        var activeReplaceUrl = '';
+        var activeItem = null;
+        var toolsBusy = false;
+        var editDeleteBtn = document.getElementById('admin-photo-edit-delete');
+        var editAiBtn = document.getElementById('admin-photo-edit-ai');
+        var editAiLoading = document.getElementById('admin-photo-edit-ai-loading');
+        var editReplaceToggle = document.getElementById('admin-photo-edit-replace-toggle');
+        var editReplacePanel = document.getElementById('admin-photo-edit-replace');
+        var editReplaceFile = document.getElementById('admin-photo-edit-replace-file');
+        var editReplaceApply = document.getElementById('admin-photo-edit-replace-apply');
+        var editToolsStatus = document.getElementById('admin-photo-edit-tools-status');
         var stage = modal.querySelector('.admin-crop-stage');
         var straightenFine = 0;
         var rotationZoom = 1;
@@ -663,13 +724,20 @@
         }
 
         function closeModal() {
+          toolsBusy = false;
           modal.hidden = true;
           destroyCropper();
           clearCropStagePx();
           applyBtn.disabled = true;
           activeUrl = '';
+          activePhotoId = '';
+          activeReplaceUrl = '';
+          activeItem = null;
           resetAspectControls();
           resetRotateControls();
+          resetReplaceChoices();
+          setToolsEnabled(false);
+          setToolsStatus('');
           if (labelBeforeCheckbox) {
             labelBeforeCheckbox.checked = false;
           }
@@ -732,13 +800,121 @@
           });
         }
 
-        document.querySelectorAll('.js-edit-photo').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var url = btn.getAttribute('data-image-url');
-            var postUrl = btn.getAttribute('data-edit-url');
-            if (!url || !postUrl) return;
+        function setToolsStatus(message, isError) {
+          if (!editToolsStatus) return;
+          editToolsStatus.textContent = message || '';
+          editToolsStatus.classList.toggle('is-error', !!isError);
+        }
+
+        function setToolsBusy(active, message) {
+          toolsBusy = !!active;
+          if (editAiLoading) {
+            editAiLoading.hidden = !active;
+            var label = editAiLoading.querySelector('span');
+            if (label && message) label.textContent = message;
+          }
+          setToolsEnabled(!active && !!activePhotoId);
+          if (active) applyBtn.disabled = true;
+        }
+
+        function setToolsEnabled(on) {
+          var disabled = !on || toolsBusy;
+          if (editDeleteBtn) editDeleteBtn.disabled = disabled;
+          if (editAiBtn) editAiBtn.disabled = disabled;
+          if (editReplaceToggle) editReplaceToggle.disabled = disabled;
+          if (editReplaceApply) editReplaceApply.disabled = disabled;
+        }
+
+        function editorGoogleRoot() {
+          return editReplacePanel ? editReplacePanel.querySelector('.admin-google-photos') : null;
+        }
+
+        function resetReplaceChoices() {
+          if (editReplaceFile) editReplaceFile.value = '';
+          var googleRoot = editorGoogleRoot();
+          if (googleRoot && googleRoot.googlePhotosPicker && googleRoot.googlePhotosPicker.clearPickedItems) {
+            googleRoot.googlePhotosPicker.clearPickedItems();
+          } else if (googleRoot) {
+            googleRoot.querySelectorAll('input[data-picker-checkbox]').forEach(function (box) {
+              box.checked = false;
+            });
+          }
+          if (editReplacePanel) editReplacePanel.hidden = true;
+          if (editReplaceToggle) editReplaceToggle.setAttribute('aria-expanded', 'false');
+        }
+
+        function editorErrorMessage(body, status) {
+          if (body && body.error) return body.error;
+          if (body && body.message) return body.message;
+          if (body && body.errors) {
+            var keys = Object.keys(body.errors);
+            if (keys.length && body.errors[keys[0]] && body.errors[keys[0]][0]) {
+              return body.errors[keys[0]][0];
+            }
+          }
+          return 'HTTP ' + status;
+        }
+
+        function postForm(url, formData) {
+          return fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              Accept: 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': csrfToken,
+            },
+            body: formData,
+          }).then(function (res) {
+            return res.text().then(function (text) {
+              var body = null;
+              if (text) {
+                try { body = JSON.parse(text); } catch (ignore) { body = null; }
+              }
+              if (!res.ok) throw new Error(editorErrorMessage(body, res.status));
+              return body || {};
+            });
+          });
+        }
+
+        function updateThumbnail(url) {
+          if (!activeItem) return;
+          var thumb = activeItem.querySelector('img');
+          if (thumb) thumb.src = url;
+          var editBtn = activeItem.querySelector('.js-edit-photo');
+          if (editBtn) editBtn.setAttribute('data-image-url', url);
+        }
+
+        function refreshGalleryAfterDelete() {
+          var list = document.getElementById('admin-photo-sortable');
+          if (!list) return;
+          list.querySelectorAll('.admin-photo-cover-badge').forEach(function (badge) {
+            badge.remove();
+          });
+          var first = list.querySelector('.admin-photo-sortable-item .admin-photo-sortable-thumb');
+          if (first) {
+            var badge = document.createElement('span');
+            badge.className = 'admin-photo-cover-badge';
+            badge.textContent = 'Homepage cover';
+            first.insertBefore(badge, first.firstChild);
+          }
+          var pageDelete = document.getElementById('admin-photo-bulk-delete');
+          if (pageDelete) {
+            pageDelete.disabled = list.querySelectorAll('.js-portfolio-ai-existing:checked').length < 1;
+          }
+          var ai = document.getElementById('portfolio-ai-improve');
+          if (ai) {
+            var slots = parseInt(ai.getAttribute('data-remaining-slots') || '0', 10);
+            ai.setAttribute('data-remaining-slots', String(slots + 1));
+          }
+          if (!list.querySelector('.admin-photo-sortable-item')) {
+            var group = document.getElementById('admin-photo-order-group');
+            if (group) group.hidden = true;
+          }
+        }
+
+        function mountImage(url) {
             destroyCropper();
-            activeUrl = postUrl;
             applyBtn.disabled = true;
             resetAspectControls();
             resetRotateControls();
@@ -809,8 +985,127 @@
             };
             img.onload = onImgReady;
             img.src = bust;
+        }
+
+        document.querySelectorAll('.js-edit-photo').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var url = btn.getAttribute('data-image-url');
+            var postUrl = btn.getAttribute('data-edit-url');
+            if (!url || !postUrl) return;
+            activeUrl = postUrl;
+            activePhotoId = btn.getAttribute('data-photo-id') || '';
+            activeReplaceUrl = btn.getAttribute('data-replace-url') || '';
+            activeItem = btn.closest('.admin-photo-sortable-item');
+            setToolsStatus('');
+            resetReplaceChoices();
+            setToolsEnabled(true);
+            mountImage(url);
           });
         });
+
+        if (editDeleteBtn) {
+          editDeleteBtn.addEventListener('click', function () {
+            if (!activePhotoId || toolsBusy) return;
+            var atCap = !!document.getElementById('admin-photo-cap-notice');
+            var message = 'Delete this photo? It is removed from storage.';
+            if (atCap) {
+              message += ' This page will refresh afterward so you can add photos again. Save other edits first if you need to keep them.';
+            }
+            var ask = (window.AdminDialog && window.AdminDialog.confirm)
+              ? window.AdminDialog.confirm(message, { title: 'Delete photo', confirmLabel: 'Delete', danger: true })
+              : Promise.resolve(window.confirm(message));
+            ask.then(function (ok) {
+              if (!ok) return;
+              var fd = new FormData();
+              fd.append('photo_ids[]', activePhotoId);
+              setToolsBusy(true, 'Deleting…');
+              postForm(modal.getAttribute('data-delete-url'), fd).then(function () {
+                if (atCap) {
+                  window.location.reload();
+                  return;
+                }
+                if (activeItem) activeItem.remove();
+                refreshGalleryAfterDelete();
+                closeModal();
+              }).catch(function (err) {
+                setToolsBusy(false);
+                setToolsStatus(err.message || 'Could not delete this photo.', true);
+              });
+            });
+          });
+        }
+
+        if (editAiBtn) {
+          editAiBtn.addEventListener('click', function () {
+            if (!activePhotoId || toolsBusy) return;
+            var fd = new FormData();
+            fd.append('existing_photo_id', activePhotoId);
+            setToolsBusy(true, 'Improving with Gemini…');
+            setToolsStatus('Applying AI improvements…', false);
+            postForm(modal.getAttribute('data-ai-url'), fd).then(function (body) {
+              var file = body && body.files && body.files[0] ? body.files[0] : null;
+              var nextUrl = file && file.url ? file.url : '';
+              if (!nextUrl) throw new Error('AI improve did not return a photo.');
+              setToolsBusy(false);
+              updateThumbnail(nextUrl);
+              setToolsStatus('AI improvement saved. You can still crop it, or close the editor.', false);
+              mountImage(nextUrl);
+            }).catch(function (err) {
+              setToolsBusy(false);
+              setToolsStatus(err.message || 'Could not improve this photo.', true);
+              if (cropper) applyBtn.disabled = false;
+            });
+          });
+        }
+
+        if (editReplaceToggle && editReplacePanel) {
+          editReplaceToggle.addEventListener('click', function () {
+            if (toolsBusy) return;
+            var open = editReplacePanel.hidden;
+            editReplacePanel.hidden = !open;
+            editReplaceToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) editReplacePanel.scrollIntoView({ block: 'nearest' });
+          });
+        }
+
+        if (editReplaceApply) {
+          editReplaceApply.addEventListener('click', function () {
+            if (!activeReplaceUrl || toolsBusy) return;
+            var fd = new FormData();
+            var hasFile = editReplaceFile && editReplaceFile.files && editReplaceFile.files.length > 0;
+            if (hasFile) fd.append('image', editReplaceFile.files[0]);
+            var googleRoot = editorGoogleRoot();
+            var payloads = (googleRoot && googleRoot.googlePhotosPicker)
+              ? googleRoot.googlePhotosPicker.getCheckedPayloads()
+              : [];
+            payloads.forEach(function (payload) {
+              fd.append('google_picker_items[]', payload);
+            });
+            if (!hasFile && !payloads.length) {
+              setToolsStatus('Upload a photo or pick one from Google Photos.', true);
+              return;
+            }
+            if (hasFile && payloads.length) {
+              setToolsStatus('Choose either an upload or one Google Photo.', true);
+              return;
+            }
+            setToolsBusy(true, 'Replacing photo…');
+            setToolsStatus('Replacing this photo…', false);
+            postForm(activeReplaceUrl, fd).then(function (body) {
+              var nextUrl = body && body.url ? body.url : '';
+              if (!nextUrl) throw new Error('Replace did not return a photo.');
+              setToolsBusy(false);
+              resetReplaceChoices();
+              updateThumbnail(nextUrl);
+              setToolsStatus('Photo replaced. You can still crop it, or close the editor.', false);
+              mountImage(nextUrl);
+            }).catch(function (err) {
+              setToolsBusy(false);
+              setToolsStatus(err.message || 'Could not replace this photo.', true);
+              if (cropper) applyBtn.disabled = false;
+            });
+          });
+        }
 
         aspectButtons.forEach(function (btn) {
           btn.addEventListener('click', function () {

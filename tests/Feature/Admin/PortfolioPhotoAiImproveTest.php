@@ -25,6 +25,10 @@ class PortfolioPhotoAiImproveTest extends IntegrationTestCase
             ->assertSee('aria-label="Select photo"', false)
             ->assertSee('id="admin-photo-bulk-delete"', false)
             ->assertSee('Apply AI improvements', false)
+            ->assertSee('id="admin-photo-edit-delete"', false)
+            ->assertSee('id="admin-photo-edit-ai"', false)
+            ->assertSee('id="admin-photo-edit-replace"', false)
+            ->assertSee('Use this photo', false)
             ->assertDontSee('name="delete_photos[]"', false)
             ->assertSee('value="'.$photo->id.'"', false);
     }

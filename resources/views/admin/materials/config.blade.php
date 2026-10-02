@@ -151,6 +151,11 @@
           Prompt is editable under <a href="{{ route('admin.ai-instructions.edit', \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME) }}" class="admin-text-link">Tools → AI Instructions</a>.
         </p>
         <div class="mat-ai-short-names__actions">
+          <div class="admin-ai-action-group">
+          @include('admin.partials.ai_instruction_edit_link', [
+            'instructionKey' => \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME,
+            'instructionLabel' => 'Edit material short name prompt',
+          ])
           <button type="button"
                   class="admin-btn admin-btn--primary"
                   id="mat-ai-short-names-missing-btn"
@@ -161,6 +166,12 @@
             <i class="fa fa-magic" aria-hidden="true"></i>
             <span>Generate missing short names</span>
           </button>
+          </div>
+          <div class="admin-ai-action-group">
+          @include('admin.partials.ai_instruction_edit_link', [
+            'instructionKey' => \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME,
+            'instructionLabel' => 'Edit material short name prompt',
+          ])
           <button type="button"
                   class="admin-btn admin-btn--primary"
                   id="mat-ai-short-names-all-btn"
@@ -172,6 +183,7 @@
             <i class="fa fa-magic" aria-hidden="true"></i>
             <span>Regenerate all short names</span>
           </button>
+          </div>
         </div>
         <div id="mat-ai-short-names-progress" class="mat-bulk-progress" hidden aria-live="polite">
           <div class="mat-bulk-progress__head">

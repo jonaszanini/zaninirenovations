@@ -23,7 +23,10 @@
 
     var descriptionEl = document.getElementById(config.descriptionInputId || 'description');
     var fileInput = document.getElementById(config.fileInputId || 'photos');
-    var googleRoot = document.querySelector('.admin-google-photos');
+    var googleRoot = null;
+    document.querySelectorAll('.admin-google-photos').forEach(function (el) {
+      if (!googleRoot && !el.closest('#admin-photo-edit-modal')) googleRoot = el;
+    });
     var btn = document.getElementById('portfolio-desc-ai-btn');
     var loadingEl = document.getElementById('portfolio-desc-ai-loading');
     var statusEl = document.getElementById('portfolio-desc-ai-status');
