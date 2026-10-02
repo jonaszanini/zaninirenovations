@@ -16,6 +16,8 @@ class AiInstruction extends Model
 
     public const KEY_PORTFOLIO_DESCRIPTION = 'portfolio_description';
 
+    public const KEY_PORTFOLIO_CATEGORIES = 'portfolio_categories';
+
     public const KEY_QUOTATION_WORK_DESCRIPTION = 'quotation_work_description';
 
     public const KEY_QUOTATION_WORK_DESCRIPTION_FROM_QUOTE = 'quotation_work_description_from_quote';

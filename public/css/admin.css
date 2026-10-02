@@ -2743,6 +2743,34 @@ body.admin-nav-open {
   margin-top: 0.65rem;
 }
 
+.portfolio-category-ai {
+  margin: 0 0 0.75rem;
+}
+
+.portfolio-category-ai__actions {
+  margin-top: 0;
+}
+
+.portfolio-category-ai .admin-btn {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.portfolio-category-ai__help {
+  margin: 0.4rem 0 0;
+}
+
+.portfolio-category-ai__status {
+  margin-top: 0.35rem;
+}
+
+.portfolio-category-ai__status:empty {
+  display: none;
+}
+
 .quotation-work-description-ai {
   margin-top: 0.5rem;
 }

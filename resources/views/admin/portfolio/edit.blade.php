@@ -35,7 +35,8 @@
           </a>
         </div>
         <p class="admin-form-help" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
-        <div class="admin-category-checkboxes">
+        @include('admin.partials.portfolio_category_ai')
+        <div class="admin-category-checkboxes" id="portfolio-category-checkboxes">
           @foreach ($categories as $cat)
             <label class="admin-checkbox admin-checkbox-tile">
               <input type="checkbox" class="admin-checkbox__input" name="project_category_ids[]" value="{{ $cat->id }}" @checked(in_array((string) $cat->id, array_map('strval', (array) $selectedCategoryIds), true))>
@@ -269,6 +270,13 @@
       fileInputId: 'photos',
       csrfToken: @json(csrf_token()),
       improveUrl: @json(route('admin.portfolio.ai-improve-description.edit', $project)),
+    };
+    window.portfolioCategoryAiConfig = {
+      titleInputId: 'title',
+      descriptionInputId: 'description',
+      fileInputId: 'photos',
+      csrfToken: @json(csrf_token()),
+      categorizeUrl: @json(route('admin.portfolio.ai-categorize.edit', $project)),
     };
   </script>
 @endpush

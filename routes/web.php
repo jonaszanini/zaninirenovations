@@ -173,6 +173,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('portfolio.ai-improve-description');
     Route::post('portfolio/{project}/ai-improve-description', [ProjectController::class, 'aiImproveDescriptionForProject'])
         ->name('portfolio.ai-improve-description.edit');
+    Route::post('portfolio/ai-categorize', [ProjectController::class, 'aiCategorize'])
+        ->name('portfolio.ai-categorize');
+    Route::post('portfolio/{project}/ai-categorize', [ProjectController::class, 'aiCategorizeForProject'])
+        ->name('portfolio.ai-categorize.edit');
     Route::post('portfolio/{project}/photos/bulk-destroy', [ProjectController::class, 'destroyPhotos'])
         ->name('portfolio.photos.bulk-destroy');
     Route::post('portfolio/{project}/photos/{photo}/rotate', [ProjectController::class, 'rotatePhoto'])

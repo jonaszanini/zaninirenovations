@@ -9,6 +9,7 @@ use App\Models\ProjectPhoto;
 use App\Models\ProjectSlugRedirect;
 use App\Models\GooglePhotosToken;
 use App\Services\GooglePhotosService;
+use App\Services\PortfolioCategoryAiService;
 use App\Services\PortfolioDescriptionAiService;
 use App\Services\PortfolioDraftPhotoService;
 use App\Services\PortfolioPhotoAiImprovementService;
@@ -292,6 +293,20 @@ class ProjectController extends Controller
         PortfolioDescriptionAiService $describer,
     ): JsonResponse {
         return $this->respondWithImprovedDescription($request, $describer, $project);
+    }
+
+    public function aiCategorize(Request $request, PortfolioCategoryAiService $categorizer, PortfolioDraftPhotoService $draftPhotos): JsonResponse
+    {
+        return $this->respondWithCategories($request, $categorizer, $draftPhotos, null);
+    }
+
+    public function aiCategorizeForProject(
+        Request $request,
+        Project $project,
+        PortfolioCategoryAiService $categorizer,
+        PortfolioDraftPhotoService $draftPhotos,
+    ): JsonResponse {
+        return $this->respondWithCategories($request, $categorizer, $draftPhotos, $project);
     }
 
     public function store(Request $request, PortfolioDraftPhotoService $draftPhotos)
@@ -926,6 +941,56 @@ class ProjectController extends Controller
                     @unlink($tmp);
                 }
             }
+        }
+    }
+
+    private function respondWithCategories(
+        Request $request,
+        PortfolioCategoryAiService $categorizer,
+        PortfolioDraftPhotoService $draftPhotos,
+        ?Project $project,
+    ): JsonResponse {
+        set_time_limit(max(120, (int) config('gemini.timeout_seconds', 120) + 60));
+
+        $maxKb = max(1024, (int) ceil((int) config('gemini.inline_image_max_bytes', 7 * 1024 * 1024) / 1024) * 4);
+
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:20000'],
+            'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'photos.*' => ['file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.$maxKb],
+            'google_picker_items' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'google_picker_items.*' => ['string', 'max:4000'],
+            'draft_photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'draft_photos.*' => ['string', 'max:500'],
+        ]);
+
+        $uploads = array_values(array_filter(
+            (array) $request->file('photos', []),
+            fn ($file) => $file instanceof \Illuminate\Http\UploadedFile,
+        ));
+        $googleItems = array_values(array_filter(
+            (array) ($data['google_picker_items'] ?? []),
+            fn ($item) => is_string($item) && $item !== '',
+        ));
+        $draftPaths = $draftPhotos->validatePaths($data['draft_photos'] ?? []);
+
+        try {
+            $result = $categorizer->suggest(
+                $request->user(),
+                $data['title'],
+                (string) ($data['description'] ?? ''),
+                $uploads,
+                $googleItems,
+                $draftPaths,
+                $project,
+            );
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 502);
         }
     }
 

@@ -2,22 +2,17 @@
 
 namespace App\Services;
 
-use App\Support\Logging\AppLogger;
 use App\Models\AiInstruction;
 use App\Models\Project;
 use App\Models\User;
-use App\Support\GooglePickerItems;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 class PortfolioDescriptionAiService
 {
-    private const MAX_IMAGES = 8;
-
     public function __construct(
         protected GeminiService $gemini,
-        protected GooglePhotosService $googlePhotos,
+        protected PortfolioAiImageCollector $images,
     ) {}
 
     /**
@@ -42,7 +37,7 @@ class PortfolioDescriptionAiService
             throw new RuntimeException('Enter a brief description first.');
         }
 
-        $images = $this->collectImages($user, $uploads, $googlePickerRawItems, $project);
+        $images = $this->images->collect($user, $uploads, $googlePickerRawItems, $project);
         $imageCount = count($images);
 
         $userText = "### Brief Description ###\n{$briefDescription}\n\n";
@@ -78,113 +73,6 @@ class PortfolioDescriptionAiService
             'option_2' => $option2,
             'image_count' => $imageCount,
         ];
-    }
-
-    /**
-     * @param  list<UploadedFile>  $uploads
-     * @param  list<string>  $googlePickerRawItems
-     * @return list<array{bytes: string, mime: string}>
-     */
-    private function collectImages(
-        User $user,
-        array $uploads,
-        array $googlePickerRawItems,
-        ?Project $project,
-    ): array {
-        $images = [];
-
-        foreach ($uploads as $upload) {
-            if (! $upload instanceof UploadedFile || count($images) >= self::MAX_IMAGES) {
-                continue;
-            }
-
-            $added = $this->appendImageFromPath($images, $upload->getRealPath(), $upload->getMimeType());
-            if (! $added) {
-                continue;
-            }
-        }
-
-        foreach (GooglePickerItems::parse($googlePickerRawItems) as $item) {
-            if (count($images) >= self::MAX_IMAGES) {
-                break;
-            }
-
-            try {
-                [$tmp, $mime] = $this->googlePhotos->downloadPickedMedia(
-                    $user,
-                    $item['baseUrl'],
-                    $item['mimeType'],
-                    preferFullResolution: false,
-                );
-
-                try {
-                    $this->appendImageFromPath($images, $tmp, $mime);
-                } finally {
-                    if (is_file($tmp)) {
-                        @unlink($tmp);
-                    }
-                }
-            } catch (\Throwable $e) {
-                AppLogger::debug('portfolio.description_ai.chunk_failed', [], $e);
-
-                continue;
-            }
-        }
-
-        if ($project !== null && count($images) < self::MAX_IMAGES) {
-            $project->loadMissing(['photos' => fn ($q) => $q->orderBy('sort_order')]);
-
-            foreach ($project->photos as $photo) {
-                if (count($images) >= self::MAX_IMAGES) {
-                    break;
-                }
-
-                if (! filled($photo->path) || ! Storage::disk('public')->exists($photo->path)) {
-                    continue;
-                }
-
-                $this->appendImageFromPath($images, Storage::disk('public')->path($photo->path), 'image/webp');
-            }
-        }
-
-        return $images;
-    }
-
-    /**
-     * @param  list<array{bytes: string, mime: string}>  $images
-     */
-    private function appendImageFromPath(array &$images, string|false|null $path, ?string $mime): bool
-    {
-        if (! is_string($path) || $path === '' || ! is_file($path)) {
-            return false;
-        }
-
-        $bytes = file_get_contents($path);
-        if ($bytes === false || $bytes === '') {
-            return false;
-        }
-
-        $mime = $this->normalizeMime($mime, $path);
-        $images[] = [
-            'bytes' => $bytes,
-            'mime' => $mime,
-        ];
-
-        return true;
-    }
-
-    private function normalizeMime(?string $mime, string $path): string
-    {
-        $mime = strtolower(trim((string) $mime));
-        if ($mime === '' && function_exists('mime_content_type')) {
-            $detected = @mime_content_type($path);
-            $mime = is_string($detected) ? strtolower($detected) : '';
-        }
-        if ($mime === '' || ! str_starts_with($mime, 'image/')) {
-            return 'image/jpeg';
-        }
-
-        return $mime;
     }
 
     /**

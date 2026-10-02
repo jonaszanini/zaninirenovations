@@ -14,6 +14,12 @@ class ProjectPhotoLabelService
 {
     private const LABEL_TEXT = 'Before';
 
+    /** 1 = solid white, 0 = invisible. */
+    private const LABEL_OPACITY = 0.35;
+
+    /** Counter-clockwise so the word rises from the start toward the end. */
+    private const LABEL_ANGLE = 30;
+
     public function applyBeforeLabel(string $absolutePath): void
     {
         if (! is_file($absolutePath)) {
@@ -117,8 +123,8 @@ class ProjectPhotoLabelService
             $draw->setFontSize($metrics['fontSize']);
             $draw->setTextAntialias(true);
             $draw->setGravity(\Imagick::GRAVITY_CENTER);
-            $draw->setFillColor(new \ImagickPixel('rgba(255,255,255,0.5)'));
-            $im->annotateImage($draw, 0, 0, 0, $metrics['text']);
+            $draw->setFillColor(new \ImagickPixel('rgba(255,255,255,'.self::LABEL_OPACITY.')'));
+            $im->annotateImage($draw, 0, 0, self::LABEL_ANGLE, $metrics['text']);
 
             $im->setImageFormat('webp');
             $im->setImageCompressionQuality($this->webpQuality());
@@ -218,25 +224,26 @@ class ProjectPhotoLabelService
 
         $metrics = $this->labelMetrics($width, $height);
         $font = $this->fontPath();
-        $bbox = imagettfbbox($metrics['fontSize'], 0, $font, $metrics['text']);
+        $bbox = imagettfbbox($metrics['fontSize'], self::LABEL_ANGLE, $font, $metrics['text']);
         if ($bbox === false) {
             throw new RuntimeException('Could not measure label text.');
         }
 
-        $minX = min($bbox[0], $bbox[6]);
-        $maxX = max($bbox[2], $bbox[4]);
-        $minY = min($bbox[5], $bbox[7]);
-        $maxY = max($bbox[1], $bbox[3]);
-        $textWidth = $maxX - $minX;
-        $textHeight = $maxY - $minY;
-        $textX = (int) round(($width - $textWidth) / 2 - $minX);
-        $textY = (int) round(($height - $textHeight) / 2 - $minY);
+        $xs = [$bbox[0], $bbox[2], $bbox[4], $bbox[6]];
+        $ys = [$bbox[1], $bbox[3], $bbox[5], $bbox[7]];
+        $minX = min($xs);
+        $maxX = max($xs);
+        $minY = min($ys);
+        $maxY = max($ys);
+        $textX = (int) round($width / 2 - ($minX + $maxX) / 2);
+        $textY = (int) round($height / 2 - ($minY + $maxY) / 2);
 
         imagealphablending($img, true);
         imagesavealpha($img, true);
 
-        $white = imagecolorallocatealpha($img, 255, 255, 255, 64);
-        imagettftext($img, $metrics['fontSize'], 0, $textX, $textY, $white, $font, $metrics['text']);
+        $alpha = (int) round((1 - self::LABEL_OPACITY) * 127);
+        $white = imagecolorallocatealpha($img, 255, 255, 255, $alpha);
+        imagettftext($img, $metrics['fontSize'], self::LABEL_ANGLE, $textX, $textY, $white, $font, $metrics['text']);
     }
 
     private function resolveCwebpBinary(): ?string
