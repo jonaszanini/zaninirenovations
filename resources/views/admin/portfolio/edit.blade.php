@@ -65,14 +65,30 @@
         <div class="admin-form-group" id="admin-photo-order-group">
           <div class="admin-form-group__label-row">
             <span class="admin-form-group-label">Photos</span>
-            <button type="button" class="admin-btn admin-btn--danger admin-btn--sm" id="admin-photo-bulk-delete" disabled
-              data-url="{{ route('admin.portfolio.photos.bulk-destroy', $project) }}"
-              title="Delete selected photos"
-              aria-label="Delete selected photos">
-              <i class="fa fa-trash" aria-hidden="true"></i> Delete
-            </button>
+            <div class="admin-photo-bulk-actions">
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-photo-bulk-label" id="admin-photo-bulk-before" disabled
+                data-url="{{ route('admin.portfolio.photos.bulk-label', $project) }}"
+                data-label="Before"
+                title="Add Before label to selected photos"
+                aria-label="Add Before label to selected photos">
+                Before
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-photo-bulk-label" id="admin-photo-bulk-during" disabled
+                data-url="{{ route('admin.portfolio.photos.bulk-label', $project) }}"
+                data-label="During"
+                title="Add During label to selected photos"
+                aria-label="Add During label to selected photos">
+                During
+              </button>
+              <button type="button" class="admin-btn admin-btn--danger admin-btn--sm" id="admin-photo-bulk-delete" disabled
+                data-url="{{ route('admin.portfolio.photos.bulk-destroy', $project) }}"
+                title="Delete selected photos"
+                aria-label="Delete selected photos">
+                <i class="fa fa-trash" aria-hidden="true"></i> Delete
+              </button>
+            </div>
           </div>
-          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before or During label (saved as WebP). Select photos with the checkbox, then use <strong>Delete</strong> or <strong>Apply AI improvements</strong> below.</p>
+          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before or During label (saved as WebP). Select photos with the checkbox, then use <strong>Before</strong>, <strong>During</strong>, <strong>Delete</strong>, or <strong>Apply AI improvements</strong> below.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
@@ -354,9 +370,17 @@
         if (!list || !form || !fields || typeof Sortable === 'undefined') return;
 
         var deleteBtn = document.getElementById('admin-photo-bulk-delete');
+        var labelButtons = document.querySelectorAll('.js-photo-bulk-label');
 
         function selectedPhotoBoxes() {
           return list.querySelectorAll('.js-portfolio-ai-existing:checked');
+        }
+
+        function setBulkActionsDisabled(disabled) {
+          if (deleteBtn) deleteBtn.disabled = disabled;
+          Array.prototype.forEach.call(labelButtons, function (btn) {
+            btn.disabled = disabled;
+          });
         }
 
         function syncPhotoSelection() {
@@ -364,7 +388,19 @@
             var box = item.querySelector('.js-portfolio-ai-existing');
             item.classList.toggle('is-ai-selected', !!(box && box.checked));
           });
-          if (deleteBtn) deleteBtn.disabled = selectedPhotoBoxes().length < 1;
+          setBulkActionsDisabled(selectedPhotoBoxes().length < 1);
+        }
+
+        function applyLabeledPhotoUrls(photos) {
+          (photos || []).forEach(function (photo) {
+            if (!photo || photo.id == null || !photo.url) return;
+            var item = list.querySelector('.admin-photo-sortable-item[data-photo-id="' + photo.id + '"]');
+            if (!item) return;
+            var thumb = item.querySelector('img');
+            if (thumb) thumb.src = photo.url;
+            var editBtn = item.querySelector('.js-edit-photo');
+            if (editBtn) editBtn.setAttribute('data-image-url', photo.url);
+          });
         }
 
         function refreshCoverBadge() {
@@ -434,7 +470,7 @@
               Array.prototype.forEach.call(boxes, function (box) {
                 fd.append('photo_ids[]', box.value);
               });
-              deleteBtn.disabled = true;
+              setBulkActionsDisabled(true);
               fetch(deleteBtn.getAttribute('data-url'), {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -485,6 +521,63 @@
             });
           });
         }
+
+        Array.prototype.forEach.call(labelButtons, function (labelBtn) {
+          labelBtn.addEventListener('click', function () {
+            var boxes = selectedPhotoBoxes();
+            var count = boxes.length;
+            var label = labelBtn.getAttribute('data-label') || '';
+            if (!count || labelBtn.disabled || !label) return;
+            var message = count === 1
+              ? 'Add a ' + label + ' label to this photo? The word is written onto the image.'
+              : 'Add a ' + label + ' label to ' + count + ' selected photos? The word is written onto each image.';
+            var ask = (window.AdminDialog && window.AdminDialog.confirm)
+              ? window.AdminDialog.confirm(message, { title: label + ' label', confirmLabel: 'Add label' })
+              : Promise.resolve(window.confirm(message));
+            ask.then(function (ok) {
+              if (!ok) return;
+              var fd = new FormData();
+              fd.append('label', label);
+              Array.prototype.forEach.call(boxes, function (box) {
+                fd.append('photo_ids[]', box.value);
+              });
+              setBulkActionsDisabled(true);
+              fetch(labelBtn.getAttribute('data-url'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                  'Accept': 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest',
+                  'X-CSRF-TOKEN': csrf,
+                },
+                body: fd,
+              }).then(function (res) {
+                return res.text().then(function (text) {
+                  var body = null;
+                  if (text) {
+                    try { body = JSON.parse(text); } catch (ignore) { body = null; }
+                  }
+                  if (body && body.photos) applyLabeledPhotoUrls(body.photos);
+                  if (!res.ok) {
+                    var msg = (body && body.message) ? body.message : ('Could not add the ' + label + ' label (HTTP ' + res.status + ').');
+                    if (body && body.errors && typeof body.errors === 'object') {
+                      var keys = Object.keys(body.errors);
+                      if (keys.length && body.errors[keys[0]] && body.errors[keys[0]][0]) {
+                        msg = body.errors[keys[0]][0];
+                      }
+                    }
+                    throw new Error(msg);
+                  }
+                  return body;
+                });
+              }).catch(function (err) {
+                window.alert(err && err.message ? err.message : 'Could not add the label.');
+              }).then(function () {
+                syncPhotoSelection();
+              });
+            });
+          });
+        });
 
         form.addEventListener('submit', function () {
           fields.innerHTML = '';
@@ -913,10 +1006,12 @@
             badge.textContent = 'Homepage cover';
             first.insertBefore(badge, first.firstChild);
           }
+          var noneSelected = list.querySelectorAll('.js-portfolio-ai-existing:checked').length < 1;
           var pageDelete = document.getElementById('admin-photo-bulk-delete');
-          if (pageDelete) {
-            pageDelete.disabled = list.querySelectorAll('.js-portfolio-ai-existing:checked').length < 1;
-          }
+          if (pageDelete) pageDelete.disabled = noneSelected;
+          document.querySelectorAll('.js-photo-bulk-label').forEach(function (btn) {
+            btn.disabled = noneSelected;
+          });
           var ai = document.getElementById('portfolio-ai-improve');
           if (ai) {
             var slots = parseInt(ai.getAttribute('data-remaining-slots') || '0', 10);

@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Project;
 use App\Models\ProjectPhoto;
 use App\Services\PortfolioPhotoAiImprovementService;
+use App\Services\ProjectPhotoLabelService;
 use Illuminate\Support\Facades\Storage;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
@@ -24,6 +25,8 @@ class PortfolioPhotoAiImproveTest extends IntegrationTestCase
             ->assertSee('js-portfolio-ai-existing', false)
             ->assertSee('aria-label="Select photo"', false)
             ->assertSee('id="admin-photo-bulk-delete"', false)
+            ->assertSee('id="admin-photo-bulk-before"', false)
+            ->assertSee('id="admin-photo-bulk-during"', false)
             ->assertSee('Apply AI improvements', false)
             ->assertSee('id="admin-photo-edit-delete"', false)
             ->assertSee('id="admin-photo-edit-ai"', false)
@@ -89,6 +92,28 @@ class PortfolioPhotoAiImproveTest extends IntegrationTestCase
 
         $this->assertDatabaseMissing('project_photos', ['id' => $photo->id]);
         Storage::disk('public')->assertMissing($relative);
+    }
+
+    public function test_bulk_label_writes_before_onto_selected_photos(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('public');
+        $relative = 'project-photos/bulk-label-'.uniqid().'.webp';
+        $photo = $this->makePhoto($relative, 'original-bytes');
+
+        $this->mock(ProjectPhotoLabelService::class, function ($mock) {
+            $mock->shouldReceive('applyBeforeLabel')->once();
+        });
+
+        $this->postJson(route('admin.portfolio.photos.bulk-label', $photo->project), [
+            'photo_ids' => [$photo->id],
+            'label' => 'Before',
+        ])
+            ->assertOk()
+            ->assertJsonPath('label', 'Before')
+            ->assertJsonPath('photos.0.id', $photo->id);
+
+        $this->assertNotNull($photo->fresh()->updated_at);
     }
 
     public function test_apply_without_a_photo_is_rejected(): void

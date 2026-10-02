@@ -581,6 +581,63 @@ class ProjectController extends Controller
         ]);
     }
 
+    public function labelPhotos(Request $request, Project $project): JsonResponse
+    {
+        $validated = $request->validate([
+            'photo_ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'photo_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('project_photos', 'id')->where(fn ($q) => $q->where('project_id', $project->id)),
+            ],
+            'label' => ['required', Rule::in(['Before', 'During'])],
+        ]);
+
+        $photos = ProjectPhoto::query()
+            ->where('project_id', $project->id)
+            ->whereIn('id', $validated['photo_ids'])
+            ->get();
+
+        $disk = Storage::disk('public');
+        foreach ($photos as $photo) {
+            if (! $disk->exists($photo->path)) {
+                return response()->json(['message' => 'A selected photo file is missing on disk.'], 404);
+            }
+        }
+
+        $converter = app(ProjectPhotoWebpStorage::class);
+        $label = $validated['label'];
+        $updated = [];
+
+        try {
+            foreach ($photos as $photo) {
+                $fullPath = $disk->path($photo->path);
+                $this->applyPhotoLabel($fullPath, $label);
+                $converter->recompressWebpAtPath($fullPath);
+                clearstatcache(true, $fullPath);
+                $photo->touch();
+                $converter->syncPublicMirror($photo->path);
+                $photo->refresh();
+                $updated[] = [
+                    'id' => $photo->id,
+                    'url' => $photo->url(),
+                ];
+            }
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Could not add the '.$label.' label: '.$e->getMessage(),
+                'photos' => $updated,
+            ], 500);
+        }
+
+        return response()->json([
+            'label' => $label,
+            'photos' => $updated,
+        ]);
+    }
+
     public function rotatePhoto(Request $request, Project $project, ProjectPhoto $photo)
     {
         abort_unless((int) $photo->project_id === (int) $project->id, 404);

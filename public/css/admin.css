@@ -1012,6 +1012,15 @@ body.admin-body {
   margin-bottom: 0;
 }
 
+.admin-photo-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
 /* Canonical field styling — always use class="admin-input" on controls.
    Legacy bare inputs inside .admin-form-group remain supported. */
 .admin-input,
