@@ -21,8 +21,17 @@ class ProjectPhotoLabelService
     /** 1 = solid white, 0 = invisible. */
     private const LABEL_OPACITY = 0.35;
 
-    /** Counter-clockwise so the word rises from the start toward the end. */
-    private const LABEL_ANGLE = 30;
+    /** Dark drop shadow so the pale label stays readable on white. */
+    private const LABEL_SHADOW_OPACITY = 0.45;
+
+    /**
+     * Word runs upward: the first letter sits lower than the last.
+     * Imagick annotateImage is clockwise-positive, so a negative angle rises.
+     * GD imagettftext is counter-clockwise-positive, so the same rise is positive.
+     */
+    private const LABEL_ANGLE_IMAGICK = -30;
+
+    private const LABEL_ANGLE_GD = 30;
 
     public function applyBeforeLabel(string $absolutePath): void
     {
@@ -111,6 +120,11 @@ class ProjectPhotoLabelService
         ];
     }
 
+    private function shadowOffsetPx(int $fontSize): int
+    {
+        return (int) max(2, min(8, round($fontSize * 0.03)));
+    }
+
     private function imagickAvailable(): bool
     {
         if (! extension_loaded('imagick') || ! class_exists(\Imagick::class)) {
@@ -143,8 +157,11 @@ class ProjectPhotoLabelService
             $draw->setFontSize($metrics['fontSize']);
             $draw->setTextAntialias(true);
             $draw->setGravity(\Imagick::GRAVITY_CENTER);
+            $offset = $this->shadowOffsetPx($metrics['fontSize']);
+            $draw->setFillColor(new \ImagickPixel('rgba(0,0,0,'.self::LABEL_SHADOW_OPACITY.')'));
+            $im->annotateImage($draw, $offset, $offset, self::LABEL_ANGLE_IMAGICK, $metrics['text']);
             $draw->setFillColor(new \ImagickPixel('rgba(255,255,255,'.self::LABEL_OPACITY.')'));
-            $im->annotateImage($draw, 0, 0, self::LABEL_ANGLE, $metrics['text']);
+            $im->annotateImage($draw, 0, 0, self::LABEL_ANGLE_IMAGICK, $metrics['text']);
 
             $im->setImageFormat('webp');
             $im->setImageCompressionQuality($this->webpQuality());
@@ -244,7 +261,7 @@ class ProjectPhotoLabelService
 
         $metrics = $this->labelMetrics($width, $height);
         $font = $this->fontPath();
-        $bbox = imagettfbbox($metrics['fontSize'], self::LABEL_ANGLE, $font, $metrics['text']);
+        $bbox = imagettfbbox($metrics['fontSize'], self::LABEL_ANGLE_GD, $font, $metrics['text']);
         if ($bbox === false) {
             throw new RuntimeException('Could not measure label text.');
         }
@@ -261,9 +278,14 @@ class ProjectPhotoLabelService
         imagealphablending($img, true);
         imagesavealpha($img, true);
 
+        $offset = $this->shadowOffsetPx($metrics['fontSize']);
+        $shadowAlpha = (int) round((1 - self::LABEL_SHADOW_OPACITY) * 127);
+        $shadow = imagecolorallocatealpha($img, 0, 0, 0, $shadowAlpha);
+        imagettftext($img, $metrics['fontSize'], self::LABEL_ANGLE_GD, $textX + $offset, $textY + $offset, $shadow, $font, $metrics['text']);
+
         $alpha = (int) round((1 - self::LABEL_OPACITY) * 127);
         $white = imagecolorallocatealpha($img, 255, 255, 255, $alpha);
-        imagettftext($img, $metrics['fontSize'], self::LABEL_ANGLE, $textX, $textY, $white, $font, $metrics['text']);
+        imagettftext($img, $metrics['fontSize'], self::LABEL_ANGLE_GD, $textX, $textY, $white, $font, $metrics['text']);
     }
 
     private function resolveCwebpBinary(): ?string
