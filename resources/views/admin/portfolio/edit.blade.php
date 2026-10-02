@@ -333,6 +333,7 @@
         var activeUrl = '';
         var stage = modal.querySelector('.admin-crop-stage');
         var straightenFine = 0;
+        var rotationZoom = 1;
 
         function aspectRatioValue(mode) {
           if (mode === 'free') return NaN;
@@ -353,6 +354,7 @@
             btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
           });
           cropper.setAspectRatio(aspectRatioValue(mode));
+          fitRotationCover(false);
         }
 
         function resetAspectControls() {
@@ -373,6 +375,7 @@
 
         function resetRotateControls() {
           straightenFine = 0;
+          rotationZoom = 1;
           if (straightenSlider) {
             straightenSlider.value = '0';
             straightenSlider.disabled = true;
@@ -393,6 +396,110 @@
           if (!rotateValueEl || !cropper) return;
           var deg = cropper.getImageData().rotate || 0;
           rotateValueEl.textContent = deg.toFixed(1) + '°';
+        }
+
+        // Extra scale so a rotated photo still covers the crop box (no empty corners).
+        // rotationZoom is only the scale this helper added, so manual crop zoom is kept
+        // and the frame zooms back out as the angle returns toward a right angle.
+        function relativeCoverScale() {
+          var canvas = cropper.getCanvasData();
+          var image = cropper.getImageData();
+          var box = cropper.getCropBoxData();
+          var iw = image.width;
+          var ih = image.height;
+          if (!iw || !ih || !box.width || !box.height) return 1;
+
+          var theta = ((image.rotate || 0) * Math.PI) / 180;
+          var cos = Math.cos(theta);
+          var sin = Math.sin(theta);
+          var cx = canvas.left + (image.left || 0) + iw / 2;
+          var cy = canvas.top + (image.top || 0) + ih / 2;
+          var pad = 1;
+          var corners = [
+            [box.left, box.top],
+            [box.left + box.width, box.top],
+            [box.left, box.top + box.height],
+            [box.left + box.width, box.top + box.height]
+          ];
+          var s = 0;
+          for (var i = 0; i < corners.length; i++) {
+            var px = corners[i][0] - cx;
+            var py = corners[i][1] - cy;
+            var lx = Math.abs(px * cos + py * sin) + pad;
+            var ly = Math.abs(-px * sin + py * cos) + pad;
+            s = Math.max(s, (lx * 2) / iw, (ly * 2) / ih);
+          }
+          return s;
+        }
+
+        function zoomBy(factor) {
+          if (!cropper || !factor || Math.abs(factor - 1) < 0.0005) return;
+          var canvas = cropper.getCanvasData();
+          var box = cropper.getCropBoxData();
+          var before = canvas.naturalWidth ? canvas.width / canvas.naturalWidth : 0;
+          if (!before) return;
+          cropper.zoomTo(before * factor, {
+            x: box.left + box.width / 2,
+            y: box.top + box.height / 2
+          });
+          var afterCanvas = cropper.getCanvasData();
+          var after = afterCanvas.naturalWidth ? afterCanvas.width / afterCanvas.naturalWidth : before;
+          var actual = after / before;
+          if (actual > 0 && isFinite(actual)) {
+            rotationZoom *= actual;
+          }
+        }
+
+        function fitRotationCover(allowZoomOut) {
+          if (!cropper) return;
+          var guard = 0;
+          while (guard < 3) {
+            guard += 1;
+            var s = relativeCoverScale();
+            if (!isFinite(s) || s <= 0) return;
+            if (s > 1.001) {
+              zoomBy(s);
+              continue;
+            }
+            if (allowZoomOut && rotationZoom > 1.001 && s < 0.999) {
+              zoomBy(Math.max(s, 1 / rotationZoom));
+              continue;
+            }
+            return;
+          }
+        }
+
+        // Quarter turns show the whole photo in its new orientation. The slider
+        // then zooms that frame just enough to hide the empty corners.
+        function refitFullFrame() {
+          if (!cropper) return;
+          var container = cropper.getContainerData();
+          var image = cropper.getImageData();
+          var degrees = image.rotate || 0;
+          var rad = degrees * Math.PI / 180;
+          var absCos = Math.abs(Math.cos(rad));
+          var absSin = Math.abs(Math.sin(rad));
+          var aabbW = image.naturalWidth * absCos + image.naturalHeight * absSin;
+          var aabbH = image.naturalWidth * absSin + image.naturalHeight * absCos;
+          if (!aabbW || !aabbH || !container.width || !container.height) return;
+          var ratio = Math.min(container.width / aabbW, container.height / aabbH);
+          cropper.zoomTo(ratio);
+          var canvas = cropper.getCanvasData();
+          cropper.setCropBoxData({
+            left: canvas.left,
+            top: canvas.top,
+            width: canvas.width,
+            height: canvas.height
+          });
+          rotationZoom = 1;
+        }
+
+        function rotateQuarter(delta) {
+          if (!cropper) return;
+          cropper.rotate(delta);
+          refitFullFrame();
+          fitRotationCover(true);
+          updateRotateDisplay();
         }
 
         function sizeCropStagePx() {
@@ -448,11 +555,16 @@
           sizeCropStagePx();
           if (cropper && typeof cropper.resize === 'function') {
             try { cropper.resize(); } catch (e) { /* ignore */ }
+            fitRotationCover(true);
           }
         });
 
         modal.querySelectorAll('[data-edit-modal-dismiss]').forEach(function (el) {
           el.addEventListener('click', closeModal);
+        });
+
+        img.addEventListener('cropend', function () {
+          fitRotationCover(false);
         });
 
         document.addEventListener('keydown', function (e) {
@@ -470,6 +582,7 @@
             if (delta !== 0) {
               cropper.rotate(delta);
               straightenFine = nextFine;
+              fitRotationCover(true);
             }
             updateRotateDisplay();
           });
@@ -477,17 +590,13 @@
 
         if (rotateCcwBtn) {
           rotateCcwBtn.addEventListener('click', function () {
-            if (!cropper) return;
-            cropper.rotate(-90);
-            updateRotateDisplay();
+            rotateQuarter(-90);
           });
         }
 
         if (rotateCwBtn) {
           rotateCwBtn.addEventListener('click', function () {
-            if (!cropper) return;
-            cropper.rotate(90);
-            updateRotateDisplay();
+            rotateQuarter(90);
           });
         }
 
