@@ -61,9 +61,15 @@
       </div>
 
       @if ($project->photos->isNotEmpty())
-        <div class="admin-form-group">
-          <label>Photos — order &amp; remove</label>
-          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> on a photo to straighten, rotate, crop, or add a Before label (saved as WebP). Check <strong>Improve</strong>, then <strong>Apply AI improvements</strong> below, to enhance that saved photo in place. Check “Remove” to delete it from storage when you save.</p>
+        <div class="admin-form-group" id="admin-photo-order-group">
+          <div class="admin-form-group__label-row">
+            <span class="admin-form-group-label">Photos</span>
+            <button type="button" class="admin-btn admin-btn--danger admin-btn--sm" id="admin-photo-bulk-delete" disabled
+              data-url="{{ route('admin.portfolio.photos.bulk-destroy', $project) }}">
+              <i class="fa fa-trash" aria-hidden="true"></i> Delete
+            </button>
+          </div>
+          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before label (saved as WebP). Select photos with the checkbox, then use <strong>Delete</strong> or <strong>Apply AI improvements</strong> below.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
@@ -73,6 +79,10 @@
                     <span class="admin-photo-cover-badge">Homepage cover</span>
                   @endif
                   <img src="{{ $photo->url() }}" alt="">
+                  <label class="admin-photo-select admin-checkbox admin-checkbox--sm">
+                    <input type="checkbox" class="admin-checkbox__input js-portfolio-ai-existing" value="{{ $photo->id }}" aria-label="Select photo">
+                    <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                  </label>
                 </div>
                 <div class="admin-photo-sortable-actions">
                   <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm admin-photo-edit-btn js-edit-photo"
@@ -82,16 +92,6 @@
                     Edit
                   </button>
                 </div>
-                <label class="admin-photo-improve-label admin-checkbox admin-checkbox--sm">
-                  <input type="checkbox" class="admin-checkbox__input js-portfolio-ai-existing" value="{{ $photo->id }}">
-                  <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                  <span class="admin-checkbox__text">Improve</span>
-                </label>
-                <label class="admin-photo-remove-label admin-checkbox admin-checkbox--sm">
-                  <input type="checkbox" class="admin-checkbox__input" name="delete_photos[]" value="{{ $photo->id }}">
-                  <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                  <span class="admin-checkbox__text">Remove</span>
-                </label>
               </li>
             @endforeach
           </ul>
@@ -131,7 +131,7 @@
           ])
         </div>
       @else
-        <p class="admin-form-help">Maximum of 15 photos reached. Remove one to add more.</p>
+        <p class="admin-form-help" id="admin-photo-cap-notice">Maximum of 15 photos reached. Delete one to add more.</p>
         @if (auth()->user()->googlePhotosToken)
           <div class="admin-google-photos-panel admin-google-photos-panel--compact">
             <div class="admin-google-photos-panel__head">
@@ -176,7 +176,9 @@
         <h2 id="admin-photo-edit-title" class="admin-modal-title">Edit photo</h2>
         <p class="admin-modal-hint">Straighten a tilted shot, rotate 90°, and crop the frame. Pick an aspect ratio below, or use <strong>Free</strong> to resize manually. The file on the server is replaced (WebP). Optionally add a <strong>Before</strong> label for before-and-after galleries.</p>
         <div class="admin-crop-stage">
-          <img id="admin-photo-edit-img" src="" alt="">
+          <div class="admin-crop-stage__frame">
+            <img id="admin-photo-edit-img" src="" alt="">
+          </div>
         </div>
         <div class="admin-crop-toolbar admin-crop-toolbar--rotate">
           <span class="admin-crop-toolbar__label">Straighten &amp; rotate</span>
@@ -284,19 +286,139 @@
         var fields = document.getElementById('admin-photo-sequence-fields');
         if (!list || !form || !fields || typeof Sortable === 'undefined') return;
 
+        var deleteBtn = document.getElementById('admin-photo-bulk-delete');
+
+        function selectedPhotoBoxes() {
+          return list.querySelectorAll('.js-portfolio-ai-existing:checked');
+        }
+
+        function syncPhotoSelection() {
+          list.querySelectorAll('.admin-photo-sortable-item').forEach(function (item) {
+            var box = item.querySelector('.js-portfolio-ai-existing');
+            item.classList.toggle('is-ai-selected', !!(box && box.checked));
+          });
+          if (deleteBtn) deleteBtn.disabled = selectedPhotoBoxes().length < 1;
+        }
+
+        function refreshCoverBadge() {
+          list.querySelectorAll('.admin-photo-cover-badge').forEach(function (badge) {
+            badge.remove();
+          });
+          var first = list.querySelector('.admin-photo-sortable-item .admin-photo-sortable-thumb');
+          if (!first) return;
+          var badge = document.createElement('span');
+          badge.className = 'admin-photo-cover-badge';
+          badge.textContent = 'Homepage cover';
+          first.insertBefore(badge, first.firstChild);
+        }
+
+        function bumpUploadSlots(freed) {
+          if (!freed) return;
+          var ai = document.getElementById('portfolio-ai-improve');
+          if (ai) {
+            var slots = parseInt(ai.getAttribute('data-remaining-slots') || '0', 10);
+            ai.setAttribute('data-remaining-slots', String(slots + freed));
+          }
+          var picker = document.querySelector('.admin-google-photos');
+          if (!picker) return;
+          var pickerSlots = parseInt(picker.getAttribute('data-max-total') || '0', 10);
+          picker.setAttribute('data-max-total', String(pickerSlots + freed));
+          if (picker.googlePhotosPicker && picker.googlePhotosPicker.refreshStatus) {
+            picker.googlePhotosPicker.refreshStatus();
+          }
+        }
+
         Sortable.create(list, {
           animation: 180,
           handle: '.admin-photo-drag-handle',
           ghostClass: 'admin-photo-sortable-ghost',
           dragClass: 'admin-photo-sortable-drag',
           forceFallback: true,
+          onEnd: refreshCoverBadge,
         });
+
+        list.addEventListener('change', function (event) {
+          var target = event.target;
+          if (!target || !target.classList || !target.classList.contains('js-portfolio-ai-existing')) return;
+          syncPhotoSelection();
+        });
+
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', function () {
+            var boxes = selectedPhotoBoxes();
+            var count = boxes.length;
+            if (!count || deleteBtn.disabled) return;
+            var atCap = !!document.getElementById('admin-photo-cap-notice');
+            var message = count === 1
+              ? 'Delete this photo? It is removed from storage.'
+              : 'Delete ' + count + ' selected photos? They are removed from storage.';
+            if (atCap) {
+              message += ' This page will refresh afterward so you can add photos again. Save other edits first if you need to keep them.';
+            }
+            var ask = (window.AdminDialog && window.AdminDialog.confirm)
+              ? window.AdminDialog.confirm(message, { title: 'Delete photos', confirmLabel: 'Delete', danger: true })
+              : Promise.resolve(window.confirm(message));
+            ask.then(function (ok) {
+              if (!ok) return;
+              var fd = new FormData();
+              Array.prototype.forEach.call(boxes, function (box) {
+                fd.append('photo_ids[]', box.value);
+              });
+              deleteBtn.disabled = true;
+              fetch(deleteBtn.getAttribute('data-url'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                  'Accept': 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest',
+                  'X-CSRF-TOKEN': csrf,
+                },
+                body: fd,
+              }).then(function (res) {
+                return res.text().then(function (text) {
+                  var body = null;
+                  if (text) {
+                    try { body = JSON.parse(text); } catch (ignore) { body = null; }
+                  }
+                  if (!res.ok) {
+                    var msg = (body && body.message) ? body.message : ('Could not delete the selected photos (HTTP ' + res.status + ').');
+                    if (body && body.errors && typeof body.errors === 'object') {
+                      var keys = Object.keys(body.errors);
+                      if (keys.length && body.errors[keys[0]] && body.errors[keys[0]][0]) {
+                        msg = body.errors[keys[0]][0];
+                      }
+                    }
+                    throw new Error(msg);
+                  }
+                  return body;
+                });
+              }).then(function () {
+                if (atCap) {
+                  window.location.reload();
+                  return;
+                }
+                Array.prototype.forEach.call(boxes, function (box) {
+                  var item = box.closest('.admin-photo-sortable-item');
+                  if (item) item.remove();
+                });
+                refreshCoverBadge();
+                bumpUploadSlots(count);
+                syncPhotoSelection();
+                if (!list.querySelector('.admin-photo-sortable-item')) {
+                  var group = document.getElementById('admin-photo-order-group');
+                  if (group) group.hidden = true;
+                }
+              }).catch(function (err) {
+                window.alert(err && err.message ? err.message : 'Could not delete the selected photos.');
+                syncPhotoSelection();
+              });
+            });
+          });
+        }
 
         form.addEventListener('submit', function () {
           fields.innerHTML = '';
           list.querySelectorAll('.admin-photo-sortable-item').forEach(function (li) {
-            var cb = li.querySelector('input[name="delete_photos[]"]');
-            if (cb && cb.checked) return;
             var id = li.getAttribute('data-photo-id');
             if (!id) return;
             var input = document.createElement('input');

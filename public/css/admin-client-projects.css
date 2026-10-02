@@ -3573,12 +3573,17 @@ a:hover .cp-expense-receipt-pdf {
 .cp-invoice-locked-field {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--admin-control-height, 44px);
   padding: 10px 14px;
-  background: #f9fafb;
-  border: 1px solid #d8dee4;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
-  color: #1f2937;
+  color: var(--admin-heading);
+  font-size: var(--admin-control-font-size, 0.95rem);
+}
+.cp-invoice-locked-field strong {
+  color: inherit;
+  font-weight: 600;
 }
 .cp-invoice-locked-total {
   margin-top: 6px;

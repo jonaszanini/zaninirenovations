@@ -22,7 +22,10 @@ class PortfolioPhotoAiImproveTest extends IntegrationTestCase
         $this->get(route('admin.portfolio.edit', $photo->project))
             ->assertOk()
             ->assertSee('js-portfolio-ai-existing', false)
-            ->assertSee('Check <strong>Improve</strong>', false)
+            ->assertSee('aria-label="Select photo"', false)
+            ->assertSee('id="admin-photo-bulk-delete"', false)
+            ->assertSee('Apply AI improvements', false)
+            ->assertDontSee('name="delete_photos[]"', false)
             ->assertSee('value="'.$photo->id.'"', false);
     }
 
@@ -64,6 +67,24 @@ class PortfolioPhotoAiImproveTest extends IntegrationTestCase
                 @unlink($mirror);
             }
         }
+    }
+
+    public function test_bulk_delete_removes_selected_saved_photos(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('public');
+        $relative = 'project-photos/bulk-delete-'.uniqid().'.webp';
+        $photo = $this->makePhoto($relative, 'original-bytes');
+
+        $this->postJson(route('admin.portfolio.photos.bulk-destroy', $photo->project), [
+            'photo_ids' => [$photo->id],
+        ])
+            ->assertOk()
+            ->assertJsonPath('remaining', 0)
+            ->assertJsonPath('deleted.0', $photo->id);
+
+        $this->assertDatabaseMissing('project_photos', ['id' => $photo->id]);
+        Storage::disk('public')->assertMissing($relative);
     }
 
     public function test_apply_without_a_photo_is_rejected(): void

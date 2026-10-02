@@ -64,7 +64,9 @@
     var createSessionUrl = root.getAttribute('data-picker-create-url');
     var mediaUrlTemplate = root.getAttribute('data-picker-media-url-template');
     var thumbnailProxyUrl = root.getAttribute('data-picker-thumbnail-url') || '';
-    var maxTotal = parseInt(root.getAttribute('data-max-total') || '15', 10);
+    function maxTotal() {
+      return parseInt(root.getAttribute('data-max-total') || '15', 10);
+    }
     var statusMode = root.getAttribute('data-status-mode') || 'total';
     var formSync = root.getAttribute('data-form-sync') !== 'false';
     var btnOpen = root.querySelector('[data-google-open-picker]');
@@ -97,13 +99,13 @@
       var picked = pickedTileCount();
       var checked = selectedCount();
       status.textContent =
-        picked + ' from Google (' + checked + ' checked) · ' + files + ' uploads · max ' + maxTotal + ' ' + maxSuffix();
+        picked + ' from Google (' + checked + ' checked) · ' + files + ' uploads · max ' + maxTotal() + ' ' + maxSuffix();
       root.dispatchEvent(new CustomEvent('admin:google-photos-changed', { bubbles: true }));
     }
 
     function applyDefaultChecks() {
       var files = uploadCount();
-      var maxGoogle = Math.max(0, maxTotal - files);
+      var maxGoogle = Math.max(0, maxTotal() - files);
       grid.querySelectorAll('input[data-picker-checkbox]').forEach(function (c) {
         c.checked = true;
       });
@@ -117,15 +119,15 @@
 
     function enforceMax(checkbox) {
       var files = uploadCount();
-      var maxGoogle = Math.max(0, maxTotal - files);
+      var maxGoogle = Math.max(0, maxTotal() - files);
       if (!checkbox.checked) return;
       if (selectedCount() > maxGoogle) {
         checkbox.checked = false;
         if (status) {
           var slotWord = maxSuffix() === 'more' ? 'more' : 'total';
           status.textContent = maxGoogle < 1
-            ? 'No Google photo slots left — remove some uploads first (max ' + maxTotal + ' ' + slotWord + ').'
-            : 'Only ' + maxGoogle + ' Google photo' + (maxGoogle === 1 ? '' : 's') + ' can be checked with your current uploads (max ' + maxTotal + ' ' + slotWord + ').';
+            ? 'No Google photo slots left — remove some uploads first (max ' + maxTotal() + ' ' + slotWord + ').'
+            : 'Only ' + maxGoogle + ' Google photo' + (maxGoogle === 1 ? '' : 's') + ' can be checked with your current uploads (max ' + maxTotal() + ' ' + slotWord + ').';
         }
       }
     }
@@ -286,7 +288,7 @@
       btnOpen.disabled = true;
       try {
         var files = uploadCount();
-        var allowedSlots = Math.max(0, maxTotal - files);
+        var allowedSlots = Math.max(0, maxTotal() - files);
         if (allowedSlots < 1) throw new Error('No free slots left for Google photos. Remove selected uploads first.');
         var popup = window.open('', '_blank');
         if (!popup) throw new Error('Popup blocked. Allow popups for this site and try again.');
@@ -332,7 +334,7 @@
       getCheckedPayloads: getCheckedPayloads,
       getCheckedCount: selectedCount,
       getUploadCount: uploadCount,
-      getMaxTotal: function () { return maxTotal; },
+      getMaxTotal: function () { return maxTotal(); },
       refreshStatus: refreshStatus,
       applyDefaultChecks: applyDefaultChecks,
       clearPickedItems: function () {

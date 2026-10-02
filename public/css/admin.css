@@ -1940,28 +1940,25 @@ details[open] > summary.admin-chevron-summary::after {
   box-shadow: var(--admin-shadow-md);
 }
 
-.admin-photo-improve-label,
-.admin-photo-remove-label {
-  font-size: 0.8rem;
-  cursor: pointer;
+.admin-photo-select {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  gap: 0;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 500;
-  margin: 0;
-  min-height: 44px;
-  width: 100%;
-  box-sizing: border-box;
+  justify-content: center;
+  background: transparent;
 }
 
-.admin-photo-improve-label {
-  color: var(--admin-text);
-}
-
-.admin-photo-remove-label {
-  color: var(--admin-muted);
+.admin-photo-select .admin-checkbox__mark {
+  background: var(--admin-input-bg);
+  box-shadow: var(--admin-shadow-md);
 }
 
 .admin-photo-sortable-item.is-ai-selected {
@@ -2179,6 +2176,58 @@ details[open] > summary.admin-chevron-summary::after {
   overflow: hidden;
   position: relative;
   box-sizing: border-box;
+  /* Room for Cropper's edge handles. A full-height photo otherwise sits flush
+     with this box and overflow clips the bottom squares. */
+  padding: 12px;
+}
+
+#admin-photo-edit-modal .admin-crop-stage__frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Cropper's default edge squares are 5px and disappear on the photo edge.
+   Keep them small, but large enough to see on the inset below the frame. */
+#admin-photo-edit-modal .cropper-point {
+  width: 10px;
+  height: 10px;
+  opacity: 1;
+  background-color: #39f;
+}
+
+#admin-photo-edit-modal .cropper-point.point-e,
+#admin-photo-edit-modal .cropper-point.point-w {
+  margin-top: -5px;
+}
+
+#admin-photo-edit-modal .cropper-point.point-n,
+#admin-photo-edit-modal .cropper-point.point-s {
+  margin-left: -5px;
+}
+
+#admin-photo-edit-modal .cropper-point.point-n,
+#admin-photo-edit-modal .cropper-point.point-ne,
+#admin-photo-edit-modal .cropper-point.point-nw {
+  top: -5px;
+}
+
+#admin-photo-edit-modal .cropper-point.point-s,
+#admin-photo-edit-modal .cropper-point.point-se,
+#admin-photo-edit-modal .cropper-point.point-sw {
+  bottom: -5px;
+}
+
+#admin-photo-edit-modal .cropper-point.point-e,
+#admin-photo-edit-modal .cropper-point.point-ne,
+#admin-photo-edit-modal .cropper-point.point-se {
+  right: -5px;
+}
+
+#admin-photo-edit-modal .cropper-point.point-w,
+#admin-photo-edit-modal .cropper-point.point-nw,
+#admin-photo-edit-modal .cropper-point.point-sw {
+  left: -5px;
 }
 
 #admin-photo-edit-modal .admin-crop-stage img {

@@ -117,7 +117,6 @@
     if (!applyBtn) return;
     if (!fileInput && !document.querySelector('.js-portfolio-ai-existing')) return;
 
-    bindExistingPhotoChecks();
 
     function setStatus(message, isError) {
       if (!statusEl) return;
@@ -145,6 +144,12 @@
       return googleRoot.googlePhotosPicker.getCheckedPayloads();
     }
 
+    function remainingSlots() {
+      var fromDom = parseInt(root.getAttribute('data-remaining-slots') || '', 10);
+      if (!isNaN(fromDom)) return fromDom;
+      return maxTotal;
+    }
+
     function existingSelections() {
       var nodes = document.querySelectorAll('#admin-photo-sortable .js-portfolio-ai-existing:checked');
       var cards = document.querySelectorAll('#admin-photo-sortable .admin-photo-sortable-item');
@@ -152,8 +157,6 @@
       Array.prototype.forEach.call(nodes, function (input) {
         var item = input.closest('.admin-photo-sortable-item');
         if (!item) return;
-        var remove = item.querySelector('input[name="delete_photos[]"]');
-        if (remove && remove.checked) return;
         var id = input.value;
         if (!id) return;
         var index = Array.prototype.indexOf.call(cards, item);
@@ -163,17 +166,6 @@
         });
       });
       return selected;
-    }
-
-    function removeOnlyCount() {
-      var count = 0;
-      var boxes = document.querySelectorAll('#admin-photo-sortable input[name="delete_photos[]"]:checked');
-      Array.prototype.forEach.call(boxes, function (remove) {
-        var item = remove.closest('.admin-photo-sortable-item');
-        var improve = item && item.querySelector('.js-portfolio-ai-existing');
-        if (!improve || !improve.checked) count += 1;
-      });
-      return count;
     }
 
     function additionCount() {
@@ -201,7 +193,10 @@
       var img = card.querySelector('img');
       if (img && item.url) img.src = item.url;
       var box = card.querySelector('.js-portfolio-ai-existing');
-      if (box) box.checked = false;
+      if (box) {
+        box.checked = false;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+      }
       card.classList.remove('is-ai-selected');
     }
 
@@ -260,10 +255,8 @@
       var total = totalSourceCount();
 
       if (total < 1) {
-        if (removeOnlyCount() > 0) {
-          setStatus('Remove deletes a photo when you save. Check Improve on the photo you want enhanced, or choose a new upload or Google Photo.', true);
-        } else if (document.querySelector('.js-portfolio-ai-existing')) {
-          setStatus('Check Improve on a saved photo, choose a local file, or check a Google Photo. Uploads already named -ai.webp are skipped.', true);
+        if (document.querySelector('.js-portfolio-ai-existing')) {
+          setStatus('Select a saved photo, choose a local file, or check a Google Photo. Uploads already named -ai.webp are skipped.', true);
         } else {
           setStatus('Choose at least one photo to improve (uploads or checked Google Photos). Already-improved WebP files are skipped.', true);
         }
@@ -274,8 +267,8 @@
         draftSlots = window.portfolioDraftPhotos.count();
       }
       var additions = additionCount();
-      if (additions > 0 && additions + draftSlots > maxTotal) {
-        setStatus('Too many photos (max ' + maxTotal + ' including saved photos).', true);
+      if (additions > 0 && additions + draftSlots > remainingSlots()) {
+        setStatus('Too many photos (max ' + remainingSlots() + ' including saved photos).', true);
         return;
       }
 
@@ -437,29 +430,6 @@
       }
 
       setLoading(false, 'Editing with Gemini…');
-    });
-  }
-
-  function bindExistingPhotoChecks() {
-    var list = document.getElementById('admin-photo-sortable');
-    if (!list || list.getAttribute('data-ai-improve-bound') === '1') return;
-    list.setAttribute('data-ai-improve-bound', '1');
-    list.addEventListener('change', function (event) {
-      var target = event.target;
-      if (!target || !target.closest) return;
-      var item = target.closest('.admin-photo-sortable-item');
-      if (!item) return;
-      var improve = item.querySelector('.js-portfolio-ai-existing');
-      var remove = item.querySelector('input[name="delete_photos[]"]');
-      if (improve && target === improve && improve.checked && remove) {
-        remove.checked = false;
-      }
-      if (remove && target === remove && remove.checked && improve) {
-        improve.checked = false;
-      }
-      if (improve) {
-        item.classList.toggle('is-ai-selected', !!improve.checked);
-      }
     });
   }
 

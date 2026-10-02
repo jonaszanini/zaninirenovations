@@ -453,15 +453,7 @@ class ProjectController extends Controller
         $project->categories()->sync($validated['project_category_ids']);
 
         if (! empty($validated['delete_photos'])) {
-            $photos = ProjectPhoto::query()
-                ->where('project_id', $project->id)
-                ->whereIn('id', $validated['delete_photos'])
-                ->get();
-
-            foreach ($photos as $photo) {
-                Storage::disk('public')->delete($photo->path);
-                $photo->delete();
-            }
+            $this->deleteOwnedPhotos($project, $validated['delete_photos']);
         }
 
         if (! empty($validated['photo_sequence'])) {
@@ -550,6 +542,28 @@ class ProjectController extends Controller
         return redirect()
             ->route('admin.portfolio.edit', $project)
             ->with('success', 'Project updated.');
+    }
+
+    public function destroyPhotos(Request $request, Project $project): JsonResponse
+    {
+        $validated = $request->validate([
+            'photo_ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
+            'photo_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('project_photos', 'id')->where(fn ($q) => $q->where('project_id', $project->id)),
+            ],
+        ]);
+
+        $this->deleteOwnedPhotos($project, $validated['photo_ids']);
+
+        $remaining = $project->photos()->count();
+
+        return response()->json([
+            'deleted' => array_map('intval', $validated['photo_ids']),
+            'remaining' => $remaining,
+            'slots_free' => max(0, self::MAX_PHOTOS_PER_PROJECT - $remaining),
+        ]);
     }
 
     public function rotatePhoto(Request $request, Project $project, ProjectPhoto $photo)
@@ -767,6 +781,22 @@ class ProjectController extends Controller
         return redirect()
             ->route('admin.portfolio.index')
             ->with('success', 'Project deleted.');
+    }
+
+    /**
+     * @param  array<int, mixed>  $photoIds
+     */
+    private function deleteOwnedPhotos(Project $project, array $photoIds): void
+    {
+        $photos = ProjectPhoto::query()
+            ->where('project_id', $project->id)
+            ->whereIn('id', $photoIds)
+            ->get();
+
+        foreach ($photos as $photo) {
+            Storage::disk('public')->delete($photo->path);
+            $photo->delete();
+        }
     }
 
     /**
