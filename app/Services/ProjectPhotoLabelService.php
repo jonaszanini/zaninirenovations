@@ -8,7 +8,7 @@ use Symfony\Component\Process\Process;
 use Throwable;
 
 /**
- * Burn a "Before" label into portfolio WebP photos (bottom-left badge).
+ * Burn a "Before" watermark into portfolio WebP photos (large centered text).
  */
 class ProjectPhotoLabelService
 {
@@ -72,21 +72,15 @@ class ProjectPhotoLabelService
     }
 
     /**
-     * @return array{fontSize: int, padX: int, padY: int, margin: int, text: string}
+     * @return array{fontSize: int, text: string}
      */
     private function labelMetrics(int $width, int $height): array
     {
         $shortEdge = max(1, min($width, $height));
-        $fontSize = (int) max(16, min(72, round($shortEdge * 0.042)));
-        $padX = (int) max(8, round($fontSize * 0.45));
-        $padY = (int) max(6, round($fontSize * 0.3));
-        $margin = (int) max(10, round($shortEdge * 0.028));
+        $fontSize = (int) max(48, min(240, round($shortEdge * 0.12)));
 
         return [
             'fontSize' => $fontSize,
-            'padX' => $padX,
-            'padY' => $padY,
-            'margin' => $margin,
             'text' => self::LABEL_TEXT,
         ];
     }
@@ -122,27 +116,9 @@ class ProjectPhotoLabelService
             $draw->setFont($font);
             $draw->setFontSize($metrics['fontSize']);
             $draw->setTextAntialias(true);
-
-            $textMetrics = $im->queryFontMetrics($draw, $metrics['text']);
-            $textWidth = (int) ceil($textMetrics['textWidth']);
-            $textHeight = (int) ceil($textMetrics['textHeight']);
-            $ascent = (int) ceil($textMetrics['ascender']);
-
-            $boxW = $textWidth + ($metrics['padX'] * 2);
-            $boxH = $textHeight + ($metrics['padY'] * 2);
-            $boxX = $metrics['margin'];
-            $boxY = $height - $metrics['margin'] - $boxH;
-            $textX = $boxX + $metrics['padX'];
-            $textY = $boxY + $metrics['padY'] + $ascent;
-
-            $bg = new \ImagickDraw;
-            $bg->setFillColor(new \ImagickPixel('rgba(0,0,0,0.58)'));
-            $radius = (int) max(4, round($metrics['fontSize'] * 0.18));
-            $bg->roundRectangle($boxX, $boxY, $boxX + $boxW, $boxY + $boxH, $radius, $radius);
-            $im->drawImage($bg);
-
-            $draw->setFillColor(new \ImagickPixel('white'));
-            $im->annotateImage($draw, $textX, $textY, 0, $metrics['text']);
+            $draw->setGravity(\Imagick::GRAVITY_CENTER);
+            $draw->setFillColor(new \ImagickPixel('rgba(255,255,255,0.5)'));
+            $im->annotateImage($draw, 0, 0, 0, $metrics['text']);
 
             $im->setImageFormat('webp');
             $im->setImageCompressionQuality($this->webpQuality());
@@ -247,22 +223,19 @@ class ProjectPhotoLabelService
             throw new RuntimeException('Could not measure label text.');
         }
 
-        $textWidth = abs($bbox[2] - $bbox[0]);
-        $textHeight = abs($bbox[7] - $bbox[1]);
-        $boxW = $textWidth + ($metrics['padX'] * 2);
-        $boxH = $textHeight + ($metrics['padY'] * 2);
-        $boxX = $metrics['margin'];
-        $boxY = $height - $metrics['margin'] - $boxH;
-        $textX = $boxX + $metrics['padX'];
-        $textY = $boxY + $metrics['padY'] + $textHeight;
+        $minX = min($bbox[0], $bbox[6]);
+        $maxX = max($bbox[2], $bbox[4]);
+        $minY = min($bbox[5], $bbox[7]);
+        $maxY = max($bbox[1], $bbox[3]);
+        $textWidth = $maxX - $minX;
+        $textHeight = $maxY - $minY;
+        $textX = (int) round(($width - $textWidth) / 2 - $minX);
+        $textY = (int) round(($height - $textHeight) / 2 - $minY);
 
         imagealphablending($img, true);
         imagesavealpha($img, true);
 
-        $bg = imagecolorallocatealpha($img, 0, 0, 0, 70);
-        imagefilledrectangle($img, $boxX, $boxY, $boxX + $boxW, $boxY + $boxH, $bg);
-
-        $white = imagecolorallocate($img, 255, 255, 255);
+        $white = imagecolorallocatealpha($img, 255, 255, 255, 64);
         imagettftext($img, $metrics['fontSize'], 0, $textX, $textY, $white, $font, $metrics['text']);
     }
 

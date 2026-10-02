@@ -241,7 +241,7 @@
           <label class="admin-checkbox admin-checkbox--sm" for="admin-photo-crop-label-before">
             <input type="checkbox" class="admin-checkbox__input" id="admin-photo-crop-label-before" value="1">
             <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text">Add <strong>Before</strong> label (bottom-left badge)</span>
+            <span class="admin-checkbox__text">Add <strong>Before</strong> label (large centered text)</span>
           </label>
         </div>
         <div class="admin-modal-actions">
