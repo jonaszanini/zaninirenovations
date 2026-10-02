@@ -403,6 +403,13 @@
           });
         }
 
+        function clearPhotoSelection() {
+          list.querySelectorAll('.js-portfolio-ai-existing:checked').forEach(function (box) {
+            box.checked = false;
+          });
+          syncPhotoSelection();
+        }
+
         function refreshCoverBadge() {
           list.querySelectorAll('.admin-photo-cover-badge').forEach(function (badge) {
             badge.remove();
@@ -536,9 +543,14 @@
               : Promise.resolve(window.confirm(message));
             ask.then(function (ok) {
               if (!ok) return;
+              var stillChecked = selectedPhotoBoxes();
+              if (!stillChecked.length) {
+                syncPhotoSelection();
+                return;
+              }
               var fd = new FormData();
               fd.append('label', label);
-              Array.prototype.forEach.call(boxes, function (box) {
+              Array.prototype.forEach.call(stillChecked, function (box) {
                 fd.append('photo_ids[]', box.value);
               });
               setBulkActionsDisabled(true);
@@ -558,6 +570,7 @@
                     try { body = JSON.parse(text); } catch (ignore) { body = null; }
                   }
                   if (body && body.photos) applyLabeledPhotoUrls(body.photos);
+                  if (res.ok) clearPhotoSelection();
                   if (!res.ok) {
                     var msg = (body && body.message) ? body.message : ('Could not add the ' + label + ' label (HTTP ' + res.status + ').');
                     if (body && body.errors && typeof body.errors === 'object') {
