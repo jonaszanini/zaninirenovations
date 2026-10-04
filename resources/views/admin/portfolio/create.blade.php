@@ -3,10 +3,17 @@
 @section('heading', 'New project')
 
 @section('content')
+  @php
+    $postedHistoryKey = old('portfolio_ai_history_key');
+    $portfolioAiHistoryKey = (is_string($postedHistoryKey) && preg_match('/^portfolio-desc:draft-[0-9a-f-]{36}$/', $postedHistoryKey))
+      ? $postedHistoryKey
+      : 'portfolio-desc:draft-'.\Illuminate\Support\Str::uuid();
+  @endphp
   <div class="cp-edit-project-layout cp-portfolio-project-layout">
     <div class="admin-card admin-card--narrow cp-edit-project-form-card">
     <form id="portfolio-create-form" action="{{ route('admin.portfolio.store') }}" method="post" enctype="multipart/form-data">
       @csrf
+      <input type="hidden" name="portfolio_ai_history_key" value="{{ $portfolioAiHistoryKey }}">
       <div class="admin-form-group">
         <label for="title">Title</label>
         <input class="admin-input" type="text" id="title" name="title" value="{{ old('title') }}" required maxlength="255">
@@ -121,6 +128,7 @@
     window.portfolioDescriptionAiConfig = {
       descriptionInputId: 'description',
       fileInputId: 'photos',
+      historyKey: @json($portfolioAiHistoryKey),
       csrfToken: @json(csrf_token()),
       improveUrl: @json(route('admin.portfolio.ai-improve-description')),
     };

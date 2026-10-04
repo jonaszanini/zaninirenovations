@@ -33,7 +33,8 @@
     var historyMount = root.querySelector('[data-history-mount]');
     var csrfToken = config.csrfToken || '';
     var improveUrl = config.improveUrl || '';
-    var storageKey = 'portfolio-desc:' + (config.descriptionInputId || 'description');
+    var storageKey = config.historyKey
+      || ('portfolio-desc:' + (config.descriptionInputId || 'description'));
 
     if (!btn || !descriptionEl || !improveUrl) return;
 

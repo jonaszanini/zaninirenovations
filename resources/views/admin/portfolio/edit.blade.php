@@ -341,6 +341,7 @@
     window.portfolioDescriptionAiConfig = {
       descriptionInputId: 'description',
       fileInputId: 'photos',
+      historyKey: @json('portfolio-desc:'.$project->id),
       csrfToken: @json(csrf_token()),
       improveUrl: @json(route('admin.portfolio.ai-improve-description.edit', $project)),
     };
