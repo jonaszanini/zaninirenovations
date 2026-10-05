@@ -614,6 +614,65 @@ class ClientProjectController extends Controller
         $client_project->fill($data)->save();
         $client_project = $service->syncVisitStatusFromFields($client_project->fresh());
 
+        return $this->redirectAfterScheduleDateChange(
+            $client_project,
+            $previousStart,
+            $previousEnd,
+            $service
+        );
+    }
+
+    /**
+     * Save only the start and end dates chosen in the calendar picker.
+     * Kept separate from the full project update so a problem in another
+     * field (phone, email, notes) cannot block the dates from being stored.
+     */
+    public function updateScheduleDates(Request $request, ClientProject $client_project, ClientProjectStatusService $service)
+    {
+        $validator = Validator::make($request->all(), [
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+        ], $this->clientProjectValidationMessages());
+
+        if ($validator->fails()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('schedule')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $data = $validator->validated();
+        $previousStart = $client_project->start_date ? $client_project->start_date->toDateString() : null;
+        $previousEnd = $client_project->end_date ? $client_project->end_date->toDateString() : null;
+
+        $client_project->start_date = $data['start_date'];
+        $client_project->end_date = $data['end_date'];
+        $client_project->save();
+
+        return $this->redirectAfterScheduleDateChange(
+            $client_project,
+            $previousStart,
+            $previousEnd,
+            $service,
+            'Start and end dates saved',
+            'schedule'
+        );
+    }
+
+    /**
+     * Shared follow-up after start/end dates are written: reset schedule
+     * email flags when the range changed, send the calendar notices, and
+     * redirect back to the project.
+     */
+    private function redirectAfterScheduleDateChange(
+        ClientProject $client_project,
+        ?string $previousStart,
+        ?string $previousEnd,
+        ClientProjectStatusService $service,
+        string $savedLabel = 'Project updated',
+        ?string $fragment = null
+    ) {
         $newStartAfterSave = $client_project->start_date ? $client_project->start_date->toDateString() : null;
         $newEndAfterSave = $client_project->end_date ? $client_project->end_date->toDateString() : null;
         $scheduleFieldsChanged = ($newStartAfterSave !== $previousStart) || ($newEndAfterSave !== $previousEnd);
@@ -632,13 +691,13 @@ class ClientProjectController extends Controller
         $newEnd = $client_project->end_date ? $client_project->end_date->toDateString() : null;
         $datesChanged = $newStart && $newEnd && ($newStart !== $previousStart || $newEnd !== $previousEnd);
 
-        $successMessage = 'Project updated.';
+        $successMessage = $savedLabel.'.';
         if ($datesChanged) {
             $result = $service->maybeSendCalendarDatesEmail($client_project);
             if ($result === 'sent') {
-                $successMessage = 'Project updated. Calendar notification emailed.';
+                $successMessage = $savedLabel.'. Calendar notification emailed.';
             } elseif ($result === 'failed') {
-                $successMessage = 'Project updated, but the calendar notification email failed. Check logs and retry.';
+                $successMessage = $savedLabel.', but the calendar notification email failed. Check logs and retry.';
             }
             // 'waiting-payment' is silent here — the user is still editing
             // dates ahead of the 1st payment; the email will fire once
@@ -656,6 +715,10 @@ class ClientProjectController extends Controller
         $redirect = redirect()
             ->route('admin.client-projects.show', $client_project)
             ->with('success', $successMessage);
+
+        if ($fragment) {
+            $redirect->withFragment($fragment);
+        }
 
         if ($scheduleClientWarning) {
             $redirect->with('warning', $scheduleClientWarning);

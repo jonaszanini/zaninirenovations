@@ -415,6 +415,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.service-confirmation.send');
     // Generic on-demand "your project dates are…" email — works for any
     // billing type and can be re-sent freely (no idempotency flag).
+    Route::put('client-projects/{client_project}/schedule-dates', [\App\Http\Controllers\Admin\ClientProjectController::class, 'updateScheduleDates'])
+        ->name('client-projects.schedule-dates.update');
     Route::post('client-projects/{client_project}/schedule-dates/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendScheduleDates'])
         ->name('client-projects.schedule-dates.send');
     Route::post('client-projects/{client_project}/time-tracking-summary/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendTimeTrackingSummary'])

@@ -865,7 +865,7 @@
           'startDateId' => 'cp-start',
           'endDateId' => 'cp-end',
           'excludeProjectId' => $project->id,
-          'submitFormId' => 'cp-schedule-dates-form',
+          'saveUrl' => route('admin.client-projects.schedule-dates.update', $project),
           'hint' => 'See other projects\' booked days, click two days (start, then end), then Use these dates to save.',
         ])
 

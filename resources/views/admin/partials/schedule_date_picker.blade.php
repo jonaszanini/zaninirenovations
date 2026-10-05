@@ -4,7 +4,8 @@
   Required: $startDateId, $endDateId
   Optional:
     $excludeProjectId   omit this project from busy days
-    $submitFormId       form to submit after "Use these dates" (project show)
+    $submitFormId       form to submit after "Use these dates" (legacy)
+    $saveUrl            URL that stores only the chosen start/end dates
     $scheduleToggleId   checkbox to turn on before filling dates
     $hint               help text beside the button
     $hideButton         modal-only (rare)
@@ -26,6 +27,7 @@
             data-events-url="{{ route('admin.client-projects.calendar.picker-events') }}"
             @if (! empty($excludeProjectId)) data-exclude-id="{{ $excludeProjectId }}" @endif
             @if (! empty($submitFormId)) data-submit-form="#{{ $submitFormId }}" @endif
+            @if (! empty($saveUrl)) data-save-url="{{ $saveUrl }}" @endif
             @if (! empty($scheduleToggleId)) data-schedule-toggle="#{{ $scheduleToggleId }}" @endif>
       <i class="fa fa-calendar" aria-hidden="true"></i> Pick on calendar
     </button>

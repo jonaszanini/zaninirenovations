@@ -5,6 +5,7 @@
  *   data-start-input, data-end-input  required selectors
  *   data-events-url                   JSON feed (?exclude= optional)
  *   data-exclude-id                   current project id to omit from busy days
+ *   data-save-url                     optional URL that stores only these dates
  *   data-submit-form                  optional form to submit after apply
  *   data-schedule-toggle              optional checkbox to turn on before filling
  */
@@ -215,7 +216,7 @@
     if (confirmBtn) {
       confirmBtn.setAttribute(
         'title',
-        cfg.submitForm ? 'Save these start and end dates now' : 'Fill the start and end date fields'
+        (cfg.saveUrl || cfg.submitForm) ? 'Save these start and end dates now' : 'Fill the start and end date fields'
       );
     }
 
@@ -269,6 +270,11 @@
       detail: { start: selection.start, end: selection.end }
     }));
 
+    if (active.saveUrl) {
+      postScheduleDates(active.saveUrl, selection.start, selection.end);
+      return;
+    }
+
     var form = active.submitForm;
     if (!form) {
       closeModal();
@@ -297,6 +303,41 @@
     }
   }
 
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+    var existing = document.querySelector('input[name="_token"]');
+    return existing ? (existing.value || '') : '';
+  }
+
+  function postScheduleDates(url, start, end) {
+    var confirmBtn = $('cp-date-picker-confirm');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.setAttribute('aria-busy', 'true');
+      confirmBtn.textContent = 'Saving…';
+    }
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.hidden = true;
+    [
+      ['_token', csrfToken()],
+      ['_method', 'PUT'],
+      ['start_date', start],
+      ['end_date', end],
+    ].forEach(function (pair) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = pair[0];
+      input.value = pair[1];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    HTMLFormElement.prototype.submit.call(form);
+  }
+
   function qs(sel) {
     if (!sel) return null;
     try {
@@ -311,6 +352,7 @@
       startInput: qs(btn.getAttribute('data-start-input')),
       endInput: qs(btn.getAttribute('data-end-input')),
       toggle: qs(btn.getAttribute('data-schedule-toggle')),
+      saveUrl: btn.getAttribute('data-save-url') || '',
       submitForm: qs(btn.getAttribute('data-submit-form')),
       eventsUrl: btn.getAttribute('data-events-url') || '',
       excludeId: btn.getAttribute('data-exclude-id') || '',

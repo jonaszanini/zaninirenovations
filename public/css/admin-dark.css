@@ -701,7 +701,6 @@ html.admin-dark .cp-installments-remaining,
 html.admin-dark .cp-time-entry__note,
 html.admin-dark .cp-time-saved-heading,
 html.admin-dark .cp-calendar-legend,
-html.admin-dark .cp-schedule-summary,
 html.admin-dark .cp-header-detail__label,
 html.admin-dark .cp-header-client-row,
 html.admin-dark .cp-header-ref-sep,
@@ -711,6 +710,16 @@ html.admin-dark .sq-mat-catalog-label,
 html.admin-dark .sq-mat-hst-toggles-label,
 html.admin-dark .q-commute-field__suffix {
   color: var(--admin-muted);
+}
+
+html.admin-dark .cp-schedule-summary {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-schedule-summary strong {
+  color: var(--admin-heading);
 }
 
 html.admin-dark .cp-project-context-notes__label {

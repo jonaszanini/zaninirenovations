@@ -14,7 +14,8 @@ Pick project start/end dates on the shared calendar modal (booked jobs, visits, 
     'endDateId' => 'cp-end-date',
     'scheduleToggleId' => 'cp-create-schedule-enabled', // optional
     'excludeProjectId' => $project->id ?? null,         // omit current job
-    'submitFormId' => 'cp-schedule-dates-form',         // optional: save immediately
+    // Optional. On an existing project, Use these dates saves immediately.
+    'saveUrl' => isset($project) ? route('admin.client-projects.schedule-dates.update', $project) : null,
 ])
 ```
 

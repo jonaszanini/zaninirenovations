@@ -1118,11 +1118,11 @@ html.cp-cancel-modal-open {
 .cp-schedule-summary {
   margin-top: 14px;
   padding: 12px 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-surface-hover);
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--admin-text);
   line-height: 1.45;
 }
 .cp-schedule-summary--with-action {
@@ -1139,7 +1139,7 @@ html.cp-cancel-modal-open {
 }
 .cp-schedule-summary__arrow {
   margin: 0 0.2em;
-  color: #64748b;
+  color: var(--admin-muted);
   font-weight: 500;
 }
 
