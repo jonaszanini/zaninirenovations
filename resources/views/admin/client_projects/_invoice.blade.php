@@ -26,14 +26,14 @@
 @endphp
 
 @if ($project->usesInvoiceBillingOverride())
-  <div class="admin-card" style="margin-bottom:1rem;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
-    <p style="margin:0;font-size:14px;color:#1e3a5f;">
+  <div class="admin-card cp-invoice-bill-to">
+    <p class="cp-invoice-bill-to__text">
       <strong>Invoice bill-to:</strong> {{ $project->invoiceBillToName() }}
       @if (filled(trim((string) $project->invoice_billing_address)))
-        <span class="admin-form-help" style="display:block;margin-top:6px;white-space:pre-line;">{{ $project->invoice_billing_address }}</span>
+        <span class="admin-form-help cp-invoice-bill-to__address">{{ $project->invoice_billing_address }}</span>
       @endif
     </p>
-    <p class="admin-form-help" style="margin:8px 0 0;">PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).</p>
+    <p class="admin-form-help cp-invoice-bill-to__help">PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).</p>
     <a href="{{ route('admin.client-projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-form-group-spaced">Edit project</a>
   </div>
 @endif

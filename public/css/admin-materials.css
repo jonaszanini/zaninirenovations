@@ -536,7 +536,7 @@
   box-sizing: border-box;
   border-radius: 8px;
   border: 1px solid var(--admin-border, #d8dee4);
-  background: #fff;
+  background: var(--admin-surface);
   overflow: hidden;
   position: relative;
 }
@@ -963,7 +963,7 @@
   object-fit: contain;
   border-radius: 6px;
   border: 1px solid var(--admin-border, #d8dee4);
-  background: #fff;
+  background: var(--admin-surface);
   padding: 3px;
 }
 

@@ -135,9 +135,9 @@ a.cp-projects-scope-chip {
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 a.cp-projects-scope-chip:hover {
-  border-color: #94a3b8;
-  background: #f8fafc;
-  color: #0f172a;
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
 }
 a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   border-color: #024768;
@@ -188,15 +188,15 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   color: #b45309;
 }
 .cp-badge--hourly {
-  background: #ecfdf5;
-  color: #15803d;
+  background: var(--admin-stat-highlight-bg);
+  color: var(--admin-success);
 }
 .cp-badge--manual {
-  background: #e5e7eb;
-  color: #4b5563;
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
 }
 .cp-badge--materials {
-  background: #ecfdf5;
+  background: var(--admin-stat-highlight-bg);
   color: #047857;
 }
 .cp-heading-reset {
@@ -314,7 +314,8 @@ a.cp-table-street .fa {
   font-variant-numeric: tabular-nums;
 }
 .cp-required {
-  color: #dc2626;
+  color: var(--admin-danger);
+}
 }
 
 /* =================================================================
@@ -1303,7 +1304,7 @@ html.cp-cancel-modal-open {
   margin-bottom: 10px;
 }
 .cp-installments-remaining.is-hidden { display: none; }
-.cp-installments-remaining.is-ok { background: #dcfce7; color: #166534; }
+.cp-installments-remaining.is-ok { background: var(--admin-stat-highlight-bg); color: var(--admin-success); }
 .cp-installments-remaining.is-error { background: #fee2e2; color: #991b1b; }
 .cp-installments-remaining [data-remaining] {
   font-weight: 700;
@@ -1320,9 +1321,9 @@ html.cp-cancel-modal-open {
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
   border-radius: 6px;
-  background: #fff;
+  background: var(--admin-surface);
 }
 /* Paid installment — the percentage is locked and the row is visually muted. */
 .cp-installment-row.is-paid-row {
@@ -1794,17 +1795,18 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-profit-tile {
   padding: 14px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
   border-radius: 8px;
   background: var(--admin-surface, #ffffff);
+  color: var(--admin-text);
 }
 .cp-profit-tile--highlight {
-  background: #f0f9ff;
-  border-color: #bae6fd;
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
 }
 .cp-profit-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--admin-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 4px;
@@ -1812,7 +1814,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-profit-value {
   font-size: 18px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--admin-heading);
   font-variant-numeric: tabular-nums;
 }
 .cp-profit-value.is-positive { color: #15803d; }
@@ -1852,12 +1854,12 @@ a:hover .cp-expense-receipt-pdf {
    Locked tab notice (before proposal accepted)
    ================================================================= */
 .cp-locked {
-  background: #fff7ed;
-  border: 1px dashed #fed7aa;
+  background: var(--admin-warn-tile-bg);
+  border: 1px dashed var(--admin-warn-tile-border);
 }
 .cp-locked h3 {
   margin-top: 0;
-  color: #9a3412;
+  color: var(--admin-warn-tile-text);
 }
 
 /* =================================================================
@@ -2279,14 +2281,14 @@ a:hover .cp-expense-receipt-pdf {
   gap: 8px;
 }
 .cp-time-entry {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
   border-radius: 10px;
-  background: #fff;
+  background: var(--admin-surface);
   overflow: hidden;
 }
 .cp-time-entry--open {
-  border-color: #fde68a;
-  background: #fffbeb;
+  border-color: var(--admin-warn-tile-border);
+  background: var(--admin-warn-tile-bg);
 }
 .cp-time-entry__summary {
   list-style: none;
@@ -2805,7 +2807,7 @@ a:hover .cp-expense-receipt-pdf {
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
-  background: #fff;
+  background: var(--admin-surface);
 }
 .cp-quotation-items-header {
   display: flex;
@@ -2885,7 +2887,7 @@ a:hover .cp-expense-receipt-pdf {
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 12px;
-    background: #fff;
+    background: var(--admin-surface);
   }
   #cp-invoice-items td {
     border-bottom: none;
@@ -3761,37 +3763,59 @@ a:hover .cp-expense-receipt-pdf {
   margin: 14px 0 4px;
 }
 .cp-hourly-summary-tile {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--admin-stat-tile-bg);
+  border: 1px solid var(--admin-stat-tile-border);
   border-radius: 8px;
   padding: 10px 12px;
+  color: var(--admin-text);
 }
 .cp-hourly-summary-tile--highlight {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
+  background: var(--admin-stat-highlight-bg);
+  border-color: var(--admin-stat-highlight-border);
 }
 .cp-hourly-summary-label {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6b7280;
+  color: var(--admin-muted);
 }
 .cp-hourly-summary-value {
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--admin-heading);
   margin-top: 2px;
 }
 .cp-hourly-summary-sub {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--admin-muted);
   margin-top: 2px;
 }
 @media (max-width: 640px) {
   .cp-hourly-summary {
     grid-template-columns: 1fr;
   }
+}
+
+.cp-invoice-bill-to {
+  margin-bottom: 1rem;
+  padding: 12px 14px;
+  background: var(--admin-info-tile-bg);
+  border: 1px solid var(--admin-info-tile-border);
+  border-radius: 8px;
+}
+.cp-invoice-bill-to__text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--admin-heading);
+}
+.cp-invoice-bill-to__address {
+  display: block;
+  margin-top: 6px;
+  white-space: pre-line;
+}
+.cp-invoice-bill-to__help {
+  margin: 8px 0 0;
 }
 
 /* Invoice table — mostly inherits from .admin-table; this tightens the
@@ -4278,8 +4302,8 @@ body.cp-modal-open {
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f3f4f6;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface-hover);
 }
 .cp-project-photos-preview-tile {
   display: flex;
@@ -5472,8 +5496,8 @@ body.cp-modal-open {
   width: 56px;
   height: 56px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--admin-border, #e2e8f0);
+  background: var(--admin-surface);
   overflow: hidden;
 }
 .sq-mat-thumb[hidden] {
@@ -6677,7 +6701,7 @@ body.cp-modal-open {
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--admin-surface);
   border: 1px solid var(--admin-border, #d8dee4);
   border-radius: var(--admin-radius, 12px);
   box-shadow: var(--admin-shadow-md, 0 8px 30px rgba(55, 52, 53, 0.08));
@@ -6823,13 +6847,13 @@ body.cp-modal-open {
 .cp-helper-entry__select .admin-checkbox__text.cp-helper-entry__name {
   font-weight: 700;
   font-size: 16px;
-  color: #111827;
+  color: var(--admin-heading);
   line-height: 1.3;
 }
 .cp-helper-entry__name {
   font-weight: 700;
   font-size: 16px;
-  color: #111827;
+  color: var(--admin-heading);
   line-height: 1.3;
 }
 .cp-helper-entry__summary-detail {
@@ -6849,8 +6873,8 @@ body.cp-modal-open {
   opacity: 0.92;
 }
 .cp-helper-entry__badge--paid {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--admin-stat-highlight-bg);
+  color: var(--admin-success);
 }
 .cp-helper-entry__type-badge {
   display: inline-flex;
@@ -8137,7 +8161,7 @@ body.cp-modal-open {
 .br-config-table .admin-search-select.is-selected .admin-search-select__input,
 .br-extra-row.is-linked .admin-search-select__input {
   padding-left: 2.35rem;
-  background: #fff;
+  background: var(--admin-input-bg);
   border-color: var(--admin-primary);
 }
 .br-extra-row__catalog {
@@ -8536,9 +8560,9 @@ body.cp-modal-open {
   margin-top: 12px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--admin-warn-tile-bg);
+  border: 1px solid var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
   font-size: 13px;
 }
 .sh-permit[hidden] {

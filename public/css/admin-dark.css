@@ -29,6 +29,15 @@ html.admin-dark body.admin-body {
   --admin-danger-soft: rgba(248, 113, 113, 0.16);
   --admin-success: #4ade80;
   --admin-success-soft: rgba(74, 222, 128, 0.16);
+  --admin-stat-tile-bg: var(--admin-input-bg);
+  --admin-stat-tile-border: var(--admin-border);
+  --admin-stat-highlight-bg: rgba(74, 222, 128, 0.14);
+  --admin-stat-highlight-border: rgba(74, 222, 128, 0.38);
+  --admin-info-tile-bg: rgba(56, 189, 248, 0.12);
+  --admin-info-tile-border: rgba(56, 189, 248, 0.35);
+  --admin-warn-tile-bg: rgba(245, 158, 11, 0.14);
+  --admin-warn-tile-border: rgba(245, 158, 11, 0.38);
+  --admin-warn-tile-text: #fbbf24;
   --admin-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
   --admin-shadow-md: 0 8px 30px rgba(0, 0, 0, 0.45);
   --admin-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.55);
@@ -2011,3 +2020,316 @@ html.admin-dark .admin-actions-dropdown__item--success {
 html.admin-dark button.admin-actions-dropdown__item {
   background: transparent;
 }
+
+/* ------------------------------------------------------------------
+   Remaining dark-mode surfaces: stat tiles, quotation editors, badges,
+   utilities, search palette, disabled primary buttons, and inline
+   light tints that still leak after token conversion.
+   ------------------------------------------------------------------ */
+
+html.admin-dark .admin-btn--primary:disabled,
+html.admin-dark .admin-btn--primary[disabled] {
+  opacity: 0.72;
+  background: #024768;
+  color: #e2e8f0;
+  border-color: #0369a1;
+}
+
+html.admin-dark .cp-hourly-summary-tile,
+html.admin-dark .cp-profit-tile,
+html.admin-dark .q-commute-metric {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-stat-tile-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-hourly-summary-tile--highlight {
+  background: var(--admin-stat-highlight-bg);
+  border-color: var(--admin-stat-highlight-border);
+}
+
+html.admin-dark .cp-profit-tile--highlight,
+html.admin-dark .cp-invoice-bill-to {
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
+}
+
+html.admin-dark .cp-invoice-bill-to__text,
+html.admin-dark .cp-profit-label,
+html.admin-dark .cp-hourly-summary-label,
+html.admin-dark .cp-hourly-summary-sub,
+html.admin-dark .q-commute-metric__label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-invoice-bill-to__text,
+html.admin-dark .cp-invoice-bill-to__text strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-badge--hourly,
+html.admin-dark .cp-badge--materials,
+html.admin-dark .cp-helper-entry__badge--paid {
+  background: var(--admin-stat-highlight-bg);
+  color: var(--admin-success);
+}
+
+html.admin-dark .cp-badge--manual {
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-badge[style*="#fef3c7"],
+html.admin-dark .cp-badge[style*="background:#fef3c7"] {
+  background: var(--admin-warn-tile-bg) !important;
+  color: var(--admin-warn-tile-text) !important;
+}
+
+html.admin-dark .cp-badge[style*="#f4f4f5"],
+html.admin-dark .cp-badge[style*="#e5e7eb"] {
+  background: var(--admin-surface-hover) !important;
+  color: var(--admin-muted) !important;
+}
+
+html.admin-dark .cp-badge[style*="#e0e7ff"],
+html.admin-dark .cp-badge[style*="#dbeafe"] {
+  background: var(--admin-info-tile-bg) !important;
+  color: #7dd3fc !important;
+}
+
+html.admin-dark .cp-badge[style*="#22c55e20"],
+html.admin-dark .cp-badge[style*="background:#22c55e20"] {
+  background: var(--admin-stat-highlight-bg) !important;
+  color: #86efac !important;
+}
+
+html.admin-dark .cp-badge[style*="#f59e0b20"] {
+  background: var(--admin-warn-tile-bg) !important;
+  color: #fbbf24 !important;
+}
+
+html.admin-dark .cp-time-entry--open {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+}
+
+html.admin-dark .util-ps-diagram,
+html.admin-dark .util-lb-diagram,
+html.admin-dark .mat-form-hero__media,
+html.admin-dark .mat-form-hero__placeholder,
+html.admin-dark .mat-thumb {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-lb-bt-name {
+  background: rgba(15, 23, 42, 0.45) !important;
+  color: var(--admin-heading) !important;
+}
+
+html.admin-dark .util-lb-bt-name:focus {
+  background: var(--admin-input-bg) !important;
+}
+
+html.admin-dark .util-ra-desktop-notice,
+html.admin-dark .sq-step-hint,
+html.admin-dark .sh-permit,
+html.admin-dark .cp-locked {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .sq-step-hint.ok {
+  background: var(--admin-stat-highlight-bg);
+  border-color: var(--admin-stat-highlight-border);
+  color: var(--admin-success);
+}
+
+html.admin-dark .pt-step-card,
+html.admin-dark .ld-diagram-panel,
+html.admin-dark .ld-materials-preview,
+html.admin-dark .fq-materials-preview,
+html.admin-dark .pq-output,
+html.admin-dark .pq-stone-card,
+html.admin-dark .pq-db-add-stone,
+html.admin-dark .pq-db-stone,
+html.admin-dark .sq-db-nosing-photos,
+html.admin-dark .sq-photo-card,
+html.admin-dark .config-table-wrap,
+html.admin-dark .blog-admin-ai-metadata-wrap {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .fq-materials-preview th,
+html.admin-dark .ld-materials-preview th,
+html.admin-dark .pq-summary-card,
+html.admin-dark .pt-step-card,
+html.admin-dark .fl-step-card {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-stat-tile-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .fq-linked-banner,
+html.admin-dark .ld-linked-banner {
+  background: var(--admin-stat-highlight-bg);
+  color: #86efac;
+  border-color: var(--admin-stat-highlight-border);
+}
+
+html.admin-dark .pq-stone-meta-link,
+html.admin-dark .pq-db-stone-open-link {
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .pq-stone-meta-link:hover,
+html.admin-dark .pq-db-stone-open-link:hover {
+  background: rgba(56, 189, 248, 0.22);
+  color: var(--admin-primary-hover);
+}
+
+html.admin-dark .asp__panel {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .asp__input {
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .asp__item:hover,
+html.admin-dark .asp__item.is-selected {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .asp__item-title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .asp__item-sub,
+html.admin-dark .asp__group-label,
+html.admin-dark .asp__empty,
+html.admin-dark .asp__loading,
+html.admin-dark .asp__hint {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .asp__kbd,
+html.admin-dark .asp__hint kbd,
+html.admin-dark .admin-global-search__kbd {
+  background: var(--admin-input-bg);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-modal,
+html.admin-dark .admin-dialog,
+html.admin-dark .admin-modal {
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-modal-header,
+html.admin-dark .cp-modal-footer {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-mark-paid-method-option {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-mark-paid-method-option:has(input:checked) {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ps .admin-form-group input,
+html.admin-dark .util-ps .admin-form-group select,
+html.admin-dark .util-mc .admin-form-group input,
+html.admin-dark .util-mc .admin-form-group select,
+html.admin-dark .util-lb-pieces-table input,
+html.admin-dark .util-lb-save-row input {
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-recalc-preview,
+html.admin-dark .cp-helper-panel,
+html.admin-dark .cp-expense-edit-row td {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+
+html.admin-dark output.admin-input {
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .mat-form-hero__placeholder {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .supplier-sites-intro,
+html.admin-dark .ss-hero,
+html.admin-dark [style*="background:#e8f4f8"],
+html.admin-dark [style*="background:#f8fafc"],
+html.admin-dark [style*="background:#f1f5f9"],
+html.admin-dark [style*="background:#fafbfc"],
+html.admin-dark [style*="background:#eff6ff"] {
+  background-color: var(--admin-info-tile-bg) !important;
+  border-color: var(--admin-info-tile-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark [style*="background:#e8f4ea"] {
+  background-color: var(--admin-stat-highlight-bg) !important;
+  color: #86efac !important;
+  border-color: var(--admin-stat-highlight-border);
+}
+
+html.admin-dark [style*="background:#fffbeb"],
+html.admin-dark [style*="background:#fff7ed"] {
+  background-color: var(--admin-warn-tile-bg) !important;
+  color: var(--admin-warn-tile-text) !important;
+  border-color: var(--admin-warn-tile-border);
+}
+
+html.admin-dark .admin-btn--danger {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.5);
+}
+html.admin-dark .admin-btn--danger:hover {
+  background: rgba(248, 113, 113, 0.26);
+  color: #fff;
+}
+
+html.admin-dark .cp-required,
+html.admin-dark .admin-required,
+html.admin-dark .admin-form-error {
+  color: #fca5a5;
+}
+
+html.admin-dark [style*="color:#b45309"],
+html.admin-dark [style*="color: #b45309"] {
+  color: #fbbf24 !important;
+}
+html.admin-dark [style*="color:#dc2626"],
+html.admin-dark [style*="color: #dc2626"] {
+  color: #fca5a5 !important;
+}
+

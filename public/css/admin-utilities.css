@@ -48,7 +48,7 @@
   padding: 0.65rem 0.9rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-input-bg);
   color: var(--admin-text);
   font-family: inherit;
   font-size: 0.95rem;
@@ -302,7 +302,7 @@
   width: 100%;
   border: 1px solid var(--admin-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--admin-surface);
   padding: 0.5rem;
   overflow: hidden;
 }
@@ -803,7 +803,7 @@
   padding: 0.65rem 0.9rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-input-bg);
   color: var(--admin-text);
   font-family: inherit;
   font-size: 0.95rem;
@@ -906,7 +906,7 @@
   padding: 0.65rem 0.9rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-input-bg);
   color: var(--admin-text);
   font-family: inherit;
   font-size: 0.95rem;
@@ -1185,7 +1185,7 @@
 
 .util-lb-bt-name:focus {
   border-color: var(--admin-primary) !important;
-  background: #fff !important;
+  background: var(--admin-input-bg) !important;
 }
 
 .util-lb-bt-head-actions {

@@ -45,6 +45,9 @@ jobs:
       - name: Blade syntax smoke (no database)
         run: php artisan test tests/Unit/Views/BladeSyntaxTest.php
 
+      - name: Admin dark-theme CSS coverage (no database)
+        run: php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
+
       - name: Route smoke (MySQL)
         env:
           DB_CONNECTION: mysql

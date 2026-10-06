@@ -23,6 +23,15 @@
   --admin-danger-soft: rgba(198, 40, 40, 0.08);
   --admin-success: #2e7d4a;
   --admin-success-soft: rgba(46, 125, 74, 0.12);
+  --admin-stat-tile-bg: #f9fafb;
+  --admin-stat-tile-border: #e5e7eb;
+  --admin-stat-highlight-bg: #ecfdf5;
+  --admin-stat-highlight-border: #a7f3d0;
+  --admin-info-tile-bg: #f0f9ff;
+  --admin-info-tile-border: #bae6fd;
+  --admin-warn-tile-bg: #fff7ed;
+  --admin-warn-tile-border: #fed7aa;
+  --admin-warn-tile-text: #9a3412;
   --admin-sidebar-w: 270px;
   --admin-radius: 12px;
   --admin-font: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -527,9 +536,9 @@ body.admin-body {
 }
 
 .admin-flash--warning {
-  background: #fff7ed;
-  color: #9a3412;
-  border: 1px solid rgba(249, 115, 22, 0.35);
+  background: var(--admin-warn-tile-bg);
+  color: var(--admin-warn-tile-text);
+  border: 1px solid var(--admin-warn-tile-border, rgba(249, 115, 22, 0.35));
 }
 
 .admin-flash--danger {
@@ -1385,7 +1394,7 @@ textarea.is-invalid:focus {
   gap: 8px;
   padding: 8px 10px;
   min-height: 44px;
-  background: #fff;
+  background: var(--admin-surface);
   border: 1px solid #f2d693;
   border-radius: 6px;
 }
