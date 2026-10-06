@@ -754,6 +754,49 @@ body.admin-body {
   background: var(--admin-table-hover);
 }
 
+/* Compact table variant — shorter rows with tighter padding */
+.admin-table--compact th,
+.admin-table--compact td {
+  padding: 0.5rem 0.75rem;
+}
+.admin-table--compact th {
+  font-size: 0.65rem;
+}
+
+/* Compact thumbnail for list tables */
+.admin-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--admin-surface-hover);
+  flex-shrink: 0;
+}
+.admin-thumb--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--admin-muted);
+  font-size: 14px;
+}
+
+/* Compact text helpers */
+.admin-text-sm { font-size: 0.85rem; }
+.admin-text-xs { font-size: 0.75rem; }
+.admin-text-muted { color: var(--admin-muted); }
+.admin-line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.admin-line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .admin-badge {
   display: inline-block;
   padding: 0.25rem 0.6rem;
@@ -986,6 +1029,51 @@ body.admin-body {
 
 .admin-form-group {
   margin-bottom: 1.25rem;
+}
+
+/* Responsive form grids — 2 and 3 column layouts that collapse to 1 on mobile */
+.admin-form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 1.25rem;
+}
+.admin-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 1.25rem;
+}
+.admin-form-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0 1.25rem;
+}
+@media (max-width: 768px) {
+  .admin-form-grid-2,
+  .admin-form-grid-3,
+  .admin-form-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+  .admin-form-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .admin-form-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.admin-form-grid-2 > .admin-form-group--full,
+.admin-form-grid-3 > .admin-form-group--full,
+.admin-form-grid-4 > .admin-form-group--full {
+  grid-column: 1 / -1;
+}
+
+/* Narrow input variants for qty, price, date fields */
+.admin-input--narrow {
+  max-width: 120px;
+}
+.admin-input--medium {
+  max-width: 180px;
 }
 
 .admin-form-group label,

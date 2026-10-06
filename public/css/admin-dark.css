@@ -1586,3 +1586,405 @@ html.admin-dark .admin-table a:visited {
   color: var(--admin-primary);
 }
 
+
+/* Shared prices compact table */
+html.admin-dark .sp-table th {
+  color: var(--admin-muted);
+  border-bottom-color: var(--admin-border);
+}
+html.admin-dark .sp-table td {
+  border-bottom-color: var(--admin-border);
+}
+html.admin-dark .sp-work-label {
+  color: var(--admin-heading);
+}
+html.admin-dark .sp-work-label small {
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-input {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .sp-input:focus {
+  border-color: var(--admin-primary);
+}
+html.admin-dark .sp-chip {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+html.admin-dark .sp-effective {
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-group__summary {
+  color: var(--admin-heading);
+}
+
+/* Communications log compact */
+html.admin-dark .comm-desc__subject {
+  color: var(--admin-heading);
+}
+html.admin-dark .comm-desc__body {
+  color: var(--admin-muted);
+}
+html.admin-dark .comm-desc__toggle {
+  color: var(--admin-primary);
+}
+html.admin-dark .comm-desc__error {
+  color: #fbbf24;
+}
+html.admin-dark .comm-recipient__cc {
+  color: var(--admin-muted);
+}
+
+/* Materials list compact */
+html.admin-dark .mat-thumb {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .mat-thumb--empty {
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+}
+
+/* ========================================================================
+   Client Projects Dark Mode Fixes
+   ======================================================================== */
+
+/* Project scope chips */
+html.admin-dark a.cp-projects-scope-chip {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark a.cp-projects-scope-chip:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+  color: var(--admin-heading);
+}
+html.admin-dark a.cp-projects-scope-chip.cp-projects-scope-chip--active {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+
+/* Cancel modal panel */
+html.admin-dark #cp-cancel-modal .cp-status-modal-panel {
+  background: var(--admin-surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+html.admin-dark #cp-cancel-modal .cp-status-modal-title {
+  color: var(--admin-heading);
+}
+html.admin-dark #cp-cancel-modal .cp-status-modal-hint {
+  color: var(--admin-text);
+}
+html.admin-dark #cp-cancel-modal .cp-status-modal-label {
+  color: var(--admin-muted);
+}
+
+/* Calendar FullCalendar buttons */
+html.admin-dark .cp-calendar-card .fc .fc-button-primary {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .cp-calendar-card .fc .fc-button-primary:hover {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .cp-calendar-card .fc .fc-button-group .fc-button.fc-button-active {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}
+html.admin-dark .cp-calendar-card .fc-theme-standard td,
+html.admin-dark .cp-calendar-card .fc-theme-standard th {
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-calendar-card .fc-theme-standard .fc-scrollgrid {
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-calendar-card .fc .fc-col-header-cell {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .cp-calendar-card .fc .fc-daygrid-day {
+  background: var(--admin-surface);
+}
+html.admin-dark .cp-calendar-card .fc .fc-day-today {
+  background: rgba(2, 71, 104, 0.08) !important;
+}
+html.admin-dark .cp-calendar-card .fc .fc-daygrid-day-number {
+  color: var(--admin-text);
+}
+html.admin-dark .cp-calendar-card .fc .fc-day-other .fc-daygrid-day-number {
+  color: var(--admin-muted);
+}
+
+/* Time entries */
+html.admin-dark .cp-time-entry {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-time-entry--open {
+  background: var(--admin-surface);
+  border-color: var(--admin-primary);
+}
+
+/* Quotation items table */
+html.admin-dark .cp-quotation-items thead th {
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-quotation-items tbody td {
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-quotation-items tbody tr:hover td {
+  background: var(--admin-table-hover);
+}
+html.admin-dark .cp-quotation-add-row-btn {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .cp-quotation-add-row-btn:hover {
+  background: var(--admin-surface-hover);
+}
+
+/* Material cards */
+html.admin-dark .sq-materials-list > .sq-material-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .sq-materials-list > .sq-material-card:nth-child(even) {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .sq-mat-readout {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+
+/* Segment toggles */
+html.admin-dark .sq-mat-mode-segment__item span {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .sq-mat-mode-segment__item:has(input:checked) span {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}
+html.admin-dark .br-lw-segment__item span {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .admin-form-group .br-lw-segment__item:has(input:checked) span {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}
+
+/* Grand row commute */
+html.admin-dark .sq-grand-row--commute {
+  background: var(--admin-surface-hover);
+}
+
+/* Tab counts */
+html.admin-dark .cp-tab.is-active .cp-tab-count {
+  background: var(--admin-primary);
+  color: #fff;
+}
+
+/* Basement progress items */
+html.admin-dark .br-progress__item.is-current .br-progress__num {
+  background: var(--admin-primary);
+  color: #fff;
+}
+html.admin-dark .br-progress__item .br-progress__num {
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+
+/* Warning backgrounds */
+html.admin-dark .cp-recalc-banner,
+html.admin-dark .admin-flash--warning {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #fcd34d;
+}
+
+/* Invoice preview card */
+html.admin-dark .cp-invoice-preview-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Project header card */
+html.admin-dark .cp-header-card {
+  background: var(--admin-surface);
+}
+html.admin-dark .cp-header-name {
+  color: var(--admin-heading);
+}
+html.admin-dark .cp-header-detail__label {
+  color: var(--admin-muted);
+}
+html.admin-dark .cp-header-detail__value {
+  color: var(--admin-text);
+}
+
+/* Status form */
+html.admin-dark .cp-status-form {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-status-form-label {
+  color: var(--admin-heading);
+}
+html.admin-dark .cp-status-form-help {
+  color: var(--admin-muted);
+}
+
+/* Definition lists */
+html.admin-dark .cp-dl dt {
+  color: var(--admin-muted);
+}
+html.admin-dark .cp-dl dd {
+  color: var(--admin-text);
+}
+
+/* Notes popover */
+html.admin-dark .cp-notes-popover {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Edit form */
+html.admin-dark .cp-edit-project-form-card {
+  background: var(--admin-surface);
+}
+html.admin-dark .cp-danger-card {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+html.admin-dark .cp-danger-title {
+  color: #f87171;
+}
+
+/* Billing choice */
+html.admin-dark .cp-billing-option {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .cp-billing-option:has(input:checked) {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+}
+
+/* Search select inputs in tables */
+html.admin-dark .br-config-table .admin-search-select.is-selected .admin-search-select__input,
+html.admin-dark .br-extra-row.is-linked .admin-search-select__input {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+/* Scope label */
+html.admin-dark .cp-projects-scope-label {
+  color: var(--admin-muted);
+}
+
+/* Subtle text */
+html.admin-dark .cp-subtle {
+  color: var(--admin-muted);
+}
+
+/* Schedule summary */
+html.admin-dark .cp-schedule-summary {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-schedule-summary__dates {
+  color: var(--admin-text);
+}
+
+/* Final summary */
+html.admin-dark .cp-final-summary {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-final-summary__title {
+  color: var(--admin-heading);
+}
+
+/* Helper time cards */
+html.admin-dark .cp-helper-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Inline badges with hardcoded colors - override with important */
+html.admin-dark .cp-badge[style*="background:#e0e7ff"] {
+  background: rgba(99, 102, 241, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#dbeafe"] {
+  background: rgba(59, 130, 246, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#d1fae5"] {
+  background: rgba(16, 185, 129, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#fef3c7"] {
+  background: rgba(251, 191, 36, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#fee2e2"] {
+  background: rgba(239, 68, 68, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#e5e7eb"] {
+  background: rgba(148, 163, 184, 0.2) !important;
+}
+
+/* Visit section */
+html.admin-dark .cp-visit-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Travel cost */
+html.admin-dark .cp-travel-cost {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Utilities teaser */
+html.admin-dark .cp-utilities-teaser {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Contract panel */
+html.admin-dark .cp-contract-panel {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Financials cards */
+html.admin-dark .cp-financials-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-expense-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Client project sticky mini-header */
+html.admin-dark .cp-sticky-mini-header {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}

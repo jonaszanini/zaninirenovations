@@ -2,12 +2,66 @@
 
 @section('heading', 'Email / SMS log')
 
+@push('head')
+<style>
+.comm-desc {
+  max-width: 280px;
+}
+.comm-desc__subject {
+  font-weight: 500;
+  color: var(--admin-heading);
+  margin-bottom: 2px;
+}
+.comm-desc__body {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  line-height: 1.4;
+}
+.comm-desc__body.is-expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.comm-desc__toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--admin-primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.comm-desc__toggle:hover {
+  color: var(--admin-primary-hover);
+}
+.comm-desc__error {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: #b45309;
+}
+.comm-row--compact td {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+.comm-recipient {
+  max-width: 180px;
+  word-break: break-word;
+}
+.comm-recipient__cc {
+  font-size: 0.8rem;
+  color: var(--admin-muted);
+}
+</style>
+@endpush
+
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Audit trail of every email and SMS sent by the system. Newest first.
-      Each row records the recipient, what was sent, and whether the
-      delivery attempt succeeded.
+    <p class="admin-toolbar-lede" style="font-size:0.9rem;">
+      Audit trail of every email and SMS sent by the system.
     </p>
   </div>
 
@@ -80,8 +134,9 @@
                 $projectUrl = $log->client_project_id
                   ? route('admin.client-projects.show', $log->client_project_id)
                   : null;
+                $hasLongDesc = strlen($log->description ?? '') > 80;
               @endphp
-              <tr @class(['admin-input', 'cp-comm-row-failed' => $isFailed])>
+              <tr @class(['comm-row--compact', 'cp-comm-row-failed' => $isFailed])>
                 <td>
                   @if ($isAdminBound)
                     <strong>{{ $log->clientNameLabel() }}</strong>
@@ -111,21 +166,24 @@
                     {{ $log->reasonLabel() }}
                   </span>
                 </td>
-                <td>
+                <td class="comm-desc">
                   @if ($log->subject)
-                    <div><strong>{{ $log->subject }}</strong></div>
+                    <div class="comm-desc__subject">{{ $log->subject }}</div>
                   @endif
-                  <div>{{ $log->description }}</div>
+                  <div class="comm-desc__body" data-full="{{ e($log->description) }}">{{ $log->description }}</div>
+                  @if ($hasLongDesc)
+                    <button type="button" class="comm-desc__toggle" onclick="toggleCommDesc(this)">Show more</button>
+                  @endif
                   @if ($log->error)
-                    <div class="cp-subtle" style="color:#b45309;">
+                    <div class="comm-desc__error">
                       <i class="fa fa-exclamation-triangle"></i> {{ $log->error }}
                     </div>
                   @endif
                 </td>
-                <td>
+                <td class="comm-recipient">
                   <div>{{ $log->recipient }}</div>
                   @if ($log->cc)
-                    <div class="cp-subtle">cc: {{ $log->cc }}</div>
+                    <div class="comm-recipient__cc">cc: {{ $log->cc }}</div>
                   @endif
                 </td>
                 <td>
@@ -152,4 +210,16 @@
       {{ $logs->links('pagination.admin') }}
     </div>
   @endif
+
+  <script>
+    function toggleCommDesc(btn) {
+      var body = btn.previousElementSibling;
+      while (body && !body.classList.contains('comm-desc__body')) {
+        body = body.previousElementSibling;
+      }
+      if (!body) return;
+      var expanded = body.classList.toggle('is-expanded');
+      btn.textContent = expanded ? 'Show less' : 'Show more';
+    }
+  </script>
 @endsection
