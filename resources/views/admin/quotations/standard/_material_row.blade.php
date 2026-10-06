@@ -97,7 +97,7 @@
         </div>
         <div class="sq-mat-field sq-mat-field--unit">
           <label>Unit price ($)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" name="{{ $namePrefix }}[unit_price]"
+          <input type="text" inputmode="decimal" autocomplete="off" name="{{ $namePrefix }}[unit_price]"
                  class="admin-input cp-money-input sq-mat-unit" placeholder="0.00"
                  value="{{ isset($row['unit_price']) && $row['unit_price'] !== '' ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
           <input type="hidden" name="{{ $namePrefix }}[delivery_cad]" class="sq-mat-delivery"

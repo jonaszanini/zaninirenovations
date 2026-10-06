@@ -144,13 +144,13 @@
       <div class="admin-form-grid-3">
         <div class="admin-form-group">
           <label for="owner_hourly_rate">Owner hourly (CAD$)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+          <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
                  value="{{ old('owner_hourly_rate', number_format((float) $crew->owner_hourly_rate, 2, '.', '')) }}" required>
         </div>
         <div class="admin-form-group">
           <label for="helper_hourly_rate">Helper hourly (CAD$)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+          <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
                  value="{{ old('helper_hourly_rate', number_format((float) $crew->helper_hourly_rate, 2, '.', '')) }}" required>
         </div>
@@ -215,7 +215,7 @@
                     @if ($isArea)
                       <span class="admin-form-help">—</span>
                     @else
-                      <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                      <input type="text" inputmode="decimal" autocomplete="off"
                              class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
                              name="works[{{ $work->id }}][rate]"
                              value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 2, '.', '') : '') }}"
@@ -223,7 +223,7 @@
                     @endif
                   </td>
                   <td class="sp-col-sell" data-label="Sell rate">
-                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                            class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
                            name="works[{{ $work->id }}][flat_rate]"
                            value="{{ $isArea ? $areaPrice : old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}"
@@ -271,7 +271,7 @@
                            placeholder="—">
                   </td>
                   <td class="sp-col-price" data-label="Mat. price">
-                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                            class="sp-input sp-input--sm cp-money-input" id="sp-mat-price-{{ $work->id }}"
                            name="works[{{ $work->id }}][material_unit_price]"
                            value="{{ old('works.'.$work->id.'.material_unit_price', $work->material_unit_price !== null ? number_format((float) $work->material_unit_price, 4, '.', '') : '') }}"

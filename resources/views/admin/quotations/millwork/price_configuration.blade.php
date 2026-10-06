@@ -61,13 +61,13 @@
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+          <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
                  value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required>
         </div>
         <div class="admin-form-group">
           <label for="helper_hourly_rate">Helper hourly rate (CAD$)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+          <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
                  value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required>
         </div>

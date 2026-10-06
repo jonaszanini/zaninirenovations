@@ -33,7 +33,7 @@
                    class="admin-input cp-money-input cp-quotation-control__input"
                    inputmode="decimal"
                    autocomplete="off"
-                   data-cp-money-entry="direct"
+                  
                    placeholder="0.00"
                    value="{{ old('subtotal_override', $quotation->hasSubtotalOverrideActive() ? number_format((float) $quotation->subtotal_override, 2, '.', '') : '') }}">
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm cp-quotation-control__submit">

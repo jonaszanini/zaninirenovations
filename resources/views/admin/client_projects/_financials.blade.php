@@ -78,7 +78,7 @@
                  class="admin-input cp-money-input"
                  inputmode="decimal"
                  autocomplete="off"
-                 data-cp-money-entry="direct"
+                
                  placeholder="0.00"
                  value="{{ $hourlyRateConfigured> 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}">
           @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -388,7 +388,7 @@
                class="admin-input cp-money-input"
                inputmode="decimal"
                autocomplete="off"
-               data-cp-money-entry="direct"
+              
                placeholder="0.00"
                value="{{ old('amount') }}">
       </div>
@@ -472,7 +472,7 @@
                                class="admin-input cp-money-input"
                                inputmode="decimal"
                                autocomplete="off"
-                               data-cp-money-entry="direct"
+                              
                                value="{{ old('amount', number_format((float) $expense->amount, 2, '.', '')) }}">
                       </div>
                     </div>
@@ -568,7 +568,7 @@
                class="admin-input cp-money-input"
                inputmode="decimal"
                autocomplete="off"
-               data-cp-money-entry="direct"
+              
                placeholder="0.00">
       </div>
       <div class="admin-form-group cp-finance-form-actions">

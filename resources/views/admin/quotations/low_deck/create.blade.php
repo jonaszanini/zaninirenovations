@@ -316,7 +316,7 @@
               <label for="ld-labour-rate">Labour rate (CA$ / sq ft)</label>
               <input id="ld-labour-rate" type="text" name="labour_rate_per_sqft"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_per_sqft')])
-                     inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                     inputmode="decimal" autocomplete="off"
                      value="{{ number_format((float) $initialLabour, 2, '.', '') }}">
               @error('labour_rate_per_sqft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
@@ -333,7 +333,7 @@
               <label for="ld-waste-fee">Material dump fee</label>
               <input id="ld-waste-fee" type="text" name="waste_dump_fee_cad"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('waste_dump_fee_cad')])
-                     inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                     inputmode="decimal" autocomplete="off"
                      value="{{ number_format((float) $initialWasteFee, 2, '.', '') }}">
               @error('waste_dump_fee_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>

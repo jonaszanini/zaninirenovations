@@ -51,7 +51,7 @@
   </div>
   <div class="admin-form-group">
     <label class="visually-hidden">Unit price</label>
-    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-br-extra-price
+    <input type="text" inputmode="decimal" autocomplete="off" data-br-extra-price
            class="admin-input cp-money-input br-preview" name="extra_materials[{{ $i }}][unit_price]"
            placeholder="0.00" value="{{ $price }}">
     <input type="hidden" name="extra_materials[{{ $i }}][delivery_cad]" data-br-extra-delivery

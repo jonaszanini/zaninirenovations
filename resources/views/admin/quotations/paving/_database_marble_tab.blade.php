@@ -54,7 +54,7 @@
                 </div>
                 <div class="pq-db-field-group">
                   <span class="pq-db-field-label">$/bag (CAD)</span>
-                  <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                  <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off"
                          value="{{ number_format((float) $mt->price_per_bag, 2, '.', '') }}"
                          class="admin-input cp-money-input" required aria-label="Price per bag CAD">
                 </div>
@@ -75,13 +75,13 @@
               <div class="pq-db-stone-card-footer">
                 <div class="pq-db-field-group">
                   <span class="pq-db-field-label">Delivery cost (CAD)</span>
-                  <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                  <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off"
                          value="{{ $mt->delivery_cost !== null ? number_format((float) $mt->delivery_cost, 2, '.', '') : '' }}"
                          class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost">
                 </div>
                 <div class="pq-db-field-group">
                   <span class="pq-db-field-label">Additional cost (CAD)</span>
-                  <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                  <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off"
                          value="{{ $mt->additional_cost !== null ? number_format((float) $mt->additional_cost, 2, '.', '') : '' }}"
                          class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost">
                 </div>
@@ -147,7 +147,7 @@
         </div>
         <div class="pq-db-field-group">
           <span class="pq-db-field-label">$/bag (CAD)</span>
-          <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+          <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" required placeholder="9.98"
                  value="{{ old('add_marble') === '1' ? old('price_per_bag') : '' }}">
         </div>
@@ -166,12 +166,12 @@
       <div class="pq-db-stone-card-footer">
         <div class="pq-db-field-group">
           <span class="pq-db-field-label">Delivery cost (CAD)</span>
-          <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" placeholder="0.00"
+          <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00"
                  value="{{ old('add_marble') === '1' ? old('delivery_cost') : '' }}">
         </div>
         <div class="pq-db-field-group">
           <span class="pq-db-field-label">Additional cost (CAD)</span>
-          <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" placeholder="0.00"
+          <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00"
                  value="{{ old('add_marble') === '1' ? old('additional_cost') : '' }}">
         </div>
         <div class="pq-db-field-group">

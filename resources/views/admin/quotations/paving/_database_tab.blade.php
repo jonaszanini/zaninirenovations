@@ -77,14 +77,14 @@
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">$/stone (CAD)</span>
                     <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
-                           data-cp-money-entry="direct"
+                          
                            value="{{ $st->price_per_stone !== null ? number_format((float) $st->price_per_stone, 2, '.', '') : '' }}"
                            class="admin-input cp-money-input pq-db-stone-price" placeholder="—" aria-label="Price per stone CAD">
                   </div>
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Price/sq ft</span>
                     <input type="text" name="price_per_sq_ft" inputmode="decimal" autocomplete="off"
-                           data-cp-money-entry="direct" data-cp-money-places="4"
+                           data-cp-money-places="4"
                            value="{{ $st->price_per_sq_ft !== null ? number_format((float) $st->price_per_sq_ft, 4, '.', '') : '' }}"
                            class="admin-input cp-money-input pq-db-stone-price-sqft" placeholder="Auto" aria-label="Price per sq ft CAD">
                   </div>
@@ -93,13 +93,13 @@
                 <div class="pq-db-stone-card-footer">
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Delivery Cost (CAD)</span>
-                    <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                    <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off"
                            value="{{ $st->delivery_cost !== null ? number_format((float) $st->delivery_cost, 2, '.', '') : '' }}"
                            class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost">
                   </div>
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Additional Cost (CAD)</span>
-                    <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                    <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off"
                            value="{{ $st->additional_cost !== null ? number_format((float) $st->additional_cost, 2, '.', '') : '' }}"
                            class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost">
                   </div>
@@ -181,14 +181,14 @@
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">$/stone (CAD)</span>
             <input type="text" name="price_per_stone" placeholder="—" inputmode="decimal" autocomplete="off"
-                   data-cp-money-entry="direct"
+                  
                    class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD"
                    value="{{ old('add_stone') === '1' ? old('price_per_stone') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Price/sq ft</span>
             <input type="text" name="price_per_sq_ft" placeholder="Auto" inputmode="decimal" autocomplete="off"
-                   data-cp-money-entry="direct" data-cp-money-places="4"
+                   data-cp-money-places="4"
                    class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD"
                    value="{{ old('add_stone') === '1' ? old('price_per_sq_ft') : '' }}">
           </div>
@@ -197,12 +197,12 @@
         <div class="pq-db-stone-card-footer" style="background:transparent;padding:0;border:none;">
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Delivery Cost (CAD)</span>
-            <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost"
+            <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost"
                    value="{{ old('add_stone') === '1' ? old('delivery_cost') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Additional Cost (CAD)</span>
-            <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost"
+            <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost"
                    value="{{ old('add_stone') === '1' ? old('additional_cost') : '' }}">
           </div>
           <div class="pq-db-field-group">
@@ -245,7 +245,7 @@
                         <span class="pq-db-rate-price-label-text">CAD</span>
                         <input type="text" name="price_before_tax" inputmode="decimal" autocomplete="off"
                                value="{{ number_format((float) $rate->price_before_tax, 2, '.', '') }}"
-                               class="admin-input cp-money-input pq-db-rate-input" data-cp-money-entry="direct" required aria-label="Price {{ $rate->label }} before tax">
+                               class="admin-input cp-money-input pq-db-rate-input" required aria-label="Price {{ $rate->label }} before tax">
                       </label>
                       <button type="submit" class="admin-btn admin-btn--sm admin-btn--primary">Save</button>
                     </div>
@@ -281,7 +281,7 @@
                            value="{{ number_format((float) $tier->price_per_sq_ft, 4, '.', '') }}"
                            class="admin-input cp-money-input"
                            data-cp-money-places="4"
-                           data-cp-money-entry="direct"
+                          
                            inputmode="decimal"
                            autocomplete="off"
                            required
@@ -511,7 +511,7 @@
         var tr = document.createElement('tr');
         tr.innerHTML = '<td>' + (n + 1) + '</td>' +
           '<td><input type="number" name="tiers[' + n + '][area_sq_ft]" value="900" step="0.01" min="1" class="admin-input" required aria-label="Tier area"></td>' +
-          '<td><input type="text" name="tiers[' + n + '][price_per_sq_ft]" value="25" class="admin-input cp-money-input" data-cp-money-places="4" data-cp-money-entry="direct" inputmode="decimal" autocomplete="off" required aria-label="Price per sq ft (CAD)"></td>';
+          '<td><input type="text" name="tiers[' + n + '][price_per_sq_ft]" value="25" class="admin-input cp-money-input" data-cp-money-places="4" inputmode="decimal" autocomplete="off" required aria-label="Price per sq ft (CAD)"></td>';
         tb.appendChild(tr);
         var newPrice = tr.querySelector('input[name*="[price_per_sq_ft]"]');
         if (window.cpMoneyMask && newPrice) {

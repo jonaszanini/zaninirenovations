@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SharedCrewRate;
 use App\Models\SharedWork;
 use App\Services\SharedWorkCatalog;
+use App\Support\CadMoney;
 use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -24,6 +25,8 @@ class SharedPriceLibraryController extends Controller
 
     public function update(Request $request)
     {
+        $this->normalizeMoneyFields($request);
+
         $data = $request->validate([
             'owner_hourly_rate' => ['required', 'numeric', 'min:0'],
             'helper_hourly_rate' => ['required', 'numeric', 'min:0'],
@@ -99,5 +102,33 @@ class SharedPriceLibraryController extends Controller
         return redirect()
             ->route('admin.quotations.shared-prices.edit')
             ->with('status', 'Shared prices saved. New quotation previews use these rates.');
+    }
+
+    /**
+     * Strip thousands separators from masked CAD money fields before numeric validation.
+     */
+    protected function normalizeMoneyFields(Request $request): void
+    {
+        foreach (['owner_hourly_rate', 'helper_hourly_rate'] as $field) {
+            if ($request->has($field)) {
+                $request->merge([$field => CadMoney::stripGrouping($request->input($field))]);
+            }
+        }
+
+        $works = $request->input('works');
+        if (! is_array($works)) {
+            return;
+        }
+        foreach ($works as $i => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            foreach (['rate', 'flat_rate', 'material_unit_price'] as $field) {
+                if (array_key_exists($field, $row)) {
+                    $works[$i][$field] = CadMoney::stripGrouping($row[$field]);
+                }
+            }
+        }
+        $request->merge(['works' => $works]);
     }
 }

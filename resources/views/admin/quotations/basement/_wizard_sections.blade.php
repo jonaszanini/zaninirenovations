@@ -257,7 +257,7 @@
       </div>
       <div class="admin-form-group">
         <label for="br-owner-rate">@include('admin.partials.info_tip', ['text' => $brInfo['owner_hourly_rate']]) Owner hourly rate (CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+        <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input br-preview" id="br-owner-rate" name="owner_hourly_rate"
                value="{{ number_format((float) $brVal('owner_hourly_rate', $settings->owner_hourly_rate), 2, '.', '') }}">
       </div>

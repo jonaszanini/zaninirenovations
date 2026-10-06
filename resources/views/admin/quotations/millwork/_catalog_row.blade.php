@@ -30,7 +30,7 @@
            value="{{ $row['name'] ?? '' }}" placeholder="Display name">
   </td>
   <td class="mw-col-price" data-label="Price">
-    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-mw-cat-price
+    <input type="text" inputmode="decimal" autocomplete="off" data-mw-cat-price
            class="admin-input cp-money-input" name="{{ $prefix }}[unit_price]"
            value="{{ isset($row['unit_price']) ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
   </td>

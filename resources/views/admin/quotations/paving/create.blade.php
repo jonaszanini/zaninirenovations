@@ -364,7 +364,7 @@
                   <div class="admin-form-group">
                     <label for="pq-owner">Owner hourly rate ($/hr)</label>
                     <input type="text" id="pq-owner" name="owner_hourly_rate" class="admin-input pq-calc-in cp-money-input"
-                           data-cp-money-entry="direct" inputmode="decimal" autocomplete="off" placeholder="0.00"
+                           inputmode="decimal" autocomplete="off" placeholder="0.00"
                            value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
                   </div>
                   <div class="admin-form-group">
@@ -458,7 +458,7 @@
             <div class="admin-form-group pq-override-block" style="margin-top:16px;">
               <label for="pq-manual">Manual price override (CAD)</label>
               <input type="text" id="pq-manual" name="manual_price_override" class="admin-input pq-calc-in cp-money-input"
-                     inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" placeholder="Blank = use built-up suggested total"
+                     inputmode="decimal" autocomplete="off" placeholder="Blank = use built-up suggested total"
                      value="{{ old('manual_price_override', isset($inputs['manual_price_override']) && $inputs['manual_price_override'] !== null && $inputs['manual_price_override'] !== '' ? number_format((float) $inputs['manual_price_override'], 2, '.', '') : '') }}">
               <p class="pq-hint">Leave blank to use the formula suggested total. Enter a dollar amount to override the final quote.</p>
             </div>

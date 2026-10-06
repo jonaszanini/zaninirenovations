@@ -476,7 +476,7 @@
               <label for="fq-labour-rate-6">Labour rate 6&prime; fence (CAD$ / linear ft)</label>
               <input id="fq-labour-rate-6" type="text" name="labour_rate_per_ft"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_per_ft')])
-                     inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" required
+                     inputmode="decimal" autocomplete="off" required
                      value="{{ number_format((float) $initialLabour6, 2, '.', '') }}">
               @error('labour_rate_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
@@ -484,7 +484,7 @@
               <label for="fq-labour-rate-8">Labour rate 8&prime; fence (CAD$ / linear ft)</label>
               <input id="fq-labour-rate-8" type="text" name="labour_rate_8ft_per_ft"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_8ft_per_ft')])
-                     inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" required
+                     inputmode="decimal" autocomplete="off" required
                      value="{{ number_format((float) $initialLabour8, 2, '.', '') }}">
               @error('labour_rate_8ft_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
