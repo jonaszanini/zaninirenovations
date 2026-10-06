@@ -3869,6 +3869,7 @@ a:hover .cp-expense-receipt-pdf {
   gap: 6px;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
 }
 .cp-invoice-actions .cp-action-icon-btn {
   position: relative;
@@ -3928,30 +3929,19 @@ a:hover .cp-expense-receipt-pdf {
   display: inline-block;
 }
 .cp-invoices-table tbody td:last-child {
+  vertical-align: middle;
+}
+.cp-invoice-warning-row td {
+  padding-top: 0;
+  border-top: none;
   vertical-align: top;
 }
-.cp-invoice-row-end {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  min-width: 0;
-  max-width: 100%;
-}
-.cp-invoice-row-end .cp-invoice-actions {
-  position: relative;
-  z-index: 2;
-  flex: 0 0 auto;
-  justify-content: flex-end;
-}
 .cp-invoices-table .cp-invoice-send-warning {
-  margin-bottom: 0;
+  margin: 0 0 10px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  position: relative;
-  z-index: 0;
   overflow-wrap: anywhere;
 }
 .cp-invoice-send-warning-body {
@@ -3985,7 +3975,77 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 @media (max-width: 767px) {
+  .admin-table-scroll:has(.cp-invoices-table) {
+    overflow-x: visible;
+  }
+  .cp-invoices-table.admin-table {
+    min-width: 0;
+  }
+  .cp-invoices-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .cp-invoices-table,
+  .cp-invoices-table tbody,
+  .cp-invoices-table tr,
+  .cp-invoices-table th,
+  .cp-invoices-table td {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+  .cp-invoices-table tbody tr:not(.cp-invoice-warning-row) {
+    background: var(--admin-elevated);
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    padding: 10px 12px 8px;
+    margin-bottom: 8px;
+  }
+  .cp-invoice-warning-row {
+    margin: -2px 0 12px;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  .cp-invoices-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 4px 0;
+    border: none;
+  }
+  .cp-invoices-table td[data-label]::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--admin-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex: 0 0 auto;
+    padding-top: 4px;
+  }
+  .cp-invoices-table td[data-label="Actions"] {
+    justify-content: flex-end;
+  }
+  .cp-invoices-table td[data-label="Actions"]::before {
+    margin-right: auto;
+    padding-top: 12px;
+  }
+  .cp-invoice-warning-row td {
+    display: block;
+    padding: 0;
+  }
+  .cp-invoice-warning-row td::before {
+    content: none;
+  }
   .cp-invoices-table .cp-invoice-send-warning {
+    position: static;
+    width: 100%;
+    max-width: 100%;
     padding: 8px 10px;
     font-size: 12px;
     gap: 8px;
