@@ -18,6 +18,7 @@ const screenshots = [
   { name: 'client-edit-form-desktop-1280-light', url: '/admin/clients/1/edit', width: 1280, height: 900, theme: 'light' },
   { name: 'client-project-edit-form-desktop-1280-dark', url: '/admin/client-projects/1/edit', width: 1280, height: 900, theme: 'dark' },
   { name: 'shared-prices-desktop-1280-light', url: '/admin/quotations/shared-prices', width: 1280, height: 900, theme: 'light', checkOverflow: true },
+  { name: 'shared-prices-mat-price-1280-light', url: '/admin/quotations/shared-prices', width: 1280, height: 900, theme: 'light', scrollToMatPrice: true, checkOverflow: true },
   { name: 'quotation-cards-desktop-1280-light', url: '/admin/client-projects/1#quotation', width: 1280, height: 900, theme: 'light' },
   { name: 'projects-list-desktop-1280-light', url: '/admin/client-projects', width: 1280, height: 900, theme: 'light', checkOverflow: true },
 ];
@@ -86,6 +87,16 @@ async function checkOverflow(page, shotName) {
       if (el.scrollWidth > el.clientWidth + 1) {
         offenders.push(info(el, 'input_clipped', { value: String(el.value || '').slice(0, 70) }));
       }
+    });
+
+    document.querySelectorAll('.sp-col-rate input, .sp-col-sell input, .sp-col-price input').forEach(el => {
+      if (!visible(el)) return;
+      const prev = el.value;
+      el.value = '9,999.0000';
+      if (el.scrollWidth > el.clientWidth + 1) {
+        offenders.push(info(el, 'input_clipped', { value: '9,999.0000 (probe)' }));
+      }
+      el.value = prev;
     });
 
     const wrapTargets = document.querySelectorAll(
@@ -246,6 +257,23 @@ async function takeScreenshot(page, shot) {
       }
       const table = document.querySelector('.cp-expenses-table');
       if (table) table.scrollIntoView({ behavior: 'instant', block: 'start' });
+    });
+    await delay(300);
+  }
+
+  if (shot.scrollToMatPrice) {
+    await delay(300);
+    await page.evaluate(() => {
+      let el = document.getElementById('sp-mat-price-16');
+      if (!el) {
+        el = Array.from(document.querySelectorAll('.sp-col-price input')).find(i =>
+          String(i.value).replace(/\s/g, '') === '1,410.0000' || String(i.value).replace(/,/g, '') === '1410.0000'
+        );
+      }
+      if (!el) return;
+      const details = el.closest('details');
+      if (details) details.open = true;
+      el.scrollIntoView({ behavior: 'instant', block: 'center' });
     });
     await delay(300);
   }

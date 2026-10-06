@@ -74,15 +74,24 @@
 }
 .sp-table tr:last-child td { border-bottom: none; }
 .sp-table .sp-col-label { width: 128px; }
-.sp-table .sp-col-rate { width: 3.6rem; }
-.sp-table .sp-col-sell { width: 4.75rem; }
+.sp-table .sp-col-rate,
+.sp-table .sp-col-sell,
+.sp-table .sp-col-price { width: calc(11ch + 1.25rem); }
 .sp-table .sp-col-unit { width: 4.75rem; }
-.sp-table .sp-col-price { width: 5.25rem; }
 .sp-table .sp-col-name { width: auto; }
 .sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; overflow: hidden; }
 .sp-table .sp-col-consumers { width: 150px; white-space: normal; }
 .sp-col-name .sp-input,
 .sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
+.sp-col-rate .sp-input,
+.sp-col-sell .sp-input,
+.sp-col-price .sp-input {
+  width: 100%;
+  min-width: 10ch;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  box-sizing: border-box;
+}
 .sp-col-unit .sp-input {
   width: 100%;
   min-width: 7ch;
