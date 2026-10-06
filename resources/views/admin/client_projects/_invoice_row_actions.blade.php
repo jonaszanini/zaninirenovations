@@ -85,6 +85,21 @@
   $reminderConfirm = filled(trim((string) $project->client_email))
     ? "Email a payment reminder to {$clientEmail} now?"
     : "Send a payment reminder SMS to {$clientSms} now?";
+
+  $canMarkPaid = false;
+  $pauseConfirm = '';
+  $deleteConfirm = 'Delete this draft invoice? This cannot be undone.';
+  if ($invoice) {
+      $canMarkPaid = ! $invoice->isPaid() && $invoice->hasContent() && (float) $invoice->total > 0;
+      if ($invoice->isSent()) {
+          $pauseConfirm = $invoice->dailyRemindersPaused()
+              ? "Resume daily payment reminders for invoice {$invoice->invoice_number}? The client will be emailed or texted again each day this invoice stays unpaid past the due date."
+              : "Stop daily payment reminders for invoice {$invoice->invoice_number}? The invoice stays on this line. You can still send a one-off reminder, or resume daily reminders later.";
+      }
+      if ($invoice->wasEverSent()) {
+          $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to {$clientEmail}. Deleting it removes the invoice from our records and returns this line to Create Invoice — the payment-plan row stays. The client will still have the old PDF in their inbox. Continue?";
+      }
+  }
 @endphp
 @if (!$invoice)
   {{-- No invoice yet for this installment → offer to create one. --}}

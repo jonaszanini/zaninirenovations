@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "dark-mode:audit": "node dark-mode-audit.js",
+    "screenshots": "node screenshot-all.js"
+  },
   "dependencies": {
     "puppeteer": "^24.43.1"
   }
