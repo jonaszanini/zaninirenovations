@@ -29,6 +29,9 @@
 
     RewriteEngine On
 
+    # Block phpinfo/debug scripts (security)
+    RewriteRule ^(test|info|phpinfo)\.php$ - [R=404,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

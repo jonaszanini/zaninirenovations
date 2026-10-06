@@ -1,6 +1,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Block phpinfo/debug scripts (security) - applies before rewrite to /public/
+    RewriteRule ^(?:public/)?(test|info|phpinfo)\.php$ - [R=404,L]
+
     # One visible URL: https://zaninirenovations.ca/...
     # www and any visitor-facing /public/... address 301 there first.
     # THE_REQUEST is the browser's original line, so the internal rewrite below does not loop.
