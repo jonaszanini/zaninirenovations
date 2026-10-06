@@ -457,6 +457,16 @@
   font-weight: 600;
 }
 
+.mat-table td {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.mat-store-name {
+  display: block;
+  margin-top: 2px;
+}
+
 .mat-row--inactive {
   opacity: 0.65;
 }
@@ -948,8 +958,8 @@
 
 .mat-thumb {
   display: block;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   border-radius: 6px;
   border: 1px solid var(--admin-border, #d8dee4);
