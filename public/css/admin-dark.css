@@ -556,6 +556,9 @@ html.admin-dark .admin-badge {
 
 /* Project-page surfaces that still hardcode #fff */
 html.admin-dark .dash-card,
+html.admin-dark .dash-panel,
+html.admin-dark .dash-finance-glance,
+html.admin-dark .dash-status-pill,
 html.admin-dark .portfolio-admin-card,
 html.admin-dark .fq-hub-card,
 html.admin-dark .cp-profit-tile,
@@ -2560,8 +2563,7 @@ html.admin-dark .pq-db-image-mode-btn.is-active {
   color: var(--admin-primary);
 }
 
-html.admin-dark .pq-db-add-stone.pq-db-add-stone--error {
-  background: var(--admin-danger-soft);
+html.admin-dark .pq-db-add-stone.pq-db-add-stone--error {  background: var(--admin-danger-soft);
   border-color: var(--admin-danger);
 }
 
@@ -2809,4 +2811,19 @@ html.admin-dark [style*="color:#8a1a1a"] {
 }
 html.admin-dark [style*="color:#0f5132"] {
   color: var(--admin-success) !important;
+}
+
+html.admin-dark .dash-finance-glance__summary:hover {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .dash-card--alert {
+  background: var(--admin-danger-soft);
+  border-color: var(--admin-danger);
+}
+
+html.admin-dark .dash-alert-banner {
+  background: color-mix(in srgb, #f59e0b 16%, var(--admin-surface));
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--admin-text);
 }
