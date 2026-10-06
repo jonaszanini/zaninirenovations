@@ -205,6 +205,10 @@ class ClientProjectQuotationController extends Controller
             return back()->with('error', "Cannot email the {$quotation->typeLabel()} — add the client's email address first.");
         }
 
+        if (! $quotation->hasReplyToAcceptChoice()) {
+            return back()->with('error', \App\Support\QuotationReplyToAccept::MESSAGE);
+        }
+
         // If the quotation has already been sent at least once, the next save
         // is conceptually a new version (so we keep an audit trail of PDFs).
         if ($quotation->isSent()) {
@@ -230,7 +234,7 @@ class ClientProjectQuotationController extends Controller
         }
         $quotation->save();
 
-        $quoteSubject = "{$quotation->typeLabel()} {$quotation->quotation_number} from Zanini Renovations";
+        $quoteSubject = ClientProjectQuotationClient::subjectFor($client_project, $quotation);
         $quoteDescription = "{$quotation->typeLabel()} {$quotation->quotation_number} v{$quotation->version} — total "
             .ClientProject::formatMoney((float) $quotation->grandTotal());
         $cc = $client_project->secondaryClientEmail();
@@ -394,45 +398,37 @@ class ClientProjectQuotationController extends Controller
                     ClientProjectQuotation::STATUS_SENT,
                     ClientProjectQuotation::STATUS_ACCEPTED,
                     ClientProjectQuotation::STATUS_REJECTED,
+                    ClientProjectQuotation::STATUS_SUPERSEDED,
                 ]),
             ],
         ]);
+
+        if ($data['status'] === ClientProjectQuotation::STATUS_ACCEPTED) {
+            $result = app(\App\Services\QuoteAcceptanceService::class)->accept(
+                $quotation,
+                ClientProjectQuotation::ACCEPTED_VIA_ADMIN,
+                $request->ip(),
+                optional($request->user())->email,
+            );
+
+            if ($result === \App\Services\QuoteAcceptanceService::STATUS_INVALID_STATE) {
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('error', 'This quotation cannot be accepted in its current state.');
+            }
+
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('quotation')
+                ->with('success', 'Quotation status updated.');
+        }
 
         $quotation->status = $data['status'];
         $quotation->save();
 
         $client_project->refresh();
         $client_project->syncFixedContractTotalsFromQuotation();
-
-        if ($data['status'] === ClientProjectQuotation::STATUS_ACCEPTED) {
-            $acceptNote = "{$quotation->typeLabel()} {$quotation->quotation_number} marked accepted.";
-
-            if ($client_project->canPromoteToProposalAcceptedFromQuotation()) {
-                try {
-                    $statusService->transition(
-                        $client_project,
-                        ClientProject::STATUS_PROPOSAL_ACCEPTED,
-                        $acceptNote,
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to auto-transition project to Proposal Accepted', [
-                        'project_id' => $client_project->id,
-                        'quotation_id' => $quotation->id,
-                        'exception' => $e->getMessage(),
-                    ]);
-                }
-            } else {
-                try {
-                    $statusService->recordEvent($client_project, $acceptNote);
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to record quotation-accepted history entry', [
-                        'project_id' => $client_project->id,
-                        'quotation_id' => $quotation->id,
-                        'exception' => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
 
         return redirect()
             ->route('admin.client-projects.show', $client_project)
@@ -626,6 +622,7 @@ class ClientProjectQuotationController extends Controller
             'project' => $project,
             'quotation' => $quotation,
             'pdfPhotos' => $quotation->pdfPhotosForRendering($project),
+            'acceptUrl' => $quotation->signedAcceptUrl(),
         ])
             ->setPaper('a4')
             ->setOption('isRemoteEnabled', true)

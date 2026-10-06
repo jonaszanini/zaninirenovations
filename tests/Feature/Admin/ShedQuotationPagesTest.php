@@ -112,6 +112,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'shed_type' => 'gable',
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ])->assertOk()
             ->assertJsonPath('scope.area_sqft', 120)
             ->assertJsonPath('eta.scenarios.0.crew', 1);
@@ -134,6 +135,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ]);
 
         $quote = ShedQuotation::query()->where('client_name', 'Live Preview Client')->first();
@@ -147,6 +149,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'foundation' => 'skids',
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ])->assertOk()
             ->assertJsonPath('scope.area_sqft', 39);
 
@@ -174,6 +177,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ]);
 
         $quote = ShedQuotation::query()->where('client_name', 'Shed Test Client')->first();
@@ -202,6 +206,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
             'after_save_url' => '/admin/quotations/shed/price-configuration',
             'after_save_attach_return' => '1',
         ]);
@@ -232,6 +237,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
             'after_save_url' => 'https://evil.example/admin/quotations',
         ]);
 
@@ -264,6 +270,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
             'link_client_project_id' => $project->id,
         ]);
 

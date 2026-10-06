@@ -1,6 +1,7 @@
 @php
   $typeLower = strtolower($quotation->typeLabel());
   $clientEmailMessage = $quotation->clientEmailMessageHtml();
+  $acceptUrl = $acceptUrl ?? $quotation->signedAcceptUrl();
 @endphp
 
 @component('emails.client_projects.layout', ['title' => $quotation->typeLabel().' – '.$project->name])
@@ -26,6 +27,20 @@
     If you have any questions regarding it or would like to adjust any of the
     details, please feel free to reach out. I am happy to hop on a quick call or
     respond via email.
+  </p>
+
+  @if ($quotation->asksClientToReplyIAccept())
+    <p>Please reply to this email with the words “I accept” to confirm this {{ $typeLower }}.</p>
+  @endif
+
+  <p style="margin:24px 0;">
+    <a href="{{ $acceptUrl }}"
+       style="display:inline-block;background:#024768;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600;">
+      Accept this quote
+    </a>
+  </p>
+  <p style="margin:0 0 16px 0;font-size:13px;color:#6b7280;">
+    Or open this link: <a href="{{ $acceptUrl }}" style="color:#024768;word-break:break-all;">{{ $acceptUrl }}</a>
   </p>
 
   <p>I look forward to the possibility of working together to bring this project to life.</p>

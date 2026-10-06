@@ -112,6 +112,7 @@ Run after view or route changes:
 ```bash
 php artisan test tests/Unit/Views/BladeSyntaxTest.php   # fast, no MySQL
 php artisan test tests/Feature/Smoke                    # needs MySQL test DB
+php artisan test tests/Feature/QuoteAcceptance          # signed link + API accept
 ```
 
 Signed URLs, OAuth callbacks, and cron are excluded from the smoke sweep (covered elsewhere or need special tokens).
@@ -123,6 +124,7 @@ Signed URLs, OAuth callbacks, and cron are excluded from the smoke sweep (covere
 - `tests/Feature/Security/CronEndpointTest.php`
 - `tests/Feature/Security/SignedPublicUrlsTest.php`
 - `tests/Feature/Invoices/MarkPaidInvoiceTest.php`
+- `tests/Feature/QuoteAcceptance/` — signed accept link, API token/idempotency/invalid state, email subject numbers, required reply-to-accept choice
 
 ### Templates
 - `tests/Templates/NewServiceTest.template.php`

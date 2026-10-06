@@ -1126,6 +1126,15 @@ html.admin-dark .cp-checkbox-row strong {
   color: var(--admin-heading);
 }
 
+html.admin-dark .cp-reply-to-accept--error {
+  border-color: var(--admin-danger);
+}
+
+html.admin-dark .cp-badge-accepted {
+  background: var(--admin-success-soft);
+  color: var(--admin-success);
+}
+
 html.admin-dark .sq-work-card,
 html.admin-dark .sq-intro-card,
 html.admin-dark .sq-panel:not(.sq-panel--nested),

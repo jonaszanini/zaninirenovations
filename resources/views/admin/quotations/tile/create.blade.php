@@ -405,6 +405,7 @@
       
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'tl-form'])
+      @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'tl-form'])
       
       <div class="pq-summary-card">
         <h4>Live breakdown</h4>

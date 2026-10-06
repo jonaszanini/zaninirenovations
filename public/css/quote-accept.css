@@ -1,0 +1,105 @@
+/* Public quote-accept page — light, mobile-first */
+.qa-page {
+  padding: 24px 0 48px;
+}
+.qa-card {
+  background: #fff;
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+  padding: 20px 16px;
+}
+@media (min-width: 768px) {
+  .qa-card {
+    padding: 28px 32px;
+  }
+}
+.qa-kicker {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5a6570;
+}
+.qa-title {
+  margin: 0 0 20px;
+  font-size: 26px;
+  line-height: 1.25;
+  color: #024768;
+}
+@media (min-width: 768px) {
+  .qa-title {
+    font-size: 32px;
+  }
+}
+.qa-summary {
+  margin: 0 0 20px;
+}
+.qa-summary__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid #edf0f2;
+}
+.qa-summary__row:last-child {
+  border-bottom: 1px solid #edf0f2;
+}
+.qa-summary dt {
+  flex: 0 0 120px;
+  margin: 0;
+  font-weight: 600;
+  color: #5a6570;
+}
+.qa-summary dd {
+  flex: 1 1 160px;
+  margin: 0;
+  color: #373435;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.qa-id {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.qa-message {
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #373435;
+}
+.qa-form {
+  margin: 0 0 16px;
+}
+.qa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 6px;
+  background: #024768;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .qa-btn {
+    width: auto;
+    min-width: 180px;
+  }
+}
+.qa-btn:hover,
+.qa-btn:focus {
+  background: #013251;
+  color: #fff;
+}
+.qa-contact {
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: #5a6570;
+}

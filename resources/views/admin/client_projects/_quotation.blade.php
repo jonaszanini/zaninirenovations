@@ -169,6 +169,9 @@
               <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy</span>
             @endif
             <span class="cp-badge" style="background:#e0e7ff;color:#3730a3;">{{ $quotation->statusLabel() }}</span>
+            @if ($quotation->acceptedSummary())
+              <span class="cp-badge cp-badge-accepted">{{ $quotation->acceptedSummary() }}</span>
+            @endif
             @if ($quotation->isSent())
               <span class="cp-badge" style="background:#22c55e20;color:#15803d;"><i class="fa fa-check"></i> Sent</span>
             @else
@@ -323,6 +326,9 @@
                 <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy (read-only)</span>
               @endif
               <span class="cp-badge" style="background:#e0e7ff;color:#3730a3;">{{ $quotation->statusLabel() }}</span>
+              @if ($quotation->acceptedSummary())
+                <span class="cp-badge cp-badge-accepted">{{ $quotation->acceptedSummary() }}</span>
+              @endif
               @if ($quotation->isSent())
                 <span class="cp-badge" style="background:#22c55e20;color:#15803d;">
                   <i class="fa fa-check"></i> Sent {{ \App\Models\ClientProject::formatDateTime($quotation->sent_at) }}

@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
+use App\Support\QuotationReplyToAccept;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +33,14 @@ class ClientProjectQuotation extends Model
     public const STATUS_ACCEPTED = 'accepted';
 
     public const STATUS_REJECTED = 'rejected';
+
+    public const STATUS_SUPERSEDED = 'superseded';
+
+    public const ACCEPTED_VIA_LINK = 'link';
+
+    public const ACCEPTED_VIA_API = 'api';
+
+    public const ACCEPTED_VIA_ADMIN = 'admin';
 
     /** Legacy: line items were edited on the project before calculator-only flow. */
     public const SOURCE_MANUAL = 'manual';
@@ -81,6 +91,11 @@ class ClientProjectQuotation extends Model
         'payment_percentages',
         'sent_at',
         'version',
+        'accepted_at',
+        'accepted_via',
+        'accepted_ip',
+        'accepted_source_note',
+        'ask_reply_to_accept',
     ];
 
     protected $casts = [
@@ -90,6 +105,7 @@ class ClientProjectQuotation extends Model
         'source_snapshot' => 'array',
         'pdf_photo_ids' => 'array',
         'sent_at' => 'datetime',
+        'accepted_at' => 'datetime',
         'payment_installments' => 'integer',
         'payment_percentages' => 'array',
         'total_amount' => 'decimal:2',
@@ -1305,6 +1321,7 @@ class ClientProjectQuotation extends Model
             self::STATUS_SENT => 'Sent',
             self::STATUS_ACCEPTED => 'Accepted',
             self::STATUS_REJECTED => 'Rejected',
+            self::STATUS_SUPERSEDED => 'Superseded',
             default => 'Draft',
         };
     }
@@ -1312,6 +1329,150 @@ class ClientProjectQuotation extends Model
     public function isAccepted(): bool
     {
         return $this->status === self::STATUS_ACCEPTED;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === self::STATUS_REJECTED;
+    }
+
+    public function isSuperseded(): bool
+    {
+        return $this->status === self::STATUS_SUPERSEDED;
+    }
+
+    /**
+     * Calculator quote number (e.g. SQ-2026-0001) when linked, else QUO/EST number.
+     */
+    public function displayQuoteNumber(): string
+    {
+        $sourceNumber = $this->sourceQuoteNumber();
+        if ($sourceNumber !== null) {
+            return $sourceNumber;
+        }
+
+        return (string) $this->quotation_number;
+    }
+
+    public function sourceQuoteNumber(): ?string
+    {
+        $source = $this->sourceQuotationModel();
+        if ($source) {
+            $n = trim((string) $source->getAttribute('quote_number'));
+            if ($n !== '') {
+                return $n;
+            }
+        }
+
+        $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
+        $fromSnap = trim((string) ($snap['quote_number'] ?? ''));
+
+        return $fromSnap !== '' ? $fromSnap : null;
+    }
+
+    public function matchesQuoteNumber(string $quoteNumber): bool
+    {
+        $needle = strtoupper(trim($quoteNumber));
+        if ($needle === '') {
+            return false;
+        }
+
+        $candidates = [
+            (string) $this->quotation_number,
+            (string) $this->sourceQuoteNumber(),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate !== '' && strtoupper(trim($candidate)) === $needle) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function findForProjectAndQuoteNumber(ClientProject $project, string $quoteNumber): ?self
+    {
+        $needle = trim($quoteNumber);
+        if ($needle === '') {
+            return null;
+        }
+
+        $rows = $project->relationLoaded('quotations')
+            ? $project->quotations
+            : $project->quotations()->get();
+
+        foreach ($rows as $row) {
+            if ($row->matchesQuoteNumber($needle)) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    public static function sourceTypeForModel(Model $model): ?string
+    {
+        foreach (self::sourceModelClasses() as $type => $class) {
+            if ($model instanceof $class) {
+                return $type;
+            }
+        }
+
+        return null;
+    }
+
+    public function signedAcceptUrl(): string
+    {
+        return URL::signedRoute('public.quotations.accept', ['quotation' => $this]);
+    }
+
+    /**
+     * Yes/No from the linked calculator row, then this document. Null = unset.
+     */
+    public function askReplyToAccept(): ?bool
+    {
+        $source = $this->sourceQuotationModel();
+        if ($source) {
+            $fromSource = QuotationReplyToAccept::parse($source->getAttribute(QuotationReplyToAccept::FIELD));
+            if ($fromSource !== null) {
+                return $fromSource;
+            }
+        }
+
+        return QuotationReplyToAccept::parse($this->ask_reply_to_accept);
+    }
+
+    public function hasReplyToAcceptChoice(): bool
+    {
+        return $this->askReplyToAccept() !== null;
+    }
+
+    public function asksClientToReplyIAccept(): bool
+    {
+        return $this->askReplyToAccept() === true;
+    }
+
+    public static function acceptedViaLabel(?string $via): string
+    {
+        return match ($via) {
+            self::ACCEPTED_VIA_LINK => 'accept link',
+            self::ACCEPTED_VIA_API => 'API',
+            self::ACCEPTED_VIA_ADMIN => 'admin',
+            default => $via !== null && $via !== '' ? $via : 'unknown',
+        };
+    }
+
+    public function acceptedSummary(): ?string
+    {
+        if (! $this->isAccepted() || $this->accepted_at === null) {
+            return null;
+        }
+
+        $when = ClientProject::formatDateTime($this->accepted_at);
+        $via = self::acceptedViaLabel($this->accepted_via);
+
+        return 'Accepted on '.$when.' via '.$via;
     }
 
     /**

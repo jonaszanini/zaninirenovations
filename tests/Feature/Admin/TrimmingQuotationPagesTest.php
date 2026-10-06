@@ -160,6 +160,7 @@ class TrimmingQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ], $overrides);
     }
 }

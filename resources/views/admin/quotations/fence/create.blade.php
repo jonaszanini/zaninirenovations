@@ -587,6 +587,7 @@
     <aside class="admin-card fq-breakdown-card">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'fq-form'])
+      @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'fq-form'])
       
       <h3 class="cp-heading-md">Live breakdown</h3>
       <p class="admin-form-help cp-breakdown-intro">

@@ -15,6 +15,7 @@
           <option value="{{ \App\Models\ClientProjectQuotation::STATUS_SENT }}" @selected($quotation->status === \App\Models\ClientProjectQuotation::STATUS_SENT)>Sent</option>
           <option value="{{ \App\Models\ClientProjectQuotation::STATUS_ACCEPTED }}" @selected($quotation->status === \App\Models\ClientProjectQuotation::STATUS_ACCEPTED)>Accepted</option>
           <option value="{{ \App\Models\ClientProjectQuotation::STATUS_REJECTED }}" @selected($quotation->status === \App\Models\ClientProjectQuotation::STATUS_REJECTED)>Rejected</option>
+          <option value="{{ \App\Models\ClientProjectQuotation::STATUS_SUPERSEDED }}" @selected($quotation->status === \App\Models\ClientProjectQuotation::STATUS_SUPERSEDED)>Superseded</option>
         </select>
       </form>
     </div>
@@ -42,6 +43,9 @@
           </div>
         </form>
       </div>
+    @endif
+    @if ($quotation->acceptedSummary())
+      <p class="cp-quote-accepted-meta">{{ $quotation->acceptedSummary() }}</p>
     @endif
   </div>
 @endunless

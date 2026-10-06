@@ -473,6 +473,20 @@
     .closing .signoff {
       margin-top: 14pt;
     }
+    .quote-accept-cta {
+      margin: 14pt 0 6pt;
+    }
+    .quote-accept-cta a {
+      color: #024768;
+      font-weight: 700;
+      text-decoration: underline;
+    }
+    .quote-accept-url {
+      font-size: 8.5pt;
+      color: #6b7280;
+      word-break: break-all;
+      margin: 0 0 10pt;
+    }
 
     .pdf-photos-section {
       margin: 16pt 0 18pt;
@@ -829,6 +843,12 @@
     </ul>
 
     <p>We trust this quote meets with your approval and we are favoured with your order.</p>
+
+    @php $acceptUrl = $acceptUrl ?? $quotation->signedAcceptUrl(); @endphp
+    <p class="quote-accept-cta">
+      <a href="{{ $acceptUrl }}">Accept this quote</a>
+    </p>
+    <p class="quote-accept-url">{{ $acceptUrl }}</p>
 
     <div class="signoff">
       <p>Best regards,</p>
