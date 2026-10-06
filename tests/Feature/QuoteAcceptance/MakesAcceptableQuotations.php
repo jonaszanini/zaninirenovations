@@ -23,7 +23,7 @@ trait MakesAcceptableQuotations
             'billing_type' => ClientProject::BILLING_FIXED,
         ], $projectOverrides));
 
-        $quoteNumber = (string) ($quoteOverrides['quote_number'] ?? 'SQ-2026-0001');
+        $quoteNumber = (string) ($quoteOverrides['quote_number'] ?? ('SQ-2026-'.str_pad((string) random_int(1000, 9999), 4, '0', STR_PAD_LEFT)));
         $ask = array_key_exists('ask_reply_to_accept', $quoteOverrides)
             ? $quoteOverrides['ask_reply_to_accept']
             : 1;
@@ -44,7 +44,7 @@ trait MakesAcceptableQuotations
             'type' => ClientProjectQuotation::TYPE_QUOTATION,
             'labour' => true,
             'material' => true,
-            'quotation_number' => $quoteOverrides['quotation_number'] ?? 'QUO-2026-0150',
+            'quotation_number' => $quoteOverrides['quotation_number'] ?? ('QUO-2026-'.str_pad((string) random_int(1000, 9999), 4, '0', STR_PAD_LEFT)),
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
             'source_id' => $standard->id,
             'source_snapshot' => ['quote_number' => $quoteNumber],

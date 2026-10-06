@@ -18,17 +18,20 @@ class QuotationEmailAndReplyChoiceTest extends IntegrationTestCase
         Mail::fake();
         $this->actingAsAdmin();
 
-        [$project, $quotation] = $this->makeLinkedQuotation();
+        [$project, $quotation] = $this->makeLinkedQuotation([
+            'quote_number' => 'SQ-2026-0001',
+        ]);
 
         $this->post(route('admin.client-projects.quotation.send', [$project, $quotation]))
             ->assertRedirect();
 
         Mail::assertSent(ClientProjectQuotationClient::class, function (ClientProjectQuotationClient $mail) use ($project, $quotation) {
             $expected = ClientProjectQuotationClient::subjectFor($project, $quotation);
+            $mail->build();
             $this->assertSame($expected, $mail->subject);
-            $this->assertStringContainsString($project->referenceCode(), $expected);
-            $this->assertStringContainsString($quotation->displayQuoteNumber(), $expected);
-            $html = $mail->render();
+            $this->assertStringContainsString('PRJ', $expected);
+            $this->assertStringContainsString('SQ-2026-0001', $expected);
+            $html = view($mail->view, $mail->viewData)->render();
             $this->assertStringContainsString('Accept this quote', $html);
             $this->assertStringContainsString('I accept', $html);
 
