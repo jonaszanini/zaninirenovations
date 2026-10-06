@@ -4,7 +4,78 @@
   $smsTitle, $shareLinkUrl, $sendConfirmMessage, $smsConfirmMessage, $deleteConfirm,
   $missingDelivery (optional), $canDeliverByEmail, $canDeliverBySms
 --}}
-<div class="cp-quotation-toolbar">
+@php
+  $quotDropdownItems = [];
+  if ($hasContent) {
+      $quotDropdownItems[] = [
+          'type' => 'button',
+          'onclick' => "cpOpenQuotationDrawer('qd-{$quotation->id}')",
+          'icon' => 'fa-eye',
+          'label' => 'View',
+      ];
+  }
+  if (! $legacy) {
+      $quotDropdownItems[] = [
+          'type' => 'link',
+          'href' => route('admin.client-projects.quotation.edit', [$project, $quotation]),
+          'icon' => 'fa-pencil',
+          'label' => 'Edit',
+      ];
+  }
+  if ($hasContent) {
+      $quotDropdownItems[] = [
+          'type' => 'link',
+          'href' => route('admin.client-projects.quotation.pdf', [$project, $quotation]),
+          'icon' => 'fa-download',
+          'label' => 'PDF',
+          'target' => '_blank',
+      ];
+  }
+  if ($canSend && ! $legacy) {
+      $quotDropdownItems[] = [
+          'type' => 'form',
+          'action' => route('admin.client-projects.quotation.send', [$project, $quotation]),
+          'icon' => 'fa-paper-plane',
+          'label' => $quotation->isSent() ? 'Resend' : 'Send',
+          'confirm' => $sendConfirmMessage,
+      ];
+  }
+  if (! $legacy && $canSms) {
+      $quotDropdownItems[] = [
+          'type' => 'form',
+          'action' => route('admin.client-projects.quotation.sms', [$project, $quotation]),
+          'icon' => 'fa-comment',
+          'label' => 'SMS',
+          'confirm' => $smsConfirmMessage,
+      ];
+  }
+  if (! $legacy && $shareLinkUrl) {
+      $quotDropdownItems[] = [
+          'type' => 'copylink',
+          'url' => $shareLinkUrl,
+          'icon' => 'fa-link',
+          'label' => 'Copy link',
+      ];
+  }
+  if (! $legacy) {
+      $quotDropdownItems[] = [
+          'type' => 'button',
+          'onclick' => "cpOpenDuplicateModal({$project->id}, {$quotation->id}, " . json_encode($quotation->quotation_number) . ")",
+          'icon' => 'fa-copy',
+          'label' => 'Duplicate',
+      ];
+      $quotDropdownItems[] = [
+          'type' => 'form',
+          'action' => route('admin.client-projects.quotation.destroy', [$project, $quotation]),
+          'method' => 'DELETE',
+          'icon' => 'fa-trash',
+          'label' => 'Delete',
+          'confirm' => $deleteConfirm,
+          'class' => 'admin-actions-dropdown__item--danger',
+      ];
+  }
+@endphp
+<div class="cp-quotation-toolbar admin-table-actions">
   @if ($hasContent)
     <button type="button"
             class="admin-btn admin-btn--ghost admin-btn--sm"
@@ -110,4 +181,54 @@
       </button>
     </form>
   @endunless
+
+  {{-- Mobile actions dropdown --}}
+  @if (count($quotDropdownItems) > 0)
+    <div class="admin-actions-dropdown">
+      <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu">
+        <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+      </button>
+      <div class="admin-actions-dropdown__menu">
+        @foreach ($quotDropdownItems as $item)
+          @if ($item['type'] === 'link')
+            <a href="{{ $item['href'] }}"
+               class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}"
+               @if (! empty($item['target'])) target="{{ $item['target'] }}" rel="noopener" @endif>
+              <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+              {{ $item['label'] }}
+            </a>
+          @elseif ($item['type'] === 'form')
+            <form action="{{ $item['action'] }}"
+                  method="post"
+                  class="admin-actions-dropdown__form"
+                  @if (! empty($item['confirm'])) onsubmit="return confirm({{ json_encode($item['confirm']) }});" @endif>
+              @csrf
+              @if (! empty($item['method']) && $item['method'] === 'DELETE')
+                @method('DELETE')
+              @endif
+              <button type="submit" class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}">
+                <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+                {{ $item['label'] }}
+              </button>
+            </form>
+          @elseif ($item['type'] === 'button')
+            <button type="button"
+                    class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}"
+                    onclick="{{ $item['onclick'] }}">
+              <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+              {{ $item['label'] }}
+            </button>
+          @elseif ($item['type'] === 'copylink')
+            <button type="button"
+                    class="admin-actions-dropdown__item cp-quotation-copy-link"
+                    data-cp-copy-quotation-link
+                    data-copy-url="{{ $item['url'] }}">
+              <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+              {{ $item['label'] }}
+            </button>
+          @endif
+        @endforeach
+      </div>
+    </div>
+  @endif
 </div>

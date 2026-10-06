@@ -4383,6 +4383,23 @@ body.admin-ai-text-history-open {
   color: var(--admin-danger);
 }
 
+.admin-actions-dropdown__item--success {
+  color: var(--admin-success, #16a34a);
+}
+
+.admin-actions-dropdown__item--success i {
+  color: var(--admin-success, #16a34a);
+}
+
+.admin-actions-dropdown__form {
+  display: contents;
+}
+
+button.admin-actions-dropdown__item {
+  font-family: inherit;
+  font-weight: inherit;
+}
+
 /* Desktop: show regular buttons, hide dropdown */
 @media (min-width: 768px) {
   .admin-table-actions .admin-actions-dropdown {
