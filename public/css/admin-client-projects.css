@@ -3246,12 +3246,38 @@ a:hover .cp-expense-receipt-pdf {
 /* Desktop: show buttons, hide mobile dropdown */
 .cp-quotation-toolbar__desktop {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
 }
+.cp-quotation-toolbar__desktop .cp-inline-form {
+  margin: 0;
+}
 .cp-quotation-toolbar__mobile {
   display: none;
+}
+.cp-quotation-toolbar__overflow {
+  flex-shrink: 0;
+}
+/* Override the admin.css rule that hides dropdowns on desktop */
+.cp-quotation-toolbar__desktop .cp-quotation-toolbar__overflow.admin-actions-dropdown {
+  display: inline-block;
+}
+.cp-quotation-toolbar__overflow .admin-actions-dropdown__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+}
+.cp-quotation-toolbar__overflow .admin-actions-dropdown__toggle:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
 }
 .cp-quotation-toolbar__overflow .admin-actions-dropdown__menu {
   right: 0;
