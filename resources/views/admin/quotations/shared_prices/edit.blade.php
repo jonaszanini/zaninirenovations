@@ -74,10 +74,10 @@
 }
 .sp-table tr:last-child td { border-bottom: none; }
 .sp-table .sp-col-label { width: 150px; }
-.sp-table .sp-col-rate { width: 52px; }
-.sp-table .sp-col-sell { width: 68px; }
+.sp-table .sp-col-rate { width: 4rem; }
+.sp-table .sp-col-sell { width: 4.5rem; }
 .sp-table .sp-col-unit { width: 4.75rem; }
-.sp-table .sp-col-price { width: 4.75rem; }
+.sp-table .sp-col-price { width: 5.5rem; }
 .sp-table .sp-col-name { width: auto; }
 .sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; overflow: hidden; }
 .sp-table .sp-col-consumers { width: 150px; white-space: normal; }

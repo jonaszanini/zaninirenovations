@@ -137,18 +137,6 @@
               <span class="cp-quotation-accordion__number">{{ $quotation->quotation_number }}</span>
             </div>
             <p class="cp-quotation-accordion__desc">{{ $summDesc }}</p>
-            <div class="cp-quotation-accordion__badges" data-total="{{ $hasContent ? \App\Models\ClientProject::formatMoney($grand) : '—' }}">
-              @if ($legacy)
-                <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy</span>
-              @endif
-              <span class="cp-badge" style="background:#e0e7ff;color:#3730a3;">{{ $quotation->statusLabel() }}</span>
-              @if ($quotation->isSent())
-                <span class="cp-badge" style="background:#22c55e20;color:#15803d;"><i class="fa fa-check"></i> Sent</span>
-              @else
-                <span class="cp-badge" style="background:#f59e0b20;color:#b45309;">Not emailed</span>
-              @endif
-              <span class="cp-contract-version">{{ $typeLabel }}</span>
-            </div>
           </div>
           <div class="cp-quotation-accordion__total-block">
             @if ($hasContent)
@@ -175,6 +163,18 @@
               'canDeliverBySms' => $canDeliverBySms,
               'missingDelivery' => $missingDelivery,
             ])
+          </div>
+          <div class="cp-quotation-accordion__badges" data-total="{{ $hasContent ? \App\Models\ClientProject::formatMoney($grand) : '—' }}">
+            @if ($legacy)
+              <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy</span>
+            @endif
+            <span class="cp-badge" style="background:#e0e7ff;color:#3730a3;">{{ $quotation->statusLabel() }}</span>
+            @if ($quotation->isSent())
+              <span class="cp-badge" style="background:#22c55e20;color:#15803d;"><i class="fa fa-check"></i> Sent</span>
+            @else
+              <span class="cp-badge" style="background:#f59e0b20;color:#b45309;">Not emailed</span>
+            @endif
+            <span class="cp-contract-version">{{ $typeLabel }}</span>
           </div>
         </summary>
 

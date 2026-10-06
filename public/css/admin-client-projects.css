@@ -1639,8 +1639,8 @@ a:hover .cp-expense-receipt-pdf {
     content: ' ·';
   }
   .cp-expenses-table td:nth-child(3) {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 1 1 auto;
+    min-width: 5rem;
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3130,9 +3130,14 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-quotation-accordion__summary {
   list-style: none;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "chevron core total actions"
+    "chevron badges total actions";
+  align-items: start;
+  column-gap: 8px;
+  row-gap: 4px;
   padding: 16px;
   cursor: pointer;
   user-select: none;
@@ -3142,7 +3147,7 @@ a:hover .cp-expense-receipt-pdf {
   display: none;
 }
 .cp-quotation-accordion__chevron {
-  flex: 0 0 16px;
+  grid-area: chevron;
   text-align: center;
   font-size: 12px;
   color: var(--admin-muted);
@@ -3153,7 +3158,7 @@ a:hover .cp-expense-receipt-pdf {
   transform: rotate(180deg);
 }
 .cp-quotation-accordion__core {
-  flex: 1 1 0;
+  grid-area: core;
   min-width: 0;
 }
 .cp-quotation-accordion__title-row {
@@ -3162,18 +3167,24 @@ a:hover .cp-expense-receipt-pdf {
   align-items: baseline;
   gap: 6px;
   line-height: 1.35;
+  min-width: 0;
 }
 .cp-quotation-accordion__title {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
   color: var(--admin-heading);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .cp-quotation-accordion__number {
   font-size: 13px;
   font-weight: 500;
   color: var(--admin-primary);
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 .cp-quotation-accordion__title.cp-quotation-primary-heading--standard {
   font-weight: 400;
@@ -3241,7 +3252,8 @@ a:hover .cp-expense-receipt-pdf {
   overflow: hidden;
 }
 .cp-quotation-accordion__badges {
-  margin-top: 4px;
+  grid-area: badges;
+  margin-top: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -3255,16 +3267,15 @@ a:hover .cp-expense-receipt-pdf {
   font-size: 10px;
 }
 .cp-quotation-accordion__total-block {
-  flex: 0 0 auto;
+  grid-area: total;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  margin-left: 8px;
 }
 .cp-quotation-accordion__actions {
-  flex: 0 0 auto;
+  grid-area: actions;
   position: relative;
 }
 .cp-quotation-accordion__actions .cp-quotation-toolbar {
@@ -3306,57 +3317,27 @@ a:hover .cp-expense-receipt-pdf {
 }
 @media (max-width: 700px) {
   .cp-quotation-accordion__summary {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 4px 8px;
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "chevron core actions"
+      "badges badges badges";
+    column-gap: 8px;
+    row-gap: 4px;
     padding: 16px;
   }
-  .cp-quotation-accordion__chevron {
-    flex: 0 0 14px;
-    padding-top: 4px;
-  }
-  .cp-quotation-accordion__core {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .cp-quotation-accordion__title-row {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 6px;
-  }
   .cp-quotation-accordion__title {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     font-size: 14px;
-  }
-  .cp-quotation-accordion__number {
-    flex: 0 0 auto;
-    white-space: nowrap;
   }
   .cp-quotation-accordion__total-block {
     display: none;
   }
-  .cp-quotation-accordion__actions {
-    flex: 0 0 auto;
-    margin-left: 0;
-    align-self: flex-start;
-  }
-  /* Kill the 2-col full-width toolbar grid so ⋯ sits flush right. */
   .cp-quotation-accordion__actions .cp-quotation-toolbar {
     display: flex;
     flex-wrap: nowrap;
     width: auto;
     grid-template-columns: none;
     gap: 0;
-  }
-  .cp-quotation-accordion__badges {
-    flex: 1 1 100%;
-    margin-top: 2px;
   }
   .cp-quotation-accordion__badges::before {
     content: attr(data-total);
