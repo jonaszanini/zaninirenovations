@@ -291,9 +291,14 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
   <script>
     (function () {
+      var isDark = document.documentElement.classList.contains('admin-dark');
       var primary = getComputedStyle(document.documentElement).getPropertyValue('--admin-primary').trim() || '#024768';
       var success = getComputedStyle(document.documentElement).getPropertyValue('--admin-success').trim() || '#2e7d4a';
       var danger = getComputedStyle(document.documentElement).getPropertyValue('--admin-danger').trim() || '#c62828';
+      var textColor = isDark ? '#e2e8f0' : '#373435';
+      var gridColor = isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(0, 0, 0, 0.08)';
+      var barBgColor = isDark ? 'rgba(56, 189, 248, 0.35)' : 'rgba(2, 71, 104, 0.35)';
+      var barBgColor2 = isDark ? 'rgba(56, 189, 248, 0.4)' : 'rgba(2, 71, 104, 0.4)';
 
       var proj = @json($p);
       var ytd = @json($y);
@@ -309,7 +314,7 @@
                 label: 'Projected revenue (CAD)',
                 data: proj.revenue,
                 order: 2,
-                backgroundColor: 'rgba(2, 71, 104, 0.35)',
+                backgroundColor: barBgColor,
                 borderColor: primary,
                 borderWidth: 1,
                 yAxisID: 'y',
@@ -343,7 +348,7 @@
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-              legend: { position: 'bottom' },
+              legend: { position: 'bottom', labels: { color: textColor } },
               tooltip: {
                 callbacks: {
                   label: function (ctx) {
@@ -356,20 +361,27 @@
               },
             },
             scales: {
+              x: {
+                ticks: { color: textColor },
+                grid: { color: gridColor },
+              },
               y: {
                 beginAtZero: true,
                 position: 'left',
                 ticks: {
+                  color: textColor,
                   callback: function (value) {
                     return 'CA$' + Number(value).toLocaleString('en-CA', { maximumFractionDigits: 0 });
                   },
                 },
+                grid: { color: gridColor },
               },
               y1: {
                 beginAtZero: true,
                 position: 'right',
                 grid: { drawOnChartArea: false },
                 ticks: {
+                  color: textColor,
                   callback: function (value) {
                     return 'CA$' + Number(value).toLocaleString('en-CA', { maximumFractionDigits: 0 });
                   },
@@ -390,7 +402,7 @@
               {
                 label: 'Revenue (paid invoices)',
                 data: ytd.month_revenue,
-                backgroundColor: 'rgba(2, 71, 104, 0.4)',
+                backgroundColor: barBgColor2,
                 borderColor: primary,
                 borderWidth: 1,
               },
@@ -407,7 +419,7 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: { position: 'bottom' },
+              legend: { position: 'bottom', labels: { color: textColor } },
               tooltip: {
                 callbacks: {
                   label: function (ctx) {
@@ -418,13 +430,19 @@
               },
             },
             scales: {
+              x: {
+                ticks: { color: textColor },
+                grid: { color: gridColor },
+              },
               y: {
                 beginAtZero: true,
                 ticks: {
+                  color: textColor,
                   callback: function (value) {
                     return 'CA$' + Number(value).toLocaleString('en-CA', { maximumFractionDigits: 0 });
                   },
                 },
+                grid: { color: gridColor },
               },
             },
           },
