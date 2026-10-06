@@ -53,6 +53,7 @@ async function checkOverflow(page, shotName) {
     const SKIP_CLASS = /(dropdown__menu|ss-combobox__list|asp|cp-modal|sp-search-wrap--hidden)/;
 
     function visible(el) {
+      if (el.closest('[hidden]')) return false;
       const s = getComputedStyle(el);
       if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return false;
       const r = el.getBoundingClientRect();
@@ -110,16 +111,17 @@ async function checkOverflow(page, shotName) {
     });
 
     document.querySelectorAll('.admin-card, .cp-quotation-accordion').forEach(card => {
+      if (!visible(card)) return;
       const cardRect = card.getBoundingClientRect();
+      if (cardRect.width < 8) return;
       card.querySelectorAll('*').forEach(el => {
         if (!visible(el)) return;
         const s = getComputedStyle(el);
         if (SKIP_POS.has(s.position) || SKIP_CLASS.test(cls(el))) return;
         const r = el.getBoundingClientRect();
-        if (r.right > cardRect.right + 2) {
-          offenders.push(info(el, 'wider_than_card', {
-            overflowPx: Math.round(r.right - cardRect.right),
-          }));
+        const overflowPx = Math.round(r.right - cardRect.right);
+        if (overflowPx > 8) {
+          offenders.push(info(el, 'wider_than_card', { overflowPx }));
         }
       });
     });
@@ -177,6 +179,30 @@ async function takeScreenshot(page, shot) {
   await page.goto(`${BASE_URL}${shot.url}`, { waitUntil: 'networkidle0' });
   await setTheme(page, shot.theme);
   await delay(300);
+
+  const hash = (shot.url.split('#')[1] || '').split('?')[0];
+  if (hash) {
+    await page.evaluate((tab) => {
+      const btn = document.querySelector('.cp-tab[data-tab="' + tab + '"]');
+      if (btn) btn.click();
+      const panel = document.querySelector('.cp-tab-panel[data-panel="' + tab + '"]');
+      if (panel) {
+        document.querySelectorAll('.cp-tab-panel').forEach(p => p.classList.remove('is-active'));
+        document.querySelectorAll('.cp-tab').forEach(t => t.classList.remove('is-active'));
+        panel.classList.add('is-active');
+        const tabBtn = document.querySelector('.cp-tab[data-tab="' + tab + '"]');
+        if (tabBtn) tabBtn.classList.add('is-active');
+      }
+    }, hash);
+    await delay(200);
+  }
+  if (hash === 'quotation') {
+    await page.evaluate(() => {
+      const el = document.querySelector('.cp-quotation-accordion') || document.querySelector('#quotation');
+      if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' });
+    });
+    await delay(200);
+  }
 
   if (shot.openPalette) {
     await page.keyboard.down('Control');

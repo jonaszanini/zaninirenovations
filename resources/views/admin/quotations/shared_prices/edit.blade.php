@@ -76,10 +76,10 @@
 .sp-table .sp-col-label { width: 150px; }
 .sp-table .sp-col-rate { width: 52px; }
 .sp-table .sp-col-sell { width: 68px; }
-.sp-table .sp-col-unit { width: calc(7ch + 1.25rem); }
-.sp-table .sp-col-price { width: 62px; }
+.sp-table .sp-col-unit { width: 4.75rem; }
+.sp-table .sp-col-price { width: 4.75rem; }
 .sp-table .sp-col-name { width: auto; }
-.sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; }
+.sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; overflow: hidden; }
 .sp-table .sp-col-consumers { width: 150px; white-space: normal; }
 .sp-col-name .sp-input,
 .sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
@@ -329,7 +329,7 @@ td.sp-col-consumers {
                 <th class="sp-col-unit">Unit</th>
                 <th class="sp-col-price">Mat. price</th>
                 <th class="sp-col-name">Mat. name</th>
-                <th class="sp-col-catalog">Catalog</th>
+                <th class="sp-col-catalog" title="Catalog"><i class="fa fa-search" aria-hidden="true"></i></th>
                 <th class="sp-col-consumers">Used by</th>
               </tr>
             </thead>

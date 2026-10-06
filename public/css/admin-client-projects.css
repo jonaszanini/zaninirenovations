@@ -352,6 +352,7 @@ a.cp-table-street .fa {
 .cp-table th:nth-child(7),
 .cp-table td:nth-child(7) {
   white-space: nowrap;
+  font-size: 12px;
 }
 .cp-contact-line .cp-contact-line-sep {
   color: #9ca3af;
@@ -1562,6 +1563,7 @@ a:hover .cp-expense-receipt-pdf {
   .cp-expenses-table {
     display: block;
     width: 100%;
+    min-width: 0;
   }
   .cp-expenses-table thead {
     display: none;
@@ -1580,12 +1582,18 @@ a:hover .cp-expense-receipt-pdf {
     background: var(--admin-surface);
     border: 1px solid var(--admin-border);
     border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
   }
   .cp-expenses-table tbody tr.cp-expense-edit-row {
     display: block;
     padding: 0;
     border: none;
     background: none;
+  }
+  .cp-expenses-table tbody tr.cp-expense-edit-row[hidden] {
+    display: none !important;
   }
   .cp-expenses-table tbody tr.cp-totals-row {
     display: flex;
@@ -3324,6 +3332,7 @@ a:hover .cp-expense-receipt-pdf {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 14px;
   }
   .cp-quotation-accordion__number {
     flex: 0 0 auto;
