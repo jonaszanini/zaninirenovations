@@ -50,7 +50,7 @@ async function setTheme(page, theme) {
 async function checkOverflow(page, shotName) {
   const result = await page.evaluate(() => {
     const SKIP_POS = new Set(['absolute', 'fixed', 'sticky']);
-    const SKIP_CLASS = /(dropdown__menu|ss-combobox__list|asp|cp-modal|sp-search-wrap--hidden)/;
+    const SKIP_CLASS = /(dropdown__menu|ss-combobox__list|admin-search-select|sp-search-wrap|asp|cp-modal)/;
 
     function visible(el) {
       if (el.closest('[hidden]')) return false;

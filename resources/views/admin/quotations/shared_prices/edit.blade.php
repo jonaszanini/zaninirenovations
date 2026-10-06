@@ -75,12 +75,12 @@
 .sp-table tr:last-child td { border-bottom: none; }
 .sp-table .sp-col-label { width: 140px; }
 .sp-table .sp-col-rate { width: 3.6rem; }
-.sp-table .sp-col-sell { width: 4.25rem; }
+.sp-table .sp-col-sell { width: 4.75rem; }
 .sp-table .sp-col-unit { width: 4.75rem; }
 .sp-table .sp-col-price { width: 5.25rem; }
 .sp-table .sp-col-name { width: auto; }
 .sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; overflow: hidden; }
-.sp-table .sp-col-consumers { width: 110px; white-space: normal; }
+.sp-table .sp-col-consumers { width: 150px; white-space: normal; }
 .sp-col-name .sp-input,
 .sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
 .sp-col-unit .sp-input {
