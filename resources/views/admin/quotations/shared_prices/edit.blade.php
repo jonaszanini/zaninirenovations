@@ -76,7 +76,7 @@
 .sp-table .sp-col-label { width: 128px; }
 .sp-table .sp-col-rate,
 .sp-table .sp-col-sell,
-.sp-table .sp-col-price { width: calc(11ch + 1.25rem); }
+.sp-table .sp-col-price { width: 6.5rem; }
 .sp-table .sp-col-unit { width: 4.75rem; }
 .sp-table .sp-col-name { width: auto; }
 .sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; overflow: hidden; }
@@ -91,6 +91,7 @@
   padding-left: 0.25rem;
   padding-right: 0.25rem;
   box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
 }
 .sp-col-unit .sp-input {
   width: 100%;
