@@ -6,24 +6,29 @@
 <style>
 /* Crew rates: compact inline row */
 .sp-crew { margin-bottom: 1.5rem; }
-.sp-crew .admin-form-grid-3 {
+.sp-crew .sp-crew-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1rem 1.5rem;
   align-items: flex-end;
 }
-.sp-crew .admin-form-group {
+.sp-crew .sp-crew-field {
   flex: 0 0 auto;
-  min-width: 0;
 }
-.sp-crew .admin-form-group label {
-  font-size: 0.75rem;
+.sp-crew .sp-crew-field label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--admin-muted);
   margin-bottom: 4px;
 }
-.sp-crew .admin-input {
-  width: 120px;
+.sp-crew .sp-crew-field .admin-input {
+  width: 110px;
   padding: 0.35rem 0.5rem;
   font-size: 0.85rem;
+  height: 34px;
 }
 .sp-heading { margin: 0 0 0.5rem; font-size: 1.1rem; }
 .sp-group { margin-bottom: 1rem; }
@@ -184,11 +189,11 @@
   .sp-col-consumers::before { display: none; }
 
   /* Crew rates: stack on mobile */
-  .sp-crew .admin-form-grid-3 {
+  .sp-crew .sp-crew-grid {
     flex-direction: column;
     gap: 0.75rem;
   }
-  .sp-crew .admin-input { width: 100%; }
+  .sp-crew .sp-crew-field .admin-input { width: 100%; }
 }
 </style>
 @endpush
@@ -226,20 +231,20 @@
     <div class="admin-card sp-crew">
       <h3 class="sp-heading">Crew rates</h3>
       <p class="admin-form-help">Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.</p>
-      <div class="admin-form-grid-3">
-        <div class="admin-form-group">
+      <div class="sp-crew-grid">
+        <div class="sp-crew-field">
           <label for="owner_hourly_rate">Owner hourly (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
                  value="{{ old('owner_hourly_rate', number_format((float) $crew->owner_hourly_rate, 2, '.', '')) }}" required>
         </div>
-        <div class="admin-form-group">
+        <div class="sp-crew-field">
           <label for="helper_hourly_rate">Helper hourly (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
                  value="{{ old('helper_hourly_rate', number_format((float) $crew->helper_hourly_rate, 2, '.', '')) }}" required>
         </div>
-        <div class="admin-form-group">
+        <div class="sp-crew-field">
           <label for="hours_per_day">Hours / day</label>
           <input type="number" step="0.25" min="0.5" max="16" class="admin-input" id="hours_per_day" name="hours_per_day"
                  value="{{ old('hours_per_day', $crew->hours_per_day) }}" required>
