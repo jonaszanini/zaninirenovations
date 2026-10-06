@@ -13,17 +13,17 @@
   ])
   <div class="admin-card">
     <div class="admin-table-scroll">
-      <table class="admin-table">
+      <table class="admin-table admin-table--stack">
         <thead>
-          <tr><th>Name</th><th>Slug</th><th>Posts</th><th></th></tr>
+          <tr><th>Name</th><th>Slug</th><th style="width:60px;">Posts</th><th style="width:140px;"></th></tr>
         </thead>
         <tbody>
           @forelse ($categories as $category)
             <tr>
-              <td><strong>{{ $category->name }}</strong></td>
-              <td>{{ $category->slug }}</td>
-              <td>{{ $category->posts_count }}</td>
-              <td>
+              <td data-label="Name"><strong>{{ $category->name }}</strong></td>
+              <td data-label="Slug">{{ $category->slug }}</td>
+              <td data-label="Posts">{{ $category->posts_count }}</td>
+              <td class="admin-table__actions" data-label="">
                 <a href="{{ route('admin.blog.categories.edit', $category) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
                 <form action="{{ route('admin.blog.categories.destroy', $category) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this category?');">
                   @csrf @method('DELETE')

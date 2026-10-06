@@ -129,7 +129,7 @@
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Amount</label>
-                    <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required value="{{ $editExpenseAmount }}">
+                    <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" required value="{{ $editExpenseAmount }}">
                   </div>
                 </div>
                 <div class="cp-time-submit cp-time-edit-actions">

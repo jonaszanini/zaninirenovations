@@ -25,6 +25,7 @@
          class="admin-input cp-money-input"
          inputmode="decimal"
          autocomplete="off"
+         data-cp-money-entry="direct"
          placeholder="0.00"
          required
          value="{{ old('hourly_rate', $helper && $helper->hourly_rate !== null ? number_format((float) $helper->hourly_rate, 2, '.', '') : '') }}">

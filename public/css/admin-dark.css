@@ -1988,3 +1988,26 @@ html.admin-dark .cp-sticky-mini-header {
   background: var(--admin-surface);
   border-color: var(--admin-border);
 }
+
+/* Mobile actions dropdown */
+html.admin-dark .admin-actions-dropdown__toggle {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .admin-actions-dropdown__toggle:hover {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .admin-actions-dropdown__menu {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .admin-actions-dropdown__item {
+  color: var(--admin-text);
+}
+html.admin-dark .admin-actions-dropdown__item:hover {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .admin-actions-dropdown__item--danger {
+  color: var(--admin-danger);
+}

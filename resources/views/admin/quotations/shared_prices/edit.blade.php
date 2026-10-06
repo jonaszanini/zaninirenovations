@@ -41,14 +41,15 @@
   vertical-align: middle;
 }
 .sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { min-width: 180px; }
-.sp-table .sp-col-rate { width: 100px; }
-.sp-table .sp-col-sell { width: 110px; }
-.sp-table .sp-col-catalog { width: 200px; }
-.sp-table .sp-col-name { width: 140px; }
-.sp-table .sp-col-unit { width: 80px; }
-.sp-table .sp-col-price { width: 100px; }
-.sp-table .sp-col-consumers { width: 140px; }
+.sp-table .sp-col-label { width: 150px; min-width: 120px; }
+.sp-table .sp-col-rate { width: 72px; }
+.sp-table .sp-col-sell { width: 88px; }
+.sp-table .sp-col-catalog { width: 130px; }
+.sp-table .sp-col-name { width: auto; min-width: 180px; }
+.sp-table .sp-col-unit { width: 56px; }
+.sp-table .sp-col-price { width: 76px; }
+.sp-table .sp-col-consumers { width: 110px; }
+.sp-mat-name-input { text-overflow: ellipsis; }
 .sp-work-label { font-weight: 500; color: var(--admin-heading); }
 .sp-work-label small { display: block; font-weight: 400; font-size: 0.8em; color: var(--admin-muted); }
 .sp-chip {
@@ -214,9 +215,10 @@
                     @if ($isArea)
                       <span class="admin-form-help">—</span>
                     @else
-                      <input type="number" step="0.01" min="0" class="sp-input sp-input--sm" id="sp-rate-{{ $work->id }}"
+                      <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                             class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
                              name="works[{{ $work->id }}][rate]"
-                             value="{{ old('works.'.$work->id.'.rate', $work->rate) }}"
+                             value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 2, '.', '') : '') }}"
                              placeholder="0.00">
                     @endif
                   </td>
@@ -255,9 +257,11 @@
                     </div>
                   </td>
                   <td class="sp-col-name" data-label="Mat. name">
-                    <input type="text" class="sp-input" id="sp-mat-name-{{ $work->id }}"
+                    @php $matNameVal = old('works.'.$work->id.'.material_name', $work->material_name); @endphp
+                    <input type="text" class="sp-input sp-mat-name-input" id="sp-mat-name-{{ $work->id }}"
                            name="works[{{ $work->id }}][material_name]"
-                           value="{{ old('works.'.$work->id.'.material_name', $work->material_name) }}"
+                           value="{{ $matNameVal }}"
+                           title="{{ $matNameVal }}"
                            placeholder="—">
                   </td>
                   <td class="sp-col-unit" data-label="Unit">
@@ -286,4 +290,12 @@
       </details>
     @endforeach
   </form>
+
+  <script>
+    document.querySelectorAll('.sp-mat-name-input').forEach(function(input) {
+      input.addEventListener('input', function() {
+        this.title = this.value;
+      });
+    });
+  </script>
 @endsection

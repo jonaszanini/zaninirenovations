@@ -178,6 +178,7 @@
                      class="admin-input cp-money-input"
                      inputmode="decimal"
                      autocomplete="off"
+                     data-cp-money-entry="direct"
                      placeholder="0.00"
                      value="{{ $manualTotal }}">
               <p class="admin-form-help admin-form-help--tight">
@@ -284,6 +285,7 @@
                   <input type="text"
                          inputmode="decimal"
                          autocomplete="off"
+                         data-cp-money-entry="direct"
                          name="items[{{ $i }}][amount]"
                          value="{{ $row['amount'] !== '' ? number_format((float) $row['amount'], 2, '.', '') : '' }}"
                          class="admin-input cp-money-input cp-quotation-row-amount"
@@ -472,6 +474,7 @@
           <input type="text"
                  inputmode="decimal"
                  autocomplete="off"
+                 data-cp-money-entry="direct"
                  name="items[__INDEX__][amount]"
                  class="admin-input cp-money-input cp-quotation-row-amount"
                  placeholder="0.00">
@@ -506,6 +509,7 @@
           <input type="text"
                  inputmode="decimal"
                  autocomplete="off"
+                 data-cp-money-entry="direct"
                  name="items[__INDEX__][amount]"
                  class="admin-input cp-money-input cp-quotation-row-amount"
                  placeholder="0.00">

@@ -155,7 +155,7 @@
           </div>
           <div class="admin-form-group col-2">
             <label>Amount</label>
-            <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required
+            <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" required
                    value="{{ old('expense_amount') }}" placeholder="0.00">
             @error('expense_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
