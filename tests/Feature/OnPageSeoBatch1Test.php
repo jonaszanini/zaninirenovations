@@ -114,6 +114,49 @@ class OnPageSeoBatch1Test extends TestCase
     }
 
     /**
+     * JSON-LD address must have no streetAddress or postalCode (service-area business).
+     */
+    public function test_json_ld_address_has_no_street_or_postal(): void
+    {
+        $graph = SeoStructuredData::homeGraph();
+        $business = collect($graph['@graph'])->first(
+            fn ($node) => ($node['@type'] ?? '') === 'HomeAndConstructionBusiness'
+        );
+
+        $this->assertNotNull($business);
+        $this->assertArrayHasKey('address', $business);
+        $this->assertArrayNotHasKey('streetAddress', $business['address']);
+        $this->assertArrayNotHasKey('postalCode', $business['address']);
+        $this->assertSame('Carleton Place', $business['address']['addressLocality']);
+        $this->assertSame('ON', $business['address']['addressRegion']);
+        $this->assertSame('CA', $business['address']['addressCountry']);
+    }
+
+    /**
+     * Phone format must be "(647) 834-7570", not "(647)-834-7570".
+     */
+    public function test_phone_format_is_correct(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        $this->assertStringNotContainsString('(647)-834', $content);
+        $this->assertStringContainsString('(647) 834-7570', $content);
+    }
+
+    /**
+     * llms.txt summary must say "one-person".
+     */
+    public function test_llms_txt_says_one_person(): void
+    {
+        $txt = LlmsTxtGenerator::generate(collect(), collect());
+
+        $this->assertStringContainsString('one-person', strtolower($txt));
+    }
+
+    /**
      * Homepage title should be the shortened version (60 chars max).
      */
     public function test_homepage_title_is_shortened(): void

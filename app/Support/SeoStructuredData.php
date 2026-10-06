@@ -28,7 +28,7 @@ class SeoStructuredData
         $sameAs = array_values(array_filter([$fb, $ig, $googleBiz], static fn ($u) => is_string($u) && str_starts_with($u, 'http')));
         $homeSummary = trim((string) config('seo.home_summary', ''));
         if ($homeSummary === '') {
-            $homeSummary = 'Fully insured carpentry and renovation business in Carleton Place, Ontario, since 2020.';
+            $homeSummary = 'One-person, fully insured carpentry and renovation business in Carleton Place since 2020.';
         }
         $ogRel = ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
         $ogAbs = $url.'/'.$ogRel;
