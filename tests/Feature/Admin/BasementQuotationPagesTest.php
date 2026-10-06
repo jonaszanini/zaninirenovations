@@ -266,6 +266,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ]);
 
         $quote = BasementQuotation::query()->where('client_name', 'Basement Test Client')->first();
@@ -301,6 +302,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ];
 
         $store = $this->post(route('admin.quotations.basement.store', ['project' => $project->id]), $payload);

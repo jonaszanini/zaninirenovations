@@ -139,6 +139,7 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ]);
 
         $quote = MillworkQuotation::query()->where('client_name', 'Millwork Client')->first();
@@ -238,6 +239,7 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
                 'payment_installments' => 3,
                 'include_debris_removal' => 0,
                 'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
             ])->assertRedirect()
             ->assertSessionHasErrors('calculation');
     }

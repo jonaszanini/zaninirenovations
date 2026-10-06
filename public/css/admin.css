@@ -3014,6 +3014,16 @@ html.admin-photo-edit-modal-open {
   }
 }
 
+/* Phones: title + search must scroll away. Sticky topbar eats ~190px
+   when the heading wraps to two lines (Jonas: no pinned headers). */
+@media (max-width: 767px) {
+  .admin-topbar {
+    position: static;
+    top: auto;
+    z-index: auto;
+  }
+}
+
 @media (min-width: 901px) {
   .admin-nav-backdrop {
     display: none !important;

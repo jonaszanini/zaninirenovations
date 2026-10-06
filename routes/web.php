@@ -68,6 +68,9 @@ Route::get('/client/receipt/{client_project}/{invoice}', [ClientProjectInvoiceCo
 Route::get('/client/quotation/{client_project}/{quotation}', [ClientProjectQuotationController::class, 'guestDownloadQuotationPdf'])
     ->middleware('signed')
     ->name('public.client-project.quotation-pdf');
+Route::match(['get', 'post'], '/quote/{quotation}/accept', [\App\Http\Controllers\PublicQuoteAcceptanceController::class, 'handle'])
+    ->middleware(['quote.accept.noindex', 'signed'])
+    ->name('public.quotations.accept');
 Route::get('/client/contract/{client_project}', [ClientProjectContractController::class, 'guestDownloadContractPdf'])
     ->middleware('signed')
     ->name('public.client-project.contract-pdf');

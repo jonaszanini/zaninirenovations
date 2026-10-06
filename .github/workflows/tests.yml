@@ -55,6 +55,17 @@ jobs:
           DB_PASSWORD: root
         run: php artisan test tests/Feature/Smoke
 
+      - name: Quote acceptance (MySQL)
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: zanini_renovations_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          QUOTE_ACCEPT_API_TOKEN: ci-quote-accept-token
+        run: php artisan test tests/Feature/QuoteAcceptance
+
       - name: Feature tests (MySQL)
         env:
           DB_CONNECTION: mysql

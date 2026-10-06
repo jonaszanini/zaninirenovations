@@ -45,6 +45,7 @@
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
   @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'sh-main-form'])
+  @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'sh-main-form'])
 
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">

@@ -3181,9 +3181,11 @@ a:hover .cp-expense-receipt-pdf {
   font-weight: 600;
   color: var(--admin-heading);
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 auto;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 .cp-quotation-accordion__number {
   font-size: 13px;
@@ -3450,6 +3452,57 @@ a:hover .cp-expense-receipt-pdf {
   border: 1px solid var(--admin-border);
   border-radius: 8px;
 }
+.cp-quote-accepted-meta {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--admin-text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.cp-reply-to-accept {
+  margin: 0 0 16px;
+}
+.cp-reply-to-accept__fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.cp-reply-to-accept__legend {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--admin-heading);
+}
+.cp-reply-to-accept__choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.cp-reply-to-accept__choice {
+  min-height: 44px;
+  min-width: 88px;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-input-bg);
+}
+.cp-reply-to-accept--error {
+  border-color: var(--admin-danger, #dc2626);
+}
+.cp-reply-to-accept__help {
+  margin: 8px 0 0;
+}
+.cp-badge-accepted {
+  background: var(--admin-success-soft, rgba(34, 197, 94, 0.12));
+  color: var(--admin-success, #15803d);
+}
 .cp-quotation-control {
   min-width: 0;
 }
@@ -3482,10 +3535,13 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-control__field-row .cp-quotation-control__input {
   flex: 1 1 7rem;
   min-width: 0;
+  height: var(--admin-control-height);
+  align-self: flex-end;
 }
 .cp-quotation-control__submit {
   flex: 0 0 auto;
   white-space: nowrap;
+  align-self: flex-end;
 }
 @media (max-width: 768px) {
   .cp-quotation-controls {
@@ -3521,11 +3577,19 @@ a:hover .cp-expense-receipt-pdf {
     flex-direction: column;
     align-items: stretch;
   }
+  .cp-quotation-control__field-row .cp-quotation-control__input {
+    flex: 0 0 auto;
+    width: 100%;
+    height: var(--admin-control-height);
+    align-self: stretch;
+  }
   .cp-quotation-control__submit {
     width: 100%;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     justify-content: center;
-    min-height: 38px;
+    height: var(--admin-control-height);
+    min-height: var(--admin-control-height);
+    align-self: stretch;
   }
 }
 
@@ -8482,6 +8546,13 @@ body.cp-modal-open {
     margin-left: auto;
     align-items: flex-end;
     padding-left: 2px;
+  }
+}
+
+@media (max-width: 767px) {
+  .br-toolbar {
+    position: static;
+    top: auto;
   }
 }
 

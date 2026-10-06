@@ -67,6 +67,17 @@ The application is currently showing a "Coming Soon" welcome page. Future featur
 - Secondary Color: `#3a4856` (Slate Gray)
 - Accent Color: `#9dadbc` (Light Blue Gray)
 
+## Quote acceptance API
+
+A Gmail automation can accept a sent quotation without logging in:
+
+- **URL:** `POST /api/quotations/accept`
+- **Auth:** `Authorization: Bearer <QUOTE_ACCEPT_API_TOKEN>` (set in `.env`)
+- **Body:** `{ "project_number": "PRJ00001", "quote_number": "SQ-2026-0001", "source_note": "optional" }`
+- **JSON status:** `accepted`, `already_accepted`, `not_found`, `invalid_state` (or `unauthorized` if the token is missing/wrong)
+
+No client email or SMS is sent. Full request/response examples: [docs/QUOTE_ACCEPTANCE_API.md](docs/QUOTE_ACCEPTANCE_API.md).
+
 ## License
 
 MIT

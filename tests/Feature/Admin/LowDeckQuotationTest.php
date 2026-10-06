@@ -54,6 +54,7 @@ class LowDeckQuotationTest extends IntegrationTestCase
             'payment_installments' => 3,
             'include_commute' => 0,
             'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
         ]);
 
         $response->assertRedirect();
@@ -105,6 +106,7 @@ class LowDeckQuotationTest extends IntegrationTestCase
             'payment_installments' => 3,
             'include_commute' => 0,
             'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
         ]);
 
         $quote = LowDeckQuotation::query()->latest('id')->firstOrFail();
@@ -161,6 +163,7 @@ class LowDeckQuotationTest extends IntegrationTestCase
             'payment_installments' => 3,
             'include_commute' => 0,
             'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
         ])->assertRedirect();
 
         return LowDeckQuotation::query()->latest('id')->firstOrFail();
