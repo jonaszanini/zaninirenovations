@@ -73,7 +73,7 @@
   vertical-align: middle;
 }
 .sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { width: 140px; }
+.sp-table .sp-col-label { width: 128px; }
 .sp-table .sp-col-rate { width: 3.6rem; }
 .sp-table .sp-col-sell { width: 4.75rem; }
 .sp-table .sp-col-unit { width: 4.75rem; }
