@@ -85,6 +85,7 @@ class ClientProject extends Model
         'end_date',
         'visit_required',
         'visit_date',
+        'visit_time',
         'visit_done',
         'calendar_email_sent_at',
         'total_amount',
@@ -105,6 +106,7 @@ class ClientProject extends Model
         'end_date' => 'date',
         'visit_required' => 'boolean',
         'visit_date' => 'date',
+        'visit_time' => 'string',
         'visit_done' => 'boolean',
         'status_changed_at' => 'datetime',
         'calendar_email_sent_at' => 'datetime',
@@ -1111,6 +1113,37 @@ class ClientProject extends Model
     public function showsVisitRequiredInProjectList(): bool
     {
         return $this->status === self::STATUS_VISIT_REQUIRED;
+    }
+
+    /**
+     * Format visit date with optional time for display.
+     * Returns e.g. "Oct 7, 2026 · 2:30 PM EST" when time is set,
+     * or just "Oct 7, 2026" when time is null.
+     */
+    public function visitDateTimeDisplay(): ?string
+    {
+        if (! $this->visit_date) {
+            return null;
+        }
+
+        $dateStr = self::formatDate($this->visit_date);
+
+        if (! $this->visit_time) {
+            return $dateStr;
+        }
+
+        $timeParts = explode(':', $this->visit_time);
+        $hour = (int) ($timeParts[0] ?? 0);
+        $minute = (int) ($timeParts[1] ?? 0);
+
+        $amPm = $hour >= 12 ? 'PM' : 'AM';
+        $hour12 = $hour % 12;
+        if ($hour12 === 0) {
+            $hour12 = 12;
+        }
+        $timeStr = $hour12.':'.str_pad((string) $minute, 2, '0', STR_PAD_LEFT).' '.$amPm.' EST';
+
+        return $dateStr.' · '.$timeStr;
     }
 
     // --- Money & profit calculations --------------------------------------

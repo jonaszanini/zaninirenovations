@@ -786,12 +786,12 @@
             @if ($project->visit_done)
               Done
               @if ($project->visit_date)
-                ({{ \App\Models\ClientProject::formatDate($project->visit_date) }})
+                ({{ $project->visitDateTimeDisplay() }})
               @endif
             @elseif ($project->visit_required)
-              {{ $project->visit_date ? \App\Models\ClientProject::formatDate($project->visit_date) : 'Required — date not set yet' }}
+              {{ $project->visit_date ? $project->visitDateTimeDisplay() : 'Required — date not set yet' }}
             @elseif ($project->visit_date)
-              {{ \App\Models\ClientProject::formatDate($project->visit_date) }}
+              {{ $project->visitDateTimeDisplay() }}
             @endif
           </dd>
         @endif
@@ -837,10 +837,12 @@
 
       @php
         $cpShowVisitDateVal = old('visit_date', optional($project->visit_date)?->toDateString());
+        $cpShowVisitTimeVal = old('visit_time', $project->visit_time);
         $cpShowVisitExpandOpen = (bool) old('visit_required', $project->visit_required)
           || (bool) old('visit_done', $project->visit_done)
           || filled($cpShowVisitDateVal)
-          || $errors->has('visit_date');
+          || $errors->has('visit_date')
+          || $errors->has('visit_time');
       @endphp
       <div class="admin-card cp-visit-card cp-visit-section">
         @include('admin.client_projects._visit_required_toggle', [
@@ -849,6 +851,8 @@
           'expandableId' => 'cp-schedule-visit-expandable',
           'visitDateId' => 'cp-visit-date',
           'visitDateValue' => $cpShowVisitDateVal,
+          'visitTimeId' => 'cp-visit-time',
+          'visitTimeValue' => $cpShowVisitTimeVal,
           'expandOpen' => $cpShowVisitExpandOpen,
           'showVisitDone' => true,
           'visitDoneId' => 'cp-visit-done',
@@ -1153,6 +1157,7 @@
       var warn = document.getElementById('cp-schedule-date-warning');
       var visitCb = document.getElementById('cp-visit-required');
       var visitDate = document.getElementById('cp-visit-date');
+      var visitTime = document.getElementById('cp-visit-time');
       var visitDoneCb = document.getElementById('cp-visit-done');
       var visitExpand = document.getElementById('cp-schedule-visit-expandable');
 
@@ -1171,10 +1176,16 @@
         var done = visitDoneCb ? visitDoneCb.checked : false;
         if (!required && !done) {
           visitDate.value = '';
+          if (visitTime) visitTime.value = '';
         }
         visitDate.readOnly = !!done;
         visitDate.disabled = !done && !required;
         visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
+        if (visitTime) {
+          visitTime.readOnly = !!done;
+          visitTime.disabled = !done && !required;
+          visitTime.classList.toggle('cp-visit-time-input--locked', !!done || !required);
+        }
         syncVisitExpandable();
       }
 
@@ -1210,6 +1221,11 @@
           visitDate.disabled = false;
           visitDate.readOnly = false;
           visitDate.value = '';
+          if (visitTime) {
+            visitTime.disabled = false;
+            visitTime.readOnly = false;
+            visitTime.value = '';
+          }
         }
         if (!checkScheduleDates()) {
           e.preventDefault();

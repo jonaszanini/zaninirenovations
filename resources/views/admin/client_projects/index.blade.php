@@ -181,7 +181,7 @@
                     @if ($project->showsVisitRequiredInProjectList())
                       <div class="cp-subtle">Visit required</div>
                     @else
-                      <div>{{ \App\Models\ClientProject::formatDate($project->visit_date) }}</div>
+                      <div>{{ $project->visitDateTimeDisplay() }}</div>
                       <div class="cp-subtle">Visit</div>
                     @endif
                   @else
