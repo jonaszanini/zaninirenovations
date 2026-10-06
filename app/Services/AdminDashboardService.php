@@ -22,7 +22,7 @@ class AdminDashboardService
 {
     private const CACHE_TTL_SECONDS = 120;
 
-    private const CACHE_KEY = 'admin_dashboard_payload_v1';
+    private const CACHE_KEY = 'admin_dashboard_payload_v2';
 
     public function build(bool $refresh = false): array
     {
@@ -429,11 +429,12 @@ class AdminDashboardService
             : null;
 
         $today = $now->toDateString();
-        $overdueCount = ClientProjectInvoice::query()
+        $overdueQuery = ClientProjectInvoice::query()
             ->where('status', ClientProjectInvoice::STATUS_SENT)
             ->whereNotNull('due_on')
-            ->whereDate('due_on', '<', $today)
-            ->count();
+            ->whereDate('due_on', '<', $today);
+        $overdueCount = (clone $overdueQuery)->count();
+        $overdueTotal = (float) (clone $overdueQuery)->sum('total');
 
         $remindersSent = ClientProjectStatusHistoryEntry::query()
             ->where('note', 'like', '%Payment reminder for invoice%')
@@ -447,6 +448,7 @@ class AdminDashboardService
             'average_project_value' => round($avgValue, 2),
             'gross_margin_ytd_pct' => $grossMarginPct,
             'overdue_invoice_count' => $overdueCount,
+            'overdue_invoice_total' => round($overdueTotal, 2),
             'reminders_sent_all_time' => $remindersSent,
         ];
     }
@@ -578,24 +580,70 @@ class AdminDashboardService
 
         $potential = 0.0;
         foreach ($openProjects as $p) {
-            $fromQuotes = (float) $p->quotations->sum(function ($q) {
-                return $q->hasContent() ? $q->grandTotal() : 0.0;
-            });
-            if ($fromQuotes >= 0.01) {
-                $potential += $fromQuotes;
-            } elseif ((float) ($p->total_amount ?? 0) > 0) {
-                $potential += (float) $p->total_amount * (1 + ClientProject::HST_RATE);
-            }
+            $potential += $this->projectQuotePotential($p);
         }
-        $fenceOpen = (int) FenceQuotation::query()->whereNull('client_project_id')->count();
-        $fenceValue = (float) FenceQuotation::query()->whereNull('client_project_id')->sum('grand_total');
+
+        $fenceQuery = FenceQuotation::query()->whereNull('client_project_id');
+        $fenceOpen = (int) (clone $fenceQuery)->count();
+        $fenceValue = (float) (clone $fenceQuery)->sum('grand_total');
+
+        $openRows = $openProjects
+            ->sortBy(function (ClientProject $p) {
+                $priority = $p->status === ClientProject::STATUS_QUOTE_SENT ? 0 : 1;
+
+                return sprintf('%d-%s', $priority, $p->updated_at?->toIso8601String() ?? '');
+            })
+            ->take(12)
+            ->values()
+            ->map(fn (ClientProject $p) => [
+                'project_id' => $p->id,
+                'name' => $p->name,
+                'client_name' => $p->client_name,
+                'status' => $p->statusLabel(),
+                'status_key' => $p->status,
+                'potential' => round($this->projectQuotePotential($p), 2),
+                'url' => route('admin.client-projects.show', $p),
+            ])
+            ->all();
+
+        $fenceRows = (clone $fenceQuery)
+            ->orderByDesc('updated_at')
+            ->limit(12)
+            ->get()
+            ->map(function (FenceQuotation $q) {
+                return [
+                    'id' => $q->id,
+                    'quote_number' => $q->quote_number,
+                    'client_name' => $q->client_name,
+                    'grand_total' => round((float) $q->grand_total, 2),
+                    'url' => route('admin.quotations.fence.edit', $q),
+                ];
+            })
+            ->all();
 
         return [
             'open_quotations_count' => $openProjects->count(),
             'open_quotations_potential' => round($potential, 2),
             'standalone_fence_count' => $fenceOpen,
             'standalone_fence_value' => round($fenceValue, 2),
+            'open_quotation_rows' => $openRows,
+            'standalone_fence_rows' => $fenceRows,
         ];
+    }
+
+    private function projectQuotePotential(ClientProject $p): float
+    {
+        $fromQuotes = (float) $p->quotations->sum(function ($q) {
+            return $q->hasContent() ? $q->grandTotal() : 0.0;
+        });
+        if ($fromQuotes >= 0.01) {
+            return $fromQuotes;
+        }
+        if ((float) ($p->total_amount ?? 0) > 0) {
+            return (float) $p->total_amount * (1 + ClientProject::HST_RATE);
+        }
+
+        return 0.0;
     }
 
     private function buildAttentionProjects(Collection $projects, Carbon $now): array
