@@ -3533,10 +3533,13 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-control__field-row .cp-quotation-control__input {
   flex: 1 1 7rem;
   min-width: 0;
+  height: var(--admin-control-height);
+  align-self: flex-end;
 }
 .cp-quotation-control__submit {
   flex: 0 0 auto;
   white-space: nowrap;
+  align-self: flex-end;
 }
 @media (max-width: 768px) {
   .cp-quotation-controls {
@@ -3572,11 +3575,19 @@ a:hover .cp-expense-receipt-pdf {
     flex-direction: column;
     align-items: stretch;
   }
+  .cp-quotation-control__field-row .cp-quotation-control__input {
+    flex: 0 0 auto;
+    width: 100%;
+    height: var(--admin-control-height);
+    align-self: stretch;
+  }
   .cp-quotation-control__submit {
     width: 100%;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     justify-content: center;
-    min-height: 38px;
+    height: var(--admin-control-height);
+    min-height: var(--admin-control-height);
+    align-self: stretch;
   }
 }
 

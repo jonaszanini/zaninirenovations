@@ -41,6 +41,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\ConvertAvifUploads::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\RequestContextMiddleware::class,
+            \App\Http\Middleware\MergeReplyToAcceptValidation::class,
         ],
 
         'api' => [

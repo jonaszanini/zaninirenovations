@@ -80,6 +80,20 @@ class QuotationEmailAndReplyChoiceTest extends IntegrationTestCase
         $this->assertSame(0, \App\Models\BasementQuotation::query()->count());
     }
 
+    public function test_save_shows_reply_choice_error_even_when_other_fields_fail(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.standard.create'))
+            ->post(route('admin.quotations.standard.store'), [
+                'save_intent' => 'publish',
+                'client_name' => 'Reply Choice Client',
+                'display_title' => 'Kitchen work',
+            ])
+            ->assertRedirect(route('admin.quotations.standard.create'))
+            ->assertSessionHasErrors(QuotationReplyToAccept::FIELD);
+    }
+
     public function test_editor_shows_required_yes_no_choice(): void
     {
         $this->actingAsAdmin();

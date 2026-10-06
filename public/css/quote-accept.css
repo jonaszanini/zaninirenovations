@@ -1,6 +1,11 @@
 /* Public quote-accept page — light, mobile-first */
 .qa-page {
-  padding: 24px 0 48px;
+  padding: 16px 0 48px;
+}
+@media (min-width: 768px) {
+  .qa-page {
+    padding: 28px 0 64px;
+  }
 }
 .qa-card {
   background: #fff;
