@@ -37,8 +37,8 @@
 
 @section('content')
   <div class="admin-card cp-filters">
-    <form action="{{ route('admin.financials.invoices') }}" method="get" class="cp-filters-form">
-      <div class="cp-filter">
+    <form action="{{ route('admin.financials.invoices') }}" method="get" class="cp-filters-form" style="display:contents;">
+      <div class="cp-filter cp-filter--select">
         <label for="gf-status">Status</label>
         <select id="gf-status" name="status" class="admin-input">
           <option value="">All</option>
@@ -47,15 +47,15 @@
           <option value="paid" @selected($status === 'paid')>Paid</option>
         </select>
       </div>
-      <div class="cp-filter">
+      <div class="cp-filter cp-filter--search">
         <label for="gf-search">Search</label>
-        <input type="text" id="gf-search" name="search" class="admin-input" placeholder="Invoice #, project, client…" value="{{ $search }}" minlength="2">
+        <input type="text" id="gf-search" name="search" class="admin-input" placeholder="Invoice #, project…" value="{{ $search }}" minlength="2">
       </div>
-      <div class="cp-filter">
+      <div class="cp-filter cp-filter--date">
         <label for="gf-date-from">From</label>
         <input type="date" id="gf-date-from" name="date_from" class="admin-input" value="{{ $dateFrom }}">
       </div>
-      <div class="cp-filter">
+      <div class="cp-filter cp-filter--date">
         <label for="gf-date-to">To</label>
         <input type="date" id="gf-date-to" name="date_to" class="admin-input" value="{{ $dateTo }}">
       </div>

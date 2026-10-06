@@ -71,34 +71,31 @@
 .sp-table .sp-col-label { width: 140px; min-width: 110px; }
 .sp-table .sp-col-rate { width: 64px; }
 .sp-table .sp-col-sell { width: 80px; }
-.sp-table .sp-col-catalog { width: 90px; }
-.sp-table .sp-col-name { width: auto; min-width: 260px; }
+.sp-table .sp-col-catalog { width: 110px; min-width: 100px; }
+.sp-table .sp-col-name { width: auto; }
 .sp-table .sp-col-unit { width: 64px; }
 .sp-table .sp-col-price { width: 72px; }
-.sp-table .sp-col-consumers { width: auto; min-width: 80px; max-width: 140px; }
+.sp-table .sp-col-consumers { width: auto; min-width: 100px; white-space: normal; }
 .sp-mat-name-input { text-overflow: ellipsis; }
 .sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.3; }
 .sp-work-label small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--admin-muted); }
 
-/* Used-by badges: smaller, inline, side by side */
+/* Used-by badges: smaller, inline wrapping horizontally */
 .sp-chip {
-  display: inline-flex;
-  padding: 2px 6px;
-  font-size: 0.65rem;
+  display: inline-block;
+  padding: 2px 5px;
+  font-size: 0.6rem;
   font-weight: 600;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
   border-radius: 3px;
-  margin: 2px 3px 2px 0;
+  margin: 1px 2px 1px 0;
   white-space: nowrap;
-  vertical-align: middle;
+  vertical-align: baseline;
+  line-height: 1.3;
 }
-.sp-col-consumers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-  line-height: 1.4;
+td.sp-col-consumers {
+  line-height: 1.5;
 }
 
 /* Compact inputs */
@@ -357,7 +354,7 @@
                         'name' => 'works['.$work->id.'][catalog_material_id]',
                         'value' => $catalogId > 0 ? $catalogId : '',
                         'hideLabel' => true,
-                        'placeholder' => 'Search',
+                        'placeholder' => 'Catalog…',
                         'ariaLabel' => 'Catalog material for '.$work->label,
                         'wrapperClass' => ($catalogId > 0 ? 'is-selected' : '') . ' sp-search-wrap',
                         'optionsSource' => 'admin-ss-catalog-options',

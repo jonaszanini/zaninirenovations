@@ -7,29 +7,41 @@
 /* =================================================================
    Filters bar on the projects list
    ================================================================= */
+/* Filters: inline row on desktop, 2-col grid on mobile */
 .cp-filters {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr minmax(4.5rem, 0.55fr) auto;
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
   margin-bottom: 16px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   background: var(--admin-surface-hover);
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  align-items: end;
+  align-items: flex-end;
 }
-.cp-filters.cp-filters--5col {
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+.cp-filters .cp-filter {
+  flex: 0 0 auto;
+  min-width: 0;
 }
-.cp-filters.cp-filters--3col {
-  grid-template-columns: 2fr 1fr auto;
+.cp-filters .cp-filter--search {
+  flex: 1 1 160px;
+  max-width: 220px;
+}
+.cp-filters .cp-filter--date {
+  flex: 0 0 auto;
+  width: 130px;
+}
+.cp-filters .cp-filter--select {
+  flex: 0 0 auto;
+  width: 120px;
 }
 .cp-filters .cp-filter label {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--admin-muted);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
+  white-space: nowrap;
 }
 .cp-filters .admin-input {
   width: 100%;
@@ -38,17 +50,31 @@
   display: flex;
   gap: 6px;
   align-items: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  margin-left: auto;
 }
 .cp-filters .cp-filter--actions > .admin-btn {
   align-self: flex-end;
+  white-space: nowrap;
 }
-@media (max-width: 900px) {
+@media (max-width: 700px) {
   .cp-filters {
+    display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .cp-filters .cp-filter,
+  .cp-filters .cp-filter--search,
+  .cp-filters .cp-filter--date,
+  .cp-filters .cp-filter--select {
+    flex: none;
+    width: auto;
+    max-width: none;
   }
   .cp-filters .cp-filter--actions {
     grid-column: 1 / -1;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 }
 
@@ -2944,24 +2970,25 @@ a:hover .cp-expense-receipt-pdf {
 /* =================================================================
    Quotation tab — multiple documents (accordion summaries)
    ================================================================= */
+/* Quotation accordion: compact layout */
 .cp-quotation-accordion {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   border: 1px solid var(--admin-border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--admin-surface);
   overflow: hidden;
 }
 .cp-quotation-accordion[open] {
   border-color: #a5b4fc;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.06);
 }
 .cp-quotation-accordion__summary {
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px 16px;
-  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 8px 10px;
+  padding: 10px 12px;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -2972,27 +2999,28 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-accordion__chevron {
   flex-shrink: 0;
   align-self: center;
-  margin-top: 0;
+  font-size: 12px;
+  color: var(--admin-muted);
+  transition: transform 0.15s;
 }
 .cp-quotation-accordion[open] .cp-quotation-accordion__chevron {
   transform: rotate(180deg);
 }
 .cp-quotation-accordion__core {
-  flex: 1 1 200px;
   min-width: 0;
 }
 .cp-quotation-accordion__title-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px 14px;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-bottom: 4px;
 }
 .cp-quotation-accordion__title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--admin-heading);
   line-height: 1.3;
 }
 .cp-quotation-accordion__title.cp-quotation-primary-heading--standard {
@@ -3035,90 +3063,97 @@ a:hover .cp-expense-receipt-pdf {
   font-size: 18px;
 }
 .cp-quotation-accordion__total-block {
-  text-align: right;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
 }
 .cp-quotation-accordion__total-hint {
-  display: block;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #64748b;
-  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--admin-muted);
 }
 .cp-quotation-accordion__total {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   color: #024768;
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .cp-quotation-accordion__total--muted {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   color: #9ca3af;
 }
 .cp-quotation-accordion__desc {
-  margin: 8px 0 0;
-  font-size: 13px;
-  color: #4b5563;
-  line-height: 1.45;
+  margin: 0;
+  font-size: 12px;
+  color: var(--admin-muted);
+  line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .cp-quotation-accordion__badges {
-  margin-top: 10px;
+  margin-top: 6px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
 }
+.cp-quotation-accordion__badges .cp-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.cp-quotation-accordion__badges .cp-contract-version {
+  font-size: 10px;
+}
 .cp-quotation-accordion__actions {
-  flex-shrink: 0;
-  margin-left: auto;
-  max-width: 100%;
+  align-self: center;
 }
 .cp-quotation-accordion__actions .cp-quotation-toolbar {
   justify-content: flex-end;
+  gap: 6px;
 }
 .cp-quotation-accordion__panel {
-  padding: 0 16px 16px;
+  padding: 0 12px 12px;
   border-top: 1px dashed var(--admin-border);
   background: var(--admin-surface-hover);
 }
 .cp-quotation-accordion__panel-meta {
   margin: 0;
-  padding-top: 12px;
+  padding-top: 10px;
 }
 .cp-quotation-accordion__panel .cp-quotation-controls {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .cp-quotation-accordion__panel .cp-contract-warning {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .cp-quotation-accordion__panel .cp-quotation-preview {
-  margin-top: 14px;
+  margin-top: 12px;
   background: var(--admin-elevated);
   border: 1px solid var(--admin-border);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 6px;
+  padding: 14px;
 }
 .cp-quotation-accordion__empty-body {
-  margin-top: 12px;
-  padding: 14px;
+  margin-top: 10px;
+  padding: 12px;
   background: var(--admin-elevated);
   border: 1px dashed var(--admin-border-strong);
-  border-radius: 8px;
+  border-radius: 6px;
 }
-@media (max-width: 700px) {
+@media (max-width: 600px) {
+  .cp-quotation-accordion__summary {
+    grid-template-columns: auto 1fr;
+  }
   .cp-quotation-accordion__actions {
-    margin-left: 0;
-    width: 100%;
+    grid-column: 1 / -1;
+    margin-top: 6px;
   }
   .cp-quotation-accordion__actions .cp-quotation-toolbar {
-    justify-content: stretch;
+    justify-content: flex-start;
   }
 }
 

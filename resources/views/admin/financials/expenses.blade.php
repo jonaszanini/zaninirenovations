@@ -30,26 +30,37 @@
   font-weight: 700;
   color: var(--admin-heading);
 }
+/* Quick expense: Project ~30%, Description most space, Date/Amount fit content */
 .gf-quick-expense-form {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) 140px minmax(120px, 200px) 120px auto;
-  gap: 12px;
-  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: flex-end;
   margin-bottom: 16px;
 }
-.gf-quick-expense-form .admin-form-group { margin-bottom: 0; }
-.gf-quick-expense-receipt {
-  margin-top: 8px;
-}
-@media (max-width: 900px) {
+.gf-quick-expense-form .admin-form-group { margin-bottom: 0; flex: 0 0 auto; }
+.gf-quick-expense-form .admin-form-group--project { flex: 0 1 200px; min-width: 140px; }
+.gf-quick-expense-form .admin-form-group--date { flex: 0 0 120px; }
+.gf-quick-expense-form .admin-form-group--desc { flex: 1 1 200px; min-width: 120px; }
+.gf-quick-expense-form .admin-form-group--amount { flex: 0 0 100px; }
+.gf-quick-expense-form .admin-form-group--submit { flex: 0 0 auto; }
+.gf-quick-expense-receipt { margin-top: 8px; }
+@media (max-width: 700px) {
   .gf-quick-expense-form {
+    display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
-}
-@media (max-width: 500px) {
-  .gf-quick-expense-form {
-    grid-template-columns: 1fr;
+  .gf-quick-expense-form .admin-form-group,
+  .gf-quick-expense-form .admin-form-group--project,
+  .gf-quick-expense-form .admin-form-group--date,
+  .gf-quick-expense-form .admin-form-group--desc,
+  .gf-quick-expense-form .admin-form-group--amount {
+    flex: none;
+    width: auto;
+    min-width: 0;
   }
+  .gf-quick-expense-form .admin-form-group--submit { grid-column: 1 / -1; }
 }
 </style>
 @endpush
@@ -61,7 +72,7 @@
     <form action="{{ route('admin.financials.expenses.store') }}" method="post" enctype="multipart/form-data" id="gf-quick-expense-form">
       @csrf
       <div class="gf-quick-expense-form">
-        <div class="admin-form-group">
+        <div class="admin-form-group admin-form-group--project">
           <label for="gf-project-search">Project <span class="cp-required">*</span></label>
           @include('admin.partials.search_select', [
             'id' => 'gf-project-search',
@@ -74,21 +85,21 @@
           ])
           @error('client_project_id') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
-        <div class="admin-form-group">
+        <div class="admin-form-group admin-form-group--date">
           <label for="gf-expense-date">Date <span class="cp-required">*</span></label>
           <input type="date" id="gf-expense-date" name="occurred_on" class="admin-input" value="{{ now()->toDateString() }}" required>
         </div>
-        <div class="admin-form-group">
+        <div class="admin-form-group admin-form-group--desc">
           <label for="gf-expense-desc">Description <span class="cp-required">*</span></label>
           <input type="text" id="gf-expense-desc" name="description" class="admin-input" placeholder="e.g. Lumber, screws" maxlength="500" required>
           @error('description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
-        <div class="admin-form-group">
+        <div class="admin-form-group admin-form-group--amount">
           <label for="gf-expense-amount">Amount <span class="cp-required">*</span></label>
           <input type="text" id="gf-expense-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
           @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
-        <div class="admin-form-group">
+        <div class="admin-form-group admin-form-group--submit">
           <button type="submit" class="admin-btn admin-btn--primary">
             <i class="fa fa-plus"></i> Add
           </button>
@@ -106,25 +117,25 @@
   </div>
 
   <div class="admin-card cp-filters">
-    <form action="{{ route('admin.financials.expenses') }}" method="get" class="cp-filters-form">
-      <div class="cp-filter">
+    <form action="{{ route('admin.financials.expenses') }}" method="get" class="cp-filters-form" style="display:contents;">
+      <div class="cp-filter cp-filter--search">
         <label for="gf-search">Search</label>
-        <input type="text" id="gf-search" name="search" class="admin-input" placeholder="Description, project, client…" value="{{ $search }}" minlength="2">
+        <input type="text" id="gf-search" name="search" class="admin-input" placeholder="Description, project…" value="{{ $search }}" minlength="2">
       </div>
-      <div class="cp-filter">
+      <div class="cp-filter cp-filter--date">
         <label for="gf-date-from">From</label>
         <input type="date" id="gf-date-from" name="date_from" class="admin-input" value="{{ $dateFrom }}">
       </div>
-      <div class="cp-filter">
+      <div class="cp-filter cp-filter--date">
         <label for="gf-date-to">To</label>
         <input type="date" id="gf-date-to" name="date_to" class="admin-input" value="{{ $dateTo }}">
       </div>
-      <div class="cp-filter">
+      <div class="cp-filter cp-filter--select">
         <label for="gf-has-receipt">Receipt</label>
         <select id="gf-has-receipt" name="has_receipt" class="admin-input">
           <option value="">All</option>
-          <option value="yes" @selected($hasReceipt === 'yes')>With receipt</option>
-          <option value="no" @selected($hasReceipt === 'no')>No receipt</option>
+          <option value="yes" @selected($hasReceipt === 'yes')>With</option>
+          <option value="no" @selected($hasReceipt === 'no')>None</option>
         </select>
       </div>
       <div class="cp-filter cp-filter--actions">
