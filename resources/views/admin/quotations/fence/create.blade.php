@@ -261,6 +261,10 @@
       font-size: 11px;
       font-weight: 600;
     }
+    .fq-badge.is-calculating { background: #fff4d4; color: #8a5d00; }
+    .fq-badge.is-error { background: #fde1e1; color: #8a1a1a; }
+    .fq-badge.is-idle { background: #eef1f5; color: #556; }
+    .fq-badge.is-current { background: #e8f4ea; color: #0f5132; }
     .fq-inline-controls {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -916,8 +920,9 @@
     }
 
     statusBadge.textContent = 'Calculating…';
-    statusBadge.style.background = '#fff4d4';
-    statusBadge.style.color = '#8a5d00';
+    statusBadge.className = 'fq-badge is-calculating';
+    statusBadge.style.background = '';
+    statusBadge.style.color = '';
 
     fetch(previewUrl, {
       method: 'POST',
@@ -937,16 +942,18 @@
       .then(renderCalc)
       .catch(function (err) {
         statusBadge.textContent = 'Error';
-        statusBadge.style.background = '#fde1e1';
-        statusBadge.style.color = '#8a1a1a';
+        statusBadge.className = 'fq-badge is-error';
+        statusBadge.style.background = '';
+        statusBadge.style.color = '';
         console.warn('[fence preview]', err);
       });
   }
 
   function renderIdle(msg) {
     statusBadge.textContent = 'Idle';
-    statusBadge.style.background = '#eef1f5';
-    statusBadge.style.color = '#556';
+    statusBadge.className = 'fq-badge is-idle';
+    statusBadge.style.background = '';
+    statusBadge.style.color = '';
     geometryEl.textContent = msg || '';
     materialsBody.innerHTML = '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
     tMaterials.textContent = 'CA$0.00';
@@ -1016,8 +1023,9 @@
   function renderCalc(calc) {
     lastCalc = calc;
     statusBadge.textContent = 'Up to date';
-    statusBadge.style.background = '#e8f4ea';
-    statusBadge.style.color = '#0f5132';
+    statusBadge.className = 'fq-badge is-current';
+    statusBadge.style.background = '';
+    statusBadge.style.color = '';
 
     var g = calc.geometry || {};
     var t = calc.totals || {};

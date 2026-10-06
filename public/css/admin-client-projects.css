@@ -140,16 +140,16 @@ a.cp-projects-scope-chip:hover {
   color: var(--admin-heading);
 }
 a.cp-projects-scope-chip.cp-projects-scope-chip--active {
-  border-color: #024768;
+  border-color: var(--admin-primary);
   background: rgba(2, 71, 104, 0.09);
-  color: #024768;
+  color: var(--admin-primary);
   font-weight: 600;
 }
 .cp-projects-scope-hint {
   margin: 10px 0 0;
   font-size: 13px;
   line-height: 1.45;
-  color: #64748b;
+  color: var(--admin-muted);
 }
 .cp-projects-scope-hint .fa {
   margin-right: 6px;
@@ -1125,11 +1125,11 @@ html.cp-cancel-modal-open {
   flex-shrink: 0;
 }
 .cp-tab:hover {
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-tab.is-active {
-  color: #024768;
-  border-bottom-color: #024768;
+  color: var(--admin-primary);
+  border-bottom-color: var(--admin-primary);
 }
 .cp-tab-panel {
   display: none;
@@ -1288,7 +1288,7 @@ html.cp-cancel-modal-open {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
 }
 
 .cp-installments-editor {
@@ -1369,7 +1369,7 @@ html.cp-cancel-modal-open {
 .cp-amount-preview {
   font-size: 15px;
   font-weight: 600;
-  color: #024768;
+  color: var(--admin-primary);
   display: block;
 }
 
@@ -1482,7 +1482,7 @@ html.cp-cancel-modal-open {
   text-align: center;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #374151;
+  color: var(--admin-heading);
 }
 .cp-expense-receipt-cell {
   vertical-align: middle;
@@ -2253,7 +2253,7 @@ a:hover .cp-expense-receipt-pdf {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -2755,7 +2755,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-number {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85em;
-  color: #024768;
+  color: var(--admin-primary);
   background: #024768 0;
   background: rgba(2, 71, 104, 0.08);
   border-radius: 4px;
@@ -3003,7 +3003,7 @@ a:hover .cp-expense-receipt-pdf {
   padding-top: 8px;
   font-size: 17px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
 }
 
 /* Mark-as-paid modal: payment method radio group (e-Transfer / Cash / Check). */
@@ -3243,7 +3243,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-accordion__total {
   font-size: 15px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-quotation-accordion__total--muted {
   font-size: 14px;
@@ -3352,7 +3352,7 @@ a:hover .cp-expense-receipt-pdf {
     content: attr(data-total);
     font-size: 13px;
     font-weight: 600;
-    color: #024768;
+    color: var(--admin-primary);
     margin-right: 6px;
   }
   .cp-quotation-accordion__desc {
@@ -3919,7 +3919,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-invoice-send-warning-link {
   font-weight: 600 !important;
-  color: #024768 !important;
+  color: var(--admin-primary) !important;
   text-decoration: none !important;
 }
 .cp-invoice-send-warning-link:hover {
@@ -3963,7 +3963,7 @@ a:hover .cp-expense-receipt-pdf {
   background: rgba(2, 71, 104, 0.06);
   border: 1px solid rgba(2, 71, 104, 0.25);
   border-radius: 10px;
-  color: #024768;
+  color: var(--admin-primary);
   flex-wrap: wrap;
 }
 .cp-invoice-locked-total-value {
@@ -3977,7 +3977,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-invoice-locked-total-grand {
   font-size: 16px;
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-invoice-mismatch {
   color: #b91c1c !important;
@@ -4283,7 +4283,7 @@ body.cp-modal-open {
 .cp-project-photos-heading {
   margin: 0 0 10px;
   font-size: 15px;
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-project-photos {
   margin-top: 14px;
@@ -4664,7 +4664,7 @@ body.cp-modal-open {
 }
 .cp-quotation-pdf-photos__item.is-selected,
 .cp-quotation-pdf-photos__item:has(.admin-checkbox__input:checked) {
-  border-color: #024768;
+  border-color: var(--admin-primary);
   box-shadow: 0 0 0 1px #024768;
 }
 .cp-quotation-pdf-photos__thumb img {
@@ -6810,7 +6810,7 @@ body.cp-modal-open {
 }
 .cp-helper-assign-option__meta {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--admin-muted);
   word-break: break-word;
 }
 .cp-helper-pay-toolbar {
@@ -8055,7 +8055,7 @@ body.cp-modal-open {
   flex: 0 0 auto;
   font-size: 13px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
   min-width: 72px;
   text-align: center;
 }
@@ -8552,7 +8552,7 @@ body.cp-modal-open {
   display: flex;
   align-items: center;
   font-weight: 600;
-  color: #024768;
+  color: var(--admin-primary);
 }
 .sh-permit {
   display: flex;
@@ -8703,7 +8703,7 @@ body.cp-modal-open {
 }
 .tm-card h4 {
   margin: 0 0 10px;
-  color: #024768;
+  color: var(--admin-primary);
   font-size: 15px;
 }
 .tm-family-toggle {
@@ -8754,8 +8754,8 @@ body.cp-modal-open {
   min-height: 28px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #eef3f6;
-  color: #024768;
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
   font-size: 13px;
   font-weight: 600;
 }
@@ -8785,7 +8785,7 @@ body.cp-modal-open {
   margin: 0 4px 0 0;
   border-radius: 50%;
   background: #e8f4ea;
-  color: #024768;
+  color: var(--admin-primary);
   font-size: 11px;
   line-height: 1;
   flex-shrink: 0;

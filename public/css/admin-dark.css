@@ -1780,8 +1780,8 @@ html.admin-dark .sq-mat-mode-segment__item span {
   color: var(--admin-text);
 }
 html.admin-dark .sq-mat-mode-segment__item:has(input:checked) span {
-  background: var(--admin-primary);
-  border-color: var(--admin-primary);
+  background: #024768;
+  border-color: #024768;
   color: #fff;
 }
 html.admin-dark .br-lw-segment__item span {
@@ -1790,8 +1790,8 @@ html.admin-dark .br-lw-segment__item span {
   color: var(--admin-text);
 }
 html.admin-dark .admin-form-group .br-lw-segment__item:has(input:checked) span {
-  background: var(--admin-primary);
-  border-color: var(--admin-primary);
+  background: #024768;
+  border-color: #024768;
   color: #fff;
 }
 
@@ -1808,7 +1808,7 @@ html.admin-dark .cp-tab.is-active .cp-tab-count {
 
 /* Basement progress items */
 html.admin-dark .br-progress__item.is-current .br-progress__num {
-  background: var(--admin-primary);
+  background: #024768;
   color: #fff;
 }
 html.admin-dark .br-progress__item .br-progress__num {
@@ -2056,9 +2056,26 @@ html.admin-dark .cp-invoice-bill-to {
 
 html.admin-dark .cp-invoice-bill-to__text,
 html.admin-dark .cp-profit-label,
-html.admin-dark .cp-hourly-summary-label,
-html.admin-dark .cp-hourly-summary-sub,
-html.admin-dark .q-commute-metric__label {
+html.admin-dark .cp-hourly-summary-tile--highlight .cp-hourly-summary-label,
+html.admin-dark .cp-hourly-summary-tile--highlight .cp-hourly-summary-sub,
+html.admin-dark .cp-hourly-summary-tile--highlight .cp-hourly-summary-sub strong {
+  color: #cbd5e1;
+}
+
+html.admin-dark .cp-badge[style*="color"] {
+  color: color-mix(in srgb, currentColor 40%, white) !important;
+}
+
+html.admin-dark .cp-projects-quick-status-btn {
+  color: color-mix(in srgb, currentColor 40%, white);
+}
+
+html.admin-dark .br-step-nav__status,
+html.admin-dark .admin-form-help {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-projects-scope-hint {
   color: var(--admin-muted);
 }
 
@@ -2602,10 +2619,16 @@ html.admin-dark .fc .fc-more-link,
 html.admin-dark .fc a:not(.fc-event):not(.fc-button) {
   color: var(--admin-primary);
 }
-html.admin-dark .fc .fc-button {
-  background: #024768;
-  border-color: #0369a1;
-  color: #fff;
+html.admin-dark .fc .fc-button,
+html.admin-dark .fc .fc-button-primary {
+  background: #024768 !important;
+  border-color: #0369a1 !important;
+  color: #fff !important;
+}
+html.admin-dark .fc .fc-button-primary:not(:disabled).fc-button-active,
+html.admin-dark .fc .fc-button-primary:not(:disabled):active {
+  background: #013a52 !important;
+  color: #fff !important;
 }
 
 html.admin-dark .tox .tox-toolbar-overlord,

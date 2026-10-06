@@ -306,6 +306,12 @@ async function runInteractions(page, shot) {
           await delay(200);
           await runInteractions(page, shot);
           const result = await page.evaluate(auditInPage);
+          const isAdmin = await page.evaluate(() => document.body.classList.contains('admin-body'));
+          if (!isAdmin) {
+            console.log(`${label}: skipped (not admin chrome — public/404/login)`);
+            report.pages_checked += 1;
+            continue;
+          }
           report.pages_checked += 1;
           const total = result.counts.light_background + result.counts.low_contrast + result.counts.invisible_text;
           console.log(`${label}: ${total} offender(s) (bg=${result.counts.light_background} contrast=${result.counts.low_contrast} invisible=${result.counts.invisible_text})`);
