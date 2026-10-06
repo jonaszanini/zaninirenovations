@@ -100,6 +100,21 @@
   </form>
 @else
   @php
+    $canMarkPaid = $invoice->hasContent() && (float) $invoice->total > 0;
+    $markPaidTitle = $canMarkPaid
+      ? ($invoice->isSent()
+          ? 'Mark as paid and generate a receipt.'
+          : 'Mark this draft invoice as paid (e.g. cash payment) and generate a receipt.')
+      : 'Add at least one line item with a description and amount before marking paid.';
+    $pauseConfirm = $invoice->dailyRemindersPaused()
+      ? "Resume daily payment reminders for invoice {$invoice->invoice_number}? The client will be emailed or texted again each day this invoice stays unpaid past the due date."
+      : "Stop daily payment reminders for invoice {$invoice->invoice_number}? The invoice stays on this line. You can still send a one-off reminder, or resume daily reminders later.";
+    if ($invoice->wasEverSent()) {
+        $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to {$clientEmail}. Deleting it removes the invoice from our records and returns this line to Create Invoice — the payment-plan row stays. The client will still have the old PDF in their inbox. Continue?";
+    } else {
+        $deleteConfirm = 'Delete this draft invoice? This cannot be undone.';
+    }
+
     $invoiceDropdownItems = [];
     if (! $invoice->isPaid()) {
         $invoiceDropdownItems[] = [
@@ -184,7 +199,7 @@
             'method' => 'DELETE',
             'icon' => 'fa-trash',
             'label' => 'Delete',
-            'confirm' => $invoice->wasEverSent() ? $deleteConfirm : 'Delete this draft invoice? This cannot be undone.',
+            'confirm' => $deleteConfirm,
             'class' => 'admin-actions-dropdown__item--danger',
         ];
     }
