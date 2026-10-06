@@ -527,4 +527,91 @@
       ])
     @endif
   @endforeach
+
+  {{-- Duplicate quotation modal --}}
+  <div id="cp-duplicate-modal-backdrop" class="cp-modal-backdrop" hidden onclick="cpCloseDuplicateModal()">
+    <div class="cp-modal" style="max-width:420px;" onclick="event.stopPropagation();">
+      <div class="cp-modal-header">
+        <h3>Duplicate quotation</h3>
+        <button type="button" class="cp-modal-close" onclick="cpCloseDuplicateModal()">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      <form id="cp-duplicate-form" method="post">
+        @csrf
+        <div class="cp-modal-body">
+          <p class="admin-form-help" style="margin:0 0 12px;">
+            Create a copy of <strong id="cp-duplicate-number"></strong> as a new draft.
+          </p>
+          <div class="admin-form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="radio" name="duplicate_target" value="same" checked onchange="cpToggleDuplicateTarget(this)">
+              <span>Same project (<span id="cp-duplicate-project-name">{{ $project->name }}</span>)</span>
+            </label>
+          </div>
+          <div class="admin-form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="radio" name="duplicate_target" value="other" onchange="cpToggleDuplicateTarget(this)">
+              <span>Different project</span>
+            </label>
+          </div>
+          <div id="cp-duplicate-project-picker" class="admin-form-group" style="display:none;margin-top:12px;">
+            @include('admin.partials.search_select', [
+              'id' => 'cp-duplicate-project-search',
+              'name' => 'target_project_id',
+              'placeholder' => 'Search projects…',
+              'searchUrl' => route('admin.quotations.projects.search'),
+              'searchFields' => ['label'],
+              'emptyMessage' => 'No projects found',
+              'maxOptions' => 20,
+            ])
+          </div>
+        </div>
+        <div class="cp-modal-footer">
+          <button type="button" class="admin-btn admin-btn--ghost" onclick="cpCloseDuplicateModal()">Cancel</button>
+          <button type="submit" class="admin-btn admin-btn--primary">
+            <i class="fa fa-copy"></i> Duplicate
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    window.cpOpenDuplicateModal = function(projectId, quotationId, quotationNumber, projectName) {
+      var backdrop = document.getElementById('cp-duplicate-modal-backdrop');
+      var form = document.getElementById('cp-duplicate-form');
+      var numberEl = document.getElementById('cp-duplicate-number');
+
+      form.action = '/admin/client-projects/' + projectId + '/quotations/' + quotationId + '/duplicate';
+      numberEl.textContent = quotationNumber;
+
+      document.querySelector('input[name="duplicate_target"][value="same"]').checked = true;
+      document.getElementById('cp-duplicate-project-picker').style.display = 'none';
+
+      backdrop.hidden = false;
+      document.body.classList.add('cp-modal-open');
+    };
+
+    window.cpCloseDuplicateModal = function() {
+      document.getElementById('cp-duplicate-modal-backdrop').hidden = true;
+      document.body.classList.remove('cp-modal-open');
+    };
+
+    window.cpToggleDuplicateTarget = function(radio) {
+      var picker = document.getElementById('cp-duplicate-project-picker');
+      picker.style.display = radio.value === 'other' ? 'block' : 'none';
+    };
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var backdrop = document.getElementById('cp-duplicate-modal-backdrop');
+        if (backdrop && !backdrop.hidden) {
+          cpCloseDuplicateModal();
+        }
+      }
+    });
+  })();
+  </script>
 @endif

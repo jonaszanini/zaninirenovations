@@ -98,6 +98,28 @@
           @if (filled($project->status_note))
             <div class="cp-header-status-note" title="{{ $project->status_note }}">{{ \Illuminate\Support\Str::limit(trim((string) $project->status_note), 80) }}</div>
           @endif
+          @php $quickStatuses = $project->quickStatusOptions(); @endphp
+          @if (count($quickStatuses) > 0)
+            <div class="cp-quick-status">
+              @foreach ($quickStatuses as $qStatus)
+                @php
+                  $qLabel = $statusLabels[$qStatus] ?? $qStatus;
+                  $qColor = $statusColors[$qStatus] ?? '#6b7280';
+                @endphp
+                <form action="{{ route('admin.client-projects.status.quick', $project) }}" method="post" class="cp-quick-status__form">
+                  @csrf
+                  <input type="hidden" name="status" value="{{ $qStatus }}">
+                  <button type="submit"
+                          class="cp-quick-status__btn"
+                          style="--qs-color: {{ $qColor }};"
+                          title="Quick change to {{ $qLabel }}">
+                    <i class="fa fa-arrow-right" aria-hidden="true"></i>
+                    {{ $qLabel }}
+                  </button>
+                </form>
+              @endforeach
+            </div>
+          @endif
           <div class="cp-updated">Updated {{ \App\Models\ClientProject::formatDateTime($project->updated_at) }}</div>
         </div>
       </div>

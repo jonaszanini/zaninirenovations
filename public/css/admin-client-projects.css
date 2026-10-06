@@ -695,6 +695,48 @@ a.cp-header-detail__value:hover {
   max-width: 16rem;
   margin-left: auto;
 }
+
+/* Quick status buttons in project header */
+.cp-quick-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+.cp-quick-status__form {
+  display: inline-block;
+  margin: 0;
+}
+.cp-quick-status__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--qs-color, #6b7280);
+  background: transparent;
+  border: 1px solid var(--qs-color, #6b7280);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.cp-quick-status__btn:hover {
+  background: var(--qs-color, #6b7280);
+  color: #fff;
+}
+.cp-quick-status__btn i {
+  font-size: 10px;
+}
+@media (max-width: 640px) {
+  .cp-quick-status {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
 /* Project header — Change-status form.
    Mobile-first: status, note, and save stack. From 700px they sit on
    one row so the quick note fills the space beside the dropdown. */

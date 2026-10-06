@@ -80,19 +80,26 @@
 .sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.3; }
 .sp-work-label small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--admin-muted); }
 
-/* Used-by badges: smaller, inline */
+/* Used-by badges: smaller, inline, side by side */
 .sp-chip {
-  display: inline-block;
-  padding: 1px 4px;
-  font-size: 0.6rem;
+  display: inline-flex;
+  padding: 2px 6px;
+  font-size: 0.65rem;
   font-weight: 600;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
   border-radius: 3px;
-  margin: 1px 2px 1px 0;
+  margin: 2px 3px 2px 0;
   white-space: nowrap;
+  vertical-align: middle;
 }
-.sp-col-consumers { line-height: 1.6; }
+.sp-col-consumers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  line-height: 1.4;
+}
 
 /* Compact inputs */
 .sp-input {
@@ -350,7 +357,7 @@
                         'name' => 'works['.$work->id.'][catalog_material_id]',
                         'value' => $catalogId > 0 ? $catalogId : '',
                         'hideLabel' => true,
-                        'placeholder' => '…',
+                        'placeholder' => 'Search',
                         'ariaLabel' => 'Catalog material for '.$work->label,
                         'wrapperClass' => ($catalogId > 0 ? 'is-selected' : '') . ' sp-search-wrap',
                         'optionsSource' => 'admin-ss-catalog-options',

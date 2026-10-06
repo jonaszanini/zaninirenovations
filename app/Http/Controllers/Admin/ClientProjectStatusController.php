@@ -79,4 +79,43 @@ class ClientProjectStatusController extends Controller
 
         return back()->with('success', "Project reopened — status set to {$label}.");
     }
+
+    /**
+     * Quick one-click status change (no note required). Used by header buttons.
+     */
+    public function quick(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectStatusService $service,
+    ) {
+        if ($client_project->isClosed()) {
+            $label = $client_project->isCancelled() ? 'Cancelled' : 'Rejected';
+
+            return back()->with('error', "This project has been marked as {$label} and is final.");
+        }
+
+        $data = $request->validate([
+            'status' => ['required', Rule::in(ClientProject::statuses())],
+        ]);
+
+        $newStatus = $data['status'];
+
+        if ($newStatus === $client_project->status) {
+            return back()->with('success', 'Status unchanged.');
+        }
+
+        if ($newStatus === ClientProject::STATUS_CANCELLED) {
+            return back()->with('error', 'Use the full status form to cancel a project (requires a reason).');
+        }
+
+        $allowed = $client_project->quickStatusOptions();
+        if (! in_array($newStatus, $allowed, true)) {
+            return back()->with('error', 'Invalid status transition.');
+        }
+
+        $label = ClientProject::statusLabels()[$newStatus] ?? $newStatus;
+        $service->transition($client_project, $newStatus, "Quick status change to {$label}.", false);
+
+        return back()->with('success', "Status updated to {$label}.");
+    }
 }

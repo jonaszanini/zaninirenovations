@@ -94,6 +94,12 @@
   @endunless
 
   @unless ($legacy)
+    <button type="button"
+            class="admin-btn admin-btn--ghost admin-btn--sm"
+            onclick="cpOpenDuplicateModal({{ $project->id }}, {{ $quotation->id }}, @json($quotation->quotation_number))"
+            title="Copy this quotation as a new draft (same project or different)">
+      <i class="fa fa-copy"></i> Duplicate
+    </button>
     <form action="{{ route('admin.client-projects.quotation.destroy', [$project, $quotation]) }}"
           method="post" class="cp-inline-form"
           onsubmit='return confirm(@json($deleteConfirm));'>
