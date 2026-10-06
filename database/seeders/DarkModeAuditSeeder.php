@@ -300,6 +300,14 @@ class DarkModeAuditSeeder extends Seeder
             ]
         );
 
+        // Link the project quotation so /quotations/{id}/edit redirects to the
+        // specialised editor instead of aborting 404 (SOURCE_STANDARD with no source_id).
+        if (! $quotation->source_id) {
+            $quotation->source_id = $standard->id;
+            $quotation->source_type = ClientProjectQuotation::SOURCE_STANDARD;
+            $quotation->save();
+        }
+
         $calcQuotes = [
             'paving' => [PavingQuotation::class, 'PAV-DM-1'],
             'stairs' => [StairsQuotation::class, 'STAIR-DM-1'],

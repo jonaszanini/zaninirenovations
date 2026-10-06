@@ -29,6 +29,17 @@ Login for the seeded admin: `admin@zanini.ca` / `password`.
 
 `--ci` is **not** wired into GitHub Actions: it needs a long-lived app server, Chrome, and a seeded database. CI instead runs `tests/Unit/Views/AdminDarkThemeCoverageTest.php` (token + selector coverage) plus existing PHPUnit jobs.
 
+## Latest results (this PR)
+
+122 admin pages × 2 viewports = 244 combos.
+
+| Run | Light backgrounds | Low contrast | Invisible text | Total |
+| --- | ---: | ---: | ---: | ---: |
+| First full audit | 125 | 556 | 143 | 824 |
+| After this PR | 0 | 0 | 0 | 0 |
+
+The existing overflow checker (`screenshot-all.js`) still reports 16 pre-existing offenders: 15 `wider_than_card` hits on the projects-list table (already inside `.admin-table-scroll`) and 1 `text_overflow` on a mobile expense description cell. Those are layout, not dark-mode.
+
 ## Allowlisted / out of scope
 
 - Public pages, `/admin/login`, password reset, PDFs, signed guest downloads
@@ -39,3 +50,4 @@ Login for the seeded admin: `admin@zanini.ca` / `password`.
 - Decorative Font Awesome icons inside `.cp-badge` (the badge label is still contrast-checked)
 - Switch knobs (`.cp-visit-toggle__control::after`) stay white by design
 - Print HTML, PDFs, receipts, and purchase/cut lists stay light-only
+- `admin.client-projects.quotation.edit` is a redirect hub to the specialised calculator (or a 404 for unlinked rows). The 12 calculator editors are audited on their own routes.
