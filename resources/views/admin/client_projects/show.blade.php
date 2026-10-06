@@ -837,7 +837,7 @@
 
       @php
         $cpShowVisitDateVal = old('visit_date', optional($project->visit_date)?->toDateString());
-        $cpShowVisitTimeVal = old('visit_time', $project->visit_time);
+        $cpShowVisitTimeVal = old('visit_time', $project->visitTimeForInput());
         $cpShowVisitExpandOpen = (bool) old('visit_required', $project->visit_required)
           || (bool) old('visit_done', $project->visit_done)
           || filled($cpShowVisitDateVal)

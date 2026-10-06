@@ -1146,6 +1146,35 @@ class ClientProject extends Model
         return $dateStr.' · '.$timeStr;
     }
 
+    /**
+     * Return visit_time as H:i for form inputs (MySQL TIME returns H:i:s).
+     */
+    public function visitTimeForInput(): ?string
+    {
+        if (! $this->visit_time) {
+            return null;
+        }
+
+        return substr($this->visit_time, 0, 5);
+    }
+
+    /**
+     * Normalize a time string to H:i format (strips seconds if present).
+     */
+    public static function normalizeTimeToHi(?string $time): ?string
+    {
+        if ($time === null || $time === '') {
+            return null;
+        }
+
+        $time = trim($time);
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::\d{2})?$/', $time, $m)) {
+            return str_pad($m[1], 2, '0', STR_PAD_LEFT).':'.$m[2];
+        }
+
+        return null;
+    }
+
     // --- Money & profit calculations --------------------------------------
 
     /** Sum of expense amounts (without subtracting returns). */

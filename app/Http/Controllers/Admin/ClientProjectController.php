@@ -191,6 +191,7 @@ class ClientProjectController extends Controller
         $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
         $this->normaliseConversationOnOnRequest($request);
+        $this->normaliseVisitTimeOnRequest($request);
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
@@ -515,6 +516,7 @@ class ClientProjectController extends Controller
         $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
         $this->normaliseConversationOnOnRequest($request);
+        $this->normaliseVisitTimeOnRequest($request);
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
@@ -849,6 +851,20 @@ class ClientProjectController extends Controller
         if ($v === '' || $v === null) {
             $request->merge(['conversation_on' => null]);
         }
+    }
+
+    /**
+     * Normalize visit_time to H:i format (MySQL TIME returns H:i:s, browsers
+     * may submit either). Empty/null → null.
+     */
+    protected function normaliseVisitTimeOnRequest(Request $request): void
+    {
+        if (! $request->has('visit_time')) {
+            return;
+        }
+
+        $normalized = ClientProject::normalizeTimeToHi($request->input('visit_time'));
+        $request->merge(['visit_time' => $normalized]);
     }
 
     public function destroy(ClientProject $client_project)

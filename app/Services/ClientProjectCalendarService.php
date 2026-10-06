@@ -115,8 +115,10 @@ class ClientProjectCalendarService
                     $minute = (int) ($timeParts[1] ?? 0);
                     $startDateTime = Carbon::parse($p->visit_date)->setTime($hour, $minute, 0);
                     $endDateTime = (clone $startDateTime)->addHour();
-                    $start = $startDateTime->toIso8601String();
-                    $end = $endDateTime->toIso8601String();
+                    // Use floating local format (no timezone offset) so FullCalendar
+                    // displays the exact wall-clock time without browser TZ conversion.
+                    $start = $startDateTime->format('Y-m-d\TH:i:s');
+                    $end = $endDateTime->format('Y-m-d\TH:i:s');
                     $allDay = false;
                 } else {
                     $start = $p->visit_date->toDateString();
