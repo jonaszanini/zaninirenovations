@@ -342,6 +342,16 @@ a.cp-table-street .fa {
   font-weight: 600;
   color: #1e293b;
   line-height: 1.35;
+  white-space: nowrap;
+}
+.cp-table th:nth-child(2),
+.cp-table td:nth-child(2) {
+  min-width: 120px;
+  white-space: nowrap;
+}
+.cp-table th:nth-child(7),
+.cp-table td:nth-child(7) {
+  white-space: nowrap;
 }
 .cp-contact-line .cp-contact-line-sep {
   color: #9ca3af;
@@ -1540,6 +1550,117 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-expenses-send-heading {
   margin-top: 0;
+}
+/* Mobile expenses: compact card layout */
+.cp-expense-actions--mobile {
+  display: none;
+}
+@media (max-width: 700px) {
+  .cp-expenses-table-wrap.admin-table-scroll {
+    overflow-x: hidden;
+  }
+  .cp-expenses-table {
+    display: block;
+    width: 100%;
+  }
+  .cp-expenses-table thead {
+    display: none;
+  }
+  .cp-expenses-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .cp-expenses-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 10px 12px;
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+  }
+  .cp-expenses-table tbody tr.cp-expense-edit-row {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+  .cp-expenses-table tbody tr.cp-totals-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--admin-surface-hover);
+    font-weight: 600;
+  }
+  .cp-expenses-table tbody tr.cp-totals-row td {
+    padding: 0;
+    border: none;
+    width: auto;
+  }
+  .cp-expenses-table tbody tr.cp-totals-row .cp-expense-ref-col,
+  .cp-expenses-table tbody tr.cp-totals-row td:nth-child(5),
+  .cp-expenses-table tbody tr.cp-totals-row td:nth-child(6) {
+    display: none;
+  }
+  .cp-expenses-table tbody tr.cp-totals-row td:nth-child(2) {
+    flex: 1 1 auto;
+  }
+  .cp-expenses-table tbody tr.cp-totals-row .cp-col-amount {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+  .cp-expenses-table td {
+    padding: 0;
+    border: none;
+    display: block;
+  }
+  .cp-expenses-table .cp-expense-ref-col {
+    display: none;
+  }
+  .cp-expenses-table td:nth-child(2) {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--admin-muted);
+    white-space: nowrap;
+  }
+  .cp-expenses-table td:nth-child(2)::after {
+    content: ' ·';
+  }
+  .cp-expenses-table td:nth-child(3) {
+    flex: 1 1 0;
+    min-width: 0;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cp-expenses-table .cp-col-amount {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: right;
+    white-space: nowrap;
+    margin-left: auto;
+  }
+  .cp-expenses-table .cp-expense-receipt-cell {
+    display: none;
+  }
+  .cp-expenses-table .cp-expense-actions-cell {
+    flex: 0 0 auto;
+  }
+  .cp-expense-actions--desktop {
+    display: none;
+  }
+  .cp-expense-actions--mobile {
+    display: inline-block;
+  }
+  .cp-expenses-table .cp-expense-edit-row td {
+    width: 100%;
+  }
 }
 @media (max-width: 820px) {
   .cp-finance-form-grid {
@@ -2982,12 +3103,18 @@ a:hover .cp-expense-receipt-pdf {
 /* =================================================================
    Quotation tab — multiple documents (accordion summaries)
    ================================================================= */
-/* Quotation accordion: clean grid layout */
+/* Quotation accordion: clean grid layout.
+   Zero .admin-card padding so summary padding (~16px) is the only inset. */
 .cp-quotation-accordion {
   margin-bottom: 0.75rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   background: var(--admin-surface);
+  padding: 0;
+  overflow: visible;
+}
+.cp-quotation-accordion.admin-card {
+  padding: 0;
 }
 .cp-quotation-accordion[open] {
   border-color: #a5b4fc;
@@ -2998,7 +3125,7 @@ a:hover .cp-expense-receipt-pdf {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 12px;
+  padding: 16px;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -3171,30 +3298,56 @@ a:hover .cp-expense-receipt-pdf {
 }
 @media (max-width: 700px) {
   .cp-quotation-accordion__summary {
+    display: flex;
     flex-wrap: wrap;
-    gap: 6px 8px;
-    padding: 10px 12px;
+    align-items: flex-start;
+    gap: 4px 8px;
+    padding: 16px;
   }
   .cp-quotation-accordion__chevron {
     flex: 0 0 14px;
-    padding-top: 2px;
+    padding-top: 4px;
   }
   .cp-quotation-accordion__core {
     flex: 1 1 0;
     min-width: 0;
   }
   .cp-quotation-accordion__title-row {
-    flex-wrap: wrap;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .cp-quotation-accordion__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cp-quotation-accordion__number {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
   .cp-quotation-accordion__total-block {
     display: none;
   }
   .cp-quotation-accordion__actions {
     flex: 0 0 auto;
+    margin-left: 0;
+    align-self: flex-start;
+  }
+  /* Kill the 2-col full-width toolbar grid so ⋯ sits flush right. */
+  .cp-quotation-accordion__actions .cp-quotation-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    width: auto;
+    grid-template-columns: none;
+    gap: 0;
   }
   .cp-quotation-accordion__badges {
-    flex: 0 0 100%;
-    margin-top: 0;
+    flex: 1 1 100%;
+    margin-top: 2px;
   }
   .cp-quotation-accordion__badges::before {
     content: attr(data-total);
@@ -3360,6 +3513,13 @@ a:hover .cp-expense-receipt-pdf {
   }
   .cp-quotation-toolbar__send-form {
     grid-column: 1 / -1;
+  }
+  .cp-quotation-accordion__actions .cp-quotation-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    width: auto;
+    grid-template-columns: none;
+    gap: 0;
   }
   .cp-quotation-control__field-row {
     flex-direction: column;

@@ -406,8 +406,8 @@
   </form>
 
   @if ($project->expenses->isNotEmpty())
-    <div class="admin-table-scroll">
-    <table class="admin-table">
+    <div class="admin-table-scroll cp-expenses-table-wrap">
+    <table class="admin-table cp-expenses-table">
       <thead>
         <tr><th class="cp-expense-ref-col">#</th><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th>Receipt</th><th></th></tr>
       </thead>
@@ -436,13 +436,30 @@
               @endif
             </td>
             <td class="cp-expense-actions-cell">
-              <div class="cp-expense-actions">
+              <div class="cp-expense-actions cp-expense-actions--desktop">
                 <button type="button" class="admin-btn admin-btn--sm" data-cp-expense-edit-toggle="{{ $expense->id }}">Edit</button>
                 <form action="{{ route('admin.client-projects.expenses.destroy', [$project, $expense]) }}" method="post" onsubmit="return confirm('Delete this expense?');" class="cp-inline-form">
                   @csrf
                   @method('DELETE')
                   <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
                 </form>
+              </div>
+              <div class="admin-actions-dropdown cp-expense-actions--mobile">
+                <button type="button" class="admin-actions-dropdown__toggle" aria-label="Expense actions">
+                  <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+                </button>
+                <div class="admin-actions-dropdown__menu">
+                  <button type="button" class="admin-actions-dropdown__item" data-cp-expense-edit-toggle="{{ $expense->id }}">
+                    <i class="fa fa-pencil" aria-hidden="true"></i> Edit
+                  </button>
+                  <form action="{{ route('admin.client-projects.expenses.destroy', [$project, $expense]) }}" method="post" onsubmit="return confirm('Delete this expense?');" class="admin-actions-dropdown__form">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="admin-actions-dropdown__item admin-actions-dropdown__item--danger">
+                      <i class="fa fa-trash" aria-hidden="true"></i> Delete
+                    </button>
+                  </form>
+                </div>
               </div>
             </td>
           </tr>
