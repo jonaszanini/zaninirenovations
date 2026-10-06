@@ -32,6 +32,10 @@
 }
 .sp-heading { margin: 0 0 0.5rem; font-size: 1.1rem; }
 .sp-group { margin-bottom: 1rem; }
+/* Tighter card padding on desktop so Rate/Sell/Mat. price and Mat. name all fit. */
+@media (min-width: 901px) {
+  details.sp-group.admin-card { padding: 1.25rem 1.15rem; }
+}
 .sp-group__summary {
   font-weight: 600;
   font-size: 1rem;
@@ -74,22 +78,27 @@
 }
 .sp-table tr:last-child td { border-bottom: none; }
 .sp-table .sp-col-label { width: 128px; }
+/* 5.75rem fits 9,999.0000 (~77px glyphs + input padding/border + cell padding). */
 .sp-table .sp-col-rate,
 .sp-table .sp-col-sell,
-.sp-table .sp-col-price { width: 6.5rem; }
+.sp-table .sp-col-price {
+  width: 5.75rem;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
 .sp-table .sp-col-unit { width: 4.75rem; }
 .sp-table .sp-col-name { width: auto; }
 .sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; overflow: hidden; }
-.sp-table .sp-col-consumers { width: 150px; white-space: normal; }
+.sp-table .sp-col-consumers { width: 110px; white-space: normal; }
 .sp-col-name .sp-input,
 .sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
 .sp-col-rate .sp-input,
 .sp-col-sell .sp-input,
 .sp-col-price .sp-input {
   width: 100%;
-  min-width: 10ch;
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
+  min-width: 0;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
   box-sizing: border-box;
   font-variant-numeric: tabular-nums;
 }
@@ -145,7 +154,7 @@
   position: relative;
 }
 
-/* Used-by badges: small, horizontal with wrap, 2 fit in ~150px */
+/* Used-by badges: small, horizontal with wrap */
 .sp-chip {
   display: inline-block;
   padding: 1px 4px;
