@@ -8,7 +8,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const screenshots = [
   { name: 'invoices-list-desktop-1280-light', url: '/admin/financials/invoices', width: 1280, height: 900, theme: 'light' },
   { name: 'expenses-list-mobile-390-dark', url: '/admin/financials/expenses', width: 390, height: 844, theme: 'dark' },
-  { name: 'quick-expense-project-page-mobile-390-light', url: '/admin/client-projects/1#financials', width: 390, height: 844, theme: 'light' },
+  { name: 'quick-expense-project-page-mobile-390-light', url: '/admin/client-projects/1#financials', width: 390, height: 844, theme: 'light', scrollToExpenses: true },
   { name: 'ctrlk-palette-desktop-1280-dark', url: '/admin/client-projects', width: 1280, height: 900, theme: 'dark', openPalette: true },
   { name: 'project-header-quick-status-desktop-1280-light', url: '/admin/client-projects/1', width: 1280, height: 900, theme: 'light' },
   { name: 'project-header-quick-status-mobile-390-light', url: '/admin/client-projects/1', width: 390, height: 844, theme: 'light' },
@@ -80,6 +80,23 @@ async function takeScreenshot(page, shot) {
       }
     });
     await delay(500);
+  }
+  
+  if (shot.scrollToExpenses) {
+    await delay(500);
+    await page.evaluate(() => {
+      // Scroll to the expenses card with the quick-add form
+      const expensesCard = document.querySelector('.cp-expenses-card') ||
+                           document.querySelector('h3:contains("Expenses")') ||
+                           document.querySelector('#gf-quick-expense-form');
+      if (expensesCard) {
+        expensesCard.scrollIntoView({ behavior: 'instant', block: 'start' });
+      } else {
+        // Fallback: scroll down a good amount to pass payment schedule
+        window.scrollBy(0, 800);
+      }
+    });
+    await delay(300);
   }
   
   await page.screenshot({

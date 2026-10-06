@@ -1336,9 +1336,10 @@ html.cp-cancel-modal-open {
 .cp-installment-pct label {
   font-size: 12px;
   color: #6b7280;
+  white-space: nowrap;
 }
 .cp-installment-pct input {
-  width: 100px;
+  width: 80px;
   padding: 6px 8px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -1348,6 +1349,10 @@ html.cp-cancel-modal-open {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.cp-installment-amount .admin-form-help {
+  font-size: 11px;
+  white-space: nowrap;
+}
 .cp-amount-preview {
   font-size: 15px;
   font-weight: 600;
@@ -1355,26 +1360,33 @@ html.cp-cancel-modal-open {
   display: block;
 }
 
-/* Mobile: a single row of [label | percentage | amount] gets too cramped
-   below ~560px and the amount overlaps the percentage input. Re-flow the
-   row so the label sits on its own line and the percentage/amount share
-   the next line, with the amount right-aligned underneath. */
+/* Mobile: stack everything vertically to prevent overflow at 390px. */
 @media (max-width: 560px) {
   .cp-installment-row {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 1fr;
     grid-template-areas:
-      "label label"
-      "pct   amount";
-    row-gap: 8px;
+      "label"
+      "pct"
+      "amount";
+    row-gap: 6px;
   }
   .cp-installment-label  { grid-area: label; }
   .cp-installment-pct    { grid-area: pct; }
+  .cp-installment-pct input { width: 100px; }
   .cp-installment-amount {
     grid-area: amount;
-    align-self: center;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .cp-installment-amount .admin-form-help {
+    font-size: 11px;
+    margin: 0;
   }
   .cp-amount-preview {
-    font-size: 16px;
+    font-size: 15px;
   }
 }
 
@@ -2983,11 +2995,10 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-quotation-accordion__summary {
   list-style: none;
-  display: grid;
-  grid-template-columns: 20px 1fr auto auto;
-  align-items: center;
-  gap: 0 12px;
-  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -2996,23 +3007,25 @@ a:hover .cp-expense-receipt-pdf {
   display: none;
 }
 .cp-quotation-accordion__chevron {
-  width: 20px;
+  flex: 0 0 16px;
   text-align: center;
   font-size: 12px;
   color: var(--admin-muted);
   transition: transform 0.15s;
+  padding-top: 3px;
 }
 .cp-quotation-accordion[open] .cp-quotation-accordion__chevron {
   transform: rotate(180deg);
 }
 .cp-quotation-accordion__core {
+  flex: 1 1 0;
   min-width: 0;
 }
 .cp-quotation-accordion__title-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: baseline;
-  gap: 4px 8px;
+  gap: 6px;
   line-height: 1.35;
 }
 .cp-quotation-accordion__title {
@@ -3020,12 +3033,12 @@ a:hover .cp-expense-receipt-pdf {
   font-size: 15px;
   font-weight: 600;
   color: var(--admin-heading);
-  white-space: nowrap;
 }
 .cp-quotation-accordion__number {
   font-size: 13px;
   font-weight: 500;
   color: var(--admin-primary);
+  white-space: nowrap;
 }
 .cp-quotation-accordion__title.cp-quotation-primary-heading--standard {
   font-weight: 400;
@@ -3065,13 +3078,6 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-contract-meta .cp-quotation-primary-heading__display-title {
   font-size: 18px;
-}
-.cp-quotation-accordion__total-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 .cp-quotation-accordion__total-hint {
   font-size: 10px;
@@ -3113,7 +3119,17 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-accordion__badges .cp-contract-version {
   font-size: 10px;
 }
+.cp-quotation-accordion__total-block {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  margin-left: 8px;
+}
 .cp-quotation-accordion__actions {
+  flex: 0 0 auto;
   position: relative;
 }
 .cp-quotation-accordion__actions .cp-quotation-toolbar {
@@ -3155,31 +3171,29 @@ a:hover .cp-expense-receipt-pdf {
 }
 @media (max-width: 700px) {
   .cp-quotation-accordion__summary {
-    grid-template-columns: 20px 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 6px 10px;
+    flex-wrap: wrap;
+    gap: 6px 8px;
     padding: 10px 12px;
   }
   .cp-quotation-accordion__chevron {
-    grid-row: 1;
-    align-self: center;
+    flex: 0 0 14px;
+    padding-top: 2px;
   }
   .cp-quotation-accordion__core {
-    grid-row: 1;
+    flex: 1 1 0;
+    min-width: 0;
   }
-  .cp-quotation-accordion__title {
-    white-space: normal;
+  .cp-quotation-accordion__title-row {
+    flex-wrap: wrap;
   }
   .cp-quotation-accordion__total-block {
     display: none;
   }
   .cp-quotation-accordion__actions {
-    grid-row: 1;
-    grid-column: 3;
+    flex: 0 0 auto;
   }
   .cp-quotation-accordion__badges {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    flex: 0 0 100%;
     margin-top: 0;
   }
   .cp-quotation-accordion__badges::before {
@@ -3228,6 +3242,28 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-toolbar .cp-inline-form,
 .cp-quotation-toolbar form {
   margin: 0;
+}
+/* Desktop: show buttons, hide mobile dropdown */
+.cp-quotation-toolbar__desktop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.cp-quotation-toolbar__mobile {
+  display: none;
+}
+.cp-quotation-toolbar__overflow .admin-actions-dropdown__menu {
+  right: 0;
+  left: auto;
+}
+@media (max-width: 768px) {
+  .cp-quotation-toolbar__desktop {
+    display: none;
+  }
+  .cp-quotation-toolbar__mobile {
+    display: block;
+  }
 }
 .cp-quotation-controls {
   display: grid;

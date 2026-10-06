@@ -68,27 +68,56 @@
   vertical-align: middle;
 }
 .sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { width: 130px; min-width: 100px; }
-.sp-table .sp-col-rate { width: 60px; }
-.sp-table .sp-col-sell { width: 75px; }
-.sp-table .sp-col-catalog { width: 50px; }
-.sp-table .sp-col-name { width: auto; min-width: 180px; }
-.sp-table .sp-col-unit { width: 55px; }
-.sp-table .sp-col-price { width: 68px; }
-.sp-table .sp-col-consumers { width: auto; min-width: 90px; white-space: normal; }
+.sp-table .sp-col-label { width: 110px; min-width: 90px; }
+.sp-table .sp-col-rate { width: 55px; }
+.sp-table .sp-col-sell { width: 70px; }
+.sp-table .sp-col-catalog { width: 40px; text-align: center; }
+.sp-table .sp-col-name { width: auto; min-width: 220px; }
+.sp-table .sp-col-unit { width: 50px; min-width: 50px; }
+.sp-table .sp-col-price { width: 65px; }
+.sp-table .sp-col-consumers { width: 70px; min-width: 70px; white-space: normal; }
 .sp-mat-name-input { text-overflow: ellipsis; }
-/* Compact catalog search */
-.sp-search-wrap--compact .admin-ss-combobox__input {
-  width: 42px;
-  padding: 0.2rem 0.3rem;
-  text-align: center;
+/* Compact catalog search button */
+.sp-catalog-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  background: var(--admin-input-bg);
+  color: var(--admin-muted);
+  cursor: pointer;
+  font-size: 12px;
+  transition: border-color 0.15s, background 0.15s;
 }
-.sp-search-wrap--compact .admin-ss-combobox__input::placeholder {
-  font-size: 0.9rem;
+.sp-catalog-btn:hover {
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
 }
-.sp-search-wrap--compact.is-selected .admin-ss-combobox__input {
+.sp-catalog-btn.is-selected {
   background: var(--admin-primary-soft);
   border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+.sp-search-wrap--hidden {
+  position: absolute;
+  width: 200px;
+  left: 0;
+  top: 100%;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+.sp-search-wrap--hidden:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+.sp-col-catalog {
+  position: relative;
 }
 .sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.3; }
 .sp-work-label small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--admin-muted); }
@@ -361,15 +390,20 @@ td.sp-col-consumers {
                            placeholder="—">
                   </td>
                   <td class="sp-col-catalog" data-label="Catalog">
-                    <div class="sp-search-wrap sp-search-wrap--compact">
+                    <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
+                            title="Search catalog materials"
+                            onclick="this.nextElementSibling.querySelector('.admin-ss-combobox__input').focus();">
+                      <i class="fa fa-search" aria-hidden="true"></i>
+                    </button>
+                    <div class="sp-search-wrap sp-search-wrap--hidden">
                       @include('admin.partials.search_select', [
                         'id' => 'sp-mat-'.$work->id,
                         'name' => 'works['.$work->id.'][catalog_material_id]',
                         'value' => $catalogId > 0 ? $catalogId : '',
                         'hideLabel' => true,
-                        'placeholder' => '🔍',
+                        'placeholder' => 'Type to search...',
                         'ariaLabel' => 'Catalog material for '.$work->label,
-                        'wrapperClass' => ($catalogId > 0 ? 'is-selected' : '') . ' sp-search-wrap sp-search-wrap--compact',
+                        'wrapperClass' => 'sp-search-wrap--hidden-input',
                         'optionsSource' => 'admin-ss-catalog-options',
                         'selectedOption' => $selected,
                         'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
