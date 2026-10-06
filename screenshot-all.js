@@ -86,14 +86,20 @@ async function takeScreenshot(page, shot) {
     await delay(500);
     await page.evaluate(() => {
       // Scroll to the expenses card with the quick-add form
-      const expensesCard = document.querySelector('.cp-expenses-card') ||
-                           document.querySelector('h3:contains("Expenses")') ||
-                           document.querySelector('#gf-quick-expense-form');
-      if (expensesCard) {
-        expensesCard.scrollIntoView({ behavior: 'instant', block: 'start' });
+      const expensesForm = document.querySelector('#gf-quick-expense-form');
+      if (expensesForm) {
+        expensesForm.scrollIntoView({ behavior: 'instant', block: 'start' });
       } else {
+        // Look for expenses heading
+        const headings = document.querySelectorAll('h3');
+        for (const h of headings) {
+          if (h.textContent.includes('Expenses')) {
+            h.scrollIntoView({ behavior: 'instant', block: 'start' });
+            return;
+          }
+        }
         // Fallback: scroll down a good amount to pass payment schedule
-        window.scrollBy(0, 800);
+        window.scrollBy(0, 1200);
       }
     });
     await delay(300);

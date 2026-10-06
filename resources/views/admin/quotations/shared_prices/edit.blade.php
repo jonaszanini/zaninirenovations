@@ -68,14 +68,14 @@
   vertical-align: middle;
 }
 .sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { width: 110px; min-width: 90px; }
-.sp-table .sp-col-rate { width: 55px; }
-.sp-table .sp-col-sell { width: 70px; }
-.sp-table .sp-col-catalog { width: 40px; text-align: center; }
-.sp-table .sp-col-name { width: auto; min-width: 220px; }
-.sp-table .sp-col-unit { width: 50px; min-width: 50px; }
-.sp-table .sp-col-price { width: 65px; }
-.sp-table .sp-col-consumers { width: 70px; min-width: 70px; white-space: normal; }
+.sp-table .sp-col-label { width: 100px; min-width: 85px; }
+.sp-table .sp-col-rate { width: 50px; }
+.sp-table .sp-col-sell { width: 65px; }
+.sp-table .sp-col-catalog { width: 36px; text-align: center; }
+.sp-table .sp-col-name { width: auto; min-width: 200px; }
+.sp-table .sp-col-unit { width: 55px; min-width: 55px; }
+.sp-table .sp-col-price { width: 60px; }
+.sp-table .sp-col-consumers { width: 65px; min-width: 65px; white-space: normal; }
 .sp-mat-name-input { text-overflow: ellipsis; }
 /* Compact catalog search button */
 .sp-catalog-btn {
