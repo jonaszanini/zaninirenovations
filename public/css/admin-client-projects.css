@@ -353,9 +353,6 @@ a.cp-table-street .fa {
    ================================================================= */
 .cp-header-card {
   padding: 14px 18px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
   margin: -1rem -1.5rem 1rem;
   border-radius: 0;
   border-left: none;

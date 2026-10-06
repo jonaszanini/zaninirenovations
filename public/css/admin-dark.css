@@ -1983,12 +1983,6 @@ html.admin-dark .cp-expense-card {
   border-color: var(--admin-border);
 }
 
-/* Client project sticky mini-header */
-html.admin-dark .cp-sticky-mini-header {
-  background: var(--admin-surface);
-  border-color: var(--admin-border);
-}
-
 /* Mobile actions dropdown */
 html.admin-dark .admin-actions-dropdown__toggle {
   background: var(--admin-surface);
