@@ -130,38 +130,33 @@
       {{-- Compact accordion when several quotations exist on one project --}}
       <details class="cp-quotation-accordion admin-card cp-contract-card">
         <summary class="cp-quotation-accordion__summary">
-          <span class="cp-quotation-accordion__chevron admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+          <span class="cp-quotation-accordion__chevron" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
           <div class="cp-quotation-accordion__core">
             <div class="cp-quotation-accordion__title-row">
-              @include('admin.client_projects._quotation_heading_primary', [
-                  'quotation' => $quotation,
-                  'title' => $title,
-                  'headingClass' => 'cp-quotation-accordion__title',
-              ])
-              <div class="cp-quotation-accordion__total-block">
-                @if ($hasContent)
-                  <span class="cp-quotation-accordion__total-hint">Total w/ HST</span>
-                  <span class="cp-quotation-accordion__total">{{ \App\Models\ClientProject::formatMoney($grand) }}</span>
-                @else
-                  <span class="cp-quotation-accordion__total cp-quotation-accordion__total--muted">—</span>
-                @endif
-              </div>
+              <span class="cp-quotation-accordion__title">{{ $title }}</span>
+              <span class="cp-quotation-accordion__number">{{ $quotation->quotation_number }}</span>
             </div>
             <p class="cp-quotation-accordion__desc">{{ $summDesc }}</p>
-            <div class="cp-quotation-accordion__badges">
+            <div class="cp-quotation-accordion__badges" data-total="{{ $hasContent ? \App\Models\ClientProject::formatMoney($grand) : '—' }}">
               @if ($legacy)
                 <span class="cp-badge" style="background:#f4f4f5;color:#52525b;">Legacy</span>
               @endif
               <span class="cp-badge" style="background:#e0e7ff;color:#3730a3;">{{ $quotation->statusLabel() }}</span>
               @if ($quotation->isSent())
-                <span class="cp-badge" style="background:#22c55e20;color:#15803d;">
-                  <i class="fa fa-check"></i> Sent
-                </span>
+                <span class="cp-badge" style="background:#22c55e20;color:#15803d;"><i class="fa fa-check"></i> Sent</span>
               @else
                 <span class="cp-badge" style="background:#f59e0b20;color:#b45309;">Not emailed</span>
               @endif
               <span class="cp-contract-version">{{ $typeLabel }}</span>
             </div>
+          </div>
+          <div class="cp-quotation-accordion__total-block">
+            @if ($hasContent)
+              <span class="cp-quotation-accordion__total-hint">Total w/ HST</span>
+              <span class="cp-quotation-accordion__total">{{ \App\Models\ClientProject::formatMoney($grand) }}</span>
+            @else
+              <span class="cp-quotation-accordion__total cp-quotation-accordion__total--muted">—</span>
+            @endif
           </div>
           <div class="cp-quotation-accordion__actions" onclick="event.stopPropagation();">
             @include('admin.client_projects._quotation_toolbar', [

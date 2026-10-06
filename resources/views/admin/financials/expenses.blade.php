@@ -51,17 +51,30 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
-  .gf-quick-expense-form .admin-form-group,
   .gf-quick-expense-form .admin-form-group--project,
-  .gf-quick-expense-form .admin-form-group--date,
-  .gf-quick-expense-form .admin-form-group--desc,
-  .gf-quick-expense-form .admin-form-group--amount {
-    flex: none;
-    width: auto;
-    min-width: 0;
+  .gf-quick-expense-form .admin-form-group--desc {
+    grid-column: 1 / -1;
   }
-  .gf-quick-expense-form .admin-form-group--submit { grid-column: 1 / -1; }
+  .gf-quick-expense-form .admin-form-group--date,
+  .gf-quick-expense-form .admin-form-group--amount {
+    grid-column: auto;
+  }
+  .gf-quick-expense-form .admin-form-group--submit {
+    grid-column: 2;
+  }
 }
+/* Table column widths - nowrap for key columns */
+.gf-expenses-table { width: 100%; }
+.gf-expenses-table th:nth-child(1),
+.gf-expenses-table td:nth-child(1) { white-space: nowrap; } /* # */
+.gf-expenses-table th:nth-child(2),
+.gf-expenses-table td:nth-child(2) { white-space: nowrap; } /* Date */
+.gf-expenses-table th:nth-child(3),
+.gf-expenses-table td:nth-child(3) { white-space: nowrap; } /* Project */
+.gf-expenses-table th:nth-child(4),
+.gf-expenses-table td:nth-child(4) { white-space: nowrap; } /* Client */
+.gf-expenses-table th:nth-child(6),
+.gf-expenses-table td:nth-child(6) { white-space: nowrap; text-align: right; } /* Amount */
 </style>
 @endpush
 
@@ -163,7 +176,7 @@
       </div>
     @else
       <div class="admin-table-scroll">
-        <table class="admin-table admin-table--stack">
+        <table class="admin-table admin-table--stack gf-expenses-table">
           <thead>
             <tr>
               <th>#</th>
@@ -171,7 +184,7 @@
               <th>Project</th>
               <th>Client</th>
               <th>Description</th>
-              <th>Amount</th>
+              <th style="text-align:right;">Amount</th>
               <th>Receipt</th>
               <th></th>
             </tr>

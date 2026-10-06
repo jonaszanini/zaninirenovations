@@ -68,15 +68,28 @@
   vertical-align: middle;
 }
 .sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { width: 140px; min-width: 110px; }
-.sp-table .sp-col-rate { width: 64px; }
-.sp-table .sp-col-sell { width: 80px; }
-.sp-table .sp-col-catalog { width: 110px; min-width: 100px; }
-.sp-table .sp-col-name { width: auto; }
-.sp-table .sp-col-unit { width: 64px; }
-.sp-table .sp-col-price { width: 72px; }
-.sp-table .sp-col-consumers { width: auto; min-width: 100px; white-space: normal; }
+.sp-table .sp-col-label { width: 130px; min-width: 100px; }
+.sp-table .sp-col-rate { width: 60px; }
+.sp-table .sp-col-sell { width: 75px; }
+.sp-table .sp-col-catalog { width: 50px; }
+.sp-table .sp-col-name { width: auto; min-width: 180px; }
+.sp-table .sp-col-unit { width: 55px; }
+.sp-table .sp-col-price { width: 68px; }
+.sp-table .sp-col-consumers { width: auto; min-width: 90px; white-space: normal; }
 .sp-mat-name-input { text-overflow: ellipsis; }
+/* Compact catalog search */
+.sp-search-wrap--compact .admin-ss-combobox__input {
+  width: 42px;
+  padding: 0.2rem 0.3rem;
+  text-align: center;
+}
+.sp-search-wrap--compact .admin-ss-combobox__input::placeholder {
+  font-size: 0.9rem;
+}
+.sp-search-wrap--compact.is-selected .admin-ss-combobox__input {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+}
 .sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.3; }
 .sp-work-label small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--admin-muted); }
 
@@ -348,15 +361,15 @@ td.sp-col-consumers {
                            placeholder="—">
                   </td>
                   <td class="sp-col-catalog" data-label="Catalog">
-                    <div class="sp-search-wrap">
+                    <div class="sp-search-wrap sp-search-wrap--compact">
                       @include('admin.partials.search_select', [
                         'id' => 'sp-mat-'.$work->id,
                         'name' => 'works['.$work->id.'][catalog_material_id]',
                         'value' => $catalogId > 0 ? $catalogId : '',
                         'hideLabel' => true,
-                        'placeholder' => 'Catalog…',
+                        'placeholder' => '🔍',
                         'ariaLabel' => 'Catalog material for '.$work->label,
-                        'wrapperClass' => ($catalogId > 0 ? 'is-selected' : '') . ' sp-search-wrap',
+                        'wrapperClass' => ($catalogId > 0 ? 'is-selected' : '') . ' sp-search-wrap sp-search-wrap--compact',
                         'optionsSource' => 'admin-ss-catalog-options',
                         'selectedOption' => $selected,
                         'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],

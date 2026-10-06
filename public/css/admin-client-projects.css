@@ -2970,13 +2970,12 @@ a:hover .cp-expense-receipt-pdf {
 /* =================================================================
    Quotation tab — multiple documents (accordion summaries)
    ================================================================= */
-/* Quotation accordion: compact layout */
+/* Quotation accordion: clean grid layout */
 .cp-quotation-accordion {
   margin-bottom: 0.75rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   background: var(--admin-surface);
-  overflow: hidden;
 }
 .cp-quotation-accordion[open] {
   border-color: #a5b4fc;
@@ -2985,10 +2984,10 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-accordion__summary {
   list-style: none;
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: start;
-  gap: 8px 10px;
-  padding: 10px 12px;
+  grid-template-columns: 20px 1fr auto auto;
+  align-items: center;
+  gap: 0 12px;
+  padding: 12px 14px;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -2997,8 +2996,8 @@ a:hover .cp-expense-receipt-pdf {
   display: none;
 }
 .cp-quotation-accordion__chevron {
-  flex-shrink: 0;
-  align-self: center;
+  width: 20px;
+  text-align: center;
   font-size: 12px;
   color: var(--admin-muted);
   transition: transform 0.15s;
@@ -3013,15 +3012,20 @@ a:hover .cp-expense-receipt-pdf {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px 12px;
-  margin-bottom: 4px;
+  gap: 4px 8px;
+  line-height: 1.35;
 }
 .cp-quotation-accordion__title {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
   color: var(--admin-heading);
-  line-height: 1.3;
+  white-space: nowrap;
+}
+.cp-quotation-accordion__number {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--admin-primary);
 }
 .cp-quotation-accordion__title.cp-quotation-primary-heading--standard {
   font-weight: 400;
@@ -3063,21 +3067,22 @@ a:hover .cp-expense-receipt-pdf {
   font-size: 18px;
 }
 .cp-quotation-accordion__total-block {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .cp-quotation-accordion__total-hint {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--admin-muted);
+  line-height: 1.2;
 }
 .cp-quotation-accordion__total {
   font-size: 15px;
   font-weight: 700;
   color: #024768;
-  white-space: nowrap;
 }
 .cp-quotation-accordion__total--muted {
   font-size: 14px;
@@ -3085,17 +3090,17 @@ a:hover .cp-expense-receipt-pdf {
   color: #9ca3af;
 }
 .cp-quotation-accordion__desc {
-  margin: 0;
+  margin: 2px 0 0;
   font-size: 12px;
   color: var(--admin-muted);
   line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .cp-quotation-accordion__badges {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -3109,11 +3114,15 @@ a:hover .cp-expense-receipt-pdf {
   font-size: 10px;
 }
 .cp-quotation-accordion__actions {
-  align-self: center;
+  position: relative;
 }
 .cp-quotation-accordion__actions .cp-quotation-toolbar {
   justify-content: flex-end;
   gap: 6px;
+}
+.cp-quotation-accordion__actions .admin-actions-dropdown__menu {
+  right: 0;
+  left: auto;
 }
 .cp-quotation-accordion__panel {
   padding: 0 12px 12px;
@@ -3144,16 +3153,44 @@ a:hover .cp-expense-receipt-pdf {
   border: 1px dashed var(--admin-border-strong);
   border-radius: 6px;
 }
-@media (max-width: 600px) {
+@media (max-width: 700px) {
   .cp-quotation-accordion__summary {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 20px 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 6px 10px;
+    padding: 10px 12px;
+  }
+  .cp-quotation-accordion__chevron {
+    grid-row: 1;
+    align-self: center;
+  }
+  .cp-quotation-accordion__core {
+    grid-row: 1;
+  }
+  .cp-quotation-accordion__title {
+    white-space: normal;
+  }
+  .cp-quotation-accordion__total-block {
+    display: none;
   }
   .cp-quotation-accordion__actions {
-    grid-column: 1 / -1;
-    margin-top: 6px;
+    grid-row: 1;
+    grid-column: 3;
   }
-  .cp-quotation-accordion__actions .cp-quotation-toolbar {
-    justify-content: flex-start;
+  .cp-quotation-accordion__badges {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 0;
+  }
+  .cp-quotation-accordion__badges::before {
+    content: attr(data-total);
+    font-size: 13px;
+    font-weight: 600;
+    color: #024768;
+    margin-right: 6px;
+  }
+  .cp-quotation-accordion__desc {
+    display: none;
   }
 }
 

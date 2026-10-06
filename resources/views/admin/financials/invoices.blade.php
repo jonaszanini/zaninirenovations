@@ -32,6 +32,20 @@
 }
 .gf-total-tile__value--success { color: #16a34a; }
 .gf-total-tile__value--warning { color: #d97706; }
+/* Table column widths - nowrap for key columns */
+.gf-invoices-table { width: 100%; }
+.gf-invoices-table th:nth-child(1),
+.gf-invoices-table td:nth-child(1) { white-space: nowrap; } /* Invoice # */
+.gf-invoices-table th:nth-child(2),
+.gf-invoices-table td:nth-child(2) { white-space: nowrap; } /* Project */
+.gf-invoices-table th:nth-child(3),
+.gf-invoices-table td:nth-child(3) { white-space: nowrap; } /* Client */
+.gf-invoices-table th:nth-child(5),
+.gf-invoices-table td:nth-child(5),
+.gf-invoices-table th:nth-child(6),
+.gf-invoices-table td:nth-child(6) { white-space: nowrap; text-align: right; } /* Money */
+.gf-invoices-table th:nth-child(8),
+.gf-invoices-table td:nth-child(8) { white-space: nowrap; } /* Date */
 </style>
 @endpush
 
@@ -100,15 +114,15 @@
       </div>
     @else
       <div class="admin-table-scroll">
-        <table class="admin-table admin-table--stack">
+        <table class="admin-table admin-table--stack gf-invoices-table">
           <thead>
             <tr>
               <th>Invoice #</th>
               <th>Project</th>
               <th>Client</th>
               <th>Description</th>
-              <th>Subtotal</th>
-              <th>Total</th>
+              <th style="text-align:right;">Subtotal</th>
+              <th style="text-align:right;">Total</th>
               <th>Status</th>
               <th>Date</th>
               <th></th>
