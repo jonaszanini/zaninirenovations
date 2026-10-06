@@ -150,6 +150,8 @@ Route::middleware('auth')->get('/dashboard', [DashboardController::class, 'index
 
 Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+    Route::get('/search/api', [\App\Http\Controllers\Admin\GlobalSearchController::class, 'api'])
+        ->name('search.api');
     Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     });
@@ -290,6 +292,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('calendar.personal-events.destroy');
     Route::post('client-projects/{client_project}/status', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'update'])
         ->name('client-projects.status.update');
+    Route::post('client-projects/{client_project}/status/quick', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'quick'])
+        ->name('client-projects.status.quick');
     Route::post('client-projects/{client_project}/reopen', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'reopen'])
         ->name('client-projects.reopen');
     Route::post('client-projects/{client_project}/installments', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'saveInstallments'])
@@ -346,6 +350,16 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::put('vehicles/settings/gas-price', [\App\Http\Controllers\Admin\VehicleController::class, 'updateGasPrice'])
         ->name('vehicles.settings.gas-price');
 
+    // Global Financials — cross-project invoices and expenses lists.
+    Route::get('financials/invoices', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'invoices'])
+        ->name('financials.invoices');
+    Route::get('financials/expenses', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'expenses'])
+        ->name('financials.expenses');
+    Route::post('financials/expenses', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'storeExpense'])
+        ->name('financials.expenses.store');
+    Route::get('financials/projects/search', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'searchProjects'])
+        ->name('financials.projects.search');
+
     Route::get('client-projects/{client_project}/travel-estimate', [\App\Http\Controllers\Admin\ClientProjectTravelController::class, 'estimate'])
         ->name('client-projects.travel-estimate');
 
@@ -382,6 +396,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.quotation.pdf-photos');
     Route::delete('client-projects/{client_project}/quotations/{quotation}', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'destroy'])
         ->name('client-projects.quotation.destroy');
+    Route::post('client-projects/{client_project}/quotations/{quotation}/duplicate', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'duplicate'])
+        ->name('client-projects.quotation.duplicate');
+    Route::get('quotations/projects/search', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'searchProjectsForDuplicate'])
+        ->name('quotations.projects.search');
 
     // Invoices (structured, PDF generation, email-to-client). Multiple allowed
     // per project — one per installment plus optional manual invoices.

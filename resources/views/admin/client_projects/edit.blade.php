@@ -2,6 +2,22 @@
 
 @section('heading', 'Edit project')
 
+@push('head')
+<style>
+/* Edit project: two-column layout on desktop */
+.cp-edit-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.cp-edit-form-grid > .admin-form-group { margin-bottom: 14px; }
+.cp-edit-form-grid > .cp-edit-form-full { grid-column: 1 / -1; }
+@media (max-width: 700px) {
+  .cp-edit-form-grid { grid-template-columns: 1fr; }
+}
+</style>
+@endpush
+
 @section('content')
   <div class="cp-edit-project-layout">
     <div class="admin-card admin-card--narrow cp-edit-project-form-card">
@@ -9,40 +25,42 @@
         @csrf
         @method('PUT')
 
-      <div class="admin-form-group">
-        <label for="cp-name">Project name <span class="cp-required">*</span></label>
-        <input class="admin-input" type="text" id="cp-name" name="name" value="{{ old('name', $project->name) }}" required maxlength="255"
-               @class(['admin-input', 'is-invalid' => $errors->has('name')])>
-        @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
+      <div class="cp-edit-form-grid">
+        <div class="admin-form-group">
+          <label for="cp-name">Project name <span class="cp-required">*</span></label>
+          <input class="admin-input" type="text" id="cp-name" name="name" value="{{ old('name', $project->name) }}" required maxlength="255"
+                 @class(['admin-input', 'is-invalid' => $errors->has('name')])>
+          @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
 
-      <div class="admin-form-group">
-        <label for="cp-contacted-via">Contact via <span class="cp-required">*</span></label>
-        <select id="cp-contacted-via" name="contacted_via" required @class(['admin-input', 'is-invalid' => $errors->has('contacted_via')])>
-          @if (old('contacted_via', $project->contacted_via) === null || old('contacted_via', $project->contacted_via) === '')
-            <option value="" disabled selected>Select…</option>
-          @endif
-          @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
-            <option value="{{ $value }}" @selected(old('contacted_via', $project->contacted_via) === $value)>{{ $label }}</option>
-          @endforeach
-        </select>
-        @error('contacted_via') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
+        <div class="admin-form-group">
+          <label for="cp-contacted-via">Contact via <span class="cp-required">*</span></label>
+          <select id="cp-contacted-via" name="contacted_via" required @class(['admin-input', 'is-invalid' => $errors->has('contacted_via')])>
+            @if (old('contacted_via', $project->contacted_via) === null || old('contacted_via', $project->contacted_via) === '')
+              <option value="" disabled selected>Select…</option>
+            @endif
+            @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
+              <option value="{{ $value }}" @selected(old('contacted_via', $project->contacted_via) === $value)>{{ $label }}</option>
+            @endforeach
+          </select>
+          @error('contacted_via') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
 
-      <div class="admin-form-group">
-        <label for="cp-conversation-on" class="cp-label-with-hint">
-          Conversation on
-          @include('admin.client_projects._cp_field_hint', [
-            'text' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
-          ])
-        </label>
-        <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
-          <option value="" @selected(old('conversation_on', $project->conversation_on) === null || old('conversation_on', $project->conversation_on) === '')>— Not set —</option>
-          @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
-            <option value="{{ $value }}" @selected(old('conversation_on', $project->conversation_on) === $value)>{{ $label }}</option>
-          @endforeach
-        </select>
-        @error('conversation_on') <p class="admin-form-error">{{ $message }}</p> @enderror
+        <div class="admin-form-group">
+          <label for="cp-conversation-on" class="cp-label-with-hint">
+            Conversation on
+            @include('admin.client_projects._cp_field_hint', [
+              'text' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
+            ])
+          </label>
+          <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
+            <option value="" @selected(old('conversation_on', $project->conversation_on) === null || old('conversation_on', $project->conversation_on) === '')>— Not set —</option>
+            @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
+              <option value="{{ $value }}" @selected(old('conversation_on', $project->conversation_on) === $value)>{{ $label }}</option>
+            @endforeach
+          </select>
+          @error('conversation_on') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
       </div>
 
       <div class="admin-form-section">
@@ -59,16 +77,22 @@
 
         @include('admin.client_projects._client_directory_sync', ['project' => $project, 'clientFieldsLocked' => $clientFieldsLocked])
 
-        <div class="admin-form-group">
-          <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
-          {{-- No HTML required: directory client_id is enough (server hydrates name). --}}
-          <input class="admin-input" type="text" id="cp-client-name" name="client_name" value="{{ old('client_name', $project->client_name) }}" maxlength="255"
-                 data-cp-client-name
-                 @class(['admin-input', 'is-invalid' => $errors->has('client_name')]) @disabled($clientFieldsLocked)>
-          @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-        </div>
-
-        <div class="admin-form-grid-2">
+        <div class="cp-edit-form-grid">
+          <div class="admin-form-group">
+            <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
+            <input class="admin-input" type="text" id="cp-client-name" name="client_name" value="{{ old('client_name', $project->client_name) }}" maxlength="255"
+                   data-cp-client-name
+                   @class(['admin-input', 'is-invalid' => $errors->has('client_name')]) @disabled($clientFieldsLocked)>
+            @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+          <div class="admin-form-group">
+            <label for="cp-client-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(CC'd)</small></label>
+            <input class="admin-input" type="email" id="cp-client-email-secondary" name="client_email_secondary"
+                   value="{{ old('client_email_secondary', $project->client_email_secondary) }}" maxlength="255"
+                   placeholder="spouse@example.com"
+                   @class(['admin-input', 'is-invalid' => $errors->has('client_email_secondary')]) @disabled($clientFieldsLocked)>
+            @error('client_email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
           <div class="admin-form-group">
             <label for="cp-client-email">Email</label>
             <input class="admin-input" type="email" id="cp-client-email" name="client_email" value="{{ old('client_email', $project->client_email) }}" maxlength="255"
@@ -89,15 +113,6 @@
                    @disabled($clientFieldsLocked)>
             @error('client_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
-        </div>
-
-        <div class="admin-form-group">
-          <label for="cp-client-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(optional — CC'd on every client email)</small></label>
-          <input class="admin-input" type="email" id="cp-client-email-secondary" name="client_email_secondary"
-                 value="{{ old('client_email_secondary', $project->client_email_secondary) }}" maxlength="255"
-                 placeholder="spouse@example.com"
-                 @class(['admin-input', 'is-invalid' => $errors->has('client_email_secondary')]) @disabled($clientFieldsLocked)>
-          @error('client_email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
         @include('admin.partials.places_address_field', [

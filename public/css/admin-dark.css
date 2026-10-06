@@ -2005,3 +2005,9 @@ html.admin-dark .admin-actions-dropdown__item:hover {
 html.admin-dark .admin-actions-dropdown__item--danger {
   color: var(--admin-danger);
 }
+html.admin-dark .admin-actions-dropdown__item--success {
+  color: var(--admin-success, #22c55e);
+}
+html.admin-dark button.admin-actions-dropdown__item {
+  background: transparent;
+}

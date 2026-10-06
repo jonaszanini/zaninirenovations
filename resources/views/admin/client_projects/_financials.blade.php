@@ -397,17 +397,17 @@
       </div>
     </div>
     <div class="admin-form-group cp-expense-receipt-field">
-      <label for="cp-expense-receipt">Receipt (optional)</label>
-      <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf">
-      <p class="admin-form-help">Image (JPEG, PNG, WebP, AVIF) — stored as WebP at {{ (int) config('webp.quality', 75) }}% quality, max {{ (int) config('webp.max_edge_px', 1280) }}px, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB; or <strong>PDF</strong> — stored as-is. Filename <strong>Receipt-#</strong> matches the # column for the client. On a phone you can take a photo, pick from gallery, or choose a PDF.</p>
+      <label for="cp-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+      <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf" capture="environment">
+      <p class="admin-form-help">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</p>
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
   </form>
 
   @if ($project->expenses->isNotEmpty())
-    <div class="admin-table-scroll">
-    <table class="admin-table">
+    <div class="admin-table-scroll cp-expenses-table-wrap">
+    <table class="admin-table cp-expenses-table">
       <thead>
         <tr><th class="cp-expense-ref-col">#</th><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th>Receipt</th><th></th></tr>
       </thead>
@@ -436,13 +436,30 @@
               @endif
             </td>
             <td class="cp-expense-actions-cell">
-              <div class="cp-expense-actions">
+              <div class="cp-expense-actions cp-expense-actions--desktop">
                 <button type="button" class="admin-btn admin-btn--sm" data-cp-expense-edit-toggle="{{ $expense->id }}">Edit</button>
                 <form action="{{ route('admin.client-projects.expenses.destroy', [$project, $expense]) }}" method="post" onsubmit="return confirm('Delete this expense?');" class="cp-inline-form">
                   @csrf
                   @method('DELETE')
                   <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
                 </form>
+              </div>
+              <div class="admin-actions-dropdown cp-expense-actions--mobile">
+                <button type="button" class="admin-actions-dropdown__toggle" aria-label="Expense actions">
+                  <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+                </button>
+                <div class="admin-actions-dropdown__menu">
+                  <button type="button" class="admin-actions-dropdown__item" data-cp-expense-edit-toggle="{{ $expense->id }}">
+                    <i class="fa fa-pencil" aria-hidden="true"></i> Edit
+                  </button>
+                  <form action="{{ route('admin.client-projects.expenses.destroy', [$project, $expense]) }}" method="post" onsubmit="return confirm('Delete this expense?');" class="admin-actions-dropdown__form">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="admin-actions-dropdown__item admin-actions-dropdown__item--danger">
+                      <i class="fa fa-trash" aria-hidden="true"></i> Delete
+                    </button>
+                  </form>
+                </div>
               </div>
             </td>
           </tr>

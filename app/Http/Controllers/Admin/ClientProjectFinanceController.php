@@ -15,6 +15,7 @@ use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
 use App\Services\ProjectPhotoWebpStorage;
 use App\Services\RecalculateRemainingInstallmentsService;
+use App\Support\CadMoney;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -362,6 +363,10 @@ class ClientProjectFinanceController extends Controller
         if (!$client_project->isAccepted()) {
             return back()->with('error', 'Expenses are available once the proposal is accepted.');
         }
+
+        $request->merge([
+            'amount' => CadMoney::stripGrouping($request->input('amount')),
+        ]);
 
         $data = $request->validate([
             'occurred_on' => ['required', 'date'],

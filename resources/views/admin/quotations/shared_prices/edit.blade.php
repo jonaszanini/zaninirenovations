@@ -32,6 +32,10 @@
 }
 .sp-heading { margin: 0 0 0.5rem; font-size: 1.1rem; }
 .sp-group { margin-bottom: 1rem; }
+/* Tighter card padding on desktop so Rate/Sell/Mat. price and Mat. name all fit. */
+@media (min-width: 901px) {
+  details.sp-group.admin-card { padding: 1.25rem 1.15rem; }
+}
 .sp-group__summary {
   font-weight: 600;
   font-size: 1rem;
@@ -49,8 +53,13 @@
 }
 .sp-group[open] > .sp-group__summary::before { transform: rotate(90deg); }
 
-/* Desktop table */
-.sp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+/* Desktop table: fixed layout so leftover width goes to Mat. name */
+.sp-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.85rem;
+}
 .sp-table th {
   text-align: left;
   font-size: 0.65rem;
@@ -58,41 +67,111 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--admin-muted);
-  padding: 0.4rem 0.35rem;
+  padding: 0.4rem 0.3rem;
   border-bottom: 1px solid var(--admin-border);
   white-space: nowrap;
 }
 .sp-table td {
-  padding: 0.35rem 0.35rem;
+  padding: 0.35rem 0.3rem;
   border-bottom: 1px solid var(--admin-border);
   vertical-align: middle;
 }
 .sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { width: 140px; min-width: 110px; }
-.sp-table .sp-col-rate { width: 64px; }
-.sp-table .sp-col-sell { width: 80px; }
-.sp-table .sp-col-catalog { width: 90px; }
-.sp-table .sp-col-name { width: auto; min-width: 260px; }
-.sp-table .sp-col-unit { width: 64px; }
-.sp-table .sp-col-price { width: 72px; }
-.sp-table .sp-col-consumers { width: auto; min-width: 80px; max-width: 140px; }
-.sp-mat-name-input { text-overflow: ellipsis; }
-.sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.3; }
-.sp-work-label small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--admin-muted); }
+.sp-table .sp-col-label { width: 128px; }
+/* 5.75rem fits 9,999.0000 (~77px glyphs + input padding/border + cell padding). */
+.sp-table .sp-col-rate,
+.sp-table .sp-col-sell,
+.sp-table .sp-col-price {
+  width: 5.75rem;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
+.sp-table .sp-col-unit { width: 4.75rem; }
+.sp-table .sp-col-name { width: auto; }
+.sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; overflow: hidden; }
+.sp-table .sp-col-consumers { width: 110px; white-space: normal; }
+.sp-col-name .sp-input,
+.sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
+.sp-col-rate .sp-input,
+.sp-col-sell .sp-input,
+.sp-col-price .sp-input {
+  width: 100%;
+  min-width: 0;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+.sp-col-unit .sp-input {
+  width: 100%;
+  min-width: 7ch;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  box-sizing: border-box;
+}
+.sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.25; white-space: nowrap; }
+.sp-work-label small { display: block; font-weight: 400; font-size: 0.7rem; color: var(--admin-muted); white-space: nowrap; }
+/* Compact catalog search button */
+.sp-catalog-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  background: var(--admin-input-bg);
+  color: var(--admin-muted);
+  cursor: pointer;
+  font-size: 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.sp-catalog-btn:hover {
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+.sp-catalog-btn.is-selected {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+.sp-search-wrap--hidden {
+  position: absolute;
+  width: 200px;
+  left: 0;
+  top: 100%;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+.sp-search-wrap--hidden:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+.sp-col-catalog {
+  position: relative;
+}
 
-/* Used-by badges: smaller, inline */
+/* Used-by badges: small, horizontal with wrap */
 .sp-chip {
   display: inline-block;
   padding: 1px 4px;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 600;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
   border-radius: 3px;
   margin: 1px 2px 1px 0;
   white-space: nowrap;
+  vertical-align: baseline;
+  line-height: 1.2;
 }
-.sp-col-consumers { line-height: 1.6; }
+td.sp-col-consumers {
+  line-height: 1.4;
+  vertical-align: middle;
+}
 
 /* Compact inputs */
 .sp-input {
@@ -269,7 +348,7 @@
                 <th class="sp-col-unit">Unit</th>
                 <th class="sp-col-price">Mat. price</th>
                 <th class="sp-col-name">Mat. name</th>
-                <th class="sp-col-catalog">Catalog</th>
+                <th class="sp-col-catalog" title="Catalog"><i class="fa fa-search" aria-hidden="true"></i></th>
                 <th class="sp-col-consumers">Used by</th>
               </tr>
             </thead>
@@ -344,15 +423,20 @@
                            placeholder="—">
                   </td>
                   <td class="sp-col-catalog" data-label="Catalog">
-                    <div class="sp-search-wrap">
+                    <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
+                            title="Search catalog materials"
+                            onclick="this.nextElementSibling.querySelector('.admin-ss-combobox__input').focus();">
+                      <i class="fa fa-search" aria-hidden="true"></i>
+                    </button>
+                    <div class="sp-search-wrap sp-search-wrap--hidden">
                       @include('admin.partials.search_select', [
                         'id' => 'sp-mat-'.$work->id,
                         'name' => 'works['.$work->id.'][catalog_material_id]',
                         'value' => $catalogId > 0 ? $catalogId : '',
                         'hideLabel' => true,
-                        'placeholder' => '…',
+                        'placeholder' => 'Type to search...',
                         'ariaLabel' => 'Catalog material for '.$work->label,
-                        'wrapperClass' => ($catalogId > 0 ? 'is-selected' : '') . ' sp-search-wrap',
+                        'wrapperClass' => 'sp-search-wrap--hidden-input',
                         'optionsSource' => 'admin-ss-catalog-options',
                         'selectedOption' => $selected,
                         'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],

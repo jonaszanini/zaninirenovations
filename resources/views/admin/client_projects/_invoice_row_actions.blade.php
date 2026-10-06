@@ -99,6 +99,96 @@
     </button>
   </form>
 @else
+  @php
+    $invoiceDropdownItems = [];
+    if (! $invoice->isPaid()) {
+        $invoiceDropdownItems[] = [
+            'type' => 'link',
+            'href' => route('admin.client-projects.invoices.edit', [$project, $invoice]),
+            'icon' => 'fa-pencil',
+            'label' => 'Edit',
+        ];
+    }
+    if ($invoice->hasContent() || $invoice->total > 0) {
+        $invoiceDropdownItems[] = [
+            'type' => 'link',
+            'href' => route('admin.client-projects.invoices.pdf', [$project, $invoice]),
+            'icon' => 'fa-file-pdf-o',
+            'label' => 'PDF',
+            'target' => '_blank',
+        ];
+    }
+    if (! $invoice->isPaid()) {
+        if ($canSend) {
+            $invoiceDropdownItems[] = [
+                'type' => 'form',
+                'action' => route('admin.client-projects.invoices.send', [$project, $invoice]),
+                'icon' => 'fa-paper-plane',
+                'label' => $invoice->wasEverSent() ? 'Resend' : 'Send',
+                'confirm' => $sendConfirm,
+            ];
+        }
+        if ($canSms) {
+            $invoiceDropdownItems[] = [
+                'type' => 'form',
+                'action' => route('admin.client-projects.invoices.sms', [$project, $invoice]),
+                'icon' => 'fa-comment',
+                'label' => 'SMS',
+                'confirm' => $smsConfirm,
+            ];
+        }
+    }
+    if ($invoice->isSent()) {
+        if ($canReminder) {
+            $invoiceDropdownItems[] = [
+                'type' => 'form',
+                'action' => route('admin.client-projects.invoices.reminder', [$project, $invoice]),
+                'icon' => 'fa-bell-o',
+                'label' => $invoice->dailyRemindersPaused() ? 'Send one reminder' : 'Reminder',
+                'confirm' => $reminderConfirm,
+            ];
+        }
+        $invoiceDropdownItems[] = [
+            'type' => 'form',
+            'action' => route('admin.client-projects.invoices.reminders.toggle', [$project, $invoice]),
+            'icon' => $invoice->dailyRemindersPaused() ? 'fa-play' : 'fa-pause',
+            'label' => $invoice->dailyRemindersPaused() ? 'Resume reminders' : 'Stop reminders',
+            'confirm' => $pauseConfirm,
+        ];
+    }
+    if (! $invoice->isPaid() && $canMarkPaid) {
+        $invoiceDropdownItems[] = [
+            'type' => 'markpaid',
+            'icon' => 'fa-check',
+            'label' => 'Mark paid',
+            'url' => route('admin.client-projects.invoices.mark-paid', [$project, $invoice]),
+            'amount' => number_format((float) $invoice->total, 2, '.', ''),
+            'invoiceLabel' => 'Invoice #' . $invoice->invoice_number,
+            'firstPaid' => $showMarkPaidStatusPicker ? '1' : '0',
+        ];
+    }
+    if ($invoice->isPaid()) {
+        $invoiceDropdownItems[] = [
+            'type' => 'link',
+            'href' => route('admin.client-projects.invoices.receipt', [$project, $invoice]),
+            'icon' => 'fa-download',
+            'label' => 'Receipt',
+            'target' => '_blank',
+            'class' => 'admin-actions-dropdown__item--success',
+        ];
+    }
+    if (! $invoice->isPaid()) {
+        $invoiceDropdownItems[] = [
+            'type' => 'form',
+            'action' => route('admin.client-projects.invoices.destroy', [$project, $invoice]),
+            'method' => 'DELETE',
+            'icon' => 'fa-trash',
+            'label' => 'Delete',
+            'confirm' => $invoice->wasEverSent() ? $deleteConfirm : 'Delete this draft invoice? This cannot be undone.',
+            'class' => 'admin-actions-dropdown__item--danger',
+        ];
+    }
+  @endphp
   @if (!$invoice->isPaid() && (! $canSend || ! $canSms))
     <div class="cp-contract-warning cp-invoice-send-warning">
       <i class="fa fa-exclamation-triangle"></i>
@@ -136,7 +226,7 @@
       </div>
     </div>
   @endif
-  <div class="cp-invoice-actions">
+  <div class="cp-invoice-actions admin-table-actions">
     {{-- Edit (hidden on paid invoices; view a read-only version via PDF) --}}
     @unless ($invoice->isPaid())
       <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}"
@@ -322,5 +412,50 @@
         </button>
       </form>
     @endunless
+
+    {{-- Mobile actions dropdown --}}
+    @if (count($invoiceDropdownItems) > 0)
+      <div class="admin-actions-dropdown">
+        <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu">
+          <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+        </button>
+        <div class="admin-actions-dropdown__menu">
+          @foreach ($invoiceDropdownItems as $item)
+            @if ($item['type'] === 'link')
+              <a href="{{ $item['href'] }}"
+                 class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}"
+                 @if (! empty($item['target'])) target="{{ $item['target'] }}" rel="noopener" @endif>
+                <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+                {{ $item['label'] }}
+              </a>
+            @elseif ($item['type'] === 'form')
+              <form action="{{ $item['action'] }}"
+                    method="post"
+                    class="admin-actions-dropdown__form"
+                    @if (! empty($item['confirm'])) onsubmit="return confirm({{ json_encode($item['confirm']) }});" @endif>
+                @csrf
+                @if (! empty($item['method']) && $item['method'] === 'DELETE')
+                  @method('DELETE')
+                @endif
+                <button type="submit" class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}">
+                  <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+                  {{ $item['label'] }}
+                </button>
+              </form>
+            @elseif ($item['type'] === 'markpaid')
+              <button type="button"
+                      class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}"
+                      data-cp-markpaid-url="{{ $item['url'] }}"
+                      data-cp-markpaid-amount="{{ $item['amount'] }}"
+                      data-cp-markpaid-label="{{ $item['invoiceLabel'] }}"
+                      data-cp-markpaid-first-paid="{{ $item['firstPaid'] }}">
+                <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+                {{ $item['label'] }}
+              </button>
+            @endif
+          @endforeach
+        </div>
+      </div>
+    @endif
   </div>
 @endif

@@ -924,6 +924,33 @@ class ClientProject extends Model
         return in_array($this->status, self::terminalStatuses(), true);
     }
 
+    /**
+     * Suggested quick status transitions for the current project state.
+     * Returns up to 2-3 status keys that represent the most common next actions.
+     *
+     * @return list<string>
+     */
+    public function quickStatusOptions(): array
+    {
+        if ($this->isClosed()) {
+            return [];
+        }
+
+        return match ($this->status) {
+            self::STATUS_VISIT_REQUIRED => [self::STATUS_VISIT_SCHEDULED, self::STATUS_QUOTE_PENDING],
+            self::STATUS_VISIT_SCHEDULED => [self::STATUS_QUOTE_PENDING],
+            self::STATUS_QUOTE_PENDING => [self::STATUS_QUOTE_SENT],
+            self::STATUS_QUOTE_SENT => [self::STATUS_PROPOSAL_ACCEPTED, self::STATUS_REJECTED],
+            self::STATUS_PROPOSAL_ACCEPTED => [self::STATUS_PENDING_FIRST_PAYMENT, self::STATUS_SCHEDULED],
+            self::STATUS_PENDING_FIRST_PAYMENT => [self::STATUS_SCHEDULED],
+            self::STATUS_SCHEDULED => [self::STATUS_IN_PROGRESS],
+            self::STATUS_IN_PROGRESS => [self::STATUS_AWAITING_FINAL_PAYMENT, self::STATUS_COMPLETED],
+            self::STATUS_AWAITING_FINAL_PAYMENT => [self::STATUS_COMPLETED],
+            self::STATUS_COMPLETED => [],
+            default => [],
+        };
+    }
+
     /** True once the proposal has been accepted (unlocks financials/time). */
     public function isAccepted(): bool
     {

@@ -27,6 +27,7 @@ use App\Services\MoceanSmsService;
 use App\Support\SignedPublicLink;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -673,5 +674,168 @@ class ClientProjectQuotationController extends Controller
         $type = strtolower($quotation->typeLabel());
 
         return "{$type}-{$quotation->quotation_number}-{$slug}.pdf";
+    }
+
+    /**
+     * Duplicate a quotation as a new draft, optionally on a different project.
+     */
+    public function duplicate(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectQuotation $quotation,
+    ) {
+        $this->authorizeQuotation($client_project, $quotation);
+
+        if ($quotation->isLegacyManualSource()) {
+            return back()->with('error', 'Legacy manual documents cannot be duplicated.');
+        }
+
+        $targetProjectId = $request->input('target_project_id');
+        $targetProject = $targetProjectId
+            ? ClientProject::find($targetProjectId)
+            : $client_project;
+
+        if (! $targetProject) {
+            return back()->with('error', 'Target project not found.');
+        }
+
+        if (in_array($targetProject->status, ClientProject::statusesClosedToNewQuotations(), true)) {
+            return back()->with('error', 'The target project no longer accepts new quotations.');
+        }
+
+        $newQuotation = DB::transaction(function () use ($quotation, $targetProject) {
+            $newSourceId = null;
+            $sourceType = $quotation->source_type;
+
+            if ($quotation->source_id && $sourceType) {
+                $newSourceId = $this->duplicateCalculatorSource($quotation, $targetProject);
+            }
+
+            $newNumber = ClientProjectQuotation::generateNumber($quotation->type);
+
+            $newQuotation = new ClientProjectQuotation();
+            $newQuotation->fill([
+                'client_project_id' => $targetProject->id,
+                'title' => $quotation->title,
+                'status' => ClientProjectQuotation::STATUS_DRAFT,
+                'source_type' => $sourceType,
+                'source_id' => $newSourceId,
+                'source_snapshot' => $quotation->source_snapshot,
+                'type' => $quotation->type,
+                'labour' => $quotation->labour,
+                'material' => $quotation->material,
+                'items' => $quotation->items,
+                'work_description' => $quotation->work_description,
+                'payment_installments' => $quotation->payment_installments,
+                'payment_percentages' => $quotation->payment_percentages,
+                'quotation_number' => $newNumber,
+                'version' => 1,
+            ]);
+            $newQuotation->save();
+
+            return $newQuotation;
+        });
+
+        $message = "Duplicated as {$newQuotation->quotation_number}";
+        if ($targetProject->id !== $client_project->id) {
+            $message .= " on project \"{$targetProject->name}\"";
+        }
+        $message .= '.';
+
+        return redirect()
+            ->route('admin.client-projects.show', $targetProject)
+            ->withFragment('quotation')
+            ->with('success', $message);
+    }
+
+    /**
+     * Search projects for the duplicate modal picker.
+     */
+    public function searchProjectsForDuplicate(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $q = trim((string) $request->input('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $closedStatuses = ClientProject::statusesClosedToNewQuotations();
+
+        $projects = ClientProject::query()
+            ->whereNotIn('status', $closedStatuses)
+            ->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', '%' . $q . '%')
+                    ->orWhere('client_name', 'like', '%' . $q . '%');
+            })
+            ->orderByDesc('updated_at')
+            ->limit(20)
+            ->get(['id', 'name', 'client_name']);
+
+        return response()->json($projects->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'label' => $p->client_name . ' — ' . $p->name,
+        ])->values());
+    }
+
+    /**
+     * Duplicate the linked calculator source record for a new quotation.
+     */
+    protected function duplicateCalculatorSource(
+        ClientProjectQuotation $quotation,
+        ClientProject $targetProject,
+    ): ?int {
+        $sourceType = $quotation->source_type;
+        $sourceId = $quotation->source_id;
+
+        if (! $sourceId) {
+            return null;
+        }
+
+        $sourceModel = $quotation->sourceQuotationModel();
+        if (! $sourceModel) {
+            return null;
+        }
+
+        $newData = $sourceModel->toArray();
+        unset($newData['id'], $newData['created_at'], $newData['updated_at']);
+        $newData['client_project_id'] = $targetProject->id;
+
+        if (isset($newData['quotation_number'])) {
+            $newData['quotation_number'] = $this->generateCalculatorNumber($sourceType);
+        }
+
+        $class = get_class($sourceModel);
+        $newSource = new $class();
+        $newSource->fill($newData);
+        $newSource->save();
+
+        return $newSource->id;
+    }
+
+    /**
+     * Generate a new quotation number for a calculator source type.
+     */
+    protected function generateCalculatorNumber(string $sourceType): string
+    {
+        $prefix = match ($sourceType) {
+            ClientProjectQuotation::SOURCE_FENCE => 'FN',
+            ClientProjectQuotation::SOURCE_PAVING => 'PV',
+            ClientProjectQuotation::SOURCE_STANDARD => 'SQ',
+            ClientProjectQuotation::SOURCE_STAIRS => 'ST',
+            ClientProjectQuotation::SOURCE_PAINTING => 'PT',
+            ClientProjectQuotation::SOURCE_FLOORING => 'FL',
+            ClientProjectQuotation::SOURCE_TILE => 'TL',
+            ClientProjectQuotation::SOURCE_LOW_DECK => 'LD',
+            ClientProjectQuotation::SOURCE_BASEMENT => 'BR',
+            ClientProjectQuotation::SOURCE_SHED => 'SH',
+            ClientProjectQuotation::SOURCE_TRIMMING => 'TR',
+            ClientProjectQuotation::SOURCE_MILLWORK => 'MW',
+            default => 'QT',
+        };
+
+        $year = (int) date('Y');
+        $next = random_int(1, 9999);
+
+        return sprintf('%s-%d-%04d', $prefix, $year, $next);
     }
 }
