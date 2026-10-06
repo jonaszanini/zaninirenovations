@@ -63,10 +63,4 @@ jobs:
           DB_DATABASE: zanini_renovations_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: |
-          php artisan test \
-            tests/Feature/Admin/GlobalFinancialsTest.php \
-            tests/Feature/Admin/GlobalSearchApiTest.php \
-            tests/Feature/Admin/QuickStatusChangeTest.php \
-            tests/Feature/DuplicateQuotationTest.php \
-            tests/Feature/ExpenseAmountParsingTest.php
+        run: php artisan test --filter="GlobalFinancialsTest|GlobalSearchApiTest|QuickStatusChangeTest|DuplicateQuotationTest|ExpenseAmountParsingTest"
