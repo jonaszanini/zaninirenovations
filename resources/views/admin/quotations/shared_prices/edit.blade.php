@@ -4,7 +4,27 @@
 
 @push('head')
 <style>
+/* Crew rates: compact inline row */
 .sp-crew { margin-bottom: 1.5rem; }
+.sp-crew .admin-form-grid-3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+.sp-crew .admin-form-group {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.sp-crew .admin-form-group label {
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+.sp-crew .admin-input {
+  width: 120px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+}
 .sp-heading { margin: 0 0 0.5rem; font-size: 1.1rem; }
 .sp-group { margin-bottom: 1rem; }
 .sp-group__summary {
@@ -23,87 +43,152 @@
   transition: transform 0.15s;
 }
 .sp-group[open] > .sp-group__summary::before { transform: rotate(90deg); }
-.sp-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+
+/* Desktop table */
+.sp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .sp-table th {
   text-align: left;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--admin-muted);
-  padding: 0.5rem 0.5rem;
+  padding: 0.4rem 0.35rem;
   border-bottom: 1px solid var(--admin-border);
   white-space: nowrap;
 }
 .sp-table td {
-  padding: 0.5rem 0.5rem;
+  padding: 0.35rem 0.35rem;
   border-bottom: 1px solid var(--admin-border);
   vertical-align: middle;
 }
 .sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { width: 150px; min-width: 120px; }
-.sp-table .sp-col-rate { width: 72px; }
-.sp-table .sp-col-sell { width: 88px; }
-.sp-table .sp-col-catalog { width: 130px; }
-.sp-table .sp-col-name { width: auto; min-width: 180px; }
-.sp-table .sp-col-unit { width: 56px; }
-.sp-table .sp-col-price { width: 76px; }
-.sp-table .sp-col-consumers { width: 110px; }
+.sp-table .sp-col-label { width: 140px; min-width: 110px; }
+.sp-table .sp-col-rate { width: 64px; }
+.sp-table .sp-col-sell { width: 80px; }
+.sp-table .sp-col-catalog { width: 90px; }
+.sp-table .sp-col-name { width: auto; min-width: 260px; }
+.sp-table .sp-col-unit { width: 64px; }
+.sp-table .sp-col-price { width: 72px; }
+.sp-table .sp-col-consumers { width: auto; min-width: 80px; max-width: 140px; }
 .sp-mat-name-input { text-overflow: ellipsis; }
-.sp-work-label { font-weight: 500; color: var(--admin-heading); }
-.sp-work-label small { display: block; font-weight: 400; font-size: 0.8em; color: var(--admin-muted); }
+.sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.3; }
+.sp-work-label small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--admin-muted); }
+
+/* Used-by badges: smaller, inline */
 .sp-chip {
   display: inline-block;
-  padding: 2px 6px;
-  font-size: 0.65rem;
-  font-weight: 500;
+  padding: 1px 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
-  border-radius: 4px;
+  border-radius: 3px;
   margin: 1px 2px 1px 0;
+  white-space: nowrap;
 }
+.sp-col-consumers { line-height: 1.6; }
+
+/* Compact inputs */
 .sp-input {
   width: 100%;
-  padding: 0.4rem 0.5rem;
+  padding: 0.3rem 0.4rem;
   border: 1px solid var(--admin-border);
-  border-radius: 6px;
+  border-radius: 5px;
   background: var(--admin-input-bg);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--admin-text);
+  height: 28px;
+  box-sizing: border-box;
 }
 .sp-input:focus {
   outline: none;
   border-color: var(--admin-primary);
   box-shadow: 0 0 0 2px var(--admin-primary-ring);
 }
-.sp-input--sm { max-width: 90px; }
-.sp-effective { font-size: 0.7rem; color: var(--admin-muted); margin-top: 2px; }
+.sp-input--sm { max-width: 100%; }
+.sp-effective { font-size: 0.65rem; color: var(--admin-muted); margin-top: 2px; }
+
+/* Catalog search: match input height */
 .sp-search-wrap { position: relative; }
-.sp-search-wrap .admin-ss-combobox { font-size: 0.85rem; }
-.sp-search-wrap .admin-ss-combobox__input { padding: 0.4rem 0.5rem; min-height: auto; }
-@media (max-width: 1100px) {
+.sp-search-wrap .admin-ss-combobox { font-size: 0.8rem; }
+.sp-search-wrap .admin-ss-combobox__input {
+  padding: 0.25rem 0.4rem;
+  min-height: 28px;
+  height: 28px;
+  font-size: 0.8rem;
+}
+
+/* Mobile: compact card layout */
+@media (max-width: 900px) {
   .sp-table { display: block; }
   .sp-table thead { display: none; }
-  .sp-table tbody, .sp-table tr, .sp-table td { display: block; }
+  .sp-table tbody { display: block; }
   .sp-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "label label"
+      "rate sell"
+      "unit price"
+      "name name"
+      "catalog catalog"
+      "consumers consumers";
+    gap: 0.4rem 0.75rem;
     padding: 0.75rem 0;
     border-bottom: 1px solid var(--admin-border);
+    align-items: start;
   }
+  .sp-table tr:last-child { border-bottom: none; }
   .sp-table td {
-    padding: 0.25rem 0;
+    display: block;
+    padding: 0;
     border: none;
   }
   .sp-table td::before {
     content: attr(data-label);
     display: block;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: 600;
     text-transform: uppercase;
     color: var(--admin-muted);
     margin-bottom: 2px;
   }
-  .sp-table .sp-col-label::before { display: none; }
+
+  /* Grid areas */
+  .sp-col-label { grid-area: label; }
+  .sp-col-rate { grid-area: rate; }
+  .sp-col-sell { grid-area: sell; }
+  .sp-col-unit { grid-area: unit; }
+  .sp-col-price { grid-area: price; }
+  .sp-col-name { grid-area: name; }
+  .sp-col-catalog { grid-area: catalog; }
+  .sp-col-consumers { grid-area: consumers; }
+
+  /* Label row styling */
+  .sp-col-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--admin-heading);
+    margin-bottom: 0.25rem;
+  }
+  .sp-col-label::before { display: none !important; }
+  .sp-work-label { font-size: 0.9rem; }
+  .sp-work-label small { display: inline; margin-left: 6px; font-size: 0.75rem; }
+
+  /* Full width inputs */
+  .sp-input { width: 100%; max-width: none; height: 34px; }
   .sp-input--sm { max-width: 100%; }
+
+  /* Consumers inline */
+  .sp-col-consumers::before { display: none; }
+
+  /* Crew rates: stack on mobile */
+  .sp-crew .admin-form-grid-3 {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .sp-crew .admin-input { width: 100%; }
 }
 </style>
 @endpush
@@ -176,10 +261,10 @@
                 <th class="sp-col-label">Work item</th>
                 <th class="sp-col-rate">Rate</th>
                 <th class="sp-col-sell">Sell rate</th>
-                <th class="sp-col-catalog">Catalog</th>
-                <th class="sp-col-name">Mat. name</th>
                 <th class="sp-col-unit">Unit</th>
                 <th class="sp-col-price">Mat. price</th>
+                <th class="sp-col-name">Mat. name</th>
+                <th class="sp-col-catalog">Catalog</th>
                 <th class="sp-col-consumers">Used by</th>
               </tr>
             </thead>
@@ -199,7 +284,7 @@
                           : '';
                   }
                 @endphp
-                <tr id="work-{{ $work->key }}">
+                <tr id="work-{{ $work->key }}" class="sp-row">
                   <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                   <td class="sp-col-label" data-label="Work item">
                     <span class="sp-work-label">
@@ -232,6 +317,27 @@
                       <div class="sp-effective">{{ \App\Models\ClientProject::formatMoney($effective) }}/{{ $work->unit }}</div>
                     @endif
                   </td>
+                  <td class="sp-col-unit" data-label="Unit">
+                    <input type="text" class="sp-input sp-input--sm" id="sp-mat-unit-{{ $work->id }}"
+                           name="works[{{ $work->id }}][material_unit]"
+                           value="{{ old('works.'.$work->id.'.material_unit', $work->material_unit) }}"
+                           placeholder="—">
+                  </td>
+                  <td class="sp-col-price" data-label="Mat. price">
+                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                           class="sp-input sp-input--sm cp-money-input" id="sp-mat-price-{{ $work->id }}"
+                           name="works[{{ $work->id }}][material_unit_price]"
+                           value="{{ old('works.'.$work->id.'.material_unit_price', $work->material_unit_price !== null ? number_format((float) $work->material_unit_price, 4, '.', '') : '') }}"
+                           placeholder="0.00">
+                  </td>
+                  <td class="sp-col-name" data-label="Mat. name">
+                    @php $matNameVal = old('works.'.$work->id.'.material_name', $work->material_name); @endphp
+                    <input type="text" class="sp-input sp-mat-name-input" id="sp-mat-name-{{ $work->id }}"
+                           name="works[{{ $work->id }}][material_name]"
+                           value="{{ $matNameVal }}"
+                           title="{{ $matNameVal }}"
+                           placeholder="—">
+                  </td>
                   <td class="sp-col-catalog" data-label="Catalog">
                     <div class="sp-search-wrap">
                       @include('admin.partials.search_select', [
@@ -239,7 +345,7 @@
                         'name' => 'works['.$work->id.'][catalog_material_id]',
                         'value' => $catalogId > 0 ? $catalogId : '',
                         'hideLabel' => true,
-                        'placeholder' => 'Search…',
+                        'placeholder' => '…',
                         'ariaLabel' => 'Catalog material for '.$work->label,
                         'wrapperClass' => ($catalogId > 0 ? 'is-selected' : '') . ' sp-search-wrap',
                         'optionsSource' => 'admin-ss-catalog-options',
@@ -255,27 +361,6 @@
                         ],
                       ])
                     </div>
-                  </td>
-                  <td class="sp-col-name" data-label="Mat. name">
-                    @php $matNameVal = old('works.'.$work->id.'.material_name', $work->material_name); @endphp
-                    <input type="text" class="sp-input sp-mat-name-input" id="sp-mat-name-{{ $work->id }}"
-                           name="works[{{ $work->id }}][material_name]"
-                           value="{{ $matNameVal }}"
-                           title="{{ $matNameVal }}"
-                           placeholder="—">
-                  </td>
-                  <td class="sp-col-unit" data-label="Unit">
-                    <input type="text" class="sp-input sp-input--sm" id="sp-mat-unit-{{ $work->id }}"
-                           name="works[{{ $work->id }}][material_unit]"
-                           value="{{ old('works.'.$work->id.'.material_unit', $work->material_unit) }}"
-                           placeholder="—">
-                  </td>
-                  <td class="sp-col-price" data-label="Mat. price">
-                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                           class="sp-input sp-input--sm cp-money-input" id="sp-mat-price-{{ $work->id }}"
-                           name="works[{{ $work->id }}][material_unit_price]"
-                           value="{{ old('works.'.$work->id.'.material_unit_price', $work->material_unit_price !== null ? number_format((float) $work->material_unit_price, 4, '.', '') : '') }}"
-                           placeholder="0.00">
                   </td>
                   <td class="sp-col-consumers" data-label="Used by">
                     @foreach ($consumers as $consumer)
