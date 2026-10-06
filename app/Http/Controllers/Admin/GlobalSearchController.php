@@ -47,6 +47,10 @@ class GlobalSearchController extends Controller
                         ->orWhere('client_email', 'like', '%'.$q.'%')
                         ->orWhere('client_phone', 'like', '%'.$q.'%')
                         ->orWhere('client_address', 'like', '%'.$q.'%');
+                    $referenceId = ClientProject::idFromReferenceSearch($q);
+                    if ($referenceId) {
+                        $sub->orWhere('id', $referenceId);
+                    }
                 })
                 ->orderByDesc('updated_at')
                 ->limit(self::LIMIT)
@@ -125,13 +129,18 @@ class GlobalSearchController extends Controller
 
     private function searchProjects(string $q): array
     {
+        $referenceId = ClientProject::idFromReferenceSearch($q);
+
         return ClientProject::query()
-            ->where(function ($query) use ($q) {
+            ->where(function ($query) use ($q, $referenceId) {
                 $query->where('name', 'like', '%' . $q . '%')
                     ->orWhere('client_name', 'like', '%' . $q . '%')
                     ->orWhere('client_email', 'like', '%' . $q . '%')
                     ->orWhere('client_phone', 'like', '%' . $q . '%')
                     ->orWhere('client_address', 'like', '%' . $q . '%');
+                if ($referenceId) {
+                    $query->orWhere('id', $referenceId);
+                }
             })
             ->orderByDesc('updated_at')
             ->limit(self::API_LIMIT)
@@ -221,8 +230,8 @@ class GlobalSearchController extends Controller
             ->map(fn (Client $c) => [
                 'id' => $c->id,
                 'title' => $c->name ?: 'Unknown',
-                'subtitle' => trim($c->email . ' ' . ClientProject::formatPhone($c->phone)),
-                'url' => route('admin.client-directory.show', $c),
+                'subtitle' => trim(($c->email ?? '').' '.ClientProject::formatPhone($c->phone)),
+                'url' => route('admin.clients.edit', $c),
                 'icon' => 'user',
             ])
             ->values()
