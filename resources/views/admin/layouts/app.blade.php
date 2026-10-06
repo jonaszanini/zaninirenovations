@@ -455,41 +455,8 @@
         });
     });
 
-    // Actions dropdown toggle (mobile row menus)
-    (function () {
-      document.addEventListener('click', function (e) {
-        var toggle = e.target.closest('.admin-actions-dropdown__toggle');
-        if (toggle) {
-          e.preventDefault();
-          e.stopPropagation();
-          var dropdown = toggle.closest('.admin-actions-dropdown');
-          var wasOpen = dropdown.classList.contains('is-open');
-          // Close all other dropdowns
-          document.querySelectorAll('.admin-actions-dropdown.is-open').forEach(function (el) {
-            el.classList.remove('is-open');
-          });
-          if (!wasOpen) {
-            dropdown.classList.add('is-open');
-          }
-          return;
-        }
-        // Close dropdowns when clicking outside
-        if (!e.target.closest('.admin-actions-dropdown')) {
-          document.querySelectorAll('.admin-actions-dropdown.is-open').forEach(function (el) {
-            el.classList.remove('is-open');
-          });
-        }
-      });
-      // Close on escape
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-          document.querySelectorAll('.admin-actions-dropdown.is-open').forEach(function (el) {
-            el.classList.remove('is-open');
-          });
-        }
-      });
-    })();
   </script>
+  <script src="{{ asset('js/admin-actions-dropdown.js') }}?v={{ @filemtime(public_path('js/admin-actions-dropdown.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-client-projects.js') }}?v={{ @filemtime(public_path('js/admin-client-projects.js')) ?: time() }}"></script>
   @if (request()->routeIs('admin.quotations.*'))
   <script src="{{ asset('js/admin-quotation-link-project.js') }}?v={{ @filemtime(public_path('js/admin-quotation-link-project.js')) ?: time() }}"></script>

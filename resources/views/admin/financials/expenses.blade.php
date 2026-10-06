@@ -249,32 +249,3 @@
     @endif
   </div>
 @endsection
-
-@push('scripts')
-<script>
-(function () {
-  document.querySelectorAll('.admin-actions-dropdown').forEach(function (dropdown) {
-    var toggle = dropdown.querySelector('.admin-actions-dropdown__toggle');
-    var menu = dropdown.querySelector('.admin-actions-dropdown__menu');
-    if (!toggle || !menu) return;
-
-    toggle.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var isOpen = dropdown.classList.contains('is-open');
-      document.querySelectorAll('.admin-actions-dropdown.is-open').forEach(function (d) {
-        d.classList.remove('is-open');
-      });
-      if (!isOpen) {
-        dropdown.classList.add('is-open');
-      }
-    });
-  });
-
-  document.addEventListener('click', function () {
-    document.querySelectorAll('.admin-actions-dropdown.is-open').forEach(function (d) {
-      d.classList.remove('is-open');
-    });
-  });
-})();
-</script>
-@endpush

@@ -2028,3 +2028,13 @@ html.admin-dark .admin-actions-dropdown__item--success {
 html.admin-dark button.admin-actions-dropdown__item {
   background: transparent;
 }
+
+html.admin-dark .cp-invoice-send-warning-link {
+  color: #fef3c7 !important;
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--admin-border));
+  background: transparent;
+}
+html.admin-dark .cp-invoice-send-warning-link:hover {
+  color: #fff !important;
+  background: color-mix(in srgb, #f59e0b 22%, var(--admin-surface));
+}
