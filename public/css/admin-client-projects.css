@@ -6761,19 +6761,39 @@ body.cp-modal-open {
   .cp-clients-table {
     width: 100%;
     min-width: 0;
-    table-layout: auto;
+    table-layout: fixed;
   }
-  .cp-clients-table .cp-clients-col-name,
-  .cp-clients-table .cp-clients-col-email,
-  .cp-clients-table .cp-clients-col-phone,
-  .cp-clients-table .cp-clients-col-projects,
+  .cp-clients-table th,
+  .cp-clients-table td {
+    padding: 0.55rem 0.65rem;
+  }
+  .cp-clients-table .cp-clients-col-name {
+    white-space: nowrap;
+    width: 10.75rem;
+  }
+  .cp-clients-table .cp-clients-col-email {
+    white-space: nowrap;
+    width: 12.5rem;
+  }
+  .cp-clients-table .cp-clients-col-phone {
+    white-space: nowrap;
+    width: 8.25rem;
+  }
+  .cp-clients-table .cp-clients-col-projects {
+    white-space: nowrap;
+    width: 5.75rem;
+  }
   .cp-clients-table .cp-clients-col-actions {
     white-space: nowrap;
-    width: 1%;
+    width: 6.5rem;
   }
   .cp-clients-table .cp-clients-col-address {
     width: auto;
     white-space: normal;
+  }
+  .cp-clients-table .cp-clients-address-link {
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 }
 
