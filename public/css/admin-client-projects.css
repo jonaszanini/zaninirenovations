@@ -6733,11 +6733,98 @@ body.cp-modal-open {
   white-space: nowrap;
 }
 
+.cp-clients-toolbar-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: 0.1rem;
+  vertical-align: middle;
+  color: var(--admin-muted);
+  text-decoration: none;
+}
+.cp-clients-toolbar-clear:hover,
+.cp-clients-toolbar-clear:focus-visible {
+  color: var(--admin-heading);
+}
+
 .cp-clients-address-link {
   display: inline;
   overflow-wrap: anywhere;
   word-break: break-word;
   min-width: 0;
+}
+
+/* Desktop: one line per row; Address takes leftover width and wraps. */
+@media (min-width: 641px) {
+  .cp-clients-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
+  }
+  .cp-clients-table .cp-clients-col-name,
+  .cp-clients-table .cp-clients-col-email,
+  .cp-clients-table .cp-clients-col-phone,
+  .cp-clients-table .cp-clients-col-projects,
+  .cp-clients-table .cp-clients-col-actions {
+    white-space: nowrap;
+    width: 1%;
+  }
+  .cp-clients-table .cp-clients-col-address {
+    width: auto;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 640px) {
+  .cp-clients-table-card.admin-card {
+    padding: 1rem;
+  }
+  .cp-clients-table.admin-table--stack tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 0.5rem;
+    row-gap: 0.15rem;
+    padding: 0.75rem 0;
+  }
+  .cp-clients-table.admin-table--stack tr:first-child {
+    padding-top: 0;
+  }
+  .cp-clients-table.admin-table--stack tr:last-child {
+    padding-bottom: 0;
+  }
+  .cp-clients-table.admin-table--stack td {
+    width: auto;
+    max-width: none;
+    grid-column: 1 / -1;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-name {
+    grid-column: 1;
+    grid-row: 1;
+    align-items: center;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-name .cl-tag-picker {
+    flex-basis: 100%;
+    padding-left: 90px;
+    margin-top: 0;
+    box-sizing: border-box;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-actions {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    justify-content: flex-end;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-actions .admin-btn {
+    margin-bottom: 0;
+  }
 }
 
 @media (max-width: 700px) {

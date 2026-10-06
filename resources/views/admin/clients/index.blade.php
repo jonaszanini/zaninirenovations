@@ -3,15 +3,17 @@
 @section('heading', 'Clients')
 
 @section('content')
+  @php $isFiltered = $q !== '' || $tagId > 0; @endphp
   <div class="admin-toolbar cp-clients-toolbar">
     <form method="get" action="{{ route('admin.clients.index') }}" class="cp-clients-toolbar-search" role="search">
       <div class="cp-clients-toolbar-search__row">
         <input type="search"
                name="q"
                value="{{ $q }}"
-               placeholder="Search name, email, phone, address…"
+               placeholder="Search clients"
+               title="Search name, email, phone, address"
                class="admin-input cp-clients-toolbar-search__input"
-               aria-label="Search clients">
+               aria-label="Search name, email, phone, address">
         <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-search"></i> Search
         </button>
@@ -34,21 +36,28 @@
       </a>
     </div>
     <p class="admin-form-help cp-clients-toolbar-total">
-      {{ number_format($totalClients) }} {{ $totalClients === 1 ? 'client' : 'clients' }} in database
+      @if ($isFiltered)
+        {{ number_format($clients->total()) }} of {{ number_format($totalClients) }} {{ $totalClients === 1 ? 'client' : 'clients' }}
+        <a href="{{ route('admin.clients.index') }}" class="cp-clients-toolbar-clear" title="Clear search" aria-label="Clear search">
+          <i class="fa fa-times" aria-hidden="true"></i>
+        </a>
+      @else
+        {{ number_format($totalClients) }} {{ $totalClients === 1 ? 'client' : 'clients' }} in database
+      @endif
     </p>
   </div>
 
-  <div class="admin-card">
+  <div class="admin-card cp-clients-table-card">
     <div class="admin-table-scroll">
-      <table class="admin-table admin-table--stack">
+      <table class="admin-table admin-table--stack cp-clients-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Address</th>
-            <th style="width:70px;">Projects</th>
-            <th style="width:100px;">Actions</th>
+            <th class="cp-clients-col-name">Name</th>
+            <th class="cp-clients-col-email">Email</th>
+            <th class="cp-clients-col-phone">Phone</th>
+            <th class="cp-clients-col-address">Address</th>
+            <th class="cp-clients-col-projects">Projects</th>
+            <th class="cp-clients-col-actions">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -58,7 +67,7 @@
               $mapsUrl = $listAddress ? $client->googleMapsSearchUrl() : null;
             @endphp
             <tr>
-              <td data-label="Name">
+              <td class="cp-clients-col-name" data-label="Name">
                 <strong>@include('admin.partials.client_directory_link', ['client' => $client])</strong>
                 @if ($client->tags->isNotEmpty())
                   <div class="cl-tag-picker" style="margin-top:4px;">
@@ -68,21 +77,21 @@
                   </div>
                 @endif
               </td>
-              <td data-label="Email">@include('admin.partials.client_directory_link', [
+              <td class="cp-clients-col-email" data-label="Email">@include('admin.partials.client_directory_link', [
                 'client' => $client,
                 'label' => $client->email,
                 'fallbackMailto' => true,
               ])</td>
-              <td data-label="Phone">{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
-              <td data-label="Address">@if ($mapsUrl)
+              <td class="cp-clients-col-phone" data-label="Phone">{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
+              <td class="cp-clients-col-address" data-label="Address">@if ($mapsUrl)
                 <a class="admin-client-link cp-clients-address-link"
                    href="{{ $mapsUrl }}"
                    target="_blank"
                    rel="noopener"
                    title="Open in Google Maps">{{ $listAddress }}</a>
               @endif</td>
-              <td data-label="Projects">{{ $client->projects_count ?: '0' }}</td>
-              <td class="admin-table__actions" data-label="">
+              <td class="cp-clients-col-projects" data-label="Projects">{{ $client->projects_count ?: '0' }}</td>
+              <td class="admin-table__actions cp-clients-col-actions" data-label="">
                 <a href="{{ route('admin.clients.edit', $client) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
                   <i class="fa fa-pencil"></i> Edit
                 </a>
@@ -91,7 +100,7 @@
           @empty
             <tr>
               <td colspan="6" class="admin-form-help">
-                @if ($q !== '' || $tagId > 0)
+                @if ($isFiltered)
                   No matching clients.
                 @else
                   No clients yet. Add one or create a project — existing project contacts can be imported via migration.

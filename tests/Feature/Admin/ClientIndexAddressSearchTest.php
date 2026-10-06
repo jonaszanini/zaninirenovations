@@ -120,7 +120,9 @@ class ClientIndexAddressSearchTest extends IntegrationTestCase
             ->assertSee($emailed->name)
             ->assertSee($addressed->name)
             ->assertDontSee($unrelated->name)
-            ->assertDontSee($phoned->name);
+            ->assertDontSee($phoned->name)
+            ->assertSee('3 of 5 clients')
+            ->assertSee('Clear search');
 
         $this->get(route('admin.clients.index', ['q' => '2893819029']))
             ->assertOk()
@@ -132,6 +134,12 @@ class ClientIndexAddressSearchTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee($phoned->name)
             ->assertDontSee($unrelated->name);
+
+        $this->get(route('admin.clients.index'))
+            ->assertOk()
+            ->assertSee('5 clients in database')
+            ->assertSee('placeholder="Search clients"', false)
+            ->assertSee('aria-label="Search name, email, phone, address"', false);
     }
 
     public function test_index_search_matches_linked_project_address(): void

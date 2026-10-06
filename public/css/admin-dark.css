@@ -1594,6 +1594,14 @@ html.admin-dark .admin-table a {
 html.admin-dark .admin-table a:visited {
   color: var(--admin-primary);
 }
+html.admin-dark .admin-content a.cp-clients-toolbar-clear,
+html.admin-dark .admin-content a.cp-clients-toolbar-clear:visited {
+  color: var(--admin-muted);
+}
+html.admin-dark .admin-content a.cp-clients-toolbar-clear:hover,
+html.admin-dark .admin-content a.cp-clients-toolbar-clear:focus-visible {
+  color: var(--admin-heading);
+}
 
 
 /* Shared prices compact table */
