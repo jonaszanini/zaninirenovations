@@ -6678,42 +6678,104 @@ body.cp-modal-open {
 }
 
 /* Client directory (admin) toolbar on the clients list */
+.cp-clients-toolbar {
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
 .cp-clients-toolbar-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cp-clients-toolbar-search__row {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1 1 240px;
 }
 
 .cp-clients-toolbar-search__input {
   width: min(320px, 100%);
   max-width: 320px;
-  flex: 0 1 320px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-@media (max-width: 700px) {
-  .cp-clients-toolbar-search {
-    flex-wrap: wrap;
-  }
-  .cp-clients-toolbar-search__input,
-  .cp-clients-toolbar-search select {
-    flex: 1 1 160px;
-    min-width: 0;
-    max-width: none;
-  }
+.cp-clients-toolbar-search select {
+  flex: 0 1 160px;
+  min-width: 0;
+}
+
+.cp-clients-toolbar-search__row .admin-btn {
+  flex-shrink: 0;
 }
 
 .cp-clients-toolbar-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
 }
 
 .cp-clients-toolbar-total {
   margin: 0;
+  margin-left: auto;
   text-align: right;
   white-space: nowrap;
+}
+
+.cp-clients-address-link {
+  display: inline;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .cp-clients-toolbar.admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+  .cp-clients-toolbar-search {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .cp-clients-toolbar-search__row {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .cp-clients-toolbar-search__input,
+  .cp-clients-toolbar-search select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+    width: auto;
+  }
+  .cp-clients-toolbar-search select {
+    flex: 1 1 100%;
+  }
+  .cp-clients-toolbar-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cp-clients-toolbar-total {
+    margin-left: 0;
+    text-align: left;
+    width: 100%;
+  }
 }
 /* Edit/create project — form fills content width; Save/Cancel sticky aside */
 .cp-edit-project-layout {

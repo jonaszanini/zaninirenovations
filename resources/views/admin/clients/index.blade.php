@@ -3,13 +3,19 @@
 @section('heading', 'Clients')
 
 @section('content')
-  <div class="admin-toolbar">
-    <form method="get" action="{{ route('admin.clients.index') }}" class="cp-clients-toolbar-search">
-      <input type="search"
-             name="q"
-             value="{{ $q }}"
-             placeholder="Search name, email, phone…"
-             class="admin-input cp-clients-toolbar-search__input">
+  <div class="admin-toolbar cp-clients-toolbar">
+    <form method="get" action="{{ route('admin.clients.index') }}" class="cp-clients-toolbar-search" role="search">
+      <div class="cp-clients-toolbar-search__row">
+        <input type="search"
+               name="q"
+               value="{{ $q }}"
+               placeholder="Search name, email, phone, address…"
+               class="admin-input cp-clients-toolbar-search__input"
+               aria-label="Search clients">
+        <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <i class="fa fa-search"></i> Search
+        </button>
+      </div>
       @if ($tags->isNotEmpty())
         <select name="tag" class="admin-input" onchange="this.form.submit()" aria-label="Filter by tag">
           <option value="0">All tags</option>
@@ -18,9 +24,6 @@
           @endforeach
         </select>
       @endif
-      <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-search"></i> Search
-      </button>
     </form>
     <div class="cp-clients-toolbar-actions">
       <a href="{{ route('admin.client-tags.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage client tags">
@@ -29,10 +32,10 @@
       <a href="{{ route('admin.clients.create') }}" class="admin-btn admin-btn--primary admin-btn--sm">
         <i class="fa fa-plus"></i> New client
       </a>
-      <p class="admin-form-help cp-clients-toolbar-total">
-        {{ number_format($totalClients) }} {{ $totalClients === 1 ? 'client' : 'clients' }} in database
-      </p>
     </div>
+    <p class="admin-form-help cp-clients-toolbar-total">
+      {{ number_format($totalClients) }} {{ $totalClients === 1 ? 'client' : 'clients' }} in database
+    </p>
   </div>
 
   <div class="admin-card">
@@ -43,12 +46,17 @@
             <th>Name</th>
             <th>Email</th>
             <th>Phone</th>
+            <th>Address</th>
             <th style="width:70px;">Projects</th>
             <th style="width:100px;">Actions</th>
           </tr>
         </thead>
         <tbody>
           @forelse ($clients as $client)
+            @php
+              $listAddress = $client->listAddress();
+              $mapsUrl = $listAddress ? $client->googleMapsSearchUrl() : null;
+            @endphp
             <tr>
               <td data-label="Name">
                 <strong>@include('admin.partials.client_directory_link', ['client' => $client])</strong>
@@ -66,6 +74,13 @@
                 'fallbackMailto' => true,
               ])</td>
               <td data-label="Phone">{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
+              <td data-label="Address">@if ($mapsUrl)
+                <a class="admin-client-link cp-clients-address-link"
+                   href="{{ $mapsUrl }}"
+                   target="_blank"
+                   rel="noopener"
+                   title="Open in Google Maps">{{ $listAddress }}</a>
+              @endif</td>
               <td data-label="Projects">{{ $client->projects_count ?: '0' }}</td>
               <td class="admin-table__actions" data-label="">
                 <a href="{{ route('admin.clients.edit', $client) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
@@ -75,7 +90,13 @@
             </tr>
           @empty
             <tr>
-              <td colspan="5" class="admin-form-help">No clients yet. Add one or create a project — existing project contacts can be imported via migration.</td>
+              <td colspan="6" class="admin-form-help">
+                @if ($q !== '' || $tagId > 0)
+                  No matching clients.
+                @else
+                  No clients yet. Add one or create a project — existing project contacts can be imported via migration.
+                @endif
+              </td>
             </tr>
           @endforelse
         </tbody>
