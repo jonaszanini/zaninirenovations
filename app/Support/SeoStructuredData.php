@@ -28,7 +28,7 @@ class SeoStructuredData
         $sameAs = array_values(array_filter([$fb, $ig, $googleBiz], static fn ($u) => is_string($u) && str_starts_with($u, 'http')));
         $homeSummary = trim((string) config('seo.home_summary', ''));
         if ($homeSummary === '') {
-            $homeSummary = 'Licensed carpenter and renovation contractor in Carleton Place and Ottawa, Ontario.';
+            $homeSummary = 'Fully insured carpentry and renovation business in Carleton Place, Ontario, since 2020.';
         }
         $ogRel = ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
         $ogAbs = $url.'/'.$ogRel;
@@ -74,11 +74,6 @@ class SeoStructuredData
                 'addressLocality' => 'Carleton Place',
                 'addressRegion' => 'ON',
                 'addressCountry' => 'CA',
-            ],
-            'geo' => [
-                '@type' => 'GeoCoordinates',
-                'latitude' => (float) config('seo.latitude', 45.120446),
-                'longitude' => (float) config('seo.longitude', -76.0081985),
             ],
             'areaServed' => $areas,
             'openingHoursSpecification' => [

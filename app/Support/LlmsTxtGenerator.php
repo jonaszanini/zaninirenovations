@@ -18,7 +18,7 @@ class LlmsTxtGenerator
         $base = rtrim((string) config('app.url'), '/');
         $summary = trim((string) config('seo.home_summary', ''));
         if ($summary === '') {
-            $summary = 'Licensed carpenter and renovation contractor in Carleton Place and Ottawa, Ontario.';
+            $summary = 'Fully insured carpentry and renovation business in Carleton Place, Ontario, since 2020.';
         }
 
         $insurance = trim((string) config('seo.liability_insurance', '$3 million'));

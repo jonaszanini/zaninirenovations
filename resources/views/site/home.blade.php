@@ -712,7 +712,7 @@
             <h4 class="heading-alt-style text-uppercase text-dark-color">FAQ</h4>
             <span class="heading-separator heading-separator-horizontal"></span>
             <h2 id="home-faq-heading" class="subheading-alt-style">Renovation &amp; carpentry — common questions</h2>
-            <p class="home-faq-section__intro">Direct answers for homeowners searching for a licensed carpenter or renovation contractor in Ottawa and Carleton Place.</p>
+            <p class="home-faq-section__intro">Direct answers for homeowners searching for an insured carpenter or renovation contractor in Ottawa and Carleton Place.</p>
           </div>
         </div>
         <div class="row">

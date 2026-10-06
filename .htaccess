@@ -1,16 +1,22 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Block phpinfo/debug scripts (security) - applies before rewrite to /public/
+    # Block phpinfo/debug scripts (security) - applies before any redirects
     RewriteRule ^(?:public/)?(test|info|phpinfo)\.php$ - [R=404,L]
 
-    # One visible URL: https://zaninirenovations.ca/...
-    # www and any visitor-facing /public/... address 301 there first.
-    # THE_REQUEST is the browser's original line, so the internal rewrite below does not loop.
-    RewriteCond %{HTTP_HOST} ^www\.zaninirenovations\.ca$ [NC,OR]
-    RewriteCond %{THE_REQUEST} \s/+public(?:/|\s|\?) [NC]
-    RewriteCond %{HTTP_HOST} ^(www\.)?zaninirenovations\.ca$ [NC]
-    RewriteRule ^(?:public/?)?(.*)$ https://zaninirenovations.ca/$1 [L,R=301]
+    # 1) www -> apex, in one hop (collapses www + trailing slash together)
+    RewriteCond %{HTTP_HOST} ^www\.zaninirenovations\.ca$ [NC]
+    RewriteRule ^(.*?)/?$ https://zaninirenovations.ca/$1 [R=301,L]
+
+    # 2) Externally requested /public/... -> clean URL
+    #    THE_REQUEST matches the browser's original request line, so the
+    #    internal rewrite into public/ below cannot loop.
+    RewriteCond %{THE_REQUEST} \s/public(/[^\s?]*)?[\s?] [NC]
+    RewriteRule ^public/?(.*?)/?$ https://zaninirenovations.ca/$1 [R=301,L]
+
+    # 3) Externally requested /index.php or /index.php/... -> clean URL
+    RewriteCond %{THE_REQUEST} \s/index\.php [NC]
+    RewriteRule ^index\.php/?(.*)$ https://zaninirenovations.ca/$1 [R=301,L]
 
     # Serve Laravel from public/ without changing the browser address.
     RewriteCond %{REQUEST_URI} !^/public/
