@@ -26,4 +26,7 @@ yarn-error.log
 !/storage/framework/sessions/.gitignore
 /storage/framework/views/*
 !/storage/framework/views/.gitignore
+/storage/logs/*.log
 
+# Sensitive / notes files that should never be committed
+users.txt
