@@ -88,43 +88,30 @@
         @if (count($d['overdue_invoices']) === 0)
           <p class="dash-empty">No overdue sent invoices with a due date.</p>
         @else
-          <div class="admin-table-scroll">
-            <table class="dash-table dash-table--stack">
-              <thead>
-                <tr>
-                  <th>Invoice</th>
-                  <th>Due</th>
-                  <th>Total</th>
-                  <th>Project</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @foreach ($d['overdue_invoices'] as $row)
-                  <tr>
-                    <td data-label="Invoice">{{ $row['invoice_number'] }}</td>
-                    <td data-label="Due">{{ $row['due_display'] }}</td>
-                    <td data-label="Total">{{ ClientProject::formatMoney($row['total']) }}</td>
-                    <td data-label="Project">
-                      @if ($row['project_id'])
-                        <a href="{{ route('admin.client-projects.show', $row['project_id']) }}#invoice">{{ $row['project_name'] }}</a>
-                      @else
-                        —
-                      @endif
-                    </td>
-                    <td data-label="Action">
-                      @if (!empty($row['reminder_url']))
-                        <form method="post" action="{{ $row['reminder_url'] }}" class="dash-inline-form" onsubmit="return confirm('Send payment reminder for {{ $row['invoice_number'] }}?');">
-                          @csrf
-                          <button type="submit" class="admin-btn admin-btn--sm admin-btn--secondary">Remind</button>
-                        </form>
-                      @endif
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
+          <ul class="dash-overdue-list">
+            @foreach ($d['overdue_invoices'] as $row)
+              <li class="dash-overdue-item">
+                <div class="dash-overdue-item__info">
+                  <div class="dash-overdue-item__top">
+                    <span class="dash-overdue-item__inv">{{ $row['invoice_number'] }}</span>
+                    <span class="dash-overdue-item__amt">{{ ClientProject::formatMoney($row['total']) }}</span>
+                  </div>
+                  <div class="dash-overdue-item__meta">
+                    Due {{ $row['due_display'] }}
+                    @if ($row['project_id'])
+                      · <a href="{{ route('admin.client-projects.show', $row['project_id']) }}#invoice">{{ $row['project_name'] }}</a>
+                    @endif
+                  </div>
+                </div>
+                @if (!empty($row['reminder_url']))
+                  <form method="post" action="{{ $row['reminder_url'] }}" class="dash-overdue-item__action" onsubmit="return confirm('Send payment reminder for {{ $row['invoice_number'] }}?');">
+                    @csrf
+                    <button type="submit" class="admin-btn admin-btn--sm admin-btn--secondary">Remind</button>
+                  </form>
+                @endif
+              </li>
+            @endforeach
+          </ul>
         @endif
       </div>
 
