@@ -158,7 +158,7 @@ html.admin-dark .admin-input::placeholder,
 html.admin-dark .admin-content input::placeholder,
 html.admin-dark .admin-content textarea::placeholder,
 html.admin-dark .admin-topbar input::placeholder {
-  color: #64748b;
+  color: #94a3b8;
   opacity: 1;
 }
 
@@ -1803,7 +1803,7 @@ html.admin-dark .sq-grand-row--commute {
 /* Tab counts */
 html.admin-dark .cp-tab.is-active .cp-tab-count {
   background: var(--admin-primary);
-  color: #fff;
+  color: #0f172a;
 }
 
 /* Basement progress items */
@@ -2332,4 +2332,398 @@ html.admin-dark [style*="color:#dc2626"],
 html.admin-dark [style*="color: #dc2626"] {
   color: #fca5a5 !important;
 }
+
+/* ------------------------------------------------------------------
+   Quotation editor local <style> leftovers, inline badges, TinyMCE
+   chrome, date fields, and other hardcoded slate ink.
+   ------------------------------------------------------------------ */
+
+html.admin-dark .fq-badge,
+html.admin-dark .ld-badge {
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .fq-breakdown-note,
+html.admin-dark .ld-breakdown-note,
+html.admin-dark .pq-hint,
+html.admin-dark .pq-summary-section__title,
+html.admin-dark .pq-field-box-title,
+html.admin-dark .pq-stone-meta,
+html.admin-dark .pq-stone-meta-sep,
+html.admin-dark .pq-area-dimensions-sep,
+html.admin-dark .pq-db-file-picker-name,
+html.admin-dark .pq-db-rate-unit,
+html.admin-dark .pq-db-rate-price-label-text,
+html.admin-dark .pq-db-rates-group-title,
+html.admin-dark .pq-db-image-mode-btn,
+html.admin-dark .sq-db-rate-label,
+html.admin-dark .ss-notes-preview,
+html.admin-dark .cp-split-builder__remaining,
+html.admin-dark .cp-split-row__remove,
+html.admin-dark .q-pct-group label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .ld-totals-row--grand,
+html.admin-dark .fq-totals-row--grand,
+html.admin-dark .fl-bd-grand,
+html.admin-dark .pt-step-card h4,
+html.admin-dark .pt-net-banner strong,
+html.admin-dark .pq-area-computed,
+html.admin-dark .pq-marble-preview {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .ld-diagram-panel h5,
+html.admin-dark .cp-split-builder__label,
+html.admin-dark .cp-split-builder__remaining strong,
+html.admin-dark .sq-db-material-title,
+html.admin-dark .pq-db-rate-name,
+html.admin-dark .pq-stone-entry__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .ld-linked-banner a,
+html.admin-dark .fq-linked-banner a {
+  color: #86efac;
+}
+
+html.admin-dark .ld-totals-row--labour-hst-excluded .ld-labour-hst-toggle .admin-checkbox__text,
+html.admin-dark .ld-totals-row--labour-hst-excluded #ld-t-labour-hst,
+html.admin-dark .fq-totals-row--labour-hst-excluded .fq-labour-hst-toggle .admin-checkbox__text,
+html.admin-dark .fq-totals-row--labour-hst-excluded #fq-t-labour-hst {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .pt-net-banner {
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .pt-readiness,
+html.admin-dark .pq-sidebar-actions,
+html.admin-dark .pq-options-row,
+html.admin-dark .pq-stone-entry,
+html.admin-dark .pq-field-box,
+html.admin-dark .pq-db-stone-card,
+html.admin-dark .pq-db-image-mode,
+html.admin-dark .pq-db-rates-list,
+html.admin-dark .pq-db-file-picker-btn,
+html.admin-dark .sq-material-card,
+html.admin-dark .sq-db-open-block,
+html.admin-dark .sq-db-material-photo img,
+html.admin-dark .sq-db-material-photo__placeholder {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .pt-readiness-title,
+html.admin-dark .pt-readiness-item,
+html.admin-dark .pt-readiness-item.is-optional,
+html.admin-dark .pt-readiness-item__icon,
+html.admin-dark .pt-readiness-item.is-optional .pt-readiness-item__icon {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .pt-readiness-summary,
+html.admin-dark .pt-readiness-item.is-done,
+html.admin-dark .pt-readiness-item.is-done .pt-readiness-item__icon,
+html.admin-dark .pq-profit-pos strong,
+html.admin-dark .cp-split-builder__remaining.is-balanced strong {
+  color: var(--admin-success);
+}
+
+html.admin-dark .pt-readiness-summary.is-incomplete,
+html.admin-dark .pt-readiness-item.is-pending .pt-readiness-item__icon,
+html.admin-dark .pq-preview-status__title,
+html.admin-dark .cp-vd-mat-note,
+html.admin-dark .comm-desc__error {
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .pq-profit-neg strong,
+html.admin-dark .cp-split-builder__remaining.is-over strong,
+html.admin-dark .cp-split-row__remove:not(:disabled):hover {
+  color: var(--admin-danger);
+}
+
+html.admin-dark .pq-row,
+html.admin-dark .pq-row span:first-child,
+html.admin-dark .pq-preview-status__list,
+html.admin-dark .pq-stone-entry__label,
+html.admin-dark .pq-stone-entry__fields .pq-stone-field label {
+  color: var(--admin-text);
+}
+
+html.admin-dark .pq-row strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pq-row--hl,
+html.admin-dark .pq-row--hl span:first-child,
+html.admin-dark .pq-row--hl strong,
+html.admin-dark .pq-row--total span:first-child,
+html.admin-dark .pq-row--total strong {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .pq-row--sub span:first-child,
+html.admin-dark .pq-row--muted span:first-child,
+html.admin-dark .pq-row--muted strong,
+html.admin-dark .pq-row--note span {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .pq-db-stone-card-footer,
+html.admin-dark .pq-db-stone-card-header,
+html.admin-dark .pq-db-rate-row,
+html.admin-dark .pq-stone-entry-thumb,
+html.admin-dark .sq-db-material,
+html.admin-dark .sq-material-card img,
+html.admin-dark .pq-db-stone-thumb-wrap {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .pq-db-image-mode-btn.is-active {
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .pq-db-add-stone.pq-db-add-stone--error {
+  background: var(--admin-danger-soft);
+  border-color: var(--admin-danger);
+}
+
+html.admin-dark .sq-picker-badge {
+  background: #024768;
+  color: #fff;
+}
+
+html.admin-dark .ss-tag-chip {
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .gf-total-tile__value--success {
+  color: var(--admin-success);
+}
+
+html.admin-dark .gf-total-tile__value--warning {
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .admin-badge[style*="color:#6b7280"],
+html.admin-dark .admin-badge[style*="color:#16a34a"] {
+  border-color: var(--admin-border) !important;
+}
+html.admin-dark .admin-badge[style*="color:#6b7280"] {
+  background: var(--admin-surface-hover) !important;
+  color: var(--admin-muted) !important;
+}
+html.admin-dark .admin-badge[style*="color:#16a34a"] {
+  background: var(--admin-stat-highlight-bg) !important;
+  color: var(--admin-success) !important;
+}
+
+html.admin-dark .mat-form-hero__placeholder,
+html.admin-dark .mat-form-hero__placeholder .fa,
+html.admin-dark .mat-form-hero__placeholder-text,
+html.admin-dark .mat-form-hero__placeholder-hint {
+  color: var(--admin-muted);
+  background-image: none;
+}
+
+html.admin-dark .mat-form-sync-error {
+  background: var(--admin-danger-soft);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+html.admin-dark .cp-quotation-warning-inline {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .cp-table tr.cp-comm-row-failed td,
+html.admin-dark .cp-table tr.cp-comm-row-failed:hover td {
+  background: var(--admin-danger-soft);
+}
+
+html.admin-dark .cp-project-photos-preview-tile {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-stat-tile-border);
+}
+
+html.admin-dark [style*="color:#6b7280"],
+html.admin-dark [style*="color:#64748b"],
+html.admin-dark [style*="color:#9ca3af"],
+html.admin-dark [style*="color:#4b5563"],
+html.admin-dark [style*="color:#475569"] {
+  color: var(--admin-muted) !important;
+}
+html.admin-dark [style*="color:#0f172a"],
+html.admin-dark [style*="color:#111827"],
+html.admin-dark [style*="color:#1e293b"],
+html.admin-dark [style*="color:#334155"],
+html.admin-dark [style*="color:#374151"] {
+  color: var(--admin-heading) !important;
+}
+html.admin-dark [style*="color:#024768"] {
+  color: var(--admin-primary) !important;
+}
+html.admin-dark [style*="background:#ffffff"],
+html.admin-dark [style*="background:#fafbfc"],
+html.admin-dark [style*="background:#f5f7f9"] {
+  background-color: var(--admin-surface) !important;
+}
+
+html.admin-dark input[type="date"]::-webkit-datetime-edit,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-text,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-month-field,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-day-field,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-year-field,
+html.admin-dark input[type="datetime-local"]::-webkit-datetime-edit,
+html.admin-dark input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+  color: var(--admin-text);
+}
+html.admin-dark input[type="date"]::-webkit-calendar-picker-indicator,
+html.admin-dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+}
+
+html.admin-dark .fc .fc-more-link,
+html.admin-dark .fc a:not(.fc-event):not(.fc-button) {
+  color: var(--admin-primary);
+}
+html.admin-dark .fc .fc-button {
+  background: #024768;
+  border-color: #0369a1;
+  color: #fff;
+}
+
+html.admin-dark .tox .tox-toolbar-overlord,
+html.admin-dark .tox .tox-editor-header,
+html.admin-dark .tox .tox-anchorbar,
+html.admin-dark .tox .tox-sidebar-wrap,
+html.admin-dark .tox .tox-menu,
+html.admin-dark .tox .tox-collection,
+html.admin-dark .tox .tox-dialog,
+html.admin-dark .tox .tox-dialog__header,
+html.admin-dark .tox .tox-dialog__footer,
+html.admin-dark .tox .tox-dialog__body,
+html.admin-dark .tox .tox-listboxfield,
+html.admin-dark .tox .tox-listbox--select,
+html.admin-dark .tox .tox-textfield,
+html.admin-dark .tox .tox-toolbar__group,
+html.admin-dark .tox .tox-split-button,
+html.admin-dark .tox .tox-tbtn--select {
+  background: var(--admin-surface-hover) !important;
+  background-color: var(--admin-surface-hover) !important;
+  color: var(--admin-text) !important;
+  border-color: var(--admin-border) !important;
+}
+
+html.admin-dark .tox .tox-tbtn svg,
+html.admin-dark .tox .tox-tbtn svg path,
+html.admin-dark .tox .tox-icon,
+html.admin-dark .tox .tox-collection__item,
+html.admin-dark .tox .tox-statusbar a,
+html.admin-dark .tox .tox-promotion-link {
+  fill: var(--admin-muted) !important;
+  color: var(--admin-muted) !important;
+}
+
+html.admin-dark .cp-hint {
+  background: var(--admin-stat-tile-bg);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-visit-toggle__control {
+  background: #475569;
+}
+
+html.admin-dark .cp-visit-toggle input:checked + .cp-visit-toggle__control {
+  background: #0369a1;
+}
+
+html.admin-dark .br-acc__num {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-quick-status__btn {
+  color: #f1f5f9;
+  background: color-mix(in srgb, var(--qs-color, #64748b) 28%, var(--admin-surface));
+  border-color: color-mix(in srgb, var(--qs-color, #64748b) 55%, var(--admin-border));
+}
+
+html.admin-dark .cp-header-status > .cp-badge[style] {
+  color: color-mix(in srgb, currentColor 45%, white) !important;
+}
+
+html.admin-dark .fq-badge.is-calculating,
+html.admin-dark .ld-badge.is-calculating {
+  background: var(--admin-warn-tile-bg);
+  color: var(--admin-warn-tile-text);
+}
+html.admin-dark .fq-badge.is-error,
+html.admin-dark .ld-badge.is-error {
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+}
+html.admin-dark .fq-badge.is-idle,
+html.admin-dark .ld-badge.is-idle {
+  background: var(--admin-stat-tile-bg);
+  color: var(--admin-muted);
+}
+html.admin-dark .fq-badge.is-current,
+html.admin-dark .ld-badge.is-current {
+  background: var(--admin-stat-highlight-bg);
+  color: var(--admin-success);
+}
+
+html.admin-dark .sq-material-card__name-line,
+html.admin-dark .sq-db-open-block__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pq-db-field-label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .admin-btn--ghost {
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark [style*="background:#fff4d4"] {
+  background-color: var(--admin-warn-tile-bg) !important;
+}
+html.admin-dark [style*="background:#eef1f5"] {
+  background-color: var(--admin-stat-tile-bg) !important;
+}
+html.admin-dark [style*="background:#fde1e1"] {
+  background-color: var(--admin-danger-soft) !important;
+}
+html.admin-dark [style*="color:#8a5d00"] {
+  color: var(--admin-warn-tile-text) !important;
+}
+html.admin-dark [style*="color:#556"] {
+  color: var(--admin-muted) !important;
+}
+html.admin-dark [style*="color:#8a1a1a"] {
+  color: var(--admin-danger) !important;
+}
+html.admin-dark [style*="color:#0f5132"] {
+  color: var(--admin-success) !important;
+}
+
+
 

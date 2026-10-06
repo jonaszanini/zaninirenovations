@@ -33,6 +33,8 @@ Login for the seeded admin: `admin@zanini.ca` / `password`.
 
 - Public pages, `/admin/login`, password reset, PDFs, signed guest downloads
 - Print HTML (`purchase-list`, `cut-list`, `layout-diagrams`)
-- Images, SVGs, canvases, videos, iframes (TinyMCE, maps)
+- Images, SVGs, canvases, videos, iframes
+- TinyMCE oxide chrome (`.tox` / `.tox-tinymce`) — vendor skin; toolbar/statusbar are themed in `admin-dark.css`
 - FullCalendar event chips (intentional status colours)
 - Switch knobs (`.cp-visit-toggle__control::after`) stay white by design
+- Print HTML, PDFs, receipts, and purchase/cut lists stay light-only

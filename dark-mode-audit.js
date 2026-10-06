@@ -63,7 +63,7 @@ async function enableDark(page) {
 
 function auditInPage() {
   const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'LINK', 'HEAD', 'BR', 'HR', 'SOURCE', 'TRACK']);
-  const SKIP_SEL = 'img, svg, canvas, video, iframe, picture, [hidden], .fc-event, .fc-bg-event, .tox-editor-container';
+  const SKIP_SEL = 'img, svg, canvas, video, iframe, picture, [hidden], .fc-event, .fc-bg-event, .fc-bg-event *, .tox, .tox-tinymce, .tox-editor-container';
 
   function parseColor(str) {
     if (!str || str === 'transparent' || str === 'none') return null;

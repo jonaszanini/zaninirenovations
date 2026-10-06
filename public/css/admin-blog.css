@@ -46,7 +46,7 @@
   padding: 12px 14px;
   border: 1px solid var(--admin-border, #d8dee4);
   border-radius: 10px;
-  background: #f9fafb;
+  background: var(--admin-stat-tile-bg);
 }
 
 .cp-inline-help {

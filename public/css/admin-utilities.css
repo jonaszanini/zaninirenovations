@@ -1837,10 +1837,10 @@
   gap: 8px;
   margin: 0 0 12px;
   padding: 10px 14px;
-  background: #fff8e6;
-  border: 1px solid #f2d693;
+  background: var(--admin-warn-tile-bg);
+  border: 1px solid var(--admin-warn-tile-border);
   border-radius: 8px;
-  color: #7a5b0a;
+  color: var(--admin-warn-tile-text);
   font-size: 0.85rem;
   line-height: 1.45;
 }
