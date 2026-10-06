@@ -801,6 +801,8 @@ body.admin-body {
 @media (max-width: 640px) {
   .admin-table--stack {
     min-width: 0;
+    width: 100%;
+    table-layout: fixed;
   }
   .admin-table--stack thead {
     display: none;
@@ -809,6 +811,7 @@ body.admin-body {
   .admin-table--stack tr,
   .admin-table--stack td {
     display: block;
+    width: 100%;
   }
   .admin-table--stack tr {
     padding: 0.75rem 0;
@@ -821,9 +824,9 @@ body.admin-body {
     padding: 0.25rem 0;
     border: none;
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
     gap: 0.5rem;
+    max-width: 100%;
   }
   .admin-table--stack td::before {
     content: attr(data-label);
@@ -833,7 +836,14 @@ body.admin-body {
     letter-spacing: 0.04em;
     color: var(--admin-muted);
     flex-shrink: 0;
-    min-width: 80px;
+    width: 90px;
+    min-width: 90px;
+  }
+  /* Value takes remaining space and wraps */
+  .admin-table--stack td > *,
+  .admin-table--stack td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .admin-table--stack td:empty::before {
     display: none;

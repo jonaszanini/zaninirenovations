@@ -66,7 +66,7 @@
                 'fallbackMailto' => true,
               ])</td>
               <td data-label="Phone">{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
-              <td data-label="Projects">{{ $client->projects_count }}</td>
+              <td data-label="Projects">{{ $client->projects_count ?: '0' }}</td>
               <td class="admin-table__actions" data-label="">
                 <a href="{{ route('admin.clients.edit', $client) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
                   <i class="fa fa-pencil"></i> Edit
