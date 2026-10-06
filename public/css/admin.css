@@ -4368,6 +4368,23 @@ body.admin-ai-text-history-open {
   display: block;
 }
 
+/* Drop-up when the toggle is near the bottom of the viewport / card. */
+.admin-actions-dropdown.is-up .admin-actions-dropdown__menu {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+/* Portaled to <body> so overflow:hidden/auto parents cannot clip it. */
+.admin-actions-dropdown__menu.is-portaled {
+  display: block;
+  position: fixed;
+  z-index: 400;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .admin-actions-dropdown__item {
   display: flex;
   align-items: center;
