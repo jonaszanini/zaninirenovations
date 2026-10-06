@@ -10,7 +10,7 @@
 @endphp
 
 @section('page_title', $pageTitle)
-@section('meta_robots', 'noindex, nofollow')
+@section('meta_robots', 'noindex,nofollow')
 @section('meta_description', 'Review and accept your Zanini Renovations quotation.')
 
 @push('styles')

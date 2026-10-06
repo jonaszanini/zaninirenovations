@@ -36,14 +36,20 @@ class SignedLinkAcceptTest extends IntegrationTestCase
 
         $this->get($url)
             ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex')
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
             ->assertSee('Accept this quote', false)
             ->assertSee($project->referenceCode(), false)
             ->assertSee($quotation->displayQuoteNumber(), false)
             ->assertSee('Total incl. HST', false)
             ->assertSee('name="_token"', false);
 
+        $this->assertFalse($quotation->fresh()->isAccepted());
+        $this->assertSame(ClientProject::STATUS_QUOTE_SENT, $project->fresh()->status);
+
         $this->post($url)
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertHeader('X-Robots-Tag', 'noindex');
 
         $quotation->refresh();
         $project->refresh();
@@ -115,5 +121,62 @@ class SignedLinkAcceptTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('cannot be accepted', false);
         $this->assertSame(ClientProjectQuotation::STATUS_SUPERSEDED, $superseded->fresh()->status);
+    }
+
+    public function test_get_never_accepts_and_sends_noindex_robots_header(): void
+    {
+        [$project, $quotation] = $this->makeLinkedQuotation();
+        $url = URL::signedRoute('public.quotations.accept', ['quotation' => $quotation]);
+
+        $this->get($url)
+            ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex')
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
+            ->assertSee('Accept this quote', false)
+            ->assertDontSee('Quote accepted', false);
+
+        $quotation->refresh();
+        $project->refresh();
+
+        $this->assertFalse($quotation->isAccepted());
+        $this->assertNull($quotation->accepted_at);
+        $this->assertNull($quotation->accepted_via);
+        $this->assertSame(ClientProject::STATUS_QUOTE_SENT, $project->status);
+    }
+
+    public function test_post_invalid_state_also_sends_noindex_robots_header(): void
+    {
+        [, $rejected] = $this->makeLinkedQuotation([
+            'status' => ClientProjectQuotation::STATUS_REJECTED,
+        ]);
+        $url = URL::signedRoute('public.quotations.accept', ['quotation' => $rejected]);
+
+        $this->post($url)
+            ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex')
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
+            ->assertSee('cannot be accepted', false);
+
+        $this->assertFalse($rejected->fresh()->isAccepted());
+    }
+
+    public function test_pdf_accept_cta_is_a_link_without_the_raw_url_as_text(): void
+    {
+        [, $quotation] = $this->makeLinkedQuotation();
+        $quotation->load('project');
+        $acceptUrl = $quotation->signedAcceptUrl();
+
+        $html = view('admin.client_projects.quotation.pdf', [
+            'project' => $quotation->project,
+            'quotation' => $quotation,
+            'pdfPhotos' => collect(),
+            'acceptUrl' => $acceptUrl,
+        ])->render();
+
+        $this->assertStringContainsString('Accept this quote', $html);
+        $this->assertStringContainsString('quote-accept-cta', $html);
+        $this->assertStringContainsString('href="'.$acceptUrl.'"', $html);
+        $this->assertStringNotContainsString('quote-accept-url', $html);
+        $this->assertStringNotContainsString('>'.$acceptUrl.'<', $html);
     }
 }

@@ -139,6 +139,7 @@ Every authenticated admin page:
 |-------|----------|
 | ≤900px | Sidebar drawer, hamburger, `overflow-x: hidden` on body |
 | ≥901px | Fixed sidebar, backdrop hidden |
+| ≤767px | `.admin-topbar` is `position: static` (scrolls away; no pinned headers) |
 | ≤700px | `.admin-form-grid-2` → single column |
 | ≤768px | `.admin-form-grid-3` → single column |
 

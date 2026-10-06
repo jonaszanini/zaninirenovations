@@ -8549,6 +8549,13 @@ body.cp-modal-open {
   }
 }
 
+@media (max-width: 767px) {
+  .br-toolbar {
+    position: static;
+    top: auto;
+  }
+}
+
 .sh-choice-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

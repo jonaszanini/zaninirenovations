@@ -68,6 +68,7 @@ class Kernel extends HttpKernel
         'restrict.destructive' => \App\Http\Middleware\RestrictDestructiveActions::class,
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'quote.accept.token' => \App\Http\Middleware\AuthenticateQuoteAcceptApi::class,
+        'quote.accept.noindex' => \App\Http\Middleware\NoindexQuoteAccept::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
     ];
