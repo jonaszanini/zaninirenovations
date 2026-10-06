@@ -2615,9 +2615,19 @@ html.admin-dark input[type="datetime-local"]::-webkit-calendar-picker-indicator 
   filter: invert(0.85);
 }
 
-html.admin-dark .fc .fc-more-link,
-html.admin-dark .fc a:not(.fc-event):not(.fc-button) {
-  color: var(--admin-primary);
+html.admin-dark .fc .fc-day-today .fc-daygrid-day-number,
+html.admin-dark .fc .fc-timegrid-col.fc-day-today .fc-col-header-cell-cushion {
+  color: var(--admin-heading) !important;
+}
+
+html.admin-dark .admin-form-help,
+html.admin-dark span.admin-form-help {
+  color: #cbd5e1;
+}
+
+html.admin-dark .cp-badge i.fa,
+html.admin-dark .cp-badge .fa {
+  color: inherit;
 }
 html.admin-dark .fc .fc-button,
 html.admin-dark .fc .fc-button-primary {

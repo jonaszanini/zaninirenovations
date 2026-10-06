@@ -150,6 +150,7 @@ function auditInPage() {
   document.querySelectorAll('body *').forEach((el) => {
     if (SKIP_TAGS.has(el.tagName)) return;
     if (el.closest(SKIP_SEL)) return;
+    if (el.id && String(el.id).startsWith('fc-dom-')) return;
     if (!visible(el)) return;
     const s = getComputedStyle(el);
     if (s.backgroundImage && s.backgroundImage !== 'none' && s.backgroundImage.includes('url(')) return;
