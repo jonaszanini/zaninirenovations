@@ -2335,6 +2335,28 @@ html.admin-dark .admin-btn--danger:hover {
   color: #fff;
 }
 
+html.admin-dark .admin-btn--success {
+  background: var(--admin-success-soft);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.38);
+}
+html.admin-dark .admin-btn--success:hover {
+  background: rgba(74, 222, 128, 0.26);
+  color: #bbf7d0;
+}
+html.admin-dark .admin-btn--success i.fa,
+html.admin-dark .admin-btn--success .fa {
+  color: inherit;
+}
+
+html.admin-dark .cp-invoice-send-warning-link:hover {
+  color: #7dd3fc !important;
+}
+
+html.admin-dark .cp-recalc-preview tr.is-paid td {
+  color: #86efac;
+}
+
 html.admin-dark .cp-required,
 html.admin-dark .admin-required,
 html.admin-dark .admin-form-error {
@@ -2627,7 +2649,11 @@ html.admin-dark span.admin-form-help {
 
 html.admin-dark .cp-badge i.fa,
 html.admin-dark .cp-badge .fa {
-  color: inherit;
+  color: inherit !important;
+}
+html.admin-dark .cp-badge[style*="#15803d"] i.fa,
+html.admin-dark .cp-badge[style*="#22c55e"] i.fa {
+  color: #86efac !important;
 }
 html.admin-dark .fc .fc-button,
 html.admin-dark .fc .fc-button-primary {

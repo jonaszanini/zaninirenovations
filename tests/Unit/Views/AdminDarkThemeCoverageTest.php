@@ -70,6 +70,7 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .pq-hint',
             'html.admin-dark .pt-readiness',
             'html.admin-dark .gf-total-tile__value--success',
+            'html.admin-dark .admin-btn--success',
         ] as $selector) {
             $this->assertStringContainsString($selector, $dark, "Missing dark rule {$selector}");
         }
