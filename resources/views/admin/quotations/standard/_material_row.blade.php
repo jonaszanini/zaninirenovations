@@ -87,9 +87,13 @@
         </div>
         <div class="sq-mat-field sq-mat-field--description">
           <label>Description</label>
-          <input type="text" name="{{ $namePrefix }}[description]" class="admin-input sq-mat-desc"
+          <input type="text" name="{{ $namePrefix }}[description]" class="admin-input sq-mat-desc @error($oldDot.'.description') is-invalid @enderror"
                  maxlength="500" placeholder="{{ $sourceMode === 'electrical' ? \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION : 'Material or item' }}"
-                 value="{{ $descriptionValue }}">
+                 value="{{ $descriptionValue }}"
+                 @error($oldDot.'.description') aria-invalid="true" aria-describedby="{{ $catalogId }}-desc-error" @enderror>
+          @error($oldDot.'.description')
+            <p class="admin-form-error" id="{{ $catalogId }}-desc-error">{{ $message }}</p>
+          @enderror
         </div>
         <div class="sq-mat-field sq-mat-field--unit">
           <label>Unit price ($)</label>

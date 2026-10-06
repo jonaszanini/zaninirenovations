@@ -20,6 +20,7 @@ use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
 use App\Support\QuotationBuildingLabor;
+use App\Support\StandardQuotationValidationMessages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -459,13 +460,16 @@ class StandardQuotationController extends Controller
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge([
             'client_name.required' => 'Client name is required.',
+            'client_name.max' => 'Client name is too long. Keep it to 160 characters or fewer.',
             'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
+            'display_title.max' => 'Title is too long. Keep it to 255 characters or fewer.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',
+            'work_description.max' => 'Description of the work is too long. Shorten that box and save again.',
             'works.required' => 'Add at least one job.',
             'works.min' => 'Add at least one job.',
             'contingency_percent.numeric' => 'Contingency percent must be a number.',
             'contingency_percent.max' => 'Contingency percent cannot exceed 100.',
-        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), QuotationBuildingLabor::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), QuotationBuildingLabor::validationMessages(), StandardQuotationValidationMessages::forWorks($request->input('works'))));
 
         $includesMaterial = $request->boolean('includes_material');
         $includesLabour = $request->boolean('includes_labour');

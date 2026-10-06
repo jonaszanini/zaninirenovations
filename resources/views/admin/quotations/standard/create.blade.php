@@ -390,7 +390,7 @@
           'workIndex' => $w,
           'work' => $work,
           'workCount' => $workCount,
-          'isOpen' => $w === $workCount - 1,
+          'isOpen' => $w === $workCount - 1 || $errors->has('works.'.$w.'.*'),
           'includeContingency' => $w === $workCount - 1,
         ])
       @endforeach
