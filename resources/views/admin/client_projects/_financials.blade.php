@@ -397,9 +397,9 @@
       </div>
     </div>
     <div class="admin-form-group cp-expense-receipt-field">
-      <label for="cp-expense-receipt">Receipt (optional)</label>
-      <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf">
-      <p class="admin-form-help">Image (JPEG, PNG, WebP, AVIF) — stored as WebP at {{ (int) config('webp.quality', 75) }}% quality, max {{ (int) config('webp.max_edge_px', 1280) }}px, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB; or <strong>PDF</strong> — stored as-is. Filename <strong>Receipt-#</strong> matches the # column for the client. On a phone you can take a photo, pick from gallery, or choose a PDF.</p>
+      <label for="cp-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+      <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf" capture="environment">
+      <p class="admin-form-help">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</p>
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror

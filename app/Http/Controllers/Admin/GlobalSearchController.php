@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\ClientProject;
+use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectQuotation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -92,6 +93,15 @@ class GlobalSearchController extends Controller
             ];
         }
 
+        $invoices = $this->searchInvoices($q);
+        if (count($invoices) > 0) {
+            $results[] = [
+                'type' => 'invoices',
+                'label' => 'Invoices',
+                'items' => $invoices,
+            ];
+        }
+
         $quotations = $this->searchQuotations($q);
         if (count($quotations) > 0) {
             $results[] = [
@@ -160,6 +170,36 @@ class GlobalSearchController extends Controller
                 'status' => $qt->statusLabel(),
                 'url' => $qt->project
                     ? route('admin.client-projects.show', $qt->project) . '#quotation'
+                    : '#',
+                'icon' => 'file-text-o',
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function searchInvoices(string $q): array
+    {
+        return ClientProjectInvoice::query()
+            ->with('project')
+            ->where(function ($sub) use ($q) {
+                $sub->where('invoice_number', 'like', '%' . $q . '%')
+                    ->orWhere('installment_description', 'like', '%' . $q . '%');
+            })
+            ->orWhereHas('project', function ($sub) use ($q) {
+                $sub->where('client_name', 'like', '%' . $q . '%')
+                    ->orWhere('name', 'like', '%' . $q . '%');
+            })
+            ->orderByDesc('updated_at')
+            ->limit(self::API_LIMIT)
+            ->get()
+            ->map(fn (ClientProjectInvoice $inv) => [
+                'id' => $inv->id,
+                'title' => $inv->invoice_number ?: 'Invoice #' . $inv->id,
+                'subtitle' => $inv->project?->name . ' — ' . ($inv->project?->client_name ?? ''),
+                'status' => ClientProjectInvoice::statusLabel($inv->status),
+                'status_color' => ClientProjectInvoice::statusColor($inv->status),
+                'url' => $inv->project
+                    ? route('admin.client-projects.show', $inv->project) . '#invoice'
                     : '#',
                 'icon' => 'file-text-o',
             ])

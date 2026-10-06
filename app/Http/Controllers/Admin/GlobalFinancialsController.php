@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInvoice;
+use App\Support\CadMoney;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -224,6 +225,10 @@ class GlobalFinancialsController extends Controller
 
     public function storeExpense(Request $request)
     {
+        $request->merge([
+            'amount' => CadMoney::stripGrouping($request->input('amount')),
+        ]);
+
         $data = $request->validate([
             'client_project_id' => ['required', 'exists:client_projects,id'],
             'occurred_on' => ['required', 'date'],
