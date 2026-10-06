@@ -680,7 +680,7 @@
             <div class="testimonials-google-cta">
               <a
                 class="btn btn-theme btn-square"
-                href="{{ config('seo.google_business_url') }}"
+                href="{{ \App\Support\SeoStructuredData::googleBusinessUrl() }}"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -792,7 +792,7 @@
             <ul class="contact-info">
               <li>
                 <span class="icon-container"><i class="fa fa-map-marker"></i></span>
-                <address><a href="{{ config('seo.google_business_url') }}" target="_blank" rel="noopener noreferrer">Google Maps</a></address>
+                <address><a href="{{ \App\Support\SeoStructuredData::googleBusinessUrl() }}" target="_blank" rel="noopener noreferrer">Google Maps</a></address>
               </li>
             </ul>
           </div>

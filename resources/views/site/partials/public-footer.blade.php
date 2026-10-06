@@ -82,7 +82,7 @@
                   <div class="footer-contact-body">
                     <p>
                       Carleton Place, ON<br>
-                      <a href="{{ config('seo.google_business_url') }}" target="_blank" rel="noopener noreferrer">Google Maps</a>
+                      <a href="{{ \App\Support\SeoStructuredData::googleBusinessUrl() }}" target="_blank" rel="noopener noreferrer">Google Maps</a>
                     </p>
                   </div>
                 </div>

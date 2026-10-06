@@ -111,10 +111,8 @@ class LlmsTxtGenerator
         $lines[] = '';
         $lines[] = '- Phone: '.$phone;
         $lines[] = '- Website: '.$base.'/';
-        $googleBiz = trim((string) config('seo.google_business_url', ''));
-        if ($googleBiz !== '') {
-            $lines[] = '- Google Business: '.$googleBiz;
-        }
+        $googleBiz = SeoStructuredData::googleBusinessUrl();
+        $lines[] = '- Google Business: '.$googleBiz;
         $lines[] = '';
 
         return implode("\n", $lines);

@@ -181,4 +181,40 @@ class OnPageSeoBatch1Test extends TestCase
         $this->assertStringContainsString('commercial', $content);
         $this->assertStringContainsString('Gatineau', $content);
     }
+
+    /**
+     * Even if env sets a long /maps/place/ URL, output must use the CID URL.
+     */
+    public function test_long_maps_url_is_replaced_with_cid(): void
+    {
+        $longUrl = 'https://www.google.com/maps/place/Zanini+Renovations/@45.0145689,-76.3839057,10z/data=!4m6';
+        $cidUrl = 'https://maps.google.com/?cid=7676669856408637146';
+
+        config(['seo.google_business_url' => $longUrl]);
+
+        $this->assertSame($cidUrl, SeoStructuredData::googleBusinessUrl());
+
+        $graph = SeoStructuredData::homeGraph();
+        $encoded = SeoStructuredData::toJsonLd($graph);
+        $this->assertStringNotContainsString('/maps/place/', $encoded);
+        $this->assertStringContainsString($cidUrl, $encoded);
+
+        $txt = LlmsTxtGenerator::generate(collect(), collect());
+        $this->assertStringNotContainsString('/maps/place/', $txt);
+        $this->assertStringContainsString($cidUrl, $txt);
+    }
+
+    /**
+     * Homepage must not contain /maps/place/ URLs.
+     */
+    public function test_homepage_has_no_long_maps_url(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        $this->assertStringNotContainsString('/maps/place/', $content);
+        $this->assertStringContainsString('maps.google.com/?cid=', $content);
+    }
 }
