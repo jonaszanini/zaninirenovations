@@ -797,7 +797,13 @@ html.admin-dark .cp-badge--draft {
   color: #fbbf24;
 }
 
-html.admin-dark .cp-badge--manual {
+html.admin-dark .cp-badge--manual,
+html.admin-dark .cp-badge[style*="background:#e0e7ff"] {
+  background: rgba(99, 102, 241, 0.25) !important;
+  color: #a5b4fc !important;
+}
+
+html.admin-dark .cp-badge--accepted {
   background: #334155;
   color: #cbd5e1;
 }
@@ -1430,5 +1436,153 @@ html.admin-dark .sq-qty__gear {
 html.admin-dark .sq-qty__gear:hover,
 html.admin-dark .sq-qty__gear:focus-visible {
   color: var(--admin-primary-hover);
+}
+
+/* File inputs */
+html.admin-dark input[type="file"],
+html.admin-dark .admin-input[type="file"] {
+  background: var(--admin-input-bg);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+html.admin-dark input[type="file"]::file-selector-button {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+html.admin-dark input[type="file"]::file-selector-button:hover {
+  background: var(--admin-surface-hover);
+}
+
+/* Materials list */
+html.admin-dark .mat-thumb {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .mat-thumb--empty {
+  background: var(--admin-surface-hover);
+}
+
+/* Supplier sites */
+html.admin-dark .ss-tag-chip {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+html.admin-dark .ss-notes-preview {
+  color: var(--admin-muted);
+}
+
+/* Blog admin */
+html.admin-dark .blog-admin-ai-metadata-wrap {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .blog-admin-gemini-status {
+  color: var(--admin-success);
+}
+html.admin-dark .blog-admin-gemini-status.is-error {
+  color: var(--admin-danger);
+}
+html.admin-dark .blog-post-status--published {
+  color: #4ade80;
+}
+html.admin-dark .blog-post-status--draft {
+  color: #fbbf24;
+}
+html.admin-dark .blog-post-status--scheduled {
+  color: #60a5fa;
+}
+
+/* Fence calculator side cards */
+html.admin-dark .fq-side-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .fq-side-card h5,
+html.admin-dark .fq-geometry-summary {
+  color: var(--admin-heading);
+}
+html.admin-dark .fq-side-meta,
+html.admin-dark .fq-geometry-per-ft-note,
+html.admin-dark .fq-geometry-side__sections {
+  color: var(--admin-muted);
+}
+html.admin-dark .fq-geometry-side {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .fq-geometry-side__title {
+  color: var(--admin-heading);
+}
+html.admin-dark .fq-side-existing-posts {
+  color: var(--admin-text);
+}
+html.admin-dark .fq-side-existing-posts__label {
+  color: var(--admin-muted);
+}
+html.admin-dark .fq-totals {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .fq-totals-row--total,
+html.admin-dark .fq-totals-row--grand {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .fq-totals-row--grand {
+  color: var(--admin-primary);
+}
+
+/* Fence live breakdown */
+html.admin-dark .fq-breakdown-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .fq-breakdown-card h3,
+html.admin-dark .fq-breakdown-card h4,
+html.admin-dark .fq-breakdown-card strong {
+  color: var(--admin-heading);
+}
+
+/* Additional admin surfaces */
+html.admin-dark .cp-time-entry {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-quotation-items-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-locked {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--admin-text);
+}
+html.admin-dark .cp-locked h3 {
+  color: #fcd34d;
+}
+html.admin-dark .cp-recalc-banner {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+html.admin-dark .cp-recalc-banner__title {
+  color: #fcd34d;
+}
+
+/* Links in admin tables and content */
+html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]) {
+  color: var(--admin-primary);
+}
+html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]):visited {
+  color: var(--admin-primary);
+}
+html.admin-dark .admin-table a {
+  color: var(--admin-primary);
+}
+html.admin-dark .admin-table a:visited {
+  color: var(--admin-primary);
 }
 

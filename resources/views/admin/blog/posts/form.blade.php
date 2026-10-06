@@ -226,9 +226,16 @@
         } catch (e) { /* ignore */ }
       }
 
+      var bpIsDark = document.documentElement.classList.contains('admin-dark');
+      var bpContentStyle = 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; line-height: 1.55; overflow-wrap: break-word; word-break: break-word; '
+        + (bpIsDark ? 'background: #1e293b; color: #e2e8f0; ' : '')
+        + '} pre, code { white-space: pre-wrap; overflow-wrap: anywhere; } img { max-width: 100%; height: auto; }'
+        + (bpIsDark ? ' a { color: #38bdf8; }' : '');
+
       tinymce.init({
         selector: '#bp-editor',
-        skin: document.documentElement.classList.contains('admin-dark') ? 'oxide-dark' : 'oxide',
+        skin: bpIsDark ? 'oxide-dark' : 'oxide',
+        content_css: bpIsDark ? 'dark' : 'default',
         menubar: 'edit insert view format table tools',
         plugins: 'advlist autolink lists link image table code preview searchreplace fullscreen visualblocks wordcount paste help',
         toolbar: 'undo redo | blocks | bold italic underline strikethrough | alignleft aligncenter alignright | bullist numlist | link table image | bpwordwrap | removeformat code preview fullscreen help',
@@ -259,7 +266,7 @@
               .catch(function () { reject('Upload failed'); });
           });
         },
-        content_style: 'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; line-height: 1.55; overflow-wrap: break-word; word-break: break-word; } pre, code { white-space: pre-wrap; overflow-wrap: anywhere; } img { max-width: 100%; height: auto; }',
+        content_style: bpContentStyle,
         setup: function (editor) {
           var wrapEnabled = true;
           try {
