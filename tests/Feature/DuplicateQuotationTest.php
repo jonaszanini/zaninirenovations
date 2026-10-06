@@ -24,6 +24,7 @@ class DuplicateQuotationTest extends IntegrationTestCase
         $quotation->title = 'Test Quotation';
         $quotation->status = ClientProjectQuotation::STATUS_DRAFT;
         $quotation->type = ClientProjectQuotation::SOURCE_STANDARD;
+        $quotation->source_type = ClientProjectQuotation::SOURCE_STANDARD;
         $quotation->quotation_number = ClientProjectQuotation::generateNumber('standard');
         $quotation->items = [
             ['description' => 'Labour', 'amount' => 500, 'apply_hst' => true],
@@ -75,6 +76,7 @@ class DuplicateQuotationTest extends IntegrationTestCase
         $quotation->title = 'Original Quote';
         $quotation->status = ClientProjectQuotation::STATUS_SENT;
         $quotation->type = ClientProjectQuotation::SOURCE_STANDARD;
+        $quotation->source_type = ClientProjectQuotation::SOURCE_STANDARD;
         $quotation->quotation_number = ClientProjectQuotation::generateNumber('standard');
         $quotation->items = [
             ['description' => 'Service A', 'amount' => 1000, 'apply_hst' => true],
@@ -123,6 +125,7 @@ class DuplicateQuotationTest extends IntegrationTestCase
         $quotation->title = 'Test Quote';
         $quotation->status = ClientProjectQuotation::STATUS_DRAFT;
         $quotation->type = ClientProjectQuotation::SOURCE_STANDARD;
+        $quotation->source_type = ClientProjectQuotation::SOURCE_STANDARD;
         $quotation->quotation_number = ClientProjectQuotation::generateNumber('standard');
         $quotation->items = [];
         $quotation->version = 1;
@@ -184,6 +187,7 @@ class DuplicateQuotationTest extends IntegrationTestCase
         $quotation->title = 'Full Quote';
         $quotation->status = ClientProjectQuotation::STATUS_ACCEPTED;
         $quotation->type = ClientProjectQuotation::SOURCE_FENCE;
+        $quotation->source_type = ClientProjectQuotation::SOURCE_FENCE;
         $quotation->quotation_number = 'FN-2024-0099';
         $quotation->items = [
             ['description' => 'Fence installation', 'amount' => 2500, 'apply_hst' => true],
