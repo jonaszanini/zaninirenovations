@@ -191,6 +191,7 @@ class ClientProjectController extends Controller
         $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
         $this->normaliseConversationOnOnRequest($request);
+        $this->normaliseVisitTimeOnRequest($request);
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
@@ -219,6 +220,7 @@ class ClientProjectController extends Controller
             'sync_client_directory' => ['nullable', 'boolean'],
             'visit_required' => ['nullable', 'boolean'],
             'visit_date' => ['nullable', 'date'],
+            'visit_time' => ['nullable', 'date_format:H:i'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ], ClientProjectPhotoStorage::uploadValidationRules(), $this->documentLinkValidationRules()), $this->clientProjectValidationMessages());
@@ -261,6 +263,7 @@ class ClientProjectController extends Controller
         } else {
             $data['visit_required'] = false;
             $data['visit_date'] = null;
+            $data['visit_time'] = null;
             $data['visit_done'] = false;
         }
 
@@ -513,6 +516,7 @@ class ClientProjectController extends Controller
         $this->normaliseClientAddressGeoOnRequest($request);
         $this->normaliseContactedViaOnRequest($request);
         $this->normaliseConversationOnOnRequest($request);
+        $this->normaliseVisitTimeOnRequest($request);
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
@@ -536,6 +540,7 @@ class ClientProjectController extends Controller
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'visit_required' => ['sometimes', 'boolean'],
             'visit_date' => ['nullable', 'date'],
+            'visit_time' => ['nullable', 'date_format:H:i'],
             'visit_done' => ['sometimes', 'boolean'],
             'billing_type' => ['nullable', \Illuminate\Validation\Rule::in([
                 ClientProject::BILLING_FIXED,
@@ -599,9 +604,10 @@ class ClientProjectController extends Controller
         if (array_key_exists('visit_required', $data)) {
             if (!$data['visit_required']) {
                 $data['visit_date'] = null;
+                $data['visit_time'] = null;
             }
         } else {
-            unset($data['visit_required'], $data['visit_date']);
+            unset($data['visit_required'], $data['visit_date'], $data['visit_time']);
         }
 
         $previousStart = $client_project->start_date ? $client_project->start_date->toDateString() : null;
@@ -845,6 +851,20 @@ class ClientProjectController extends Controller
         if ($v === '' || $v === null) {
             $request->merge(['conversation_on' => null]);
         }
+    }
+
+    /**
+     * Normalize visit_time to H:i format (MySQL TIME returns H:i:s, browsers
+     * may submit either). Empty/null → null.
+     */
+    protected function normaliseVisitTimeOnRequest(Request $request): void
+    {
+        if (! $request->has('visit_time')) {
+            return;
+        }
+
+        $normalized = ClientProject::normalizeTimeToHi($request->input('visit_time'));
+        $request->merge(['visit_time' => $normalized]);
     }
 
     public function destroy(ClientProject $client_project)

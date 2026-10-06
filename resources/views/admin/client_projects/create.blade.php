@@ -197,6 +197,8 @@
             'expandableId' => 'cp-create-visit-expandable',
             'visitDateId' => 'cp-create-visit-date',
             'visitDateValue' => $cpCreateVisitDateVal,
+            'visitTimeId' => 'cp-create-visit-time',
+            'visitTimeValue' => old('visit_time'),
             'expandOpen' => $cpCreateVisitExpandOpen,
             'slowExpand' => true,
           ])

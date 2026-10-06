@@ -143,10 +143,12 @@
 
       @php
         $cpEditVisitDateVal = old('visit_date', optional($project->visit_date)?->toDateString());
+        $cpEditVisitTimeVal = old('visit_time', $project->visitTimeForInput());
         $cpEditVisitExpandOpen = (bool) old('visit_required', $project->visit_required)
           || (bool) old('visit_done', $project->visit_done)
           || filled($cpEditVisitDateVal)
-          || $errors->has('visit_date');
+          || $errors->has('visit_date')
+          || $errors->has('visit_time');
       @endphp
       <div class="admin-form-section cp-visit-section">
         @include('admin.client_projects._visit_required_toggle', [
@@ -155,6 +157,8 @@
           'expandableId' => 'cp-edit-visit-expandable',
           'visitDateId' => 'cp-edit-visit-date',
           'visitDateValue' => $cpEditVisitDateVal,
+          'visitTimeId' => 'cp-edit-visit-time',
+          'visitTimeValue' => $cpEditVisitTimeVal,
           'expandOpen' => $cpEditVisitExpandOpen,
           'showVisitDone' => true,
           'visitDoneId' => 'cp-edit-visit-done',
@@ -289,6 +293,7 @@
       if (!form) return;
       var visitCb = document.getElementById('cp-edit-visit-required');
       var visitDate = document.getElementById('cp-edit-visit-date');
+      var visitTime = document.getElementById('cp-edit-visit-time');
       var visitDoneCb = document.getElementById('cp-edit-visit-done');
       var visitExpand = document.getElementById('cp-edit-visit-expandable');
 
@@ -307,10 +312,16 @@
         var done = visitDoneCb ? visitDoneCb.checked : false;
         if (!required && !done) {
           visitDate.value = '';
+          if (visitTime) visitTime.value = '';
         }
         visitDate.readOnly = !!done;
         visitDate.disabled = !done && !required;
         visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
+        if (visitTime) {
+          visitTime.readOnly = !!done;
+          visitTime.disabled = !done && !required;
+          visitTime.classList.toggle('cp-visit-time-input--locked', !!done || !required);
+        }
         syncEditVisitExpandable();
       }
 
@@ -325,6 +336,11 @@
           visitDate.disabled = false;
           visitDate.readOnly = false;
           visitDate.value = '';
+          if (visitTime) {
+            visitTime.disabled = false;
+            visitTime.readOnly = false;
+            visitTime.value = '';
+          }
         }
       });
     })();

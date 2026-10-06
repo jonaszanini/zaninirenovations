@@ -6101,6 +6101,43 @@ body.cp-modal-open {
   cursor: default;
 }
 
+/* Visit date + time row — compact fields, same row on desktop, stacks on mobile */
+.cp-visit-datetime-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.cp-visit-datetime-row .cp-visit-date {
+  flex: 0 0 auto;
+  width: 175px;
+}
+.cp-visit-datetime-row .cp-visit-date input[type="date"] {
+  width: 100%;
+}
+.cp-visit-datetime-row .cp-visit-time {
+  flex: 0 0 auto;
+  width: 130px;
+}
+.cp-visit-time input[type="time"] {
+  width: 100%;
+}
+.cp-visit-time input[type="time"]:disabled,
+.cp-visit-time input[type="time"].cp-visit-time-input--locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--admin-surface-hover, #f1f5f9);
+}
+@media (max-width: 480px) {
+  .cp-visit-datetime-row {
+    flex-direction: column;
+  }
+  .cp-visit-datetime-row .cp-visit-date,
+  .cp-visit-datetime-row .cp-visit-time {
+    width: 100%;
+  }
+}
+
 /* Schedule tab — action row at the bottom of the Start & End dates card.
    Save dates sits left, "Send dates to client" pushes to the right edge.
    Stacks vertically on narrow viewports. */

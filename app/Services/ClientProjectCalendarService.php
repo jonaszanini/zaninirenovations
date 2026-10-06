@@ -107,12 +107,31 @@ class ClientProjectCalendarService
             if ($p->visit_date) {
                 $visitDone = (bool) $p->visit_done;
                 $visitColor = $visitDone ? '#94a3b8' : $p->statusColor();
+
+                $hasTime = filled($p->visit_time);
+                if ($hasTime) {
+                    $timeParts = explode(':', $p->visit_time);
+                    $hour = (int) ($timeParts[0] ?? 0);
+                    $minute = (int) ($timeParts[1] ?? 0);
+                    $startDateTime = Carbon::parse($p->visit_date)->setTime($hour, $minute, 0);
+                    $endDateTime = (clone $startDateTime)->addHour();
+                    // Use floating local format (no timezone offset) so FullCalendar
+                    // displays the exact wall-clock time without browser TZ conversion.
+                    $start = $startDateTime->format('Y-m-d\TH:i:s');
+                    $end = $endDateTime->format('Y-m-d\TH:i:s');
+                    $allDay = false;
+                } else {
+                    $start = $p->visit_date->toDateString();
+                    $end = Carbon::parse($p->visit_date)->addDay()->toDateString();
+                    $allDay = true;
+                }
+
                 $event = [
                     'id' => 'visit-'.$p->id,
                     'title' => ($visitDone ? 'Visit (done): ' : 'Visit: ').$p->name.' — '.$p->client_name,
-                    'start' => $p->visit_date->toDateString(),
-                    'end' => Carbon::parse($p->visit_date)->addDay()->toDateString(),
-                    'allDay' => true,
+                    'start' => $start,
+                    'end' => $end,
+                    'allDay' => $allDay,
                     'backgroundColor' => $visitColor,
                     'borderColor' => $visitColor,
                     'textColor' => '#ffffff',
