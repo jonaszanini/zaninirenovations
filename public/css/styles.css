@@ -1838,9 +1838,35 @@ a.nav-btn-highlight:hover {
   background: #edf0f2 !important;
 }
 
+.section-core-services .service-block-2 figure {
+  aspect-ratio: 800 / 237;
+  overflow: hidden;
+}
+
 .section-core-services .service-block-2 figure img {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.section-core-services .service-block-2 h3 {
+  top: 50%;
+  left: 50%;
+  width: calc(100% - 16px);
+  margin: 0;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+@media (max-width: 767px) {
+  .section-core-services .service-block-2 h3 {
+    font-size: 20px;
+  }
 }
 
 .section-primary-bg {
