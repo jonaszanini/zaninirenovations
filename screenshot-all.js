@@ -17,6 +17,7 @@ const screenshots = [
   { name: 'client-edit-form-desktop-1280-light', url: '/admin/clients/1/edit', width: 1280, height: 900, theme: 'light' },
   { name: 'client-project-edit-form-desktop-1280-dark', url: '/admin/client-projects/1/edit', width: 1280, height: 900, theme: 'dark' },
   { name: 'shared-prices-desktop-1280-light', url: '/admin/quotations/shared-prices', width: 1280, height: 900, theme: 'light' },
+  { name: 'quotation-cards-desktop-1280-light', url: '/admin/client-projects/1#quotation', width: 1280, height: 900, theme: 'light' },
 ];
 
 async function login(page) {
