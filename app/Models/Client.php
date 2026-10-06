@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Directory entry for a person/company you work with. Projects link via
@@ -37,9 +39,97 @@ class Client extends Model
         return $this->hasMany(ClientProject::class, 'client_id');
     }
 
+    /**
+     * Most recently created linked project that has a service address.
+     * Used when the directory client has no address of its own.
+     */
+    public function latestAddressProject(): HasOne
+    {
+        return $this->hasOne(ClientProject::class, 'client_id')->ofMany(
+            ['id' => 'max'],
+            function ($query) {
+                $query->whereNotNull('client_address')
+                    ->where('client_address', '!=', '');
+            }
+        );
+    }
+
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(ClientTag::class)->orderBy('name');
+    }
+
+    /**
+     * Address for list cards/tables: the client's stored address, or the
+     * most recent linked project's address when the directory record is blank.
+     */
+    public function listAddress(): ?string
+    {
+        $own = trim((string) $this->address);
+        if ($own !== '') {
+            return $own;
+        }
+
+        $project = $this->latestAddressProject;
+        if (! $project) {
+            return null;
+        }
+
+        $fromProject = trim((string) ($project->getRawOriginal('client_address') ?: $project->client_address ?: ''));
+
+        return $fromProject !== '' ? $fromProject : null;
+    }
+
+    /**
+     * Google Maps search URL for {@see listAddress()}, using the same helper
+     * as the project page map-pin link.
+     */
+    public function googleMapsSearchUrl(): ?string
+    {
+        $address = $this->listAddress();
+        if ($address === null) {
+            return null;
+        }
+
+        $own = trim((string) $this->address);
+        $placeId = $own !== ''
+            ? $this->address_place_id
+            : ($this->latestAddressProject?->getRawOriginal('client_address_place_id')
+                ?: $this->latestAddressProject?->client_address_place_id);
+
+        return ClientProject::googleMapsSearchUrlFor($address, $placeId);
+    }
+
+    /**
+     * Filter directory clients by name, email, phone, or address (including
+     * linked project service addresses).
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeSearch(Builder $query, string $q): Builder
+    {
+        $q = trim($q);
+        if ($q === '') {
+            return $query;
+        }
+
+        $like = '%'.$q.'%';
+        $digits = preg_replace('/\D/', '', $q) ?? '';
+
+        return $query->where(function (Builder $sub) use ($like, $digits) {
+            $sub->where('name', 'like', $like)
+                ->orWhere('email', 'like', $like)
+                ->orWhere('email_secondary', 'like', $like)
+                ->orWhere('phone', 'like', $like)
+                ->orWhere('address', 'like', $like)
+                ->orWhereHas('projects', function ($projects) use ($like) {
+                    $projects->where('client_address', 'like', $like);
+                });
+
+            if (strlen($digits) >= 3) {
+                $sub->orWhere('phone', 'like', '%'.$digits.'%');
+            }
+        });
     }
 
     /**

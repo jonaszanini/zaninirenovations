@@ -85,6 +85,21 @@
   $reminderConfirm = filled(trim((string) $project->client_email))
     ? "Email a payment reminder to {$clientEmail} now?"
     : "Send a payment reminder SMS to {$clientSms} now?";
+
+  $canMarkPaid = false;
+  $pauseConfirm = '';
+  $deleteConfirm = 'Delete this draft invoice? This cannot be undone.';
+  if ($invoice) {
+      $canMarkPaid = ! $invoice->isPaid() && $invoice->hasContent() && (float) $invoice->total > 0;
+      if ($invoice->isSent()) {
+          $pauseConfirm = $invoice->dailyRemindersPaused()
+              ? "Resume daily payment reminders for invoice {$invoice->invoice_number}? The client will be emailed or texted again each day this invoice stays unpaid past the due date."
+              : "Stop daily payment reminders for invoice {$invoice->invoice_number}? The invoice stays on this line. You can still send a one-off reminder, or resume daily reminders later.";
+      }
+      if ($invoice->wasEverSent()) {
+          $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to {$clientEmail}. Deleting it removes the invoice from our records and returns this line to Create Invoice — the payment-plan row stays. The client will still have the old PDF in their inbox. Continue?";
+      }
+  }
 @endphp
 @if (!$invoice)
   {{-- No invoice yet for this installment → offer to create one. --}}
@@ -204,43 +219,6 @@
         ];
     }
   @endphp
-  @if (!$invoice->isPaid() && (! $canSend || ! $canSms))
-    <div class="cp-contract-warning cp-invoice-send-warning">
-      <i class="fa fa-exclamation-triangle"></i>
-      <div class="cp-invoice-send-warning-body">
-        @php
-          $disabledChannels = [];
-          if (! $canSend) { $disabledChannels[] = 'Email'; }
-          if (! $canSms) { $disabledChannels[] = 'SMS'; }
-        @endphp
-        <p class="cp-invoice-send-warning-lead">
-          <strong>{{ implode(' and ', $disabledChannels) }} disabled.</strong> Address the items below:
-        </p>
-        <ul class="cp-invoice-send-blockers">
-          @if ($needsDueDate)
-            <li>Set a <strong>payment due date</strong></li>
-          @endif
-          @foreach ($actionBlockersForDisplay as $hint)
-            <li>{{ $hint }}</li>
-          @endforeach
-        </ul>
-        <p class="cp-invoice-send-warning-actions">
-          @if ($needsInvoiceEdit)
-            <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}"
-               class="admin-btn admin-btn--ghost admin-btn--sm cp-invoice-send-warning-link">
-              <i class="fa fa-pencil"></i> Edit invoice
-            </a>
-          @endif
-          @if ($needsProjectEdit)
-            <a href="{{ route('admin.client-projects.edit', $project) }}"
-               class="admin-btn admin-btn--ghost admin-btn--sm cp-invoice-send-warning-link">
-              <i class="fa fa-pencil"></i> Edit project info
-            </a>
-          @endif
-        </p>
-      </div>
-    </div>
-  @endif
   <div class="cp-invoice-actions admin-table-actions">
     {{-- Edit (hidden on paid invoices; view a read-only version via PDF) --}}
     @unless ($invoice->isPaid())

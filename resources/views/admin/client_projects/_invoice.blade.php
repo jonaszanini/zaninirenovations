@@ -26,14 +26,14 @@
 @endphp
 
 @if ($project->usesInvoiceBillingOverride())
-  <div class="admin-card" style="margin-bottom:1rem;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
-    <p style="margin:0;font-size:14px;color:#1e3a5f;">
+  <div class="admin-card cp-invoice-bill-to">
+    <p class="cp-invoice-bill-to__text">
       <strong>Invoice bill-to:</strong> {{ $project->invoiceBillToName() }}
       @if (filled(trim((string) $project->invoice_billing_address)))
-        <span class="admin-form-help" style="display:block;margin-top:6px;white-space:pre-line;">{{ $project->invoice_billing_address }}</span>
+        <span class="admin-form-help cp-invoice-bill-to__address">{{ $project->invoice_billing_address }}</span>
       @endif
     </p>
-    <p class="admin-form-help" style="margin:8px 0 0;">PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).</p>
+    <p class="admin-form-help cp-invoice-bill-to__help">PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).</p>
     <a href="{{ route('admin.client-projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-form-group-spaced">Edit project</a>
   </div>
 @endif
@@ -163,7 +163,7 @@
                 $entryCount = $invoice->timeEntries->count();
               @endphp
               <tr>
-                <td>
+                <td data-label="Description">
                   {{ $invoice->installment_description ?: 'Hourly work' }}
                   @if ($entryCount> 0)
                     <div class="admin-form-help" style="margin-top:2px;">
@@ -179,23 +179,25 @@
                     </div>
                   @endif
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
-                <td class="cp-col-amount">
+                <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
+                <td class="cp-col-amount" data-label="HST">
                   @if ($invoice->isHstExempt())
                     <span class="admin-form-help" style="font-style:italic;">— excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
                   @endif
                 </td>
-                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
-                <td>
+                <td class="cp-col-amount" data-label="Total">
+                  <strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong>
+                </td>
+                <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
-                <td>
+                <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
                     'project' => $project,
                     'invoice' => $invoice,
@@ -205,6 +207,7 @@
                   ])
                 </td>
               </tr>
+              @include('admin.client_projects._invoice_send_warning_row', ['colspan' => 6])
             @endforeach
           </tbody>
         </table>
@@ -349,8 +352,10 @@
                 $statusColor = \App\Models\ClientProjectInvoice::statusColor($status);
               @endphp
               <tr>
-                <td><strong>{{ $n }}</strong></td>
-                <td>
+                <td data-label="#">
+                  <strong>{{ $n }}</strong>
+                </td>
+                <td data-label="Description">
                   {{ $inst->label ?: 'Installment '.$n }}
                   @if ($inst->is_paid)
                     <span class="cp-badge" style="background:#22c55e20;color:#15803d;margin-left:4px;">Installment paid</span>
@@ -370,16 +375,18 @@
                     </div>
                   @endif
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($rowSubtotal) }}</td>
-                <td class="cp-col-amount">
+                <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($rowSubtotal) }}</td>
+                <td class="cp-col-amount" data-label="HST">
                   @if ($invoice && $invoice->isHstExempt())
                     <span class="admin-form-help" style="font-style:italic;">— excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($rowHst) }}
                   @endif
                 </td>
-                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($rowTotal) }}</strong></td>
-                <td>
+                <td class="cp-col-amount" data-label="Total">
+                  <strong>{{ \App\Models\ClientProject::formatMoney($rowTotal) }}</strong>
+                </td>
+                <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
                     @if ($invoice && $invoice->invoice_number)
@@ -388,7 +395,7 @@
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
-                <td>
+                <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
                     'project' => $project,
                     'invoice' => $invoice,
@@ -398,6 +405,7 @@
                   ])
                 </td>
               </tr>
+              @include('admin.client_projects._invoice_send_warning_row', ['colspan' => 7])
             @endforeach
           </tbody>
         </table>
@@ -432,7 +440,7 @@
                 $statusColor = \App\Models\ClientProjectInvoice::statusColor($invoice->status);
               @endphp
               <tr>
-                <td>
+                <td data-label="Description">
                   {{ $invoice->installment_description ?: 'Manual invoice' }}
                   @if ($invoice->isHstExempt())
                     <div style="margin-top:4px;">
@@ -442,23 +450,25 @@
                     </div>
                   @endif
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
-                <td class="cp-col-amount">
+                <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
+                <td class="cp-col-amount" data-label="HST">
                   @if ($invoice->isHstExempt())
                     <span class="admin-form-help" style="font-style:italic;">— excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
                   @endif
                 </td>
-                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
-                <td>
+                <td class="cp-col-amount" data-label="Total">
+                  <strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong>
+                </td>
+                <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
-                <td>
+                <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
                     'project' => $project,
                     'invoice' => $invoice,
@@ -468,6 +478,7 @@
                   ])
                 </td>
               </tr>
+              @include('admin.client_projects._invoice_send_warning_row', ['colspan' => 6])
             @endforeach
           </tbody>
         </table>

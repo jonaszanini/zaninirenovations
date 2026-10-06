@@ -21,6 +21,10 @@ const screenshots = [
   { name: 'shared-prices-mat-price-1280-light', url: '/admin/quotations/shared-prices', width: 1280, height: 900, theme: 'light', scrollToMatPrice: true, checkOverflow: true },
   { name: 'quotation-cards-desktop-1280-light', url: '/admin/client-projects/1#quotation', width: 1280, height: 900, theme: 'light' },
   { name: 'projects-list-desktop-1280-light', url: '/admin/client-projects', width: 1280, height: 900, theme: 'light', checkOverflow: true },
+  { name: 'clients-list-mobile-390-dark', url: '/admin/clients', width: 390, height: 844, theme: 'dark', checkOverflow: true },
+  { name: 'clients-list-desktop-1280-dark', url: '/admin/clients', width: 1280, height: 900, theme: 'dark', checkOverflow: true },
+  { name: 'clients-list-mobile-390-light', url: '/admin/clients', width: 390, height: 844, theme: 'light', checkOverflow: true },
+  { name: 'clients-list-search-mobile-390-dark', url: '/admin/clients?q=Lucc', width: 390, height: 844, theme: 'dark', checkOverflow: true },
 ];
 
 const overflowReport = {};

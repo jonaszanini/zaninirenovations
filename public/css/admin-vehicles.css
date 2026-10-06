@@ -385,8 +385,9 @@
 .q-commute-metric {
   padding: 10px 12px;
   border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: var(--admin-stat-tile-bg, #f8fafc);
+  border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
+  color: var(--admin-text);
 }
 
 .q-commute-metric__label {

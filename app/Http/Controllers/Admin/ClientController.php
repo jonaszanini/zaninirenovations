@@ -18,15 +18,8 @@ class ClientController extends Controller
 
         $clients = Client::query()
             ->withCount('projects')
-            ->with('tags')
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($sub) use ($q) {
-                    $sub->where('name', 'like', '%'.$q.'%')
-                        ->orWhere('email', 'like', '%'.$q.'%')
-                        ->orWhere('phone', 'like', '%'.$q.'%')
-                        ->orWhere('address', 'like', '%'.$q.'%');
-                });
-            })
+            ->with(['tags', 'latestAddressProject'])
+            ->when($q !== '', fn ($query) => $query->search($q))
             ->when($tagId > 0, function ($query) use ($tagId) {
                 $query->whereHas('tags', fn ($t) => $t->where('client_tags.id', $tagId));
             })

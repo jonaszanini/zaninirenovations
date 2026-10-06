@@ -135,21 +135,21 @@ a.cp-projects-scope-chip {
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 a.cp-projects-scope-chip:hover {
-  border-color: #94a3b8;
-  background: #f8fafc;
-  color: #0f172a;
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
 }
 a.cp-projects-scope-chip.cp-projects-scope-chip--active {
-  border-color: #024768;
+  border-color: var(--admin-primary);
   background: rgba(2, 71, 104, 0.09);
-  color: #024768;
+  color: var(--admin-primary);
   font-weight: 600;
 }
 .cp-projects-scope-hint {
   margin: 10px 0 0;
   font-size: 13px;
   line-height: 1.45;
-  color: #64748b;
+  color: var(--admin-muted);
 }
 .cp-projects-scope-hint .fa {
   margin-right: 6px;
@@ -188,15 +188,15 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   color: #b45309;
 }
 .cp-badge--hourly {
-  background: #ecfdf5;
-  color: #15803d;
+  background: var(--admin-stat-highlight-bg);
+  color: var(--admin-success);
 }
 .cp-badge--manual {
-  background: #e5e7eb;
-  color: #4b5563;
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
 }
 .cp-badge--materials {
-  background: #ecfdf5;
+  background: var(--admin-stat-highlight-bg);
   color: #047857;
 }
 .cp-heading-reset {
@@ -314,7 +314,8 @@ a.cp-table-street .fa {
   font-variant-numeric: tabular-nums;
 }
 .cp-required {
-  color: #dc2626;
+  color: var(--admin-danger);
+}
 }
 
 /* =================================================================
@@ -379,10 +380,10 @@ a.cp-table-street .fa {
 /* Email / SMS log: failed delivery row gets a soft red wash so the
    admin can spot bounces / SMTP errors at a glance. */
 .cp-table tr.cp-comm-row-failed td {
-  background: #fef2f2;
+  background: var(--admin-danger-soft);
 }
 .cp-table tr.cp-comm-row-failed:hover td {
-  background: #fee2e2;
+  background: var(--admin-danger-soft);
 }
 
 /* =================================================================
@@ -1021,8 +1022,9 @@ html.cp-cancel-modal-open {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #e5e7eb;
-  color: #4b5563;
+  background: var(--admin-stat-tile-bg);
+  color: var(--admin-muted);
+  border: 1px solid var(--admin-border);
   font-size: 11px;
   font-weight: 700;
   cursor: help;
@@ -1123,11 +1125,11 @@ html.cp-cancel-modal-open {
   flex-shrink: 0;
 }
 .cp-tab:hover {
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-tab.is-active {
-  color: #024768;
-  border-bottom-color: #024768;
+  color: var(--admin-primary);
+  border-bottom-color: var(--admin-primary);
 }
 .cp-tab-panel {
   display: none;
@@ -1286,7 +1288,7 @@ html.cp-cancel-modal-open {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
 }
 
 .cp-installments-editor {
@@ -1297,14 +1299,14 @@ html.cp-cancel-modal-open {
   display: inline-block;
   padding: 6px 12px;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--admin-stat-tile-bg);
+  color: var(--admin-muted);
   font-size: 13px;
   margin-bottom: 10px;
 }
 .cp-installments-remaining.is-hidden { display: none; }
-.cp-installments-remaining.is-ok { background: #dcfce7; color: #166534; }
-.cp-installments-remaining.is-error { background: #fee2e2; color: #991b1b; }
+.cp-installments-remaining.is-ok { background: var(--admin-stat-highlight-bg); color: var(--admin-success); }
+.cp-installments-remaining.is-error { background: var(--admin-danger-soft); color: var(--admin-danger); }
 .cp-installments-remaining [data-remaining] {
   font-weight: 700;
 }
@@ -1320,18 +1322,18 @@ html.cp-cancel-modal-open {
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
   border-radius: 6px;
-  background: #fff;
+  background: var(--admin-surface);
 }
 /* Paid installment — the percentage is locked and the row is visually muted. */
 .cp-installment-row.is-paid-row {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
 }
 .cp-installment-row.is-paid-row .cp-pct-input[readonly] {
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--admin-stat-tile-bg);
+  color: var(--admin-muted);
   cursor: not-allowed;
 }
 .cp-installment-label {
@@ -1367,7 +1369,7 @@ html.cp-cancel-modal-open {
 .cp-amount-preview {
   font-size: 15px;
   font-weight: 600;
-  color: #024768;
+  color: var(--admin-primary);
   display: block;
 }
 
@@ -1480,7 +1482,7 @@ html.cp-cancel-modal-open {
   text-align: center;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #374151;
+  color: var(--admin-heading);
 }
 .cp-expense-receipt-cell {
   vertical-align: middle;
@@ -1526,7 +1528,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-expense-edit-row td {
   padding: 0;
   border-top: none;
-  background: #f9fafb;
+  background: var(--admin-stat-tile-bg);
 }
 .cp-expense-edit-panel {
   padding: 16px 20px 20px;
@@ -1794,17 +1796,18 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-profit-tile {
   padding: 14px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
   border-radius: 8px;
   background: var(--admin-surface, #ffffff);
+  color: var(--admin-text);
 }
 .cp-profit-tile--highlight {
-  background: #f0f9ff;
-  border-color: #bae6fd;
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
 }
 .cp-profit-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--admin-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 4px;
@@ -1812,7 +1815,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-profit-value {
   font-size: 18px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--admin-heading);
   font-variant-numeric: tabular-nums;
 }
 .cp-profit-value.is-positive { color: #15803d; }
@@ -1852,12 +1855,12 @@ a:hover .cp-expense-receipt-pdf {
    Locked tab notice (before proposal accepted)
    ================================================================= */
 .cp-locked {
-  background: #fff7ed;
-  border: 1px dashed #fed7aa;
+  background: var(--admin-warn-tile-bg);
+  border: 1px dashed var(--admin-warn-tile-border);
 }
 .cp-locked h3 {
   margin-top: 0;
-  color: #9a3412;
+  color: var(--admin-warn-tile-text);
 }
 
 /* =================================================================
@@ -2250,7 +2253,7 @@ a:hover .cp-expense-receipt-pdf {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -2279,14 +2282,14 @@ a:hover .cp-expense-receipt-pdf {
   gap: 8px;
 }
 .cp-time-entry {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
   border-radius: 10px;
-  background: #fff;
+  background: var(--admin-surface);
   overflow: hidden;
 }
 .cp-time-entry--open {
-  border-color: #fde68a;
-  background: #fffbeb;
+  border-color: var(--admin-warn-tile-border);
+  background: var(--admin-warn-tile-bg);
 }
 .cp-time-entry__summary {
   list-style: none;
@@ -2494,9 +2497,9 @@ a:hover .cp-expense-receipt-pdf {
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-  color: #78350f;
+  background: var(--admin-warn-tile-bg);
+  border: 1px solid var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
   border-radius: 6px;
   margin-bottom: 14px;
   font-size: 13px;
@@ -2752,7 +2755,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-number {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85em;
-  color: #024768;
+  color: var(--admin-primary);
   background: #024768 0;
   background: rgba(2, 71, 104, 0.08);
   border-radius: 4px;
@@ -2791,9 +2794,9 @@ a:hover .cp-expense-receipt-pdf {
   gap: 6px;
   margin: 6px 0 0;
   font-size: 12px;
-  color: #b45309;
-  background: #fef3c7;
-  border: 1px solid #fde68a;
+  color: var(--admin-warn-tile-text);
+  background: var(--admin-warn-tile-bg);
+  border: 1px solid var(--admin-warn-tile-border);
   padding: 6px 8px;
   border-radius: 6px;
 }
@@ -2805,7 +2808,7 @@ a:hover .cp-expense-receipt-pdf {
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
-  background: #fff;
+  background: var(--admin-surface);
 }
 .cp-quotation-items-header {
   display: flex;
@@ -2885,7 +2888,7 @@ a:hover .cp-expense-receipt-pdf {
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 12px;
-    background: #fff;
+    background: var(--admin-surface);
   }
   #cp-invoice-items td {
     border-bottom: none;
@@ -3000,7 +3003,7 @@ a:hover .cp-expense-receipt-pdf {
   padding-top: 8px;
   font-size: 17px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
 }
 
 /* Mark-as-paid modal: payment method radio group (e-Transfer / Cash / Check). */
@@ -3242,7 +3245,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-accordion__total {
   font-size: 15px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-quotation-accordion__total--muted {
   font-size: 14px;
@@ -3351,7 +3354,7 @@ a:hover .cp-expense-receipt-pdf {
     content: attr(data-total);
     font-size: 13px;
     font-weight: 600;
-    color: #024768;
+    color: var(--admin-primary);
     margin-right: 6px;
   }
   .cp-quotation-accordion__desc {
@@ -3825,37 +3828,59 @@ a:hover .cp-expense-receipt-pdf {
   margin: 14px 0 4px;
 }
 .cp-hourly-summary-tile {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--admin-stat-tile-bg);
+  border: 1px solid var(--admin-stat-tile-border);
   border-radius: 8px;
   padding: 10px 12px;
+  color: var(--admin-text);
 }
 .cp-hourly-summary-tile--highlight {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
+  background: var(--admin-stat-highlight-bg);
+  border-color: var(--admin-stat-highlight-border);
 }
 .cp-hourly-summary-label {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6b7280;
+  color: var(--admin-muted);
 }
 .cp-hourly-summary-value {
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--admin-heading);
   margin-top: 2px;
 }
 .cp-hourly-summary-sub {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--admin-muted);
   margin-top: 2px;
 }
 @media (max-width: 640px) {
   .cp-hourly-summary {
     grid-template-columns: 1fr;
   }
+}
+
+.cp-invoice-bill-to {
+  margin-bottom: 1rem;
+  padding: 12px 14px;
+  background: var(--admin-info-tile-bg);
+  border: 1px solid var(--admin-info-tile-border);
+  border-radius: 8px;
+}
+.cp-invoice-bill-to__text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--admin-heading);
+}
+.cp-invoice-bill-to__address {
+  display: block;
+  margin-top: 6px;
+  white-space: pre-line;
+}
+.cp-invoice-bill-to__help {
+  margin: 8px 0 0;
 }
 
 /* Invoice table — mostly inherits from .admin-table; this tightens the
@@ -3869,6 +3894,7 @@ a:hover .cp-expense-receipt-pdf {
   gap: 6px;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
 }
 .cp-invoice-actions .cp-action-icon-btn {
   position: relative;
@@ -3928,12 +3954,20 @@ a:hover .cp-expense-receipt-pdf {
   display: inline-block;
 }
 .cp-invoices-table tbody td:last-child {
+  vertical-align: middle;
+}
+.cp-invoice-warning-row td {
+  padding-top: 0;
+  border-top: none;
   vertical-align: top;
-  overflow: visible;
 }
 .cp-invoices-table .cp-invoice-send-warning {
-  margin-bottom: 8px;
+  margin: 0 0 10px;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
 }
 .cp-invoice-send-warning-body {
   flex: 1;
@@ -3958,11 +3992,95 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-invoice-send-warning-link {
   font-weight: 600 !important;
-  color: #024768 !important;
+  color: var(--admin-primary) !important;
   text-decoration: none !important;
 }
 .cp-invoice-send-warning-link:hover {
   color: #013552 !important;
+}
+
+@media (max-width: 767px) {
+  .admin-table-scroll:has(.cp-invoices-table) {
+    overflow-x: visible;
+  }
+  .cp-invoices-table.admin-table {
+    min-width: 0;
+  }
+  .cp-invoices-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .cp-invoices-table,
+  .cp-invoices-table tbody,
+  .cp-invoices-table tr,
+  .cp-invoices-table th,
+  .cp-invoices-table td {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+  .cp-invoices-table tbody tr:not(.cp-invoice-warning-row) {
+    background: var(--admin-elevated);
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    padding: 10px 12px 8px;
+    margin-bottom: 8px;
+  }
+  .cp-invoice-warning-row {
+    margin: -2px 0 12px;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  .cp-invoices-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 4px 0;
+    border: none;
+  }
+  .cp-invoices-table td[data-label]::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--admin-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex: 0 0 auto;
+    padding-top: 4px;
+  }
+  .cp-invoices-table td[data-label="Actions"] {
+    justify-content: flex-end;
+  }
+  .cp-invoices-table td[data-label="Actions"]::before {
+    margin-right: auto;
+    padding-top: 12px;
+  }
+  .cp-invoice-warning-row td {
+    display: block;
+    padding: 0;
+  }
+  .cp-invoice-warning-row td::before {
+    content: none;
+  }
+  .cp-invoices-table .cp-invoice-send-warning {
+    position: static;
+    width: 100%;
+    max-width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    gap: 8px;
+  }
+  .cp-invoice-send-warning-lead {
+    margin-bottom: 4px;
+  }
+  .cp-invoice-send-warning-actions {
+    margin-top: 8px;
+  }
 }
 
 /* Green "success" button variant used for Mark-Paid / Receipt. */
@@ -4002,7 +4120,7 @@ a:hover .cp-expense-receipt-pdf {
   background: rgba(2, 71, 104, 0.06);
   border: 1px solid rgba(2, 71, 104, 0.25);
   border-radius: 10px;
-  color: #024768;
+  color: var(--admin-primary);
   flex-wrap: wrap;
 }
 .cp-invoice-locked-total-value {
@@ -4016,7 +4134,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 .cp-invoice-locked-total-grand {
   font-size: 16px;
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-invoice-mismatch {
   color: #b91c1c !important;
@@ -4322,7 +4440,7 @@ body.cp-modal-open {
 .cp-project-photos-heading {
   margin: 0 0 10px;
   font-size: 15px;
-  color: #024768;
+  color: var(--admin-primary);
 }
 .cp-project-photos {
   margin-top: 14px;
@@ -4342,8 +4460,8 @@ body.cp-modal-open {
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f3f4f6;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface-hover);
 }
 .cp-project-photos-preview-tile {
   display: flex;
@@ -4353,8 +4471,8 @@ body.cp-modal-open {
   gap: 6px;
   aspect-ratio: 4 / 3;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f8fafc;
+  border: 1px solid var(--admin-stat-tile-border);
+  background: var(--admin-stat-tile-bg);
   padding: 8px;
   text-align: center;
   overflow: hidden;
@@ -4703,7 +4821,7 @@ body.cp-modal-open {
 }
 .cp-quotation-pdf-photos__item.is-selected,
 .cp-quotation-pdf-photos__item:has(.admin-checkbox__input:checked) {
-  border-color: #024768;
+  border-color: var(--admin-primary);
   box-shadow: 0 0 0 1px #024768;
 }
 .cp-quotation-pdf-photos__thumb img {
@@ -5536,8 +5654,8 @@ body.cp-modal-open {
   width: 56px;
   height: 56px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--admin-border, #e2e8f0);
+  background: var(--admin-surface);
   overflow: hidden;
 }
 .sq-mat-thumb[hidden] {
@@ -6386,7 +6504,7 @@ body.cp-modal-open {
   width: 44px;
   height: 26px;
   border-radius: 999px;
-  background: #cbd5e1;
+  background: var(--admin-border-strong);
   position: relative;
   transition: background 0.25s ease, box-shadow 0.25s ease;
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
@@ -6678,42 +6796,211 @@ body.cp-modal-open {
 }
 
 /* Client directory (admin) toolbar on the clients list */
+.cp-clients-toolbar {
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
 .cp-clients-toolbar-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cp-clients-toolbar-search__row {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1 1 240px;
 }
 
 .cp-clients-toolbar-search__input {
   width: min(320px, 100%);
   max-width: 320px;
-  flex: 0 1 320px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-@media (max-width: 700px) {
-  .cp-clients-toolbar-search {
-    flex-wrap: wrap;
-  }
-  .cp-clients-toolbar-search__input,
-  .cp-clients-toolbar-search select {
-    flex: 1 1 160px;
-    min-width: 0;
-    max-width: none;
-  }
+.cp-clients-toolbar-search select {
+  flex: 0 1 160px;
+  min-width: 0;
+}
+
+.cp-clients-toolbar-search__row .admin-btn {
+  flex-shrink: 0;
 }
 
 .cp-clients-toolbar-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
 }
 
 .cp-clients-toolbar-total {
   margin: 0;
+  margin-left: auto;
   text-align: right;
   white-space: nowrap;
+}
+
+.cp-clients-toolbar-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: 0.1rem;
+  vertical-align: middle;
+  color: var(--admin-muted);
+  text-decoration: none;
+}
+.cp-clients-toolbar-clear:hover,
+.cp-clients-toolbar-clear:focus-visible {
+  color: var(--admin-heading);
+}
+
+.cp-clients-address-link {
+  display: inline;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* Desktop: one line per row; Address takes leftover width and wraps. */
+@media (min-width: 641px) {
+  .cp-clients-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+  .cp-clients-table th,
+  .cp-clients-table td {
+    padding: 0.55rem 0.65rem;
+  }
+  .cp-clients-table .cp-clients-col-name {
+    white-space: nowrap;
+    width: 10.75rem;
+  }
+  .cp-clients-table .cp-clients-col-email {
+    white-space: nowrap;
+    width: 12.5rem;
+  }
+  .cp-clients-table .cp-clients-col-phone {
+    white-space: nowrap;
+    width: 8.25rem;
+  }
+  .cp-clients-table .cp-clients-col-projects {
+    white-space: nowrap;
+    width: 5.75rem;
+  }
+  .cp-clients-table .cp-clients-col-actions {
+    white-space: nowrap;
+    width: 6.5rem;
+  }
+  .cp-clients-table .cp-clients-col-address {
+    width: auto;
+    white-space: normal;
+  }
+  .cp-clients-table .cp-clients-address-link {
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+}
+
+@media (max-width: 640px) {
+  .cp-clients-table-card.admin-card {
+    padding: 1rem;
+  }
+  .cp-clients-table.admin-table--stack tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 0.5rem;
+    row-gap: 0.15rem;
+    padding: 0.75rem 0;
+  }
+  .cp-clients-table.admin-table--stack tr:first-child {
+    padding-top: 0;
+  }
+  .cp-clients-table.admin-table--stack tr:last-child {
+    padding-bottom: 0;
+  }
+  .cp-clients-table.admin-table--stack td {
+    width: auto;
+    max-width: none;
+    grid-column: 1 / -1;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-name {
+    grid-column: 1;
+    grid-row: 1;
+    align-items: center;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-name .cl-tag-picker {
+    flex-basis: 100%;
+    padding-left: 90px;
+    margin-top: 0;
+    box-sizing: border-box;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-actions {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    justify-content: flex-end;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-actions .admin-btn {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .cp-clients-toolbar.admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+  .cp-clients-toolbar-search {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .cp-clients-toolbar-search__row {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .cp-clients-toolbar-search__input,
+  .cp-clients-toolbar-search select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+    width: auto;
+  }
+  .cp-clients-toolbar-search select {
+    flex: 1 1 100%;
+  }
+  .cp-clients-toolbar-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cp-clients-toolbar-total {
+    margin-left: 0;
+    text-align: left;
+    width: 100%;
+  }
 }
 /* Edit/create project — form fills content width; Save/Cancel sticky aside */
 .cp-edit-project-layout {
@@ -6741,7 +7028,7 @@ body.cp-modal-open {
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--admin-surface);
   border: 1px solid var(--admin-border, #d8dee4);
   border-radius: var(--admin-radius, 12px);
   box-shadow: var(--admin-shadow-md, 0 8px 30px rgba(55, 52, 53, 0.08));
@@ -6849,7 +7136,7 @@ body.cp-modal-open {
 }
 .cp-helper-assign-option__meta {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--admin-muted);
   word-break: break-word;
 }
 .cp-helper-pay-toolbar {
@@ -6887,13 +7174,13 @@ body.cp-modal-open {
 .cp-helper-entry__select .admin-checkbox__text.cp-helper-entry__name {
   font-weight: 700;
   font-size: 16px;
-  color: #111827;
+  color: var(--admin-heading);
   line-height: 1.3;
 }
 .cp-helper-entry__name {
   font-weight: 700;
   font-size: 16px;
-  color: #111827;
+  color: var(--admin-heading);
   line-height: 1.3;
 }
 .cp-helper-entry__summary-detail {
@@ -6913,8 +7200,8 @@ body.cp-modal-open {
   opacity: 0.92;
 }
 .cp-helper-entry__badge--paid {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--admin-stat-highlight-bg);
+  color: var(--admin-success);
 }
 .cp-helper-entry__type-badge {
   display: inline-flex;
@@ -7515,7 +7802,7 @@ body.cp-modal-open {
 .br-acc__num {
   font-size: 12px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--admin-muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   flex-shrink: 0;
@@ -8094,7 +8381,7 @@ body.cp-modal-open {
   flex: 0 0 auto;
   font-size: 13px;
   font-weight: 700;
-  color: #024768;
+  color: var(--admin-primary);
   min-width: 72px;
   text-align: center;
 }
@@ -8201,7 +8488,7 @@ body.cp-modal-open {
 .br-config-table .admin-search-select.is-selected .admin-search-select__input,
 .br-extra-row.is-linked .admin-search-select__input {
   padding-left: 2.35rem;
-  background: #fff;
+  background: var(--admin-input-bg);
   border-color: var(--admin-primary);
 }
 .br-extra-row__catalog {
@@ -8598,7 +8885,7 @@ body.cp-modal-open {
   display: flex;
   align-items: center;
   font-weight: 600;
-  color: #024768;
+  color: var(--admin-primary);
 }
 .sh-permit {
   display: flex;
@@ -8607,9 +8894,9 @@ body.cp-modal-open {
   margin-top: 12px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--admin-warn-tile-bg);
+  border: 1px solid var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
   font-size: 13px;
 }
 .sh-permit[hidden] {
@@ -8749,7 +9036,7 @@ body.cp-modal-open {
 }
 .tm-card h4 {
   margin: 0 0 10px;
-  color: #024768;
+  color: var(--admin-primary);
   font-size: 15px;
 }
 .tm-family-toggle {
@@ -8800,8 +9087,8 @@ body.cp-modal-open {
   min-height: 28px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #eef3f6;
-  color: #024768;
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
   font-size: 13px;
   font-weight: 600;
 }
@@ -8831,7 +9118,7 @@ body.cp-modal-open {
   margin: 0 4px 0 0;
   border-radius: 50%;
   background: #e8f4ea;
-  color: #024768;
+  color: var(--admin-primary);
   font-size: 11px;
   line-height: 1;
   flex-shrink: 0;
