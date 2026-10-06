@@ -49,8 +49,13 @@
 }
 .sp-group[open] > .sp-group__summary::before { transform: rotate(90deg); }
 
-/* Desktop table */
-.sp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+/* Desktop table: fixed layout so leftover width goes to Mat. name */
+.sp-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.85rem;
+}
 .sp-table th {
   text-align: left;
   font-size: 0.65rem;
@@ -58,25 +63,35 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--admin-muted);
-  padding: 0.4rem 0.35rem;
+  padding: 0.4rem 0.3rem;
   border-bottom: 1px solid var(--admin-border);
   white-space: nowrap;
 }
 .sp-table td {
-  padding: 0.35rem 0.35rem;
+  padding: 0.35rem 0.3rem;
   border-bottom: 1px solid var(--admin-border);
   vertical-align: middle;
 }
 .sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { width: 100px; min-width: 85px; }
-.sp-table .sp-col-rate { width: 50px; }
-.sp-table .sp-col-sell { width: 65px; }
-.sp-table .sp-col-catalog { width: 36px; text-align: center; }
-.sp-table .sp-col-name { width: auto; min-width: 200px; }
-.sp-table .sp-col-unit { width: 55px; min-width: 55px; }
-.sp-table .sp-col-price { width: 60px; }
-.sp-table .sp-col-consumers { width: 65px; min-width: 65px; white-space: normal; }
-.sp-mat-name-input { text-overflow: ellipsis; }
+.sp-table .sp-col-label { width: 150px; }
+.sp-table .sp-col-rate { width: 52px; }
+.sp-table .sp-col-sell { width: 68px; }
+.sp-table .sp-col-unit { width: calc(7ch + 1.25rem); }
+.sp-table .sp-col-price { width: 62px; }
+.sp-table .sp-col-name { width: auto; }
+.sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; }
+.sp-table .sp-col-consumers { width: 150px; white-space: normal; }
+.sp-col-name .sp-input,
+.sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
+.sp-col-unit .sp-input {
+  width: 100%;
+  min-width: 7ch;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  box-sizing: border-box;
+}
+.sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.25; white-space: nowrap; }
+.sp-work-label small { display: block; font-weight: 400; font-size: 0.7rem; color: var(--admin-muted); white-space: nowrap; }
 /* Compact catalog search button */
 .sp-catalog-btn {
   display: inline-flex;
@@ -119,14 +134,12 @@
 .sp-col-catalog {
   position: relative;
 }
-.sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.3; }
-.sp-work-label small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--admin-muted); }
 
-/* Used-by badges: smaller, inline wrapping horizontally */
+/* Used-by badges: small, horizontal with wrap, 2 fit in ~150px */
 .sp-chip {
   display: inline-block;
-  padding: 2px 5px;
-  font-size: 0.6rem;
+  padding: 1px 4px;
+  font-size: 0.55rem;
   font-weight: 600;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
@@ -134,10 +147,11 @@
   margin: 1px 2px 1px 0;
   white-space: nowrap;
   vertical-align: baseline;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 td.sp-col-consumers {
-  line-height: 1.5;
+  line-height: 1.4;
+  vertical-align: middle;
 }
 
 /* Compact inputs */
