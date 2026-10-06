@@ -1575,7 +1575,7 @@ a:hover .cp-expense-receipt-pdf {
   }
   .cp-expenses-table tbody tr {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 4px 8px;
     padding: 10px 12px;
@@ -1640,7 +1640,7 @@ a:hover .cp-expense-receipt-pdf {
   }
   .cp-expenses-table td:nth-child(3) {
     flex: 1 1 auto;
-    min-width: 5rem;
+    min-width: 0;
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1665,6 +1665,12 @@ a:hover .cp-expense-receipt-pdf {
   }
   .cp-expense-actions--mobile {
     display: inline-block;
+  }
+  .cp-expense-actions--mobile .admin-actions-dropdown__toggle {
+    min-width: 32px;
+    min-height: 32px;
+    width: 32px;
+    height: 32px;
   }
   .cp-expenses-table .cp-expense-edit-row td {
     width: 100%;
