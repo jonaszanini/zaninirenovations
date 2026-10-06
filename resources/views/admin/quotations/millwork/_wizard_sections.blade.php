@@ -196,7 +196,7 @@
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
         <label for="mw-owner-rate">Owner hourly rate (CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+        <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview" id="mw-owner-rate" name="owner_hourly_rate"
                value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate), 2, '.', '')) }}">
       </div>

@@ -529,6 +529,7 @@
                      class="admin-input cp-money-input"
                      inputmode="decimal"
                      autocomplete="off"
+                    
                      placeholder="0.00"
                      required>
             </div>

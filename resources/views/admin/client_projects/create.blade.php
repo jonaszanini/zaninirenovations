@@ -244,6 +244,7 @@
                    class="admin-input cp-money-input"
                    inputmode="decimal"
                    autocomplete="off"
+                  
                    placeholder="0.00"
                    value="{{ old('hourly_rate') }}">
             @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror

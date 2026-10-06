@@ -77,14 +77,14 @@
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">$/stone (CAD)</span>
                     <input type="text" name="price_per_stone" inputmode="decimal" autocomplete="off"
-                           data-cp-money-entry="direct"
+                          
                            value="{{ $st->price_per_stone !== null ? number_format((float) $st->price_per_stone, 2, '.', '') : '' }}"
                            class="admin-input cp-money-input pq-db-stone-price" placeholder="—" aria-label="Price per stone CAD">
                   </div>
                   <div class="pq-db-field-group">
                     <span class="pq-db-field-label">Price/sq ft</span>
                     <input type="text" name="price_per_sq_ft" inputmode="decimal" autocomplete="off"
-                           data-cp-money-entry="direct" data-cp-money-places="4"
+                           data-cp-money-places="4"
                            value="{{ $st->price_per_sq_ft !== null ? number_format((float) $st->price_per_sq_ft, 4, '.', '') : '' }}"
                            class="admin-input cp-money-input pq-db-stone-price-sqft" placeholder="Auto" aria-label="Price per sq ft CAD">
                   </div>
@@ -181,14 +181,14 @@
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">$/stone (CAD)</span>
             <input type="text" name="price_per_stone" placeholder="—" inputmode="decimal" autocomplete="off"
-                   data-cp-money-entry="direct"
+                  
                    class="admin-input cp-money-input pq-db-stone-price" aria-label="Price per stone CAD"
                    value="{{ old('add_stone') === '1' ? old('price_per_stone') : '' }}">
           </div>
           <div class="pq-db-field-group">
             <span class="pq-db-field-label">Price/sq ft</span>
             <input type="text" name="price_per_sq_ft" placeholder="Auto" inputmode="decimal" autocomplete="off"
-                   data-cp-money-entry="direct" data-cp-money-places="4"
+                   data-cp-money-places="4"
                    class="admin-input cp-money-input pq-db-stone-price-sqft" aria-label="Price per sq ft CAD"
                    value="{{ old('add_stone') === '1' ? old('price_per_sq_ft') : '' }}">
           </div>
@@ -245,7 +245,7 @@
                         <span class="pq-db-rate-price-label-text">CAD</span>
                         <input type="text" name="price_before_tax" inputmode="decimal" autocomplete="off"
                                value="{{ number_format((float) $rate->price_before_tax, 2, '.', '') }}"
-                               class="admin-input cp-money-input pq-db-rate-input" data-cp-money-entry="direct" required aria-label="Price {{ $rate->label }} before tax">
+                               class="admin-input cp-money-input pq-db-rate-input" required aria-label="Price {{ $rate->label }} before tax">
                       </label>
                       <button type="submit" class="admin-btn admin-btn--sm admin-btn--primary">Save</button>
                     </div>
@@ -281,6 +281,7 @@
                            value="{{ number_format((float) $tier->price_per_sq_ft, 4, '.', '') }}"
                            class="admin-input cp-money-input"
                            data-cp-money-places="4"
+                          
                            inputmode="decimal"
                            autocomplete="off"
                            required

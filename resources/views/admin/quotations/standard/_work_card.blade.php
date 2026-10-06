@@ -162,7 +162,7 @@
         <div class="sq-labour-rate-fields" @if($labourUseFixed) hidden @endif>
           <div class="admin-form-group sq-labour-rate-group">
             <label for="{{ $idBase }}-labour-rate">Hourly rate (CAD) @unless($labourUseFixed)<span class="cp-required">*</span>@endunless</label>
-            <input type="text" inputmode="decimal" id="{{ $idBase }}-labour-rate" name="works[{{ $workIndex }}][labour_hourly_rate]" class="admin-input cp-money-input sq-labour-rate"
+            <input type="text" inputmode="decimal" autocomplete="off" id="{{ $idBase }}-labour-rate" name="works[{{ $workIndex }}][labour_hourly_rate]" class="admin-input cp-money-input sq-labour-rate"
                    @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}">
             @error('works.'.$workIndex.'.labour_hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>

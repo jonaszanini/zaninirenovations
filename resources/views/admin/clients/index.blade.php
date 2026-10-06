@@ -37,20 +37,20 @@
 
   <div class="admin-card">
     <div class="admin-table-scroll">
-      <table class="admin-table">
+      <table class="admin-table admin-table--stack">
         <thead>
           <tr>
             <th>Name</th>
             <th>Email</th>
             <th>Phone</th>
-            <th style="width:100px;">Projects</th>
-            <th style="width:140px;">Actions</th>
+            <th style="width:70px;">Projects</th>
+            <th style="width:100px;">Actions</th>
           </tr>
         </thead>
         <tbody>
           @forelse ($clients as $client)
             <tr>
-              <td>
+              <td data-label="Name">
                 <strong>@include('admin.partials.client_directory_link', ['client' => $client])</strong>
                 @if ($client->tags->isNotEmpty())
                   <div class="cl-tag-picker" style="margin-top:4px;">
@@ -60,14 +60,14 @@
                   </div>
                 @endif
               </td>
-              <td>@include('admin.partials.client_directory_link', [
+              <td data-label="Email">@include('admin.partials.client_directory_link', [
                 'client' => $client,
                 'label' => $client->email,
                 'fallbackMailto' => true,
               ])</td>
-              <td>{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
-              <td>{{ $client->projects_count }}</td>
-              <td>
+              <td data-label="Phone">{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
+              <td data-label="Projects">{{ $client->projects_count ?: '0' }}</td>
+              <td class="admin-table__actions" data-label="">
                 <a href="{{ route('admin.clients.edit', $client) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
                   <i class="fa fa-pencil"></i> Edit
                 </a>

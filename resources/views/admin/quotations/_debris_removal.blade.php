@@ -54,6 +54,7 @@
              @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('debris_removal_amount')])
              inputmode="decimal"
              autocomplete="off"
+            
              placeholder="0.00"
              value="{{ $debrisAmount }}"
              data-cp-debris-amount

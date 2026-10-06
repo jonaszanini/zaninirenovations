@@ -797,6 +797,158 @@ body.admin-body {
   overflow: hidden;
 }
 
+/* Mobile stacked table — cards instead of horizontal scroll (<640px) */
+@media (max-width: 640px) {
+  .admin-table--stack {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .admin-table--stack thead {
+    display: none;
+  }
+  .admin-table--stack tbody,
+  .admin-table--stack tr,
+  .admin-table--stack td {
+    display: block;
+    width: 100%;
+  }
+  .admin-table--stack tr {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--admin-border);
+  }
+  .admin-table--stack tr:last-child {
+    border-bottom: none;
+  }
+  .admin-table--stack td {
+    padding: 0.25rem 0;
+    border: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    max-width: 100%;
+  }
+  .admin-table--stack td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--admin-muted);
+    flex-shrink: 0;
+    width: 90px;
+    min-width: 90px;
+  }
+  /* Value takes remaining space and wraps */
+  .admin-table--stack td > *,
+  .admin-table--stack td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .admin-table--stack td:empty::before {
+    display: none;
+  }
+  .admin-table--stack td[data-label=""]::before,
+  .admin-table--stack td:not([data-label])::before {
+    display: none;
+  }
+  /* Actions cell full width */
+  .admin-table--stack td.admin-table__actions {
+    justify-content: flex-start;
+    padding-top: 0.5rem;
+  }
+  .admin-table--stack td.admin-table__actions::before {
+    display: none;
+  }
+}
+
+/* Mobile tap targets — minimum 44px */
+@media (max-width: 640px) {
+  .admin-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .admin-btn--sm {
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+  }
+  .admin-checkbox__mark {
+    width: 24px;
+    height: 24px;
+  }
+  .admin-checkbox {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .admin-pagination a,
+  .admin-pagination span {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Actions dropdown for mobile */
+.admin-actions-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.admin-actions-dropdown__toggle {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--admin-text);
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-actions-dropdown__toggle:hover {
+  background: var(--admin-surface-hover);
+}
+.admin-actions-dropdown__menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  box-shadow: var(--admin-shadow-md);
+  min-width: 160px;
+  z-index: 100;
+  padding: 0.25rem 0;
+}
+.admin-actions-dropdown.is-open .admin-actions-dropdown__menu {
+  display: block;
+}
+.admin-actions-dropdown__item {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--admin-text);
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+.admin-actions-dropdown__item:hover {
+  background: var(--admin-surface-hover);
+}
+.admin-actions-dropdown__item--danger {
+  color: var(--admin-danger);
+}
+
 .admin-badge {
   display: inline-block;
   padding: 0.25rem 0.6rem;

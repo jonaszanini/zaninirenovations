@@ -188,7 +188,7 @@
                       ])
                     </label>
                     <input type="text" name="hourly_rate" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
-                           value="{{ $editHourlyRate }}" data-cp-money-entry="direct">
+                           value="{{ $editHourlyRate }}">
                   </div>
                 </div>
                 <div class="cp-time-submit cp-time-edit-actions">

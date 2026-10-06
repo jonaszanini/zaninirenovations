@@ -51,12 +51,12 @@
     <div class="admin-form-grid-4">
       <div class="admin-form-group">
         <label for="rescrew_subfloor_rate">Re-screw subfloor to joists (flat fee per project, CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" id="rescrew_subfloor_rate" name="rescrew_subfloor_rate"
+        <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="rescrew_subfloor_rate" name="rescrew_subfloor_rate"
                placeholder="0.00" value="{{ old('rescrew_subfloor_rate', number_format((float) $settings->rescrew_subfloor_rate, 2, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
         <label for="closet_door_reinstall_rate">Closet door remove &amp; reinstall (per door, CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" class="admin-input cp-money-input" id="closet_door_reinstall_rate" name="closet_door_reinstall_rate"
+        <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="closet_door_reinstall_rate" name="closet_door_reinstall_rate"
                placeholder="0.00" value="{{ old('closet_door_reinstall_rate', number_format((float) $settings->closet_door_reinstall_rate, 2, '.', '')) }}" required>
       </div>
     </div>
@@ -75,7 +75,7 @@
         </div>
         <div class="admin-form-group" style="margin:0;">
           <label>Install $/sq ft</label>
-          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                  class="admin-input cp-money-input" name="flooring_types[{{ $i }}][installation_price_per_sqft]"
                  value="{{ old('flooring_types.'.$i.'.installation_price_per_sqft', number_format((float) $type->installation_price_per_sqft, 4, '.', '')) }}" required>
         </div>
@@ -106,7 +106,7 @@
       <label>Add flooring type</label>
       <div class="pq-form-grid">
         <input type="text" class="admin-input" name="new_flooring_types[0][name]" maxlength="160" placeholder="e.g. Engineered hardwood">
-        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-cp-money-places="4"
+        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                class="admin-input cp-money-input" name="new_flooring_types[0][installation_price_per_sqft]" placeholder="Install $/sq ft">
       </div>
     </div>

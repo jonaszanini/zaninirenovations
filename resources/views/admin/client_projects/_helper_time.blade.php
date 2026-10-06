@@ -257,7 +257,7 @@
                   @endforeach
                 </select>
                 <input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off"
-                       data-cp-money-entry="direct" name="splits[0][amount]" placeholder="0.00" required>
+                       name="splits[0][amount]" placeholder="0.00" required>
                 <button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)" disabled>
                   <i class="fa fa-times"></i>
                 </button>
@@ -385,7 +385,7 @@
             div.setAttribute('data-split-row', '');
             div.innerHTML =
               '<select class="admin-input cp-split-row__method" name="splits[' + splitIdx + '][method]" required>' + opts + '</select>' +
-              '<input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" name="splits[' + splitIdx + '][amount]" placeholder="0.00" required>' +
+              '<input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off" name="splits[' + splitIdx + '][amount]" placeholder="0.00" required>' +
               '<button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)"><i class="fa fa-times"></i></button>';
 
             document.getElementById('cp-split-rows').appendChild(div);

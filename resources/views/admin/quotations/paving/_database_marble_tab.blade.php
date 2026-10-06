@@ -54,7 +54,7 @@
                 </div>
                 <div class="pq-db-field-group">
                   <span class="pq-db-field-label">$/bag (CAD)</span>
-                  <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+                  <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off"
                          value="{{ number_format((float) $mt->price_per_bag, 2, '.', '') }}"
                          class="admin-input cp-money-input" required aria-label="Price per bag CAD">
                 </div>
@@ -147,7 +147,7 @@
         </div>
         <div class="pq-db-field-group">
           <span class="pq-db-field-label">$/bag (CAD)</span>
-          <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+          <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" required placeholder="9.98"
                  value="{{ old('add_marble') === '1' ? old('price_per_bag') : '' }}">
         </div>

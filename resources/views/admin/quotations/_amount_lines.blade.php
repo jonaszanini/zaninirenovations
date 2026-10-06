@@ -202,7 +202,7 @@
                  class="admin-input cp-money-input {{ $inputClass }}"
                  inputmode="decimal"
                  autocomplete="off"
-                 data-cp-money-entry="direct"
+                
                  placeholder="0.00"
                  value="{{ $row['amount'] }}"
                  data-ac-amount>

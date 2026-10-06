@@ -313,7 +313,7 @@
             <h3 style="margin:0 0 14px;">Step 5 — Materials (optional)</h3>
             <div class="admin-form-group">
               <label for="sq-material-price">Materials price (pre-tax)</label>
-              <input type="text" id="sq-material-price" name="material_price" class="admin-input sq-calc-in cp-money-input" inputmode="decimal"
+              <input type="text" id="sq-material-price" name="material_price" class="admin-input sq-calc-in cp-money-input" inputmode="decimal" autocomplete="off"
                      value="{{ old('material_price', number_format((float) ($inputs['material_price'] ?? 0), 2, '.', '')) }}">
               <p class="pq-hint">Leave at 0.00 when quoting <strong>labour only</strong>. Enter an amount when you are also supplying materials — the client PDF will say “material and labour”.</p>
             </div>

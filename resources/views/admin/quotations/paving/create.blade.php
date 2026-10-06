@@ -364,7 +364,7 @@
                   <div class="admin-form-group">
                     <label for="pq-owner">Owner hourly rate ($/hr)</label>
                     <input type="text" id="pq-owner" name="owner_hourly_rate" class="admin-input pq-calc-in cp-money-input"
-                           data-cp-money-entry="direct" inputmode="decimal" autocomplete="off" placeholder="0.00"
+                           inputmode="decimal" autocomplete="off" placeholder="0.00"
                            value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
                   </div>
                   <div class="admin-form-group">

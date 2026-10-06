@@ -14,7 +14,7 @@
 </div>
 <div class="admin-form-group">
   <label for="phone">Phone (optional)</label>
-  <input class="admin-input" type="text" id="phone" name="phone" value="{{ old('phone', $helper?->phone) }}" maxlength="20">
+  <input class="admin-input" type="text" id="phone" name="phone" value="{{ old('phone', $helper?->phone) }}" inputmode="tel" autocomplete="tel" maxlength="20">
   @error('phone') <div class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 <div class="admin-form-group">
@@ -25,6 +25,7 @@
          class="admin-input cp-money-input"
          inputmode="decimal"
          autocomplete="off"
+        
          placeholder="0.00"
          required
          value="{{ old('hourly_rate', $helper && $helper->hourly_rate !== null ? number_format((float) $helper->hourly_rate, 2, '.', '') : '') }}">

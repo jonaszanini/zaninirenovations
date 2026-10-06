@@ -29,7 +29,7 @@
 ])
 <div class="admin-form-group" id="{{ $rateId }}-wrap" @unless($checked) hidden @endunless>
   <label for="{{ $rateId }}">Helper hourly rate (CAD$)</label>
-  <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+  <input type="text" inputmode="decimal" autocomplete="off"
          class="admin-input cp-money-input {{ $previewClass }}" id="{{ $rateId }}" name="{{ $rateName }}"
          value="{{ $rateValue }}">
 </div>

@@ -15,28 +15,28 @@
 
   <div class="admin-card">
     <div class="admin-table-scroll">
-      <table class="admin-table">
+      <table class="admin-table admin-table--stack">
         <thead>
           <tr>
             <th>Title</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Published</th>
-            <th style="width:80px;">Views</th>
-            <th style="width:160px;">Actions</th>
+            <th style="width:120px;">Category</th>
+            <th style="width:90px;">Status</th>
+            <th style="width:100px;">Published</th>
+            <th style="width:60px;">Views</th>
+            <th style="width:110px;">Actions</th>
           </tr>
         </thead>
         <tbody>
           @forelse ($posts as $post)
             <tr>
-              <td>
+              <td data-label="Title">
                 <strong>{{ $post->title }}</strong>
                 @if ($post->featured_image_path)
                   <br><small class="admin-form-help">Has featured image</small>
                 @endif
               </td>
-              <td>{{ $post->categories->pluck('name')->implode(', ') ?: '—' }}</td>
-              <td>
+              <td data-label="Category">{{ $post->categories->pluck('name')->implode(', ') ?: '—' }}</td>
+              <td data-label="Status">
                 @if ($post->isScheduled())
                   <span class="blog-post-status--scheduled">Scheduled</span>
                 @elseif ($post->status === \App\Models\BlogPost::STATUS_PUBLISHED)
@@ -45,9 +45,9 @@
                   <span class="blog-post-status--draft">Draft</span>
                 @endif
               </td>
-              <td>{{ $post->published_at ? $post->displayDate() : '—' }}</td>
-              <td>{{ number_format($post->views_count) }}</td>
-              <td>
+              <td data-label="Published">{{ $post->published_at ? $post->displayDate() : '—' }}</td>
+              <td data-label="Views">{{ number_format($post->views_count) }}</td>
+              <td class="admin-table__actions" data-label="">
                 @if ($post->isPublishedNow())
                   <a href="{{ $post->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener">
                     <i class="fa fa-external-link"></i>

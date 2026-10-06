@@ -96,30 +96,30 @@
 
   <div class="admin-card">
     <div class="admin-table-scroll">
-      <table class="admin-table">
+      <table class="admin-table admin-table--stack ss-table">
         <thead>
           <tr>
-            <th style="width:36px;"></th>
+            <th style="width:30px;"></th>
             <th>Name</th>
-            <th>Website</th>
-            <th>Tags</th>
+            <th style="width:70px;">Website</th>
+            <th style="width:120px;">Tags</th>
             <th>Email</th>
-            <th>Phone</th>
-            <th>Address</th>
-            <th>Notes</th>
-            <th></th>
+            <th style="width:110px;">Phone</th>
+            <th style="width:140px;">Address</th>
+            <th style="width:140px;">Notes</th>
+            <th style="width:130px;"></th>
           </tr>
         </thead>
         <tbody>
           @forelse ($supplierSites as $site)
             <tr>
-              <td>
+              <td data-label="">
                 @if ($site->is_favorite)
                   <i class="fa fa-star ss-favorite" title="Favorite" aria-hidden="true"></i>
                 @endif
               </td>
-              <td><strong>{{ $site->name }}</strong></td>
-              <td>
+              <td data-label="Name"><strong>{{ $site->name }}</strong></td>
+              <td data-label="Website">
                 @if (filled($site->url))
                   <div class="ss-url-actions">
                     <a href="{{ $site->url }}"
@@ -142,36 +142,36 @@
                   —
                 @endif
               </td>
-              <td>
+              <td data-label="Tags">
                 @forelse ($site->tags as $tag)
                   <span class="ss-tag-chip">{{ $tag->name }}</span>
                 @empty
                   <span class="admin-form-help">—</span>
                 @endforelse
               </td>
-              <td>
+              <td data-label="Email">
                 @if (filled($site->email))
                   <a href="mailto:{{ $site->email }}" class="admin-text-link">{{ $site->email }}</a>
                 @else
                   —
                 @endif
               </td>
-              <td>{{ filled($site->phone) ? \App\Models\ClientProject::formatPhone($site->phone) : '—' }}</td>
-              <td>
+              <td data-label="Phone">{{ filled($site->phone) ? \App\Models\ClientProject::formatPhone($site->phone) : '—' }}</td>
+              <td data-label="Address">
                 @if (filled($site->address))
-                  <span class="ss-notes-preview">{{ \Illuminate\Support\Str::limit($site->address, 60) }}</span>
+                  <span class="ss-notes-preview" title="{{ $site->address }}">{{ \Illuminate\Support\Str::limit($site->address, 40) }}</span>
                 @else
                   —
                 @endif
               </td>
-              <td>
+              <td data-label="Notes">
                 @if (filled($site->notes))
-                  <span class="ss-notes-preview">{{ \Illuminate\Support\Str::limit($site->notes, 80) }}</span>
+                  <span class="ss-notes-preview" title="{{ $site->notes }}">{{ \Illuminate\Support\Str::limit($site->notes, 50) }}</span>
                 @else
                   —
                 @endif
               </td>
-              <td style="white-space:nowrap;">
+              <td class="admin-table__actions" data-label="">
                 <a href="{{ route('admin.supplier-sites.edit', $site) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
                 <form action="{{ route('admin.supplier-sites.destroy', $site) }}" method="post" style="display:inline;" onsubmit="return confirm('Remove this supplier?');">
                   @csrf @method('DELETE')

@@ -72,7 +72,7 @@
                    value="{{ old('gas_price_per_liter', $settings->gas_price_per_liter !== null ? number_format((float) $settings->gas_price_per_liter, 3, '.', '') : '') }}"
                    inputmode="decimal"
                    autocomplete="off"
-                   data-cp-money-entry="direct"
+                  
                    data-cp-money-places="3"
                    data-cp-gas-price
                    placeholder="1.450"
