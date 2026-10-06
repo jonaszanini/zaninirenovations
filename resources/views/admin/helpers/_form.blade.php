@@ -14,7 +14,7 @@
 </div>
 <div class="admin-form-group">
   <label for="phone">Phone (optional)</label>
-  <input class="admin-input" type="text" id="phone" name="phone" value="{{ old('phone', $helper?->phone) }}" maxlength="20">
+  <input class="admin-input" type="text" id="phone" name="phone" value="{{ old('phone', $helper?->phone) }}" inputmode="tel" autocomplete="tel" maxlength="20">
   @error('phone') <div class="admin-form-error">{{ $message }}</p> @enderror
 </div>
 <div class="admin-form-group">
