@@ -19,11 +19,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Structured data — geo (business pin in Beckwith)
+    | Structured data — geo
     |--------------------------------------------------------------------------
+    | Exact pin coordinates removed per service-area business guidelines.
+    | Do not publish a street address, postal code, or precise geo pin.
     */
-    'latitude' => 45.120446,
-    'longitude' => -76.0081985,
 
     /*
     |--------------------------------------------------------------------------
@@ -105,9 +105,9 @@ return [
     | Short, quotable homepage summary (WebPage + visible intro for AI/SEO)
     |--------------------------------------------------------------------------
     */
-    'home_summary' => 'Zanini Renovations is a licensed carpenter and home renovation contractor based in Carleton Place, serving Ottawa and surrounding Ontario communities. We provide finish carpentry, rough carpentry, custom millwork, decks, basement framing, trim, fencing, flooring, drywall, and staircase work—with $3 million general liability insurance, WSIB clearance, and O.Reg. 332/12 compliant practices.',
+    'home_summary' => 'Zanini Renovations is a one-person, fully insured carpentry and renovation business based in Carleton Place, Ontario, since 2020. Decks, fences and gates, basement finishing, finish carpentry and trim, custom built-ins and closets, staircases, drywall and flooring—with $3 million general liability insurance, WSIB clearance, and O.Reg. 332/12 compliant practices.',
 
-    'home_title' => 'Carpenter & Renovation Contractor – Carleton Place & Ottawa | Zanini Renovations',
+    'home_title' => 'Carpenter & Renovation Contractor in Carleton Place | Zanini',
 
     'google_business_url' => env('SEO_GOOGLE_BUSINESS_URL') ?: 'https://maps.google.com/?cid=7676669856408637146',
 
@@ -121,7 +121,7 @@ return [
     'home_faq' => [
         [
             'question' => 'What renovation and carpentry services does Zanini Renovations offer?',
-            'answer' => 'We offer residential carpentry and renovation services including decks and outdoor living, fencing, basement framing and finishing, interior trim and moulding, custom built-ins and shelving, hardwood flooring, drywall, accent walls and wainscoting, and wood staircase refinishing. Projects are completed by a licensed and insured contractor.',
+            'answer' => 'We offer residential carpentry and renovation services including decks and outdoor living, fencing, basement framing and finishing, interior trim and moulding, custom built-ins and shelving, hardwood flooring, drywall, accent walls and wainscoting, and wood staircase refinishing. Projects are completed by a fully insured contractor.',
         ],
         [
             'question' => 'What areas does Zanini Renovations serve?',

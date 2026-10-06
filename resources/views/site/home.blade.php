@@ -680,7 +680,7 @@
             <div class="testimonials-google-cta">
               <a
                 class="btn btn-theme btn-square"
-                href="{{ config('seo.google_business_url') }}"
+                href="{{ \App\Support\SeoStructuredData::googleBusinessUrl() }}"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -712,7 +712,7 @@
             <h4 class="heading-alt-style text-uppercase text-dark-color">FAQ</h4>
             <span class="heading-separator heading-separator-horizontal"></span>
             <h2 id="home-faq-heading" class="subheading-alt-style">Renovation &amp; carpentry — common questions</h2>
-            <p class="home-faq-section__intro">Direct answers for homeowners searching for a licensed carpenter or renovation contractor in Ottawa and Carleton Place.</p>
+            <p class="home-faq-section__intro">Direct answers for homeowners searching for an insured carpenter or renovation contractor in Ottawa and Carleton Place.</p>
           </div>
         </div>
         <div class="row">
@@ -792,7 +792,7 @@
             <ul class="contact-info">
               <li>
                 <span class="icon-container"><i class="fa fa-map-marker"></i></span>
-                <address><a href="{{ config('seo.google_business_url') }}" target="_blank" rel="noopener noreferrer">Google Maps</a></address>
+                <address><a href="{{ \App\Support\SeoStructuredData::googleBusinessUrl() }}" target="_blank" rel="noopener noreferrer">Google Maps</a></address>
               </li>
             </ul>
           </div>

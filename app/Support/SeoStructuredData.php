@@ -5,6 +5,27 @@ namespace App\Support;
 class SeoStructuredData
 {
     /**
+     * Canonical Google Business Profile CID URL.
+     * Always use this instead of long /maps/place/ URLs that expose coordinates.
+     */
+    public const GOOGLE_BUSINESS_CID = 'https://maps.google.com/?cid=7676669856408637146';
+
+    /**
+     * Return the canonical GBP URL, ignoring any /maps/place/ URL from env.
+     * This prevents accidental publication of exact coordinates.
+     */
+    public static function googleBusinessUrl(): string
+    {
+        $configured = trim((string) config('seo.google_business_url', ''));
+
+        if ($configured === '' || str_contains($configured, '/maps/place/') || str_contains($configured, '/@')) {
+            return self::GOOGLE_BUSINESS_CID;
+        }
+
+        return $configured;
+    }
+
+    /**
      * JSON-LD output safe on PHP 8.0+ (JSON_INVALID_UTF8_IGNORE exists from PHP 8.3).
      */
     public static function toJsonLd(array $data): string
@@ -24,11 +45,11 @@ class SeoStructuredData
         $areas = config('seo.area_served', []);
         $fb = (string) config('social.facebook_url', '');
         $ig = (string) config('social.instagram_url', '');
-        $googleBiz = (string) config('seo.google_business_url', '');
+        $googleBiz = self::googleBusinessUrl();
         $sameAs = array_values(array_filter([$fb, $ig, $googleBiz], static fn ($u) => is_string($u) && str_starts_with($u, 'http')));
         $homeSummary = trim((string) config('seo.home_summary', ''));
         if ($homeSummary === '') {
-            $homeSummary = 'Licensed carpenter and renovation contractor in Carleton Place and Ottawa, Ontario.';
+            $homeSummary = 'One-person, fully insured carpentry and renovation business in Carleton Place since 2020.';
         }
         $ogRel = ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
         $ogAbs = $url.'/'.$ogRel;
@@ -74,11 +95,6 @@ class SeoStructuredData
                 'addressLocality' => 'Carleton Place',
                 'addressRegion' => 'ON',
                 'addressCountry' => 'CA',
-            ],
-            'geo' => [
-                '@type' => 'GeoCoordinates',
-                'latitude' => (float) config('seo.latitude', 45.120446),
-                'longitude' => (float) config('seo.longitude', -76.0081985),
             ],
             'areaServed' => $areas,
             'openingHoursSpecification' => [

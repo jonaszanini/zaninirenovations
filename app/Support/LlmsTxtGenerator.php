@@ -18,7 +18,7 @@ class LlmsTxtGenerator
         $base = rtrim((string) config('app.url'), '/');
         $summary = trim((string) config('seo.home_summary', ''));
         if ($summary === '') {
-            $summary = 'Licensed carpenter and renovation contractor in Carleton Place and Ottawa, Ontario.';
+            $summary = 'One-person, fully insured carpentry and renovation business in Carleton Place since 2020.';
         }
 
         $insurance = trim((string) config('seo.liability_insurance', '$3 million'));
@@ -111,10 +111,8 @@ class LlmsTxtGenerator
         $lines[] = '';
         $lines[] = '- Phone: '.$phone;
         $lines[] = '- Website: '.$base.'/';
-        $googleBiz = trim((string) config('seo.google_business_url', ''));
-        if ($googleBiz !== '') {
-            $lines[] = '- Google Business: '.$googleBiz;
-        }
+        $googleBiz = SeoStructuredData::googleBusinessUrl();
+        $lines[] = '- Google Business: '.$googleBiz;
         $lines[] = '';
 
         return implode("\n", $lines);

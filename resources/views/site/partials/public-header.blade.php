@@ -18,7 +18,7 @@
           <div class="col-lg-6 col-md-6 col-sm-6 text-left ">
             <div class="top-bar-link">
               <strong>PHONE NUMBER</strong>
-              : (647)-834-7570
+              : (647) 834-7570
             </div>
           </div>
 

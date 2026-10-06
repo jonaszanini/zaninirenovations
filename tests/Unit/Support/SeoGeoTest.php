@@ -85,8 +85,7 @@ class SeoGeoTest extends TestCase
         $this->assertNotContains('Red Seal carpentry', $business['knowsAbout']);
         $this->assertArrayNotHasKey('aggregateRating', $business);
         $this->assertArrayNotHasKey('review', $business);
-        $this->assertEqualsWithDelta(45.120446, $business['geo']['latitude'], 0.000001);
-        $this->assertEqualsWithDelta(-76.0081985, $business['geo']['longitude'], 0.000001);
+        $this->assertArrayNotHasKey('geo', $business, 'Geo coordinates should not be published for a service-area business');
         $this->assertContains(
             'https://maps.google.com/?cid=7676669856408637146',
             $business['sameAs']
