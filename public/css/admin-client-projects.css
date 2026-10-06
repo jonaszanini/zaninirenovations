@@ -3181,9 +3181,11 @@ a:hover .cp-expense-receipt-pdf {
   font-weight: 600;
   color: var(--admin-heading);
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 auto;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 .cp-quotation-accordion__number {
   font-size: 13px;

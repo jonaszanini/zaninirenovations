@@ -3,6 +3,7 @@
 namespace Tests\Feature\QuoteAcceptance;
 
 use App\Mail\ClientProjectQuotationClient;
+use App\Models\ClientProject;
 use App\Support\QuotationReplyToAccept;
 use Illuminate\Support\Facades\Mail;
 use Tests\IntegrationTestCase;
@@ -104,5 +105,94 @@ class QuotationEmailAndReplyChoiceTest extends IntegrationTestCase
             ->assertSee('name="ask_reply_to_accept"', false)
             ->assertSee('value="1"', false)
             ->assertSee('value="0"', false);
+    }
+
+    public function test_existing_quotation_with_unset_choice_blocks_save_only(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->post(route('admin.quotations.basement.store'), [
+            'save_intent' => 'publish',
+            'client_name' => 'Existing Reply Client',
+            'area_sqft' => 850,
+            'ceiling_height_ft' => 8,
+            'room_count' => 3,
+            'payment_installments' => 3,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
+        ])->assertRedirect();
+
+        $quote = \App\Models\BasementQuotation::query()
+            ->where('client_name', 'Existing Reply Client')
+            ->first();
+        $this->assertNotNull($quote);
+
+        $quote->ask_reply_to_accept = null;
+        $quote->saveQuietly();
+
+        $before = $quote->fresh();
+        $this->assertNull($before->ask_reply_to_accept);
+
+        $html = $this->get(route('admin.quotations.basement.edit', $quote))
+            ->assertOk()
+            ->assertSee('Ask client to reply', false)
+            ->getContent();
+
+        preg_match_all('/<input[^>]*name="ask_reply_to_accept"[^>]*>/i', $html, $radioTags);
+        $this->assertCount(2, $radioTags[0]);
+        foreach ($radioTags[0] as $tag) {
+            $this->assertStringNotContainsString('checked', strtolower($tag));
+        }
+
+        [$project, , $standard] = $this->makeLinkedQuotation(['ask_reply_to_accept' => null]);
+        $standardHtml = $this->get(route('admin.quotations.standard.edit', $standard))
+            ->assertOk()
+            ->assertSee('Ask client to reply', false)
+            ->getContent();
+        preg_match_all('/<input[^>]*name="ask_reply_to_accept"[^>]*>/i', $standardHtml, $standardRadios);
+        $this->assertCount(2, $standardRadios[0]);
+        foreach ($standardRadios[0] as $tag) {
+            $this->assertStringNotContainsString('checked', strtolower($tag));
+        }
+        $this->assertSame(ClientProject::STATUS_QUOTE_SENT, $project->fresh()->status);
+
+        $payload = [
+            'save_intent' => 'publish',
+            'client_name' => 'Existing Reply Client',
+            'area_sqft' => 850,
+            'ceiling_height_ft' => 8,
+            'room_count' => 3,
+            'payment_installments' => 3,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ];
+
+        $this->from(route('admin.quotations.basement.edit', $quote))
+            ->put(route('admin.quotations.basement.update', $quote), $payload)
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote))
+            ->assertSessionHasErrors(QuotationReplyToAccept::FIELD);
+
+        $blocked = $quote->fresh();
+        $this->assertNull($blocked->ask_reply_to_accept);
+        $this->assertSame((int) $before->version, (int) $blocked->version);
+        $this->assertSame((string) $before->final_quote_total, (string) $blocked->final_quote_total);
+        $this->assertSame($before->client_name, $blocked->client_name);
+
+        $payload['ask_reply_to_accept'] = '1';
+        $this->put(route('admin.quotations.basement.update', $quote), $payload)
+            ->assertSessionDoesntHaveErrors()
+            ->assertRedirect();
+
+        $saved = $quote->fresh();
+        $this->assertSame(1, (int) $saved->ask_reply_to_accept);
+        $this->assertSame((int) $before->version + 1, (int) $saved->version);
+        $this->assertSame($before->client_name, $saved->client_name);
+        $this->assertFalse((bool) $saved->include_commute);
+        $this->assertSame(ClientProject::STATUS_QUOTE_SENT, $project->fresh()->status);
     }
 }
