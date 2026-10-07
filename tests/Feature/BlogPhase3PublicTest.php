@@ -98,7 +98,7 @@ class BlogPhase3PublicTest extends IntegrationTestCase
         $this->assertStringContainsString('datePublished', $html);
         $this->assertStringContainsString('dateModified', $html);
         $this->assertStringContainsString('Oct 6, 2026', $html);
-        $this->assertStringContainsString('Free estimate', $html);
+        $this->assertStringContainsString('Get a free estimate', $html);
         $this->assertStringContainsString('tel:+16478347570', $html);
 
         $graph = SeoStructuredData::blogPosting($post->fresh()->load('tags'));
@@ -122,10 +122,12 @@ class BlogPhase3PublicTest extends IntegrationTestCase
 
         $html = $this->get(route('blog.show', $post))->assertOk()->getContent();
         $this->assertStringContainsString('Need a deck?', $html);
-        $this->assertStringContainsString('Free estimate', $html);
+        $this->assertStringContainsString('Get a free estimate', $html);
+        $this->assertStringContainsString('hold up through our winters', $html);
         $this->assertStringContainsString('tel:+16478347570', $html);
         $this->assertStringContainsString((string) config('seo.service_area_text'), $html);
         $this->assertStringNotContainsString('Ottawa or Gatineau', $html);
+        $this->assertStringNotContainsString('Ontario winters', $html);
         $this->assertStringNotContainsString('licensed', strtolower($html));
 
         $introPos = strpos($html, 'First paragraph about staining a deck.');

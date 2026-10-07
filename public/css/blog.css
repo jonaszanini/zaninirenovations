@@ -61,9 +61,13 @@ body.blog-public .blog-hero__img {
 }
 
 @media (max-width: 767px) {
+  body.blog-public .main-header-2 {
+    position: relative;
+  }
   body.blog-public .main-header-2 .header-top {
     padding-top: 2px;
     padding-bottom: 0;
+    padding-right: 56px;
   }
   body.blog-public .main-header-2 .logo {
     margin-top: 4px;
@@ -79,12 +83,34 @@ body.blog-public .blog-hero__img {
   body.blog-public .main-header-2 .navbar-contact {
     display: none;
   }
-  body.blog-public .main-header-2 .navbar-header {
-    min-height: 44px;
-    padding: 0;
+  body.blog-public .main-header-2 .navbar.navbar-default {
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
   }
-  body.blog-public .main-header-2 .navbar-toggle {
-    margin: 6px 0;
+  body.blog-public .main-header-2 .navbar-default .navbar-header {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: auto;
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    clear: none;
+    float: none;
+    text-align: right;
+    z-index: 6;
+  }
+  body.blog-public .main-header-2 .navbar-default .navbar-toggle {
+    display: block;
+    float: none;
+    margin: 6px 12px;
+  }
+  body.blog-public .main-header-2 .navbar-collapse {
+    float: none;
+    width: 100%;
   }
   body.blog-public .page-header--slim {
     padding: 10px 0 8px;
@@ -247,10 +273,33 @@ body.blog-public .blog-hero__img {
   align-items: center;
   gap: 10px 16px;
 }
-.blog-cta__estimate {
-  min-height: 44px;
+body.blog-public .blog-cta a.blog-cta__estimate,
+body.blog-public .blog-post-body a.blog-cta__estimate {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 20px;
+  background: #024768;
+  color: #ffffff;
+  border: 0;
+  line-height: 1.2;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: none;
+  text-decoration: none;
+  letter-spacing: 0;
+  overflow: visible;
+}
+body.blog-public .blog-cta a.blog-cta__estimate:hover,
+body.blog-public .blog-cta a.blog-cta__estimate:focus,
+body.blog-public .blog-cta a.blog-cta__estimate:active,
+body.blog-public .blog-post-body a.blog-cta__estimate:hover,
+body.blog-public .blog-post-body a.blog-cta__estimate:focus,
+body.blog-public .blog-post-body a.blog-cta__estimate:active {
+  background: #013a52;
+  color: #ffffff;
+  text-decoration: none;
 }
 .blog-cta__call {
   min-height: 44px;
@@ -260,6 +309,19 @@ body.blog-public .blog-hero__img {
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+@media (max-width: 767px) {
+  body.blog-public .blog-cta__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  body.blog-public .blog-cta a.blog-cta__estimate,
+  body.blog-public .blog-post-body a.blog-cta__estimate {
+    width: 100%;
+  }
+  body.blog-public .blog-cta__call {
+    justify-content: center;
+  }
 }
 
 .blog-author {

@@ -41,7 +41,7 @@ return [
         ],
         'decks' => [
             'title' => 'Need a deck?',
-            'text' => 'We design and build decks that hold up through Ontario winters. Ask for a free estimate.',
+            'text' => 'We design and build decks that hold up through our winters. Ask for a free estimate.',
         ],
         'fences' => [
             'title' => 'Looking for a new fence?',
