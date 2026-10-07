@@ -3341,19 +3341,37 @@
 
 .util-rq-trade {
   display: grid;
-  grid-template-columns: minmax(7.5rem, auto) 4.6rem minmax(0, 1fr) 5.6rem;
-  gap: 0.35rem 0.45rem;
+  grid-template-columns: minmax(7.2rem, auto) 5.5rem minmax(0, 1fr) 5.6rem;
+  grid-template-areas: "check waste material price";
+  gap: 0.3rem 0.4rem;
   align-items: end;
-  padding: 0.4rem 0.45rem;
+  padding: 0.28rem 0.4rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   background: var(--admin-input-bg);
+}
+
+.util-rq-trade:not(.is-on) {
+  grid-template-columns: 1fr;
+  grid-template-areas: "check";
+  padding: 0.1rem 0.4rem;
+}
+
+.util-rq-trade:not(.is-on) .util-rq-trade__waste,
+.util-rq-trade:not(.is-on) .util-rq-trade__material,
+.util-rq-trade:not(.is-on) .util-rq-trade__price {
+  display: none;
 }
 
 .util-rq-trade.is-on {
   border-color: var(--admin-primary);
   background: var(--admin-primary-soft);
 }
+
+.util-rq-trade__check { grid-area: check; }
+.util-rq-trade__waste { grid-area: waste; }
+.util-rq-trade__material { grid-area: material; min-width: 0; }
+.util-rq-trade__price { grid-area: price; }
 
 .util-rq-trade__check {
   align-self: center;
@@ -3363,18 +3381,19 @@
 .util-rq-trade__waste,
 .util-rq-trade__price {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.2rem 0.25rem;
+  gap: 0.2rem;
+  min-width: 0;
 }
 
 .util-rq-trade__waste label,
 .util-rq-trade__price label {
-  width: 100%;
   margin: 0;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 650;
   color: var(--admin-muted);
+  white-space: nowrap;
 }
 
 .util-rq-trade__waste span {
@@ -3382,10 +3401,16 @@
   color: var(--admin-muted);
 }
 
-.util-rq-narrow,
-.util-rq-money {
-  width: 4.35rem;
+.util-rq-narrow {
+  width: 3.25rem;
   max-width: 100%;
+  flex: 0 0 3.25rem;
+}
+
+.util-rq-money {
+  width: 5.4rem;
+  max-width: 100%;
+  flex: 0 0 5.4rem;
 }
 
 .util-rq-select {
@@ -3413,25 +3438,37 @@
   color: var(--admin-heading);
 }
 
-.util-rq-table {
-  width: 100%;
+.util-rq-preview__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.util-rq-table th,
-.util-rq-table td {
-  padding: 0.35rem 0.45rem;
+.util-rq-preview__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.15rem 0.75rem;
   font-size: 0.84rem;
+  color: var(--admin-text);
+}
+
+.util-rq-preview__name {
+  min-width: 0;
+  font-weight: 600;
+}
+
+.util-rq-preview__math {
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-muted);
   white-space: nowrap;
 }
 
-.util-rq-table th:first-child,
-.util-rq-table td:first-child {
-  white-space: normal;
-}
-
-.util-rq-num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+.util-rq-preview__math strong {
+  color: var(--admin-heading);
 }
 
 .util-rq-preview__total {
@@ -3460,12 +3497,11 @@
 }
 
 @media (max-width: 700px) {
-  .util-rq-trade {
-    grid-template-columns: minmax(0, 1fr) 4.6rem 5.6rem;
-  }
-
-  .util-rq-trade__material {
-    grid-column: 1 / -1;
+  .util-rq-trade.is-on {
+    grid-template-columns: minmax(0, 1fr) 5.5rem 5.6rem;
+    grid-template-areas:
+      "check waste price"
+      "material material material";
   }
 
   .util-rq-wizards {

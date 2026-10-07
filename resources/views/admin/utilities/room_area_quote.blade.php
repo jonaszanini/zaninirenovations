@@ -86,9 +86,9 @@
                 <span class="admin-checkbox__text">{{ $trade['label'] }}</span>
               </label>
               <div class="util-rq-trade__waste">
-                <label for="rq-waste-{{ $key }}">Waste</label>
+                <label class="admin-sr-only" for="rq-waste-{{ $key }}">{{ $trade['label'] }} waste percent</label>
                 <input class="admin-input util-rq-narrow" type="text" inputmode="decimal" id="rq-waste-{{ $key }}"
-                       name="waste[{{ $key }}]" value="{{ $waste }}" data-rq-waste maxlength="6">
+                       name="waste[{{ $key }}]" value="{{ $waste }}" data-rq-waste maxlength="6" title="Waste %">
                 <span>%</span>
               </div>
               <div class="util-rq-trade__material">
@@ -110,7 +110,7 @@
                 ])
               </div>
               <div class="util-rq-trade__price">
-                <label for="rq-price-{{ $key }}">Price</label>
+                <label class="admin-sr-only" for="rq-price-{{ $key }}">{{ $trade['label'] }} unit price</label>
                 <input class="admin-input cp-money-input util-rq-money" type="text" inputmode="decimal" autocomplete="off"
                        id="rq-price-{{ $key }}" name="unit_price[{{ $key }}]"
                        value="{{ old('unit_price.'.$key) }}" data-rq-price>
@@ -151,20 +151,7 @@
 
         <div class="util-rq-preview" data-rq-preview hidden>
           <h4 class="util-rq-preview__title">Line preview</h4>
-          <div class="admin-table-scroll">
-            <table class="admin-table util-rq-table">
-              <thead>
-                <tr>
-                  <th>Line</th>
-                  <th class="util-rq-num">Qty</th>
-                  <th>Unit</th>
-                  <th class="util-rq-num">Price</th>
-                  <th class="util-rq-num">Total</th>
-                </tr>
-              </thead>
-              <tbody data-rq-preview-body></tbody>
-            </table>
-          </div>
+          <ul class="util-rq-preview__list" data-rq-preview-body></ul>
           <p class="util-rq-preview__total">Pre-tax <strong data-rq-preview-total>CA$0.00</strong></p>
         </div>
 

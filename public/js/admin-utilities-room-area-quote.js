@@ -98,13 +98,14 @@
     lines.forEach(function (line) {
       sum += line.total;
       html +=
-        '<tr>' +
-          '<td>' + escapeHtml(line.label) + '</td>' +
-          '<td class="util-rq-num">' + formatQty(line.qty) + '</td>' +
-          '<td>' + escapeHtml(line.unit) + '</td>' +
-          '<td class="util-rq-num">' + formatMoney(line.price) + '</td>' +
-          '<td class="util-rq-num">' + formatMoney(line.total) + '</td>' +
-        '</tr>';
+        '<li class="util-rq-preview__row">' +
+          '<span class="util-rq-preview__name">' + escapeHtml(line.label) + '</span>' +
+          '<span class="util-rq-preview__math">' +
+            formatQty(line.qty) + ' ' + escapeHtml(line.unit) +
+            ' × ' + formatMoney(line.price) +
+            ' = <strong>' + formatMoney(line.total) + '</strong>' +
+          '</span>' +
+        '</li>';
     });
     previewBody.innerHTML = html;
     if (previewTotal) previewTotal.textContent = formatMoney(sum);

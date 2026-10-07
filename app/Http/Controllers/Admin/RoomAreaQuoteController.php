@@ -190,7 +190,11 @@ class RoomAreaQuoteController extends Controller
      */
     private function defaultDisplayTitle(array $option): string
     {
-        $name = trim((string) ($option['name'] ?? $option['short_name'] ?? 'Room Area'));
+        $short = trim((string) ($option['short_name'] ?? ''));
+        if ($short !== '') {
+            return $short.' quote';
+        }
+        $name = trim((string) ($option['name'] ?? 'Room Area'));
 
         return $name !== '' ? $name : 'Room Area';
     }
