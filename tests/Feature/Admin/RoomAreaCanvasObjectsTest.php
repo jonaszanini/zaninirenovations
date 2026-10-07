@@ -193,6 +193,27 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
             ->assertDontSee('On a phone, type wall lengths below instead of dragging corners.');
     }
 
+    public function test_room_area_assets_counter_scale_labels_and_compact_panels(): void
+    {
+        $js = file_get_contents(public_path('js/admin-utilities-room-area.js'));
+        $this->assertNotFalse($js);
+        $this->assertStringContainsString('return base / uiScale();', $js);
+        $this->assertStringNotContainsString('Math.min(uiScale(), 1)', $js);
+        $this->assertStringContainsString('buildAreaNameLabels', $js);
+        $this->assertStringContainsString('caption.rotation(-place.angle * 180 / Math.PI)', $js);
+
+        $css = file_get_contents(public_path('css/admin-utilities.css'));
+        $this->assertNotFalse($css);
+        $this->assertStringContainsString('.util-ra-palette:not(.is-open) .util-ra-palette__body', $css);
+        $this->assertStringContainsString('.util-ra-palette.is-open .util-ra-palette__group::after', $css);
+        $this->assertStringContainsString('max-width: 110px', $css);
+        $this->assertStringContainsString('grid-template-columns: repeat(3, minmax(0, 1fr))', $css);
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.util-ra-palette__toggle\s*\{\s*display:\s*none/i',
+            $css
+        );
+    }
+
     public function test_store_room_persists_v4_thickness_and_free_objects(): void
     {
         $this->actingAsAdmin();

@@ -3757,12 +3757,11 @@
 
   /**
    * Size in world units for a control that should read as `base` CSS pixels at
-   * 100% zoom. Zooming in keeps that world size so labels/handles grow with the
-   * drawing; zooming out enlarges the world size so they stay at least `base`
-   * pixels on screen.
+   * every zoom. Counter-scale against the stage so badges, labels, and handles
+   * stay constant in screen pixels.
    */
   function uiSize(base) {
-    return base / Math.min(uiScale(), 1);
+    return base / uiScale();
   }
 
   function hitTolerance(base) {
@@ -5313,7 +5312,9 @@
       anchorSize: uiSize(coarse ? 18 : 12),
       rotateAnchorOffset: uiSize(coarse ? 28 : 20),
       borderStroke: '#f57f17',
+      borderStrokeWidth: uiSize(1),
       anchorStroke: '#f57f17',
+      anchorStrokeWidth: uiSize(1),
       anchorFill: '#f9a825',
       rotateAnchorStroke: '#f57f17',
       rotateAnchorFill: '#f9a825'
@@ -5343,11 +5344,11 @@
   }
 
   function freeObjectFill(obj, selected) {
-    if (selected) return 'rgba(249,168,37,0.28)';
-    if (obj.type === 'stairs') return isAdminDark() ? 'rgba(56,189,248,0.28)' : 'rgba(2,71,104,0.18)';
-    if (obj.type === 'cabinet') return isAdminDark() ? 'rgba(251,191,36,0.28)' : 'rgba(146,64,14,0.16)';
-    if (obj.type === 'fixture') return isAdminDark() ? 'rgba(45,212,191,0.28)' : 'rgba(13,148,136,0.16)';
-    return isAdminDark() ? 'rgba(196,181,253,0.28)' : 'rgba(91,33,182,0.14)';
+    if (selected) return 'rgba(249,168,37,0.18)';
+    if (obj.type === 'stairs') return isAdminDark() ? 'rgba(56,189,248,0.14)' : 'rgba(2,71,104,0.10)';
+    if (obj.type === 'cabinet') return isAdminDark() ? 'rgba(251,191,36,0.14)' : 'rgba(146,64,14,0.10)';
+    if (obj.type === 'fixture') return isAdminDark() ? 'rgba(45,212,191,0.14)' : 'rgba(13,148,136,0.10)';
+    return isAdminDark() ? 'rgba(196,181,253,0.14)' : 'rgba(91,33,182,0.08)';
   }
 
   function freeObjectStroke(obj, selected) {
@@ -5428,7 +5429,7 @@
         y: -d / 2,
         width: w,
         height: Math.max(uiSize(6), d * 0.28),
-        fill: selected ? 'rgba(249,168,37,0.35)' : (isAdminDark() ? 'rgba(196,181,253,0.4)' : 'rgba(91,33,182,0.2)'),
+        fill: selected ? 'rgba(249,168,37,0.22)' : (isAdminDark() ? 'rgba(196,181,253,0.2)' : 'rgba(91,33,182,0.12)'),
         listening: false
       }));
     } else if (obj.type === 'furniture' && obj.subtype === 'bed') {
@@ -5443,18 +5444,30 @@
       }));
     }
     var label = freeObjectShortLabel(obj);
-    if (label && w > uiSize(28) && d > uiSize(16)) {
-      group.add(new Konva.Text({
-        x: -w / 2 + uiSize(3),
-        y: -uiSize(6),
-        width: Math.max(8, w - uiSize(6)),
+    if (label) {
+      var caption = new Konva.Text({
+        x: 0,
+        y: 0,
         text: label,
         fontSize: uiSize(10),
         fontFamily: 'system-ui, sans-serif',
         fill: isAdminDark() ? '#f8fafc' : '#1e293b',
         align: 'center',
         listening: false
-      }));
+      });
+      var tw = caption.width();
+      var th = caption.height();
+      var pad = uiSize(6);
+      var cosA = Math.cos(place.angle);
+      var sinA = Math.sin(place.angle);
+      var screenW = Math.abs(w * cosA) + Math.abs(d * sinA);
+      var screenH = Math.abs(w * sinA) + Math.abs(d * cosA);
+      if (tw + pad <= screenW && th + pad <= screenH) {
+        caption.offsetX(tw / 2);
+        caption.offsetY(th / 2);
+        caption.rotation(-place.angle * 180 / Math.PI);
+        group.add(caption);
+      }
     }
     if (selected && isCoarsePointer()) {
       var handleR = uiSize(10);
@@ -5846,14 +5859,31 @@
     if (!labelLayer) return;
     labelLayer.destroyChildren();
 
-    var nameBoxes = drawAreaNameLabels(labelLayer);
+    var nameItems = buildAreaNameLabels();
+    var occupied = nameItems.map(function (item) { return item.box; });
 
     if (state.showDimensions) {
-      drawWallDimensionLabels(labelLayer, nameBoxes);
-      drawObjectDimensionLabels(labelLayer, nameBoxes);
+      drawWallDimensionLabels(labelLayer, occupied);
+      drawObjectDimensionLabels(labelLayer, occupied);
     }
 
+    nameItems.forEach(function (item) {
+      labelLayer.add(item.node);
+    });
+
     flushKonva();
+  }
+
+  function konvaLabelBox(kLabel) {
+    var w = kLabel.width();
+    var h = kLabel.height();
+    var rot = ((kLabel.rotation() % 360) + 360) % 360;
+    var cx = kLabel.x();
+    var cy = kLabel.y();
+    if (Math.abs(rot - 90) < 1 || Math.abs(rot - 270) < 1) {
+      return { x: cx - h / 2, y: cy - w / 2, w: h, h: w };
+    }
+    return { x: cx - w / 2, y: cy - h / 2, w: w, h: h };
   }
 
   function visibleWorldRect() {
@@ -5988,7 +6018,12 @@
         kLabel.position(pos);
         kLabel.offsetX(kLabel.width() / 2);
         kLabel.offsetY(kLabel.height() / 2);
+        var box = konvaLabelBox(kLabel);
+        if (overlapsAnyBox(box, nameBoxes, uiSize(2))) {
+          return;
+        }
         labelLayer.add(kLabel);
+        nameBoxes.push(box);
       })(i, a, b, nrm.midX, nrm.midY, nrm.nx, nrm.ny);
     }
   }
@@ -5998,7 +6033,7 @@
     if (!ppf) return;
     state.objects.forEach(function (obj) {
       var place = objectPlacement(obj);
-      if (!place) return;
+      if (!place || isFreeObject(obj)) return;
       var nx = Math.cos(place.angle + Math.PI / 2) * place.inward;
       var ny = Math.sin(place.angle + Math.PI / 2) * place.inward;
       var kLabel = new Konva.Label({
@@ -6034,7 +6069,12 @@
       kLabel.position(pos);
       kLabel.offsetX(kLabel.width() / 2);
       kLabel.offsetY(kLabel.height() / 2);
+      var box = konvaLabelBox(kLabel);
+      if (overlapsAnyBox(box, nameBoxes, uiSize(2))) {
+        return;
+      }
       labelLayer.add(kLabel);
+      nameBoxes.push(box);
     });
   }
 
@@ -6117,8 +6157,8 @@
     return Math.max(0, labelW - boxW) + Math.max(0, labelH - boxH);
   }
 
-  function drawAreaNameLabels(labelLayer) {
-    var boxes = [];
+  function buildAreaNameLabels() {
+    var items = [];
     allPolygons().forEach(function (entry) {
       var poly = entry.polygon;
       if (!poly.closed || poly.vertices.length < 3) return;
@@ -6183,15 +6223,12 @@
       if (labelOverflow(lh, lw, hSpan, vSpan) + 1 < labelOverflow(lw, lh, hSpan, vSpan)) {
         kLabel.rotation(-90);
       }
-      labelLayer.add(kLabel);
-      boxes.push({
-        x: kLabel.x() - kLabel.offsetX(),
-        y: kLabel.y() - kLabel.offsetY(),
-        w: kLabel.width(),
-        h: kLabel.height()
+      items.push({
+        node: kLabel,
+        box: konvaLabelBox(kLabel)
       });
     });
-    return boxes;
+    return items;
   }
 
   function redrawWalls() {
