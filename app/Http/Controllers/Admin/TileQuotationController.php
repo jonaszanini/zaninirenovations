@@ -48,9 +48,13 @@ class TileQuotationController extends Controller
 
     public function create(Request $request)
     {
-        $linkProject = null;
-        if ($request->filled('project')) {
-            $linkProject = ClientProject::query()->with('photos')->find($request->query('project'));
+        $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'tile');
+        $linkProject = $this->mergeRoomAreaLinkProject(
+            $this->quotationLinkCandidateProject($request),
+            $roomAreaImport
+        );
+        if ($linkProject && ! $linkProject->relationLoaded('photos')) {
+            $linkProject->load('photos');
         }
 
         $mortarTypes = TileMortarType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
@@ -60,6 +64,7 @@ class TileQuotationController extends Controller
 
         return view('admin.quotations.tile.create', compact('linkProject', 'mortarTypes', 'groutTypes', 'products', 'edges') + [
             'linkedCpq' => null,
+            'roomAreaImport' => $roomAreaImport,
         ]);
     }
 

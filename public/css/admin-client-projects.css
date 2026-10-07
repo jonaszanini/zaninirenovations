@@ -6286,8 +6286,13 @@ body.cp-modal-open {
   margin-bottom: 24px;
 }
 
-.sq-toolbar {
+.sq-toolbar,
+.br-toolbar.sq-toolbar {
   margin-bottom: 16px;
+  /* Stay in document flow — a sticky bar covered the first work-card help text. */
+  position: static;
+  top: auto;
+  z-index: auto;
 }
 .sq-toolbar .admin-toolbar-group {
   display: flex;

@@ -921,6 +921,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area');
     Route::get('utilities/room-area/layouts', [\App\Http\Controllers\Admin\RoomAreaController::class, 'searchLayouts'])
         ->name('utilities.room-area.layouts');
+    Route::get('utilities/room-area/quote', [\App\Http\Controllers\Admin\RoomAreaQuoteController::class, 'show'])
+        ->name('utilities.room-area.quote');
+    Route::post('utilities/room-area/quote', [\App\Http\Controllers\Admin\RoomAreaQuoteController::class, 'store'])
+        ->name('utilities.room-area.quote.store');
     Route::post('utilities/room-area/validate', [\App\Http\Controllers\Admin\RoomAreaController::class, 'validateRoom'])
         ->name('utilities.room-area.validate');
     Route::post('utilities/room-area/pdf', [\App\Http\Controllers\Admin\RoomAreaController::class, 'exportPdf'])

@@ -74,11 +74,38 @@ class RoomAreaLayoutQuoteService
      */
     public function optionById(string $id): ?array
     {
+        $resolved = $this->resolve($id);
+
+        return $resolved['option'] ?? null;
+    }
+
+    /**
+     * @return array{option: array<string, mixed>, project: RoomAreaProject|null, room: RoomAreaRoom|null, client_project: \App\Models\ClientProject|null}|null
+     */
+    public function resolve(string $id): ?array
+    {
+        $id = trim($id);
+        if ($id === '') {
+            return null;
+        }
+
         if (str_starts_with($id, 'project:')) {
             $projectId = (int) substr($id, 8);
-            $project = RoomAreaProject::query()->with('rooms')->find($projectId);
+            $project = RoomAreaProject::query()->with(['rooms', 'clientProject'])->find($projectId);
+            if (! $project) {
+                return null;
+            }
+            $option = $this->optionForProject($project);
+            if ($option === null) {
+                return null;
+            }
 
-            return $project ? $this->optionForProject($project) : null;
+            return [
+                'option' => $option,
+                'project' => $project,
+                'room' => null,
+                'client_project' => $project->clientProject,
+            ];
         }
 
         $roomId = str_starts_with($id, 'room:') ? (int) substr($id, 5) : (int) $id;
@@ -86,9 +113,21 @@ class RoomAreaLayoutQuoteService
             return null;
         }
 
-        $room = RoomAreaRoom::query()->with('project')->find($roomId);
+        $room = RoomAreaRoom::query()->with('project.clientProject')->find($roomId);
+        if (! $room) {
+            return null;
+        }
+        $option = $this->optionForRoom($room);
+        if ($option === null) {
+            return null;
+        }
 
-        return $room ? $this->optionForRoom($room) : null;
+        return [
+            'option' => $option,
+            'project' => $room->project,
+            'room' => $room,
+            'client_project' => $room->project?->clientProject,
+        ];
     }
 
     /**
@@ -221,7 +260,7 @@ class RoomAreaLayoutQuoteService
             'inside_corners' => $metrics['inside_corners'],
             'outside_corners' => $metrics['outside_corners'],
             'polygon_count' => $metrics['polygon_count'],
-            'meta' => $area.' sq ft floor · '.$peri.' lf walls · '.$base.' lf baseboard'
+            'meta' => $area.' sq ft floor · '.$peri.' lf perimeter · '.$base.' lf baseboard'
                 .($openings > 0 ? ' · '.$openings.' openings' : ''),
         ];
     }

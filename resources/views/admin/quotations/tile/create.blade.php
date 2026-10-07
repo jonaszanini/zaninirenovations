@@ -13,6 +13,9 @@
   $formAction = ($isEdit ? route('admin.quotations.tile.update', $quotation) : route('admin.quotations.tile.store')).$formQuery;
   $inputs = $isEdit ? ($quotation->inputs ?? []) : [];
 
+  if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
+      $inputs = array_merge($inputs, $roomAreaImport['inputs']);
+  }
   $total_area_sqft = old('total_area_sqft', $inputs['total_area_sqft'] ?? '');
   $length_ft = old('length_ft', $inputs['length_ft'] ?? '');
   $width_ft = old('width_ft', $inputs['width_ft'] ?? '');
@@ -25,7 +28,7 @@
   $grout_type_id = old('grout_type_id', $inputs['grout_type_id'] ?? '');
   $labor_rate = old('labor_rate', $inputs['labor_rate'] ?? \App\Services\SharedWorkCatalog::flatRate('tile_install', 12));
   $work_description = old('work_description', $isEdit ? $quotation->work_description : '');
-  $client_name = old('client_name', $isEdit ? $quotation->client_name : '');
+  $client_name = old('client_name', $isEdit ? $quotation->client_name : optional($linkProject)->client_name);
   
   $include_demolition = old('include_demolition', $inputs['include_demolition'] ?? false);
   $demolition_complexity = old('demolition_complexity', $inputs['demolition_complexity'] ?? 'standard');
@@ -140,6 +143,7 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->isLinked())
     <div class="admin-banner admin-banner--info" style="margin-bottom:16px;">
       <i class="fa fa-info-circle"></i>

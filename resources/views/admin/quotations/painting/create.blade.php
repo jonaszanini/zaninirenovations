@@ -28,6 +28,9 @@
           $inputs[$k] = $v;
       }
   }
+  if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
+      $inputs = array_merge($inputs, $roomAreaImport['inputs']);
+  }
   $excludedRows = old('excluded_areas');
   if ($excludedRows === null) {
       $excludedRows = is_array($inputs['excluded_areas'] ?? null) ? $inputs['excluded_areas'] : [];
@@ -156,6 +159,7 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
       <i class="fa fa-link"></i>
