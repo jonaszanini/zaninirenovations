@@ -69,7 +69,6 @@ return [
         'Wood staircase refinishing',
         'Ontario Building Code O.Reg. 332/12',
         'Part 9 housing and small buildings',
-        'WSIB clearance certificate',
     ],
 
     'liability_insurance' => '$3 million',
@@ -79,7 +78,7 @@ return [
     | Short, quotable homepage summary (WebPage + visible intro for AI/SEO)
     |--------------------------------------------------------------------------
     */
-    'home_summary' => 'Zanini Renovations is a one-person, fully insured carpentry and renovation business based in Carleton Place, Ontario, since 2020. Decks, fences and gates, basement finishing, finish carpentry and trim, custom built-ins and closets, staircases, drywall and flooring—with $3 million general liability insurance, WSIB clearance, and O.Reg. 332/12 compliant practices.',
+    'home_summary' => 'Zanini Renovations is a fully insured carpentry and renovation business based in Carleton Place, Ontario, since 2020. Decks, fences and gates, basement finishing, finish carpentry and trim, custom built-ins and closets, staircases, drywall and flooring—with $3 million general liability insurance.',
 
     'home_title' => 'Carpenter & Renovation Contractor in Carleton Place | Zanini',
 

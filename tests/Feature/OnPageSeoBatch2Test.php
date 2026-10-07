@@ -43,6 +43,7 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
 
         $this->assertStringContainsString('Work directly with Jonas, from the first visit to the final walkthrough.', $html);
         $this->assertStringNotContainsString('Client oriented, long experienced', $html);
+        $this->assertStringContainsString('Zanini Renovations is a carpentry and renovation business based in Carleton Place, in business since 2020, handling residential and commercial work, including kitchen remodels.', $html);
         $this->assertStringContainsString('in business since 2020', $html);
         $this->assertStringContainsString('residential and commercial work, including kitchen remodels', $html);
         $this->assertStringNotContainsString('best professional pricing', $html);
@@ -59,6 +60,11 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
         $this->assertLessThanOrEqual(155, mb_strlen($desc));
         $this->assertMatchesRegularExpression('/[A-Za-z0-9.]$/u', $desc);
         $this->assertStringNotContainsString('unattache', $desc);
+        $this->assertStringNotContainsString('WSIB', $desc);
+        $this->assertSame(
+            'One-year workmanship warranty and $3M general liability insurance, explained. Renovate with confidence in Lanark County and Ottawa.',
+            $desc
+        );
     }
 
     public function test_blog_hub_title_is_at_most_60_characters(): void
@@ -173,15 +179,27 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
         }
     }
 
-    public function test_public_pages_do_not_claim_licensed(): void
+    public function test_public_pages_do_not_claim_licensed_wsib_or_one_person(): void
     {
         foreach (['/', '/warranty', '/blog', '/portfolio', '/privacy-policy', '/terms-and-conditions', '/llms.txt'] as $path) {
             $content = strtolower($this->get($path)->assertOk()->getContent());
             $this->assertStringNotContainsString('licensed', $content, $path.' must not contain licensed');
+            $this->assertStringNotContainsString('wsib', $content, $path.' must not contain WSIB');
+            $this->assertStringNotContainsString('workplace safety', $content, $path.' must not contain Workplace Safety');
+            $this->assertStringNotContainsString('one-person', $content, $path.' must not contain one-person');
+            $this->assertStringNotContainsString('one person', $content, $path.' must not contain one person');
         }
 
         $notFound = strtolower($this->get('/about-nonexistent')->assertStatus(404)->getContent());
         $this->assertStringNotContainsString('licensed', $notFound);
+        $this->assertStringNotContainsString('wsib', $notFound);
+        $this->assertStringNotContainsString('one-person', $notFound);
+        $this->assertStringNotContainsString('one person', $notFound);
+
+        $graph = strtolower(SeoStructuredData::toJsonLd(SeoStructuredData::homeGraph()));
+        $this->assertStringNotContainsString('wsib', $graph);
+        $this->assertStringNotContainsString('one-person', $graph);
+        $this->assertStringNotContainsString('one person', $graph);
     }
 
     public function test_blog_tag_and_category_are_noindex_below_the_threshold(): void

@@ -25,7 +25,7 @@
                   <img src="{{ url('images/logo-footer.webp') }}" alt="Zanini Renovations" loading="lazy" decoding="async" width="254" height="63">
                 </figure>
                 <p class="margin-top-24">
-                Zanini Renovations is a one-person carpentry and renovation business based in Carleton Place, in business since 2020. Jonas handles residential and commercial work, including kitchen remodels.
+                Zanini Renovations is a carpentry and renovation business based in Carleton Place, in business since 2020, handling residential and commercial work, including kitchen remodels.
                 </p>
                 <div class="footer-social-icons">
 

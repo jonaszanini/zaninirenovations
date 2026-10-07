@@ -1,7 +1,7 @@
 @extends('site.layouts.public')
 
 @section('page_title', config('seo.home_title'))
-@section('meta_description', 'Decks, fences, basement finishing, trim & built-ins across Carleton Place, Kanata, Stittsville & Ottawa. WSIB-cleared, $3M insured. Free estimates.')
+@section('meta_description', 'Decks, fences, basement finishing, trim & built-ins across Carleton Place, Kanata, Stittsville & Ottawa. Fully insured, since 2020. Free estimates.')
 @section('canonical', url('/'))
 
 @push('jsonld')
