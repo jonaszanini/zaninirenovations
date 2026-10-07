@@ -3100,6 +3100,12 @@ html.admin-dark .util-oc-pill {
   color: var(--admin-muted);
 }
 
+html.admin-dark .util-oc-card {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
 html.admin-dark .util-lb-min-offcut > label {
   color: var(--admin-muted);
 }

@@ -130,65 +130,57 @@
       @if ($offcuts->isEmpty())
         <p class="util-lb-saved-empty">No offcuts match these filters.</p>
       @else
-        <div class="admin-table-scroll">
-          <table class="admin-table util-oc-table">
-            <thead>
-              <tr>
-                <th>Material</th>
-                <th>Size</th>
-                <th>Qty</th>
-                <th>Where</th>
-                <th>Catalog</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              @foreach ($offcuts as $row)
-                @php
-                  $catalog = $prices[$row->material_key] ?? null;
-                @endphp
-                <tr class="{{ $row->isAvailable() ? '' : 'is-used' }}">
-                  <td>
-                    <strong>{{ $row->displayName() }}</strong>
-                    @if ($row->isSheet())
-                      <span class="util-oc-pill">Sheet</span>
-                    @else
-                      <span class="util-oc-pill util-oc-pill--linear">Linear</span>
+        <div class="util-oc-cards">
+          @foreach ($offcuts as $row)
+            @php
+              $catalog = $prices[$row->material_key] ?? null;
+            @endphp
+            <article class="util-oc-card{{ $row->isAvailable() ? '' : ' is-used' }}">
+              <div class="util-oc-card__top">
+                <div>
+                  <strong>{{ $row->displayName() }}</strong>
+                  @if ($row->isSheet())
+                    <span class="util-oc-pill">Sheet</span>
+                  @else
+                    <span class="util-oc-pill util-oc-pill--linear">Linear</span>
+                  @endif
+                  @unless ($row->isAvailable())
+                    <span class="util-oc-pill util-oc-pill--used">Used</span>
+                  @endunless
+                  <div class="util-oc-card__meta">
+                    {{ $row->sizeLabel() }}
+                    @if ($row->thickness_in)
+                      <span class="util-oc-muted">× {{ rtrim(rtrim(number_format((float) $row->thickness_in, 3, '.', ''), '0'), '.') }} thk</span>
                     @endif
-                    @unless ($row->isAvailable())
-                      <span class="util-oc-pill util-oc-pill--used">Used</span>
-                    @endunless
-                  </td>
-                  <td>{{ $row->sizeLabel() }}@if ($row->thickness_in) <span class="util-oc-muted">× {{ rtrim(rtrim(number_format((float) $row->thickness_in, 3, '.', ''), '0'), '.') }} thk</span> @endif</td>
-                  <td>{{ $row->qty }}</td>
-                  <td>
+                    · qty {{ $row->qty }}
+                    @if ($catalog)
+                      · ${{ number_format($catalog, 2) }}
+                    @endif
+                  </div>
+                  <div class="util-oc-muted">
                     {{ $row->location ?: '—' }}
                     @if ($row->notes)
-                      <div class="util-oc-muted">{{ $row->notes }}</div>
+                      · {{ $row->notes }}
                     @endif
-                    @if ($row->createdFromProject)
-                      <div class="util-oc-muted">From {{ $row->createdFromProject->linkSelectLabel() }}</div>
-                    @endif
-                  </td>
-                  <td>{{ $catalog ? '$'.number_format($catalog, 2) : '—' }}</td>
-                  <td class="util-oc-actions">
-                    <a href="{{ route('admin.utilities.offcuts.edit', $row) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
-                    @if ($row->isAvailable())
-                      <form method="post" action="{{ route('admin.utilities.offcuts.mark-used', $row) }}">
-                        @csrf
-                        <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Mark used</button>
-                      </form>
-                    @endif
-                    <form method="post" action="{{ route('admin.utilities.offcuts.destroy', $row) }}" onsubmit="return confirm('Delete this offcut?');">
-                      @csrf
-                      @method('DELETE')
-                      <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
-                    </form>
-                  </td>
-                </tr>
-              @endforeach
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+              <div class="util-oc-actions">
+                <a href="{{ route('admin.utilities.offcuts.edit', $row) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
+                @if ($row->isAvailable())
+                  <form method="post" action="{{ route('admin.utilities.offcuts.mark-used', $row) }}">
+                    @csrf
+                    <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Mark used</button>
+                  </form>
+                @endif
+                <form method="post" action="{{ route('admin.utilities.offcuts.destroy', $row) }}" onsubmit="return confirm('Delete this offcut?');">
+                  @csrf
+                  @method('DELETE')
+                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
+                </form>
+              </div>
+            </article>
+          @endforeach
         </div>
       @endif
     </section>
