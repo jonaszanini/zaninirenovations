@@ -97,6 +97,9 @@
                             <span>{{ $room['name'] }}</span>
                             <span class="cp-utilities-item__room-meta">
                               <span class="cp-utilities-item__room-area">{{ $room['area_label'] }}</span>
+                              @if (!empty($room['photo_count']))
+                                <span class="cp-utilities-item__room-photos">{{ $room['photo_count'] }} {{ \Illuminate\Support\Str::plural('photo', $room['photo_count']) }}</span>
+                              @endif
                               @if (!empty($room['pdf_url']))
                                 <a href="{{ $room['pdf_url'] }}" class="cp-utilities-item__pdf" target="_blank" rel="noopener">PDF</a>
                               @endif

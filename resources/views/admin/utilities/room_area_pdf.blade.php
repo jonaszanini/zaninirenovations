@@ -72,6 +72,27 @@
       letter-spacing: 0.04em;
     }
     table.pdf-objects td.num { text-align: right; }
+    .pdf-photos { page-break-before: always; }
+    .pdf-photo-grid {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .pdf-photo-grid td {
+      width: 50%;
+      vertical-align: top;
+      padding: 0 8px 12px 0;
+    }
+    .pdf-photo-grid img {
+      width: 100%;
+      max-width: 250px;
+      height: auto;
+      border: 1px solid #d8dee4;
+    }
+    .pdf-photo-caption {
+      font-size: 10px;
+      color: #5a6570;
+      margin: 4px 0 0;
+    }
   </style>
 </head>
 <body>
@@ -128,6 +149,29 @@
         @endforeach
       </tbody>
     </table>
+  @endif
+
+  @if (!empty($photos))
+    <div class="pdf-photos">
+      <h2 class="pdf-section-title">Site photos</h2>
+      <table class="pdf-photo-grid">
+        @foreach (array_chunk($photos, 2) as $row)
+          <tr>
+            @foreach ($row as $photo)
+              <td>
+                <img src="{{ $photo['src'] }}" alt="{{ $photo['caption'] ?: 'Site photo' }}" width="250">
+                @if (!empty($photo['caption']))
+                  <p class="pdf-photo-caption">{{ $photo['caption'] }}</p>
+                @endif
+              </td>
+            @endforeach
+            @if (count($row) === 1)
+              <td></td>
+            @endif
+          </tr>
+        @endforeach
+      </table>
+    </div>
   @endif
 </body>
 </html>

@@ -33,6 +33,9 @@
     data-room-background-destroy-template="{{ route('admin.utilities.room-area.rooms.background.destroy', ['room_area_room' => '__ID__']) }}"
     data-pdf-url="{{ route('admin.utilities.room-area.pdf') }}"
     data-room-pdf-template="{{ route('admin.utilities.room-area.rooms.pdf', ['room_area_room' => '__ID__']) }}"
+    data-room-photos-store-template="{{ route('admin.utilities.room-area.rooms.photos.store', ['room_area_room' => '__ID__']) }}"
+    data-room-photo-show-template="{{ route('admin.utilities.room-area.rooms.photos.show', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
+    data-room-photo-destroy-template="{{ route('admin.utilities.room-area.rooms.photos.destroy', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
     data-quote-room-template="{{ route('admin.utilities.room-area.quote') }}?layout=room:__ID__"
     data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__">
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
@@ -171,7 +174,7 @@
       <section class="admin-card util-ra-canvas-card">
         <p class="util-ra-desktop-notice">
           <i class="fa fa-desktop" aria-hidden="true"></i>
-          Precise drawing works best on a larger screen. On a phone, use two fingers to pan/zoom and expect finer edits (moving corners, walls) to be harder to tap accurately.
+          On a phone, type wall lengths below instead of dragging corners. Two fingers pan/zoom the canvas.
         </p>
         <div class="util-ra-canvas-toolbar">
           <div class="util-ra-toolbar__groups">
@@ -309,6 +312,66 @@
             </div>
           </div>
         </div>
+
+        <section class="util-ra-type-walls" data-ra-type-walls aria-label="Type walls">
+          <div class="util-ra-type-walls__head">
+            <h3 class="util-ra-type-walls__title">Type walls</h3>
+            <p class="util-ra-type-walls__hint">Tape lengths from top-left, going right.</p>
+          </div>
+
+          <div class="util-ra-type-walls__entry">
+            <div class="admin-form-group util-ra-type-walls__len">
+              <label for="ra-type-length">Length</label>
+              <input class="admin-input" type="text" id="ra-type-length" inputmode="decimal" autocomplete="off" data-ra-type-length placeholder="12' 6&quot;">
+            </div>
+            <div class="util-ra-type-walls__dirs" role="group" aria-label="Turn direction">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir is-active" data-ra-type-dir="right" aria-pressed="true" title="Turn right 90°">
+                <i class="fa fa-repeat" aria-hidden="true"></i><span>Right</span>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="left" aria-pressed="false" title="Turn left 90°">
+                <i class="fa fa-undo" aria-hidden="true"></i><span>Left</span>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="custom" aria-pressed="false" title="Custom angle">
+                <i class="fa fa-compass" aria-hidden="true"></i><span>Angle</span>
+              </button>
+            </div>
+            <div class="admin-form-group util-ra-type-walls__angle" data-ra-type-angle-wrap hidden>
+              <label for="ra-type-angle">Turn °</label>
+              <input class="admin-input" type="text" id="ra-type-angle" inputmode="decimal" autocomplete="off" data-ra-type-angle placeholder="45">
+            </div>
+            <button type="button" class="admin-btn admin-btn--primary util-ra-type-walls__add" data-ra-type-add>
+              Add wall
+            </button>
+          </div>
+
+          <div class="util-ra-type-walls__rect">
+            <span class="util-ra-type-walls__rect-label">Rectangle</span>
+            <div class="admin-form-group util-ra-type-walls__rect-field">
+              <label for="ra-type-rect-w">W</label>
+              <input class="admin-input" type="text" id="ra-type-rect-w" inputmode="decimal" autocomplete="off" data-ra-type-rect-w placeholder="12">
+            </div>
+            <span class="util-ra-type-walls__times" aria-hidden="true">×</span>
+            <div class="admin-form-group util-ra-type-walls__rect-field">
+              <label for="ra-type-rect-l">L</label>
+              <input class="admin-input" type="text" id="ra-type-rect-l" inputmode="decimal" autocomplete="off" data-ra-type-rect-l placeholder="10">
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__rect-add" data-ra-type-rect>
+              Add rect
+            </button>
+          </div>
+
+          <ol class="util-ra-type-walls__list" data-ra-type-list hidden></ol>
+
+          <div class="util-ra-type-walls__close" data-ra-type-close-bar hidden>
+            <button type="button" class="admin-btn admin-btn--primary util-ra-type-walls__close-btn" data-ra-type-close>
+              Close room
+            </button>
+            <p class="util-ra-type-walls__gap" data-ra-type-gap></p>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__auto" data-ra-type-autoclose hidden>
+              Auto-close
+            </button>
+          </div>
+        </section>
 
         <div class="util-ra-object-dock">
           <section class="util-ra-palette" data-ra-palette aria-label="Door and window library">
@@ -484,8 +547,38 @@
             <span class="util-sr-only" data-ra-live-sqft aria-hidden="true">—</span>
           </div>
         </div>
+
+        <section class="util-ra-photos" data-ra-photos hidden aria-label="Site photos">
+          <div class="util-ra-photos__head">
+            <h3 class="util-ra-photos__title">Site photos</h3>
+            <span class="util-ra-photos__count" data-ra-photos-count></span>
+          </div>
+          <div class="util-ra-photos__add">
+            <label class="admin-btn admin-btn--ghost util-ra-photos__file-btn">
+              <i class="fa fa-camera" aria-hidden="true"></i> Add photos
+              <input type="file" accept="image/*" capture="environment" multiple data-ra-photos-file hidden>
+            </label>
+            <div class="admin-form-group util-ra-photos__caption">
+              <label for="ra-photo-caption">Caption</label>
+              <input class="admin-input" type="text" id="ra-photo-caption" maxlength="160" autocomplete="off" placeholder="Optional" data-ra-photos-caption>
+            </div>
+          </div>
+          <p class="util-ra-photos__empty" data-ra-photos-empty>No photos yet. Add shots from the job site.</p>
+          <ul class="util-ra-photos__strip" data-ra-photos-strip hidden></ul>
+        </section>
         <p class="util-ra-feedback" data-ra-feedback hidden></p>
       </section>
+
+      <div class="util-ra-lightbox" data-ra-lightbox hidden>
+        <button type="button" class="util-ra-lightbox__backdrop" data-ra-lightbox-close aria-label="Close photo"></button>
+        <figure class="util-ra-lightbox__figure">
+          <img class="util-ra-lightbox__img" data-ra-lightbox-img alt="">
+          <figcaption class="util-ra-lightbox__caption" data-ra-lightbox-caption></figcaption>
+          <button type="button" class="admin-btn admin-btn--ghost util-ra-lightbox__x" data-ra-lightbox-close aria-label="Close">
+            <i class="fa fa-times" aria-hidden="true"></i>
+          </button>
+        </figure>
+      </div>
 
       {{-- Saved rooms — full width below canvas --}}
       <section class="admin-card util-ra-rooms-card">

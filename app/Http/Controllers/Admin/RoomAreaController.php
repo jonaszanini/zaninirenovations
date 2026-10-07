@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
+use App\Models\RoomAreaPhoto;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Services\RoomAreaCanvasData;
 use App\Services\RoomAreaLayoutQuoteService;
+use App\Services\RoomAreaPhotoStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +22,7 @@ class RoomAreaController extends Controller
     {
         $projects = RoomAreaProject::query()
             ->with([
-                'rooms',
+                'rooms.photos',
                 'clientProject:id,name',
             ])
             ->orderBy('name')
@@ -101,6 +103,7 @@ class RoomAreaController extends Controller
         foreach ($room_area_project->rooms as $room) {
             $this->deleteRoomBackgroundFile($room);
             $this->deleteRoomPdfFile($room);
+            $this->deleteRoomPhotos($room);
         }
 
         $room_area_project->delete();
@@ -232,9 +235,67 @@ class RoomAreaController extends Controller
     {
         $this->deleteRoomBackgroundFile($room_area_room);
         $this->deleteRoomPdfFile($room_area_room);
+        $this->deleteRoomPhotos($room_area_room);
         $room_area_room->delete();
 
         return response()->json(['ok' => true]);
+    }
+
+    public function storePhotos(Request $request, RoomAreaRoom $room_area_room, RoomAreaPhotoStorage $photos)
+    {
+        $data = $request->validate([
+            'photos' => ['required', 'array', 'min:1', 'max:12'],
+            'photos.*' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:'.RoomAreaPhotoStorage::MAX_UPLOAD_KB],
+            'caption' => ['nullable', 'string', 'max:160'],
+        ]);
+
+        $caption = isset($data['caption']) ? trim((string) $data['caption']) : '';
+        $caption = $caption === '' ? null : $caption;
+        $sort = (int) $room_area_room->photos()->max('sort_order');
+        $created = [];
+
+        foreach ($data['photos'] as $file) {
+            $stored = $photos->store($file, (int) $room_area_room->id);
+            $sort++;
+            $photo = $room_area_room->photos()->create([
+                'path' => $stored['path'],
+                'caption' => $caption,
+                'original_filename' => $file->getClientOriginalName(),
+                'mime' => $stored['mime'],
+                'width' => $stored['width'],
+                'height' => $stored['height'],
+                'sort_order' => $sort,
+            ]);
+            $created[] = $this->photoPayload($photo);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'photos' => $created,
+            'photo_count' => $room_area_room->photos()->count(),
+        ]);
+    }
+
+    public function showPhoto(RoomAreaRoom $room_area_room, RoomAreaPhoto $photo): Response
+    {
+        $this->assertPhotoBelongsToRoom($room_area_room, $photo);
+        if (! $photo->path || ! Storage::disk('local')->exists($photo->path)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($photo->path);
+    }
+
+    public function destroyPhoto(RoomAreaRoom $room_area_room, RoomAreaPhoto $photo, RoomAreaPhotoStorage $photos)
+    {
+        $this->assertPhotoBelongsToRoom($room_area_room, $photo);
+        $photos->delete($photo->path);
+        $photo->delete();
+
+        return response()->json([
+            'ok' => true,
+            'photo_count' => $room_area_room->photos()->count(),
+        ]);
     }
 
     /**
@@ -269,7 +330,7 @@ class RoomAreaController extends Controller
 
         $room = null;
         if (! empty($data['room_id'])) {
-            $room = RoomAreaRoom::query()->with('project.clientProject')->find($data['room_id']);
+            $room = RoomAreaRoom::query()->with(['project.clientProject', 'photos'])->find($data['room_id']);
         }
 
         $title = trim((string) ($data['title'] ?? ''));
@@ -295,12 +356,28 @@ class RoomAreaController extends Controller
             ];
         }
 
+        $photoUris = [];
+        if ($room) {
+            $storage = app(RoomAreaPhotoStorage::class);
+            foreach ($room->photos as $photo) {
+                $uri = $storage->pdfDataUri((string) $photo->path);
+                if ($uri === null) {
+                    continue;
+                }
+                $photoUris[] = [
+                    'src' => $uri,
+                    'caption' => $photo->caption,
+                ];
+            }
+        }
+
         $pdf = Pdf::loadView('admin.utilities.room_area_pdf', [
             'title' => $title,
             'summary' => $data['summary'] ?? '',
             'rows' => $data['rows'],
             'objects' => $objects,
             'diagram' => $diagram,
+            'photos' => $photoUris,
             'generatedAt' => now()->format('M j, Y g:i A'),
             'clientProjectName' => $room?->project?->clientProject?->name,
         ])
@@ -424,6 +501,9 @@ class RoomAreaController extends Controller
     private function roomPayload(RoomAreaRoom $room, ?RoomAreaCanvasData $canvasData = null): array
     {
         $canvasData ??= app(RoomAreaCanvasData::class);
+        if (! $room->relationLoaded('photos')) {
+            $room->load('photos');
+        }
         $canvas = $canvasData->normalize($room->vertices);
         $scale = (float) ($room->scale_pixels_per_foot ?? $room->project?->scale_pixels_per_foot ?? 0);
         $groupSummaries = $scale > 0
@@ -451,7 +531,43 @@ class RoomAreaController extends Controller
                 ? route('admin.utilities.room-area.rooms.pdf', $room)
                 : null,
             'area_sqft' => (float) $room->area_sqft,
+            'photo_count' => $room->relationLoaded('photos')
+                ? $room->photos->count()
+                : (int) ($room->photos_count ?? $room->photos()->count()),
+            'photos' => $room->relationLoaded('photos')
+                ? $room->photos->map(fn (RoomAreaPhoto $photo) => $this->photoPayload($photo))->values()->all()
+                : [],
         ];
+    }
+
+    /**
+     * @return array{id: int, url: string, caption: ?string, width: ?int, height: ?int}
+     */
+    private function photoPayload(RoomAreaPhoto $photo): array
+    {
+        return [
+            'id' => $photo->id,
+            'url' => route('admin.utilities.room-area.rooms.photos.show', [
+                'room_area_room' => $photo->room_area_room_id,
+                'photo' => $photo->id,
+            ]),
+            'caption' => $photo->caption,
+            'width' => $photo->width,
+            'height' => $photo->height,
+        ];
+    }
+
+    private function assertPhotoBelongsToRoom(RoomAreaRoom $room, RoomAreaPhoto $photo): void
+    {
+        if ((int) $photo->room_area_room_id !== (int) $room->id) {
+            abort(404);
+        }
+    }
+
+    private function deleteRoomPhotos(RoomAreaRoom $room): void
+    {
+        app(RoomAreaPhotoStorage::class)->deleteDirectory((int) $room->id);
+        $room->photos()->delete();
     }
 
     private function deleteRoomBackgroundFile(RoomAreaRoom $room): void

@@ -7408,6 +7408,13 @@ body.cp-modal-open {
   white-space: nowrap;
 }
 
+.cp-utilities-item__room-photos {
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .cp-utilities-item__pdf {
   color: var(--admin-primary);
   font-weight: 600;
