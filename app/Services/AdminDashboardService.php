@@ -2,14 +2,15 @@
 
 namespace App\Services;
 
-use App\Support\Logging\AppLogger;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectReturn;
 use App\Models\ClientProjectStatusHistoryEntry;
+use App\Models\EtransferNotice;
 use App\Models\FenceMaterial;
 use App\Models\FenceQuotation;
+use App\Support\Logging\AppLogger;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -30,9 +31,15 @@ class AdminDashboardService
             Cache::forget(self::CACHE_KEY);
         }
 
-        return Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, function () {
+        $payload = Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, function () {
             return $this->computePayload();
         });
+
+        // Keep the matching queue live so a newly pasted/API notice shows
+        // under Do today without waiting for the dashboard cache TTL.
+        $payload['pending_etransfers'] = EtransferNotice::query()->pending()->count();
+
+        return $payload;
     }
 
     private function computePayload(): array
@@ -105,7 +112,7 @@ class AdminDashboardService
     {
         try {
             $latest = FenceMaterial::query()->max('updated_at');
-            if (!$latest) {
+            if (! $latest) {
                 return null;
             }
             $t = Carbon::parse($latest, config('app.timezone'));
@@ -147,7 +154,7 @@ class AdminDashboardService
         foreach ($projects as $project) {
             if ($project->isHourly()) {
                 foreach ($project->invoices as $invoice) {
-                    if (!$invoice->isSent() || $invoice->isPaid()) {
+                    if (! $invoice->isSent() || $invoice->isPaid()) {
                         continue;
                     }
                     $amt = (float) $invoice->total;
@@ -161,7 +168,7 @@ class AdminDashboardService
                 continue;
             }
 
-            if (!$project->hasSchedule()) {
+            if (! $project->hasSchedule()) {
                 continue;
             }
 
@@ -266,7 +273,7 @@ class AdminDashboardService
         }
 
         $key = $date->copy()->startOfMonth()->format('Y-m');
-        if (!isset($buckets[$key])) {
+        if (! isset($buckets[$key])) {
             return;
         }
 
@@ -299,7 +306,7 @@ class AdminDashboardService
     ): ?Carbon {
         $num = (int) $inst->sort_order + 1;
         $inv = $invoicesByInstallment->get($num);
-        if ($inv && $inv->isSent() && !$inv->isPaid()) {
+        if ($inv && $inv->isSent() && ! $inv->isPaid()) {
             return $this->expectedCollectionDateForOpenInvoice($inv);
         }
 
@@ -308,7 +315,7 @@ class AdminDashboardService
 
     private function interpolatedScheduleDate(ClientProject $project, int $sortOrder, int $count): ?Carbon
     {
-        if (!$project->hasSchedule()) {
+        if (! $project->hasSchedule()) {
             return null;
         }
         $start = Carbon::parse($project->start_date)->startOfDay();
@@ -455,7 +462,7 @@ class AdminDashboardService
 
     private function isActiveProject(ClientProject $p): bool
     {
-        return !in_array($p->status, [
+        return ! in_array($p->status, [
             ClientProject::STATUS_CANCELLED,
             ClientProject::STATUS_REJECTED,
             ClientProject::STATUS_COMPLETED,
@@ -512,15 +519,15 @@ class AdminDashboardService
     private function nextPaymentSummary(ClientProject $p): ?string
     {
         if ($p->isHourly()) {
-            $inv = $p->invoices->first(fn ($i) => $i->isSent() && !$i->isPaid());
+            $inv = $p->invoices->first(fn ($i) => $i->isSent() && ! $i->isPaid());
 
             return $inv
                 ? 'Invoice '.$inv->invoice_number.' — '.ClientProject::formatMoney((float) $inv->total).' due '.ClientProject::formatDate($inv->due_on)
                 : null;
         }
 
-        $inst = $p->installments->first(fn ($i) => !$i->is_paid);
-        if (!$inst) {
+        $inst = $p->installments->first(fn ($i) => ! $i->is_paid);
+        if (! $inst) {
             return null;
         }
         $gross = $inst->effectiveTotal();
@@ -564,7 +571,7 @@ class AdminDashboardService
         }
 
         foreach ($projects as $p) {
-            if (!isset($groups[$p->status])) {
+            if (! isset($groups[$p->status])) {
                 continue;
             }
             $groups[$p->status]['count']++;
@@ -658,7 +665,7 @@ class AdminDashboardService
             $reasons = [];
 
             $overdueInv = $p->invoices->filter(function ($inv) use ($today) {
-                return $inv->isSent() && !$inv->isPaid() && $inv->due_on
+                return $inv->isSent() && ! $inv->isPaid() && $inv->due_on
                     && Carbon::parse($inv->due_on)->lt($today);
             });
             if ($overdueInv->isNotEmpty()) {

@@ -82,6 +82,15 @@
 
     {{-- Do today: overdue invoices + attention, above charts --}}
     <h2 class="dash-block-title">Do today</h2>
+    @if (($d['pending_etransfers'] ?? 0) > 0)
+      <div class="dash-panel dash-etransfer-today">
+        <div class="dash-etransfer-today__copy">
+          <strong>{{ $d['pending_etransfers'] }} incoming e-transfer{{ (int) $d['pending_etransfers'] === 1 ? '' : 's' }}</strong>
+          waiting to be matched to an invoice.
+        </div>
+        <a href="{{ route('admin.financials.etransfers') }}" class="admin-btn admin-btn--primary admin-btn--sm">Review e-transfers</a>
+      </div>
+    @endif
     <div class="dash-two-col dash-two-col--today">
       <div class="dash-panel">
         <h3 class="dash-section-title">Overdue invoices</h3>

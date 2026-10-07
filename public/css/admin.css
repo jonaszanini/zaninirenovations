@@ -210,6 +210,11 @@ body.admin-body {
   flex: 1;
 }
 
+.admin-nav-details > summary .admin-nav-badge {
+  flex-shrink: 0;
+  margin-left: 0;
+}
+
 .admin-nav-caret {
   font-size: 0.7rem;
   opacity: 0.7;

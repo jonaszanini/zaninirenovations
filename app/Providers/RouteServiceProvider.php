@@ -52,6 +52,9 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('quote-accept-api', function (Request $request) {
             return Limit::perMinute(30)->by($request->ip());
         });
+
+        RateLimiter::for('etransfer-api', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
     }
 }
-
