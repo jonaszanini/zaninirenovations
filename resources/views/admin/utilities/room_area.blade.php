@@ -313,66 +313,6 @@
           </div>
         </div>
 
-        <section class="util-ra-type-walls" data-ra-type-walls aria-label="Type walls">
-          <div class="util-ra-type-walls__head">
-            <h3 class="util-ra-type-walls__title">Type walls</h3>
-            <p class="util-ra-type-walls__hint">Tape lengths from top-left, going right.</p>
-          </div>
-
-          <div class="util-ra-type-walls__entry">
-            <div class="admin-form-group util-ra-type-walls__len">
-              <label for="ra-type-length">Length</label>
-              <input class="admin-input" type="text" id="ra-type-length" inputmode="decimal" autocomplete="off" data-ra-type-length placeholder="12' 6&quot;">
-            </div>
-            <div class="util-ra-type-walls__dirs" role="group" aria-label="Turn direction">
-              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir is-active" data-ra-type-dir="right" aria-pressed="true" title="Turn right 90°">
-                <i class="fa fa-repeat" aria-hidden="true"></i><span>Right</span>
-              </button>
-              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="left" aria-pressed="false" title="Turn left 90°">
-                <i class="fa fa-undo" aria-hidden="true"></i><span>Left</span>
-              </button>
-              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="custom" aria-pressed="false" title="Custom angle">
-                <i class="fa fa-compass" aria-hidden="true"></i><span>Angle</span>
-              </button>
-            </div>
-            <div class="admin-form-group util-ra-type-walls__angle" data-ra-type-angle-wrap hidden>
-              <label for="ra-type-angle">Turn °</label>
-              <input class="admin-input" type="text" id="ra-type-angle" inputmode="decimal" autocomplete="off" data-ra-type-angle placeholder="45">
-            </div>
-            <button type="button" class="admin-btn admin-btn--primary util-ra-type-walls__add" data-ra-type-add>
-              Add wall
-            </button>
-          </div>
-
-          <div class="util-ra-type-walls__rect">
-            <span class="util-ra-type-walls__rect-label">Rectangle</span>
-            <div class="admin-form-group util-ra-type-walls__rect-field">
-              <label for="ra-type-rect-w">W</label>
-              <input class="admin-input" type="text" id="ra-type-rect-w" inputmode="decimal" autocomplete="off" data-ra-type-rect-w placeholder="12">
-            </div>
-            <span class="util-ra-type-walls__times" aria-hidden="true">×</span>
-            <div class="admin-form-group util-ra-type-walls__rect-field">
-              <label for="ra-type-rect-l">L</label>
-              <input class="admin-input" type="text" id="ra-type-rect-l" inputmode="decimal" autocomplete="off" data-ra-type-rect-l placeholder="10">
-            </div>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__rect-add" data-ra-type-rect>
-              Add rect
-            </button>
-          </div>
-
-          <ol class="util-ra-type-walls__list" data-ra-type-list hidden></ol>
-
-          <div class="util-ra-type-walls__close" data-ra-type-close-bar hidden>
-            <button type="button" class="admin-btn admin-btn--primary util-ra-type-walls__close-btn" data-ra-type-close>
-              Close room
-            </button>
-            <p class="util-ra-type-walls__gap" data-ra-type-gap></p>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__auto" data-ra-type-autoclose hidden>
-              Auto-close
-            </button>
-          </div>
-        </section>
-
         <div class="util-ra-object-dock">
           <section class="util-ra-palette" data-ra-palette aria-label="Door and window library">
             <div class="util-ra-palette__head">
@@ -488,6 +428,66 @@
             </div>
           </div>
         </div>
+
+        <section class="util-ra-type-walls" data-ra-type-walls aria-label="Type walls">
+          <div class="util-ra-type-walls__head">
+            <h3 class="util-ra-type-walls__title">Type walls</h3>
+            <p class="util-ra-type-walls__hint">Tape lengths from the top-left, first wall going right.</p>
+          </div>
+
+          <div class="util-ra-type-walls__entry">
+            <div class="admin-form-group util-ra-type-walls__len">
+              <label for="ra-type-length">Length</label>
+              <input class="admin-input" type="text" id="ra-type-length" inputmode="decimal" autocomplete="off" data-ra-type-length placeholder="12'6">
+            </div>
+            <div class="util-ra-type-walls__dirs" role="group" aria-label="Turn direction">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir is-active" data-ra-type-dir="right" aria-pressed="true" title="Turn right 90°">
+                <i class="fa fa-repeat" aria-hidden="true"></i><span>R90</span>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="left" aria-pressed="false" title="Turn left 90°">
+                <i class="fa fa-undo" aria-hidden="true"></i><span>L90</span>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="custom" aria-pressed="false" title="Custom angle">
+                <span>°</span>
+              </button>
+            </div>
+            <div class="admin-form-group util-ra-type-walls__angle" data-ra-type-angle-wrap hidden>
+              <label for="ra-type-angle">Turn °</label>
+              <input class="admin-input" type="text" id="ra-type-angle" inputmode="decimal" autocomplete="off" data-ra-type-angle placeholder="45">
+            </div>
+            <button type="button" class="admin-btn admin-btn--primary util-ra-type-walls__add" data-ra-type-add>
+              Add
+            </button>
+          </div>
+
+          <div class="util-ra-type-walls__rect">
+            <span class="util-ra-type-walls__rect-label">Rect</span>
+            <div class="admin-form-group util-ra-type-walls__rect-field">
+              <label for="ra-type-rect-w">W</label>
+              <input class="admin-input" type="text" id="ra-type-rect-w" inputmode="decimal" autocomplete="off" data-ra-type-rect-w placeholder="12">
+            </div>
+            <span class="util-ra-type-walls__times" aria-hidden="true">×</span>
+            <div class="admin-form-group util-ra-type-walls__rect-field">
+              <label for="ra-type-rect-l">L</label>
+              <input class="admin-input" type="text" id="ra-type-rect-l" inputmode="decimal" autocomplete="off" data-ra-type-rect-l placeholder="10">
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__rect-add" data-ra-type-rect>
+              Add rect
+            </button>
+          </div>
+
+          <ol class="util-ra-type-walls__list" data-ra-type-list hidden></ol>
+
+          <div class="util-ra-type-walls__close" data-ra-type-close-bar hidden>
+            <button type="button" class="admin-btn admin-btn--primary util-ra-type-walls__close-btn" data-ra-type-close>
+              Close room
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__auto" data-ra-type-autoclose hidden>
+              Auto-close
+            </button>
+            <p class="util-ra-type-walls__gap" data-ra-type-gap></p>
+          </div>
+        </section>
 
         <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
           <div id="ra-konva-container" class="util-ra-konva"></div>

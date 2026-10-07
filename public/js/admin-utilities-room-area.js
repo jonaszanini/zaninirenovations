@@ -1820,9 +1820,6 @@
     var ph = measureUnitPlaceholder();
     if (els.wallLength) els.wallLength.placeholder = ph;
     if (els.knownLength) els.knownLength.placeholder = ph;
-    if (els.typeLength) els.typeLength.placeholder = ph;
-    if (els.typeRectW) els.typeRectW.placeholder = ph;
-    if (els.typeRectL) els.typeRectL.placeholder = ph;
   }
 
   function setMeasureUnit(unit) {
@@ -7440,6 +7437,7 @@
     els.typeList.innerHTML = '';
     show(els.typeList, walls.length > 0);
     walls.forEach(function (wall, idx) {
+      if (wall.closing) return;
       var li = document.createElement('li');
       li.className = 'util-ra-type-walls__item';
       var dir = headingGlyph(wall.headingDeg);
