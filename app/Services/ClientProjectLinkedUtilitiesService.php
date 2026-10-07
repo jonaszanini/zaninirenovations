@@ -56,7 +56,7 @@ class ClientProjectLinkedUtilitiesService
     private function roomAreaItems(ClientProject $project): array
     {
         return $project->roomAreaProjects()
-            ->with('rooms')
+            ->with(['rooms' => fn ($q) => $q->withCount('photos')])
             ->orderBy('name')
             ->get()
             ->map(function (RoomAreaProject $utilityProject) {
@@ -77,6 +77,7 @@ class ClientProjectLinkedUtilitiesService
                         'area_label' => $room->area_sqft
                             ? rtrim(rtrim(number_format((float) $room->area_sqft, 2, '.', ''), '0'), '.').' sq ft'
                             : '—',
+                        'photo_count' => (int) ($room->photos_count ?? 0),
                         'pdf_url' => $room->pdf_path
                             ? route('admin.utilities.room-area.rooms.pdf', $room)
                             : null,
