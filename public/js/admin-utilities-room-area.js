@@ -6934,7 +6934,7 @@
       show(els.liveCabinetsWrap, cab > 0.009);
       var cabParts = [];
       if (metrics.cabinet_base_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_base_lf) + ' base');
-      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_upper_lf) + ' upper');
+      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_upper_lf) + ' up');
       els.liveCabinets.textContent = cabParts.join(' · ') || '0';
     }
     syncExportButtons();
@@ -8880,25 +8880,14 @@
       .filter(function (w) { return !w.closing; });
     var n = walls.length;
     var closed = isActiveClosed();
-    show(els.typeCloseBar, n >= 1);
-    if (n < 1) return;
-    if (!closed) {
-      if (els.typeGap) {
-        els.typeGap.textContent = n + (n === 1 ? ' wall, open' : ' walls, open');
-        els.typeGap.classList.remove('is-closed', 'is-off');
-      }
-      show(els.typeAutoclose, false);
-      if (els.typeClose) els.typeClose.disabled = n < 3;
-      return;
+    show(els.typeCloseBar, n >= 1 && !closed);
+    if (n < 1 || closed) return;
+    if (els.typeGap) {
+      els.typeGap.textContent = n + (n === 1 ? ' wall, open' : ' walls, open');
+      els.typeGap.classList.remove('is-closed', 'is-off');
     }
-    var analysis = analyzeClosing(activeVertices());
-    if (els.typeGap && analysis) {
-      els.typeGap.textContent = analysis.label;
-      els.typeGap.classList.toggle('is-closed', analysis.label === 'closed');
-      els.typeGap.classList.toggle('is-off', analysis.label !== 'closed');
-    }
-    show(els.typeAutoclose, !!(analysis && analysis.canAuto));
-    if (els.typeClose) els.typeClose.disabled = true;
+    show(els.typeAutoclose, false);
+    if (els.typeClose) els.typeClose.disabled = n < 3;
   }
 
   function resetTypedWalls() {

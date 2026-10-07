@@ -3217,6 +3217,11 @@
     grid-template-columns: 1fr 1fr;
     gap: 0.45rem 0.85rem;
   }
+
+  .util-ra-thickness-chips {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
 }
 
 @media (max-width: 899px) {
@@ -3710,6 +3715,10 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.util-ra-live-metrics__item[data-ra-live-cabinets-wrap] {
+  grid-column: 1 / -1;
 }
 
 .util-ra-live-area__row--counts {
