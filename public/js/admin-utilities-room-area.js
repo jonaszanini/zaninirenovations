@@ -25,7 +25,7 @@
   var CANVAS_HEIGHT_RATIO = 0.75;
   var CANVAS_MAX_VH = 0.72;
   var CANVAS_MAX_VH_NARROW = 0.60;
-  var FIT_LABEL_PAD = 16;
+  var FIT_LABEL_PAD = 28;
   var FIT_WIDTH_RATIO = 0.90;
   var DRAW_AREA_FACTOR = 6;
   var GRID_PX = 20;
@@ -250,7 +250,6 @@
     photos: root.querySelector('[data-ra-photos]'),
     photosCount: root.querySelector('[data-ra-photos-count]'),
     photosFile: root.querySelector('[data-ra-photos-file]'),
-    photosCaption: root.querySelector('[data-ra-photos-caption]'),
     photosEmpty: root.querySelector('[data-ra-photos-empty]'),
     photosStrip: root.querySelector('[data-ra-photos-strip]'),
     lightbox: root.querySelector('[data-ra-lightbox]'),
@@ -340,7 +339,8 @@
     typedTurn: 'right',
     typedHeading: 0,
     typedStart: null,
-    typedWalls: []
+    typedWalls: [],
+    lightboxPhotoId: null
   };
 
   var resizeTimer = null;
@@ -4804,6 +4804,70 @@
     flushKonva();
   }
 
+  function visibleWorldRect() {
+    var view = stageViewSize();
+    var s = uiScale();
+    return {
+      x: -state.viewport.x / s,
+      y: -state.viewport.y / s,
+      w: view.w / s,
+      h: view.h / s
+    };
+  }
+
+  function inwardWallNormal(a, b, verts) {
+    var dx = b.x - a.x;
+    var dy = b.y - a.y;
+    var wallLen = Math.hypot(dx, dy) || 1;
+    var nx = -dy / wallLen;
+    var ny = dx / wallLen;
+    var midX = (a.x + b.x) / 2;
+    var midY = (a.y + b.y) / 2;
+    var centroid = polygonCentroid(verts);
+    if (centroid) {
+      if (nx * (centroid.x - midX) + ny * (centroid.y - midY) < 0) {
+        nx = -nx;
+        ny = -ny;
+      }
+    } else if (!pointInPolygon({ x: midX + nx, y: midY + ny }, verts)) {
+      nx = -nx;
+      ny = -ny;
+    }
+    return { nx: nx, ny: ny, midX: midX, midY: midY, wallLen: wallLen };
+  }
+
+  function placeDimensionLabel(midX, midY, nx, ny, labelW, labelH, a, b) {
+    var handleR = uiSize(12);
+    var halfW = Math.max(labelW / 2, 1);
+    var halfH = Math.max(labelH / 2, 1);
+    var wallLen = (a && b) ? (Math.hypot(b.x - a.x, b.y - a.y) || 1) : 1;
+    var inset = Math.max(uiSize(16), handleR + halfH + uiSize(4));
+    if (wallLen < labelW + handleR * 2) {
+      inset = Math.max(inset, uiSize(26) + halfH);
+    }
+    var x = midX + nx * inset;
+    var y = midY + ny * inset;
+    [a, b].forEach(function (p) {
+      if (!p) return;
+      var ddx = x - p.x;
+      var ddy = y - p.y;
+      var d = Math.hypot(ddx, ddy);
+      var need = handleR + Math.max(halfW, halfH) * 0.65;
+      if (d < 0.01) {
+        x += nx * need;
+        y += ny * need;
+      } else if (d < need) {
+        x += (ddx / d) * (need - d);
+        y += (ddy / d) * (need - d);
+      }
+    });
+    var vis = visibleWorldRect();
+    var pad = uiSize(4);
+    x = Math.max(vis.x + halfW + pad, Math.min(vis.x + vis.w - halfW - pad, x));
+    y = Math.max(vis.y + halfH + pad, Math.min(vis.y + vis.h - halfH - pad, y));
+    return { x: x, y: y };
+  }
+
   function drawWallDimensionLabels(labelLayer) {
     var verts = activeVertices();
     var ppf = pixelsPerFoot();
@@ -4813,25 +4877,14 @@
     for (var i = 0; i < count; i++) {
       var a = verts[i];
       var b = verts[wallEndIndex(i)];
-      var midX = (a.x + b.x) / 2;
-      var midY = (a.y + b.y) / 2;
-      var dx = b.x - a.x;
-      var dy = b.y - a.y;
-      var wallLen = Math.hypot(dx, dy) || 1;
-      var nx = -dy / wallLen;
-      var ny = dx / wallLen;
-      if (!pointInPolygon({ x: midX + nx, y: midY + ny }, verts)) {
-        nx = -nx;
-        ny = -ny;
-      }
-      var inset = uiSize(14);
+      var nrm = inwardWallNormal(a, b, verts);
       var lenFt = dist(a, b) / ppf;
       var lenLabel = fmtLengthFromFeet(lenFt);
       var isSelected = state.selectedWallIndex === i;
-      (function (wallIndex) {
+      (function (wallIndex, wallA, wallB, midX, midY, nx, ny) {
         var kLabel = new Konva.Label({
-          x: midX + nx * inset,
-          y: midY + ny * inset,
+          x: midX,
+          y: midY,
           listening: !state.rulerMode && !state.spaceHeld
         });
         bindWallDrag(kLabel, wallIndex);
@@ -4850,10 +4903,12 @@
           fill: canvasBrandText(isSelected),
           padding: uiSize(4)
         }));
+        var pos = placeDimensionLabel(midX, midY, nx, ny, kLabel.width(), kLabel.height(), wallA, wallB);
+        kLabel.position(pos);
         kLabel.offsetX(kLabel.width() / 2);
         kLabel.offsetY(kLabel.height() / 2);
         labelLayer.add(kLabel);
-      })(i);
+      })(i, a, b, nrm.midX, nrm.midY, nrm.nx, nrm.ny);
     }
   }
 
@@ -4866,8 +4921,8 @@
       var nx = Math.cos(place.angle + Math.PI / 2) * place.inward;
       var ny = Math.sin(place.angle + Math.PI / 2) * place.inward;
       var kLabel = new Konva.Label({
-        x: place.mid.x + nx * uiSize(14),
-        y: place.mid.y + ny * uiSize(14),
+        x: place.mid.x,
+        y: place.mid.y,
         listening: false
       });
       kLabel.add(new Konva.Tag({
@@ -4884,6 +4939,17 @@
         fill: canvasBrandText(state.selectedObjectId === obj.id),
         padding: uiSize(3)
       }));
+      var pos = placeDimensionLabel(
+        place.mid.x,
+        place.mid.y,
+        nx,
+        ny,
+        kLabel.width(),
+        kLabel.height(),
+        null,
+        null
+      );
+      kLabel.position(pos);
       kLabel.offsetX(kLabel.width() / 2);
       kLabel.offsetY(kLabel.height() / 2);
       labelLayer.add(kLabel);
@@ -7113,8 +7179,8 @@
     var verts = activeVertices();
     if (verts.length) return { x: verts[0].x, y: verts[0].y };
     return {
-      x: Math.max(28, contentW() * 0.14),
-      y: Math.max(28, contentH() * 0.16)
+      x: Math.max(48, contentW() * 0.18),
+      y: Math.max(40, contentH() * 0.18)
     };
   }
 
@@ -7192,6 +7258,15 @@
     if (n < 247.5) return '↖';
     if (n < 292.5) return '↑';
     return '↗';
+  }
+
+  function wallTurnLabel(walls, idx) {
+    if (idx === 0) return { text: '→', title: 'First wall, right' };
+    var turn = normalizeHeading(walls[idx].headingDeg - walls[idx - 1].headingDeg);
+    if (Math.abs(turn - 90) < 2) return { text: 'R90', title: 'Turn right 90°' };
+    if (Math.abs(turn - 270) < 2) return { text: 'L90', title: 'Turn left 90°' };
+    if (turn <= 180) return { text: '+' + Math.round(turn) + '°', title: 'Turn +' + Math.round(turn) + '°' };
+    return { text: '−' + Math.round(360 - turn) + '°', title: 'Turn left ' + Math.round(360 - turn) + '°' };
   }
 
   function formatClosingGap(inches) {
@@ -7340,10 +7415,7 @@
     }
     ensureTypedScale();
     pushUndoSnapshot();
-    var start = {
-      x: Math.max(28, contentW() * 0.14),
-      y: Math.max(28, contentH() * 0.16)
-    };
+    var start = typedStartPoint();
     var walls = [
       { lengthFt: w, headingDeg: 0 },
       { lengthFt: l, headingDeg: 90 },
@@ -7436,24 +7508,19 @@
     }
     els.typeList.innerHTML = '';
     show(els.typeList, walls.length > 0);
-    walls.forEach(function (wall, idx) {
-      if (wall.closing) return;
+    var visible = walls.filter(function (wall) { return !wall.closing; });
+    visible.forEach(function (wall, idx) {
       var li = document.createElement('li');
       li.className = 'util-ra-type-walls__item';
-      var dir = headingGlyph(wall.headingDeg);
+      var dir = wallTurnLabel(visible, idx);
       li.innerHTML =
         '<span class="util-ra-type-walls__n">' + (idx + 1) + '</span>' +
-        '<div class="admin-form-group util-ra-type-walls__item-len">' +
-          '<label class="util-sr-only" for="ra-type-wall-' + idx + '">Wall ' + (idx + 1) + ' length</label>' +
-          '<input class="admin-input" id="ra-type-wall-' + idx + '" type="text" inputmode="decimal" value="' +
-            esc(fmtLengthFromFeet(wall.lengthFt)) + '" data-ra-type-edit="' + idx + '"' +
-            (wall.closing ? ' disabled' : '') + '>' +
-        '</div>' +
-        '<span class="util-ra-type-walls__item-dir">' + dir + (wall.closing ? ' close' : '') + '</span>' +
-        (wall.closing
-          ? ''
-          : '<button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__item-del" data-ra-type-del="' +
-            idx + '" aria-label="Delete wall ' + (idx + 1) + '"><i class="fa fa-trash" aria-hidden="true"></i></button>');
+        '<label class="util-sr-only" for="ra-type-wall-' + idx + '">Wall ' + (idx + 1) + ' length</label>' +
+        '<input class="admin-input util-ra-type-walls__item-len" id="ra-type-wall-' + idx + '" type="text" inputmode="decimal" value="' +
+          esc(fmtLengthFromFeet(wall.lengthFt)) + '" data-ra-type-edit="' + idx + '">' +
+        '<span class="util-ra-type-walls__item-dir" title="' + esc(dir.title) + '">' + esc(dir.text) + '</span>' +
+        '<button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__item-del" data-ra-type-del="' +
+          idx + '" aria-label="Delete wall ' + (idx + 1) + '"><i class="fa fa-trash" aria-hidden="true"></i></button>';
       els.typeList.appendChild(li);
     });
     els.typeList.querySelectorAll('[data-ra-type-edit]').forEach(function (input) {
@@ -7476,18 +7543,29 @@
 
   function updateTypedCloseBar() {
     if (!els.typeCloseBar) return;
-    var verts = activeVertices();
-    var canClose = verts.length >= 3;
-    show(els.typeCloseBar, canClose);
-    if (!canClose) return;
-    var analysis = analyzeClosing(verts);
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices()))
+      .filter(function (w) { return !w.closing; });
+    var n = walls.length;
+    var closed = isActiveClosed();
+    show(els.typeCloseBar, n >= 1);
+    if (n < 1) return;
+    if (!closed) {
+      if (els.typeGap) {
+        els.typeGap.textContent = n + (n === 1 ? ' wall, open' : ' walls, open');
+        els.typeGap.classList.remove('is-closed', 'is-off');
+      }
+      show(els.typeAutoclose, false);
+      if (els.typeClose) els.typeClose.disabled = n < 3;
+      return;
+    }
+    var analysis = analyzeClosing(activeVertices());
     if (els.typeGap && analysis) {
       els.typeGap.textContent = analysis.label;
       els.typeGap.classList.toggle('is-closed', analysis.label === 'closed');
       els.typeGap.classList.toggle('is-off', analysis.label !== 'closed');
     }
     show(els.typeAutoclose, !!(analysis && analysis.canAuto));
-    if (els.typeClose) els.typeClose.disabled = isActiveClosed();
+    if (els.typeClose) els.typeClose.disabled = true;
   }
 
   function resetTypedWalls() {
@@ -7506,6 +7584,11 @@
 
   function photoDestroyUrl(roomId, photoId) {
     var tpl = root.getAttribute('data-room-photo-destroy-template') || '';
+    return tpl.replace('__RID__', String(roomId)).replace('__PID__', String(photoId));
+  }
+
+  function photoUpdateUrl(roomId, photoId) {
+    var tpl = root.getAttribute('data-room-photo-update-template') || '';
     return tpl.replace('__RID__', String(roomId)).replace('__PID__', String(photoId));
   }
 
@@ -7533,7 +7616,7 @@
       var li = document.createElement('li');
       li.className = 'util-ra-photos__thumb';
       li.innerHTML =
-        '<button type="button" class="util-ra-photos__thumb-btn" data-ra-photo-open="' + photo.id + '" aria-label="Open photo">' +
+        '<button type="button" class="util-ra-photos__thumb-btn" data-ra-photo-open="' + photo.id + '" aria-label="' + esc(photo.caption || 'Open photo') + '">' +
           '<img src="' + esc(photo.url) + '" alt="' + esc(photo.caption || 'Site photo') + '">' +
         '</button>' +
         '<button type="button" class="util-ra-photos__thumb-del" data-ra-photo-del="' + photo.id + '" aria-label="Delete photo">' +
@@ -7564,9 +7647,6 @@
     if (!url) return;
     var fd = new FormData();
     files.forEach(function (file) { fd.append('photos[]', file); });
-    if (els.photosCaption && els.photosCaption.value.trim()) {
-      fd.append('caption', els.photosCaption.value.trim());
-    }
     fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
@@ -7585,7 +7665,6 @@
           room.photos = (room.photos || []).concat(result.data.photos || []);
           room.photo_count = result.data.photo_count;
         }
-        if (els.photosCaption) els.photosCaption.value = '';
         renderPhotos();
         renderRooms();
         setFeedback('Photos added.', false);
@@ -7627,18 +7706,60 @@
   function openLightbox(photoId) {
     var photo = activeRoomPhotos().find(function (p) { return p.id === photoId; });
     if (!photo || !els.lightbox) return;
+    state.lightboxPhotoId = photo.id;
     if (els.lightboxImg) {
       els.lightboxImg.src = photo.url;
       els.lightboxImg.alt = photo.caption || 'Site photo';
     }
-    if (els.lightboxCaption) els.lightboxCaption.textContent = photo.caption || '';
+    if (els.lightboxCaption) {
+      els.lightboxCaption.value = photo.caption || '';
+    }
     show(els.lightbox, true);
+    if (els.lightboxCaption) {
+      setTimeout(function () {
+        els.lightboxCaption.focus();
+        els.lightboxCaption.select();
+      }, 0);
+    }
+  }
+
+  function saveLightboxCaption() {
+    if (!state.editingRoomId || !state.lightboxPhotoId || !els.lightboxCaption) return;
+    var photo = activeRoomPhotos().find(function (p) { return p.id === state.lightboxPhotoId; });
+    if (!photo) return;
+    var caption = els.lightboxCaption.value.trim();
+    if ((photo.caption || '') === caption) return;
+    fetch(photoUpdateUrl(state.editingRoomId, photo.id), {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRF-TOKEN': csrf(),
+        'X-Requested-With': 'XMLHttpRequest',
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ caption: caption })
+    })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok) throw new Error(result.data.message || 'Could not save caption.');
+        photo.caption = result.data.photo ? result.data.photo.caption : caption;
+        if (els.lightboxImg) els.lightboxImg.alt = photo.caption || 'Site photo';
+        renderPhotos();
+        renderRooms();
+      })
+      .catch(function (err) {
+        setFeedback((err && err.message) || 'Could not save caption.', true);
+      });
   }
 
   function closeLightbox() {
+    saveLightboxCaption();
     if (!els.lightbox) return;
     show(els.lightbox, false);
+    state.lightboxPhotoId = null;
     if (els.lightboxImg) els.lightboxImg.src = '';
+    if (els.lightboxCaption) els.lightboxCaption.value = '';
   }
 
   function bindEvents() {
@@ -7873,6 +7994,15 @@
     if (els.lightbox) {
       els.lightbox.querySelectorAll('[data-ra-lightbox-close]').forEach(function (btn) {
         btn.addEventListener('click', closeLightbox);
+      });
+    }
+    if (els.lightboxCaption) {
+      els.lightboxCaption.addEventListener('change', saveLightboxCaption);
+      els.lightboxCaption.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveLightboxCaption();
+        }
       });
     }
 

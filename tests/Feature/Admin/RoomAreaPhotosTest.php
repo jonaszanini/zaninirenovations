@@ -31,6 +31,13 @@ class RoomAreaPhotosTest extends IntegrationTestCase
             'room_area_room' => $room,
             'photo' => $photo,
         ]))->assertRedirect();
+
+        $this->patch(route('admin.utilities.room-area.rooms.photos.update', [
+            'room_area_room' => $room,
+            'photo' => $photo,
+        ]), [
+            'caption' => 'Nope',
+        ])->assertRedirect();
     }
 
     public function test_admin_can_upload_resize_and_delete_photos(): void
@@ -106,6 +113,58 @@ class RoomAreaPhotosTest extends IntegrationTestCase
             'room_area_room' => $roomB,
             'photo' => $photo,
         ]))->assertNotFound();
+
+        $this->patchJson(route('admin.utilities.room-area.rooms.photos.update', [
+            'room_area_room' => $roomB,
+            'photo' => $photo,
+        ]), [
+            'caption' => 'Stolen',
+        ])->assertNotFound();
+    }
+
+    public function test_admin_can_update_photo_caption(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+
+        $room = $this->makeRoom();
+        $this->postJson(route('admin.utilities.room-area.rooms.photos.store', $room), [
+            'photos' => [$this->makePngUpload(80, 60, 'wall.png')],
+        ])->assertOk();
+
+        $photo = RoomAreaPhoto::query()->first();
+        $this->assertNotNull($photo);
+        $this->assertNull($photo->caption);
+
+        $this->patchJson(route('admin.utilities.room-area.rooms.photos.update', [
+            'room_area_room' => $room,
+            'photo' => $photo,
+        ]), [
+            'caption' => 'North wall',
+        ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('photo.caption', 'North wall');
+
+        $this->assertSame('North wall', $photo->fresh()->caption);
+    }
+
+    public function test_batch_upload_does_not_share_one_caption(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+
+        $room = $this->makeRoom();
+        $this->postJson(route('admin.utilities.room-area.rooms.photos.store', $room), [
+            'photos' => [
+                $this->makePngUpload(64, 64, 'a.png'),
+                $this->makePngUpload(64, 64, 'b.png'),
+            ],
+            'caption' => 'North wall',
+        ])->assertOk();
+
+        $captions = RoomAreaPhoto::query()->orderBy('id')->pluck('caption')->all();
+        $this->assertSame([null, null], $captions);
     }
 
     public function test_pdf_export_includes_photos(): void
@@ -137,14 +196,24 @@ class RoomAreaPhotosTest extends IntegrationTestCase
             'rows' => [['label' => 'Floor area', 'value' => '80 sq ft']],
             'objects' => [],
             'diagram' => '',
-            'photos' => [['src' => 'data:image/jpeg;base64,xxx', 'caption' => 'West window']],
+            'photos' => [
+                ['src' => 'data:image/jpeg;base64,aaa', 'caption' => 'North wall'],
+                ['src' => 'data:image/jpeg;base64,bbb', 'caption' => 'West window'],
+            ],
             'generatedAt' => 'Oct 7, 2026 9:00 AM',
             'clientProjectName' => null,
         ])->render();
 
         $this->assertStringContainsString('Site photos', $html);
+        $this->assertStringContainsString('North wall', $html);
         $this->assertStringContainsString('West window', $html);
         $this->assertStringContainsString('pdf-photos', $html);
+        $this->assertStringContainsString('table-layout: fixed', $html);
+        $northPos = strpos($html, 'North wall');
+        $westPos = strpos($html, 'West window');
+        $this->assertNotFalse($northPos);
+        $this->assertNotFalse($westPos);
+        $this->assertLessThan($westPos, $northPos);
     }
 
     public function test_linked_project_utilities_include_photo_count(): void

@@ -76,63 +76,63 @@
           <div class="cp-utilities-list">
             @foreach ($section['items'] as $item)
               <article class="cp-utilities-item">
-                <div class="cp-utilities-item__main">
-                  @if (!empty($item['name']))
-                    <h4 class="cp-utilities-item__name">{{ $item['name'] }}</h4>
-                  @endif
-                  @if ($key === 'room_area')
-                    <p class="cp-utilities-item__meta">
-                      {{ $item['room_count'] }} {{ \Illuminate\Support\Str::plural('room', $item['room_count']) }}
-                      @if ($item['total_sqft_label'])
-                        · {{ $item['total_sqft_label'] }} total
-                      @endif
-                      @if ($item['updated_label'])
-                        · Updated {{ $item['updated_label'] }}
-                      @endif
-                    </p>
-                    @if (!empty($item['rooms']))
-                      <ul class="cp-utilities-item__rooms">
-                        @foreach ($item['rooms'] as $room)
-                          <li>
-                            <span>{{ $room['name'] }}</span>
-                            <span class="cp-utilities-item__room-meta">
-                              <span class="cp-utilities-item__room-area">{{ $room['area_label'] }}</span>
-                              @if (!empty($room['photo_count']))
-                                <span class="cp-utilities-item__room-photos">{{ $room['photo_count'] }} {{ \Illuminate\Support\Str::plural('photo', $room['photo_count']) }}</span>
-                              @endif
-                              @if (!empty($room['pdf_url']))
-                                <a href="{{ $room['pdf_url'] }}" class="cp-utilities-item__pdf" target="_blank" rel="noopener">PDF</a>
-                              @endif
-                            </span>
-                          </li>
-                        @endforeach
-                      </ul>
+                <div class="cp-utilities-item__top">
+                  <div class="cp-utilities-item__heading">
+                    @if (!empty($item['name']))
+                      <h4 class="cp-utilities-item__name">{{ $item['name'] }}</h4>
                     @endif
-                  @elseif ($key === 'measurement')
-                    <p class="cp-utilities-item__meta">
-                      {{ $item['row_count'] }} {{ \Illuminate\Support\Str::plural('measurement', $item['row_count']) }}
-                      @if ($item['updated_label'])
-                        · Updated {{ $item['updated_label'] }}
-                      @endif
-                    </p>
-                  @else
-                    <p class="cp-utilities-item__meta">
-                      @if (!empty($item['summary']))
-                        {{ $item['summary'] }}
-                      @else
-                        Saved calculation
-                      @endif
-                      @if ($item['updated_label'])
-                        · {{ $item['updated_label'] }}
-                      @endif
-                    </p>
-                  @endif
-                </div>
-                <div class="cp-utilities-item__actions">
-                  <a href="{{ $item['open_url'] }}" class="admin-btn admin-btn--primary admin-btn--sm">
+                    @if ($key === 'room_area')
+                      <p class="cp-utilities-item__meta">
+                        {{ $item['room_count'] }} {{ \Illuminate\Support\Str::plural('room', $item['room_count']) }}
+                        @if ($item['total_sqft_label'])
+                          · {{ $item['total_sqft_label'] }} total
+                        @endif
+                        @if ($item['updated_label'])
+                          · Updated {{ $item['updated_label'] }}
+                        @endif
+                      </p>
+                    @elseif ($key === 'measurement')
+                      <p class="cp-utilities-item__meta">
+                        {{ $item['row_count'] }} {{ \Illuminate\Support\Str::plural('measurement', $item['row_count']) }}
+                        @if ($item['updated_label'])
+                          · Updated {{ $item['updated_label'] }}
+                        @endif
+                      </p>
+                    @else
+                      <p class="cp-utilities-item__meta">
+                        @if (!empty($item['summary']))
+                          {{ $item['summary'] }}
+                        @else
+                          Saved calculation
+                        @endif
+                        @if ($item['updated_label'])
+                          · {{ $item['updated_label'] }}
+                        @endif
+                      </p>
+                    @endif
+                  </div>
+                  <a href="{{ $item['open_url'] }}" class="admin-btn admin-btn--primary admin-btn--sm cp-utilities-item__open">
                     <i class="fa fa-external-link" aria-hidden="true"></i> Open
                   </a>
                 </div>
+                @if ($key === 'room_area' && !empty($item['rooms']))
+                  <ul class="cp-utilities-item__rooms">
+                    @foreach ($item['rooms'] as $room)
+                      <li>
+                        <span>{{ $room['name'] }}</span>
+                        <span class="cp-utilities-item__room-meta">
+                          <span class="cp-utilities-item__room-area">{{ $room['area_label'] }}</span>
+                          @if (!empty($room['photo_count']))
+                            <span class="cp-utilities-item__room-photos">{{ $room['photo_count'] }} {{ \Illuminate\Support\Str::plural('photo', $room['photo_count']) }}</span>
+                          @endif
+                          @if (!empty($room['pdf_url']))
+                            <a href="{{ $room['pdf_url'] }}" class="cp-utilities-item__pdf" target="_blank" rel="noopener">PDF</a>
+                          @endif
+                        </span>
+                      </li>
+                    @endforeach
+                  </ul>
+                @endif
               </article>
             @endforeach
           </div>

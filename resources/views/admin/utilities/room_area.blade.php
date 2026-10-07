@@ -35,6 +35,7 @@
     data-room-pdf-template="{{ route('admin.utilities.room-area.rooms.pdf', ['room_area_room' => '__ID__']) }}"
     data-room-photos-store-template="{{ route('admin.utilities.room-area.rooms.photos.store', ['room_area_room' => '__ID__']) }}"
     data-room-photo-show-template="{{ route('admin.utilities.room-area.rooms.photos.show', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
+    data-room-photo-update-template="{{ route('admin.utilities.room-area.rooms.photos.update', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
     data-room-photo-destroy-template="{{ route('admin.utilities.room-area.rooms.photos.destroy', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
     data-quote-room-template="{{ route('admin.utilities.room-area.quote') }}?layout=room:__ID__"
     data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__">
@@ -442,13 +443,13 @@
             </div>
             <div class="util-ra-type-walls__dirs" role="group" aria-label="Turn direction">
               <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir is-active" data-ra-type-dir="right" aria-pressed="true" title="Turn right 90°">
-                <i class="fa fa-repeat" aria-hidden="true"></i><span>R90</span>
+                R90
               </button>
               <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="left" aria-pressed="false" title="Turn left 90°">
-                <i class="fa fa-undo" aria-hidden="true"></i><span>L90</span>
+                L90
               </button>
-              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="custom" aria-pressed="false" title="Custom angle">
-                <span>°</span>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="custom" aria-pressed="false" title="Custom angle" aria-label="Custom angle">
+                ∠°
               </button>
             </div>
             <div class="admin-form-group util-ra-type-walls__angle" data-ra-type-angle-wrap hidden>
@@ -558,10 +559,6 @@
               <i class="fa fa-camera" aria-hidden="true"></i> Add photos
               <input type="file" accept="image/*" capture="environment" multiple data-ra-photos-file hidden>
             </label>
-            <div class="admin-form-group util-ra-photos__caption">
-              <label for="ra-photo-caption">Caption</label>
-              <input class="admin-input" type="text" id="ra-photo-caption" maxlength="160" autocomplete="off" placeholder="Optional" data-ra-photos-caption>
-            </div>
           </div>
           <p class="util-ra-photos__empty" data-ra-photos-empty>No photos yet. Add shots from the job site.</p>
           <ul class="util-ra-photos__strip" data-ra-photos-strip hidden></ul>
@@ -573,7 +570,10 @@
         <button type="button" class="util-ra-lightbox__backdrop" data-ra-lightbox-close aria-label="Close photo"></button>
         <figure class="util-ra-lightbox__figure">
           <img class="util-ra-lightbox__img" data-ra-lightbox-img alt="">
-          <figcaption class="util-ra-lightbox__caption" data-ra-lightbox-caption></figcaption>
+          <div class="util-ra-lightbox__caption-row">
+            <label class="util-sr-only" for="ra-lightbox-caption">Photo caption</label>
+            <input class="admin-input util-ra-lightbox__caption-input" type="text" id="ra-lightbox-caption" maxlength="160" autocomplete="off" placeholder="Add a caption" data-ra-lightbox-caption>
+          </div>
           <button type="button" class="admin-btn admin-btn--ghost util-ra-lightbox__x" data-ra-lightbox-close aria-label="Close">
             <i class="fa fa-times" aria-hidden="true"></i>
           </button>

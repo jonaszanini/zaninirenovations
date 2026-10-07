@@ -7359,13 +7359,29 @@ body.cp-modal-open {
 }
 .cp-utilities-item {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 10px 12px;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   background: var(--admin-surface-hover);
+}
+.cp-utilities-item__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem 0.7rem;
+  min-width: 0;
+}
+.cp-utilities-item__heading {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cp-utilities-item__open {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  white-space: nowrap;
 }
 .cp-utilities-item__name {
   margin: 0 0 4px;
@@ -7433,13 +7449,12 @@ body.cp-modal-open {
 @media (max-width: 640px) {
   .cp-utilities-teaser,
   .cp-utilities-intro,
-  .cp-utilities-section__head,
-  .cp-utilities-item {
+  .cp-utilities-section__head {
     flex-direction: column;
     align-items: stretch;
   }
-  .cp-utilities-item__actions .admin-btn {
-    width: 100%;
+  .cp-utilities-item__open {
+    width: auto;
   }
   .cp-utilities-item__rooms li {
     flex-wrap: wrap;

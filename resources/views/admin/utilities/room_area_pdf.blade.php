@@ -76,15 +76,18 @@
     .pdf-photo-grid {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
     }
+    .pdf-photo-grid tr { page-break-inside: avoid; }
     .pdf-photo-grid td {
       width: 50%;
       vertical-align: top;
-      padding: 0 8px 12px 0;
+      padding: 0 10px 16px 0;
     }
     .pdf-photo-grid img {
+      display: block;
       width: 100%;
-      max-width: 250px;
+      max-width: none;
       height: auto;
       border: 1px solid #d8dee4;
     }
@@ -159,7 +162,7 @@
           <tr>
             @foreach ($row as $photo)
               <td>
-                <img src="{{ $photo['src'] }}" alt="{{ $photo['caption'] ?: 'Site photo' }}" width="250">
+                <img src="{{ $photo['src'] }}" alt="{{ $photo['caption'] ?: 'Site photo' }}">
                 @if (!empty($photo['caption']))
                   <p class="pdf-photo-caption">{{ $photo['caption'] }}</p>
                 @endif

@@ -939,6 +939,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area.rooms.photos.store');
     Route::get('utilities/room-area/rooms/{room_area_room}/photos/{photo}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'showPhoto'])
         ->name('utilities.room-area.rooms.photos.show');
+    Route::patch('utilities/room-area/rooms/{room_area_room}/photos/{photo}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'updatePhoto'])
+        ->name('utilities.room-area.rooms.photos.update');
     Route::delete('utilities/room-area/rooms/{room_area_room}/photos/{photo}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyPhoto'])
         ->name('utilities.room-area.rooms.photos.destroy');
 });

@@ -249,12 +249,16 @@ class RoomAreaController extends Controller
             'caption' => ['nullable', 'string', 'max:160'],
         ]);
 
+        $files = $data['photos'];
         $caption = isset($data['caption']) ? trim((string) $data['caption']) : '';
         $caption = $caption === '' ? null : $caption;
+        if (count($files) !== 1) {
+            $caption = null;
+        }
         $sort = (int) $room_area_room->photos()->max('sort_order');
         $created = [];
 
-        foreach ($data['photos'] as $file) {
+        foreach ($files as $file) {
             $stored = $photos->store($file, (int) $room_area_room->id);
             $sort++;
             $photo = $room_area_room->photos()->create([
@@ -284,6 +288,23 @@ class RoomAreaController extends Controller
         }
 
         return Storage::disk('local')->response($photo->path);
+    }
+
+    public function updatePhoto(Request $request, RoomAreaRoom $room_area_room, RoomAreaPhoto $photo)
+    {
+        $this->assertPhotoBelongsToRoom($room_area_room, $photo);
+        $data = $request->validate([
+            'caption' => ['nullable', 'string', 'max:160'],
+        ]);
+        $caption = isset($data['caption']) ? trim((string) $data['caption']) : '';
+        $photo->update([
+            'caption' => $caption === '' ? null : $caption,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'photo' => $this->photoPayload($photo->fresh()),
+        ]);
     }
 
     public function destroyPhoto(RoomAreaRoom $room_area_room, RoomAreaPhoto $photo, RoomAreaPhotoStorage $photos)
