@@ -9,13 +9,13 @@
       font-family: DejaVu Sans, sans-serif;
       color: #373435;
       margin: 0;
-      padding: 28px 32px;
+      padding: 22px 28px;
       font-size: 12px;
     }
     .pdf-head {
       border-bottom: 2px solid #024768;
-      padding-bottom: 10px;
-      margin-bottom: 18px;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
     }
     .pdf-title {
       font-size: 20px;
@@ -24,28 +24,28 @@
     }
     .pdf-meta { color: #5a6570; font-size: 10px; margin: 0; }
     .pdf-summary {
-      font-size: 13px;
-      margin: 0 0 18px;
-      line-height: 1.5;
+      font-size: 12px;
+      margin: 0 0 10px;
+      line-height: 1.4;
     }
     .pdf-section-title {
-      font-size: 14px;
+      font-size: 13px;
       color: #024768;
-      margin: 22px 0 8px;
+      margin: 12px 0 6px;
     }
     .pdf-diagram {
       text-align: center;
-      margin: 0 0 16px;
+      margin: 0 0 8px;
       page-break-inside: avoid;
     }
-    .pdf-diagram img { width: 480px; max-width: 100%; height: auto; }
+    .pdf-diagram img { width: 390px; max-width: 100%; height: auto; }
     table.pdf-rows {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12px;
     }
     table.pdf-rows td {
-      padding: 7px 10px;
+      padding: 4px 8px;
       border-bottom: 1px solid #d8dee4;
     }
     table.pdf-rows td.label { color: #5a6570; width: 55%; }
@@ -92,7 +92,7 @@
   @if (!empty($diagram))
     <h2 class="pdf-section-title">Room plan</h2>
     <div class="pdf-diagram">
-      <img src="{{ $diagram }}" alt="Room plan">
+      <img src="{{ $diagram }}" alt="Room plan" width="390">
     </div>
   @endif
 
