@@ -19,12 +19,14 @@
   };
   var MIN_CANVAS_W = 260;
   var MIN_CANVAS_H = 520;
-  var MIN_CANVAS_H_NARROW = 360;
+  var MIN_CANVAS_H_NARROW = 260;
   var NARROW_CANVAS_MAX = 700;
   var MAX_CANVAS_H = 1100;
   var CANVAS_HEIGHT_RATIO = 0.75;
   var CANVAS_MAX_VH = 0.72;
-  var FIT_LABEL_PAD = 30;
+  var CANVAS_MAX_VH_NARROW = 0.60;
+  var FIT_LABEL_PAD = 16;
+  var FIT_WIDTH_RATIO = 0.90;
   var DRAW_AREA_FACTOR = 6;
   var GRID_PX = 20;
   var VERTEX_HIT = 14;
@@ -1105,18 +1107,66 @@
     }
   }
 
+  function measureWrapWidth() {
+    var wrap = els.canvasWrap;
+    if (!wrap) return 0;
+    var rect = wrap.getBoundingClientRect();
+    var w = Math.floor(rect.width);
+    if (w < 1) w = Math.floor(wrap.clientWidth);
+    return w > 0 ? w : 0;
+  }
+
+  function isNarrowCanvas(width) {
+    return (width || 0) > 0 && width <= NARROW_CANVAS_MAX;
+  }
+
+  function rawContentBounds() {
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    var has = false;
+    allPolygons().forEach(function (entry) {
+      (entry.polygon.vertices || []).forEach(function (v) {
+        if (!isFinite(v.x) || !isFinite(v.y)) return;
+        has = true;
+        minX = Math.min(minX, v.x);
+        minY = Math.min(minY, v.y);
+        maxX = Math.max(maxX, v.x);
+        maxY = Math.max(maxY, v.y);
+      });
+    });
+    if (!has) return { minX: 0, minY: 0, maxX: 1, maxY: 1, hasContent: false };
+    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY, hasContent: true };
+  }
+
   function getViewportDimensions() {
     var wrap = els.canvasWrap;
-    if (!wrap || wrap.clientWidth < 1) {
+    var wrapW = measureWrapWidth();
+    if (!wrap || wrapW < 1) {
       return { w: state.viewportW || 900, h: state.viewportH || 640 };
     }
-    var wrapW = Math.floor(wrap.clientWidth);
-    var w = Math.max(MIN_CANVAS_W, wrapW);
-    if (wrapW > 0 && wrapW < MIN_CANVAS_W) w = wrapW;
-    var maxH = Math.min(Math.floor(window.innerHeight * CANVAS_MAX_VH), MAX_CANVAS_H);
-    var minH = w < NARROW_CANVAS_MAX ? MIN_CANVAS_H_NARROW : MIN_CANVAS_H;
-    var h = Math.max(minH, Math.min(maxH, Math.round(w * CANVAS_HEIGHT_RATIO)));
-    return { w: w, h: h };
+    var w = wrapW;
+    var narrow = isNarrowCanvas(w);
+    var maxH = Math.min(
+      Math.floor(window.innerHeight * (narrow ? CANVAS_MAX_VH_NARROW : CANVAS_MAX_VH)),
+      MAX_CANVAS_H
+    );
+    if (narrow) {
+      var bounds = rawContentBounds();
+      var h;
+      if (bounds.hasContent) {
+        var bw = Math.max(bounds.maxX - bounds.minX, 1);
+        var bh = Math.max(bounds.maxY - bounds.minY, 1);
+        h = Math.round(w * FIT_WIDTH_RATIO * (bh / bw) + 28);
+      } else {
+        h = Math.round(w * 0.62);
+      }
+      h = Math.max(MIN_CANVAS_H_NARROW, Math.min(maxH, h));
+      return { w: w, h: h };
+    }
+    var hDesk = Math.max(MIN_CANVAS_H, Math.min(maxH, Math.round(w * CANVAS_HEIGHT_RATIO)));
+    return { w: w, h: hDesk };
   }
 
   function syncDrawableDimensions() {
@@ -3202,23 +3252,61 @@
     };
   }
 
+  function stageViewSize() {
+    var wrapW = measureWrapWidth();
+    var vw = wrapW > 0 ? wrapW : viewportW();
+    var vh = viewportH();
+    if (state.stage) {
+      if (state.stage.width() > 1) vw = state.stage.width();
+      if (state.stage.height() > 1) vh = state.stage.height();
+    }
+    if (els.canvasWrap) {
+      var rect = els.canvasWrap.getBoundingClientRect();
+      if (rect.width > 1) vw = Math.floor(rect.width);
+      if (rect.height > 1) vh = Math.floor(rect.height);
+    }
+    return { w: Math.max(1, vw), h: Math.max(1, vh) };
+  }
+
   function clampViewportPan() {
     var s = state.viewport.scale;
-    var vw = viewportW();
-    var vh = viewportH();
+    var view = stageViewSize();
+    var vw = view.w;
+    var vh = view.h;
+    var bounds = rawContentBounds();
+    if (bounds.hasContent) {
+      var cx = (bounds.minX + bounds.maxX) / 2;
+      var cy = (bounds.minY + bounds.maxY) / 2;
+      var bw = (bounds.maxX - bounds.minX) * s;
+      var bh = (bounds.maxY - bounds.minY) * s;
+      var margin = 8;
+      if (bw <= vw) {
+        state.viewport.x = vw / 2 - cx * s;
+      } else {
+        var minX = vw - margin - bounds.maxX * s;
+        var maxX = margin - bounds.minX * s;
+        state.viewport.x = Math.max(minX, Math.min(maxX, state.viewport.x));
+      }
+      if (bh <= vh) {
+        state.viewport.y = vh / 2 - cy * s;
+      } else {
+        var minY = vh - margin - bounds.maxY * s;
+        var maxY = margin - bounds.minY * s;
+        state.viewport.y = Math.max(minY, Math.min(maxY, state.viewport.y));
+      }
+      return;
+    }
     var cw = canvasW() * s;
     var ch = canvasH() * s;
-    var minX = vw - cw;
-    var minY = vh - ch;
     if (cw <= vw) {
       state.viewport.x = (vw - cw) / 2;
     } else {
-      state.viewport.x = Math.max(minX, Math.min(0, state.viewport.x));
+      state.viewport.x = Math.max(vw - cw, Math.min(0, state.viewport.x));
     }
     if (ch <= vh) {
       state.viewport.y = (vh - ch) / 2;
     } else {
-      state.viewport.y = Math.max(minY, Math.min(0, state.viewport.y));
+      state.viewport.y = Math.max(vh - ch, Math.min(0, state.viewport.y));
     }
   }
 
@@ -3279,13 +3367,20 @@
 
   function fitViewport() {
     if (!state.stage) return;
-    var pad = ZOOM_FIT_PAD;
-    var vw = viewportW();
-    var vh = viewportH();
+    var view = stageViewSize();
+    var vw = view.w;
+    var vh = view.h;
     var bounds = viewportContentBounds();
     var bw = Math.max(bounds.maxX - bounds.minX, 1);
     var bh = Math.max(bounds.maxY - bounds.minY, 1);
-    var scale = Math.min((vw - pad * 2) / bw, (vh - pad * 2) / bh);
+    var scale;
+    if (isNarrowCanvas(vw)) {
+      scale = (vw * FIT_WIDTH_RATIO) / bw;
+      if (bh * scale > vh * 0.92) scale = (vh * 0.92) / bh;
+    } else {
+      var pad = ZOOM_FIT_PAD;
+      scale = Math.min((vw - pad * 2) / bw, (vh - pad * 2) / bh);
+    }
     scale = clampWorldScale(scale);
 
     var cx = (bounds.minX + bounds.maxX) / 2;
@@ -3297,6 +3392,12 @@
     state.lastUiScale = 0;
     applyViewport();
     updateCanvasCursor();
+  }
+
+  function refitCanvasToLayout() {
+    if (!state.stage || !els.canvasWrap) return;
+    resizeStage();
+    if (viewportContentBounds().hasContent) fitViewport();
   }
 
   function updateZoomUI() {
@@ -3393,7 +3494,10 @@
   function resizeStage() {
     if (!state.stage || !els.canvasWrap) return;
     var vp = getViewportDimensions();
-    if (vp.w === state.viewportW && vp.h === state.viewportH) return;
+    if (vp.w === state.viewportW && vp.h === state.viewportH) {
+      if (viewportContentBounds().hasContent) fitViewport();
+      return;
+    }
 
     var oldContentW = state.viewportW;
     var oldContentH = state.viewportH;
@@ -3866,6 +3970,7 @@
     updateEditUI();
     refreshViewportAfterContentChange();
     redrawAll();
+    requestAnimationFrame(refitCanvasToLayout);
   }
 
   function addAreaSameGroup() {
@@ -5691,6 +5796,7 @@
       clearUndoStack();
       redrawAll();
       fitViewport();
+      requestAnimationFrame(refitCanvasToLayout);
       captureSavedSnapshot();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
     });
