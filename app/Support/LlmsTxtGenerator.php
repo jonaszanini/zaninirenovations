@@ -56,7 +56,7 @@ class LlmsTxtGenerator
         ];
 
         $posts = $posts ?? BlogPost::query()
-            ->published()
+            ->indexable()
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->limit(25)

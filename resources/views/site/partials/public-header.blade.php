@@ -7,7 +7,11 @@
   $isPortfolio = request()->routeIs('portfolio.*');
 @endphp
 
+@if (request()->routeIs('blog.*'))
+<header class="main-header-2 clearfix blog-site-header">
+@else
 <header class="main-header-2 clearfix" data-sticky_header="true">
+@endif
 
   <section class="header-wrapper navgiation-wrapper">
 

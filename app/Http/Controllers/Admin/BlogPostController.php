@@ -203,6 +203,8 @@ class BlogPostController extends Controller
             ->get();
 
         $relatedPosts = collect();
+        $relatedProjects = \App\Support\BlogPublicContent::relatedProjects($post);
+        $cta = \App\Support\BlogPublicContent::cta($post);
         $prevPost = null;
         $nextPost = null;
         $recentPosts = collect();
@@ -214,6 +216,8 @@ class BlogPostController extends Controller
             'post',
             'approvedComments',
             'relatedPosts',
+            'relatedProjects',
+            'cta',
             'prevPost',
             'nextPost',
             'recentPosts',
