@@ -167,4 +167,20 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
                     && ! array_key_exists('objects', $canvas);
             });
     }
+
+    public function test_room_area_page_includes_touch_and_keyboard_controls(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.utilities.room-area'))
+            ->assertOk()
+            ->assertSee('data-ra-shortcuts-toggle', false)
+            ->assertSee('data-ra-shortcuts-popover', false)
+            ->assertSee('data-ra-redo', false)
+            ->assertSee('data-ra-split-wall', false)
+            ->assertSee('Split wall')
+            ->assertSee('Keyboard shortcuts')
+            ->assertSee('Pinch to zoom')
+            ->assertDontSee('On a phone, type wall lengths below instead of dragging corners.');
+    }
 }

@@ -174,17 +174,22 @@
       {{-- Full-width drawing area --}}
       <section class="admin-card util-ra-canvas-card">
         <p class="util-ra-desktop-notice">
-          <i class="fa fa-desktop" aria-hidden="true"></i>
-          On a phone, type wall lengths below instead of dragging corners. Two fingers pan/zoom the canvas.
+          <i class="fa fa-hand-pointer-o" aria-hidden="true"></i>
+          Pinch to zoom, two fingers to pan, or drag empty canvas to pan. Type wall lengths below if corners are fiddly.
         </p>
         <div class="util-ra-canvas-toolbar">
           <div class="util-ra-toolbar__groups">
             <div class="util-ra-tool-group">
               <span class="util-ra-tool-group__label">Draw</span>
               <div class="util-ra-tool-group__actions">
-                <span class="util-ra-tip" data-tooltip="Undo last corner">
-                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-undo-vertex disabled aria-label="Undo last corner">
+                <span class="util-ra-tip" data-tooltip="Undo">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-undo-vertex disabled aria-label="Undo">
                     <i class="fa fa-undo" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <span class="util-ra-tip" data-tooltip="Redo">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-redo disabled aria-label="Redo">
+                    <i class="fa fa-repeat" aria-hidden="true"></i>
                   </button>
                 </span>
                 <span class="util-ra-tip" data-tooltip="Close shape">
@@ -309,6 +314,28 @@
                     <i class="fa fa-compress" aria-hidden="true"></i>
                   </button>
                 </span>
+                <div class="util-ra-shortcuts" data-ra-shortcuts>
+                  <span class="util-ra-tip util-ra-tip--end" data-tooltip="Keyboard shortcuts">
+                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-shortcuts-toggle aria-label="Keyboard shortcuts" aria-expanded="false" aria-controls="ra-shortcuts-popover">
+                      <i class="fa fa-question" aria-hidden="true"></i>
+                    </button>
+                  </span>
+                  <div class="util-ra-shortcuts__popover" id="ra-shortcuts-popover" data-ra-shortcuts-popover hidden role="dialog" aria-label="Keyboard shortcuts">
+                    <p class="util-ra-shortcuts__title">Keyboard shortcuts</p>
+                    <dl class="util-ra-shortcuts__list">
+                      <div class="util-ra-shortcuts__row"><dt>Delete / Backspace</dt><dd>Delete selected</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Ctrl/⌘ Z</dt><dd>Undo</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Ctrl/⌘ Shift Z, Ctrl/⌘ Y</dt><dd>Redo</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Esc</dt><dd>Cancel draw / deselect</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Arrow keys</dt><dd>Nudge selected</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Shift + arrows</dt><dd>Nudge farther</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>+ / −</dt><dd>Zoom in / out</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>0</dt><dd>Fit to view</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Space + drag</dt><dd>Pan</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Shift + scroll</dt><dd>Zoom toward cursor</dd></div>
+                    </dl>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -419,6 +446,9 @@
                   <span>Scale entire project</span>
                 </label>
                 <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-split-wall>
+                  <i class="fa fa-plus-circle"></i> Split wall
+                </button>
                 <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-wall>
                   <i class="fa fa-trash"></i> Delete wall
                 </button>
@@ -495,7 +525,7 @@
         </div>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag a door or window from the palette onto a wall. Hold <strong>Space</strong> and drag to pan; <strong>Shift</strong>+scroll to zoom. Calibrate scale before saving.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag a door or window from the palette onto a wall. Pinch or <strong>+/−</strong> to zoom; two fingers or empty-canvas drag to pan. Press <strong>?</strong> for shortcuts. Calibrate scale before saving.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <div class="util-ra-live-area__row util-ra-live-area__row--active">
               <span class="util-ra-live-area__label">Active shape:</span>

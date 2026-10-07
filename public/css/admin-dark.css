@@ -1230,9 +1230,29 @@ html.admin-dark .cp-project-photos-thumb-media--ppt {
 
 /* Room Area calculator leftovers */
 html.admin-dark .util-ra-desktop-notice {
-  background: rgba(250, 204, 21, 0.12);
-  border-color: rgba(250, 204, 21, 0.35);
-  color: #fde68a;
+  background: var(--admin-info-tile-bg, var(--admin-surface-hover));
+  border-color: var(--admin-info-tile-border, var(--admin-border));
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-shortcuts__popover {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-shortcuts__title,
+html.admin-dark .util-ra-shortcuts__row dt {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-shortcuts__row dd {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-icon-btn[data-ra-shortcuts-toggle][aria-expanded="true"] {
+  background: var(--admin-surface-hover);
 }
 
 html.admin-dark .util-ra-ruler-edit {
@@ -2382,7 +2402,6 @@ html.admin-dark .util-lb-bt-name:focus {
   background: var(--admin-input-bg) !important;
 }
 
-html.admin-dark .util-ra-desktop-notice,
 html.admin-dark .sq-step-hint,
 html.admin-dark .sh-permit,
 html.admin-dark .cp-locked {
