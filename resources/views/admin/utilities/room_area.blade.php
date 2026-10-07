@@ -324,8 +324,8 @@
                     <p class="util-ra-shortcuts__title">Keyboard shortcuts</p>
                     <dl class="util-ra-shortcuts__list">
                       <div class="util-ra-shortcuts__row"><dt>Delete / Backspace</dt><dd>Delete selected</dd></div>
-                      <div class="util-ra-shortcuts__row"><dt>Ctrl/⌘ Z</dt><dd>Undo</dd></div>
-                      <div class="util-ra-shortcuts__row"><dt>Ctrl/⌘ Shift Z, Ctrl/⌘ Y</dt><dd>Redo</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Ctrl/Cmd+Z</dt><dd>Undo</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Ctrl/Cmd+Shift+Z, Y</dt><dd>Redo</dd></div>
                       <div class="util-ra-shortcuts__row"><dt>Esc</dt><dd>Cancel draw / deselect</dd></div>
                       <div class="util-ra-shortcuts__row"><dt>Arrow keys</dt><dd>Nudge selected</dd></div>
                       <div class="util-ra-shortcuts__row"><dt>Shift + arrows</dt><dd>Nudge farther</dd></div>
@@ -460,6 +460,10 @@
           </div>
         </div>
 
+        <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
+          <div id="ra-konva-container" class="util-ra-konva"></div>
+        </div>
+
         <section class="util-ra-type-walls" data-ra-type-walls aria-label="Type walls">
           <div class="util-ra-type-walls__head">
             <h3 class="util-ra-type-walls__title">Type walls</h3>
@@ -519,10 +523,6 @@
             <p class="util-ra-type-walls__gap" data-ra-type-gap></p>
           </div>
         </section>
-
-        <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
-          <div id="ra-konva-container" class="util-ra-konva"></div>
-        </div>
 
         <div class="util-ra-canvas-footer">
           <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag a door or window from the palette onto a wall. Pinch or <strong>+/−</strong> to zoom; two fingers or empty-canvas drag to pan. Press <strong>?</strong> for shortcuts. Calibrate scale before saving.</p>

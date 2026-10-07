@@ -1856,13 +1856,19 @@
   }
 
   .util-ra-shortcuts__popover {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: 12px;
-    width: auto;
-    max-width: none;
+    position: absolute;
+    left: 0;
+    right: auto;
+    top: calc(100% + 8px);
+    bottom: auto;
+    width: min(20rem, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+  }
+
+  .util-ra-shortcuts .util-ra-tip[data-tooltip]::after {
+    left: 0;
+    right: auto;
+    transform: none;
   }
 }
 
@@ -2429,6 +2435,10 @@
 
 .util-ra-icon-btn[data-ra-shortcuts-toggle][aria-expanded="true"] {
   background: var(--admin-surface-hover);
+}
+
+.util-ra-shortcuts:has([aria-expanded="true"]) .util-ra-tip[data-tooltip]::after {
+  display: none;
 }
 
 .util-ra-live-area {
@@ -3604,7 +3614,7 @@
 
 /* Type walls — compact tape-measure entry */
 .util-ra-type-walls {
-  margin: 0 0 0.65rem;
+  margin: 0.65rem 0 0;
   padding: 0.55rem 0.65rem 0.6rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
