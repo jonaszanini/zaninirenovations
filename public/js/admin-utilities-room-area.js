@@ -3370,7 +3370,8 @@
     var view = stageViewSize();
     var vw = view.w;
     var vh = view.h;
-    var bounds = viewportContentBounds();
+    var bounds = isNarrowCanvas(vw) ? rawContentBounds() : viewportContentBounds();
+    if (!bounds.hasContent) bounds = viewportContentBounds();
     var bw = Math.max(bounds.maxX - bounds.minX, 1);
     var bh = Math.max(bounds.maxY - bounds.minY, 1);
     var scale;
