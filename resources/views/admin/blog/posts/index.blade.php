@@ -59,7 +59,7 @@
               <th class="bp-list-table__post">Post</th>
               <th class="bp-list-col">Category</th>
               <th class="bp-list-col">Status</th>
-              <th class="bp-list-col">SEO</th>
+              <th class="bp-list-col bp-list-col-seo">SEO</th>
               <th class="bp-list-col">Published</th>
               <th class="bp-list-col">Views</th>
               <th class="bp-list-table__actions"></th>
@@ -121,7 +121,7 @@
                 <td class="bp-list-col" data-label="Status">
                   <span class="{{ $statusClass }}">{{ $statusLabel }}</span>
                 </td>
-                <td class="bp-list-col bp-list-seo" data-label="SEO">
+                <td class="bp-list-col bp-list-col-seo bp-list-seo" data-label="SEO">
                   @if ($seoKeys === [])
                     <span class="bp-seo-badge bp-seo-badge--ok">OK</span>
                   @else

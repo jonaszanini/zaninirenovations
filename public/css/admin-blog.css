@@ -153,8 +153,15 @@
 }
 
 .bp-list-post__text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.bp-list-col-seo {
+  display: none;
 }
 
 .bp-list-post__title {
@@ -177,9 +184,14 @@
   gap: 4px;
 }
 
-.bp-list-post__meta,
-.bp-list-seo--card {
+.bp-list-post__meta {
   display: none;
+}
+
+.bp-list-seo--card {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
 }
 
 .bp-seo-badge {
@@ -623,6 +635,10 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+  }
+
+  .bp-list-seo--card {
+    flex-wrap: wrap;
   }
 
   .bp-list-post__meta {
