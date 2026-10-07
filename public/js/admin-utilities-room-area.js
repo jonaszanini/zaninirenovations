@@ -3814,6 +3814,7 @@
       room.scale_pixels_per_foot || project.scale_pixels_per_foot,
       target
     );
+    updateScaleUI();
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
     clearUndoStack();
@@ -4144,11 +4145,15 @@
       var place = objectPlacement(obj);
       if (!place) return;
       var group = new Konva.Group({
+        id: 'ra-obj-' + obj.id,
+        name: 'ra-object',
         x: place.mid.x,
         y: place.mid.y,
         rotation: place.angle * 180 / Math.PI,
         listening: !state.spaceHeld && !state.rulerMode && !state.calibrating && !state.bgMoveMode
       });
+      group.setAttr('objectId', obj.id);
+      group.setAttr('objectType', obj.type);
       drawObjectSymbol(group, obj, place);
       group.on('click tap', function (e) {
         e.cancelBubble = true;
@@ -5615,6 +5620,7 @@
         currentRoom.scale_pixels_per_foot || currentProject.scale_pixels_per_foot,
         target
       );
+      updateScaleUI();
       clearUndoStack();
       redrawAll();
       fitViewport();

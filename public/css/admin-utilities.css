@@ -2771,6 +2771,7 @@
   margin: 0;
   font-size: 0.78rem;
   color: var(--admin-muted);
+  min-width: 0;
 }
 
 .util-ra-palette__groups {
@@ -2880,12 +2881,22 @@
   min-width: 5.5rem;
 }
 
+.util-ra-object-edit__field .admin-input {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .util-ra-object-edit__field label {
   display: block;
   margin-bottom: 0.2rem;
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--admin-muted);
+}
+
+.util-ra-object-edit__inner .util-ra-action-btn {
+  flex: 0 1 auto;
+  white-space: nowrap;
 }
 
 @media (min-width: 768px) {
