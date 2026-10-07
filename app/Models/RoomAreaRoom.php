@@ -17,12 +17,15 @@ class RoomAreaRoom extends Model
         'canvas_width',
         'canvas_height',
         'area_sqft',
+        'wall_height_ft',
+        'pdf_path',
     ];
 
     protected $casts = [
         'vertices' => 'array',
         'area_sqft' => 'float',
         'scale_pixels_per_foot' => 'float',
+        'wall_height_ft' => 'float',
     ];
 
     public function canvasData(): array
@@ -40,17 +43,36 @@ class RoomAreaRoom extends Model
         return (float) ($this->project?->scale_pixels_per_foot ?? 0);
     }
 
+    public function resolvedWallHeightFt(): float
+    {
+        return app(RoomAreaCanvasData::class)->normalizeWallHeight($this->wall_height_ft);
+    }
+
     /**
-     * @return array{area_sqft: float, perimeter_lf: float, inside_corners: int, outside_corners: int, polygon_count: int}
+     * @return array{
+     *   area_sqft: float,
+     *   perimeter_lf: float,
+     *   baseboard_lf: float,
+     *   wall_height_ft: float,
+     *   wall_area_sqft: float,
+     *   door_count: int,
+     *   window_count: int,
+     *   opening_count: int,
+     *   drywall_openings: int,
+     *   inside_corners: int,
+     *   outside_corners: int,
+     *   polygon_count: int
+     * }
      */
     public function layoutMetrics(): array
     {
         $scale = $this->resolvedScalePixelsPerFoot();
+        $height = $this->resolvedWallHeightFt();
         if ($scale <= 0) {
-            return app(RoomAreaCanvasData::class)->emptyLayoutMetrics();
+            return app(RoomAreaCanvasData::class)->emptyLayoutMetrics($height);
         }
 
-        return app(RoomAreaCanvasData::class)->layoutMetrics($this->canvasData(), $scale);
+        return app(RoomAreaCanvasData::class)->layoutMetrics($this->canvasData(), $scale, $height);
     }
 
     public function project(): BelongsTo

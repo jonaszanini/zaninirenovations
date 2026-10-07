@@ -93,7 +93,15 @@
                     @if (!empty($item['rooms']))
                       <ul class="cp-utilities-item__rooms">
                         @foreach ($item['rooms'] as $room)
-                          <li><span>{{ $room['name'] }}</span> <span class="cp-utilities-item__room-area">{{ $room['area_label'] }}</span></li>
+                          <li>
+                            <span>{{ $room['name'] }}</span>
+                            <span class="cp-utilities-item__room-meta">
+                              <span class="cp-utilities-item__room-area">{{ $room['area_label'] }}</span>
+                              @if (!empty($room['pdf_url']))
+                                <a href="{{ $room['pdf_url'] }}" class="cp-utilities-item__pdf" target="_blank" rel="noopener">PDF</a>
+                              @endif
+                            </span>
+                          </li>
                         @endforeach
                       </ul>
                     @endif
