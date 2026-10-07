@@ -150,7 +150,24 @@
 
   function formatMoney(n) {
     if (!isFinite(n) || n <= 0) return '—';
-    return '$' + (Math.round(n * 100) / 100).toFixed(2);
+    var parts = (Math.round(n * 100) / 100).toFixed(2).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return '$' + parts.join('.');
+  }
+
+  function setStatValue(el, primary, pct) {
+    if (!el) return;
+    el.textContent = '';
+    var main = document.createElement('span');
+    main.className = 'util-lb-stat__primary';
+    main.textContent = primary;
+    el.appendChild(main);
+    if (pct) {
+      var extra = document.createElement('span');
+      extra.className = 'util-lb-stat__pct';
+      extra.textContent = pct;
+      el.appendChild(extra);
+    }
   }
 
   function escapeAttr(s) {
@@ -1186,10 +1203,10 @@
         '<div class="util-lb-breakdown" data-lb-breakdown></div>' +
         '<div class="util-lb-type-diagrams" data-lb-type-diagrams></div>';
 
-      resultBlock.querySelector('[data-lb-stat-linear]').textContent = formatLength(linearSix, meta.pieceUnit);
-      resultBlock.querySelector('[data-lb-stat-boards]').textContent = String(s.boards);
-      resultBlock.querySelector('[data-lb-stat-cost]').textContent = s.cost > 0 ? formatMoney(s.cost) : '—';
-      resultBlock.querySelector('[data-lb-stat-waste]').textContent = formatLength(s.waste, meta.stockUnit) + ' (' + s.wastePct.toFixed(1) + '%)';
+      setStatValue(resultBlock.querySelector('[data-lb-stat-linear]'), formatLength(linearSix, meta.pieceUnit));
+      setStatValue(resultBlock.querySelector('[data-lb-stat-boards]'), String(s.boards));
+      setStatValue(resultBlock.querySelector('[data-lb-stat-cost]'), s.cost > 0 ? formatMoney(s.cost) : '—');
+      setStatValue(resultBlock.querySelector('[data-lb-stat-waste]'), formatLength(s.waste, meta.stockUnit), '(' + s.wastePct.toFixed(1) + '%)');
       resultBlock.querySelector('[data-lb-stat-waste-wrap]').className = 'util-lb-stat util-lb-stat--waste ' + wasteClass(s.wastePct);
 
       renderBreakdown(resultBlock.querySelector('[data-lb-breakdown]'), result, card, meta.stockUnit);
@@ -1258,11 +1275,11 @@
         });
       });
 
-      if (els.globalBoards) els.globalBoards.textContent = String(totalBoards);
-      if (els.globalCost) els.globalCost.textContent = totalCost > 0 ? formatMoney(totalCost) : '—';
+      setStatValue(els.globalBoards, String(totalBoards));
+      setStatValue(els.globalCost, totalCost > 0 ? formatMoney(totalCost) : '—');
       if (els.globalWaste) {
         var gWastePct = totalPurchased > 0 ? (totalWaste / totalPurchased) * 100 : 0;
-        els.globalWaste.textContent = formatLength(totalWaste, 'ft') + ' (' + gWastePct.toFixed(1) + '%)';
+        setStatValue(els.globalWaste, formatLength(totalWaste, 'ft'), '(' + gWastePct.toFixed(1) + '%)');
         if (els.globalWasteWrap) {
           els.globalWasteWrap.className = 'util-lb-stat util-lb-stat--waste ' + wasteClass(gWastePct);
         }

@@ -1328,8 +1328,10 @@
   margin-bottom: 0.75rem;
 }
 
-.util-lb-stats--global {
+.util-lb-stats.util-lb-stats--global {
   margin-bottom: 0.5rem;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .util-lb-breakdown-row--global {
@@ -1465,15 +1467,27 @@
   border-radius: 10px;
   background: var(--admin-surface);
   min-width: 0;
+  container-type: inline-size;
 }
 
 .util-lb-stat__value {
-  display: block;
-  font-size: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  column-gap: 0.28em;
+  row-gap: 0;
+  font-size: clamp(0.72rem, 11cqi, 0.95rem);
   font-weight: 700;
   color: var(--admin-primary);
   line-height: 1.25;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.util-lb-stat__primary,
+.util-lb-stat__pct {
+  white-space: nowrap;
 }
 
 .util-lb-stat__label {
@@ -1701,11 +1715,27 @@
   .util-lb-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .util-lb-stats.util-lb-stats--global {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
   .util-lb-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .util-lb-stats.util-lb-stats--global {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .util-lb-stat__value {
+    font-size: clamp(0.7rem, 12cqi, 0.88rem);
+  }
+
+  .util-lb-stats--global .util-lb-stat__value {
+    font-size: clamp(0.7rem, 13cqi, 0.85rem);
   }
 
   .util-lb-save-row {
@@ -4567,10 +4597,18 @@
 
 .util-oc-filters {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(7rem, 9rem) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(10.5rem, 12rem) auto;
   gap: 0.65rem 0.75rem;
   align-items: end;
   margin: 0 0 0.85rem;
+}
+
+.util-oc-filter-status {
+  min-width: 0;
+}
+
+.util-oc-filter-status select.admin-input {
+  width: 100%;
 }
 
 .util-oc-filters .cp-filter label {
@@ -4698,15 +4736,40 @@
 
 @media (max-width: 700px) {
   .util-oc-filters {
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.65rem 0.4rem;
   }
 
   .util-oc-filters .cp-filter:first-child {
-    grid-column: 1 / -1;
+    flex: 1 1 100%;
+    grid-column: auto;
+  }
+
+  .admin-body .util-oc-filter-status {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .admin-body .util-oc-filter-status select.admin-input {
+    width: 100%;
+    min-width: 0;
+    padding-left: 0.5rem;
+    padding-right: 1.65rem;
+    background-position: right 0.4rem center;
   }
 
   .util-oc-filters .cp-filter--actions {
+    flex: 0 0 auto;
     width: auto;
     flex-wrap: nowrap;
+    grid-column: auto;
+    gap: 0.3rem;
+  }
+
+  .util-oc-filters .cp-filter--actions .admin-btn {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
   }
 }

@@ -113,7 +113,7 @@
           <label for="oc-filter-mat">Material</label>
           <input class="admin-input" type="search" id="oc-filter-mat" name="material" value="{{ $material }}" placeholder="Filter key…">
         </div>
-        <div class="cp-filter">
+        <div class="cp-filter util-oc-filter-status">
           <label for="oc-filter-status">Status</label>
           <select class="admin-input" id="oc-filter-status" name="status">
             <option value="available" @selected($status === 'available')>Available</option>
