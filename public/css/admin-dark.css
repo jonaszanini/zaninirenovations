@@ -3081,3 +3081,25 @@ html.admin-dark .dash-etransfer-today {
   background: var(--admin-surface);
   border-color: var(--admin-border);
 }
+
+html.admin-dark .util-lb-offcut-used {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-lb-sheet-group,
+html.admin-dark .util-lb-sheet-svg {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-oc-pill {
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-lb-min-offcut > label {
+  color: var(--admin-muted);
+}

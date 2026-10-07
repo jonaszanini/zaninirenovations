@@ -49,6 +49,106 @@ class CutOptimizerEngine
     }
 
     /**
+     * Pack onto matching inventory offcuts first, then fresh stock.
+     * Offcut sheets skip factory-edge trim (they are already cut).
+     *
+     * @param  list<Part>  $parts
+     * @param  list<StockOption>  $stockOptions
+     * @param  list<StockOption>  $offcutStocks
+     * @return array{sheets: list<GuillotineSheet>, used_offcut_ids: list<int>}
+     */
+    public function optimizeWithOffcuts(
+        array $parts,
+        array $stockOptions,
+        array $offcutStocks,
+        float $kerf = 0.125,
+        float $trim = 0.125,
+        float $minOffcut = 2.0
+    ): array {
+        $flat = $this->flattenParts($parts);
+        $usedOffcutIds = [];
+        $offcutSheets = [];
+
+        $queue = [];
+        foreach ($offcutStocks as $opt) {
+            $copies = max(1, (int) $opt->quantity);
+            for ($i = 0; $i < $copies; $i++) {
+                $queue[] = $opt;
+            }
+        }
+        usort($queue, function (StockOption $a, StockOption $b): int {
+            return $a->area() <=> $b->area();
+        });
+
+        foreach ($queue as $offcut) {
+            if ($flat === []) {
+                break;
+            }
+            $packed = $this->bestPack($flat, $offcut, $kerf, 0.0, $minOffcut);
+            if ($packed === [] || $packed[0]->placedParts === []) {
+                continue;
+            }
+            $sheet = $packed[0];
+            $sheet->offcutId = $offcut->offcutId;
+            if ($sheet->label === '') {
+                $sheet->label = $offcut->label;
+            }
+            $placedIds = [];
+            foreach ($sheet->placedParts as $placed) {
+                $placedIds[$placed->part->id] = true;
+            }
+            $flat = array_values(array_filter(
+                $flat,
+                static fn (Part $part): bool => ! isset($placedIds[$part->id])
+            ));
+            $offcutSheets[] = $sheet;
+            if ($offcut->offcutId) {
+                $usedOffcutIds[] = $offcut->offcutId;
+            }
+        }
+
+        $fresh = [];
+        if ($flat !== [] && $stockOptions !== []) {
+            $fresh = $this->optimize($flat, $stockOptions, $kerf, $trim, $minOffcut);
+        }
+
+        return [
+            'sheets' => array_merge($offcutSheets, $fresh),
+            'used_offcut_ids' => array_values(array_unique($usedOffcutIds)),
+        ];
+    }
+
+    /**
+     * @param  list<Part>  $parts
+     * @return list<Part>
+     */
+    public function flattenParts(array $parts): array
+    {
+        $flat = [];
+        foreach ($parts as $part) {
+            $qty = max(1, (int) $part->quantity);
+            for ($i = 0; $i < $qty; $i++) {
+                $flat[] = new Part(
+                    $part->id.'#'.($i + 1),
+                    $qty > 1 ? $part->label.' '.($i + 1) : $part->label,
+                    $part->width,
+                    $part->length,
+                    1,
+                    $part->grain,
+                    $part->edgeBandTop,
+                    $part->edgeBandBottom,
+                    $part->edgeBandLeft,
+                    $part->edgeBandRight,
+                    $part->materialKey,
+                    $part->groupLabel
+                );
+            }
+        }
+
+        return $flat;
+    }
+
+    /**
      * @param  list<Part>  $parts
      * @return list<GuillotineSheet>
      */

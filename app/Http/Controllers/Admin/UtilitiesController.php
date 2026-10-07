@@ -4,8 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientProject;
+use App\Models\Offcut;
 use App\Models\UtilityCalculation;
+use App\Services\CutOptimizer\CutOptimizerEngine;
+use App\Services\CutOptimizer\GrainDirection;
+use App\Services\CutOptimizer\Part;
+use App\Services\CutOptimizer\StockOption;
+use App\Services\CutOptimizer\SvgVisualizer;
+use App\Services\OffcutInventoryService;
+use App\Services\QuotationCutListImportService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UtilitiesController extends Controller
@@ -34,6 +43,12 @@ class UtilitiesController extends Controller
                 'name' => 'Lumber / Board Material',
                 'icon' => 'lumber_board',
                 'route' => route('admin.utilities.lumber-board'),
+                'available' => true,
+            ],
+            [
+                'name' => 'Offcut inventory',
+                'icon' => 'offcuts',
+                'route' => route('admin.utilities.offcuts.index'),
                 'available' => true,
             ],
             [
@@ -96,6 +111,153 @@ class UtilitiesController extends Controller
             'savedCalculations' => $saved,
             'clientProjects' => $clientProjects,
             'linkProject' => $linkProject,
+        ]);
+    }
+
+    public function searchCutListQuotations(Request $request, QuotationCutListImportService $import): JsonResponse
+    {
+        $id = trim((string) $request->query('id', ''));
+        $q = trim((string) $request->query('q', ''));
+
+        return response()->json($import->search($q, $id !== '' ? $id : null));
+    }
+
+    public function importCutListQuotation(Request $request, QuotationCutListImportService $import): JsonResponse
+    {
+        $id = trim((string) $request->query('id', $request->input('id', '')));
+        $payload = $id !== '' ? $import->import($id) : null;
+        if ($payload === null) {
+            return response()->json(['message' => 'Quotation not found.'], 404);
+        }
+
+        return response()->json($payload);
+    }
+
+    public function optimizeSheets(
+        Request $request,
+        CutOptimizerEngine $engine,
+        SvgVisualizer $visual,
+        OffcutInventoryService $inventory
+    ): JsonResponse {
+        $data = $request->validate([
+            'parts' => ['required', 'array', 'min:1'],
+            'parts.*.id' => ['nullable', 'string', 'max:80'],
+            'parts.*.label' => ['required', 'string', 'max:120'],
+            'parts.*.width' => ['required', 'numeric', 'min:0.01'],
+            'parts.*.length' => ['required', 'numeric', 'min:0.01'],
+            'parts.*.qty' => ['nullable', 'integer', 'min:1'],
+            'parts.*.grain' => ['nullable', 'string', 'max:20'],
+            'stock' => ['required', 'array', 'min:1'],
+            'stock.*.id' => ['nullable', 'string', 'max:80'],
+            'stock.*.label' => ['nullable', 'string', 'max:120'],
+            'stock.*.width' => ['required', 'numeric', 'min:0.01'],
+            'stock.*.length' => ['required', 'numeric', 'min:0.01'],
+            'stock.*.price' => ['nullable', 'numeric', 'min:0'],
+            'material_key' => ['nullable', 'string', 'max:80'],
+            'thickness_in' => ['nullable', 'numeric', 'min:0'],
+            'kerf' => ['nullable', 'numeric', 'min:0'],
+            'trim' => ['nullable', 'numeric', 'min:0'],
+            'min_offcut_in' => ['nullable', 'numeric', 'min:0'],
+            'use_offcuts' => ['nullable', 'boolean'],
+            'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
+        ]);
+
+        $parts = [];
+        foreach ($data['parts'] as $i => $row) {
+            $grain = strtolower((string) ($row['grain'] ?? GrainDirection::ANY));
+            if (! in_array($grain, [GrainDirection::ANY, GrainDirection::LENGTHWISE, GrainDirection::CROSSWISE], true)) {
+                $grain = GrainDirection::ANY;
+            }
+            $parts[] = new Part(
+                (string) ($row['id'] ?? 'p'.$i),
+                (string) $row['label'],
+                (float) $row['width'],
+                (float) $row['length'],
+                max(1, (int) ($row['qty'] ?? 1)),
+                $grain,
+                0,
+                0,
+                0,
+                0,
+                (string) ($data['material_key'] ?? 'sheet')
+            );
+        }
+
+        $stock = [];
+        foreach ($data['stock'] as $i => $row) {
+            $stock[] = new StockOption(
+                (string) ($row['id'] ?? 'st'.$i),
+                (string) ($row['label'] ?? 'Sheet'),
+                (float) $row['width'],
+                (float) $row['length'],
+                (float) ($row['price'] ?? 0)
+            );
+        }
+
+        $kerf = (float) ($data['kerf'] ?? 0.125);
+        $trim = (float) ($data['trim'] ?? 0.125);
+        $minOffcut = (float) ($data['min_offcut_in'] ?? Offcut::MIN_SHEET_IN);
+        $materialKey = $inventory->normaliseKey((string) ($data['material_key'] ?? 'sheet'));
+        $useOffcuts = $request->boolean('use_offcuts');
+
+        $offcutStocks = [];
+        if ($useOffcuts) {
+            $available = $inventory->available($materialKey);
+            if ($available->isEmpty()) {
+                $available = $inventory->available();
+            }
+            $offcutStocks = $inventory->asSheetStock($available);
+        }
+
+        if ($useOffcuts && $offcutStocks !== []) {
+            $result = $engine->optimizeWithOffcuts($parts, $stock, $offcutStocks, $kerf, $trim, $minOffcut);
+            $sheets = $result['sheets'];
+            $usedIds = $result['used_offcut_ids'];
+        } else {
+            $sheets = $engine->optimize($parts, $stock, $kerf, $trim, $minOffcut);
+            $usedIds = [];
+        }
+
+        $layouts = [];
+        $cost = 0.0;
+        foreach ($sheets as $packed) {
+            $described = $visual->describe($packed);
+            $described['from_offcut'] = $packed->offcutId !== null;
+            $described['offcut_id'] = $packed->offcutId;
+            $layouts[] = $described;
+            if ($packed->offcutId === null) {
+                foreach ($stock as $opt) {
+                    if (abs($opt->width - $packed->width) < 0.2 && abs($opt->length - $packed->length) < 0.2) {
+                        $cost += $opt->unitPrice;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $usedOffcuts = [];
+        if ($usedIds !== []) {
+            $usedRows = Offcut::query()->whereIn('id', $usedIds)->get();
+            foreach ($usedRows as $row) {
+                $usedOffcuts[] = $inventory->rowPayload($row);
+            }
+        }
+
+        $leftovers = $inventory->leftoversFromSheets(
+            $sheets,
+            $materialKey,
+            $minOffcut,
+            isset($data['thickness_in']) ? (float) $data['thickness_in'] : null
+        );
+
+        return response()->json([
+            'ok' => true,
+            'sheet_count' => count($sheets),
+            'used_offcut_ids' => $usedIds,
+            'used_offcuts' => $usedOffcuts,
+            'estimated_cost' => round($cost, 2),
+            'layouts' => $layouts,
+            'leftovers' => $leftovers,
         ]);
     }
 

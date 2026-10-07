@@ -28,7 +28,21 @@
     copyBtn: root.querySelector('[data-lb-copy]'),
     resultsActions: root.querySelector('[data-lb-results-actions]'),
     savedList: root.querySelector('[data-lb-saved-list]'),
-    savedEmpty: root.querySelector('[data-lb-saved-empty]')
+    savedEmpty: root.querySelector('[data-lb-saved-empty]'),
+    useOffcuts: root.querySelector('[data-lb-use-offcuts]'),
+    minOffcut: root.querySelector('[data-lb-min-offcut]'),
+    importStatus: root.querySelector('[data-lb-import-status]'),
+    offcutUsed: root.querySelector('[data-lb-offcut-used]'),
+    saveLeftoversWrap: root.querySelector('[data-lb-save-leftovers-wrap]'),
+    saveLeftoversBtn: root.querySelector('[data-lb-save-leftovers]'),
+    leftoversFeedback: root.querySelector('[data-lb-leftovers-feedback]'),
+    sheetCard: root.querySelector('[data-lb-sheet-card]'),
+    sheetGroups: root.querySelector('[data-lb-sheet-groups]'),
+    sheetUseOffcuts: root.querySelector('[data-lb-sheet-use-offcuts]'),
+    runSheetsBtn: root.querySelector('[data-lb-run-sheets]'),
+    saveSheetLeftoversBtn: root.querySelector('[data-lb-save-sheet-leftovers]'),
+    sheetUsed: root.querySelector('[data-lb-sheet-used]'),
+    sheetLayouts: root.querySelector('[data-lb-sheet-layouts]')
   };
 
   var state = {
@@ -41,6 +55,9 @@
   var lastResults = null;
   var renderScheduled = false;
   var initialLinkProjectId = root.getAttribute('data-link-project-id') || '';
+  var offcutCache = { linear: [], sheets: [] };
+  var pendingLeftovers = [];
+  var sheetState = { groups: [], last: null };
 
   /* ── Utilities ───────────────────────────────────────────────────── */
 
@@ -322,6 +339,70 @@
     return { purchased: purchased, waste: waste, boards: boards, cost: cost, wastePct: purchased > 0 ? (waste / purchased) * 100 : 0 };
   }
 
+  function matchingLinearOffcuts(materialKey) {
+    var key = String(materialKey || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    var rows = offcutCache.linear || [];
+    if (!rows.length) return [];
+    if (!key) return rows.slice();
+    var exact = rows.filter(function (row) {
+      var mk = String(row.material_key || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+      return mk === key || (mk && key && (mk.indexOf(key) !== -1 || key.indexOf(mk) !== -1));
+    });
+    return exact.length ? exact : rows.slice();
+  }
+
+  function packOntoOffcuts(pieces, offcuts, kerf) {
+    var bins = [];
+    offcuts.forEach(function (oc) {
+      var qty = Math.max(1, parseInt(oc.qty, 10) || 1);
+      var lenSix = toSixteenths(oc.length_in, 'in');
+      if (lenSix <= 0) return;
+      for (var i = 0; i < qty; i++) {
+        bins.push({
+          stockLen: lenSix,
+          stockId: 'offcut-' + oc.id + '-' + i,
+          offcutId: oc.id,
+          isOffcut: true,
+          segments: [],
+          materialKey: oc.material_key
+        });
+      }
+    });
+    var remaining = [];
+    pieces.forEach(function (piece) {
+      var bestBin = null;
+      var bestRemain = Infinity;
+      bins.forEach(function (bin) {
+        var used = binUsedSix(bin.segments, kerf);
+        var kerfCost = bin.segments.length ? kerf : 0;
+        var need = piece.len + kerfCost;
+        var remain = bin.stockLen - used;
+        if (need <= remain && remain - need < bestRemain) {
+          bestRemain = remain - need;
+          bestBin = bin;
+        }
+      });
+      if (bestBin) {
+        bestBin.segments.push({ len: piece.len, label: piece.label, isWaste: false });
+      } else {
+        remaining.push(piece);
+      }
+    });
+    var usedBins = bins.filter(function (bin) { return bin.segments.length > 0; });
+    usedBins.forEach(function (bin) {
+      var used = binUsedSix(bin.segments, kerf);
+      var waste = bin.stockLen - used;
+      if (waste > 0) {
+        bin.segments.push({ len: waste, label: 'Waste', isWaste: true });
+      }
+    });
+    var usedIds = [];
+    usedBins.forEach(function (bin) {
+      if (bin.offcutId && usedIds.indexOf(bin.offcutId) === -1) usedIds.push(bin.offcutId);
+    });
+    return { bins: usedBins, remaining: remaining, usedOffcutIds: usedIds };
+  }
+
   function solve(pieces, stocks, mode, singleStockId, manualCounts, stockUnit, kerf) {
     if (!pieces.length || !stocks.length) return null;
     var maxPiece = Math.max.apply(null, pieces.map(function (p) { return p.len; }));
@@ -411,6 +492,7 @@
     return {
       id: card.getAttribute('data-bt-id'),
       name: nameInput ? nameInput.value.trim() : '',
+      materialKey: (card.getAttribute('data-material-key') || '').trim(),
       stockUnit: stockUnitBtn ? stockUnitBtn.getAttribute('data-stock-unit') : 'ft',
       pieceUnit: pieceUnitBtn ? pieceUnitBtn.getAttribute('data-piece-unit') : 'in',
       mode: modeBtn ? modeBtn.getAttribute('data-mode') : 'minimize',
@@ -582,6 +664,7 @@
     return Object.assign({
       id: id,
       name: '',
+      material_key: '',
       stock_unit: 'ft',
       piece_unit: 'in',
       mode: 'minimize',
@@ -599,6 +682,7 @@
     card.className = 'util-lb-bt-card' + (data.collapsed ? ' is-collapsed' : '');
     card.setAttribute('data-lb-board-type', '');
     card.setAttribute('data-bt-id', data.id);
+    card.setAttribute('data-material-key', data.material_key || '');
     card.setAttribute('data-manual-counts', JSON.stringify(data.manual_counts || {}));
     card.setAttribute('draggable', 'true');
 
@@ -836,6 +920,7 @@
     return {
       id: meta.id,
       name: meta.name,
+      material_key: meta.materialKey,
       stock_unit: meta.stockUnit,
       piece_unit: meta.pieceUnit,
       mode: meta.mode,
@@ -932,6 +1017,13 @@
     container.innerHTML = '';
 
     result.groups.forEach(function (g) {
+      if (g.isOffcut) {
+        var ocRow = document.createElement('div');
+        ocRow.className = 'util-lb-breakdown-row util-lb-breakdown-row--offcut';
+        ocRow.innerHTML = '<div class="util-lb-breakdown-row__info"><span class="util-lb-breakdown-row__prefix">From inventory:</span> <strong>' + g.bins.length + ' offcut' + (g.bins.length === 1 ? '' : 's') + '</strong></div>';
+        container.appendChild(ocRow);
+        return;
+      }
       var stock = result.stocks.find(function (s) { return s.id === g.stockId || s.lengthSix === g.lengthSix; });
       var count = g.count != null ? g.count : g.bins.length;
       var row = document.createElement('div');
@@ -1024,7 +1116,47 @@
         return;
       }
 
-      var result = solve(pieces, stocks, meta.mode, meta.singleStockId, getManualCounts(card), meta.stockUnit, kerf);
+      var offcutPack = null;
+      var piecesForStock = pieces;
+      if (els.useOffcuts && els.useOffcuts.checked) {
+        offcutPack = packOntoOffcuts(pieces, matchingLinearOffcuts(meta.materialKey), kerf);
+        piecesForStock = offcutPack.remaining;
+      }
+      var result = piecesForStock.length
+        ? solve(piecesForStock, stocks, meta.mode, meta.singleStockId, getManualCounts(card), meta.stockUnit, kerf)
+        : { strategy: 'Inventory offcuts only', groups: [], stats: { purchased: 0, waste: 0, boards: 0, cost: 0, wastePct: 0 }, stocks: stocks };
+      if (offcutPack && offcutPack.bins.length) {
+        var ocGroups = {};
+        offcutPack.bins.forEach(function (bin) {
+          var gk = String(bin.stockLen);
+          if (!ocGroups[gk]) {
+            ocGroups[gk] = {
+              stockId: 'offcut-' + gk,
+              lengthSix: bin.stockLen,
+              bins: [],
+              isOffcut: true
+            };
+          }
+          ocGroups[gk].bins.push(bin);
+        });
+        var ocGroupList = Object.keys(ocGroups).map(function (k) {
+          ocGroups[k].count = ocGroups[k].bins.length;
+          return ocGroups[k];
+        });
+        result.groups = ocGroupList.concat(result.groups || []);
+        result.usedOffcutIds = offcutPack.usedOffcutIds;
+        result.usedOffcutBins = offcutPack.bins;
+        var extraWaste = 0;
+        offcutPack.bins.forEach(function (bin) {
+          extraWaste += (bin.segments.filter(function (s) { return s.isWaste; })[0] || { len: 0 }).len;
+        });
+        result.stats = result.stats || { purchased: 0, waste: 0, boards: 0, cost: 0, wastePct: 0 };
+        result.stats.waste += extraWaste;
+        result.stats.offcutBoards = offcutPack.bins.length;
+        if (result.strategy && offcutPack.bins.length) {
+          result.strategy = offcutPack.bins.length + ' offcut(s) first' + (piecesForStock.length ? ' · ' + result.strategy : '');
+        }
+      }
 
       if (!result || result.error) {
         hasError = true;
@@ -1068,7 +1200,7 @@
         if (count < 1) return;
         var block = document.createElement('div');
         block.className = 'util-lb-diagram-block';
-        block.innerHTML = buildDiagramSvg(g, formatLength(g.lengthSix, meta.stockUnit), meta.pieceUnit);
+        block.innerHTML = buildDiagramSvg(g, (g.isOffcut ? 'Inventory ' : '') + formatLength(g.lengthSix, meta.stockUnit), meta.pieceUnit);
         diagramsWrap.appendChild(block);
         if (els.diagrams) {
           var clone = block.cloneNode(true);
@@ -1111,6 +1243,7 @@
         totalWaste += st.waste;
         totalPurchased += st.purchased;
         e.result.groups.forEach(function (g) {
+          if (g.isOffcut) return;
           var count = g.count != null ? g.count : g.bins.length;
           var key = e.meta.name + '\0' + g.lengthSix;
           if (!purchaseMap[key]) {
@@ -1155,6 +1288,285 @@
         });
       }
     }
+
+    updateOffcutSummary(entries, hasAnyResult);
+  }
+
+  function minOffcutSix() {
+    var n = parseNum(els.minOffcut && els.minOffcut.value);
+    if (!(n > 0)) n = 12;
+    return toSixteenths(n, 'in');
+  }
+
+  function collectLinearLeftovers(entries) {
+    var minSix = minOffcutSix();
+    var leftovers = [];
+    var usedIds = [];
+    entries.forEach(function (e) {
+      if (!e.result || e.result.error) return;
+      (e.result.usedOffcutIds || []).forEach(function (id) {
+        if (usedIds.indexOf(id) === -1) usedIds.push(id);
+      });
+      e.result.groups.forEach(function (g) {
+        var count = g.count != null ? g.count : g.bins.length;
+        g.bins.forEach(function (bin, i) {
+          if (i >= count) return;
+          var waste = (bin.segments.filter(function (s) { return s.isWaste; })[0] || { len: 0 }).len;
+          if (waste < minSix) return;
+          leftovers.push({
+            material_key: e.meta.materialKey || e.meta.name || 'lumber',
+            length_in: sixteenthsToInches(waste),
+            qty: 1,
+            notes: g.isOffcut ? 'Remainder of inventory offcut' : 'Leftover from ' + (e.meta.name || 'board')
+          });
+        });
+      });
+    });
+    return { leftovers: leftovers, usedIds: usedIds };
+  }
+
+  function updateOffcutSummary(entries, hasAnyResult) {
+    var info = collectLinearLeftovers(entries);
+    pendingLeftovers = info.leftovers;
+    var usedCount = 0;
+    entries.forEach(function (e) {
+      if (e.result && e.result.stats && e.result.stats.offcutBoards) {
+        usedCount += e.result.stats.offcutBoards;
+      }
+    });
+    if (els.offcutUsed) {
+      if (usedCount > 0) {
+        els.offcutUsed.innerHTML = '<p class="util-lb-offcut-used__msg"><i class="fa fa-check"></i> Used ' + usedCount + ' inventory offcut' + (usedCount === 1 ? '' : 's') + ' before buying stock.</p>';
+        show(els.offcutUsed, true);
+      } else {
+        els.offcutUsed.innerHTML = '';
+        show(els.offcutUsed, false);
+      }
+    }
+    show(els.saveLeftoversWrap, hasAnyResult && pendingLeftovers.length > 0);
+  }
+
+  function jsonHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrf(),
+      'X-Requested-With': 'XMLHttpRequest',
+      Accept: 'application/json'
+    };
+  }
+
+  function fetchOffcuts() {
+    var url = root.getAttribute('data-offcuts-url');
+    if (!url) return Promise.resolve();
+    return fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (res) { return res.ok ? res.json() : { linear: [], sheets: [] }; })
+      .then(function (data) {
+        offcutCache.linear = data.linear || [];
+        offcutCache.sheets = data.sheets || [];
+      })
+      .catch(function () {
+        offcutCache.linear = [];
+        offcutCache.sheets = [];
+      });
+  }
+
+  function applyImportedBoardTypes(lumber) {
+    if (!lumber || !lumber.length) return;
+    var types = lumber.map(function (bt) {
+      return defaultBoardTypeData({
+        name: bt.name || '',
+        material_key: bt.material_key || '',
+        stock_unit: bt.stock_unit === 'in' ? 'in' : 'ft',
+        piece_unit: bt.piece_unit === 'in' ? 'in' : 'ft',
+        stocks: (bt.stocks || []).map(function (s) {
+          return { lengthVal: String(s.lengthVal != null ? s.lengthVal : ''), price: s.price || '' };
+        }),
+        pieces: (bt.pieces || []).map(function (p) {
+          return { desc: p.desc || '', lengthVal: String(p.lengthVal != null ? p.lengthVal : ''), qty: p.qty || 1 };
+        })
+      });
+    });
+    state.loadedCalculationId = null;
+    updateSaveUi();
+    loadBoardTypes(types);
+    render();
+  }
+
+  function applyImportedSheets(sheets) {
+    sheetState.groups = sheets || [];
+    sheetState.last = null;
+    if (!els.sheetGroups) return;
+    if (!sheetState.groups.length) {
+      show(els.sheetCard, false);
+      return;
+    }
+    show(els.sheetCard, true);
+    els.sheetGroups.innerHTML = sheetState.groups.map(function (g, gi) {
+      var parts = (g.parts || []).map(function (p) {
+        return escapeHtml(p.label || 'Part') + ' — ' + p.width + '×' + p.length + ' in × ' + (p.qty || 1);
+      }).join('<br>');
+      return '<article class="util-lb-sheet-group" data-sheet-i="' + gi + '">' +
+        '<h4>' + escapeHtml(g.name || g.material_key || 'Sheet goods') + '</h4>' +
+        '<p class="util-lb-hint">' + (parts || 'No parts') + '</p></article>';
+    }).join('');
+    if (els.sheetLayouts) els.sheetLayouts.innerHTML = '';
+    show(els.sheetUsed, false);
+    if (els.saveSheetLeftoversBtn) show(els.saveSheetLeftoversBtn, false);
+  }
+
+  function importQuotation(id) {
+    if (!id) return;
+    var url = root.getAttribute('data-import-url') + (root.getAttribute('data-import-url').indexOf('?') >= 0 ? '&' : '?') + 'id=' + encodeURIComponent(id);
+    if (els.importStatus) {
+      els.importStatus.textContent = 'Loading quotation…';
+      show(els.importStatus, true);
+    }
+    fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (res) { return res.ok ? res.json() : Promise.reject(res); })
+      .then(function (data) {
+        if (data.client_project_id) setLinkProject(data.client_project_id);
+        applyImportedBoardTypes(data.lumber || []);
+        applyImportedSheets(data.sheets || []);
+        if (els.saveName && data.title) els.saveName.value = data.title;
+        if (els.importStatus) {
+          if (!data.has_parts) {
+            els.importStatus.textContent = 'No cut-list parts on this quotation.';
+          } else {
+            var nL = (data.lumber || []).length;
+            var nS = (data.sheets || []).length;
+            els.importStatus.textContent = 'Imported ' + nL + ' lumber group' + (nL === 1 ? '' : 's') +
+              (nS ? ' and ' + nS + ' sheet group' + (nS === 1 ? '' : 's') : '') +
+              ' from ' + (data.quote_number || 'quotation') + '.';
+          }
+          show(els.importStatus, true);
+        }
+      })
+      .catch(function () {
+        if (els.importStatus) {
+          els.importStatus.textContent = 'Could not import that quotation.';
+          show(els.importStatus, true);
+        }
+      });
+  }
+
+  function saveLeftovers(list, minIn) {
+    var url = root.getAttribute('data-save-leftovers-url');
+    if (!url || !list || !list.length) return Promise.resolve();
+    var projectId = els.linkProject && els.linkProject.value ? parseInt(els.linkProject.value, 10) : null;
+    return fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: jsonHeaders(),
+      body: JSON.stringify({
+        leftovers: list,
+        min_offcut_in: minIn,
+        client_project_id: projectId
+      })
+    }).then(function (res) { return res.ok ? res.json() : Promise.reject(res); });
+  }
+
+  function consumeOffcuts(ids) {
+    var url = root.getAttribute('data-consume-url');
+    if (!url || !ids || !ids.length) return Promise.resolve();
+    var projectId = els.linkProject && els.linkProject.value ? parseInt(els.linkProject.value, 10) : null;
+    return fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ ids: ids, client_project_id: projectId, qty: 1 })
+    }).then(function (res) { return res.ok ? res.json() : Promise.reject(res); });
+  }
+
+  function runSheetOptimizer() {
+    if (!sheetState.groups.length) return;
+    var url = root.getAttribute('data-optimize-sheets-url');
+    if (!url) return;
+    var minIn = parseNum(els.minOffcut && els.minOffcut.value) || 2;
+    var projectId = els.linkProject && els.linkProject.value ? parseInt(els.linkProject.value, 10) : null;
+    var requests = sheetState.groups.map(function (group) {
+      var payload = {
+        parts: (group.parts || []).map(function (p, i) {
+          return {
+            id: 'p' + i,
+            label: p.label || 'Part',
+            width: p.width,
+            length: p.length,
+            qty: p.qty || 1,
+            grain: p.grain || 'any'
+          };
+        }),
+        stock: (group.stock || [{ width: 48, length: 96, label: '4×8' }]).map(function (s, i) {
+          return {
+            id: 'st' + i,
+            label: s.label || 'Sheet',
+            width: s.width,
+            length: s.length,
+            price: s.price || 0
+          };
+        }),
+        material_key: group.material_key || 'sheet',
+        thickness_in: group.thickness_in || null,
+        kerf: els.kerf && els.kerf.checked ? 0.125 : 0,
+        trim: 0.125,
+        min_offcut_in: minIn,
+        use_offcuts: !!(els.sheetUseOffcuts && els.sheetUseOffcuts.checked),
+        client_project_id: projectId
+      };
+      return fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: jsonHeaders(),
+        body: JSON.stringify(payload)
+      }).then(function (res) { return res.ok ? res.json() : Promise.reject(res); });
+    });
+    if (els.runSheetsBtn) els.runSheetsBtn.disabled = true;
+    Promise.all(requests)
+      .then(function (results) {
+        if (els.runSheetsBtn) els.runSheetsBtn.disabled = false;
+        var merged = { layouts: [], leftovers: [], used_offcut_ids: [], used_offcuts: [], estimated_cost: 0 };
+        results.forEach(function (data) {
+          (data.layouts || []).forEach(function (layout) { merged.layouts.push(layout); });
+          (data.leftovers || []).forEach(function (row) { merged.leftovers.push(row); });
+          (data.used_offcut_ids || []).forEach(function (id) {
+            if (merged.used_offcut_ids.indexOf(id) === -1) merged.used_offcut_ids.push(id);
+          });
+          (data.used_offcuts || []).forEach(function (row) {
+            if (!merged.used_offcuts.some(function (u) { return u.id === row.id; })) {
+              merged.used_offcuts.push(row);
+            }
+          });
+          merged.estimated_cost += data.estimated_cost || 0;
+        });
+        sheetState.last = merged;
+        if (els.sheetLayouts) {
+          els.sheetLayouts.innerHTML = merged.layouts.map(function (layout, i) {
+            var stats = layout.stats || {};
+            var usedNote = layout.from_offcut ? ' · from inventory' : '';
+            return '<article class="util-lb-sheet-layout' + (layout.from_offcut ? ' is-offcut' : '') + '">' +
+              '<h4>Sheet ' + (i + 1) + ': ' + escapeHtml(stats.label || 'Sheet') + usedNote +
+              ' · waste ' + (stats.waste_pct || 0) + '%</h4>' +
+              '<div class="util-lb-sheet-svg">' + (layout.svg || '') + '</div></article>';
+          }).join('');
+        }
+        if (els.sheetUsed) {
+          if (merged.used_offcuts.length) {
+            els.sheetUsed.innerHTML = '<p class="util-lb-offcut-used__msg"><i class="fa fa-check"></i> Used inventory: ' +
+              merged.used_offcuts.map(function (u) {
+                return escapeHtml((u.material_key || 'offcut') + ' ' + (u.size_label || ''));
+              }).join(', ') + '</p>';
+            show(els.sheetUsed, true);
+          } else {
+            show(els.sheetUsed, false);
+          }
+        }
+        if (els.saveSheetLeftoversBtn) {
+          show(els.saveSheetLeftoversBtn, merged.leftovers.length > 0);
+        }
+      })
+      .catch(function () {
+        if (els.runSheetsBtn) els.runSheetsBtn.disabled = false;
+        window.AdminDialog.alert('Could not run the sheet optimizer.');
+      });
   }
 
   /* ── Export / print / save ───────────────────────────────────────── */
@@ -1185,8 +1597,8 @@
       e.result.groups.forEach(function (g) {
         var count = g.count != null ? g.count : g.bins.length;
         rows.push({
-          label: prefix + formatLength(g.lengthSix, e.meta.stockUnit),
-          value: count + ' board' + (count === 1 ? '' : 's')
+          label: prefix + (g.isOffcut ? 'Inventory ' : '') + formatLength(g.lengthSix, e.meta.stockUnit),
+          value: count + (g.isOffcut ? ' offcut' : ' board') + (count === 1 ? '' : 's')
         });
       });
     });
@@ -1623,6 +2035,62 @@
 
   if (els.roundUp) els.roundUp.addEventListener('change', scheduleRender);
   if (els.kerf) els.kerf.addEventListener('change', scheduleRender);
+  if (els.useOffcuts) els.useOffcuts.addEventListener('change', function () {
+    fetchOffcuts().then(scheduleRender);
+  });
+  if (els.minOffcut) els.minOffcut.addEventListener('change', scheduleRender);
+  if (els.saveLeftoversBtn) {
+    els.saveLeftoversBtn.addEventListener('click', function () {
+      var info = lastResults ? collectLinearLeftovers(lastResults.entries) : { leftovers: [], usedIds: [] };
+      if (!info.leftovers.length) return;
+      var minIn = parseNum(els.minOffcut && els.minOffcut.value) || 12;
+      els.saveLeftoversBtn.disabled = true;
+      saveLeftovers(info.leftovers, minIn)
+        .then(function (data) {
+          return consumeOffcuts(info.usedIds).then(function () { return data; });
+        })
+        .then(function (data) {
+          els.saveLeftoversBtn.disabled = false;
+          if (els.leftoversFeedback) {
+            els.leftoversFeedback.textContent = 'Saved ' + (data.saved || info.leftovers.length) + ' leftover(s) to inventory.';
+            show(els.leftoversFeedback, true);
+          }
+          return fetchOffcuts();
+        })
+        .then(scheduleRender)
+        .catch(function () {
+          els.saveLeftoversBtn.disabled = false;
+          window.AdminDialog.alert('Could not save leftovers.');
+        });
+    });
+  }
+  if (els.runSheetsBtn) els.runSheetsBtn.addEventListener('click', runSheetOptimizer);
+  if (els.saveSheetLeftoversBtn) {
+    els.saveSheetLeftoversBtn.addEventListener('click', function () {
+      if (!sheetState.last || !(sheetState.last.leftovers || []).length) return;
+      var minIn = parseNum(els.minOffcut && els.minOffcut.value) || 2;
+      els.saveSheetLeftoversBtn.disabled = true;
+      saveLeftovers(sheetState.last.leftovers, minIn)
+        .then(function () {
+          return consumeOffcuts(sheetState.last.used_offcut_ids || []);
+        })
+        .then(function () {
+          els.saveSheetLeftoversBtn.disabled = false;
+          window.AdminDialog.alert('Sheet leftovers saved to inventory.');
+          return fetchOffcuts();
+        })
+        .catch(function () {
+          els.saveSheetLeftoversBtn.disabled = false;
+          window.AdminDialog.alert('Could not save sheet leftovers.');
+        });
+    });
+  }
+  document.addEventListener('admin-search-select:change', function (e) {
+    var picker = document.getElementById('lb-import-quote');
+    if (!picker || !picker.contains(e.target)) return;
+    var id = e.detail && e.detail.id;
+    if (id) importQuotation(id);
+  });
   if (els.copyBtn) els.copyBtn.addEventListener('click', copyResults);
   root.querySelectorAll('[data-lb-save-quick]').forEach(function (btn) {
     btn.addEventListener('click', focusSaveForm);
@@ -1645,6 +2113,7 @@
   })();
 
   resetAll();
+  fetchOffcuts();
 
   (function loadFromQuery() {
     var calcId;
