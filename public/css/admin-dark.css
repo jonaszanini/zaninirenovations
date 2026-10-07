@@ -3031,3 +3031,19 @@ html.admin-dark .dash-alert-banner {
   border-color: rgba(245, 158, 11, 0.4);
   color: var(--admin-text);
 }
+
+html.admin-dark .et-chip {
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .et-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .dash-etransfer-today {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}

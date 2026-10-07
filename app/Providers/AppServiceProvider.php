@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\BlogComment;
+use App\Models\EtransferNotice;
 use App\Models\Task;
 use App\Support\Logging\RequestContext;
 use App\Support\ProductionDatabaseGuard;
@@ -66,6 +67,9 @@ class AppServiceProvider extends ServiceProvider
             $view->with('sidebarOpenTaskCount', auth()->check() ? Task::query()->open()->count() : 0);
             $view->with('sidebarPendingCommentCount', auth()->check()
                 ? BlogComment::query()->where('is_approved', false)->count()
+                : 0);
+            $view->with('sidebarPendingEtransferCount', auth()->check()
+                ? EtransferNotice::query()->pending()->count()
                 : 0);
         });
     }

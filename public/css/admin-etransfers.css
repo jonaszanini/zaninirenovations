@@ -1,0 +1,171 @@
+/* Incoming e-transfers — compact matching queue */
+
+.et-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.et-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.et-tabs .admin-btn {
+  text-decoration: none;
+}
+
+.et-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.et-card__meta {
+  min-width: 0;
+}
+
+.et-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+}
+
+.et-card__amount {
+  font-weight: 700;
+  color: var(--admin-heading);
+  font-size: 1.05rem;
+}
+
+.et-card__date {
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+}
+
+.et-card__sender {
+  margin-top: 0.2rem;
+  color: var(--admin-text);
+  overflow-wrap: anywhere;
+}
+
+.et-card__sender-email {
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+}
+
+.et-card__message {
+  margin: 0.35rem 0 0;
+  color: var(--admin-text);
+  overflow-wrap: anywhere;
+}
+
+.et-card__ref {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--admin-muted);
+}
+
+.et-card__match {
+  min-width: 0;
+}
+
+.et-card__match-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+  margin-bottom: 0.25rem;
+}
+
+.et-card__match-title {
+  font-weight: 700;
+  color: var(--admin-heading);
+  overflow-wrap: anywhere;
+}
+
+.et-card__match-sub {
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  overflow-wrap: anywhere;
+}
+
+.et-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.et-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--admin-info-tile-bg);
+  border: 1px solid var(--admin-info-tile-border);
+  color: var(--admin-heading);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.et-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.et-card__actions .admin-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.et-picker .admin-form-group {
+  margin-bottom: 0;
+}
+
+.et-empty {
+  padding: 1.25rem 0.25rem;
+  color: var(--admin-muted);
+}
+
+.et-paste-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.et-paste-grid textarea.admin-input {
+  min-height: 9rem;
+  width: 100%;
+  resize: vertical;
+}
+
+@media (min-width: 700px) {
+  .et-paste-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .et-card {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.2fr) minmax(220px, 0.9fr);
+    align-items: start;
+  }
+
+  .et-card__actions .admin-btn {
+    width: auto;
+  }
+}
+

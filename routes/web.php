@@ -1,20 +1,20 @@
 <?php
 
+use App\Http\Controllers\Admin\Auth\LoginController;
+use App\Http\Controllers\Admin\Auth\PasswordResetController;
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ClientController;
-use App\Http\Controllers\Admin\MaterialController;
 use App\Http\Controllers\Admin\ClientProjectContractController;
 use App\Http\Controllers\Admin\ClientProjectInvoiceController;
 use App\Http\Controllers\Admin\ClientProjectQuotationController;
-use App\Http\Controllers\Admin\Auth\LoginController;
-use App\Http\Controllers\Admin\Auth\PasswordResetController;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GooglePhotosController;
+use App\Http\Controllers\Admin\MaterialController;
 use App\Http\Controllers\Admin\PavingDatabaseController;
 use App\Http\Controllers\Admin\PavingQuotationController;
+use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\StairsDatabaseController;
 use App\Http\Controllers\Admin\StairsQuotationController;
-use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\PortfolioController;
 use App\Models\BlogPost;
@@ -376,6 +376,16 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('financials.expenses.store');
     Route::get('financials/projects/search', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'searchProjects'])
         ->name('financials.projects.search');
+    Route::get('financials/etransfers', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'index'])
+        ->name('financials.etransfers');
+    Route::post('financials/etransfers', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'store'])
+        ->name('financials.etransfers.store');
+    Route::get('financials/etransfers/invoices/search', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'searchInvoices'])
+        ->name('financials.etransfers.invoices.search');
+    Route::post('financials/etransfers/{etransfer_notice}/record', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'record'])
+        ->name('financials.etransfers.record');
+    Route::post('financials/etransfers/{etransfer_notice}/ignore', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'ignore'])
+        ->name('financials.etransfers.ignore');
 
     Route::get('client-projects/{client_project}/travel-estimate', [\App\Http\Controllers\Admin\ClientProjectTravelController::class, 'estimate'])
         ->name('client-projects.travel-estimate');

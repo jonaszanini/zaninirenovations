@@ -78,6 +78,17 @@ A Gmail automation can accept a sent quotation without logging in:
 
 No client email or SMS is sent. Full request/response examples: [docs/QUOTE_ACCEPTANCE_API.md](docs/QUOTE_ACCEPTANCE_API.md).
 
+## Incoming e-transfer API
+
+A Gmail inbox watcher can capture Interac notifications without logging in. Notices stay **pending** until Jonas records the payment in admin.
+
+- **URL:** `POST /api/etransfers`
+- **Auth:** `Authorization: Bearer <ETRANSFER_API_TOKEN>` (falls back to `QUOTE_ACCEPT_API_TOKEN` if unset)
+- **Body:** structured fields and/or `{ "raw_text": "<email body>" }`
+- **JSON status:** `created` (201), `duplicate` (200), `invalid` (422), `unauthorized` (401)
+
+The API never marks an invoice paid. Full contract: [docs/ETRANSFER_API.md](docs/ETRANSFER_API.md).
+
 ## License
 
 MIT
