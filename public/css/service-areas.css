@@ -283,9 +283,8 @@
   color: var(--sa-muted);
   font-size: 0.8rem;
   line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
 }
 
 .sa-town--featured .sa-btn {
@@ -295,8 +294,9 @@
 
 .sa-town__projects {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 0.75rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
 }
 
 .sa-town__projects a {
