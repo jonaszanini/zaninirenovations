@@ -461,6 +461,16 @@ class SeoStructuredData
             $gallery['keywords'] = implode(', ', $keywords);
         }
 
+        $location = null;
+        $town = $project->townLabel();
+        if ($town !== '' && $project->isInServiceArea()) {
+            $location = [
+                '@type' => 'Place',
+                'name' => $town,
+            ];
+            $gallery['contentLocation'] = $location;
+        }
+
         $page = [
             '@type' => 'WebPage',
             '@id' => $url.'#webpage',
@@ -473,6 +483,9 @@ class SeoStructuredData
         ];
         if ($images !== []) {
             $page['primaryImageOfPage'] = $images[0];
+        }
+        if ($location !== null) {
+            $page['contentLocation'] = $location;
         }
 
         return [

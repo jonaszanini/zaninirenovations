@@ -67,7 +67,8 @@ class ProjectController extends Controller
             $search = $filters['q'];
             $query->where(function ($sub) use ($search) {
                 $sub->where('title', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('town', 'like', "%{$search}%");
             });
         }
 
@@ -319,6 +320,7 @@ class ProjectController extends Controller
             'project_category_ids' => ['required', 'array', 'min:1'],
             'project_category_ids.*' => ['integer', 'distinct', 'exists:project_categories,id'],
             'completed_on' => ['required', 'date'],
+            'town' => ['nullable', 'string', 'max:80'],
             'draft_photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
             'draft_photos.*' => ['string', 'max:500'],
             'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS_PER_PROJECT],
@@ -349,6 +351,7 @@ class ProjectController extends Controller
                 'meta_title' => $validated['meta_title'] ?? null,
                 'meta_description' => $validated['meta_description'] ?? null,
                 'completed_on' => $validated['completed_on'],
+                'town' => $validated['town'] ?? null,
             ]);
 
             $project->categories()->sync($validated['project_category_ids']);
@@ -424,6 +427,7 @@ class ProjectController extends Controller
             'project_category_ids' => ['required', 'array', 'min:1'],
             'project_category_ids.*' => ['integer', 'distinct', 'exists:project_categories,id'],
             'completed_on' => ['required', 'date'],
+            'town' => ['nullable', 'string', 'max:80'],
             'photo_sequence' => ['nullable', 'array'],
             'photo_sequence.*' => [
                 'integer',
@@ -455,6 +459,7 @@ class ProjectController extends Controller
                 'meta_title' => $validated['meta_title'] ?? null,
                 'meta_description' => $validated['meta_description'] ?? null,
                 'completed_on' => $validated['completed_on'],
+                'town' => $validated['town'] ?? null,
             ]);
 
             if ($previousSlug !== '' && $previousSlug !== $slug) {
@@ -1050,6 +1055,7 @@ class ProjectController extends Controller
             'slug' => $normalized === '' ? null : $normalized,
             'meta_title' => $this->blankToNull($request->input('meta_title')),
             'meta_description' => $this->blankToNull($request->input('meta_description')),
+            'town' => $this->blankToNull($request->input('town')),
         ]);
     }
 

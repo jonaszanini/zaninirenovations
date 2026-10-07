@@ -6372,6 +6372,16 @@ ul.pagination li:last-child {
   display: none !important;
 }
 
+.portfolio-container .portfolio-card-town {
+  display: block;
+  margin: 0.4rem 0 0;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #5a6570;
+  text-align: center;
+}
+
 .portfolio-carousel {
   clear: both;
 }

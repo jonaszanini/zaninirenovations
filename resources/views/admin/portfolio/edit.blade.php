@@ -52,14 +52,7 @@
           <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
-      <div class="admin-form-group">
-        <label for="completed_on">Completed on</label>
-        <input class="admin-input" type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', optional($project->completed_on)->format('Y-m-d')) }}" required>
-        <p class="admin-form-help">When the work was finished (used to order projects on the site — newest completion first).</p>
-        @error('completed_on')
-          <div class="admin-form-error">{{ $message }}</div>
-        @enderror
-      </div>
+      @include('admin.partials.portfolio_town_and_completed')
 
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group" id="admin-photo-order-group">

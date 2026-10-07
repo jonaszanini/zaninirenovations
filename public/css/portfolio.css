@@ -80,6 +80,16 @@
   margin-top: 2rem;
 }
 
+.portfolio-container .portfolio-card-town {
+  display: block;
+  margin: 0.4rem 0 0;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #5a6570;
+  text-align: center;
+}
+
 @media (min-width: 768px) {
   .portfolio-page-gallery {
     grid-template-columns: repeat(3, 1fr);

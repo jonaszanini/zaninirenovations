@@ -79,6 +79,9 @@
                 @if ($project->categoryLabel() !== '—')
                   <i class="fa fa-tag"></i> {{ $project->categoryLabel() }}
                 @endif
+                @if ($project->townLabel() !== '')
+                  &nbsp;<i class="fa fa-map-marker"></i> {{ $project->townLabel() }}
+                @endif
                 @if ($project->completed_on)
                   &nbsp;<i class="fa fa-calendar"></i> {{ $project->completed_on->format('F j, Y') }}
                 @endif
@@ -99,6 +102,12 @@
           <div class="widget site-sidebar portfolio-page-sidebar">
             <h2 class="widget-title">Project details</h2>
             <ul class="widget-post-category clearfix">
+              @if ($project->townLabel() !== '')
+                <li>
+                  Town
+                  <span class="pull-right">{{ $project->townLabel() }}</span>
+                </li>
+              @endif
               <li>
                 Category
                 <span class="pull-right">{{ $project->categoryLabel() }}</span>

@@ -80,6 +80,9 @@
               </div>
             @endif
             <p class="portfolio-admin-card__meta">
+              @if ($project->townLabel() !== '')
+                {{ $project->townLabel() }} ·
+              @endif
               {{ $project->photos_count }} / 15 photos
               @if ($project->completed_on)
                 · {{ \App\Support\EasternStandardTimeDisplay::formatCalendarMediumDate($project->completed_on) }}

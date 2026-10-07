@@ -74,6 +74,7 @@ class BlogPublicContent
         return Project::query()
             ->whereNotNull('slug')
             ->where('slug', '!=', '')
+            ->inServiceArea()
             ->whereHas('categories', function ($query) use ($needles, $post) {
                 $names = $post->categories->pluck('name')->filter()->all();
                 $query->where(function ($inner) use ($needles, $names) {
