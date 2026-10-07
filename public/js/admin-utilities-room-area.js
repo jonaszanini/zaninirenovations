@@ -3345,10 +3345,9 @@
 
   function isCoarsePointer() {
     try {
-      return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-    } catch (err) {
-      return false;
-    }
+      if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+    } catch (err) { /* ignore */ }
+    return window.innerWidth <= NARROW_CANVAS_MAX;
   }
 
   function touchHitRadius() {
@@ -4773,20 +4772,26 @@
       listening: true
     }));
     var handleR = uiSize(isCoarsePointer() ? TOUCH_HIT_RADIUS : 8);
-    group.add(new Konva.Circle({
-      x: -w / 2,
-      y: 0,
-      radius: handleR,
-      fill: 'rgba(0,0,0,0.001)',
-      listening: true
-    }));
-    group.add(new Konva.Circle({
-      x: w / 2,
-      y: 0,
-      radius: handleR,
-      fill: 'rgba(0,0,0,0.001)',
-      listening: true
-    }));
+    [-w / 2, w / 2].forEach(function (hx) {
+      group.add(new Konva.Circle({
+        x: hx,
+        y: 0,
+        radius: handleR,
+        fill: 'rgba(0,0,0,0.001)',
+        listening: true
+      }));
+      if (selected && isCoarsePointer()) {
+        group.add(new Konva.Circle({
+          x: hx,
+          y: 0,
+          radius: uiSize(10),
+          fill: '#f9a825',
+          stroke: '#f57f17',
+          strokeWidth: uiSize(2),
+          listening: false
+        }));
+      }
+    });
 
     if (obj.type === 'window') {
       group.add(new Konva.Line({
@@ -4934,7 +4939,7 @@
       var showCloseTarget = isFirst && !isActiveClosed() && verts.length >= 3;
       (function (vertexIndex) {
         var groupColor = activeGroup() ? activeGroup().color : DEFAULT_GROUP_COLOR;
-        var visualR = uiSize(isSelected ? 10 : (showCloseTarget ? CLOSE_HIT / 2 : 8));
+        var visualR = uiSize(isSelected ? (isCoarsePointer() ? 14 : 10) : (showCloseTarget ? CLOSE_HIT / 2 : 8));
         var hitR = uiSize(touchHitRadius());
         var circle = new Konva.Circle({
           x: v.x,
@@ -5434,7 +5439,7 @@
           wallLayer.add(new Konva.Line({
             points: [p0.x, p0.y, p1.x, p1.y],
             stroke: '#f9a825',
-            strokeWidth: uiSize(5),
+            strokeWidth: uiSize(isCoarsePointer() ? 8 : 5),
             lineCap: 'round',
             listening: false
           }));
