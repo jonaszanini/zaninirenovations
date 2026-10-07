@@ -1693,13 +1693,6 @@ html.admin-dark .bp-list-post__title {
 html.admin-dark .bp-list-post__meta {
   color: var(--admin-muted);
 }
-html.admin-dark .bp-cancel-link {
-  color: var(--admin-muted);
-}
-html.admin-dark .bp-cancel-link:hover,
-html.admin-dark .bp-cancel-link:focus {
-  color: var(--admin-heading);
-}
 html.admin-dark .bp-snippet__url {
   color: #93c5fd;
 }

@@ -200,6 +200,40 @@ class BlogPhase2AdminTest extends IntegrationTestCase
         $this->assertFalse((bool) $response->json('ready'));
     }
 
+    public function test_published_editor_cancel_is_a_ghost_button(): void
+    {
+        $this->actingAsAdmin();
+        $post = $this->makePost([
+            'title' => 'Published editor cancel',
+            'slug' => 'published-editor-cancel',
+            'status' => BlogPost::STATUS_PUBLISHED,
+            'published_at' => now()->subDay(),
+        ]);
+
+        $html = $this->get(route('admin.blog.posts.edit', $post))
+            ->assertOk()
+            ->assertSee('Unpublish', false)
+            ->assertSee('Preview', false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<a\b[^>]*\bhref="[^"]+"[^>]*\bclass="admin-btn admin-btn--ghost admin-btn--sm"[^>]*>\s*Cancel\s*<\/a>/',
+            $html
+        );
+        $this->assertStringContainsString('href="'.route('admin.blog.posts.index').'"', $html);
+        $this->assertDoesNotMatchRegularExpression('/class="[^"]*\bbp-cancel-link\b/', $html);
+
+        $css = file_get_contents(public_path('css/admin-blog.css'));
+        $this->assertMatchesRegularExpression(
+            '/\.bp-form-actions\s*\{[^}]*flex-wrap:\s*wrap/s',
+            $css
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.bp-form-actions\s*\{[^}]*flex-wrap:\s*nowrap/s',
+            $css
+        );
+    }
+
     public function test_new_fields_are_saved_on_update(): void
     {
         $this->actingAsAdmin();
