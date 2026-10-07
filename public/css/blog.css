@@ -41,6 +41,24 @@
   height: auto;
 }
 
+.blog-post-body a {
+  color: #024768;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1.5px;
+}
+
+.blog-post-body a:hover,
+.blog-post-body a:active {
+  color: #013a52;
+}
+
+.blog-post-body a:focus,
+.blog-post-body a:focus-visible {
+  outline: 2px solid #024768;
+  outline-offset: 3px;
+}
+
 .blog-post-body .text-left,
 .blog-post-body .alignleft,
 .blog-post-body .align-left { text-align: left; }
