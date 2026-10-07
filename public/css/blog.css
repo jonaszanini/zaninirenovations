@@ -41,6 +41,41 @@
   height: auto;
 }
 
+.blog-post-body a {
+  color: #024768;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1.5px;
+}
+
+.blog-post-body a:hover,
+.blog-post-body a:active {
+  color: #013a52;
+}
+
+.blog-post-body a:focus,
+.blog-post-body a:focus-visible {
+  outline: 2px solid #024768;
+  outline-offset: 3px;
+}
+
+.blog-post-body .text-left,
+.blog-post-body .alignleft,
+.blog-post-body .align-left { text-align: left; }
+.blog-post-body .text-center,
+.blog-post-body .aligncenter,
+.blog-post-body .align-center { text-align: center; }
+.blog-post-body .text-right,
+.blog-post-body .alignright,
+.blog-post-body .align-right { text-align: right; }
+.blog-post-body .text-justify { text-align: justify; }
+.blog-post-body img.alignleft,
+.blog-post-body img.align-left { float: left; margin: 0 1em 1em 0; }
+.blog-post-body img.alignright,
+.blog-post-body img.align-right { float: right; margin: 0 0 1em 1em; }
+.blog-post-body img.aligncenter,
+.blog-post-body img.align-center { display: block; margin-left: auto; margin-right: auto; float: none; }
+
 .blog-post-body table {
   width: 100%;
   margin: 1rem 0;

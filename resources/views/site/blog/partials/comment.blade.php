@@ -22,6 +22,7 @@
     <input type="text" name="author_name" class="form-control" placeholder="Your name" required maxlength="120">
     <input type="email" name="author_email" class="form-control" placeholder="Your email" required maxlength="255">
     <textarea name="body" class="form-control" rows="3" required maxlength="5000"></textarea>
+    @include('site.blog.partials.captcha', ['captchaAnswerId' => 'captcha-answer-reply-'.$comment->id])
     <button type="submit" class="btn btn-theme btn-sm">Reply</button>
   </form>
 </li>

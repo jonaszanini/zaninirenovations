@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\AiInstruction;
 use App\Models\BlogCategory;
-use App\Models\BlogPost;
 use App\Models\BlogTag;
+use App\Support\PlainTextLimiter;
 use RuntimeException;
 
 class BlogPostMetadataAiService
@@ -13,7 +13,8 @@ class BlogPostMetadataAiService
     public function __construct(
         protected GeminiService $gemini,
         protected BlogImageStorage $images,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array{
@@ -38,29 +39,17 @@ class BlogPostMetadataAiService
 
         try {
             $generated = $this->gemini->generateImage($result['image_prompt']);
-            $storagePostId = ($postId !== null && $postId > 0) ? $postId : 0;
 
-            if ($storagePostId > 0) {
-                $post = BlogPost::query()->find($storagePostId);
-                if ($post?->featured_image_path) {
-                    $this->images->delete($post->featured_image_path);
-                }
-            }
-
+            // Always write to the pending folder (blog-featured/0). The saved
+            // featured image is only replaced when the user clicks Save.
             $path = $this->images->storeFeaturedFromBinary(
                 $generated['bytes'],
                 $generated['mime'],
-                $storagePostId,
+                0,
             );
 
             $result['featured_image_path'] = $path;
             $result['featured_image_url'] = $this->images->publicUrl($path);
-
-            if ($storagePostId > 0) {
-                BlogPost::query()
-                    ->where('id', $storagePostId)
-                    ->update(['featured_image_path' => $path]);
-            }
         } catch (\Throwable $e) {
             $result['image_generation_error'] = $e->getMessage();
         }
@@ -81,7 +70,7 @@ class BlogPostMetadataAiService
     public function suggest(string $title, string $htmlContent): array
     {
         $instruction = AiInstruction::forKey(AiInstruction::KEY_BLOG_POST);
-        if (!$instruction) {
+        if (! $instruction) {
             throw new RuntimeException('Blog post AI instruction is not configured. Add it under Tools → AI Instructions.');
         }
 
@@ -109,13 +98,10 @@ class BlogPostMetadataAiService
         );
 
         $excerpt = $this->stringField($raw, 'excerpt');
-        $meta = $this->stringField($raw, 'meta_description');
-        if (strlen($meta) > 160) {
-            $meta = $this->trimToLength($meta, 160);
-        }
+        $meta = PlainTextLimiter::trimToLength($this->stringField($raw, 'meta_description'), 155);
 
         $returnedCategories = $raw['categories'] ?? [];
-        if (!is_array($returnedCategories)) {
+        if (! is_array($returnedCategories)) {
             $returnedCategories = [];
         }
 
@@ -123,7 +109,7 @@ class BlogPostMetadataAiService
         $matchedIds = [];
         $matchedNames = [];
         foreach ($returnedCategories as $name) {
-            if (!is_string($name)) {
+            if (! is_string($name)) {
                 continue;
             }
             $cat = $nameToId->get($name);
@@ -135,7 +121,7 @@ class BlogPostMetadataAiService
         $matchedIds = array_values(array_unique($matchedIds));
 
         $tags = $raw['tags'] ?? [];
-        if (!is_array($tags)) {
+        if (! is_array($tags)) {
             $tags = [];
         }
         $tagStrings = [];
@@ -149,10 +135,10 @@ class BlogPostMetadataAiService
         $imagePrompt = $this->stringField($raw, 'image_prompt');
 
         return [
-            'excerpt' => $this->trimToLength($excerpt, 500),
+            'excerpt' => PlainTextLimiter::trimToLength($excerpt, 500),
             'meta_description' => $meta,
             'tags' => implode(', ', $tagStrings),
-            'image_prompt' => $this->trimToLength($imagePrompt, 2000),
+            'image_prompt' => PlainTextLimiter::trimToLength($imagePrompt, 2000),
             'category_ids' => $matchedIds,
             'category_names' => $matchedNames,
         ];
@@ -187,7 +173,7 @@ class BlogPostMetadataAiService
                 ],
                 'meta_description' => [
                     'type' => 'STRING',
-                    'description' => 'A high-conversion search engine optimization snippet under 160 characters, tailored strictly for Google rankings.',
+                    'description' => 'A high-conversion search engine optimization snippet of at most 155 characters, ending on a complete sentence. Never cut off mid-word and never leave a trailing comma.',
                 ],
                 'image_prompt' => [
                     'type' => 'STRING',
@@ -201,7 +187,7 @@ class BlogPostMetadataAiService
     private function stringField(array $raw, string $key): string
     {
         $value = $raw[$key] ?? '';
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return '';
         }
 
@@ -215,20 +201,5 @@ class BlogPostMetadataAiService
         $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
 
         return trim($text);
-    }
-
-    private function trimToLength(string $text, int $max): string
-    {
-        if (strlen($text) <= $max) {
-            return $text;
-        }
-
-        $cut = substr($text, 0, $max);
-        $lastSpace = strrpos($cut, ' ');
-        if ($lastSpace !== false && $lastSpace > (int) ($max * 0.6)) {
-            return rtrim(substr($cut, 0, $lastSpace));
-        }
-
-        return rtrim($cut);
     }
 }
