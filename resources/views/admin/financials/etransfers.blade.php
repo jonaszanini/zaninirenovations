@@ -96,7 +96,7 @@
 
           <div class="et-card__actions">
             @if ($status === EtransferNotice::STATUS_PENDING)
-              <form method="post" action="{{ route('admin.financials.etransfers.record', $notice) }}" class="et-record-form" data-et-record>
+              <form method="post" action="{{ route('admin.financials.etransfers.record', $notice) }}" class="et-record-form" id="et-record-{{ $notice->id }}" data-et-record>
                 @csrf
                 <div class="et-picker">
                   @include('admin.partials.search_select', [
@@ -117,14 +117,16 @@
                     'emptyQueryMessage' => 'Type an invoice number or client',
                   ])
                 </div>
-                <button type="submit" class="admin-btn admin-btn--primary" @disabled(empty($best['invoice_id'] ?? null))>
+              </form>
+              <div class="et-card__btns">
+                <button type="submit" form="et-record-{{ $notice->id }}" class="admin-btn admin-btn--primary" @disabled(empty($best['invoice_id'] ?? null))>
                   Record payment
                 </button>
-              </form>
-              <form method="post" action="{{ route('admin.financials.etransfers.ignore', $notice) }}">
-                @csrf
-                <button type="submit" class="admin-btn admin-btn--ghost">Ignore</button>
-              </form>
+                <form method="post" action="{{ route('admin.financials.etransfers.ignore', $notice) }}" class="et-ignore-form">
+                  @csrf
+                  <button type="submit" class="admin-btn admin-btn--ghost">Ignore</button>
+                </form>
+              </div>
             @endif
           </div>
         </article>
@@ -155,22 +157,22 @@
                 <input type="text" id="et-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" value="{{ old('amount') }}" placeholder="0.00">
               </div>
               <div class="admin-form-group">
-                <label for="et-sender-name">Sender name</label>
-                <input type="text" id="et-sender-name" name="sender_name" class="admin-input" value="{{ old('sender_name') }}">
-              </div>
-              <div class="admin-form-group">
-                <label for="et-sender-email">Sender email</label>
-                <input type="email" id="et-sender-email" name="sender_email" class="admin-input" value="{{ old('sender_email') }}">
-              </div>
-              <div class="admin-form-group">
                 <label for="et-ref">Reference</label>
                 <input type="text" id="et-ref" name="reference_number" class="admin-input" value="{{ old('reference_number') }}">
               </div>
-              <div class="admin-form-group">
-                <label for="et-message">Message</label>
-                <input type="text" id="et-message" name="message" class="admin-input" value="{{ old('message') }}">
+              <div class="admin-form-group et-paste-fields__sender">
+                <label for="et-sender-name">Sender name</label>
+                <input type="text" id="et-sender-name" name="sender_name" class="admin-input" value="{{ old('sender_name') }}">
               </div>
-              <div class="admin-form-group">
+              <div class="admin-form-group et-paste-fields__sender">
+                <label for="et-sender-email">Sender email</label>
+                <input type="email" id="et-sender-email" name="sender_email" class="admin-input" value="{{ old('sender_email') }}">
+              </div>
+              <div class="admin-form-group et-paste-fields__wide">
+                <label for="et-message">Message</label>
+                <textarea id="et-message" name="message" class="admin-input" rows="2">{{ old('message') }}</textarea>
+              </div>
+              <div class="admin-form-group et-paste-fields__wide">
                 <label for="et-received">Received</label>
                 <input type="datetime-local" id="et-received" name="received_at" class="admin-input" value="{{ old('received_at') }}">
               </div>

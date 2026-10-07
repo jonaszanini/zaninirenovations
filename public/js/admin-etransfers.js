@@ -43,7 +43,9 @@
     if (!root || !root.closest) return;
     var form = root.closest('[data-et-record]');
     if (!form) return;
-    var btn = form.querySelector('button[type="submit"]');
+    var btn = form.id
+      ? document.querySelector('button[type="submit"][form="' + form.id + '"]')
+      : form.querySelector('button[type="submit"]');
     if (!btn) return;
     var id = e.detail && e.detail.id;
     btn.disabled = !id;

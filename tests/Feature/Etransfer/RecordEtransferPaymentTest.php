@@ -51,7 +51,25 @@ class RecordEtransferPaymentTest extends IntegrationTestCase
             ->assertSee('INV-2026-0001')
             ->assertSee('cp-money-input', false)
             ->assertDontSee('data-cp-money-entry="direct"', false)
-            ->assertSee('>Cancel</button>', false);
+            ->assertSee('>Cancel</button>', false)
+            ->assertSee('et-paste-advanced', false)
+            ->assertDontSee('et-paste-advanced" open', false)
+            ->assertSee('<textarea id="et-message"', false)
+            ->assertSee('et-card__btns', false);
+    }
+
+    public function test_guest_cannot_paste_record_ignore_or_search_invoices(): void
+    {
+        $notice = EtransferNotice::factory()->create();
+
+        $this->post(route('admin.financials.etransfers.store'), ['raw_text' => 'Jane sent you $10 CAD'])
+            ->assertRedirect(route('login'));
+        $this->post(route('admin.financials.etransfers.record', $notice), ['invoice_id' => 1])
+            ->assertRedirect(route('login'));
+        $this->post(route('admin.financials.etransfers.ignore', $notice))
+            ->assertRedirect(route('login'));
+        $this->get(route('admin.financials.etransfers.invoices.search'))
+            ->assertRedirect(route('login'));
     }
 
     public function test_recording_a_notice_marks_invoice_paid_via_etransfer(): void
