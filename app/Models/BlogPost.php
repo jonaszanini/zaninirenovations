@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -15,6 +16,8 @@ class BlogPost extends Model
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_PUBLISHED = 'published';
+
+    public const EXCERPT_MAX = 500;
 
     protected $fillable = [
         'title',
@@ -116,17 +119,35 @@ class BlogPost extends Model
     public function displayExcerpt(int $limit = 220): string
     {
         if (filled($this->excerpt)) {
-            return $this->excerpt;
+            return Str::limit(trim((string) $this->excerpt), $limit);
         }
 
-        $plain = trim(preg_replace('/\s+/', ' ', strip_tags((string) $this->html_content)));
+        $plain = trim(preg_replace('/\s+/', ' ', strip_tags((string) $this->html_content)) ?? '');
 
         return Str::limit($plain, $limit);
     }
 
     public function incrementViews(): void
     {
-        $this->increment('views_count');
+        if ($this->id === null || Auth::check()) {
+            return;
+        }
+
+        $ua = strtolower((string) request()->userAgent());
+        if ($ua !== '' && self::isAutomatedUserAgent($ua)) {
+            return;
+        }
+
+        static::query()->whereKey($this->id)->toBase()->increment('views_count');
+        $this->views_count = (int) $this->views_count + 1;
+    }
+
+    public static function isAutomatedUserAgent(string $userAgent): bool
+    {
+        return (bool) preg_match(
+            '/bot|crawl|spider|slurp|facebookexternalhit|preview|monitor|wget|curl|python-requests|headless|uptime|pingdom|ahrefs|semrush|duckduck/i',
+            $userAgent
+        );
     }
 
     public function approvedCommentsCount(): int

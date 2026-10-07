@@ -89,3 +89,7 @@
 .blog-admin-gemini-status.is-error {
   color: #b91c1c;
 }
+
+.admin-char-count {
+  margin-top: 4px;
+}
