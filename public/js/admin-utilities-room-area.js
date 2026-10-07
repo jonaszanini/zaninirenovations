@@ -5622,6 +5622,15 @@
       return;
     }
     show(els.liveArea, true);
+    var closedCount = 0;
+    var groupsWithAreas = 0;
+    state.groups.forEach(function (group) {
+      var count = (group.polygons || []).filter(function (p) { return p.closed && p.vertices.length >= 3; }).length;
+      if (!count) return;
+      groupsWithAreas += 1;
+      closedCount += count;
+    });
+    els.liveArea.classList.toggle('util-ra-live-area--single', closedCount <= 1 && groupsWithAreas <= 1);
     if (els.liveActiveShape) {
       els.liveActiveShape.textContent = activeSqft !== null ? fmt(activeSqft, 2) : '—';
     }

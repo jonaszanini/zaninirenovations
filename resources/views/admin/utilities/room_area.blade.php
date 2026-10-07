@@ -431,7 +431,7 @@
         <div class="util-ra-canvas-footer">
           <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag a door or window from the palette onto a wall. Hold <strong>Space</strong> and drag to pan; <strong>Shift</strong>+scroll to zoom. Calibrate scale before saving.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
-            <div class="util-ra-live-area__row">
+            <div class="util-ra-live-area__row util-ra-live-area__row--active">
               <span class="util-ra-live-area__label">Active shape:</span>
               <strong data-ra-live-active-shape>—</strong> sq ft
             </div>

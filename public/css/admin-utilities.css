@@ -2208,27 +2208,18 @@
 
 .util-ra-canvas-footer {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
   margin-top: 0.75rem;
 }
 
-@media (max-width: 700px) {
-  .util-ra-canvas-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.util-ra-canvas-footer:has([data-ra-live-area]:not([hidden])) .util-ra-hint--inline {
+  display: none;
+}
 
-  .util-ra-hint--inline {
-    flex: 0 0 auto;
-    width: 100%;
-  }
-
-  .util-ra-live-area {
-    width: 100%;
-  }
+.util-ra-live-area {
+  width: 100%;
 }
 
 .util-ra-zoom-controls {
@@ -3129,9 +3120,9 @@
 
 .util-ra-live-metrics {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.2rem 0.75rem;
-  margin-top: 0.4rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.25rem 0.85rem;
+  margin-top: 0.35rem;
 }
 
 .util-ra-live-metrics__item {
@@ -3142,10 +3133,13 @@
   min-width: 0;
 }
 
+.util-ra-live-area--single .util-ra-live-area__row--active,
+.util-ra-live-area--single .util-ra-live-area-groups {
+  display: none;
+}
+
 .util-ra-live-metrics__item .util-ra-live-area__label {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -3156,9 +3150,17 @@
 }
 
 .util-ra-live-area__row--counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.55rem;
   margin-top: 0.3rem;
   color: var(--admin-muted);
   font-size: 0.82rem;
+}
+
+.util-ra-live-area__row--counts [data-ra-live-counts] {
+  white-space: nowrap;
 }
 
 .util-ra-live-area__toolbar {
@@ -3171,8 +3173,8 @@
 
 .util-ra-live-area__height {
   margin-bottom: 0;
-  width: 70px;
-  flex: 0 0 70px;
+  width: auto;
+  flex: 0 0 auto;
 }
 
 .util-ra-live-area__height label {
@@ -3181,6 +3183,7 @@
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--admin-muted);
+  white-space: nowrap;
 }
 
 .util-ra-live-area__height .admin-input {
@@ -3216,5 +3219,9 @@
   .util-ra-live-area__exports .admin-btn {
     padding-left: 0.55rem;
     padding-right: 0.55rem;
+  }
+
+  .util-ra-live-area__row--counts [data-ra-live-counts] {
+    white-space: nowrap;
   }
 }

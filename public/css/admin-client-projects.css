@@ -7429,6 +7429,13 @@ body.cp-modal-open {
   .cp-utilities-item__actions .admin-btn {
     width: 100%;
   }
+  .cp-utilities-item__rooms li {
+    flex-wrap: wrap;
+    gap: 0.2rem 0.65rem;
+  }
+  .cp-utilities-item__room-meta {
+    margin-left: auto;
+  }
 }
 
 /* Quotation editors — commute + debris share one row on wide screens */
