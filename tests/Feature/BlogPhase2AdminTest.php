@@ -29,6 +29,12 @@ class BlogPhase2AdminTest extends IntegrationTestCase
             'published_at' => now()->addDay(),
         ]);
 
+        $this->get(route('admin.blog.posts.index'))
+            ->assertOk()
+            ->assertSee('Search posts', false)
+            ->assertSee('admin-actions-dropdown', false)
+            ->assertDontSee('stored for Phase 3', false);
+
         $this->get(route('admin.blog.posts.index', ['status' => 'draft']))
             ->assertOk()
             ->assertSee('Draft A')
@@ -198,6 +204,11 @@ class BlogPhase2AdminTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
         $post = $this->makePost(['title' => 'Save fields', 'slug' => 'save-fields']);
+
+        $this->get(route('admin.blog.posts.edit', $post))
+            ->assertOk()
+            ->assertSee('Hide from search engines (noindex)', false)
+            ->assertDontSee('stored for Phase 3', false);
 
         $this->put(route('admin.blog.posts.update', $post), $this->payload($post, [
             'seo_title' => 'SEO for decks',

@@ -1632,10 +1632,21 @@ html.admin-dark .bp-chip {
   background: var(--admin-input-bg);
   border-color: var(--admin-border);
 }
-html.admin-dark .bp-list-thumb__empty {
-  background: var(--admin-stat-tile-bg);
+html.admin-dark .bp-list-thumb--empty {
+  background: transparent;
+  color: var(--admin-muted);
 }
 html.admin-dark .bp-list-post__title {
+  color: var(--admin-heading);
+}
+html.admin-dark .bp-list-post__meta {
+  color: var(--admin-muted);
+}
+html.admin-dark .bp-cancel-link {
+  color: var(--admin-muted);
+}
+html.admin-dark .bp-cancel-link:hover,
+html.admin-dark .bp-cancel-link:focus {
   color: var(--admin-heading);
 }
 html.admin-dark .bp-snippet__url {

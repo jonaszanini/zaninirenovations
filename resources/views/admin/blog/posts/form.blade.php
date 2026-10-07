@@ -121,18 +121,20 @@
             </div>
           </div>
           <div class="bp-form-actions" id="bp-form-actions">
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-save" data-intent="save">Save draft</button>
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-publish" data-intent="publish">Publish</button>
-            <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-btn-unpublish" data-intent="draft" hidden>Unpublish</button>
-            @if ($isEdit)
-              <a href="{{ route('admin.blog.posts.preview', $post) }}" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-preview-link" target="_blank" rel="noopener">Preview</a>
-            @else
-              <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-preview-link" target="_blank" rel="noopener" hidden>Preview</a>
-            @endif
-            @if ($isEdit && $post->isPublishedNow())
-              <a href="{{ $post->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener">View</a>
-            @endif
-            <a href="{{ route('admin.blog.posts.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+            <div class="bp-form-actions__btns">
+              <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-save" data-intent="save">Save draft</button>
+              <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-publish" data-intent="publish">Publish</button>
+              <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-btn-unpublish" data-intent="draft" hidden>Unpublish</button>
+              @if ($isEdit)
+                <a href="{{ route('admin.blog.posts.preview', $post) }}" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-preview-link" target="_blank" rel="noopener">Preview</a>
+              @else
+                <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-preview-link" target="_blank" rel="noopener" hidden>Preview</a>
+              @endif
+              @if ($isEdit && $post->isPublishedNow())
+                <a href="{{ $post->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener">View</a>
+              @endif
+            </div>
+            <a href="{{ route('admin.blog.posts.index') }}" class="bp-cancel-link">Cancel</a>
           </div>
           <p class="admin-form-help" id="bp-save-status" aria-live="polite"></p>
         </div>
@@ -237,31 +239,29 @@
             <input type="hidden" id="bp-tags" name="tag_names" value="{{ old('tag_names', $tagNames) }}">
           </div>
 
-          <div class="bp-tax-row">
-            <div class="admin-form-group bp-field">
-              <label for="bp-author">Author</label>
-              <select id="bp-author" name="author_name" class="admin-input">
-                @foreach ($authorOptions as $author)
-                  <option value="{{ $author }}" @selected($authorValue === $author)>{{ $author }}</option>
-                @endforeach
-              </select>
-            </div>
-            <div class="admin-form-group bp-field">
-              <label for="bp-cta">CTA service</label>
-              <select id="bp-cta" name="cta_service" class="admin-input">
-                <option value="">None</option>
-                @foreach ($ctaServices as $ctaKey => $ctaLabel)
-                  <option value="{{ $ctaKey }}" @selected(old('cta_service', $post->cta_service) === $ctaKey)>{{ $ctaLabel }}</option>
-                @endforeach
-              </select>
-            </div>
+          <div class="admin-form-group bp-field">
+            <label for="bp-author">Author</label>
+            <select id="bp-author" name="author_name" class="admin-input">
+              @foreach ($authorOptions as $author)
+                <option value="{{ $author }}" @selected($authorValue === $author)>{{ $author }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="admin-form-group bp-field">
+            <label for="bp-cta">CTA service</label>
+            <select id="bp-cta" name="cta_service" class="admin-input">
+              <option value="">None</option>
+              @foreach ($ctaServices as $ctaKey => $ctaLabel)
+                <option value="{{ $ctaKey }}" @selected(old('cta_service', $post->cta_service) === $ctaKey)>{{ $ctaLabel }}</option>
+              @endforeach
+            </select>
           </div>
 
           <label class="admin-checkbox">
             <input type="hidden" name="noindex" value="0">
             <input type="checkbox" class="admin-checkbox__input" name="noindex" value="1" id="bp-noindex" @checked(old('noindex', $post->noindex))>
             <span class="admin-checkbox__mark" aria-hidden="true"></span>
-            <span class="admin-checkbox__text">Ask search engines not to index (stored for Phase 3)</span>
+            <span class="admin-checkbox__text">Hide from search engines (noindex)</span>
           </label>
         </div>
 

@@ -20,9 +20,9 @@
       @if ($status !== 'all')
         <input type="hidden" name="status" value="{{ $status }}">
       @endif
-      <div class="cp-filter">
+      <div class="cp-filter cp-filter--search">
         <label for="bp-list-q">Search</label>
-        <input type="search" id="bp-list-q" name="q" value="{{ $q }}" placeholder="Title, slug, content…" class="admin-input">
+        <input type="search" id="bp-list-q" name="q" value="{{ $q }}" placeholder="Search posts" class="admin-input">
       </div>
       <div class="cp-filter">
         <label for="bp-list-cat">Category</label>
@@ -45,8 +45,6 @@
       <div class="cp-filter cp-filter--actions">
         <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Apply</button>
         <a href="{{ route('admin.blog.posts.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
-      </div>
-      <div class="cp-filter cp-filter--actions">
         <a href="{{ route('admin.blog.posts.create') }}" class="admin-btn admin-btn--primary admin-btn--sm">
           <i class="fa fa-plus"></i> New post
         </a>
@@ -55,48 +53,75 @@
 
     <div class="admin-card">
       <div class="admin-table-scroll">
-        <table class="admin-table admin-table--stack bp-list-table">
+        <table class="admin-table admin-table--compact admin-table--stack bp-list-table">
           <thead>
             <tr>
-              <th class="bp-list-table__thumb">Post</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>SEO</th>
-              <th>Published</th>
-              <th>Views</th>
-              <th></th>
+              <th class="bp-list-table__post">Post</th>
+              <th class="bp-list-col">Category</th>
+              <th class="bp-list-col">Status</th>
+              <th class="bp-list-col">SEO</th>
+              <th class="bp-list-col">Published</th>
+              <th class="bp-list-col">Views</th>
+              <th class="bp-list-table__actions"></th>
             </tr>
           </thead>
           <tbody>
             @forelse ($posts as $post)
+              @php
+                $seoKeys = $post->seoIssueKeys();
+                if ($post->isScheduled()) {
+                  $statusLabel = 'Scheduled';
+                  $statusClass = 'blog-post-status--scheduled';
+                } elseif ($post->status === \App\Models\BlogPost::STATUS_PUBLISHED) {
+                  $statusLabel = 'Published';
+                  $statusClass = 'blog-post-status--published';
+                } else {
+                  $statusLabel = 'Draft';
+                  $statusClass = 'blog-post-status--draft';
+                }
+                $categoryLabel = $post->categories->pluck('name')->implode(', ') ?: '—';
+              @endphp
               <tr>
-                <td data-label="Post" class="bp-list-post">
-                  <span class="bp-list-thumb" aria-hidden="true">
-                    @if ($post->featuredImageUrl())
+                <td class="bp-list-post">
+                  @if ($post->featuredImageUrl())
+                    <span class="bp-list-thumb">
                       <img src="{{ $post->featuredImageUrl() }}" alt="">
-                    @else
-                      <span class="bp-list-thumb__empty"></span>
-                    @endif
-                  </span>
+                    </span>
+                  @else
+                    <span class="bp-list-thumb bp-list-thumb--empty" aria-hidden="true">
+                      <i class="fa fa-image"></i>
+                    </span>
+                  @endif
                   <span class="bp-list-post__text">
                     <a href="{{ route('admin.blog.posts.edit', $post) }}" class="bp-list-post__title">{{ $post->title }}</a>
                     @if ($post->pending_comments_count)
-                      <span class="bp-seo-badge bp-seo-badge--warn">{{ $post->pending_comments_count }} pending comments</span>
+                      <span class="bp-seo-badge bp-seo-badge--warn">{{ $post->pending_comments_count }} pending</span>
                     @endif
+                    <span class="bp-list-post__meta">
+                      <span class="{{ $statusClass }}">{{ $statusLabel }}</span>
+                      <span aria-hidden="true"> · </span>
+                      <span>{{ $categoryLabel }}</span>
+                      <span aria-hidden="true"> · </span>
+                      <span>{{ $post->published_at ? $post->displayDate() : '—' }}</span>
+                      <span aria-hidden="true"> · </span>
+                      <span>{{ number_format($post->views_count) }} views</span>
+                    </span>
+                    <span class="bp-list-seo bp-list-seo--card">
+                      @if ($seoKeys === [])
+                        <span class="bp-seo-badge bp-seo-badge--ok">OK</span>
+                      @else
+                        @foreach ($seoKeys as $key)
+                          <span class="bp-seo-badge bp-seo-badge--warn">{{ ['meta' => 'Meta', 'seo' => 'SEO title', 'image' => 'Image', 'alt' => 'Alt'][$key] ?? $key }}</span>
+                        @endforeach
+                      @endif
+                    </span>
                   </span>
                 </td>
-                <td data-label="Category">{{ $post->categories->pluck('name')->implode(', ') ?: '—' }}</td>
-                <td data-label="Status">
-                  @if ($post->isScheduled())
-                    <span class="blog-post-status--scheduled">Scheduled</span>
-                  @elseif ($post->status === \App\Models\BlogPost::STATUS_PUBLISHED)
-                    <span class="blog-post-status--published">Published</span>
-                  @else
-                    <span class="blog-post-status--draft">Draft</span>
-                  @endif
+                <td class="bp-list-col" data-label="Category">{{ $categoryLabel }}</td>
+                <td class="bp-list-col" data-label="Status">
+                  <span class="{{ $statusClass }}">{{ $statusLabel }}</span>
                 </td>
-                <td data-label="SEO" class="bp-list-seo">
-                  @php $seoKeys = $post->seoIssueKeys(); @endphp
+                <td class="bp-list-col bp-list-seo" data-label="SEO">
                   @if ($seoKeys === [])
                     <span class="bp-seo-badge bp-seo-badge--ok">OK</span>
                   @else
@@ -105,32 +130,45 @@
                     @endforeach
                   @endif
                 </td>
-                <td data-label="Published">{{ $post->published_at ? $post->displayDate() : '—' }}</td>
-                <td data-label="Views">{{ number_format($post->views_count) }}</td>
-                <td class="admin-table__actions" data-label="">
+                <td class="bp-list-col" data-label="Published">{{ $post->published_at ? $post->displayDate() : '—' }}</td>
+                <td class="bp-list-col" data-label="Views">{{ number_format($post->views_count) }}</td>
+                <td class="admin-table__actions">
                   <div class="bp-list-actions">
                     @if ($post->isPublishedNow())
-                      <a href="{{ $post->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener" aria-label="View on site">
-                        <i class="fa fa-external-link"></i>
+                      <a href="{{ $post->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" target="_blank" rel="noopener" aria-label="View on site" title="View">
+                        <i class="fa fa-external-link" aria-hidden="true"></i>
                       </a>
                     @else
-                      <a href="{{ route('admin.blog.posts.preview', $post) }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener" aria-label="Preview">
-                        <i class="fa fa-eye"></i>
+                      <a href="{{ route('admin.blog.posts.preview', $post) }}" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" target="_blank" rel="noopener" aria-label="Preview" title="Preview">
+                        <i class="fa fa-eye" aria-hidden="true"></i>
                       </a>
                     @endif
-                    <a href="{{ route('admin.blog.posts.edit', $post) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
-                    <form action="{{ route('admin.blog.posts.duplicate', $post) }}" method="post" class="bp-inline-form">
-                      @csrf
-                      <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Duplicate</button>
-                    </form>
-                    <form action="{{ route('admin.blog.posts.destroy', $post) }}" method="post" class="bp-inline-form"
-                          data-confirm="Delete “{{ $post->title }}”? This cannot be undone."
-                          data-confirm-title="Delete post"
-                          data-confirm-danger>
-                      @csrf
-                      @method('DELETE')
-                      <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
-                    </form>
+                    <a href="{{ route('admin.blog.posts.edit', $post) }}" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" aria-label="Edit" title="Edit">
+                      <i class="fa fa-pencil" aria-hidden="true"></i>
+                    </a>
+                    <div class="admin-actions-dropdown">
+                      <button type="button" class="admin-actions-dropdown__toggle" aria-label="More actions">
+                        <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+                      </button>
+                      <div class="admin-actions-dropdown__menu">
+                        <form action="{{ route('admin.blog.posts.duplicate', $post) }}" method="post" class="admin-actions-dropdown__form">
+                          @csrf
+                          <button type="submit" class="admin-actions-dropdown__item">
+                            <i class="fa fa-copy" aria-hidden="true"></i> Duplicate
+                          </button>
+                        </form>
+                        <form action="{{ route('admin.blog.posts.destroy', $post) }}" method="post" class="admin-actions-dropdown__form"
+                              data-confirm="Delete “{{ $post->title }}”? This cannot be undone."
+                              data-confirm-title="Delete post"
+                              data-confirm-danger>
+                          @csrf
+                          @method('DELETE')
+                          <button type="submit" class="admin-actions-dropdown__item admin-actions-dropdown__item--danger">
+                            <i class="fa fa-trash" aria-hidden="true"></i> Delete
+                          </button>
+                        </form>
+                      </div>
+                    </div>
                   </div>
                 </td>
               </tr>
