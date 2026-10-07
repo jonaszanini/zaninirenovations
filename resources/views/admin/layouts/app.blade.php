@@ -161,6 +161,9 @@
                 <a href="{{ route('admin.blog.comments.index') }}" class="{{ request()->routeIs('admin.blog.comments.*') ? 'is-active' : '' }}">
                   <i class="fa fa-comments"></i>
                   Comments
+                  @if (($sidebarPendingCommentCount ?? 0) > 0)
+                    <span class="admin-nav-badge">{{ $sidebarPendingCommentCount }}</span>
+                  @endif
                 </a>
               </li>
             </ul>

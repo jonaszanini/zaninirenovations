@@ -1,3 +1,16 @@
+.blog-preview-banner {
+  background: #fff6d8;
+  border-bottom: 1px solid #e6c200;
+  color: #3f3f00;
+  padding: 10px 0;
+  font-size: 14px;
+}
+
+.blog-preview-banner a {
+  color: #024768;
+  text-decoration: underline;
+}
+
 .blog-hero {
   padding: 2rem 0 1rem;
   background: #f8fafc;

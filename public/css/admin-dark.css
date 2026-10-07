@@ -1580,6 +1580,70 @@ html.admin-dark .blog-post-status--draft {
 html.admin-dark .blog-post-status--scheduled {
   color: #60a5fa;
 }
+html.admin-dark .bp-list-tab {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .bp-list-tab.is-active {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}
+html.admin-dark .bp-seo-badge {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .bp-seo-badge--ok {
+  color: #4ade80;
+  border-color: #166534;
+}
+html.admin-dark .bp-seo-badge--warn {
+  color: #fbbf24;
+  border-color: #854d0e;
+}
+html.admin-dark .bp-list-thumb,
+html.admin-dark .blog-admin-featured-preview,
+html.admin-dark .bp-snippet,
+html.admin-dark .bp-chip {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+html.admin-dark .bp-list-thumb__empty {
+  background: var(--admin-stat-tile-bg);
+}
+html.admin-dark .bp-list-post__title {
+  color: var(--admin-heading);
+}
+html.admin-dark .bp-snippet__url {
+  color: #93c5fd;
+}
+html.admin-dark .bp-snippet__title {
+  color: #93c5fd;
+}
+html.admin-dark .bp-snippet__desc,
+html.admin-dark .bp-chip,
+html.admin-dark .bp-check-item {
+  color: var(--admin-text);
+}
+html.admin-dark .bp-check-item.is-ok,
+html.admin-dark .bp-check-ready.is-ok,
+html.admin-dark .admin-char-count.is-ok {
+  color: #4ade80;
+}
+html.admin-dark .bp-check-item.is-warn,
+html.admin-dark .bp-inline-alts,
+html.admin-dark .admin-char-count.is-warn {
+  color: #fbbf24;
+}
+html.admin-dark .bp-check-item.is-bad,
+html.admin-dark .bp-check-ready.is-bad {
+  color: #f87171;
+}
+html.admin-dark .bp-chip__x {
+  color: var(--admin-muted);
+}
 
 /* Fence calculator side cards */
 html.admin-dark .fq-side-card {

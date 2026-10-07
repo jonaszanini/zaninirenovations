@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\BlogComment;
 use App\Models\Task;
 use App\Support\Logging\RequestContext;
 use App\Support\ProductionDatabaseGuard;
@@ -63,6 +64,9 @@ class AppServiceProvider extends ServiceProvider
         // (single indexed COUNT), avoids a dedicated middleware just for this.
         View::composer('admin.layouts.app', function ($view): void {
             $view->with('sidebarOpenTaskCount', auth()->check() ? Task::query()->open()->count() : 0);
+            $view->with('sidebarPendingCommentCount', auth()->check()
+                ? BlogComment::query()->where('is_approved', false)->count()
+                : 0);
         });
     }
 }

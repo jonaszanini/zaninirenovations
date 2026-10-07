@@ -133,6 +133,8 @@ class BlogController extends Controller
         $captchaMode = $captcha->mode();
         $captchaChallenge = $captchaMode === 'math' ? $captcha->generateMathChallenge() : null;
 
+        $isPreview = false;
+
         return view('site.blog.show', compact(
             'post',
             'approvedComments',
@@ -142,7 +144,8 @@ class BlogController extends Controller
             'recentPosts',
             'htmlProcessor',
             'captchaMode',
-            'captchaChallenge'
+            'captchaChallenge',
+            'isPreview'
         ));
     }
 }

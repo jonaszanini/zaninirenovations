@@ -14,4 +14,18 @@ return [
 
     'recaptcha_site_key' => env('RECAPTCHA_SITE_KEY', ''),
     'recaptcha_secret_key' => env('RECAPTCHA_SECRET_KEY', ''),
+
+    /** Optional end-of-post CTA (stored now; public templates use it in Phase 3). */
+    'cta_services' => [
+        'decks' => 'Decks',
+        'fences' => 'Fences',
+        'basements' => 'Basements',
+        'flooring' => 'Flooring',
+        'trim' => 'Interior trim',
+        'built-ins' => 'Custom built-ins',
+        'drywall' => 'Drywall',
+        'accent-walls' => 'Accent walls',
+        'staircases' => 'Staircases',
+        'contact' => 'Contact / quote',
+    ],
 ];

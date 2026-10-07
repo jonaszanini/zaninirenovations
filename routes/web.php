@@ -259,6 +259,20 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('blog.posts.upload-image');
     Route::post('blog/posts/ai-metadata', [\App\Http\Controllers\Admin\BlogPostController::class, 'generateAiMetadata'])
         ->name('blog.posts.ai-metadata');
+    Route::post('blog/posts/ai-suggest', [\App\Http\Controllers\Admin\BlogPostController::class, 'suggestAiMetadata'])
+        ->name('blog.posts.ai-suggest');
+    Route::post('blog/posts/ai-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'generateAiImage'])
+        ->name('blog.posts.ai-image');
+    Route::post('blog/posts/check-content', [\App\Http\Controllers\Admin\BlogPostController::class, 'checkContent'])
+        ->name('blog.posts.check-content');
+    Route::post('blog/posts/autosave', [\App\Http\Controllers\Admin\BlogPostController::class, 'autosave'])
+        ->name('blog.posts.autosave');
+    Route::post('blog/posts/{post}/autosave', [\App\Http\Controllers\Admin\BlogPostController::class, 'autosave'])
+        ->name('blog.posts.autosave.update');
+    Route::get('blog/posts/{post}/preview', [\App\Http\Controllers\Admin\BlogPostController::class, 'preview'])
+        ->name('blog.posts.preview');
+    Route::post('blog/posts/{post}/duplicate', [\App\Http\Controllers\Admin\BlogPostController::class, 'duplicate'])
+        ->name('blog.posts.duplicate');
     Route::resource('blog/posts', \App\Http\Controllers\Admin\BlogPostController::class)
         ->parameters(['posts' => 'post'])
         ->except(['show'])
