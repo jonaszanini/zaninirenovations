@@ -132,7 +132,7 @@
             @if ($isEdit && $post->isPublishedNow())
               <a href="{{ $post->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener">View</a>
             @endif
-            <a href="{{ route('admin.blog.posts.index') }}" class="bp-cancel-link">Cancel</a>
+            <a href="{{ route('admin.blog.posts.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-cancel-link">Cancel</a>
           </div>
           <p class="admin-form-help" id="bp-save-status" aria-live="polite"></p>
         </div>

@@ -392,26 +392,10 @@
 }
 
 .bp-form-actions .admin-btn {
+  flex: 0 0 auto;
   padding-left: 10px;
   padding-right: 10px;
-}
-
-.bp-cancel-link {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 0 2px;
-  color: var(--admin-muted);
-  font-size: 13px;
-  text-decoration: none;
   white-space: nowrap;
-}
-
-.bp-cancel-link:hover,
-.bp-cancel-link:focus {
-  color: var(--admin-heading);
-  text-decoration: underline;
 }
 
 .bp-featured {
@@ -561,10 +545,6 @@
   .bp-block--tax,
   .bp-block--check {
     order: 0;
-  }
-
-  .bp-form-actions {
-    flex-wrap: nowrap;
   }
 }
 
