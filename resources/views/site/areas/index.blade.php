@@ -13,7 +13,10 @@
 @endpush
 
 @section('content')
-  <main class="sa-page" id="service-areas">
+  @php
+    $mapsUrl = \App\Support\SeoStructuredData::googleBusinessUrl();
+  @endphp
+  <main class="sa-page sa-page--hub" id="service-areas">
     <header class="sa-hero">
       <div class="container">
         <nav class="sa-breadcrumb" aria-label="Breadcrumb">
@@ -25,25 +28,34 @@
         @foreach ((array) ($hub['intro_paragraphs'] ?? []) as $paragraph)
           <p>{{ $paragraph }}</p>
         @endforeach
-        @include('site.partials.service-area-cta', ['cta' => $cta])
+        @include('site.partials.service-area-cta', ['cta' => $cta, 'compact' => true])
       </div>
     </header>
 
-    @foreach ($groups as $group)
-      <section class="sa-group">
-        <div class="container">
+    <section class="sa-group">
+      <div class="container">
+        <h2>Town pages</h2>
+        <ul class="sa-town-grid sa-town-grid--featured">
+          @foreach ($published as $page)
+            <li class="sa-town sa-town--featured">
+              <a class="sa-town__name" href="{{ url('/service-areas/'.$page['slug']) }}">{{ $page['hub_label'] ?? $page['name'] }}</a>
+              @if (! empty($page['featured_note']))
+                <span class="sa-town__note">{{ $page['featured_note'] }}</span>
+              @endif
+              <a class="btn btn-theme sa-btn" href="{{ url('/service-areas/'.$page['slug']) }}">View page</a>
+            </li>
+          @endforeach
+        </ul>
+
+        @foreach ($groups as $group)
           <h2>{{ $group['heading'] }}</h2>
-          @if ($group['intro'] !== '')
-            <p class="sa-muted">{{ $group['intro'] }}</p>
-          @endif
-          <ul class="sa-town-list">
+          <ul class="sa-town-grid">
             @foreach ($group['towns'] as $town)
+              @if (! empty($town['href']))
+                @continue
+              @endif
               <li class="sa-town">
-                @if (! empty($town['href']))
-                  <a class="sa-town__name" href="{{ $town['href'] }}">{{ $town['name'] }}</a>
-                @else
-                  <span class="sa-town__name sa-town__name--plain">{{ $town['name'] }}</span>
-                @endif
+                <span class="sa-town__name sa-town__name--plain">{{ $town['name'] }}</span>
                 @if ($town['note'] !== '')
                   <span class="sa-town__note">{{ $town['note'] }}</span>
                 @endif
@@ -59,30 +71,12 @@
               </li>
             @endforeach
           </ul>
-        </div>
-      </section>
-    @endforeach
+        @endforeach
 
-    @if ($mapEmbedSrc !== '')
-      <section class="sa-map">
-        <div class="container">
-          <h2>Find us on Google</h2>
-          <p class="sa-muted">Google Business listing for Zanini Renovations. No street address is published.</p>
-          <div class="sa-map__frame">
-            <iframe
-              src="{{ $mapEmbedSrc }}"
-              title="Zanini Renovations on Google Maps"
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              allowfullscreen
-            ></iframe>
-          </div>
-        </div>
-      </section>
-    @endif
-
-    <div class="container sa-cta-bottom">
-      @include('site.partials.service-area-cta', ['cta' => $cta])
-    </div>
+        <p class="sa-map-actions">
+          <a class="btn btn-theme sa-btn sa-btn--ghost" href="{{ $mapsUrl }}" rel="noopener noreferrer" target="_blank">Open in Google Maps</a>
+        </p>
+      </div>
+    </section>
   </main>
 @endsection

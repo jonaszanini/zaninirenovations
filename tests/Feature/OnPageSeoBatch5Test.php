@@ -20,6 +20,27 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
         '$3 million',
         'orléans',
         'orleans',
+        'toronto',
+    ];
+
+    /** @var list<string> */
+    private const EDITOR_NOTES = [
+        'do not pad',
+        'guessed profile',
+        'do not publish a street',
+        'enough local projects',
+        'estimate honest',
+        'do not invent',
+        'generic provincial',
+        'hub only until',
+        'google business',
+        'published as',
+        'not a separate google',
+        'slug is not',
+        'do not mix',
+        'spin a second',
+        'marketing choice',
+        'street address',
     ];
 
     public function test_published_town_pages_and_hub_return_200_with_seo_tags(): void
@@ -100,6 +121,13 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
         foreach (self::BANNED as $word) {
             $this->assertStringNotContainsString($word, $hub, 'hub copy contains banned “'.$word.'”');
         }
+
+        foreach (['/service-areas', '/service-areas/carleton-place', '/service-areas/kanata', '/service-areas/barrhaven'] as $path) {
+            $html = strtolower($this->get($path)->assertOk()->getContent());
+            foreach (self::EDITOR_NOTES as $phrase) {
+                $this->assertStringNotContainsString($phrase, $html, $path.' still has editor note “'.$phrase.'”');
+            }
+        }
     }
 
     public function test_town_pages_link_plan_projects_and_json_ld(): void
@@ -121,6 +149,7 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
             $this->assertStringContainsString('HomeAndConstructionBusiness', $html);
             $this->assertStringContainsString('Service', $html);
             $this->assertStringContainsString('FAQPage', $html);
+            $this->assertStringContainsString('Open in Google Maps', $html);
         }
     }
 
@@ -132,6 +161,10 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
         $this->assertStringContainsString('/service-areas/carleton-place', $html);
         $this->assertStringContainsString('/service-areas/kanata', $html);
         $this->assertStringContainsString('/service-areas/barrhaven', $html);
+        $this->assertStringContainsString('sa-town-grid', $html);
+        $this->assertStringContainsString('sa-town--featured', $html);
+        $this->assertStringContainsString('View page', $html);
+        $this->assertStringContainsString('Open in Google Maps', $html);
         $this->assertStringContainsString('sa-town__name--plain', $html);
         $this->assertStringContainsString('Perth', $html);
         $this->assertStringContainsString('/portfolio/custom-classic-fireplace-mantel', $html);

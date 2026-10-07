@@ -13,6 +13,9 @@
 @endpush
 
 @section('content')
+  @php
+    $mapsUrl = \App\Support\SeoStructuredData::googleBusinessUrl();
+  @endphp
   <main class="sa-page" id="service-area-{{ $page['slug'] }}">
     <header class="sa-hero">
       <div class="container">
@@ -93,17 +96,9 @@
         @else
           <p><a href="{{ route('service-areas.index') }}">All service areas</a></p>
         @endif
-        @if ($mapEmbedSrc !== '')
-          <div class="sa-map__frame">
-            <iframe
-              src="{{ $mapEmbedSrc }}"
-              title="Zanini Renovations on Google Maps"
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              allowfullscreen
-            ></iframe>
-          </div>
-        @endif
+        <p>
+          <a class="btn btn-theme sa-btn sa-btn--ghost" href="{{ $mapsUrl }}" rel="noopener noreferrer" target="_blank">Open in Google Maps</a>
+        </p>
       </div>
     </section>
 
