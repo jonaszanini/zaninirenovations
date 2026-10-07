@@ -450,7 +450,7 @@
                 <strong><span data-ra-live-baseboard>—</span> lf</strong>
               </div>
               <div class="util-ra-live-metrics__item">
-                <span class="util-ra-live-area__label">Wall area</span>
+                <span class="util-ra-live-area__label">Wall SF</span>
                 <strong><span data-ra-live-wall-area>—</span> sq ft</strong>
               </div>
             </div>
