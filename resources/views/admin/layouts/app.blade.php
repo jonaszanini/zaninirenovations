@@ -68,7 +68,8 @@
         $isVehicles = request()->routeIs('admin.vehicles.*');
         $isFinancialsInvoices = request()->routeIs('admin.financials.invoices');
         $isFinancialsExpenses = request()->routeIs('admin.financials.expenses*');
-        $isFinancials = $isVehicles || $isFinancialsInvoices || $isFinancialsExpenses;
+        $isFinancialsEtransfers = request()->routeIs('admin.financials.etransfers*');
+        $isFinancials = $isVehicles || $isFinancialsInvoices || $isFinancialsExpenses || $isFinancialsEtransfers;
         $isComms = request()->routeIs('admin.communications.*');
         $isUtilities = request()->routeIs('admin.utilities.*')
             || request()->routeIs('admin.ai-instructions.*')
@@ -206,6 +207,9 @@
             <summary class="admin-nav-parent {{ $isFinancials ? 'is-active' : '' }}">
               <i class="fa fa-money"></i>
               <span class="admin-nav-parent__label">Financials</span>
+              @if (($sidebarPendingEtransferCount ?? 0) > 0)
+                <span class="admin-nav-badge">{{ $sidebarPendingEtransferCount }}</span>
+              @endif
               <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
             </summary>
             <ul class="admin-subnav">
@@ -213,6 +217,15 @@
                 <a href="{{ route('admin.financials.invoices') }}" class="{{ $isFinancialsInvoices ? 'is-active' : '' }}">
                   <i class="fa fa-file-text-o"></i>
                   Invoices
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.financials.etransfers') }}" class="{{ $isFinancialsEtransfers ? 'is-active' : '' }}">
+                  <i class="fa fa-exchange"></i>
+                  Incoming e-transfers
+                  @if (($sidebarPendingEtransferCount ?? 0) > 0)
+                    <span class="admin-nav-badge">{{ $sidebarPendingEtransferCount }}</span>
+                  @endif
                 </a>
               </li>
               <li>

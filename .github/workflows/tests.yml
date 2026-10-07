@@ -69,6 +69,22 @@ jobs:
           QUOTE_ACCEPT_API_TOKEN: ci-quote-accept-token
         run: php artisan test tests/Feature/QuoteAcceptance
 
+      - name: E-transfer matching
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: zanini_renovations_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          ETRANSFER_API_TOKEN: ci-etransfer-token
+          QUOTE_ACCEPT_API_TOKEN: ci-quote-accept-token
+        run: |
+          php artisan test tests/Unit/Services/EtransferNoticeParserTest.php
+          php artisan test tests/Unit/Services/EtransferInvoiceMatcherTest.php
+          php artisan test tests/Feature/Etransfer
+          php artisan test tests/Feature/Invoices/MarkPaidInvoiceTest.php
+
       - name: Feature tests (MySQL)
         env:
           DB_CONNECTION: mysql
