@@ -2215,6 +2215,22 @@
   margin-top: 0.75rem;
 }
 
+@media (max-width: 700px) {
+  .util-ra-canvas-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .util-ra-hint--inline {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .util-ra-live-area {
+    width: 100%;
+  }
+}
+
 .util-ra-zoom-controls {
   display: inline-flex;
   align-items: center;
@@ -2245,32 +2261,31 @@
 
 .util-ra-edit-dock {
   position: relative;
+  height: auto;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.util-ra-edit-dock:has([data-ra-wall-edit]:not([hidden])),
+.util-ra-edit-dock:has([data-ra-vertex-edit]:not([hidden])),
+.util-ra-edit-dock:has([data-ra-ruler-edit]:not([hidden])) {
   height: 4.75rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.util-ra-edit-dock:has([data-ra-object-edit]:not([hidden])) {
+  height: auto;
+  min-height: 0;
+  margin-bottom: 0.5rem;
 }
 
 .util-ra-edit-dock__idle {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 1rem;
-  border-radius: 10px;
-  border: 1px dashed var(--admin-border);
-  background: var(--admin-bg);
-  pointer-events: none;
-  user-select: none;
+  display: none;
 }
 
 .util-ra-edit-dock__hint {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--admin-muted);
-}
-
-.util-ra-edit-dock:has([data-ra-wall-edit]:not([hidden])) .util-ra-edit-dock__idle,
-.util-ra-edit-dock:has([data-ra-vertex-edit]:not([hidden])) .util-ra-edit-dock__idle,
-.util-ra-edit-dock:has([data-ra-ruler-edit]:not([hidden])) .util-ra-edit-dock__idle {
-  visibility: hidden;
 }
 
 .util-ra-edit-dock__panels {
@@ -2283,6 +2298,15 @@
   inset: 0;
   margin-bottom: 0;
   overflow: visible;
+}
+
+.util-ra-edit-dock:has([data-ra-object-edit]:not([hidden])) .util-ra-edit-dock__panels {
+  position: relative;
+}
+
+.util-ra-edit-dock:has([data-ra-object-edit]:not([hidden])) .util-ra-edit-dock__panels > .util-ra-wall-edit {
+  position: relative;
+  inset: auto;
 }
 
 .util-ra-edit-dock__panels > .util-ra-wall-edit:not([hidden]) .util-ra-wall-edit__inner {
@@ -2712,6 +2736,336 @@
 .util-ra-canvas-wrap.is-ruler-edit {
   outline: 2px solid rgba(106, 27, 154, 0.35);
   outline-offset: -2px;
+}
+
+.util-ra-canvas-wrap.is-object-edit {
+  outline: 2px solid rgba(2, 71, 104, 0.35);
+  outline-offset: -2px;
+}
+
+.util-ra-canvas-wrap.is-placing-object,
+.util-ra-canvas-wrap.is-placing-object .konvajs-content {
+  cursor: copy;
+}
+
+.util-ra-object-dock {
+  margin-bottom: 0.75rem;
+}
+
+.util-ra-palette {
+  padding: 0.7rem 0.8rem 0.8rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-bg);
+}
+
+.util-ra-palette__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.util-ra-palette__title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-heading);
+}
+
+.util-ra-palette__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+  min-width: 0;
+}
+
+.util-ra-palette__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.util-ra-palette__group-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.util-ra-palette__items {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.15rem;
+}
+
+.util-ra-palette__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 4.5rem;
+  min-height: 44px;
+  padding: 0.35rem 0.4rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.util-ra-palette__item:hover,
+.util-ra-palette__item:focus-visible {
+  border-color: var(--admin-primary);
+  color: var(--admin-heading);
+  background: var(--admin-surface-hover);
+}
+
+.util-ra-palette__item.is-armed {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  box-shadow: 0 0 0 2px var(--admin-primary-soft);
+}
+
+.util-ra-palette__item.is-dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.util-ra-palette__icon {
+  width: 28px;
+  height: 20px;
+  display: block;
+}
+
+.util-ra-palette__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.util-ra-palette__name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.util-ra-object-ghost {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  min-width: 4.5rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid var(--admin-primary);
+  background: var(--admin-surface);
+  color: var(--admin-heading);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.util-ra-object-edit {
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 0.65rem 0.7rem;
+}
+
+.util-ra-object-edit__inner {
+  align-items: flex-end;
+  gap: 0.45rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.util-ra-object-edit__title {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.util-ra-object-edit__field {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.util-ra-object-edit__field--num {
+  width: 4.75rem;
+}
+
+.util-ra-object-edit__field--swing {
+  width: 8.75rem;
+}
+
+.util-ra-object-edit__field--hinge {
+  width: 5.5rem;
+}
+
+.util-ra-object-edit__field .admin-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.util-ra-object-edit__field label {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+
+.util-ra-object-edit__actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+.util-ra-object-edit__inner .util-ra-action-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (min-width: 900px) {
+  .util-ra-object-edit__inner {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+  }
+
+  .util-ra-object-edit__inner .util-ra-action-btn {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .util-ra-palette__items {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .util-ra-palette__item {
+    min-width: 5rem;
+  }
+}
+
+@media (max-width: 899px) {
+  .util-ra-object-edit__inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: end;
+    gap: 0.5rem 0.65rem;
+  }
+
+  .util-ra-object-edit__title {
+    grid-column: 1 / -1;
+  }
+
+  .util-ra-object-edit__field--num,
+  .util-ra-object-edit__field--swing,
+  .util-ra-object-edit__field--hinge {
+    width: auto;
+  }
+
+  .util-ra-object-edit__actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 700px) {
+  .util-ra-rooms-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .util-ra-rooms-head__intro {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .util-ra-rooms-head__actions {
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .util-ra-rooms-head .util-ra-total {
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .util-ra-rooms-head .util-ra-total .admin-btn {
+    width: auto;
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+
+  .util-ra-rooms-head__actions > .admin-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .util-ra-edit-dock:has([data-ra-wall-edit]:not([hidden])),
+  .util-ra-edit-dock:has([data-ra-vertex-edit]:not([hidden])),
+  .util-ra-edit-dock:has([data-ra-ruler-edit]:not([hidden])) {
+    height: auto;
+    min-height: 0;
+  }
+
+  .util-ra-edit-dock__panels {
+    position: relative;
+    inset: auto;
+  }
+
+  .util-ra-edit-dock__panels > .util-ra-wall-edit {
+    position: relative;
+    inset: auto;
+  }
+
+  .util-ra-object-edit__btn-text {
+    display: none;
+  }
+
+  .util-ra-object-edit__actions .util-ra-action-btn {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 44px;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+  }
+
+  .util-ra-palette__name {
+    white-space: normal;
+    max-width: 4.6rem;
+  }
 }
 
 @media (max-width: 960px) {

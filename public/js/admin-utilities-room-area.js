@@ -17,11 +17,16 @@
     feet_decimal: 'feet_decimal',
     feet_inch_frac: 'feet_inch_frac'
   };
-  var MIN_CANVAS_W = 400;
+  var MIN_CANVAS_W = 260;
   var MIN_CANVAS_H = 520;
+  var MIN_CANVAS_H_NARROW = 260;
+  var NARROW_CANVAS_MAX = 700;
   var MAX_CANVAS_H = 1100;
   var CANVAS_HEIGHT_RATIO = 0.75;
   var CANVAS_MAX_VH = 0.72;
+  var CANVAS_MAX_VH_NARROW = 0.60;
+  var FIT_LABEL_PAD = 16;
+  var FIT_WIDTH_RATIO = 0.90;
   var DRAW_AREA_FACTOR = 6;
   var GRID_PX = 20;
   var VERTEX_HIT = 14;
@@ -31,7 +36,7 @@
   var MIN_ZOOM_PERCENT = 8;
   var MAX_ZOOM_PERCENT = 500;
   var ZOOM_STEP = 1.12;
-  var ZOOM_FIT_PAD = 32;
+  var ZOOM_FIT_PAD = 48;
   var SHIFT_SNAP_THRESHOLD_DEG = 10;
   var SHIFT_SNAP_STEP = Math.PI / 4;
   var UNDO_MAX = 50;
@@ -41,6 +46,23 @@
   var GROUP_COLORS = ['#024768', '#2e7d32', '#e65100', '#6a1b9a', '#c62828', '#00838f', '#5d4037'];
   var DEFAULT_GROUP_COLOR = GROUP_COLORS[0];
   var INACTIVE_POLYGON_OPACITY = 0.45;
+  var OBJECT_SNAP_PX = 36;
+  var OBJECT_MIN_WIDTH_IN = 6;
+  var OBJECT_MAX_WIDTH_IN = 240;
+  var OBJECT_CATALOG = [
+    { key: 'door-30', type: 'door', subtype: 'single', width: 30, label: '30″ door', kind: 'door' },
+    { key: 'door-32', type: 'door', subtype: 'single', width: 32, label: '32″ door', kind: 'door' },
+    { key: 'door-36', type: 'door', subtype: 'single', width: 36, label: '36″ door', kind: 'door' },
+    { key: 'door-60', type: 'door', subtype: 'double', width: 60, label: '60″ double', kind: 'door' },
+    { key: 'door-72', type: 'door', subtype: 'double', width: 72, label: '72″ double', kind: 'door' },
+    { key: 'door-slide', type: 'door', subtype: 'sliding', width: 60, label: 'Sliding', kind: 'door' },
+    { key: 'door-bifold', type: 'door', subtype: 'bifold', width: 60, label: 'Bifold', kind: 'door' },
+    { key: 'opening', type: 'opening', subtype: 'archway', width: 36, label: 'Opening', kind: 'door' },
+    { key: 'win-24', type: 'window', subtype: 'fixed', width: 24, label: '24″ window', kind: 'window' },
+    { key: 'win-36', type: 'window', subtype: 'fixed', width: 36, label: '36″ window', kind: 'window' },
+    { key: 'win-48', type: 'window', subtype: 'fixed', width: 48, label: '48″ window', kind: 'window' },
+    { key: 'win-60', type: 'window', subtype: 'fixed', width: 60, label: '60″ window', kind: 'window' }
+  ];
 
   function isAdminDark() {
     return document.documentElement.classList.contains('admin-dark');
@@ -67,6 +89,38 @@
   function canvasBrandText(selected) {
     if (selected) return '#5d4037';
     return isAdminDark() ? '#7dd3fc' : '#024768';
+  }
+
+  function canvasAreaLabelText() {
+    return isAdminDark() ? '#f8fafc' : '#024768';
+  }
+
+  function canvasPolygonFill(hex, opacity) {
+    var a = opacity == null ? 1 : opacity;
+    if (!isAdminDark()) return hexToRgba(hex, 0.12 * a);
+    var mixed = mixHex(hex || DEFAULT_GROUP_COLOR, '#7dd3fc', 0.72);
+    return hexToRgba(mixed, 0.38 * a);
+  }
+
+  function mixHex(aHex, bHex, t) {
+    function parts(hex) {
+      var h = String(hex || '').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      return [
+        parseInt(h.substring(0, 2), 16) || 0,
+        parseInt(h.substring(2, 4), 16) || 0,
+        parseInt(h.substring(4, 6), 16) || 0
+      ];
+    }
+    var a = parts(aHex);
+    var b = parts(bHex);
+    var r = Math.round(a[0] + (b[0] - a[0]) * t);
+    var g = Math.round(a[1] + (b[1] - a[1]) * t);
+    var bl = Math.round(a[2] + (b[2] - a[2]) * t);
+    return '#' + [r, g, bl].map(function (n) {
+      var s = n.toString(16);
+      return s.length === 1 ? '0' + s : s;
+    }).join('');
   }
 
   function canvasRulerText(selected) {
@@ -146,7 +200,23 @@
     zoomLabel: root.querySelector('[data-ra-zoom-label]'),
     measureUnit: root.querySelector('[data-ra-measure-unit]'),
     areaName: root.querySelector('[data-ra-area-name]'),
-    areaNameWrap: root.querySelector('[data-ra-area-name-wrap]')
+    areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
+    palette: root.querySelector('[data-ra-palette]'),
+    paletteDoors: root.querySelector('[data-ra-palette-doors]'),
+    paletteWindows: root.querySelector('[data-ra-palette-windows]'),
+    dimensionsToggle: root.querySelector('[data-ra-dimensions-toggle]'),
+    objectEdit: root.querySelector('[data-ra-object-edit]'),
+    objectTitle: root.querySelector('[data-ra-object-title]'),
+    objectWidth: root.querySelector('[data-ra-object-width]'),
+    objectOffset: root.querySelector('[data-ra-object-offset]'),
+    objectSwing: root.querySelector('[data-ra-object-swing]'),
+    objectHinge: root.querySelector('[data-ra-object-hinge]'),
+    objectSwingWrap: root.querySelector('[data-ra-object-swing-wrap]'),
+    objectHingeWrap: root.querySelector('[data-ra-object-hinge-wrap]'),
+    objectFlip: root.querySelector('[data-ra-object-flip]'),
+    objectRotate: root.querySelector('[data-ra-object-rotate]'),
+    deleteObject: root.querySelector('[data-ra-delete-object]'),
+    objectCancel: root.querySelector('[data-ra-object-cancel]')
   };
 
   var state = {
@@ -157,6 +227,15 @@
     activePolygonId: null,
     nextGroupId: 1,
     nextPolygonId: 1,
+    objects: [],
+    nextObjectId: 1,
+    selectedObjectId: null,
+    showDimensions: true,
+    armedCatalogKey: null,
+    placingCatalog: null,
+    objectGhost: null,
+    draggingObject: false,
+    objectPointerDown: null,
     calibrating: false,
     calibPoints: [],
     rulerMode: false,
@@ -238,6 +317,295 @@
         })
       };
     });
+  }
+
+  function cloneObjects(objects) {
+    return (objects || []).map(function (obj) {
+      return {
+        id: obj.id,
+        type: obj.type,
+        subtype: obj.subtype || '',
+        wall_id: obj.wall_id,
+        width: obj.width,
+        offset: obj.offset,
+        swing: obj.swing || 'left_in',
+        hinge: obj.hinge || 'left',
+        height: obj.height,
+        sill_height: obj.sill_height
+      };
+    });
+  }
+
+  function objectTitle(obj) {
+    if (!obj) return 'Object';
+    if (obj.type === 'window') return Math.round(obj.width) + '″ window';
+    if (obj.type === 'opening') return Math.round(obj.width) + '″ opening';
+    if (obj.subtype === 'double') return Math.round(obj.width) + '″ double door';
+    if (obj.subtype === 'sliding' || obj.subtype === 'pocket') return Math.round(obj.width) + '″ sliding door';
+    if (obj.subtype === 'bifold') return Math.round(obj.width) + '″ bifold';
+    return Math.round(obj.width) + '″ door';
+  }
+
+  function makeWallId(polygonId, startIdx, endIdx) {
+    return 'wall_' + polygonId + '_' + startIdx + '_' + endIdx;
+  }
+
+  function parseWallId(wallId) {
+    var match = String(wallId || '').match(/^wall_(.+)_(\d+)_(\d+)$/);
+    if (!match) return null;
+    return {
+      polygonId: match[1],
+      start: parseInt(match[2], 10),
+      end: parseInt(match[3], 10)
+    };
+  }
+
+  function findPolygonEntryById(polygonId) {
+    var found = null;
+    allPolygons().some(function (entry) {
+      if (entry.polygon.id === polygonId) {
+        found = entry;
+        return true;
+      }
+      return false;
+    });
+    return found;
+  }
+
+  function wallLengthInches(a, b) {
+    var ppf = pixelsPerFoot() || 12;
+    return (dist(a, b) / ppf) * INCHES_PER_FOOT;
+  }
+
+  function inchesToPixels(inches) {
+    return (inches / INCHES_PER_FOOT) * (pixelsPerFoot() || 12);
+  }
+
+  function listClosedWalls() {
+    var walls = [];
+    allClosedPolygons().forEach(function (entry) {
+      var verts = entry.polygon.vertices;
+      var n = verts.length;
+      for (var i = 0; i < n; i++) {
+        var j = (i + 1) % n;
+        walls.push({
+          wallId: makeWallId(entry.polygon.id, i, j),
+          polygonId: entry.polygon.id,
+          groupId: entry.group.id,
+          start: i,
+          end: j,
+          a: verts[i],
+          b: verts[j],
+          verts: verts,
+          color: entry.group.color
+        });
+      }
+    });
+    return walls;
+  }
+
+  function resolveWall(wallId) {
+    var parsed = parseWallId(wallId);
+    if (!parsed) return null;
+    var entry = findPolygonEntryById(parsed.polygonId);
+    if (!entry || !entry.polygon.closed || entry.polygon.vertices.length < 3) return null;
+    var verts = entry.polygon.vertices;
+    if (parsed.start < 0 || parsed.start >= verts.length) return null;
+    var end = (parsed.start + 1) % verts.length;
+    return {
+      wallId: makeWallId(entry.polygon.id, parsed.start, end),
+      polygonId: entry.polygon.id,
+      groupId: entry.group.id,
+      start: parsed.start,
+      end: end,
+      a: verts[parsed.start],
+      b: verts[end],
+      verts: verts,
+      color: entry.group.color
+    };
+  }
+
+  function projectOntoWall(pos, wall) {
+    var dx = wall.b.x - wall.a.x;
+    var dy = wall.b.y - wall.a.y;
+    var lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-9) return null;
+    var t = ((pos.x - wall.a.x) * dx + (pos.y - wall.a.y) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    var point = { x: wall.a.x + t * dx, y: wall.a.y + t * dy };
+    return {
+      wall: wall,
+      t: t,
+      point: point,
+      dist: dist(pos, point),
+      lengthIn: wallLengthInches(wall.a, wall.b)
+    };
+  }
+
+  function snapToNearestWall(pos, threshold) {
+    if (!pos) return null;
+    var maxDist = threshold != null ? threshold : hitTolerance(OBJECT_SNAP_PX);
+    var best = null;
+    listClosedWalls().forEach(function (wall) {
+      var hit = projectOntoWall(pos, wall);
+      if (!hit) return;
+      if (hit.dist <= maxDist && (!best || hit.dist < best.dist)) {
+        best = hit;
+      }
+    });
+    return best;
+  }
+
+  function objectPlacement(obj) {
+    var wall = resolveWall(obj.wall_id);
+    if (!wall) return null;
+    var lengthIn = wallLengthInches(wall.a, wall.b);
+    if (lengthIn < 1e-6) return null;
+    var width = Math.max(OBJECT_MIN_WIDTH_IN, Math.min(OBJECT_MAX_WIDTH_IN, obj.width || 36));
+    var maxOffset = Math.max(0, lengthIn - width);
+    var offset = Math.max(0, Math.min(maxOffset, obj.offset || 0));
+    var t0 = offset / lengthIn;
+    var t1 = (offset + width) / lengthIn;
+    var a = {
+      x: wall.a.x + (wall.b.x - wall.a.x) * t0,
+      y: wall.a.y + (wall.b.y - wall.a.y) * t0
+    };
+    var b = {
+      x: wall.a.x + (wall.b.x - wall.a.x) * t1,
+      y: wall.a.y + (wall.b.y - wall.a.y) * t1
+    };
+    var mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    var angle = Math.atan2(wall.b.y - wall.a.y, wall.b.x - wall.a.x);
+    var inward = wallInwardSign(wall);
+    return {
+      wall: wall,
+      a: a,
+      b: b,
+      mid: mid,
+      angle: angle,
+      width: width,
+      offset: offset,
+      lengthIn: lengthIn,
+      widthPx: inchesToPixels(width),
+      inward: inward
+    };
+  }
+
+  function wallInwardSign(wall) {
+    var dx = wall.b.x - wall.a.x;
+    var dy = wall.b.y - wall.a.y;
+    var len = Math.hypot(dx, dy) || 1;
+    var nx = -dy / len;
+    var ny = dx / len;
+    var probe = {
+      x: (wall.a.x + wall.b.x) / 2 + nx * 8,
+      y: (wall.a.y + wall.b.y) / 2 + ny * 8
+    };
+    return pointInPolygon(probe, wall.verts) ? 1 : -1;
+  }
+
+  function clampObjectToWall(obj, wall) {
+    var lengthIn = wallLengthInches(wall.a, wall.b);
+    obj.width = Math.max(OBJECT_MIN_WIDTH_IN, Math.min(OBJECT_MAX_WIDTH_IN, obj.width || 36));
+    if (obj.width > lengthIn - 1) obj.width = Math.max(OBJECT_MIN_WIDTH_IN, lengthIn - 1);
+    obj.offset = Math.max(0, Math.min(Math.max(0, lengthIn - obj.width), obj.offset || 0));
+    return obj;
+  }
+
+  function applySnapToObject(obj, snap) {
+    obj.wall_id = snap.wall.wallId;
+    var width = obj.width || 36;
+    var offset = (snap.t * snap.lengthIn) - (width / 2);
+    obj.offset = offset;
+    clampObjectToWall(obj, snap.wall);
+  }
+
+  function createObjectFromCatalog(item, snap) {
+    var obj = {
+      id: 'obj_' + state.nextObjectId,
+      type: item.type,
+      subtype: item.subtype,
+      wall_id: snap.wall.wallId,
+      width: item.width,
+      offset: 0,
+      swing: 'left_in',
+      hinge: 'left'
+    };
+    if (item.type === 'window' || item.type === 'opening') {
+      obj.height = item.type === 'window' ? 48 : 84;
+      obj.sill_height = item.type === 'window' ? 36 : 0;
+    }
+    state.nextObjectId += 1;
+    applySnapToObject(obj, snap);
+    return obj;
+  }
+
+  function selectedObject() {
+    if (!state.selectedObjectId) return null;
+    return state.objects.find(function (o) { return o.id === state.selectedObjectId; }) || null;
+  }
+
+  function findObjectAtPoint(pos) {
+    if (!pos) return null;
+    var hit = null;
+    var best = Infinity;
+    state.objects.forEach(function (obj) {
+      var place = objectPlacement(obj);
+      if (!place) return;
+      var d = distanceToSegment(pos, place.a, place.b);
+      if (d <= hitTolerance(18) && d < best) {
+        best = d;
+        hit = obj;
+      }
+    });
+    return hit;
+  }
+
+  function objectsOnWall(wallId) {
+    return state.objects.filter(function (obj) { return obj.wall_id === wallId; });
+  }
+
+  function rematchObjectToNearestWall(obj) {
+    var place = objectPlacement(obj);
+    var pos = place ? place.mid : null;
+    if (!pos) {
+      var parsed = parseWallId(obj.wall_id);
+      var entry = parsed ? findPolygonEntryById(parsed.polygonId) : null;
+      if (entry && entry.polygon.vertices.length) {
+        pos = polygonCentroid(entry.polygon.vertices);
+      }
+    }
+    if (!pos) return false;
+    var snap = snapToNearestWall(pos, Infinity);
+    if (!snap) return false;
+    applySnapToObject(obj, snap);
+    return true;
+  }
+
+  function rematchAllObjects() {
+    state.objects = state.objects.filter(function (obj) {
+      return rematchObjectToNearestWall(obj);
+    });
+    if (state.selectedObjectId && !selectedObject()) {
+      clearObjectSelection();
+    }
+  }
+
+  function removeObjectsForPolygon(polygonId) {
+    state.objects = state.objects.filter(function (obj) {
+      var parsed = parseWallId(obj.wall_id);
+      return !parsed || parsed.polygonId !== polygonId;
+    });
+    if (state.selectedObjectId && !selectedObject()) clearObjectSelection();
+  }
+
+  function syncObjectIdCounter() {
+    var max = 0;
+    state.objects.forEach(function (obj) {
+      var n = parseInt(String(obj.id).replace(/\D/g, ''), 10);
+      if (n > max) max = n;
+    });
+    state.nextObjectId = Math.max(state.nextObjectId, max + 1, 1);
   }
 
   function findGroupById(groupId) {
@@ -356,6 +724,10 @@
     state.activePolygonId = null;
     state.nextGroupId = 1;
     state.nextPolygonId = 1;
+    state.objects = [];
+    state.nextObjectId = 1;
+    state.selectedObjectId = null;
+    disarmObjectPlacement();
   }
 
   function allPolygons() {
@@ -467,6 +839,7 @@
       discardLastUndoSnapshot();
       return;
     }
+    removeObjectsForPolygon(poly.id);
     group.polygons = group.polygons.filter(function (p) { return p.id !== poly.id; });
     if (!group.polygons.length) {
       state.groups = state.groups.filter(function (g) { return g.id !== group.id; });
@@ -512,10 +885,27 @@
         });
       }
     });
-    var payload = { v: 2, groups: groups };
+    var objects = serializeObjects();
+    var payload = {
+      v: objects.length ? 3 : 2,
+      groups: groups
+    };
+    if (objects.length) payload.objects = objects;
     var bg = captureBackgroundLayoutForSave();
     if (bg) payload.background = bg;
     return payload;
+  }
+
+  function serializeObjects() {
+    return cloneObjects(state.objects).filter(function (obj) {
+      return !!resolveWall(obj.wall_id);
+    }).map(function (obj) {
+      obj.width = Math.round(obj.width * 1000) / 1000;
+      obj.offset = Math.round(obj.offset * 1000) / 1000;
+      if (obj.height != null) obj.height = Math.round(obj.height * 1000) / 1000;
+      if (obj.sill_height != null) obj.sill_height = Math.round(obj.sill_height * 1000) / 1000;
+      return obj;
+    });
   }
 
   function captureBackgroundLayoutForSave() {
@@ -594,9 +984,10 @@
         }]
       };
     }
-    if (raw.v === 2 && Array.isArray(raw.groups)) {
-      var out = { v: 2, groups: raw.groups };
+    if ((raw.v === 2 || raw.v === 3) && Array.isArray(raw.groups)) {
+      var out = { v: raw.v === 3 ? 3 : 2, groups: raw.groups };
       if (raw.background) out.background = raw.background;
+      if (Array.isArray(raw.objects)) out.objects = raw.objects;
       return out;
     }
     return { v: 2, groups: [] };
@@ -650,6 +1041,32 @@
     } else {
       state.bgLayout = null;
     }
+    hydrateObjects(data.objects || []);
+  }
+
+  function hydrateObjects(rawObjects) {
+    state.objects = [];
+    state.selectedObjectId = null;
+    state.nextObjectId = 1;
+    (rawObjects || []).forEach(function (item, idx) {
+      if (!item || !item.wall_id) return;
+      var obj = {
+        id: item.id || ('obj_' + (idx + 1)),
+        type: item.type || 'door',
+        subtype: item.subtype || (item.type === 'window' ? 'fixed' : 'single'),
+        wall_id: item.wall_id,
+        width: parseFloat(item.width) || 36,
+        offset: parseFloat(item.offset) || 0,
+        swing: item.swing || 'left_in',
+        hinge: item.hinge || 'left',
+        height: item.height != null ? parseFloat(item.height) : undefined,
+        sill_height: item.sill_height != null ? parseFloat(item.sill_height) : undefined
+      };
+      var wall = resolveWall(obj.wall_id);
+      if (wall) clampObjectToWall(obj, wall);
+      state.objects.push(obj);
+    });
+    syncObjectIdCounter();
   }
 
   function scaleAllCanvasPoints(fromW, fromH, toW, toH) {
@@ -690,15 +1107,66 @@
     }
   }
 
+  function measureWrapWidth() {
+    var wrap = els.canvasWrap;
+    if (!wrap) return 0;
+    var rect = wrap.getBoundingClientRect();
+    var w = Math.floor(rect.width);
+    if (w < 1) w = Math.floor(wrap.clientWidth);
+    return w > 0 ? w : 0;
+  }
+
+  function isNarrowCanvas(width) {
+    return (width || 0) > 0 && width <= NARROW_CANVAS_MAX;
+  }
+
+  function rawContentBounds() {
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    var has = false;
+    allPolygons().forEach(function (entry) {
+      (entry.polygon.vertices || []).forEach(function (v) {
+        if (!isFinite(v.x) || !isFinite(v.y)) return;
+        has = true;
+        minX = Math.min(minX, v.x);
+        minY = Math.min(minY, v.y);
+        maxX = Math.max(maxX, v.x);
+        maxY = Math.max(maxY, v.y);
+      });
+    });
+    if (!has) return { minX: 0, minY: 0, maxX: 1, maxY: 1, hasContent: false };
+    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY, hasContent: true };
+  }
+
   function getViewportDimensions() {
     var wrap = els.canvasWrap;
-    if (!wrap || wrap.clientWidth < 1) {
+    var wrapW = measureWrapWidth();
+    if (!wrap || wrapW < 1) {
       return { w: state.viewportW || 900, h: state.viewportH || 640 };
     }
-    var w = Math.max(MIN_CANVAS_W, Math.floor(wrap.clientWidth));
-    var maxH = Math.min(Math.floor(window.innerHeight * CANVAS_MAX_VH), MAX_CANVAS_H);
-    var h = Math.max(MIN_CANVAS_H, Math.min(maxH, Math.round(w * CANVAS_HEIGHT_RATIO)));
-    return { w: w, h: h };
+    var w = wrapW;
+    var narrow = isNarrowCanvas(w);
+    var maxH = Math.min(
+      Math.floor(window.innerHeight * (narrow ? CANVAS_MAX_VH_NARROW : CANVAS_MAX_VH)),
+      MAX_CANVAS_H
+    );
+    if (narrow) {
+      var bounds = rawContentBounds();
+      var h;
+      if (bounds.hasContent) {
+        var bw = Math.max(bounds.maxX - bounds.minX, 1);
+        var bh = Math.max(bounds.maxY - bounds.minY, 1);
+        h = Math.round(w * FIT_WIDTH_RATIO * (bh / bw) + 28);
+      } else {
+        h = Math.round(w * 0.62);
+      }
+      h = Math.max(MIN_CANVAS_H_NARROW, Math.min(maxH, h));
+      return { w: w, h: h };
+    }
+    var hDesk = Math.max(MIN_CANVAS_H, Math.min(maxH, Math.round(w * CANVAS_HEIGHT_RATIO)));
+    return { w: w, h: hDesk };
   }
 
   function syncDrawableDimensions() {
@@ -875,6 +1343,7 @@
       editingRoomId: state.editingRoomId,
       name: (els.roomName && els.roomName.value || '').trim(),
       groups: cloneGroups(state.groups),
+      objects: cloneObjects(state.objects),
       activeGroupId: state.activeGroupId,
       activePolygonId: state.activePolygonId,
       scale: pixelsPerFoot() || null,
@@ -1320,6 +1789,8 @@
   function snapshotState() {
     return {
       groups: cloneGroups(state.groups),
+      objects: cloneObjects(state.objects),
+      selectedObjectId: state.selectedObjectId,
       activeGroupId: state.activeGroupId,
       activePolygonId: state.activePolygonId,
       scalePixelsPerFoot: captureScaleSnapshot()
@@ -1388,10 +1859,17 @@
     if (snap.scalePixelsPerFoot != null) {
       restoreScaleSnapshot(snap.scalePixelsPerFoot);
     }
+    if (snap.objects) {
+      state.objects = cloneObjects(snap.objects);
+      syncObjectIdCounter();
+    }
+    state.selectedObjectId = snap.selectedObjectId || null;
+    if (state.selectedObjectId && !selectedObject()) state.selectedObjectId = null;
     state.selectedVertexIndices = [];
     clearWallSelection();
     clearVertexSelection();
     resetWallClickState();
+    syncObjectPropertiesPanel();
   }
 
   function pixelsPerFoot() {
@@ -1634,6 +2112,7 @@
     var removeIdx = wallEndIndex(wallIndex);
 
     activeVertices().splice(removeIdx, 1);
+    rematchAllObjects();
     clearWallSelection();
 
     if (isActiveClosed() && activeVertices().length < 3) {
@@ -1733,6 +2212,7 @@
     if (state.selectedVertexIndices.length > 0) {
       clearRulerSelection();
       clearWallSelection();
+      clearObjectSelection();
       show(els.vertexEdit, true);
       if (els.canvasWrap) els.canvasWrap.classList.add('is-vertex-edit');
     } else {
@@ -1770,6 +2250,7 @@
     indices.forEach(function (idx) {
       activeVertices().splice(idx, 1);
     });
+    rematchAllObjects();
     if (isActiveClosed() && activeVertices().length < 3) {
       setActiveClosed(false);
     }
@@ -2109,6 +2590,7 @@
       setFeedback('That corner would make the shape cross itself.', true);
       return -1;
     }
+    rematchAllObjects();
     return insertIdx;
   }
 
@@ -2193,6 +2675,7 @@
     if (!ruler) return;
     clearWallSelection();
     clearVertexSelection();
+    clearObjectSelection();
     state.selectedRulerId = rulerId;
     show(els.rulerEdit, true);
     if (els.canvasWrap) els.canvasWrap.classList.add('is-ruler-edit');
@@ -2294,6 +2777,7 @@
     if (wallIndex < 0 || wallIndex >= wallCount()) return;
     clearRulerSelection();
     clearVertexSelection();
+    clearObjectSelection();
     state.selectedWallIndex = wallIndex;
     show(els.wallEdit, true);
     if (els.canvasWrap) els.canvasWrap.classList.add('is-wall-edit');
@@ -2358,6 +2842,7 @@
       return;
     }
 
+    rematchAllObjects();
     redrawAll();
     els.wallLength.value = fmtLengthFromFeet(newFeet);
     setFeedback('Wall length updated.', false);
@@ -2516,6 +3001,7 @@
     var factor = currentFeet / newFeet;
     pushUndoSnapshot();
     scaleActivePixelsPerFoot(factor);
+    rematchAllObjects();
     updateScaleUI();
     if (els.wallLength) {
       var updatedFeet = wallLengthFeet(wallIndex);
@@ -2757,26 +3243,70 @@
       return { minX: 0, minY: 0, maxX: contentW(), maxY: contentH(), hasContent: false };
     }
 
-    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY, hasContent: true };
+    return {
+      minX: minX - FIT_LABEL_PAD,
+      minY: minY - FIT_LABEL_PAD,
+      maxX: maxX + FIT_LABEL_PAD,
+      maxY: maxY + FIT_LABEL_PAD,
+      hasContent: true
+    };
+  }
+
+  function stageViewSize() {
+    var wrapW = measureWrapWidth();
+    var vw = wrapW > 0 ? wrapW : viewportW();
+    var vh = viewportH();
+    if (state.stage) {
+      if (state.stage.width() > 1) vw = state.stage.width();
+      if (state.stage.height() > 1) vh = state.stage.height();
+    }
+    if (els.canvasWrap) {
+      var rect = els.canvasWrap.getBoundingClientRect();
+      if (rect.width > 1) vw = Math.floor(rect.width);
+      if (rect.height > 1) vh = Math.floor(rect.height);
+    }
+    return { w: Math.max(1, vw), h: Math.max(1, vh) };
   }
 
   function clampViewportPan() {
     var s = state.viewport.scale;
-    var vw = viewportW();
-    var vh = viewportH();
+    var view = stageViewSize();
+    var vw = view.w;
+    var vh = view.h;
+    var bounds = rawContentBounds();
+    if (bounds.hasContent) {
+      var cx = (bounds.minX + bounds.maxX) / 2;
+      var cy = (bounds.minY + bounds.maxY) / 2;
+      var bw = (bounds.maxX - bounds.minX) * s;
+      var bh = (bounds.maxY - bounds.minY) * s;
+      var margin = 8;
+      if (bw <= vw) {
+        state.viewport.x = vw / 2 - cx * s;
+      } else {
+        var minX = vw - margin - bounds.maxX * s;
+        var maxX = margin - bounds.minX * s;
+        state.viewport.x = Math.max(minX, Math.min(maxX, state.viewport.x));
+      }
+      if (bh <= vh) {
+        state.viewport.y = vh / 2 - cy * s;
+      } else {
+        var minY = vh - margin - bounds.maxY * s;
+        var maxY = margin - bounds.minY * s;
+        state.viewport.y = Math.max(minY, Math.min(maxY, state.viewport.y));
+      }
+      return;
+    }
     var cw = canvasW() * s;
     var ch = canvasH() * s;
-    var minX = vw - cw;
-    var minY = vh - ch;
     if (cw <= vw) {
       state.viewport.x = (vw - cw) / 2;
     } else {
-      state.viewport.x = Math.max(minX, Math.min(0, state.viewport.x));
+      state.viewport.x = Math.max(vw - cw, Math.min(0, state.viewport.x));
     }
     if (ch <= vh) {
       state.viewport.y = (vh - ch) / 2;
     } else {
-      state.viewport.y = Math.max(minY, Math.min(0, state.viewport.y));
+      state.viewport.y = Math.max(vh - ch, Math.min(0, state.viewport.y));
     }
   }
 
@@ -2837,13 +3367,21 @@
 
   function fitViewport() {
     if (!state.stage) return;
-    var pad = ZOOM_FIT_PAD;
-    var vw = viewportW();
-    var vh = viewportH();
-    var bounds = viewportContentBounds();
+    var view = stageViewSize();
+    var vw = view.w;
+    var vh = view.h;
+    var bounds = isNarrowCanvas(vw) ? rawContentBounds() : viewportContentBounds();
+    if (!bounds.hasContent) bounds = viewportContentBounds();
     var bw = Math.max(bounds.maxX - bounds.minX, 1);
     var bh = Math.max(bounds.maxY - bounds.minY, 1);
-    var scale = Math.min((vw - pad * 2) / bw, (vh - pad * 2) / bh);
+    var scale;
+    if (isNarrowCanvas(vw)) {
+      scale = (vw * FIT_WIDTH_RATIO) / bw;
+      if (bh * scale > vh * 0.92) scale = (vh * 0.92) / bh;
+    } else {
+      var pad = ZOOM_FIT_PAD;
+      scale = Math.min((vw - pad * 2) / bw, (vh - pad * 2) / bh);
+    }
     scale = clampWorldScale(scale);
 
     var cx = (bounds.minX + bounds.maxX) / 2;
@@ -2855,6 +3393,12 @@
     state.lastUiScale = 0;
     applyViewport();
     updateCanvasCursor();
+  }
+
+  function refitCanvasToLayout() {
+    if (!state.stage || !els.canvasWrap) return;
+    resizeStage();
+    if (viewportContentBounds().hasContent) fitViewport();
   }
 
   function updateZoomUI() {
@@ -2951,7 +3495,10 @@
   function resizeStage() {
     if (!state.stage || !els.canvasWrap) return;
     var vp = getViewportDimensions();
-    if (vp.w === state.viewportW && vp.h === state.viewportH) return;
+    if (vp.w === state.viewportW && vp.h === state.viewportH) {
+      if (viewportContentBounds().hasContent) fitViewport();
+      return;
+    }
 
     var oldContentW = state.viewportW;
     var oldContentH = state.viewportH;
@@ -2987,8 +3534,9 @@
     }
     drawGrid();
     redrawAll();
-    // Keep pan within the new world bounds after a resize.
-    if (oldWorldW !== state.canvasW || oldWorldH !== state.canvasH) {
+    if (viewportContentBounds().hasContent) {
+      fitViewport();
+    } else if (oldWorldW !== state.canvasW || oldWorldH !== state.canvasH) {
       applyViewport();
     }
   }
@@ -3022,6 +3570,7 @@
     state.layers.bg = new Konva.Group();
     state.layers.grid = new Konva.Group();
     state.layers.draw = new Konva.Group();
+    state.layers.objects = new Konva.Group();
     state.layers.vertices = new Konva.Group();
     state.layers.walls = new Konva.Group();
     state.layers.labels = new Konva.Group();
@@ -3032,6 +3581,7 @@
     state.worldGroup.add(state.layers.bg);
     state.worldGroup.add(state.layers.grid);
     state.worldGroup.add(state.layers.draw);
+    state.worldGroup.add(state.layers.objects);
     state.worldGroup.add(state.layers.walls);
     state.worldGroup.add(state.layers.vertices);
     state.worldGroup.add(state.layers.labels);
@@ -3088,12 +3638,25 @@
     });
 
     state.stage.on('mousemove touchmove', function () {
+      if (state.objectPointerDown && !state.draggingObject) {
+        var movePos = getPointerPos();
+        if (movePos && state.objectPointerDown.start && dist(movePos, state.objectPointerDown.start) > 4) {
+          pushUndoSnapshot();
+          state.draggingObject = true;
+          selectObject(state.objectPointerDown.id);
+        }
+      }
+      if (state.draggingObject && state.objectPointerDown) {
+        var obj = state.objects.find(function (o) { return o.id === state.objectPointerDown.id; });
+        if (obj) moveObjectAlongWall(obj, getPointerPos());
+        return;
+      }
       if (state.panning || !state.rulerMode || state.rulerDraft.length !== 1) {
         if (!state.rulerMode && state.rulerPreview) {
           state.rulerPreview = null;
           redrawRulers();
         }
-        if (!state.panning && !state.draggingWall && !state.draggingVertex && !state.draggingShape) {
+        if (!state.panning && !state.draggingWall && !state.draggingVertex && !state.draggingShape && !state.draggingObject) {
           updateDrawPreviewFromPointer();
           updateShapeHoverCursor();
         }
@@ -3109,6 +3672,14 @@
     });
 
     state.stage.on('mouseup touchend', function () {
+      if (state.draggingObject) {
+        state.draggingObject = false;
+        state.objectPointerDown = null;
+        rematchAllObjects();
+        redrawAll();
+        return;
+      }
+      state.objectPointerDown = null;
       finishShapePointerUp(getPointerPos());
       finishWallPointerUp(getPointerPos());
       if (state.draggingWall || state.draggingShape) return;
@@ -3349,6 +3920,7 @@
 
   function redrawAll() {
     redrawPolygonLine();
+    redrawObjects();
     redrawVertices();
     redrawLabels();
     redrawWalls();
@@ -3392,12 +3964,14 @@
       room.scale_pixels_per_foot || project.scale_pixels_per_foot,
       target
     );
+    updateScaleUI();
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
     clearUndoStack();
     updateEditUI();
     refreshViewportAfterContentChange();
     redrawAll();
+    requestAnimationFrame(refitCanvasToLayout);
   }
 
   function addAreaSameGroup() {
@@ -3446,6 +4020,7 @@
     if (!group || !poly) return false;
 
     pushUndoSnapshot();
+    removeObjectsForPolygon(poly.id);
     group.polygons = group.polygons.filter(function (p) { return p.id !== poly.id; });
     if (!group.polygons.length) {
       state.groups = state.groups.filter(function (g) { return g.id !== group.id; });
@@ -3611,7 +4186,7 @@
         var fill = new Konva.Line({
           points: linePoints,
           closed: true,
-          fill: hexToRgba(group.color, 0.12 * opacity),
+          fill: canvasPolygonFill(group.color, opacity),
           opacity: opacity,
           listening: !state.draggingShape && !isDrawingOpenShape() && !state.rulerMode && !state.bgMoveMode
         });
@@ -3629,13 +4204,15 @@
         });
         layer.add(fill);
       }
-      if (linePoints.length >= 4 || (!poly.closed && linePoints.length >= 2)) {
+      if (poly.closed && verts.length >= 3) {
+        drawCutWallStrokes(layer, entry, group.color, opacity, isActive);
+      } else if (linePoints.length >= 4 || (!poly.closed && linePoints.length >= 2)) {
         layer.add(new Konva.Line({
           points: linePoints,
           stroke: group.color,
           strokeWidth: uiSize(isActive ? 2.5 : 2),
           opacity: opacity,
-          closed: poly.closed,
+          closed: false,
           listening: false
         }));
       }
@@ -3647,6 +4224,258 @@
     }
 
     flushKonva();
+  }
+
+  function wallOpeningRanges(wall) {
+    var lengthIn = wallLengthInches(wall.a, wall.b);
+    if (lengthIn < 1e-6) return [];
+    return objectsOnWall(wall.wallId).map(function (obj) {
+      var width = Math.max(OBJECT_MIN_WIDTH_IN, obj.width || 0);
+      var offset = Math.max(0, obj.offset || 0);
+      return {
+        t0: Math.max(0, Math.min(1, offset / lengthIn)),
+        t1: Math.max(0, Math.min(1, (offset + width) / lengthIn))
+      };
+    }).filter(function (r) {
+      return r.t1 - r.t0 > 0.002;
+    }).sort(function (a, b) {
+      return a.t0 - b.t0;
+    });
+  }
+
+  function remainingWallSegments(wall) {
+    var ranges = wallOpeningRanges(wall);
+    var segs = [];
+    var cursor = 0;
+    ranges.forEach(function (range) {
+      if (range.t0 > cursor + 0.001) {
+        segs.push({ t0: cursor, t1: range.t0 });
+      }
+      cursor = Math.max(cursor, range.t1);
+    });
+    if (cursor < 0.999) segs.push({ t0: cursor, t1: 1 });
+    return segs;
+  }
+
+  function pointAlongWall(wall, t) {
+    return {
+      x: wall.a.x + (wall.b.x - wall.a.x) * t,
+      y: wall.a.y + (wall.b.y - wall.a.y) * t
+    };
+  }
+
+  function drawCutWallStrokes(layer, entry, color, opacity, isActive) {
+    var verts = entry.polygon.vertices;
+    var n = verts.length;
+    for (var i = 0; i < n; i++) {
+      var wall = {
+        wallId: makeWallId(entry.polygon.id, i, (i + 1) % n),
+        a: verts[i],
+        b: verts[(i + 1) % n]
+      };
+      remainingWallSegments(wall).forEach(function (seg) {
+        var p0 = pointAlongWall(wall, seg.t0);
+        var p1 = pointAlongWall(wall, seg.t1);
+        layer.add(new Konva.Line({
+          points: [p0.x, p0.y, p1.x, p1.y],
+          stroke: color,
+          strokeWidth: uiSize(isActive ? 2.5 : 2),
+          opacity: opacity,
+          lineCap: 'butt',
+          listening: false
+        }));
+      });
+    }
+  }
+
+  function redrawObjects() {
+    var layer = state.layers.objects;
+    if (!layer) return;
+    layer.destroyChildren();
+    state.objects.forEach(function (obj) {
+      var place = objectPlacement(obj);
+      if (!place) return;
+      var group = new Konva.Group({
+        id: 'ra-obj-' + obj.id,
+        name: 'ra-object',
+        x: place.mid.x,
+        y: place.mid.y,
+        rotation: place.angle * 180 / Math.PI,
+        listening: !state.spaceHeld && !state.rulerMode && !state.calibrating && !state.bgMoveMode
+      });
+      group.setAttr('objectId', obj.id);
+      group.setAttr('objectType', obj.type);
+      drawObjectSymbol(group, obj, place);
+      group.on('click tap', function (e) {
+        e.cancelBubble = true;
+        if (state.rulerMode || state.calibrating) return;
+        selectObject(obj.id);
+      });
+      group.on('mousedown touchstart', function (e) {
+        if (e.evt && e.evt.button !== undefined && e.evt.button !== 0) return;
+        e.cancelBubble = true;
+        if (state.spaceHeld || state.rulerMode || state.calibrating) return;
+        state.objectPointerDown = {
+          id: obj.id,
+          start: getPointerPos()
+        };
+      });
+      group.on('mouseenter', function () {
+        if (state.stage && !state.draggingObject) state.stage.container().style.cursor = 'pointer';
+      });
+      group.on('mouseleave', function () {
+        if (state.stage && !state.draggingObject) updateCanvasCursor();
+      });
+      layer.add(group);
+    });
+    flushKonva();
+  }
+
+  function drawObjectSymbol(group, obj, place) {
+    var w = place.widthPx;
+    var selected = state.selectedObjectId === obj.id;
+    var stroke = selected ? '#f57f17' : (place.wall.color || canvasBrandStroke());
+    var inward = place.inward;
+    var leaf = Math.max(uiSize(18), w);
+    var swingIn = (obj.swing || 'left_in').indexOf('out') < 0;
+    var side = (swingIn ? 1 : -1) * inward;
+    var hingeRight = (obj.hinge || 'left') === 'right' || (obj.swing || '').indexOf('right') === 0;
+    var hingeX = hingeRight ? w / 2 : -w / 2;
+
+    group.add(new Konva.Line({
+      points: [-w / 2, 0, w / 2, 0],
+      stroke: 'rgba(0,0,0,0.001)',
+      strokeWidth: uiSize(22),
+      listening: true
+    }));
+
+    if (obj.type === 'window') {
+      group.add(new Konva.Line({
+        points: [-w / 2, -uiSize(4), w / 2, -uiSize(4), w / 2, uiSize(4), -w / 2, uiSize(4)],
+        closed: true,
+        stroke: stroke,
+        strokeWidth: uiSize(1.6),
+        fill: selected ? 'rgba(249,168,37,0.18)' : 'rgba(255,255,255,0.55)',
+        listening: false
+      }));
+      group.add(new Konva.Line({
+        points: [-w / 2, 0, w / 2, 0],
+        stroke: stroke,
+        strokeWidth: uiSize(1.2),
+        listening: false
+      }));
+      return;
+    }
+
+    if (obj.type === 'opening' || obj.subtype === 'archway') {
+      group.add(new Konva.Line({
+        points: [-w / 2, -uiSize(6), -w / 2, uiSize(6)],
+        stroke: stroke,
+        strokeWidth: uiSize(2),
+        listening: false
+      }));
+      group.add(new Konva.Line({
+        points: [w / 2, -uiSize(6), w / 2, uiSize(6)],
+        stroke: stroke,
+        strokeWidth: uiSize(2),
+        listening: false
+      }));
+      return;
+    }
+
+    if (obj.subtype === 'sliding' || obj.subtype === 'pocket') {
+      group.add(new Konva.Rect({
+        x: -w / 2,
+        y: -uiSize(5) * inward,
+        width: w * 0.55,
+        height: uiSize(10),
+        stroke: stroke,
+        strokeWidth: uiSize(1.5),
+        fill: selected ? 'rgba(249,168,37,0.2)' : hexToRgba(stroke, 0.12),
+        listening: false
+      }));
+      group.add(new Konva.Line({
+        points: [-w / 2, 0, w / 2, 0],
+        stroke: stroke,
+        strokeWidth: uiSize(1.4),
+        dash: [uiSize(6), uiSize(4)],
+        listening: false
+      }));
+      return;
+    }
+
+    if (obj.subtype === 'bifold') {
+      var fold = w / 4;
+      group.add(new Konva.Line({
+        points: [-w / 2, 0, -fold, uiSize(10) * inward, 0, 0, fold, uiSize(10) * inward, w / 2, 0],
+        stroke: stroke,
+        strokeWidth: uiSize(1.6),
+        listening: false
+      }));
+      return;
+    }
+
+    if (obj.subtype === 'double') {
+      group.add(new Konva.Arc({
+        x: -w / 2,
+        y: 0,
+        innerRadius: 0,
+        outerRadius: w / 2,
+        angle: 90,
+        rotation: side > 0 ? 0 : -90,
+        stroke: stroke,
+        strokeWidth: uiSize(1.4),
+        listening: false
+      }));
+      group.add(new Konva.Arc({
+        x: w / 2,
+        y: 0,
+        innerRadius: 0,
+        outerRadius: w / 2,
+        angle: 90,
+        rotation: side > 0 ? 90 : 180,
+        stroke: stroke,
+        strokeWidth: uiSize(1.4),
+        listening: false
+      }));
+      group.add(new Konva.Line({
+        points: [-w / 2, 0, -w / 2, leaf / 2 * side],
+        stroke: stroke,
+        strokeWidth: uiSize(2),
+        listening: false
+      }));
+      group.add(new Konva.Line({
+        points: [w / 2, 0, w / 2, leaf / 2 * side],
+        stroke: stroke,
+        strokeWidth: uiSize(2),
+        listening: false
+      }));
+      return;
+    }
+
+    var arcRotation = 0;
+    if (hingeRight) {
+      arcRotation = side > 0 ? 90 : 180;
+    } else {
+      arcRotation = side > 0 ? 0 : -90;
+    }
+    group.add(new Konva.Arc({
+      x: hingeX,
+      y: 0,
+      innerRadius: 0,
+      outerRadius: w,
+      angle: 90,
+      rotation: arcRotation,
+      stroke: stroke,
+      strokeWidth: uiSize(1.4),
+      listening: false
+    }));
+    group.add(new Konva.Line({
+      points: [hingeX, 0, hingeX, w * side],
+      stroke: stroke,
+      strokeWidth: uiSize(2),
+      listening: false
+    }));
   }
 
   function redrawVertices() {
@@ -3788,12 +4617,18 @@
 
     drawAreaNameLabels(labelLayer);
 
+    if (state.showDimensions) {
+      drawWallDimensionLabels(labelLayer);
+      drawObjectDimensionLabels(labelLayer);
+    }
+
+    flushKonva();
+  }
+
+  function drawWallDimensionLabels(labelLayer) {
     var verts = activeVertices();
     var ppf = pixelsPerFoot();
-    if (!ppf || verts.length === 0) {
-      flushKonva();
-      return;
-    }
+    if (!ppf || verts.length === 0) return;
 
     var count = wallCount();
     for (var i = 0; i < count; i++) {
@@ -3801,13 +4636,23 @@
       var b = verts[wallEndIndex(i)];
       var midX = (a.x + b.x) / 2;
       var midY = (a.y + b.y) / 2;
+      var dx = b.x - a.x;
+      var dy = b.y - a.y;
+      var wallLen = Math.hypot(dx, dy) || 1;
+      var nx = -dy / wallLen;
+      var ny = dx / wallLen;
+      if (!pointInPolygon({ x: midX + nx, y: midY + ny }, verts)) {
+        nx = -nx;
+        ny = -ny;
+      }
+      var inset = uiSize(14);
       var lenFt = dist(a, b) / ppf;
       var lenLabel = fmtLengthFromFeet(lenFt);
       var isSelected = state.selectedWallIndex === i;
       (function (wallIndex) {
         var kLabel = new Konva.Label({
-          x: midX,
-          y: midY,
+          x: midX + nx * inset,
+          y: midY + ny * inset,
           listening: !state.rulerMode && !state.spaceHeld
         });
         bindWallDrag(kLabel, wallIndex);
@@ -3826,11 +4671,44 @@
           fill: canvasBrandText(isSelected),
           padding: uiSize(4)
         }));
+        kLabel.offsetX(kLabel.width() / 2);
+        kLabel.offsetY(kLabel.height() / 2);
         labelLayer.add(kLabel);
       })(i);
     }
+  }
 
-    flushKonva();
+  function drawObjectDimensionLabels(labelLayer) {
+    var ppf = pixelsPerFoot();
+    if (!ppf) return;
+    state.objects.forEach(function (obj) {
+      var place = objectPlacement(obj);
+      if (!place) return;
+      var nx = Math.cos(place.angle + Math.PI / 2) * place.inward;
+      var ny = Math.sin(place.angle + Math.PI / 2) * place.inward;
+      var kLabel = new Konva.Label({
+        x: place.mid.x + nx * uiSize(14),
+        y: place.mid.y + ny * uiSize(14),
+        listening: false
+      });
+      kLabel.add(new Konva.Tag({
+        fill: canvasTagFill(state.selectedObjectId === obj.id),
+        stroke: state.selectedObjectId === obj.id ? '#f57f17' : canvasBrandStroke(),
+        strokeWidth: uiSize(1),
+        cornerRadius: uiSize(3),
+        pointerDirection: 'none'
+      }));
+      kLabel.add(new Konva.Text({
+        text: fmtLengthFromFeet(obj.width / INCHES_PER_FOOT),
+        fontSize: uiSize(10),
+        fontFamily: 'Open Sans, sans-serif',
+        fill: canvasBrandText(state.selectedObjectId === obj.id),
+        padding: uiSize(3)
+      }));
+      kLabel.offsetX(kLabel.width() / 2);
+      kLabel.offsetY(kLabel.height() / 2);
+      labelLayer.add(kLabel);
+    });
   }
 
   function polygonCentroid(verts) {
@@ -3915,8 +4793,15 @@
   function drawAreaNameLabels(labelLayer) {
     allPolygons().forEach(function (entry) {
       var poly = entry.polygon;
+      if (!poly.closed || poly.vertices.length < 3) return;
       var name = polygonName(poly);
-      if (!name || !poly.closed || poly.vertices.length < 3) return;
+      var sqft = areaSqFt(poly.vertices);
+      var roomFallback = (els.roomName && els.roomName.value || '').trim();
+      var lines = [];
+      if (name) lines.push(name);
+      else if (roomFallback) lines.push(roomFallback);
+      if (sqft != null) lines.push(fmt(sqft, 1) + ' sq ft');
+      if (!lines.length) return;
       var center = polygonCentroid(poly.vertices);
       if (!center) return;
       var isActive = entry.group.id === state.activeGroupId && poly.id === state.activePolygonId;
@@ -3934,11 +4819,11 @@
         pointerDirection: 'none'
       }));
       var textNode = new Konva.Text({
-        text: name,
+        text: lines.join('\n'),
         fontSize: uiSize(13),
         fontFamily: 'Open Sans, sans-serif',
         fontStyle: 'bold',
-        fill: entry.group.color || DEFAULT_GROUP_COLOR,
+        fill: isAdminDark() ? canvasAreaLabelText() : (entry.group.color || DEFAULT_GROUP_COLOR),
         padding: uiSize(6),
         align: 'center'
       });
@@ -3979,13 +4864,23 @@
       var isSelected = state.selectedWallIndex === i;
 
       if (isSelected) {
-        wallLayer.add(new Konva.Line({
-          points: [a.x, a.y, b.x, b.y],
-          stroke: '#f9a825',
-          strokeWidth: uiSize(5),
-          lineCap: 'round',
-          listening: false
-        }));
+        var activePoly = activePolygon();
+        var wall = {
+          wallId: activePoly ? makeWallId(activePoly.id, i, wallEndIndex(i)) : '',
+          a: a,
+          b: b
+        };
+        remainingWallSegments(wall).forEach(function (seg) {
+          var p0 = pointAlongWall(wall, seg.t0);
+          var p1 = pointAlongWall(wall, seg.t1);
+          wallLayer.add(new Konva.Line({
+            points: [p0.x, p0.y, p1.x, p1.y],
+            stroke: '#f9a825',
+            strokeWidth: uiSize(5),
+            lineCap: 'round',
+            listening: false
+          }));
+        });
       }
 
       (function (wallIndex) {
@@ -4351,6 +5246,32 @@
       return;
     }
 
+    var clickedObject = findObjectAtPoint(pos);
+    if (clickedObject && !state.placingCatalog) {
+      if (state.armedCatalogKey) {
+        state.armedCatalogKey = null;
+        syncArmedPaletteUi();
+        hideObjectGhost();
+        if (els.canvasWrap) els.canvasWrap.classList.remove('is-placing-object');
+      }
+      selectObject(clickedObject.id);
+      return;
+    }
+
+    if (state.armedCatalogKey || state.placingCatalog) {
+      var placed = tryPlaceCatalogItem(state.placingCatalog || catalogItemByKey(state.armedCatalogKey), pos);
+      if (placed) return;
+    }
+
+    if (clickedObject) {
+      selectObject(clickedObject.id);
+      return;
+    }
+
+    if (state.selectedObjectId) {
+      clearObjectSelection();
+    }
+
     var clickedRuler = findRulerAtPoint(pos);
     if (clickedRuler) {
       selectRuler(clickedRuler.id);
@@ -4476,7 +5397,7 @@
   }
 
   function clearDraftLayers() {
-    ['draw', 'walls', 'vertices', 'labels', 'calib'].forEach(function (name) {
+    ['draw', 'objects', 'walls', 'vertices', 'labels', 'calib'].forEach(function (name) {
       var layer = state.layers[name];
       if (layer) layer.destroyChildren();
     });
@@ -4872,9 +5793,11 @@
         currentRoom.scale_pixels_per_foot || currentProject.scale_pixels_per_foot,
         target
       );
+      updateScaleUI();
       clearUndoStack();
       redrawAll();
       fitViewport();
+      requestAnimationFrame(refitCanvasToLayout);
       captureSavedSnapshot();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
     });
@@ -5358,6 +6281,408 @@
     });
   }
 
+  function catalogItemByKey(key) {
+    return OBJECT_CATALOG.find(function (item) { return item.key === key; }) || null;
+  }
+
+  function paletteIconSvg(item) {
+    if (item.type === 'window') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="2" y="6" width="24" height="8" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="2" y1="10" x2="26" y2="10" stroke="currentColor" stroke-width="1.2"/><line x1="14" y1="6" x2="14" y2="14" stroke="currentColor" stroke-width="1.2"/></svg>';
+    }
+    if (item.type === 'opening') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><line x1="6" y1="4" x2="6" y2="16" stroke="currentColor" stroke-width="2"/><line x1="22" y1="4" x2="22" y2="16" stroke="currentColor" stroke-width="2"/><line x1="6" y1="10" x2="22" y2="10" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/></svg>';
+    }
+    if (item.subtype === 'double') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M4 16 A10 10 0 0 1 14 6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M24 16 A10 10 0 0 0 14 6" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="16" x2="24" y2="16" stroke="currentColor" stroke-width="1.4"/></svg>';
+    }
+    if (item.subtype === 'sliding' || item.subtype === 'pocket') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="3" y="7" width="12" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="16" x2="25" y2="16" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 2"/></svg>';
+    }
+    if (item.subtype === 'bifold') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M4 16 L9 8 L14 16 L19 8 L24 16" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    }
+    return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M6 16 A12 12 0 0 1 18 4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="16" x2="24" y2="16" stroke="currentColor" stroke-width="1.4"/><line x1="6" y1="16" x2="6" y2="5" stroke="currentColor" stroke-width="1.6"/></svg>';
+  }
+
+  function renderObjectPalette() {
+    if (!els.paletteDoors || !els.paletteWindows) return;
+    els.paletteDoors.innerHTML = '';
+    els.paletteWindows.innerHTML = '';
+    OBJECT_CATALOG.forEach(function (item) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'util-ra-palette__item';
+      btn.setAttribute('data-ra-catalog', item.key);
+      btn.setAttribute('aria-label', 'Place ' + item.label);
+      btn.innerHTML = '<span class="util-ra-palette__icon">' + paletteIconSvg(item) + '</span><span class="util-ra-palette__name">' + esc(item.label) + '</span>';
+      bindPaletteItem(btn, item);
+      (item.kind === 'window' ? els.paletteWindows : els.paletteDoors).appendChild(btn);
+    });
+    syncArmedPaletteUi();
+  }
+
+  function bindPaletteItem(btn, item) {
+    var pointerId = null;
+    var startX = 0;
+    var startY = 0;
+    var dragging = false;
+
+    function onMove(e) {
+      if (pointerId == null || e.pointerId !== pointerId) return;
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      if (!dragging && Math.hypot(dx, dy) > 6) {
+        dragging = true;
+        btn.classList.add('is-dragging');
+        startPaletteDrag(item, e);
+      }
+      if (dragging) movePaletteDrag(e);
+    }
+
+    function onUp(e) {
+      if (pointerId == null || e.pointerId !== pointerId) return;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      pointerId = null;
+      btn.classList.remove('is-dragging');
+      if (dragging) {
+        finishPaletteDrag(e);
+      } else {
+        armCatalogItem(item.key);
+      }
+      dragging = false;
+    }
+
+    btn.addEventListener('pointerdown', function (e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      dragging = false;
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    });
+  }
+
+  function armCatalogItem(key) {
+    state.armedCatalogKey = state.armedCatalogKey === key ? null : key;
+    state.placingCatalog = null;
+    syncArmedPaletteUi();
+    if (state.armedCatalogKey) {
+      var item = catalogItemByKey(state.armedCatalogKey);
+      setFeedback('Tap a wall to place the ' + (item ? item.label : 'object') + '.', false);
+    }
+  }
+
+  function syncArmedPaletteUi() {
+    if (!els.palette) return;
+    els.palette.querySelectorAll('[data-ra-catalog]').forEach(function (btn) {
+      btn.classList.toggle('is-armed', btn.getAttribute('data-ra-catalog') === state.armedCatalogKey);
+    });
+  }
+
+  function startPaletteDrag(item, e) {
+    state.placingCatalog = item;
+    state.armedCatalogKey = item.key;
+    syncArmedPaletteUi();
+    ensureObjectGhost(item);
+    movePaletteDrag(e);
+    if (els.canvasWrap) els.canvasWrap.classList.add('is-placing-object');
+  }
+
+  function ensureObjectGhost(item) {
+    if (state.objectGhost) state.objectGhost.remove();
+    var ghost = document.createElement('div');
+    ghost.className = 'util-ra-object-ghost';
+    ghost.textContent = item.label;
+    document.body.appendChild(ghost);
+    state.objectGhost = ghost;
+  }
+
+  function movePaletteDrag(e) {
+    if (state.objectGhost) {
+      state.objectGhost.style.left = (e.clientX + 12) + 'px';
+      state.objectGhost.style.top = (e.clientY + 12) + 'px';
+    }
+    if (!state.stage || !els.canvasWrap) return;
+    var rect = els.canvasWrap.getBoundingClientRect();
+    var over = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    if (!over) {
+      state.drawPreview = null;
+      redrawDrawPreview();
+      return;
+    }
+    var screen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    var world = stageToWorld(screen);
+    var snap = snapToNearestWall(world);
+    if (snap) {
+      drawObjectSnapPreview(snap, state.placingCatalog);
+    } else if (state.layers.preview) {
+      state.layers.preview.destroyChildren();
+      flushKonva();
+    }
+  }
+
+  function finishPaletteDrag(e) {
+    var item = state.placingCatalog;
+    hideObjectGhost();
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-placing-object');
+    if (!item || !els.canvasWrap) {
+      state.placingCatalog = null;
+      return;
+    }
+    var rect = els.canvasWrap.getBoundingClientRect();
+    var over = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    if (over) {
+      var world = stageToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      tryPlaceCatalogItem(item, world);
+    }
+    state.placingCatalog = null;
+    if (state.layers.preview) {
+      state.layers.preview.destroyChildren();
+      flushKonva();
+    }
+  }
+
+  function hideObjectGhost() {
+    if (state.objectGhost) {
+      state.objectGhost.remove();
+      state.objectGhost = null;
+    }
+  }
+
+  function drawObjectSnapPreview(snap, item) {
+    var layer = state.layers.preview;
+    if (!layer || !item) return;
+    layer.destroyChildren();
+    var temp = createObjectFromCatalog(item, snap);
+    state.nextObjectId -= 1;
+    var place = objectPlacement(temp);
+    if (!place) {
+      flushKonva();
+      return;
+    }
+    var group = new Konva.Group({
+      x: place.mid.x,
+      y: place.mid.y,
+      rotation: place.angle * 180 / Math.PI,
+      opacity: 0.7,
+      listening: false
+    });
+    drawObjectSymbol(group, temp, place);
+    layer.add(group);
+    flushKonva();
+  }
+
+  function tryPlaceCatalogItem(item, pos) {
+    if (!item || !pos) return false;
+    if (!hasAnyClosedPolygon()) {
+      setFeedback('Close a room outline before placing doors or windows.', true);
+      return false;
+    }
+    var snap = snapToNearestWall(pos);
+    if (!snap) {
+      setFeedback('Drop closer to a wall to snap the object.', true);
+      return false;
+    }
+    if (snap.lengthIn + 0.01 < (item.width || 36)) {
+      setFeedback('That wall is shorter than the ' + item.label + '.', true);
+      return false;
+    }
+    pushUndoSnapshot();
+    var obj = createObjectFromCatalog(item, snap);
+    state.objects.push(obj);
+    state.armedCatalogKey = null;
+    state.placingCatalog = null;
+    syncArmedPaletteUi();
+    hideObjectGhost();
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-placing-object');
+    selectObject(obj.id);
+    redrawAll();
+    setFeedback(item.label + ' placed on the wall.', false);
+    return true;
+  }
+
+  function selectObject(objectId) {
+    var obj = state.objects.find(function (o) { return o.id === objectId; });
+    if (!obj) return;
+    clearWallSelection();
+    clearVertexSelection();
+    clearRulerSelection();
+    state.selectedObjectId = obj.id;
+    var parsed = parseWallId(obj.wall_id);
+    if (parsed) {
+      var entry = findPolygonEntryById(parsed.polygonId);
+      if (entry) {
+        state.activeGroupId = entry.group.id;
+        state.activePolygonId = entry.polygon.id;
+      }
+    }
+    show(els.objectEdit, true);
+    if (els.canvasWrap) els.canvasWrap.classList.add('is-object-edit');
+    syncObjectPropertiesPanel();
+    setFeedback('', false);
+    redrawAll();
+    updateToolbar();
+  }
+
+  function clearObjectSelection() {
+    if (!state.selectedObjectId && els.objectEdit && els.objectEdit.hasAttribute('hidden')) return;
+    state.selectedObjectId = null;
+    show(els.objectEdit, false);
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-object-edit');
+    if (state.layers.objects) redrawObjects();
+    updateToolbar();
+  }
+
+  function syncObjectPropertiesPanel() {
+    var obj = selectedObject();
+    if (!obj || !els.objectEdit) return;
+    if (els.objectTitle) els.objectTitle.textContent = objectTitle(obj);
+    if (els.objectWidth) els.objectWidth.value = String(Math.round(obj.width * 100) / 100);
+    if (els.objectOffset) els.objectOffset.value = String(Math.round(obj.offset * 100) / 100);
+    if (els.objectSwing) els.objectSwing.value = obj.swing || 'left_in';
+    if (els.objectHinge) els.objectHinge.value = obj.hinge || 'left';
+    var showSwing = obj.type === 'door' && obj.subtype !== 'sliding' && obj.subtype !== 'pocket' && obj.subtype !== 'bifold';
+    show(els.objectSwingWrap, showSwing);
+    show(els.objectHingeWrap, showSwing);
+  }
+
+  function parseInchesField(raw) {
+    var text = String(raw || '').trim();
+    if (!text) return null;
+    var n = parseFloat(text.replace(/["″in]/gi, ''));
+    return isFinite(n) ? n : null;
+  }
+
+  function applyObjectWidth() {
+    var obj = selectedObject();
+    if (!obj || !els.objectWidth) return;
+    var value = parseInchesField(els.objectWidth.value);
+    if (value == null) {
+      setFeedback('Enter a width in inches.', true);
+      return;
+    }
+    if (value < OBJECT_MIN_WIDTH_IN || value > OBJECT_MAX_WIDTH_IN) {
+      setFeedback('Width must be between 6 and 240 inches.', true);
+      return;
+    }
+    pushUndoSnapshot();
+    obj.width = value;
+    var wall = resolveWall(obj.wall_id);
+    if (wall) clampObjectToWall(obj, wall);
+    syncObjectPropertiesPanel();
+    redrawAll();
+  }
+
+  function applyObjectOffset() {
+    var obj = selectedObject();
+    if (!obj || !els.objectOffset) return;
+    var value = parseInchesField(els.objectOffset.value);
+    if (value == null) {
+      setFeedback('Enter an offset in inches from the wall start.', true);
+      return;
+    }
+    pushUndoSnapshot();
+    obj.offset = Math.max(0, value);
+    var wall = resolveWall(obj.wall_id);
+    if (wall) clampObjectToWall(obj, wall);
+    syncObjectPropertiesPanel();
+    redrawAll();
+  }
+
+  function applyObjectSwingHinge() {
+    var obj = selectedObject();
+    if (!obj) return;
+    pushUndoSnapshot();
+    if (els.objectSwing) obj.swing = els.objectSwing.value;
+    if (els.objectHinge) obj.hinge = els.objectHinge.value;
+    if (obj.hinge === 'right' && obj.swing && obj.swing.indexOf('left') === 0) {
+      obj.swing = obj.swing.replace('left', 'right');
+    } else if (obj.hinge === 'left' && obj.swing && obj.swing.indexOf('right') === 0) {
+      obj.swing = obj.swing.replace('right', 'left');
+    }
+    syncObjectPropertiesPanel();
+    redrawAll();
+  }
+
+  function flipSelectedObject() {
+    var obj = selectedObject();
+    if (!obj) return;
+    pushUndoSnapshot();
+    obj.hinge = obj.hinge === 'right' ? 'left' : 'right';
+    if (obj.swing) {
+      obj.swing = obj.hinge === 'right'
+        ? obj.swing.replace('left', 'right')
+        : obj.swing.replace('right', 'left');
+    }
+    var wall = resolveWall(obj.wall_id);
+    if (wall) {
+      var lengthIn = wallLengthInches(wall.a, wall.b);
+      obj.offset = Math.max(0, lengthIn - obj.width - obj.offset);
+      clampObjectToWall(obj, wall);
+    }
+    syncObjectPropertiesPanel();
+    redrawAll();
+  }
+
+  function rotateSelectedObject() {
+    var obj = selectedObject();
+    if (!obj) return;
+    pushUndoSnapshot();
+    if (obj.swing && obj.swing.indexOf('_') >= 0) {
+      var parts = obj.swing.split('_');
+      parts[1] = parts[1] === 'in' ? 'out' : 'in';
+      obj.swing = parts.join('_');
+    } else {
+      obj.swing = obj.swing === 'left_in' ? 'left_out' : 'left_in';
+    }
+    syncObjectPropertiesPanel();
+    redrawAll();
+  }
+
+  function deleteSelectedObject() {
+    var obj = selectedObject();
+    if (!obj) return;
+    pushUndoSnapshot();
+    state.objects = state.objects.filter(function (o) { return o.id !== obj.id; });
+    clearObjectSelection();
+    redrawAll();
+    setFeedback('Object removed.', false);
+  }
+
+  function disarmObjectPlacement() {
+    state.armedCatalogKey = null;
+    state.placingCatalog = null;
+    hideObjectGhost();
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-placing-object');
+    syncArmedPaletteUi();
+    if (state.layers.preview) {
+      state.layers.preview.destroyChildren();
+      flushKonva();
+    }
+  }
+
+  function setShowDimensions(on) {
+    state.showDimensions = !!on;
+    if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
+    redrawLabels();
+  }
+
+  function moveObjectAlongWall(obj, pos) {
+    var snap = snapToNearestWall(pos, hitTolerance(OBJECT_SNAP_PX * 2));
+    if (!snap) return;
+    applySnapToObject(obj, snap);
+    redrawPolygonLine();
+    redrawObjects();
+    redrawLabels();
+    redrawWalls();
+    syncObjectPropertiesPanel();
+  }
+
   function bindEvents() {
     els.projectSelect.addEventListener('change', function () {
       var newId = els.projectSelect.value ? parseInt(els.projectSelect.value, 10) : null;
@@ -5418,12 +6743,51 @@
     if (els.rulerToggle) els.rulerToggle.addEventListener('click', toggleRulerMode);
     if (els.deleteRuler) els.deleteRuler.addEventListener('click', deleteSelectedRuler);
     if (els.rulerCancel) els.rulerCancel.addEventListener('click', clearRulerSelection);
+    if (els.objectWidth) {
+      els.objectWidth.addEventListener('change', applyObjectWidth);
+      els.objectWidth.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyObjectWidth();
+        }
+      });
+    }
+    if (els.objectOffset) {
+      els.objectOffset.addEventListener('change', applyObjectOffset);
+      els.objectOffset.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyObjectOffset();
+        }
+      });
+    }
+    if (els.objectSwing) els.objectSwing.addEventListener('change', applyObjectSwingHinge);
+    if (els.objectHinge) els.objectHinge.addEventListener('change', applyObjectSwingHinge);
+    if (els.objectFlip) els.objectFlip.addEventListener('click', flipSelectedObject);
+    if (els.objectRotate) els.objectRotate.addEventListener('click', rotateSelectedObject);
+    if (els.deleteObject) els.deleteObject.addEventListener('click', deleteSelectedObject);
+    if (els.objectCancel) els.objectCancel.addEventListener('click', clearObjectSelection);
+    if (els.dimensionsToggle) {
+      els.dimensionsToggle.addEventListener('change', function () {
+        setShowDimensions(els.dimensionsToggle.checked);
+      });
+    }
     bindAreaNameField();
 
     document.addEventListener('keydown', function (e) {
       if (e.target && e.target.closest('input, textarea, select')) return;
 
       if (e.key === 'Escape') {
+        if (state.armedCatalogKey || state.placingCatalog) {
+          e.preventDefault();
+          disarmObjectPlacement();
+          return;
+        }
+        if (state.selectedObjectId) {
+          e.preventDefault();
+          clearObjectSelection();
+          return;
+        }
         if (cancelRulerDraft()) {
           e.preventDefault();
           return;
@@ -5444,7 +6808,10 @@
       }
 
       if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-      if (state.selectedVertexIndices.length > 0) {
+      if (state.selectedObjectId) {
+        e.preventDefault();
+        deleteSelectedObject();
+      } else if (state.selectedVertexIndices.length > 0) {
         e.preventDefault();
         deleteSelectedVertex();
       } else if (state.selectedWallIndex !== null) {
@@ -5517,6 +6884,8 @@
     updateMeasureUnitPlaceholders();
     bindEvents();
     bindViewportEvents();
+    renderObjectPalette();
+    if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
     refreshProjectSelect();
     var raProject = (function () {
       try { return new URLSearchParams(window.location.search).get('ra_project'); } catch (e) { return null; }

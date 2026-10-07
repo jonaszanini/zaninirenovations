@@ -227,6 +227,12 @@
                     <i class="fa fa-arrows-alt" aria-hidden="true"></i>
                   </button>
                 </span>
+                <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-icon-toggle util-ra-tip" data-tooltip="Show or hide dimensions">
+                  <input type="checkbox" class="util-sr-only" data-ra-dimensions-toggle checked>
+                  <i class="fa fa-text-width util-ra-icon-toggle__on" aria-hidden="true"></i>
+                  <i class="fa fa-eye-slash util-ra-icon-toggle__off" aria-hidden="true"></i>
+                  <span class="util-sr-only">Show or hide dimensions</span>
+                </label>
                 <span class="util-ra-tip" data-tooltip="Clear all areas">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-clear-shape aria-label="Clear all areas">
                     <i class="fa fa-eraser" aria-hidden="true"></i>
@@ -300,9 +306,28 @@
           </div>
         </div>
 
+        <div class="util-ra-object-dock">
+          <section class="util-ra-palette" data-ra-palette aria-label="Door and window library">
+            <div class="util-ra-palette__head">
+              <h3 class="util-ra-palette__title">Objects</h3>
+              <p class="util-ra-palette__hint">Drag onto a wall, or tap an item then tap a wall.</p>
+            </div>
+            <div class="util-ra-palette__groups">
+              <div class="util-ra-palette__group">
+                <span class="util-ra-palette__group-label">Doors</span>
+                <div class="util-ra-palette__items" data-ra-palette-doors></div>
+              </div>
+              <div class="util-ra-palette__group">
+                <span class="util-ra-palette__group-label">Windows</span>
+                <div class="util-ra-palette__items" data-ra-palette-windows></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
         <div class="util-ra-edit-dock" data-ra-edit-dock>
           <div class="util-ra-edit-dock__idle" aria-hidden="true">
-            <span class="util-ra-edit-dock__hint">Select a wall, corner, or ruler to edit it here.</span>
+            <span class="util-ra-edit-dock__hint">Select a wall, corner, object, or ruler to edit it here.</span>
           </div>
           <div class="util-ra-edit-dock__panels">
             <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
@@ -327,6 +352,50 @@
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-vertex-cancel aria-label="Deselect corner">
                   <i class="fa fa-times"></i>
                 </button>
+              </div>
+            </div>
+
+            <div class="util-ra-wall-edit util-ra-object-edit" data-ra-object-edit hidden>
+              <div class="util-ra-wall-edit__inner util-ra-object-edit__inner">
+                <span class="util-ra-wall-edit__label util-ra-object-edit__title" data-ra-object-title>Object</span>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num">
+                  <label for="ra-object-width">Width (in)</label>
+                  <input class="admin-input" type="text" id="ra-object-width" inputmode="decimal" data-ra-object-width>
+                </div>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num">
+                  <label for="ra-object-offset">Offset (in)</label>
+                  <input class="admin-input" type="text" id="ra-object-offset" inputmode="decimal" data-ra-object-offset>
+                </div>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--swing" data-ra-object-swing-wrap>
+                  <label for="ra-object-swing">Swing</label>
+                  <select class="admin-input" id="ra-object-swing" data-ra-object-swing>
+                    <option value="left_in">Left / in</option>
+                    <option value="left_out">Left / out</option>
+                    <option value="right_in">Right / in</option>
+                    <option value="right_out">Right / out</option>
+                  </select>
+                </div>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--hinge" data-ra-object-hinge-wrap>
+                  <label for="ra-object-hinge">Hinge</label>
+                  <select class="admin-input" id="ra-object-hinge" data-ra-object-hinge>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                  </select>
+                </div>
+                <div class="util-ra-object-edit__actions">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-flip aria-label="Flip">
+                    <i class="fa fa-exchange"></i> <span class="util-ra-object-edit__btn-text">Flip</span>
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-rotate aria-label="Rotate">
+                    <i class="fa fa-refresh"></i> <span class="util-ra-object-edit__btn-text">Rotate</span>
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-object aria-label="Delete object">
+                    <i class="fa fa-trash"></i> <span class="util-ra-object-edit__btn-text">Delete</span>
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-cancel aria-label="Deselect object">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -358,7 +427,7 @@
         </div>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Hold <strong>Space</strong> and drag to pan into extra space beyond the screen; <strong>Shift</strong>+scroll to zoom. Close a shape, then use <strong>Add area</strong> or <strong>New group</strong>. Calibrate scale before saving.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag a door or window from the palette onto a wall. Hold <strong>Space</strong> and drag to pan; <strong>Shift</strong>+scroll to zoom. Calibrate scale before saving.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <div class="util-ra-live-area__row">
               <span class="util-ra-live-area__label">Active shape:</span>
