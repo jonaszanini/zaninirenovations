@@ -7390,10 +7390,30 @@ body.cp-modal-open {
   border-top: none;
   padding-top: 0;
 }
+.cp-utilities-item__room-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
 .cp-utilities-item__room-area {
   color: var(--admin-heading);
   font-weight: 600;
   white-space: nowrap;
+}
+
+.cp-utilities-item__pdf {
+  color: var(--admin-primary);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cp-utilities-item__pdf:hover,
+.cp-utilities-item__pdf:focus-visible {
+  text-decoration: underline;
 }
 .cp-utilities-item__actions {
   flex-shrink: 0;

@@ -156,12 +156,20 @@ class RoomAreaLayoutQuoteService
             $row = $room->layoutMetrics();
             $metrics['area_sqft'] += $row['area_sqft'];
             $metrics['perimeter_lf'] += $row['perimeter_lf'];
+            $metrics['baseboard_lf'] += $row['baseboard_lf'];
+            $metrics['wall_area_sqft'] += $row['wall_area_sqft'];
+            $metrics['door_count'] += $row['door_count'];
+            $metrics['window_count'] += $row['window_count'];
+            $metrics['opening_count'] += $row['opening_count'];
+            $metrics['drywall_openings'] += $row['drywall_openings'];
             $metrics['inside_corners'] += $row['inside_corners'];
             $metrics['outside_corners'] += $row['outside_corners'];
             $metrics['polygon_count'] += $row['polygon_count'];
         }
         $metrics['area_sqft'] = round($metrics['area_sqft'], 2);
         $metrics['perimeter_lf'] = round($metrics['perimeter_lf'], 2);
+        $metrics['baseboard_lf'] = round($metrics['baseboard_lf'], 2);
+        $metrics['wall_area_sqft'] = round($metrics['wall_area_sqft'], 2);
 
         if ($metrics['perimeter_lf'] <= 0 && $metrics['area_sqft'] <= 0) {
             return null;
@@ -178,7 +186,7 @@ class RoomAreaLayoutQuoteService
     }
 
     /**
-     * @param  array{area_sqft: float, perimeter_lf: float, inside_corners: int, outside_corners: int, polygon_count: int}  $metrics
+     * @param  array<string, mixed>  $metrics
      * @return array<string, mixed>
      */
     private function optionPayload(
@@ -189,8 +197,10 @@ class RoomAreaLayoutQuoteService
         bool $linked,
         string $shortName,
     ): array {
-        $area = $this->formatQty($metrics['area_sqft']);
-        $peri = $this->formatQty($metrics['perimeter_lf']);
+        $area = $this->formatQty((float) $metrics['area_sqft']);
+        $peri = $this->formatQty((float) $metrics['perimeter_lf']);
+        $base = $this->formatQty((float) ($metrics['baseboard_lf'] ?? $metrics['perimeter_lf']));
+        $openings = (int) ($metrics['drywall_openings'] ?? 0);
 
         return [
             'id' => $id,
@@ -201,10 +211,18 @@ class RoomAreaLayoutQuoteService
             'short_name' => $shortName,
             'area_sqft' => $metrics['area_sqft'],
             'perimeter_lf' => $metrics['perimeter_lf'],
+            'baseboard_lf' => $metrics['baseboard_lf'] ?? $metrics['perimeter_lf'],
+            'wall_height_ft' => $metrics['wall_height_ft'] ?? RoomAreaCanvasData::DEFAULT_WALL_HEIGHT_FT,
+            'wall_area_sqft' => $metrics['wall_area_sqft'] ?? 0,
+            'door_count' => (int) ($metrics['door_count'] ?? 0),
+            'window_count' => (int) ($metrics['window_count'] ?? 0),
+            'opening_count' => (int) ($metrics['opening_count'] ?? 0),
+            'drywall_openings' => $openings,
             'inside_corners' => $metrics['inside_corners'],
             'outside_corners' => $metrics['outside_corners'],
             'polygon_count' => $metrics['polygon_count'],
-            'meta' => $area.' sq ft floor · '.$peri.' lf walls',
+            'meta' => $area.' sq ft floor · '.$peri.' lf walls · '.$base.' lf baseboard'
+                .($openings > 0 ? ' · '.$openings.' openings' : ''),
         ];
     }
 

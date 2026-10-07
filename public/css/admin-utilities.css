@@ -3126,3 +3126,81 @@
     min-width: 0;
   }
 }
+
+.util-ra-live-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.util-ra-live-metrics__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.util-ra-live-metrics__item strong {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.util-ra-live-area__row--counts {
+  margin-top: 0.3rem;
+  color: var(--admin-muted);
+  font-size: 0.82rem;
+}
+
+.util-ra-live-area__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.65rem;
+  margin-top: 0.45rem;
+}
+
+.util-ra-live-area__height {
+  margin-bottom: 0;
+  width: 70px;
+  flex: 0 0 70px;
+}
+
+.util-ra-live-area__height label {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+
+.util-ra-live-area__height .admin-input {
+  width: 70px;
+  max-width: 70px;
+  min-width: 0;
+  padding-left: 0.45rem;
+  padding-right: 0.45rem;
+}
+
+.util-ra-live-area__exports {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.util-ra-live-area__exports .admin-btn {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 700px) {
+  .util-ra-live-metrics {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2rem 0.5rem;
+  }
+
+  .util-ra-live-area__toolbar {
+    align-items: flex-end;
+  }
+}

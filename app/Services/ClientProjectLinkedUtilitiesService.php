@@ -77,6 +77,9 @@ class ClientProjectLinkedUtilitiesService
                         'area_label' => $room->area_sqft
                             ? rtrim(rtrim(number_format((float) $room->area_sqft, 2, '.', ''), '0'), '.').' sq ft'
                             : '—',
+                        'pdf_url' => $room->pdf_path
+                            ? route('admin.utilities.room-area.rooms.pdf', $room)
+                            : null,
                     ])->values()->all(),
                     'open_url' => route('admin.utilities.room-area', ['ra_project' => $utilityProject->id]),
                     'updated_label' => $utilityProject->updated_at?->format('M j, Y'),

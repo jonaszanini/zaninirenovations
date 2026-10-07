@@ -26,6 +26,12 @@ class RoomAreaCanvasData
 
     public const OBJECT_HINGES = ['left', 'right'];
 
+    public const DEFAULT_WALL_HEIGHT_FT = 8.0;
+
+    public const DEFAULT_DOOR_HEIGHT_IN = 80.0;
+
+    public const DEFAULT_WINDOW_HEIGHT_IN = 36.0;
+
     /** @var list<string> */
     public const GROUP_COLORS = [
         '#024768',
@@ -544,12 +550,27 @@ class RoomAreaCanvasData
     }
 
     /**
-     * Floor area, wall perimeter, and drywall corner counts for a saved layout.
+     * Floor area, wall perimeter, openings, and drywall-oriented wall metrics.
+     *
+     * v2 rooms without objects do not subtract anything from baseboard or wall area.
      *
      * @param  array{v: int, groups: list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>}  $canvas
-     * @return array{area_sqft: float, perimeter_lf: float, inside_corners: int, outside_corners: int, polygon_count: int}
+     * @return array{
+     *   area_sqft: float,
+     *   perimeter_lf: float,
+     *   baseboard_lf: float,
+     *   wall_height_ft: float,
+     *   wall_area_sqft: float,
+     *   door_count: int,
+     *   window_count: int,
+     *   opening_count: int,
+     *   drywall_openings: int,
+     *   inside_corners: int,
+     *   outside_corners: int,
+     *   polygon_count: int
+     * }
      */
-    public function layoutMetrics(array $canvas, float $pixelsPerFoot): array
+    public function layoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT): array
     {
         $normalized = $this->normalize($canvas);
         $area = 0.0;
@@ -557,9 +578,10 @@ class RoomAreaCanvasData
         $inside = 0;
         $outside = 0;
         $polygonCount = 0;
+        $wallHeightFt = $this->normalizeWallHeight($wallHeightFt);
 
         if ($pixelsPerFoot <= 0) {
-            return $this->emptyLayoutMetrics();
+            return $this->emptyLayoutMetrics($wallHeightFt);
         }
 
         foreach ($normalized['groups'] as $group) {
@@ -580,12 +602,25 @@ class RoomAreaCanvasData
         }
 
         if ($polygonCount === 0) {
-            return $this->emptyLayoutMetrics();
+            return $this->emptyLayoutMetrics($wallHeightFt);
         }
+
+        $objectMetrics = $this->objectDeductionMetrics($normalized['objects'] ?? [], $wallHeightFt);
+        $perimeter = round($perimeter, 2);
+        $baseboard = max(0.0, round($perimeter - $objectMetrics['baseboard_deduction_lf'], 2));
+        $grossWall = $perimeter * $wallHeightFt;
+        $wallArea = max(0.0, round($grossWall - $objectMetrics['wall_deduction_sqft'], 2));
 
         return [
             'area_sqft' => round($area, 2),
-            'perimeter_lf' => round($perimeter, 2),
+            'perimeter_lf' => $perimeter,
+            'baseboard_lf' => $baseboard,
+            'wall_height_ft' => $wallHeightFt,
+            'wall_area_sqft' => $wallArea,
+            'door_count' => $objectMetrics['door_count'],
+            'window_count' => $objectMetrics['window_count'],
+            'opening_count' => $objectMetrics['opening_count'],
+            'drywall_openings' => $objectMetrics['drywall_openings'],
             'inside_corners' => $inside,
             'outside_corners' => $outside,
             'polygon_count' => $polygonCount,
@@ -593,16 +628,126 @@ class RoomAreaCanvasData
     }
 
     /**
-     * @return array{area_sqft: float, perimeter_lf: float, inside_corners: int, outside_corners: int, polygon_count: int}
+     * @return array{
+     *   area_sqft: float,
+     *   perimeter_lf: float,
+     *   baseboard_lf: float,
+     *   wall_height_ft: float,
+     *   wall_area_sqft: float,
+     *   door_count: int,
+     *   window_count: int,
+     *   opening_count: int,
+     *   drywall_openings: int,
+     *   inside_corners: int,
+     *   outside_corners: int,
+     *   polygon_count: int
+     * }
      */
-    public function emptyLayoutMetrics(): array
+    public function emptyLayoutMetrics(float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT): array
     {
         return [
             'area_sqft' => 0.0,
             'perimeter_lf' => 0.0,
+            'baseboard_lf' => 0.0,
+            'wall_height_ft' => $this->normalizeWallHeight($wallHeightFt),
+            'wall_area_sqft' => 0.0,
+            'door_count' => 0,
+            'window_count' => 0,
+            'opening_count' => 0,
+            'drywall_openings' => 0,
             'inside_corners' => 0,
             'outside_corners' => 0,
             'polygon_count' => 0,
         ];
+    }
+
+    public function normalizeWallHeight(mixed $height): float
+    {
+        $value = is_numeric($height) ? (float) $height : self::DEFAULT_WALL_HEIGHT_FT;
+        if ($value < 1) {
+            return self::DEFAULT_WALL_HEIGHT_FT;
+        }
+        if ($value > 20) {
+            return 20.0;
+        }
+
+        return round($value, 2);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $objects
+     * @return array{
+     *   door_count: int,
+     *   window_count: int,
+     *   opening_count: int,
+     *   drywall_openings: int,
+     *   baseboard_deduction_lf: float,
+     *   wall_deduction_sqft: float
+     * }
+     */
+    private function objectDeductionMetrics(array $objects, float $wallHeightFt): array
+    {
+        $doorCount = 0;
+        $windowCount = 0;
+        $openingCount = 0;
+        $baseboardInches = 0.0;
+        $wallDeduction = 0.0;
+
+        foreach ($objects as $object) {
+            if (! is_array($object)) {
+                continue;
+            }
+            $type = isset($object['type']) && is_string($object['type'])
+                ? strtolower(trim($object['type']))
+                : '';
+            if (! in_array($type, self::OBJECT_TYPES, true)) {
+                continue;
+            }
+
+            $widthIn = isset($object['width']) ? (float) $object['width'] : 0.0;
+            if ($widthIn <= 0) {
+                continue;
+            }
+
+            $heightIn = $this->objectHeightInches($object, $type, $wallHeightFt);
+            $openingArea = ($widthIn / 12.0) * ($heightIn / 12.0);
+
+            if ($type === 'door') {
+                $doorCount++;
+                $baseboardInches += $widthIn;
+                $wallDeduction += $openingArea;
+            } elseif ($type === 'window') {
+                $windowCount++;
+                $wallDeduction += $openingArea;
+            } else {
+                $openingCount++;
+                $baseboardInches += $widthIn;
+            }
+        }
+
+        return [
+            'door_count' => $doorCount,
+            'window_count' => $windowCount,
+            'opening_count' => $openingCount,
+            'drywall_openings' => $doorCount + $windowCount + $openingCount,
+            'baseboard_deduction_lf' => $baseboardInches / 12.0,
+            'wall_deduction_sqft' => $wallDeduction,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $object
+     */
+    private function objectHeightInches(array $object, string $type, float $wallHeightFt): float
+    {
+        if (isset($object['height']) && is_numeric($object['height']) && (float) $object['height'] > 0) {
+            return (float) $object['height'];
+        }
+
+        return match ($type) {
+            'window' => self::DEFAULT_WINDOW_HEIGHT_IN,
+            'opening' => $wallHeightFt * 12.0,
+            default => self::DEFAULT_DOOR_HEIGHT_IN,
+        };
     }
 }

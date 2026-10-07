@@ -30,7 +30,9 @@
     data-room-update-template="{{ route('admin.utilities.room-area.rooms.update', ['room_area_room' => '__ID__']) }}"
     data-room-destroy-template="{{ route('admin.utilities.room-area.rooms.destroy', ['room_area_room' => '__ID__']) }}"
     data-room-background-upload-template="{{ route('admin.utilities.room-area.rooms.background.upload', ['room_area_room' => '__ID__']) }}"
-    data-room-background-destroy-template="{{ route('admin.utilities.room-area.rooms.background.destroy', ['room_area_room' => '__ID__']) }}">
+    data-room-background-destroy-template="{{ route('admin.utilities.room-area.rooms.background.destroy', ['room_area_room' => '__ID__']) }}"
+    data-pdf-url="{{ route('admin.utilities.room-area.pdf') }}"
+    data-room-pdf-template="{{ route('admin.utilities.room-area.rooms.pdf', ['room_area_room' => '__ID__']) }}">
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
 
     <section class="admin-card util-ra-project-bar">
@@ -434,10 +436,44 @@
               <strong data-ra-live-active-shape>—</strong> sq ft
             </div>
             <ul class="util-ra-live-area-groups" data-ra-live-group-list></ul>
-            <div class="util-ra-live-area__row util-ra-live-area__row--total">
-              <span class="util-ra-live-area__label">All areas:</span>
-              <strong data-ra-live-grand-total>—</strong> sq ft
-              <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m²)</span>
+            <div class="util-ra-live-metrics" data-ra-live-metrics>
+              <div class="util-ra-live-metrics__item">
+                <span class="util-ra-live-area__label">Floor</span>
+                <strong><span data-ra-live-grand-total>—</span> sq ft</strong>
+              </div>
+              <div class="util-ra-live-metrics__item">
+                <span class="util-ra-live-area__label">Perimeter</span>
+                <strong><span data-ra-live-perimeter>—</span> lf</strong>
+              </div>
+              <div class="util-ra-live-metrics__item">
+                <span class="util-ra-live-area__label">Baseboard</span>
+                <strong><span data-ra-live-baseboard>—</span> lf</strong>
+              </div>
+              <div class="util-ra-live-metrics__item">
+                <span class="util-ra-live-area__label">Wall area</span>
+                <strong><span data-ra-live-wall-area>—</span> sq ft</strong>
+              </div>
+            </div>
+            <div class="util-ra-live-area__row util-ra-live-area__row--counts">
+              <span data-ra-live-counts>0 doors · 0 windows · 0 openings</span>
+              <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m² floor)</span>
+            </div>
+            <div class="util-ra-live-area__toolbar">
+              <div class="admin-form-group util-ra-live-area__height">
+                <label for="ra-wall-height">Height (ft)</label>
+                <input class="admin-input" type="text" id="ra-wall-height" inputmode="decimal" value="8" data-ra-wall-height>
+              </div>
+              <div class="util-ra-live-area__exports">
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-export-png>
+                  <i class="fa fa-image" aria-hidden="true"></i> PNG
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-export-pdf>
+                  <i class="fa fa-file-pdf-o" aria-hidden="true"></i> PDF
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-attach-pdf hidden>
+                  <i class="fa fa-paperclip" aria-hidden="true"></i> Attach
+                </button>
+              </div>
             </div>
             <span class="util-sr-only" data-ra-live-sqft aria-hidden="true">—</span>
           </div>

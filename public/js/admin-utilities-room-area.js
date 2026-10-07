@@ -49,6 +49,9 @@
   var OBJECT_SNAP_PX = 36;
   var OBJECT_MIN_WIDTH_IN = 6;
   var OBJECT_MAX_WIDTH_IN = 240;
+  var DEFAULT_WALL_HEIGHT_FT = 8;
+  var DEFAULT_DOOR_HEIGHT_IN = 80;
+  var DEFAULT_WINDOW_HEIGHT_IN = 36;
   var OBJECT_CATALOG = [
     { key: 'door-30', type: 'door', subtype: 'single', width: 30, label: '30″ door', kind: 'door' },
     { key: 'door-32', type: 'door', subtype: 'single', width: 32, label: '32″ door', kind: 'door' },
@@ -65,6 +68,7 @@
   ];
 
   function isAdminDark() {
+    if (state && state.exporting) return false;
     return document.documentElement.classList.contains('admin-dark');
   }
 
@@ -176,6 +180,14 @@
     liveGrandTotal: root.querySelector('[data-ra-live-grand-total]'),
     liveSqft: root.querySelector('[data-ra-live-sqft]'),
     liveSqm: root.querySelector('[data-ra-live-sqm]'),
+    livePerimeter: root.querySelector('[data-ra-live-perimeter]'),
+    liveBaseboard: root.querySelector('[data-ra-live-baseboard]'),
+    liveWallArea: root.querySelector('[data-ra-live-wall-area]'),
+    liveCounts: root.querySelector('[data-ra-live-counts]'),
+    wallHeight: root.querySelector('[data-ra-wall-height]'),
+    exportPng: root.querySelector('[data-ra-export-png]'),
+    exportPdf: root.querySelector('[data-ra-export-pdf]'),
+    attachPdf: root.querySelector('[data-ra-attach-pdf]'),
     feedback: root.querySelector('[data-ra-feedback]'),
     roomName: root.querySelector('[data-ra-room-name]'),
     saveRoom: root.querySelector('[data-ra-save-room]'),
@@ -295,7 +307,9 @@
     viewportW: 900,
     viewportH: 640,
     canvasW: 5400,
-    canvasH: 3840
+    canvasH: 3840,
+    wallHeightFt: DEFAULT_WALL_HEIGHT_FT,
+    exporting: false
   };
 
   var resizeTimer = null;
@@ -767,6 +781,107 @@
       total += groupAreaSqFt(group);
     });
     return Math.round(total * 100) / 100;
+  }
+
+  function polygonPerimeterLf(vertices) {
+    var ppf = pixelsPerFoot();
+    if (!ppf || !vertices || vertices.length < 3) return 0;
+    var sum = 0;
+    for (var i = 0; i < vertices.length; i++) {
+      sum += dist(vertices[i], vertices[(i + 1) % vertices.length]) / ppf;
+    }
+    return Math.round(sum * 100) / 100;
+  }
+
+  function canvasPerimeterLf() {
+    var total = 0;
+    allClosedPolygons().forEach(function (entry) {
+      if (!isSimplePolygon(entry.polygon.vertices)) return;
+      total += polygonPerimeterLf(entry.polygon.vertices);
+    });
+    return Math.round(total * 100) / 100;
+  }
+
+  function wallHeightFt() {
+    var n = els.wallHeight ? parseFloat(els.wallHeight.value) : state.wallHeightFt;
+    if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
+    if (n > 20) return 20;
+    return Math.round(n * 100) / 100;
+  }
+
+  function setWallHeight(value) {
+    var next = wallHeightFtFromValue(value);
+    state.wallHeightFt = next;
+    if (els.wallHeight && document.activeElement !== els.wallHeight) {
+      els.wallHeight.value = String(next);
+    }
+  }
+
+  function wallHeightFtFromValue(value) {
+    var n = parseFloat(value);
+    if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
+    if (n > 20) return 20;
+    return Math.round(n * 100) / 100;
+  }
+
+  function objectHeightInches(obj, heightFt) {
+    if (obj && obj.height != null && isFinite(obj.height) && obj.height > 0) {
+      return obj.height;
+    }
+    if (obj && obj.type === 'window') return DEFAULT_WINDOW_HEIGHT_IN;
+    if (obj && obj.type === 'opening') return heightFt * INCHES_PER_FOOT;
+    return DEFAULT_DOOR_HEIGHT_IN;
+  }
+
+  function metricObjects() {
+    return (state.objects || []).filter(function (obj) {
+      return obj && resolveWall(obj.wall_id);
+    });
+  }
+
+  function computeWallMetrics() {
+    var perimeter = canvasPerimeterLf();
+    var height = wallHeightFt();
+    var floor = canvasTotalAreaSqFt();
+    var doorCount = 0;
+    var windowCount = 0;
+    var openingCount = 0;
+    var baseboardIn = 0;
+    var wallDeduction = 0;
+    metricObjects().forEach(function (obj) {
+      var width = parseFloat(obj.width) || 0;
+      if (width <= 0) return;
+      var objHeight = objectHeightInches(obj, height);
+      var area = (width / INCHES_PER_FOOT) * (objHeight / INCHES_PER_FOOT);
+      if (obj.type === 'door') {
+        doorCount += 1;
+        baseboardIn += width;
+        wallDeduction += area;
+      } else if (obj.type === 'window') {
+        windowCount += 1;
+        wallDeduction += area;
+      } else if (obj.type === 'opening') {
+        openingCount += 1;
+        baseboardIn += width;
+      }
+    });
+    var baseboard = Math.max(0, Math.round((perimeter - baseboardIn / INCHES_PER_FOOT) * 100) / 100);
+    var wallArea = Math.max(0, Math.round((perimeter * height - wallDeduction) * 100) / 100);
+    return {
+      area_sqft: floor,
+      perimeter_lf: perimeter,
+      baseboard_lf: baseboard,
+      wall_height_ft: height,
+      wall_area_sqft: wallArea,
+      door_count: doorCount,
+      window_count: windowCount,
+      opening_count: openingCount,
+      drywall_openings: doorCount + windowCount + openingCount
+    };
+  }
+
+  function formatMetricQty(value) {
+    return fmt(value, 2);
   }
 
   function pointInPolygon(point, vertices) {
@@ -3078,6 +3193,7 @@
     clearRulerSelection();
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
+    setWallHeight(DEFAULT_WALL_HEIGHT_FT);
     show(els.liveArea, false);
     if (state.stage) {
       state.lastUiScale = 0;
@@ -5431,6 +5547,7 @@
     clearRulerSelection();
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
+    setWallHeight(DEFAULT_WALL_HEIGHT_FT);
     show(els.liveArea, false);
     clearDraftLayers();
     updateEditUI();
@@ -5513,6 +5630,17 @@
     }
     if (els.liveSqft) els.liveSqft.textContent = fmt(grandTotal, 2);
     if (els.liveSqm) els.liveSqm.textContent = fmt(grandTotal * SQFT_TO_SQM, 2);
+    var metrics = computeWallMetrics();
+    if (els.livePerimeter) els.livePerimeter.textContent = formatMetricQty(metrics.perimeter_lf);
+    if (els.liveBaseboard) els.liveBaseboard.textContent = formatMetricQty(metrics.baseboard_lf);
+    if (els.liveWallArea) els.liveWallArea.textContent = formatMetricQty(metrics.wall_area_sqft);
+    if (els.liveCounts) {
+      els.liveCounts.textContent =
+        metrics.door_count + (metrics.door_count === 1 ? ' door' : ' doors') +
+        ' · ' + metrics.window_count + (metrics.window_count === 1 ? ' window' : ' windows') +
+        ' · ' + metrics.opening_count + (metrics.opening_count === 1 ? ' opening' : ' openings');
+    }
+    syncExportButtons();
     if (els.liveGroupList) {
       els.liveGroupList.innerHTML = '';
       state.groups.forEach(function (group) {
@@ -5681,7 +5809,8 @@
             canvas: serializeCanvas(),
             scale_pixels_per_foot: ppf,
             canvas_width: contentW(),
-            canvas_height: contentH()
+            canvas_height: contentH(),
+            wall_height_ft: wallHeightFt()
           })
         })
           .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
@@ -5751,6 +5880,7 @@
       els.saveTip.setAttribute('data-tooltip', saveLabel);
     }
     show(els.cancelEdit, editing);
+    syncExportButtons();
     renderRooms();
   }
 
@@ -5768,6 +5898,7 @@
     clearRulerSelection();
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
+    setWallHeight(room.wall_height_ft || DEFAULT_WALL_HEIGHT_FT);
     updateEditUI();
 
     ensureStage();
@@ -5851,6 +5982,9 @@
         '<div class="util-ra-rooms-item__actions">' +
           '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-room="' + room.id + '" title="Load room" aria-label="Load room"><i class="fa fa-folder-open"></i><span class="util-ra-rooms-item__action-label">Load</span></button>' +
           '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-copy-area="' + room.area_sqft + '" title="Copy sq ft"><i class="fa fa-copy"></i><span class="util-ra-rooms-item__action-label">Copy</span></button>' +
+          (room.pdf_url
+            ? '<a class="admin-btn admin-btn--ghost admin-btn--sm" href="' + esc(room.pdf_url) + '" target="_blank" rel="noopener" title="Open attached PDF"><i class="fa fa-file-pdf-o"></i><span class="util-ra-rooms-item__action-label">PDF</span></a>'
+            : '') +
           '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-delete-room="' + room.id + '" title="Delete"><i class="fa fa-trash"></i><span class="util-ra-rooms-item__action-label">Delete</span></button>' +
         '</div>';
       els.roomsList.appendChild(li);
@@ -6085,7 +6219,8 @@
         canvas: serializeCanvas(),
         canvas_width: contentW(),
         canvas_height: contentH(),
-        scale_pixels_per_foot: scale
+        scale_pixels_per_foot: scale,
+        wall_height_ft: wallHeightFt()
       })
     })
       .then(function (res) {
@@ -6683,6 +6818,172 @@
     syncObjectPropertiesPanel();
   }
 
+  function syncExportButtons() {
+    if (els.attachPdf) {
+      show(els.attachPdf, !!state.editingRoomId);
+    }
+  }
+
+  function roomExportTitle() {
+    var room = activeRoom();
+    var project = activeProject();
+    var roomName = (els.roomName && els.roomName.value.trim()) || (room && room.name) || 'Room';
+    if (project && project.name) return project.name + ' — ' + roomName;
+    return roomName + ' — Room plan';
+  }
+
+  function captureRoomPng() {
+    if (!state.stage) return '';
+    var prevShow = state.showDimensions;
+    var prevViewport = {
+      scale: state.viewport.scale,
+      x: state.viewport.x,
+      y: state.viewport.y,
+      zoomPercent: state.viewport.zoomPercent
+    };
+    state.exporting = true;
+    state.showDimensions = true;
+    fitViewport();
+    redrawAll();
+    var bg = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: state.stage.width(),
+      height: state.stage.height(),
+      fill: '#f7f8fa',
+      listening: false
+    });
+    state.konvaLayer.add(bg);
+    bg.moveToBottom();
+    state.konvaLayer.draw();
+    var dataUrl = '';
+    try {
+      dataUrl = state.stage.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
+    } catch (err) {
+      dataUrl = '';
+    }
+    bg.destroy();
+    state.exporting = false;
+    state.showDimensions = prevShow;
+    state.viewport.scale = prevViewport.scale;
+    state.viewport.x = prevViewport.x;
+    state.viewport.y = prevViewport.y;
+    state.viewport.zoomPercent = prevViewport.zoomPercent;
+    applyViewport();
+    redrawAll();
+    return dataUrl;
+  }
+
+  function downloadDataUrl(dataUrl, filename) {
+    var a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function slugFilename(name, ext) {
+    var slug = String(name || 'room-plan').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return (slug || 'room-plan') + '.' + ext;
+  }
+
+  function exportPng() {
+    if (!hasAnyClosedPolygon()) {
+      setFeedback('Draw a closed room before exporting.', true);
+      return;
+    }
+    var dataUrl = captureRoomPng();
+    if (!dataUrl) {
+      setFeedback('Could not export PNG.', true);
+      return;
+    }
+    downloadDataUrl(dataUrl, slugFilename(roomExportTitle(), 'png'));
+    setFeedback('PNG downloaded.', false);
+  }
+
+  function addPdfField(form, name, value) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value == null ? '' : String(value);
+    form.appendChild(input);
+  }
+
+  function metricRows(metrics) {
+    return [
+      { label: 'Floor area', value: formatMetricQty(metrics.area_sqft) + ' sq ft' },
+      { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf) + ' lf' },
+      { label: 'Baseboard', value: formatMetricQty(metrics.baseboard_lf) + ' lf' },
+      { label: 'Wall height', value: formatMetricQty(metrics.wall_height_ft) + ' ft' },
+      { label: 'Wall area', value: formatMetricQty(metrics.wall_area_sqft) + ' sq ft' },
+      { label: 'Doors', value: String(metrics.door_count) },
+      { label: 'Windows', value: String(metrics.window_count) },
+      { label: 'Openings', value: String(metrics.opening_count) }
+    ];
+  }
+
+  function submitPdfForm(attach) {
+    var pdfUrl = root.getAttribute('data-pdf-url');
+    if (!pdfUrl) {
+      setFeedback('PDF export is not available.', true);
+      return;
+    }
+    if (!hasAnyClosedPolygon()) {
+      setFeedback('Draw a closed room before exporting.', true);
+      return;
+    }
+    var metrics = computeWallMetrics();
+    var diagram = captureRoomPng();
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = pdfUrl;
+    form.target = '_blank';
+    form.style.display = 'none';
+    addPdfField(form, '_token', csrf());
+    addPdfField(form, 'title', roomExportTitle());
+    addPdfField(form, 'summary', 'Wall metrics from the Room Area drawing.');
+    addPdfField(form, 'wall_height_ft', metrics.wall_height_ft);
+    if (state.editingRoomId) addPdfField(form, 'room_id', state.editingRoomId);
+    if (attach) addPdfField(form, 'attach', '1');
+    if (diagram) addPdfField(form, 'diagram', diagram);
+    metricRows(metrics).forEach(function (row, idx) {
+      addPdfField(form, 'rows[' + idx + '][label]', row.label);
+      addPdfField(form, 'rows[' + idx + '][value]', row.value);
+    });
+    metricObjects().forEach(function (obj, idx) {
+      addPdfField(form, 'objects[' + idx + '][type]', obj.type || '');
+      addPdfField(form, 'objects[' + idx + '][subtype]', obj.subtype || '');
+      addPdfField(form, 'objects[' + idx + '][width]', obj.width);
+      addPdfField(form, 'objects[' + idx + '][offset]', obj.offset);
+      addPdfField(form, 'objects[' + idx + '][wall_id]', obj.wall_id || '');
+    });
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    if (attach && state.editingRoomId) {
+      var room = activeRoom();
+      if (room) {
+        room.pdf_url = urlFromTemplate(root.getAttribute('data-room-pdf-template'), state.editingRoomId);
+      }
+      setFeedback('PDF attached to this room' + (activeProject() && activeProject().client_project_id ? ' and the linked client project.' : '.'), false);
+    } else {
+      setFeedback('PDF opened in a new tab.', false);
+    }
+  }
+
+  function exportPdf() {
+    submitPdfForm(false);
+  }
+
+  function attachPdf() {
+    if (!state.editingRoomId) {
+      setFeedback('Save the room before attaching a PDF.', true);
+      return;
+    }
+    submitPdfForm(true);
+  }
+
   function bindEvents() {
     els.projectSelect.addEventListener('change', function () {
       var newId = els.projectSelect.value ? parseInt(els.projectSelect.value, 10) : null;
@@ -6851,6 +7152,20 @@
     els.copyTotal.addEventListener('click', function () {
       copyText(els.totalSqft.textContent);
     });
+
+    if (els.wallHeight) {
+      els.wallHeight.addEventListener('input', function () {
+        state.wallHeightFt = wallHeightFt();
+        updateLiveArea();
+      });
+      els.wallHeight.addEventListener('change', function () {
+        setWallHeight(els.wallHeight.value);
+        updateLiveArea();
+      });
+    }
+    if (els.exportPng) els.exportPng.addEventListener('click', exportPng);
+    if (els.exportPdf) els.exportPdf.addEventListener('click', exportPdf);
+    if (els.attachPdf) els.attachPdf.addEventListener('click', attachPdf);
 
     if (els.zoomIn) els.zoomIn.addEventListener('click', zoomIn);
     if (els.zoomOut) els.zoomOut.addEventListener('click', zoomOut);
