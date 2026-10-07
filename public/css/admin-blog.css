@@ -23,8 +23,8 @@
 }
 
 .bp-list-tab.is-active {
-  background: var(--admin-primary);
-  border-color: var(--admin-primary);
+  background: #024768;
+  border-color: #024768;
   color: #fff;
 }
 
@@ -35,22 +35,64 @@
 }
 
 .bp-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--admin-surface-hover);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  align-items: flex-end;
+}
+
+.bp-list-filters .cp-filter {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.bp-list-filters .cp-filter label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-muted);
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+
+.bp-list-filters .cp-filter:first-child {
+  flex: 1 1 160px;
+  max-width: 240px;
+}
+
+.bp-list-filters .cp-filter select.admin-input,
+.bp-list-filters .cp-filter input.admin-input {
+  width: 100%;
+  min-width: 132px;
+}
+
+.bp-list-filters .cp-filter--actions {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .bp-list-pager {
   margin-top: 12px;
 }
 
-.bp-list-table__thumb {
-  width: 1%;
+.bp-list-table td:first-child,
+.bp-list-table th:first-child {
+  min-width: 220px;
 }
 
 .bp-list-post {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
+  min-width: 200px;
 }
 
 .bp-list-thumb {
@@ -86,7 +128,8 @@
   font-weight: 650;
   color: var(--admin-heading);
   text-decoration: none;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .bp-list-seo {
@@ -202,6 +245,11 @@
 .bp-form .admin-card {
   padding: 12px;
   margin-bottom: 0;
+}
+
+.bp-form [hidden],
+.bp-list [hidden] {
+  display: none !important;
 }
 
 .bp-layout {
@@ -424,5 +472,26 @@
 
   .bp-list-post {
     align-items: flex-start;
+  }
+
+  .bp-list-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .bp-list-filters .cp-filter,
+  .bp-list-filters .cp-filter:first-child {
+    max-width: none;
+    width: auto;
+  }
+
+  .bp-list-filters .cp-filter--actions {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+
+  .bp-list-table td:first-child,
+  .bp-list-table th:first-child {
+    min-width: 0;
   }
 }

@@ -16,7 +16,7 @@
       @endforeach
     </div>
 
-    <form method="get" action="{{ route('admin.blog.posts.index') }}" class="cp-filters cp-filters--5col bp-list-filters">
+    <form method="get" action="{{ route('admin.blog.posts.index') }}" class="bp-list-filters">
       @if ($status !== 'all')
         <input type="hidden" name="status" value="{{ $status }}">
       @endif

@@ -1580,14 +1580,18 @@ html.admin-dark .blog-post-status--draft {
 html.admin-dark .blog-post-status--scheduled {
   color: #60a5fa;
 }
+html.admin-dark .bp-list-filters {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
 html.admin-dark .bp-list-tab {
   background: var(--admin-surface);
   border-color: var(--admin-border);
   color: var(--admin-text);
 }
 html.admin-dark .bp-list-tab.is-active {
-  background: var(--admin-primary);
-  border-color: var(--admin-primary);
+  background: #0369a1;
+  border-color: #0369a1;
   color: #fff;
 }
 html.admin-dark .bp-seo-badge {
