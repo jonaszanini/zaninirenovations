@@ -77,7 +77,7 @@ jobs:
             ./database/migrations/ "${SSH_USER}@${SSH_HOST}:${DEPLOY_ROOT}/database/migrations/"
 
           echo "[cleanup] Removing debug/phpinfo scripts from server..."
-          ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "rm -f '${DEPLOY_ROOT}/public/test.php' '${DEPLOY_ROOT}/public/info.php' '${DEPLOY_ROOT}/public/phpinfo.php' '${DEPLOY_ROOT}/test.php' '${DEPLOY_ROOT}/info.php' '${DEPLOY_ROOT}/phpinfo.php'"
+          ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "rm -f '${DEPLOY_ROOT}/public/test.php' '${DEPLOY_ROOT}/public/info.php' '${DEPLOY_ROOT}/public/phpinfo.php' '${DEPLOY_ROOT}/test.php' '${DEPLOY_ROOT}/info.php' '${DEPLOY_ROOT}/phpinfo.php' '${DEPLOY_ROOT}/public/contact_email.php' '${DEPLOY_ROOT}/contact_email.php' '${DEPLOY_ROOT}/public/admin-login.html' '${DEPLOY_ROOT}/admin-login.html'"
 
           echo "[remote] Running Laravel deploy commands..."
           ssh ${SSH_ARGS} "${SSH_USER}@${SSH_HOST}" "export DEPLOY_ROOT='${DEPLOY_ROOT}'; bash -s" < .github/scripts/remote-laravel-deploy.sh

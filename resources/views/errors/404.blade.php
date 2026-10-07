@@ -3,6 +3,7 @@
 @section('page_title', 'Page not found — Zanini Renovations')
 @section('meta_description', 'That page could not be found. Return to Zanini Renovations for carpentry and renovation services in Carleton Place and Ottawa.')
 @section('meta_robots', 'noindex, follow')
+@section('omit_canonical', '1')
 
 @section('content')
   <section class="page-header page-header--404" aria-labelledby="not-found-heading">

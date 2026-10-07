@@ -8,9 +8,10 @@
   ]);
 @endphp
 
-@section('page_title', 'Renovation & Carpentry Tips for Ottawa Homeowners | Zanini Blog')
+@section('page_title', 'Renovation & Carpentry Tips for Ottawa Homeowners | Zanini')
 @section('meta_description', 'Renovation tips, project insights, and news from Zanini Renovations in Carleton Place and the Ottawa region.')
 @section('canonical', route('blog.index', $canonicalParams))
+@section('meta_robots', $blogRobots)
 
 @push('jsonld')
 <script type="application/ld+json">{!! \App\Support\SeoStructuredData::toJsonLd(\App\Support\SeoStructuredData::blogIndex()) !!}</script>

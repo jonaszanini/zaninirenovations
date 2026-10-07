@@ -60,10 +60,13 @@
                     data-gallery='@json($galleryUrls)'
                     aria-label="Open photo {{ $loop->iteration }} of {{ $project->photos->count() }}"
                   >
+                    @php $photoDims = $photo->dimensions(); @endphp
                     <img
                       src="{{ $photo->url() }}"
                       alt="{{ $project->title }} — photo {{ $loop->iteration }}"
-                      @if ($loop->first) loading="eager" @else loading="lazy" decoding="async" @endif
+                      @if ($photoDims) width="{{ $photoDims['width'] }}" height="{{ $photoDims['height'] }}" @endif
+                      @if ($loop->first) loading="eager" @else loading="lazy" @endif
+                      decoding="async"
                     >
                   </button>
                 @endforeach

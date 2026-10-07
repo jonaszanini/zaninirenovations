@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Support\PlainTextLimiter;
 use Illuminate\Support\Str;
 
 class Project extends Model
@@ -195,10 +196,10 @@ class Project extends Model
     {
         $custom = trim((string) $this->meta_description);
         if ($custom !== '') {
-            return Str::limit($custom, 300, '');
+            return PlainTextLimiter::trimToLength($custom, 155);
         }
 
-        $plain = $this->plainDescription(160);
+        $plain = $this->plainDescription(155);
         if ($plain !== '') {
             return $plain;
         }
@@ -215,7 +216,7 @@ class Project extends Model
     {
         $plain = trim(preg_replace('/\s+/', ' ', strip_tags((string) $this->description)) ?? '');
 
-        return Str::limit($plain, $limit, '');
+        return PlainTextLimiter::trimToLength($plain, $limit);
     }
 
     public function coverImageUrl(): ?string

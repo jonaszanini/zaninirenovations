@@ -49,7 +49,7 @@ class SeoStructuredData
         $sameAs = array_values(array_filter([$fb, $ig, $googleBiz], static fn ($u) => is_string($u) && str_starts_with($u, 'http')));
         $homeSummary = trim((string) config('seo.home_summary', ''));
         if ($homeSummary === '') {
-            $homeSummary = 'One-person, fully insured carpentry and renovation business in Carleton Place since 2020.';
+            $homeSummary = 'Fully insured carpentry and renovation business in Carleton Place since 2020.';
         }
         $ogRel = ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
         $ogAbs = $url.'/'.$ogRel;
@@ -89,6 +89,7 @@ class SeoStructuredData
             'knowsAbout' => $knowsAbout,
             'telephone' => '+1-647-834-7570',
             'email' => (string) config('mail.from.address', ''),
+            'foundingDate' => '2020',
             'priceRange' => '$$',
             'address' => [
                 '@type' => 'PostalAddress',
@@ -115,39 +116,6 @@ class SeoStructuredData
             $business['sameAs'] = $sameAs;
         }
 
-        $services = [
-            'Residential Fencing Services',
-            'Professional Deck Builder Ottawa',
-            'Basement Framing Contractors',
-            'Interior Trim Installation Ottawa',
-            'Custom Built-in Shelving Ottawa',
-            'Hardwood Flooring Installation Ottawa',
-            'Drywall Installation and Taping',
-            'Accent wall carpentry',
-            'Wood Staircase Refinishing',
-        ];
-
-        $itemList = [
-            '@type' => 'ItemList',
-            '@id' => $url.'/#services-list',
-            'name' => 'Carpentry & renovation services',
-            'itemListElement' => [],
-        ];
-        $n = 1;
-        foreach ($services as $name) {
-            $itemList['itemListElement'][] = [
-                '@type' => 'ListItem',
-                'position' => $n,
-                'item' => [
-                    '@type' => 'Service',
-                    'name' => $name,
-                    'provider' => ['@id' => $url.'/#business'],
-                    'areaServed' => ['Ottawa', 'Carleton Place'],
-                ],
-            ];
-            $n++;
-        }
-
         $graph = [
             [
                 '@type' => 'WebSite',
@@ -171,7 +139,6 @@ class SeoStructuredData
             $personMayara,
             $primaryImage,
             $business,
-            $itemList,
         ];
 
         $faq = self::homeFaqPage($url);
@@ -185,11 +152,45 @@ class SeoStructuredData
         ];
     }
 
+    /**
+     * Homepage FAQ rows with service-area answers resolved from config.
+     *
+     * @return list<array{question: string, answer: string}>
+     */
+    public static function homeFaqItems(): array
+    {
+        $faqItems = config('seo.home_faq', []);
+        if (! is_array($faqItems)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($faqItems as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $question = trim((string) ($row['question'] ?? ''));
+            $answer = trim((string) ($row['answer'] ?? ''));
+            if (($row['answer_from'] ?? '') === 'service_area_text') {
+                $answer = trim((string) config('seo.service_area_text', ''));
+            }
+            if ($question === '' || $answer === '') {
+                continue;
+            }
+            $out[] = [
+                'question' => $question,
+                'answer' => $answer,
+            ];
+        }
+
+        return $out;
+    }
+
     /** @return array<string, mixed>|null */
     public static function homeFaqPage(string $baseUrl): ?array
     {
-        $faqItems = config('seo.home_faq', []);
-        if (! is_array($faqItems) || $faqItems === []) {
+        $faqItems = self::homeFaqItems();
+        if ($faqItems === []) {
             return null;
         }
 
@@ -258,7 +259,7 @@ class SeoStructuredData
     {
         $base = rtrim((string) config('app.url'), '/');
         $url = $post->publicUrl();
-        $description = trim((string) ($post->meta_description ?: $post->displayExcerpt(300)));
+        $description = $post->seoDescription();
         $published = $post->published_at ?? $post->created_at;
         $modified = $post->updated_at ?? $published;
         $authorName = trim((string) ($post->author_name ?: 'Jonas Zanini'));
