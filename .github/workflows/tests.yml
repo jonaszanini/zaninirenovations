@@ -77,4 +77,4 @@ jobs:
           DB_DATABASE: zanini_renovations_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: php artisan test --filter="GlobalFinancialsTest|GlobalSearchApiTest|QuickStatusChangeTest|DuplicateQuotationTest|ExpenseAmountParsingTest|HourlyInvoiceUpdateTest|DashboardActionFirstLayoutTest|ClientIndexAddressSearchTest|RoomAreaCanvasDataTest|RoomAreaCanvasObjectsTest|RoomAreaPdfExportTest|BasementRoomAreaImportTest|HtmlContentSanitizerTest|PlainTextLimiterTest|BlogPhase1FixesTest|SecurityHardeningTest"
+        run: php artisan test --filter="GlobalFinancialsTest|GlobalSearchApiTest|QuickStatusChangeTest|DuplicateQuotationTest|ExpenseAmountParsingTest|HourlyInvoiceUpdateTest|DashboardActionFirstLayoutTest|ClientIndexAddressSearchTest|RoomAreaCanvasDataTest|RoomAreaCanvasObjectsTest|RoomAreaPdfExportTest|BasementRoomAreaImportTest|RoomAreaQuoteQuantitiesTest|RoomAreaQuoteLinesTest|RoomAreaQuotePrefillTest|HtmlContentSanitizerTest|PlainTextLimiterTest|BlogPhase1FixesTest|SecurityHardeningTest"

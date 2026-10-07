@@ -188,6 +188,8 @@
     exportPng: root.querySelector('[data-ra-export-png]'),
     exportPdf: root.querySelector('[data-ra-export-pdf]'),
     attachPdf: root.querySelector('[data-ra-attach-pdf]'),
+    createQuote: root.querySelector('[data-ra-create-quote]'),
+    quoteAll: root.querySelector('[data-ra-quote-all]'),
     feedback: root.querySelector('[data-ra-feedback]'),
     roomName: root.querySelector('[data-ra-room-name]'),
     saveRoom: root.querySelector('[data-ra-save-room]'),
@@ -1542,6 +1544,11 @@
 
   function urlFromTemplate(tpl, id) {
     return tpl.replace('__ID__', String(id));
+  }
+
+  function quoteRoomUrl(roomId) {
+    var tpl = root.getAttribute('data-quote-room-template') || '';
+    return tpl ? urlFromTemplate(tpl, roomId) : '';
   }
 
   function show(el, visible) {
@@ -5994,12 +6001,24 @@
           (room.pdf_url
             ? '<a class="admin-btn admin-btn--ghost admin-btn--sm" href="' + esc(room.pdf_url) + '" target="_blank" rel="noopener" title="Open attached PDF"><i class="fa fa-file-pdf-o"></i><span class="util-ra-rooms-item__action-label">PDF</span></a>'
             : '') +
+          (quoteRoomUrl(room.id)
+            ? '<a class="admin-btn admin-btn--primary admin-btn--sm" href="' + esc(quoteRoomUrl(room.id)) + '" title="Create quote from this room"><i class="fa fa-file-text-o"></i><span class="util-ra-rooms-item__action-label">Quote</span></a>'
+            : '') +
           '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-delete-room="' + room.id + '" title="Delete"><i class="fa fa-trash"></i><span class="util-ra-rooms-item__action-label">Delete</span></button>' +
         '</div>';
       els.roomsList.appendChild(li);
     });
 
     els.totalSqft.textContent = fmt(total, 2);
+    if (els.quoteAll) {
+      var projectQuoteTpl = root.getAttribute('data-quote-project-template') || '';
+      if (project && rooms.length >= 2 && projectQuoteTpl) {
+        els.quoteAll.href = urlFromTemplate(projectQuoteTpl, project.id);
+        show(els.quoteAll, true);
+      } else {
+        show(els.quoteAll, false);
+      }
+    }
 
     els.roomsList.querySelectorAll('[data-edit-room]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -6830,6 +6849,15 @@
   function syncExportButtons() {
     if (els.attachPdf) {
       show(els.attachPdf, !!state.editingRoomId);
+    }
+    if (els.createQuote) {
+      var quoteTpl = root.getAttribute('data-quote-room-template') || '';
+      if (state.editingRoomId && quoteTpl) {
+        els.createQuote.href = urlFromTemplate(quoteTpl, state.editingRoomId);
+        show(els.createQuote, true);
+      } else {
+        show(els.createQuote, false);
+      }
     }
   }
 

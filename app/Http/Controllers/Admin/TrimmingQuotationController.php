@@ -259,9 +259,16 @@ class TrimmingQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
-        $linkProject = $this->quotationLinkCandidateProject($request);
-        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
-            $linkProject = null;
+        $previewInputs = TrimmingQuotationCalculator::defaultInputs();
+        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
+        $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
+        $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'trimming');
+        $linkProject = $this->mergeRoomAreaLinkProject(
+            $this->quotationLinkCandidateProject($request),
+            $quotation ? null : $roomAreaImport
+        );
+        if (! $quotation && $roomAreaImport) {
+            $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);
         }
 
         $linkedCpq = null;
@@ -271,10 +278,6 @@ class TrimmingQuotationController extends Controller
                 (int) $quotation->id
             );
         }
-
-        $previewInputs = TrimmingQuotationCalculator::defaultInputs();
-        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
-        $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {
                 $previewInputs[$key] = $value;
@@ -290,6 +293,7 @@ class TrimmingQuotationController extends Controller
             'linkProject' => $linkProject,
             'linkedCpq' => $linkedCpq,
             'initialPreview' => $initialPreview,
+            'roomAreaImport' => $quotation ? null : $roomAreaImport,
         ]);
     }
 
