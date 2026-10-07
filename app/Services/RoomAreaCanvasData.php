@@ -328,6 +328,11 @@ class RoomAreaCanvasData
             if ($sill >= 0 && $sill <= 240) {
                 $object['sill_height'] = round($sill, 3);
             }
+        } elseif ($type === 'door' && isset($item['height']) && is_numeric($item['height'])) {
+            $height = (float) $item['height'];
+            if ($height > 0 && $height <= 240) {
+                $object['height'] = round($height, 3);
+            }
         }
 
         return $object;
