@@ -51,6 +51,14 @@
                 <img src="{{ url('images/logo.png') }}" alt="Zanini Renovations" width="254" height="63" decoding="async">
               </a>
             </div>
+            @if (request()->routeIs('blog.*'))
+              <button type="button" class="navbar-toggle blog-site-menu-toggle" data-toggle="collapse" data-target="#main-nav-collapse" aria-controls="main-nav-collapse" aria-expanded="false" aria-label="Open menu">
+                <span class="sr-only">Menu</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+            @endif
           </div>
 
           <div class="col-md-8 col-sm-12 hidden-xs">
