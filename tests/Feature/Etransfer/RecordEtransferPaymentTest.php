@@ -48,7 +48,10 @@ class RecordEtransferPaymentTest extends IntegrationTestCase
             ->assertSee('Jane Citizen')
             ->assertSee('Record payment')
             ->assertSee('Paste email')
-            ->assertSee('INV-2026-0001');
+            ->assertSee('INV-2026-0001')
+            ->assertSee('cp-money-input', false)
+            ->assertDontSee('data-cp-money-entry="direct"', false)
+            ->assertSee('>Cancel</button>', false);
     }
 
     public function test_recording_a_notice_marks_invoice_paid_via_etransfer(): void

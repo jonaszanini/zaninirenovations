@@ -143,14 +143,46 @@
   text-overflow: ellipsis;
 }
 
+/* Overlay chrome lives here so this page does not depend on client-projects CSS. */
+body.cp-modal-open {
+  overflow: hidden;
+}
+
 #et-paste-modal.cp-modal-backdrop {
-  padding: 12px;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
   align-items: flex-start;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.55);
+  overflow: hidden;
+}
+
+#et-paste-modal.cp-modal-backdrop[hidden] {
+  display: none;
 }
 
 #et-paste-modal .cp-modal {
-  max-height: calc(100dvh - 24px);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  box-shadow: var(--admin-shadow-lg);
+  width: 100%;
   max-width: 520px;
+  max-height: calc(100dvh - 24px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#et-paste-modal .et-paste-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 #et-paste-modal .et-paste-header {
@@ -158,26 +190,47 @@
   grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--admin-border);
 }
 
 #et-paste-modal .et-paste-header h3 {
   margin: 0;
   min-width: 0;
+  font-size: 1.05rem;
+  color: var(--admin-heading);
 }
 
 #et-paste-modal .et-paste-close {
   justify-self: end;
   min-width: 44px;
   min-height: 44px;
+  background: transparent;
+  border: 0;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--admin-muted);
+  cursor: pointer;
 }
 
 #et-paste-modal .cp-modal-body {
+  padding: 16px 18px;
   overflow-y: auto;
   min-height: 0;
+  /* Keep Cancel/Save in view on phones even when optional overrides are open. */
+  max-height: calc(100dvh - 12.5rem);
 }
 
 #et-paste-modal .cp-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--admin-border);
+  background: var(--admin-surface-hover);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 #et-paste-modal .cp-modal-footer .admin-btn {
@@ -196,7 +249,7 @@
 }
 
 .et-paste-grid textarea.admin-input {
-  min-height: 7.5rem;
+  min-height: 6rem;
   width: 100%;
   resize: vertical;
 }
