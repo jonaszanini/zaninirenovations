@@ -3164,9 +3164,29 @@
     padding-right: 0.45rem;
   }
 
+  .util-ra-tool-group + .util-ra-tool-group {
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .util-ra-palette__items {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .util-ra-palette__item {
+    flex: 1 1 4.4rem;
+    min-width: 4.4rem;
+    max-width: 5.4rem;
+  }
+
   .util-ra-palette__name {
     white-space: normal;
-    max-width: 4.6rem;
+    max-width: none;
+  }
+
+  .util-ra-zoom-label {
+    min-width: 3.25rem;
   }
 }
 
